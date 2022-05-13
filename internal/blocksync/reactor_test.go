@@ -172,39 +172,42 @@ func (rts *reactorTestSuite) addMultipleNodes(
 	for blockHeight := int64(1); blockHeight <= maxBlockHeightPerNode[maxBlockHeightIdx]; blockHeight++ {
 		lastExtCommit = seenExtCommit.Clone()
 
-		if blockHeight > 1 {
-			lastBlockMeta := blockStores[maxBlockHeightIdx].LoadBlockMeta(blockHeight - 1)
-			lastBlock := blockStores[maxBlockHeightIdx].LoadBlock(blockHeight - 1)
-
-			commitSigs := make([]types.ExtendedCommitSig, len(privValArray))
-			votes := make([]types.Vote, len(privValArray))
-			for i, val := range privValArray {
-
-				vote, err := factory.MakeVote(
-					ctx,
-					val,
-					lastBlock.Header.ChainID, 0,
-					lastBlock.Header.Height, 0, 2,
-					lastBlockMeta.BlockID,
-					time.Now(),
-				)
-				require.NoError(t, err)
-				votes[i] = *vote
-				commitSigs[i] = vote.ExtendedCommitSig()
-
-			}
-			seenExtCommit = &types.ExtendedCommit{
-				Height:             votes[0].Height,
-				Round:              votes[0].Round,
-				BlockID:            votes[0].BlockID,
-				ExtendedSignatures: commitSigs,
-			}
-
-		}
+		// if blockHeight > 1 {
+		// lastBlockMeta := blockStores[maxBlockHeightIdx].LoadBlockMeta(blockHeight - 1)
+		// lastBlock := blockStores[maxBlockHeightIdx].LoadBlock(blockHeight - 1)
 		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.StripExtensions())
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
+
+		commitSigs := make([]types.ExtendedCommitSig, len(privValArray))
+		votes := make([]types.Vote, len(privValArray))
+		for i, val := range privValArray {
+
+			vote, err := factory.MakeVote(
+				ctx,
+				val,
+				thisBlock.Header.ChainID,
+				0,
+				thisBlock.Header.Height,
+				0,
+				2,
+				blockID,
+				time.Now(),
+			)
+			require.NoError(t, err)
+			votes[i] = *vote
+			commitSigs[i] = vote.ExtendedCommitSig()
+
+		}
+		seenExtCommit = &types.ExtendedCommit{
+			Height:             votes[0].Height,
+			Round:              votes[0].Round,
+			BlockID:            votes[0].BlockID,
+			ExtendedSignatures: commitSigs,
+		}
+
+		// }
 
 		for idx := range nodeIDs {
 
@@ -411,45 +414,45 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 // 1. block at H + 1 is faulty
 // 2. block at H + 2 is faulty (the validator set does not match)
 // b) Add test to verify we replace a peer with a new one if we detect misbehavior
-// func TestReactor_NonGenesisSync(t *testing.T) {
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
+func TestReactor_NonGenesisSync(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// 	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
-// 	require.NoError(t, err)
-// 	defer os.RemoveAll(cfg.RootDir)
+	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(cfg.RootDir)
 
-// 	valSet, privVals := factory.ValidatorSet(ctx, t, 4, 30)
-// 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
-// 	maxBlockHeight := int64(101)
+	valSet, privVals := factory.ValidatorSet(ctx, t, 4, 30)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	maxBlockHeight := int64(101)
 
-// 	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0}) 2, 0}) //50, 4, 0})
-// 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
-// 	rts.start(ctx, t)
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 2}) // 2, 0}) //50, 4, 0})
+	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
+	rts.start(ctx, t)
 
-// 	require.Eventually(
-// 		t,
-// 		func() bool {
-// 			matching := true
-// 			for idx := range rts.nodes {
-// 				if idx == 0 {
-// 					continue
-// 				}
-// 				matching = matching && rts.reactors[rts.nodes[idx]].GetRemainingSyncTime() > time.Nanosecond &&
-// 					rts.reactors[rts.nodes[idx]].pool.getLastSyncRate() > 0.001
+	require.Eventually(
+		t,
+		func() bool {
+			matching := true
+			for idx := range rts.nodes {
+				if idx == 0 {
+					continue
+				}
+				matching = matching && rts.reactors[rts.nodes[idx]].GetRemainingSyncTime() > time.Nanosecond &&
+					rts.reactors[rts.nodes[idx]].pool.getLastSyncRate() > 0.001
 
-// 				if !matching {
-// 					height, _, _ := rts.reactors[rts.nodes[idx]].pool.GetStatus()
-// 					t.Logf("%d %d %s %f", height, idx, rts.reactors[rts.nodes[idx]].GetRemainingSyncTime(), rts.reactors[rts.nodes[idx]].pool.getLastSyncRate())
-// 				}
-// 			}
-// 			return matching
-// 		},
-// 		10*time.Second,
-// 		10*time.Millisecond,
-// 		"expected node to be partially synced",
-// 	)
-// }
+				if !matching {
+					height, _, _ := rts.reactors[rts.nodes[idx]].pool.GetStatus()
+					t.Logf("%d %d %s %f", height, idx, rts.reactors[rts.nodes[idx]].GetRemainingSyncTime(), rts.reactors[rts.nodes[idx]].pool.getLastSyncRate())
+				}
+			}
+			return matching
+		},
+		30*time.Second,
+		10*time.Millisecond,
+		"expected node to be partially synced",
+	)
+}
 
 func TestReactor_SyncTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())

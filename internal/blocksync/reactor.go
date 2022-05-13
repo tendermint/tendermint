@@ -547,7 +547,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			// TODO(sergio, jmalicevic): Should we also validate against the extended commit?
 			if r.lastTrustedBlock == nil || r.lastTrustedBlock.block == nil {
 				if r.initialState.LastBlockHeight != 0 {
-					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadBlockCommit(r.initialState.LastBlockHeight)}
+					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadSeenCommit()}
 					if r.lastTrustedBlock == nil {
 						panic("Failed to load last trusted block")
 					}
