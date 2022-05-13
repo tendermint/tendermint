@@ -736,7 +736,7 @@ func TestP2PConfig() *P2PConfig {
 type MempoolConfig struct {
 	RootDir string `mapstructure:"home"`
 
-	// Turn on to broadcast transactions to other nodes
+	// Whether to broadcast transactions to other nodes
 	Broadcast bool `mapstructure:"broadcast"`
 
 	// Maximum number of transactions in the mempool
