@@ -222,4 +222,10 @@ var plan = transform.Plan{
 			return fmt.Errorf("unrecognized value: %v", idx.KeyValue)
 		}),
 	},
+	{
+		// Since https://github.com/tendermint/tendermint/pull/8514.
+		Desc:    "Remove the recheck option from the [mempool] section",
+		T:       transform.Remove(parser.Key{"mempool", "recheck"}),
+		ErrorOK: true,
+	},
 }
