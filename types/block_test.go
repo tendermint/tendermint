@@ -660,7 +660,7 @@ func TestExtendedCommitToVoteSet(t *testing.T) {
 			}
 
 			chainID := voteSet.ChainID()
-			voteSet2 := extCommit.ToVoteSet(chainID, valSet, true)
+			voteSet2 := extCommit.ToVoteSet(chainID, valSet, testCase.includeExtension)
 
 			for i := int32(0); int(i) < len(vals); i++ {
 				vote1 := voteSet.GetByIndex(i)

@@ -302,6 +302,15 @@ func (vote *Vote) ValidateBasic() error {
 		}
 	}
 
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+		if len(vote.ExtensionSignature) > MaxSignatureSize {
+			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
+		}
+		if len(vote.ExtensionSignature) == 0 && len(vote.Extension) != 0 {
+			return fmt.Errorf("vote extension signature absent on vote with extension")
+		}
+	}
+
 	return nil
 }
 
