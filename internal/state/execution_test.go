@@ -64,6 +64,7 @@ func TestApplyBlock(t *testing.T) {
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
+		mock.Anything,
 		mock.Anything).Return(nil)
 	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyApp, mp, sm.EmptyEvidencePool{}, blockStore, eventBus, sm.NopMetrics())
 
@@ -120,6 +121,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			mp.On("Unlock").Return()
 			mp.On("FlushAppConn", mock.Anything).Return(nil)
 			mp.On("Update",
+				mock.Anything,
 				mock.Anything,
 				mock.Anything,
 				mock.Anything,
@@ -245,6 +247,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	mp.On("Unlock").Return()
 	mp.On("FlushAppConn", mock.Anything).Return(nil)
 	mp.On("Update",
+		mock.Anything,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
@@ -511,6 +514,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
+		mock.Anything,
 		mock.Anything).Return(nil)
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
 
@@ -640,6 +644,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	mp.On("Unlock").Return()
 	mp.On("FlushAppConn", mock.Anything).Return(nil)
 	mp.On("Update",
+		mock.Anything,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,

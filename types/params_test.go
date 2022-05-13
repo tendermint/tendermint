@@ -177,6 +177,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 type makeParamsArgs struct {
 	blockBytes          int64
 	blockGas            int64
+	recheck             bool
 	evidenceAge         int64
 	maxEvidenceBytes    int64
 	pubkeyTypes         []string
@@ -212,8 +213,9 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 	}
 	return ConsensusParams{
 		Block: BlockParams{
-			MaxBytes: args.blockBytes,
-			MaxGas:   args.blockGas,
+			MaxBytes:  args.blockBytes,
+			MaxGas:    args.blockGas,
+			RecheckTx: args.recheck,
 		},
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: args.evidenceAge,
