@@ -1040,13 +1040,13 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet, requireE
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
-func (c *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, c.Height, c.Round, tmproto.PrecommitType, vals, false)
-	for idx, cs := range c.Signatures {
+func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals, false)
+	for idx, cs := range commit.Signatures {
 		if cs.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
 		}
-		vote := c.GetVote(int32(idx))
+		vote := commit.GetVote(int32(idx))
 		if err := vote.ValidateBasic(); err != nil {
 			panic(fmt.Errorf("failed to validate vote reconstructed from commit: %w", err))
 		}
