@@ -108,7 +108,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight, state.ConsensusParams.Vote.ExtensionRequireHeight),
+			LocalLastCommit:     buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight, state.ConsensusParams.Vote),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			Height:              block.Height,
 			Time:                block.Time,
@@ -428,7 +428,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 // data, it returns an empty record.
 //
 // Assumes that the commit signatures are sorted according to validator index.
-func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight, extensionRequireHeight int64) abci.ExtendedCommitInfo {
+func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64, vp types.VoteParams) abci.ExtendedCommitInfo {
 	if ec.Height < initialHeight {
 		// There are no extended commits for heights below the initial height.
 		return abci.ExtendedCommitInfo{}
@@ -466,16 +466,11 @@ func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeigh
 		}
 
 		var ext []byte
-		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
-			// We only care about vote extensions if a validator has voted to
-			// commit.
-			if ecs.Extension == nil && ecs.ExtensionSignature == nil &&
-				extensionRequireHeight != 0 && ec.Height >= extensionRequireHeight {
-				// TODO: this error is akward, make it better
-				panic(fmt.Errorf("commit received with missing vote extension data"))
-			}
-			ext = ecs.Extension
+		if err := ecs.EnsureExtension(); err != nil && vp.RequireExtensions(ec.Height) {
+			panic(fmt.Errorf("commit at height %d received with missing vote extensions data", ec.Height))
 		}
+
+		ext = ecs.Extension
 
 		votes[i] = abci.ExtendedVoteInfo{
 			Validator:       types.TM2PB.Validator(val),

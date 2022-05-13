@@ -772,8 +772,10 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 // EnsureExtensions validates that a vote extensions signature is present for
 // this ExtendedCommitSig.
 func (ecs ExtendedCommitSig) EnsureExtension() error {
-	if len(ecs.ExtensionSignature) == 0 {
-		return errors.New("vote extension signature is missing")
+	if ecs.BlockIDFlag == BlockIDFlagCommit {
+		if len(ecs.ExtensionSignature) == 0 {
+			return errors.New("vote extension signature is missing")
+		}
 	}
 	return nil
 }
