@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: "^1.15.4"
       - uses: actions/checkout@v2
@@ -36,7 +36,7 @@ jobs:
       - name: install
         run: make install install_abci
         if: "env.GIT_DIFF != ''"
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -44,7 +44,7 @@ jobs:
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
       # Cache binaries for use by other jobs
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -55,7 +55,7 @@ jobs:
     needs: build
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: "^1.15.4"
       - uses: actions/checkout@v2
@@ -65,14 +65,14 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -87,7 +87,7 @@ jobs:
     needs: build
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: "^1.15.4"
       - uses: actions/checkout@v2
@@ -97,14 +97,14 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
@@ -118,7 +118,7 @@ jobs:
     needs: build
     timeout-minutes: 5
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: "^1.15.4"
       - uses: actions/checkout@v2
@@ -128,14 +128,14 @@ jobs:
             **/**.go
             go.mod
             go.sum
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
         if: env.GIT_DIFF
-      - uses: actions/cache@v2.1.4
+      - uses: actions/cache@v3
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-${{ github.sha }}-tm-binary
