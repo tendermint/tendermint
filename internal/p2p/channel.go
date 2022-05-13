@@ -153,7 +153,6 @@ func (ch *legacyChannel) Receive(ctx context.Context) *ChannelIterator {
 type ChannelIterator struct {
 	pipe    chan Envelope
 	current *Envelope
-	err     error
 }
 
 // Next returns true when the Envelope value has advanced, and false
@@ -304,7 +303,7 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 					return
 				}
 				ch.errs.Add(err)
-				return
+				continue
 			}
 			select {
 			case <-ctx.Done():
