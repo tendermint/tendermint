@@ -304,7 +304,6 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 					return
 				}
 				ch.errs.Add(err)
-				// TODO: propagate or capture this error
 			}
 			select {
 			case <-ctx.Done():
@@ -360,8 +359,6 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 
 			payload := proto.Clone(ch.chDesc.MessageType)
 			if err := proto.Unmarshal(msg.Data, payload); err != nil {
-				// TODO: add error reporting abilities
-				// so we don't just miss these errors.
 				ch.errs.Add(err)
 				return
 			}
