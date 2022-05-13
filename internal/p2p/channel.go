@@ -14,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/tychoish/emt"
 
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	"github.com/tendermint/tendermint/types"
@@ -44,6 +45,8 @@ type Wrapper interface {
 
 type Channel interface {
 	fmt.Stringer
+
+	Err() error
 
 	Send(context.Context, Envelope) error
 	SendError(context.Context, PeerError) error
@@ -102,6 +105,8 @@ func (ch *legacyChannel) Send(ctx context.Context, envelope Envelope) error {
 	}
 }
 
+func (ch *legacyChannel) Err() error { return nil }
+
 // SendError blocks until the given error has been sent, or ctx ends.
 // An error only occurs if the context ends before the send completes.
 func (ch *legacyChannel) SendError(ctx context.Context, pe PeerError) error {
@@ -148,6 +153,7 @@ func (ch *legacyChannel) Receive(ctx context.Context) *ChannelIterator {
 type ChannelIterator struct {
 	pipe    chan Envelope
 	current *Envelope
+	err     error
 }
 
 // Next returns true when the Envelope value has advanced, and false
@@ -232,6 +238,8 @@ type libp2pChannelImpl struct {
 	recvCh  chan Envelope
 	chainID string
 	wrapper Wrapper
+
+	errs emt.Catcher
 }
 
 func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
@@ -241,6 +249,7 @@ func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubS
 		host:    h,
 		chainID: chainID,
 		recvCh:  make(chan Envelope, chDesc.RecvMessageCapacity),
+		errs:    emt.NewCatcher(),
 	}
 	topic, err := ps.Join(ch.canonicalizedTopicName())
 	if err != nil {
@@ -258,6 +267,8 @@ func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubS
 func (ch *libp2pChannelImpl) String() string {
 	return fmt.Sprintf("Channel<%s>", ch.canonicalizedTopicName())
 }
+
+func (ch *libp2pChannelImpl) Err() error { return ch.errs.Resolve() }
 
 func (ch *libp2pChannelImpl) canonicalizedTopicName() string {
 	return fmt.Sprintf("%s.%s.%d", ch.chainID, ch.chDesc.Name, ch.chDesc.ID)
@@ -283,7 +294,7 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		go func() { <-ctx.Done(); _ = stream.Close() }()
+		go func() { <-ctx.Done(); ch.errs.Add(stream.Close()) }()
 
 		for {
 			payload := proto.Clone(ch.chDesc.MessageType)
@@ -292,6 +303,7 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 					return
 				}
+				ch.errs.Add(err)
 				// TODO: propagate or capture this error
 			}
 			select {
@@ -308,6 +320,7 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 
 	sub, err := ch.topic.Subscribe()
 	if err != nil {
+		ch.errs.Add(err)
 		return nil
 	}
 
@@ -337,9 +350,11 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 		for {
 			msg, err := sub.Next(ctx)
 			if err != nil {
-				// TODO: maybe signal to users that it
-				// was canceled, when we begin
-				// propagating errors out.
+				if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return
+				}
+
+				ch.errs.Add(err)
 				return
 			}
 
@@ -347,10 +362,12 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 			if err := proto.Unmarshal(msg.Data, payload); err != nil {
 				// TODO: add error reporting abilities
 				// so we don't just miss these errors.
+				ch.errs.Add(err)
 				return
 			}
 			if wrapper, ok := payload.(Wrapper); ok {
 				if payload, err = wrapper.Unwrap(); err != nil {
+					ch.errs.Add(err)
 					return
 				}
 			}
