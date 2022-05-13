@@ -2142,13 +2142,6 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", mock.Anything, &abci.RequestVerifyVoteExtension{
-		Hash:             blockID.Hash,
-		ValidatorAddress: addr,
-		Height:           height,
-		VoteExtension:    []byte("extension"),
-	})
-
 	m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), blockID, vss[2:]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
