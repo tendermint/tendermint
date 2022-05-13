@@ -2,7 +2,6 @@ package privval
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -239,7 +239,7 @@ func TestSignVote(t *testing.T) {
 	blockSignature := vote.BlockSignature
 	stateSignature := vote.StateSignature
 
-	err = privVal.SignVote(ctx, "mychainid", 0, crypto.QuorumHash{}, v, stateID, nil)
+	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, v, stateID, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, blockSignature, vote.BlockSignature)
 	assert.Equal(t, stateSignature, vote.StateSignature)
@@ -314,27 +314,24 @@ func TestDifferByTimestamp(t *testing.T) {
 		pb := proposal.ToProto()
 		_, err := privVal.SignProposal(ctx, chainID, 0, quorumHash, pb)
 		assert.NoError(t, err, "expected no error signing proposal")
-		signBytes := types.ProposalBlockSignBytes(chainID, pb)
 
-		sig := proposal.Signature
-		timeStamp := proposal.Timestamp
-
-		// manipulate the timestamp. should get changed back
+		// manipulate the timestamp
 		pb.Timestamp = pb.Timestamp.Add(time.Millisecond)
 		var emptySig []byte
 		proposal.Signature = emptySig
-		_, err = privVal.SignProposal(context.Background(), "mychainid", 0, quorumHash, pb)
-		assert.NoError(t, err, "expected no error on signing same proposal")
-
-		assert.Equal(t, timeStamp, pb.Timestamp)
-		assert.Equal(t, signBytes, types.ProposalBlockSignBytes(chainID, pb))
-		assert.Equal(t, sig, proposal.Signature)
+		_, err = privVal.SignProposal(ctx, "mychainid", 0, quorumHash, pb)
+		require.Error(t, err)
 	}
 }
 
 func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	const (
+		chainID    = "mychainid"
+		quorumType = btcjson.LLMQType_5_60
+	)
 
 	logger := log.NewTestingLogger(t)
 
@@ -346,7 +343,7 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	pubKey, err := privVal.GetPubKey(ctx, quorumHash)
 	require.NoError(t, err)
 
-	block := types.BlockID{
+	blockID := types.BlockID{
 		Hash:          tmrand.Bytes(crypto.HashSize),
 		PartSetHeader: types.PartSetHeader{Total: 5, Hash: tmrand.Bytes(crypto.HashSize)},
 	}
@@ -356,16 +353,15 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	stateID := types.RandStateID().WithHeight(height - 1)
 	ext := []byte("extension")
 	// We initially sign this vote without an extension
-	vote1 := newVote(proTxHash, 0, height, round, voteType, block, ext)
+	vote1 := newVote(proTxHash, 0, height, round, voteType, blockID, ext)
 	vpb1 := vote1.ToProto()
 
-	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vpb1, stateID, logger)
+	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, vpb1, stateID, logger)
 	assert.NoError(t, err, "expected no error signing vote")
 	assert.NotNil(t, vpb1.ExtensionSignature)
 
-	vesb1 := types.VoteExtensionSignBytes("mychainid", vpb1)
-	vesb1Digest := sha256.Sum256(vesb1)
-	assert.True(t, pubKey.VerifySignature(vesb1Digest[:], vpb1.ExtensionSignature))
+	extSignID1 := types.VoteExtensionSignID(chainID, vpb1, quorumType, quorumHash)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignID1, vpb1.ExtensionSignature))
 
 	// We duplicate this vote precisely, including its timestamp, but change
 	// its extension
@@ -373,28 +369,27 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	vote2.Extension = []byte("new extension")
 	vpb2 := vote2.ToProto()
 
-	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vpb2, stateID, logger)
+	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, vpb2, stateID, logger)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated vote extension")
 
 	// We need to ensure that a valid new extension signature has been created
 	// that validates against the vote extension sign bytes with the new
 	// extension, and does not validate against the vote extension sign bytes
 	// with the old extension.
-	vesb2 := types.VoteExtensionSignBytes("mychainid", vpb2)
-	assert.True(t, pubKey.VerifySignature(vesb2, vpb2.ExtensionSignature))
-	assert.False(t, pubKey.VerifySignature(vesb1, vpb2.ExtensionSignature))
+	extSignID2 := types.VoteExtensionSignID(chainID, vpb2, quorumType, quorumHash)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignID2, vpb2.ExtensionSignature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignID1, vpb2.ExtensionSignature))
 
 	vpb2.BlockSignature = nil
 	vpb2.StateSignature = nil
 	vpb2.ExtensionSignature = nil
 
-	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vpb2, stateID, logger)
+	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, vpb2, stateID, logger)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated timestamp and vote extension")
 
-	vesb3 := types.VoteExtensionSignBytes("mychainid", vpb2)
-	vesb3Digest := sha256.Sum256(vesb3)
-	assert.True(t, pubKey.VerifySignature(vesb3Digest[:], vpb2.ExtensionSignature))
-	assert.False(t, pubKey.VerifySignature(vesb1Digest[:], vpb2.ExtensionSignature))
+	extSignID3 := types.VoteExtensionSignID(chainID, vpb2, quorumType, quorumHash)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignID3, vpb2.ExtensionSignature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignID1, vpb2.ExtensionSignature))
 }
 
 func newVote(proTxHash types.ProTxHash, idx int32, height int64, round int32,

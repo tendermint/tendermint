@@ -292,6 +292,7 @@ func TestVoteExtension(t *testing.T) {
 				Round:              round,
 				Type:               tmproto.PrecommitType,
 				BlockID:            blockID,
+				Extension:          tc.extension,
 			}
 
 			v := vote.ToProto()

@@ -8,7 +8,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/bls12381"
 	ssproto "github.com/tendermint/tendermint/proto/tendermint/statesync"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -199,10 +199,7 @@ func TestStateSyncVectors(t *testing.T) {
 						MaxBytes:        100,
 					},
 					Validator: &tmproto.ValidatorParams{
-						PubKeyTypes: []string{ed25519.KeyType},
-					},
-					Version: &tmproto.VersionParams{
-						AppVersion: 11,
+						PubKeyTypes: []string{bls12381.KeyType},
 					},
 					Synchrony: &tmproto.SynchronyParams{
 						MessageDelay: durationPtr(550),
@@ -210,19 +207,19 @@ func TestStateSyncVectors(t *testing.T) {
 					},
 				},
 			},
-			"423508a94612300a10088080c00a10ffffffffffffffffff01120e08a08d0612040880c60a188080401a0a0a08626c7331323338312200",
+			"422d08a94612280a04080a10141209080a120310ac0218641a0a0a08626c7331323338312a090a0310a6041202105a",
 		},
 	}
 
 	for _, tc := range testCases {
-		tc := tc
+		t.Run(tc.testName, func(t *testing.T) {
+			msg := new(ssproto.Message)
+			require.NoError(t, msg.Wrap(tc.msg))
 
-		msg := new(ssproto.Message)
-		require.NoError(t, msg.Wrap(tc.msg))
-
-		bz, err := msg.Marshal()
-		require.NoError(t, err)
-		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
+			bz, err := msg.Marshal()
+			require.NoError(t, err)
+			require.Equal(t, tc.expBytes, hex.EncodeToString(bz))
+		})
 	}
 }
 

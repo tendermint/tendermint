@@ -41,8 +41,6 @@ func TestGetPubKey(t *testing.T) {
 			quorumHash, _ := tc.pv.GetFirstQuorumHash(ctx)
 			req := &privvalproto.PubKeyRequest{ChainId: ChainID, QuorumHash: quorumHash}
 			resp, err := s.GetPubKey(ctx, req)
-			require.NoError(t, err)
-
 			if tc.err {
 				require.Error(t, err)
 			} else {

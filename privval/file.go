@@ -218,6 +218,10 @@ func NewFilePVOneKey(
 		panic("error setting incorrect proTxHash size in NewFilePV")
 	}
 
+	if thresholdPublicKey == nil {
+		thresholdPublicKey = privKey.PubKey()
+	}
+
 	quorumKeys := crypto.QuorumKeys{
 		PrivKey:            privKey,
 		PubKey:             privKey.PubKey(),
@@ -602,16 +606,6 @@ func (pv *FilePV) Save() error {
 // NOTE: Unsafe!
 func (pv *FilePV) Reset() error {
 	pv.mtx.Lock()
-	// TODO move commented code into pv.LastSignState.reset()
-	//var blockSig []byte
-	//var stateSig []byte
-	//pv.LastSignState.Height = 0
-	//pv.LastSignState.Round = 0
-	//pv.LastSignState.Step = 0
-	//pv.LastSignState.BlockSignature = blockSig
-	//pv.LastSignState.StateSignature = stateSig
-	//pv.LastSignState.BlockSignBytes = nil
-	//pv.LastSignState.StateSignBytes = nil
 	pv.LastSignState.reset()
 	pv.mtx.Unlock()
 	return pv.Save()
@@ -692,18 +686,19 @@ func (pv *FilePV) signVote(
 
 	stateSignBytes := stateID.SignBytes(chainID)
 
+	privKey, err := pv.getPrivateKey(ctx, quorumHash)
+	if err != nil {
+		return err
+	}
+
 	// Vote extensions are non-deterministic, so it is possible that an
 	// application may have created a different extension. We therefore always
 	// re-sign the vote extensions of precommits. For prevotes, the extension
 	// signature will always be empty.
 	var extSig []byte
 	if vote.Type == tmproto.PrecommitType {
-		extSignBytes := types.VoteExtensionSignBytes(chainID, vote)
-		privKey, err := pv.getPrivateKey(ctx, quorumHash)
-		if err != nil {
-			return err
-		}
-		extSig, err = privKey.Sign(extSignBytes)
+		extSignID := types.VoteExtensionSignID(chainID, vote, quorumType, quorumHash)
+		extSig, err = privKey.SignDigest(extSignID)
 		if err != nil {
 			return err
 		}
@@ -725,11 +720,6 @@ func (pv *FilePV) signVote(
 		}
 		vote.ExtensionSignature = extSig
 		return nil
-	}
-
-	privKey, err := pv.getPrivateKey(context.TODO(), quorumHash)
-	if err != nil {
-		return err
 	}
 
 	sigBlock, err := privKey.SignDigest(blockSignID)
