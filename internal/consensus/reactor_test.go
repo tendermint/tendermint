@@ -665,7 +665,7 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 			blockParts, err := propBlock.MakePartSet(types.BlockPartSizeBytes)
 			require.NoError(t, err)
 
-			voteSet := types.NewVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators, false)
+			voteSet := types.NewVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators, testCase.includeExtensions)
 			signedVote := signVote(ctx, t, validator, tmproto.PrecommitType, cs.state.ChainID, types.BlockID{
 				Hash:          propBlock.Hash(),
 				PartSetHeader: blockParts.Header(),
