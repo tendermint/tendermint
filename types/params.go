@@ -108,7 +108,7 @@ func (v VoteParams) RequireExtensions(h int64) bool {
 	if v.ExtensionRequireHeight == 0 {
 		return false
 	}
-	return h <= v.ExtensionRequireHeight
+	return v.ExtensionRequireHeight <= h
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
