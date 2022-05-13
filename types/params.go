@@ -102,6 +102,15 @@ type VoteParams struct {
 	ExtensionRequireHeight int64 `json:"extension_require_height"`
 }
 
+// RequireExtensions returns true if vote extensions are required at height h
+// and false otherwise.
+func (v VoteParams) RequireExtensions(h int64) bool {
+	if v.ExtensionRequireHeight == 0 {
+		return false
+	}
+	return h <= v.ExtensionRequireHeight
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
