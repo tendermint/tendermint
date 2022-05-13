@@ -30,7 +30,7 @@ func testChannel(size int) (*channelInternal, *p2p.Channel) {
 		Out:   make(chan p2p.Envelope, size),
 		Error: make(chan p2p.PeerError, size),
 	}
-	return in, p2p.NewChannel(0, nil, in.In, in.Out, in.Error)
+	return in, p2p.NewChannel(0, in.In, in.Out, in.Error)
 }
 
 func TestDispatcherBasic(t *testing.T) {

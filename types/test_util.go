@@ -8,8 +8,8 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-func makeCommit(ctx context.Context, blockID BlockID, height int64, round int32,
-	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
+func makeExtCommit(ctx context.Context, blockID BlockID, height int64, round int32,
+	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*ExtendedCommit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
@@ -33,7 +33,7 @@ func makeCommit(ctx context.Context, blockID BlockID, height int64, round int32,
 		}
 	}
 
-	return voteSet.MakeCommit(), nil
+	return voteSet.MakeExtendedCommit(), nil
 }
 
 func signAddVote(ctx context.Context, privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
@@ -45,14 +45,4 @@ func signAddVote(ctx context.Context, privVal PrivValidator, vote *Vote, voteSet
 	vote.Signature = v.Signature
 	vote.ExtensionSignature = v.ExtensionSignature
 	return voteSet.AddVote(vote)
-}
-
-// Votes constructed from commits don't have extensions, because we don't store
-// the extensions themselves in the commit. This method is used to construct a
-// copy of a vote, but nil its extension and signature.
-func voteWithoutExtension(v *Vote) *Vote {
-	vc := v.Copy()
-	vc.Extension = nil
-	vc.ExtensionSignature = nil
-	return vc
 }
