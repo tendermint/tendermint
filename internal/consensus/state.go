@@ -2336,7 +2336,6 @@ func (cs *State) addVote(
 			return
 		}
 
-		// late votes still _must_ have extensions.
 		added, err = cs.LastCommit.AddVote(vote)
 		if !added {
 			return
