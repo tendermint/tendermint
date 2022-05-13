@@ -695,12 +695,8 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	requireExtensions := false
-	requireHeight := cs.state.ConsensusParams.Vote.ExtensionRequireHeight
-	if requireHeight != 0 && state.LastBlockHeight >= requireHeight {
-		requireExtensions = true
-	}
-	votes, err := cs.votesFromExtendedCommit(state)
+	requireExtensions := requireVoteExtensions(cs.state.ConsensusParams.Vote.ExtensionRequireHeight, state.LastBlockHeight)
+	votes, err := cs.votesFromExtendedCommit(state, requireExtensions)
 	if err == nil {
 		cs.LastCommit = votes
 		return
@@ -715,15 +711,12 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 	cs.LastCommit = votes
 }
 
-func (cs *State) votesFromExtendedCommit(state sm.State) (*types.VoteSet, error) {
+func (cs *State) votesFromExtendedCommit(state sm.State, requireExtensions bool) (*types.VoteSet, error) {
 	ec := cs.blockStore.LoadExtendedCommit(state.LastBlockHeight)
 	if ec == nil {
 		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
-	if err := ec.EnsureExtensions(); err != nil {
-		return nil, fmt.Errorf("invalid vote extensions: %v", err)
-	}
-	vs := ec.ToVoteSet(state.ChainID, state.LastValidators)
+	vs := ec.ToVoteSet(state.ChainID, state.LastValidators, requireExtensions)
 	if !vs.HasTwoThirdsMajority() {
 		return nil, errors.New("seen commit does not have +2/3 majority")
 	}
@@ -845,7 +838,7 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators, requireVoteExtensions(state.ConsensusParams.Vote.ExtensionRequireHeight, height))
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -2397,7 +2390,7 @@ func (cs *State) addVote(
 			if !errors.Is(err, types.ErrVoteExtensionAbsent) {
 				return false, err
 			}
-			if cs.requireVoteExtension() {
+			if requireVoteExtensions(cs.state.ConsensusParams.Vote.ExtensionRequireHeight, cs.Height) {
 				return false, err
 			}
 		}
@@ -2797,9 +2790,8 @@ func (cs *State) calculateProposalTimestampDifferenceMetric() {
 	}
 }
 
-func (cs *State) requireVoteExtension() bool {
-	requireHeight := cs.state.ConsensusParams.Vote.ExtensionRequireHeight
-	if requireHeight == 0 || cs.Height < requireHeight {
+func requireVoteExtensions(requireHeight, currentHeight int64) bool {
+	if requireHeight == 0 || currentHeight < requireHeight {
 		return false
 	}
 	return true

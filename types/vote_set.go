@@ -71,7 +71,7 @@ type VoteSet struct {
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
 func NewVoteSet(chainID string, height int64, round int32,
-	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet, requireExtensions bool) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -81,7 +81,7 @@ func NewVoteSet(chainID string, height int64, round int32,
 		round:             round,
 		signedMsgType:     signedMsgType,
 		valSet:            valSet,
-		requireExtensions: false,
+		requireExtensions: requireExtensions,
 		votesBitArray:     bits.NewBitArray(valSet.Size()),
 		votes:             make([]*Vote, valSet.Size()),
 		sum:               0,

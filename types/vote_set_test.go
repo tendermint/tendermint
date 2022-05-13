@@ -510,7 +510,7 @@ func randVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := randValidatorPrivValSet(ctx, t, numValidators, votingPower)
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet, false), valSet, privValidators
 }
 
 func deterministicVoteSet(
@@ -523,7 +523,7 @@ func deterministicVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := deterministicValidatorSet(ctx, t)
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet, false), valSet, privValidators
 }
 
 func randValidatorPrivValSet(ctx context.Context, t testing.TB, numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {
