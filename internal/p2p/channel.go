@@ -304,6 +304,7 @@ func (ch *libp2pChannelImpl) Receive(ctx context.Context) *ChannelIterator {
 					return
 				}
 				ch.errs.Add(err)
+				return
 			}
 			select {
 			case <-ctx.Done():
