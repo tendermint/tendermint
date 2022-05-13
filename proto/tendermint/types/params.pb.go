@@ -1722,7 +1722,10 @@ func (m *ConsensusParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -1810,7 +1813,10 @@ func (m *BlockParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -1931,7 +1937,10 @@ func (m *EvidenceParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -2013,7 +2022,10 @@ func (m *ValidatorParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -2082,7 +2094,10 @@ func (m *VersionParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -2170,7 +2185,10 @@ func (m *HashedParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -2292,7 +2310,10 @@ func (m *SynchronyParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {
@@ -2542,7 +2563,10 @@ func (m *TimeoutParams) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthParams
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthParams
 			}
 			if (iNdEx + skippy) > l {

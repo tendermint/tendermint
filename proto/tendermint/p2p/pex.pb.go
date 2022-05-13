@@ -587,7 +587,10 @@ func (m *PexAddress) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthPex
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthPex
 			}
 			if (iNdEx + skippy) > l {
@@ -637,7 +640,10 @@ func (m *PexRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthPex
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthPex
 			}
 			if (iNdEx + skippy) > l {
@@ -721,7 +727,10 @@ func (m *PexResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthPex
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthPex
 			}
 			if (iNdEx + skippy) > l {
@@ -841,7 +850,10 @@ func (m *PexMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthPex
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthPex
 			}
 			if (iNdEx + skippy) > l {
