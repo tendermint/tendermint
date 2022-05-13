@@ -373,6 +373,7 @@ func (blockExec *BlockExecutor) Commit(
 		txResults,
 		TxPreCheckForState(state),
 		TxPostCheckForState(state),
+		state.ConsensusParams.Block.RecheckTx,
 	)
 
 	return res.Data, res.RetainHeight, err
