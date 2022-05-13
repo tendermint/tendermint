@@ -695,27 +695,55 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	extCommit := cs.blockStore.LoadExtendedCommit(state.LastBlockHeight)
-	if extCommit == nil {
-		panic(fmt.Sprintf(
-			"failed to reconstruct last commit; commit for height %v not found",
-			state.LastBlockHeight,
-		))
-	}
-
+	requireExtensions := false
 	requireHeight := cs.state.ConsensusParams.Vote.ExtensionRequireHeight
-	if requireHeight != 0 && extCommit.Height >= requireHeight {
-		if err := extCommit.EnsureExtensions(); err != nil {
-			panic(fmt.Sprintf("failed to reconstruct last commit; invalid vote extensions: %v", err))
-		}
+	if requireHeight != 0 && state.LastBlockHeight >= requireHeight {
+		requireExtensions = true
+	}
+	votes, err := cs.votesFromExtendedCommit(state)
+	if err == nil {
+		cs.LastCommit = votes
+		return
+	}
+	if requireExtensions {
+		panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+	}
+	votes, err = cs.votesFromSeenCommit(state)
+	if err != nil {
+		panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+	}
+	cs.LastCommit = votes
+}
+
+func (cs *State) votesFromExtendedCommit(state sm.State) (*types.VoteSet, error) {
+	ec := cs.blockStore.LoadExtendedCommit(state.LastBlockHeight)
+	if ec == nil {
+		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
+	}
+	if err := ec.EnsureExtensions(); err != nil {
+		return nil, fmt.Errorf("invalid vote extensions: %v", err)
+	}
+	vs := ec.ToVoteSet(state.ChainID, state.LastValidators)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("seen commit does not have +2/3 majority")
+	}
+	return vs, nil
+}
+
+func (cs *State) votesFromSeenCommit(state sm.State) (*types.VoteSet, error) {
+	commit := cs.blockStore.LoadSeenCommit()
+	if commit == nil || commit.Height != state.LastBlockHeight {
+		commit = cs.blockStore.LoadBlockCommit(state.LastBlockHeight)
+	}
+	if commit == nil {
+		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
 
-	lastPrecommits := extCommit.ToVoteSet(state.ChainID, state.LastValidators)
-	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("failed to reconstruct last commit; does not have +2/3 maj")
+	vs := commit.ToVoteSet(state.ChainID, state.LastValidators)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("commit does not have +2/3 majority")
 	}
-
-	cs.LastCommit = lastPrecommits
+	return vs, nil
 }
 
 // Updates State and increments height to match that of state.
