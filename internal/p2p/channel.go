@@ -105,6 +105,10 @@ func (ch *legacyChannel) Send(ctx context.Context, envelope Envelope) error {
 // SendError blocks until the given error has been sent, or ctx ends.
 // An error only occurs if the context ends before the send completes.
 func (ch *legacyChannel) SendError(ctx context.Context, pe PeerError) error {
+	if errors.Is(pe.Err, context.Canceled) || errors.Is(pe.Err, context.DeadlineExceeded) {
+		return nil
+	}
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -414,6 +418,10 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 }
 
 func (ch *libp2pChannelImpl) SendError(ctx context.Context, pe PeerError) error {
+	if errors.Is(pe.Err, context.Canceled) || errors.Is(pe.Err, context.DeadlineExceeded) || ctx.Err() != nil {
+		return nil
+	}
+
 	// TODO: change handling of errors to peers. This problably
 	// shouldn't be handled as a property of the channel, and
 	// rather as part of some peer-info/network-management

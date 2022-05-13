@@ -153,6 +153,15 @@ func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope *p2p.Envelo
 					// problem.
 					continue
 				}
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					// this shouldn't be an error
+					// that gets logged, or
+					// propagated up, but the
+					// calling loop will abort the
+					// iterator.
+					return nil
+				}
+
 				logger.Error("checktx failed for tx",
 					"tx", fmt.Sprintf("%X", types.Tx(tx).Hash()),
 					"err", err)
