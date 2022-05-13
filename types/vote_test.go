@@ -368,13 +368,13 @@ func TestVoteVerify(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit(t).String()
-	expected := `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 000000000000}`
+	expected := `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 000000000000 000000000000}`
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote(t).String()
-	expected = `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 000000000000}`
+	expected = `Vote{56789:959A8F5EF2BE 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 000000000000 000000000000}`
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
