@@ -469,7 +469,8 @@ func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeigh
 		if ecs.BlockIDFlag == types.BlockIDFlagCommit {
 			// We only care about vote extensions if a validator has voted to
 			// commit.
-			if ecs.Extension == nil && ecs.ExtensionSignature == nil && ec.Height > extensionRequireHeight {
+			if ecs.Extension == nil && ecs.ExtensionSignature == nil &&
+				extensionRequireHeight != 0 && ec.Height >= extensionRequireHeight {
 				// TODO: this error is akward, make it better
 				panic(fmt.Errorf("commit received with missing vote extension data"))
 			}
