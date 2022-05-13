@@ -186,7 +186,7 @@ func (r *Reactor) OnStop() {
 func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
 	block := r.store.LoadBlock(msg.Height)
 	if block != nil {
-		extCommit := r.store.LoadBlockExtendedCommit(msg.Height)
+		extCommit := r.store.LoadExtendedCommit(msg.Height)
 		if extCommit == nil {
 			return fmt.Errorf("found block in store without extended commit: %v", block)
 		}

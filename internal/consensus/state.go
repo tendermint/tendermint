@@ -695,7 +695,7 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
 func (cs *State) reconstructLastCommit(state sm.State) {
-	extCommit := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
+	extCommit := cs.blockStore.LoadExtendedCommit(state.LastBlockHeight)
 	if extCommit == nil {
 		panic(fmt.Sprintf(
 			"failed to reconstruct last commit; commit for height %v not found",
