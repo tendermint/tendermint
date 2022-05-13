@@ -554,7 +554,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				}
 			}
 			var err error
-			// Check for nil on block to avoid the case where we failed the block validation before persistance
+			// Check for nil on block to avoid the case where we failed the block validation before persistence
 			// but passed the verification before and created a lastTrustedBlock object
 			if r.lastTrustedBlock != nil && r.lastTrustedBlock.block != nil {
 				err = VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.Validators)
