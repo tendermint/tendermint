@@ -367,6 +367,7 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	if params2.Block != nil {
 		res.Block.MaxBytes = params2.Block.MaxBytes
 		res.Block.MaxGas = params2.Block.MaxGas
+		res.Block.RecheckTx = params2.Block.RecheckTx
 	}
 	if params2.Evidence != nil {
 		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
@@ -413,8 +414,9 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 	return tmproto.ConsensusParams{
 		Block: &tmproto.BlockParams{
-			MaxBytes: params.Block.MaxBytes,
-			MaxGas:   params.Block.MaxGas,
+			MaxBytes:  params.Block.MaxBytes,
+			MaxGas:    params.Block.MaxGas,
+			RecheckTx: params.Block.RecheckTx,
 		},
 		Evidence: &tmproto.EvidenceParams{
 			MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
@@ -445,8 +447,9 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams {
 	c := ConsensusParams{
 		Block: BlockParams{
-			MaxBytes: pbParams.Block.MaxBytes,
-			MaxGas:   pbParams.Block.MaxGas,
+			MaxBytes:  pbParams.Block.MaxBytes,
+			MaxGas:    pbParams.Block.MaxGas,
+			RecheckTx: pbParams.Block.RecheckTx,
 		},
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: pbParams.Evidence.MaxAgeNumBlocks,
