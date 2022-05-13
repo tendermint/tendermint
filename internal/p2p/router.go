@@ -196,6 +196,7 @@ type Router struct {
 	*service.BaseService
 	logger  log.Logger
 	metrics *Metrics
+	lc      *metricsLabelCache
 
 	options RouterOptions
 	privKey crypto.PrivKey
@@ -241,8 +242,10 @@ func NewRouter(logger log.Logger, metrics *Metrics, key crypto.PrivKey, pm *Peer
 	}
 
 	router := &Router{
-		logger:           logger,
-		metrics:          metrics,
+		logger:  logger,
+		metrics: metrics,
+		lc:      newMetricsLabelCache(),
+
 		privKey:          key,
 		nodeInfoProducer: opts.NodeInfoProducer,
 		options:          opts,
@@ -285,7 +288,7 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 				size++
 			}
 
-			q := newPQScheduler(r.logger, r.metrics, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
+			q := newPQScheduler(r.logger, r.metrics, r.lc, r.chDescs, uint(size)/2, uint(size)/2, defaultCapacity)
 			q.start(ctx)
 			return q
 		}, nil
@@ -922,7 +925,7 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 			r.metrics.PeerReceiveBytesTotal.With(
 				"chID", fmt.Sprint(chID),
 				"peer_id", string(peerID),
-				"message_type", r.metrics.ValueToMetricLabel(msg)).Add(float64(proto.Size(msg)))
+				"message_type", r.lc.ValueToMetricLabel(msg)).Add(float64(proto.Size(msg)))
 			r.metrics.RouterChannelQueueSend.Observe(time.Since(start).Seconds())
 			r.logger.Debug("received message", "peer", peerID, "message", msg)
 
