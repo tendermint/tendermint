@@ -58,30 +58,6 @@ func VerifyAdjacent(
 	return nil
 }
 
-type ErrBlockIDDiff struct {
-	Reason error
-}
-
-func (e ErrBlockIDDiff) Error() string {
-	return "block ID in lastCommit of new block is not matching trusted block ID"
-}
-
-type ErrInvalidVerifyBlock struct {
-	Reason error
-}
-
-func (e ErrInvalidVerifyBlock) Error() string {
-	return "last commit of invalid block used to verify new block"
-}
-
-type ErrValidationFailed struct {
-	Reason error
-}
-
-func (e ErrValidationFailed) Error() string {
-	return "failed to verify next block"
-}
-
 func VerifyNextBlock(newBlock *types.Block, newBlockID types.BlockID, verifyBlock *types.Block, trustedBlock *types.Block,
 	trustedCommit *types.Commit, validators *types.ValidatorSet) error {
 
@@ -90,6 +66,10 @@ func VerifyNextBlock(newBlock *types.Block, newBlockID types.BlockID, verifyBloc
 	if !(newBlock.LastCommit.BlockID.Equals(trustedCommit.BlockID)) {
 		return ErrBlockIDDiff{}
 	}
+
+	// // NOTE: We can probably make this more efficient, but note that calling
+	// // first.Hash() doesn't verify the tx contents, so MakePartSet() is
+	// // currently necessary. (Note copied from old reactor.go file)
 
 	// Todo: Verify verifyBlock.LastCommit validators against state.NextValidators
 	// If they do not match, need a new verifyBlock
@@ -107,4 +87,36 @@ func VerifyNextBlock(newBlock *types.Block, newBlockID types.BlockID, verifyBloc
 
 	return nil
 
+}
+
+//------------------------ Errors
+
+// The block ID in the last commit of the new block and the block ID of the trusting block are not matching
+// As we trust one of the blocks, this is grounds for dismissing the new block
+type ErrBlockIDDiff struct {
+	Reason error
+}
+
+func (e ErrBlockIDDiff) Error() string {
+	return "block ID in lastCommit of new block is not matching trusted block ID"
+}
+
+// We need the lastCommit of verifyBlock to verify the newBlock
+// We check whether the validators stored in the trusted state have indeed
+// signed the lastCommit of verifyBlock
+type ErrInvalidVerifyBlock struct {
+	Reason error
+}
+
+func (e ErrInvalidVerifyBlock) Error() string {
+	return "last commit of invalid block used to verify new block"
+}
+
+// We were not able verify the newBlock and propaget further the exact error thrown by VerifyAdjacent
+type ErrValidationFailed struct {
+	Reason error
+}
+
+func (e ErrValidationFailed) Error() string {
+	return "failed to verify next block"
 }

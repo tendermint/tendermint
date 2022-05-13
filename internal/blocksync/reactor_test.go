@@ -80,7 +80,7 @@ func setup(
 	} else {
 		i := 0
 		for nodeID := range rts.network.Nodes {
-			rts.addNode(ctx, t, nodeID, genDoc, privValArray, maxBlockHeights[i])
+			rts.addNode(ctx, t, nodeID, genDoc, privValArray[0], maxBlockHeights[i])
 			i++
 		}
 	}
@@ -170,7 +170,7 @@ func (rts *reactorTestSuite) addMultipleNodes(
 	seenExtCommit := &types.ExtendedCommit{}
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeightPerNode[maxBlockHeightIdx]; blockHeight++ {
-		lastExtCommit = seenExtCommit.Clone() // types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastExtCommit = seenExtCommit.Clone()
 
 		if blockHeight > 1 {
 			lastBlockMeta := blockStores[maxBlockHeightIdx].LoadBlockMeta(blockHeight - 1)
@@ -199,13 +199,6 @@ func (rts *reactorTestSuite) addMultipleNodes(
 				BlockID:            votes[0].BlockID,
 				ExtendedSignatures: commitSigs,
 			}
-
-			// lastCommit = types.NewCommit(
-			// 	votes[0].Height,
-			// 	votes[0].Round,
-			// 	lastBlockMeta.BlockID,
-			// 	commitSigs,
-			// )
 
 		}
 		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.StripExtensions())
@@ -256,7 +249,7 @@ func (rts *reactorTestSuite) addNode(
 	t *testing.T,
 	nodeID types.NodeID,
 	genDoc *types.GenesisDoc,
-	privValArray []types.PrivValidator,
+	privVal types.PrivValidator,
 	maxBlockHeight int64,
 ) {
 	t.Helper()
@@ -317,7 +310,7 @@ func (rts *reactorTestSuite) addNode(
 		// Simulate a commit for the current height
 		vote, err := factory.MakeVote(
 			ctx,
-			privValArray[0],
+			privVal,
 			thisBlock.Header.ChainID,
 			0,
 			thisBlock.Header.Height,
@@ -458,33 +451,33 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 // 	)
 // }
 
-// func TestReactor_SyncTime(t *testing.T) {
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
+func TestReactor_SyncTime(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// 	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
-// 	require.NoError(t, err)
-// 	defer os.RemoveAll(cfg.RootDir)
+	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(cfg.RootDir)
 
-// 	valSet, privVals := factory.ValidatorSet(ctx, t, 4, 30)
-// 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
-// 	maxBlockHeight := int64(101)
+	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
+	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	maxBlockHeight := int64(101)
 
-// 	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0})
-// 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
-// 	rts.start(ctx, t)
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 0})
+	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
+	rts.start(ctx, t)
 
-// 	require.Eventually(
-// 		t,
-// 		func() bool {
-// 			return rts.reactors[rts.nodes[1]].GetRemainingSyncTime() > time.Nanosecond &&
-// 				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001
-// 		},
-// 		10*time.Second,
-// 		10*time.Millisecond,
-// 		"expected node to be partially synced",
-// 	)
-// }
+	require.Eventually(
+		t,
+		func() bool {
+			return rts.reactors[rts.nodes[1]].GetRemainingSyncTime() > time.Nanosecond &&
+				rts.reactors[rts.nodes[1]].pool.getLastSyncRate() > 0.001
+		},
+		10*time.Second,
+		10*time.Millisecond,
+		"expected node to be partially synced",
+	)
+}
 
 func TestReactor_NoBlockResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -588,7 +581,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),
 	})
-	rts.addNode(ctx, t, newNode.NodeID, otherGenDoc, otherPrivVals, maxBlockHeight)
+	rts.addNode(ctx, t, newNode.NodeID, otherGenDoc, otherPrivVals[0], maxBlockHeight)
 
 	// add a fake peer just so we do not wait for the consensus ticker to timeout
 	rts.reactors[newNode.NodeID].pool.SetPeerRange("00ff", 10, 10)

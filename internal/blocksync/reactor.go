@@ -543,69 +543,22 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				newBlockPartSetHeader = newBlockParts.Header()
 				newBlockID            = types.BlockID{Hash: newBlock.Hash(), PartSetHeader: newBlockPartSetHeader}
 			)
-			// Finally, verify the first block using the second's commit.
-			//
-			// NOTE: We can probably make this more efficient, but note that calling
-			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
-			// currently necessary.
 
-			// TODO(sergio): Should we also validate against the extended commit?
-			if r.lastTrustedBlock != nil {
-				err := VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.NextValidators)
-
-				if err != nil {
-					r.logger.Error(
-						err.Error(),
-						"last_commit", verifyBlock.LastCommit,
-						"block_id", newBlock,
-						"height", newBlock.Height,
-					)
-					switch err.(type) {
-					case ErrBlockIDDiff:
-					case ErrValidationFailed:
-						peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
-						if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
-							NodeID: peerID,
-							Err:    errors.New("invalid block for verification"),
-						}); serr != nil {
-							return
-						}
-
-					case ErrInvalidVerifyBlock:
-						r.logger.Error(
-							err.Error(),
-							"last_commit", verifyBlock.LastCommit,
-							"verify_block_id", newBlockID,
-							"verify_block_height", newBlock.Height,
-						)
-						peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 2)
-						if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
-							NodeID: peerID,
-							Err:    err,
-						}); serr != nil {
-							return
-						}
-
-					}
-					continue // was return previously
-				}
-
-				// // Finally, verify the first block using the second's commit.
-				// //
-				// // NOTE: We can probably make this more efficient, but note that calling
-				// // first.Hash() doesn't verify the tx contents, so MakePartSet() is
-				// // currently necessary.
-				// err = state.Validators.VerifyCommitLight(chainID, firstID, first.Height, second.LastCommit)
-				r.lastTrustedBlock.block = newBlock
-				r.lastTrustedBlock.commit = verifyBlock.LastCommit
-			} else {
-				// we need to load the last block we trusted
+			// TODO(sergio, jmalicevic): Should we also validate against the extended commit?
+			if r.lastTrustedBlock == nil || r.lastTrustedBlock.block == nil {
 				if r.initialState.LastBlockHeight != 0 {
 					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadBlockCommit(r.initialState.LastBlockHeight)}
 					if r.lastTrustedBlock == nil {
 						panic("Failed to load last trusted block")
 					}
 				}
+			}
+			var err error
+			// Check for nil on block to avoid the case where we failed the block validation before persistance
+			// but passed the verification before and created a lastTrustedBlock object
+			if r.lastTrustedBlock != nil && r.lastTrustedBlock.block != nil {
+				err = VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.Validators)
+			} else {
 				oldHash := r.initialState.Validators.Hash()
 				if !bytes.Equal(oldHash, newBlock.ValidatorsHash) {
 					r.logger.Error("The validator set provided by the new block does not match the expected validator set",
@@ -620,12 +573,47 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					}); serr != nil {
 						return
 					}
-					continue // was return previously
+					continue
 				}
-
-				r.lastTrustedBlock = &TrustedBlockData{block: newBlock, commit: verifyBlock.LastCommit}
+				// This case happens only if we do not have any state in our store.
+				// THus we can assume we are starting from genesis (where we trust the validator set).
+				// If we ran state sync before blocksync, we can trust the state we have in the store and we will not end up here
+				// If we ran block sync or consensus, we will be able to load the last block from our store
+				// We use the validator set provided in the gensis vile, to verify the new block, using the lastCommit of verifyBlock
+				if r.initialState.LastBlockHeight != 0 {
+					panic("Cannot be here unles we start from genesis")
+				}
+				err = state.Validators.VerifyCommitLight(newBlock.ChainID, newBlockID, newBlock.Height, verifyBlock.LastCommit)
+				r.lastTrustedBlock = &TrustedBlockData{}
 			}
-			var err error
+			if err != nil {
+
+				switch err.(type) {
+				case ErrInvalidVerifyBlock:
+					r.logger.Error(
+						err.Error(),
+						"last_commit", verifyBlock.LastCommit,
+						"verify_block_id", newBlockID,
+						"verify_block_height", newBlock.Height,
+					)
+				default:
+					r.logger.Error(
+						err.Error(),
+						"height", newBlock.Height,
+						"block_id", newBlockID,
+						"height", newBlock.Height,
+					)
+				}
+				peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+				if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+					NodeID: peerID,
+					Err:    err,
+				}); serr != nil {
+					return
+				}
+				continue
+			}
+
 			// validate the block before we persist it
 			err = r.blockExec.ValidateBlock(ctx, state, newBlock)
 			if err != nil {
@@ -641,14 +629,14 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				}); serr != nil {
 					return
 				}
-				continue // was return previously
+				continue
 			}
+
+			r.lastTrustedBlock.block = newBlock
+			r.lastTrustedBlock.commit = verifyBlock.LastCommit
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
-
-			//	r.store.SaveBlock(newBlock, newBlockParts, verifyBlock.LastCommit)
-
 			r.store.SaveBlock(newBlock, newBlockParts, extCommit)
 
 			// TODO: Same thing for app - but we would need a way to get the hash
@@ -657,12 +645,6 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			if err != nil {
 				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))
 			}
-
-			if err != nil {
-				// TODO: This is bad, are we zombie?
-				panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", newBlock.Height, newBlock.Hash(), err))
-			}
-
 			r.metrics.RecordConsMetrics(newBlock)
 
 			blocksSynced++
