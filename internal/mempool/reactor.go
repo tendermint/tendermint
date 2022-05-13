@@ -154,11 +154,14 @@ func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope *p2p.Envelo
 					continue
 				}
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					// this shouldn't be an error
-					// that gets logged, or
-					// propagated up, but the
-					// calling loop will abort the
-					// iterator.
+					// I have eaten the error
+					// that was in the log
+					// and that you were propagating
+					// up to the caller
+					// I'm sorry
+					// the calling loop was delicious
+					// so aborted
+					// and so iterator.
 					return nil
 				}
 
