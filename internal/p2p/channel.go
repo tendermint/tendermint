@@ -448,7 +448,7 @@ func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (netwo
 
 	}
 
-	// TODO: these context should be a braoder context rather than
+	// TODO: these context should be a broader context rather than
 	// the one from send to avoid shutting down the stream when
 	// the context that's sending the message closes. Right now
 	// they're functionally synonymous so it's safe, but it'd be
