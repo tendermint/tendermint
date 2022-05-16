@@ -1004,6 +1004,106 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	mp.AssertExpectations(t)
 }
 
+// TestCreateProposalBlockPanicOnAbsentVoteExtensions ensures that the CreateProposalBlock
+// call correctly panics when the vote extension data is missing from the extended commit
+// data that the method receives.
+func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
+	for _, testCase := range []struct {
+		name                  string
+		height                int64
+		extensionEnableHeight int64
+		expectPanic           bool
+	}{
+		{
+			name:                  "missing extension data after required",
+			height:                2,
+			extensionEnableHeight: 1,
+			expectPanic:           true,
+		},
+		{
+			name:                  "missing extension data and not required",
+			height:                2,
+			extensionEnableHeight: 0,
+			expectPanic:           false,
+		},
+		{
+			name:                  "missing extension data and required in future",
+			height:                2,
+			extensionEnableHeight: 3,
+			expectPanic:           false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			logger := log.NewNopLogger()
+
+			eventBus := eventbus.NewDefault(logger)
+			require.NoError(t, eventBus.Start(ctx))
+
+			app := abcimocks.NewApplication(t)
+			if !testCase.expectPanic {
+				app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			}
+			cc := abciclient.NewLocalClient(logger, app)
+			proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+			err := proxyApp.Start(ctx)
+			require.NoError(t, err)
+
+			state, stateDB, privVals := makeState(t, 1, int(testCase.height))
+			stateStore := sm.NewStore(stateDB)
+			state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.extensionEnableHeight
+			mp := &mpmocks.Mempool{}
+			mp.On("Lock").Return()
+			mp.On("Unlock").Return()
+			mp.On("FlushAppConn", mock.Anything).Return(nil)
+			mp.On("Update",
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything).Return(nil)
+			mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
+
+			blockExec := sm.NewBlockExecutor(
+				stateStore,
+				logger,
+				proxyApp,
+				mp,
+				sm.EmptyEvidencePool{},
+				nil,
+				eventBus,
+				sm.NopMetrics(),
+			)
+			block := sf.MakeBlock(state, 1, new(types.Commit))
+			bps, err := block.MakePartSet(testPartSize)
+			require.NoError(t, err)
+			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+			pa, _ := state.Validators.GetByIndex(0)
+			commit, _ := makeValidCommit(ctx, t, testCase.height, blockID, state.Validators, privVals)
+			stripSignatures(commit)
+			if testCase.expectPanic {
+				require.Panics(t, func() {
+					blockExec.CreateProposalBlock(ctx, testCase.height, state, commit, pa)
+				})
+			} else {
+				_, err = blockExec.CreateProposalBlock(ctx, testCase.height, state, commit, pa)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func stripSignatures(ec *types.ExtendedCommit) {
+	for i, commitSig := range ec.ExtendedSignatures {
+		commitSig.Extension = nil
+		commitSig.ExtensionSignature = nil
+		ec.ExtendedSignatures[i] = commitSig
+	}
+}
+
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
 		h   = make([]byte, crypto.HashSize)

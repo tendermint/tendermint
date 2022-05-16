@@ -466,11 +466,12 @@ func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeigh
 		}
 
 		var ext []byte
-		if err := ecs.EnsureExtension(); err != nil && ap.VoteExtensionsEnabled(ec.Height) {
-			panic(fmt.Errorf("commit at height %d received with missing vote extensions data", ec.Height))
+		if ap.VoteExtensionsEnabled(ec.Height) {
+			if err := ecs.EnsureExtension(); err != nil {
+				panic(fmt.Errorf("commit at height %d received with missing vote extensions data", ec.Height))
+			}
+			ext = ecs.Extension
 		}
-
-		ext = ecs.Extension
 
 		votes[i] = abci.ExtendedVoteInfo{
 			Validator:       types.TM2PB.Validator(val),
