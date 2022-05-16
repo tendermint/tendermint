@@ -320,24 +320,10 @@ func (state State) MakeBlock(
 	// Build base block with block data.
 	block := types.MakeBlock(height, coreChainLockHeight, coreChainLock, txs, commit, evidence, proposedAppVersion)
 
-	// Set time.
-	var timestamp time.Time
-	if height == state.InitialHeight {
-		timestamp = state.LastBlockTime // genesis time
-	} else {
-		currentTime := tmtime.Now()
-		if currentTime.Before(state.LastBlockTime) {
-			// this is weird, propose last block time
-			timestamp = state.LastBlockTime
-		} else {
-			timestamp = currentTime
-		}
-	}
-
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
-		timestamp, state.LastBlockID,
+		tmtime.Now(), state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		state.ConsensusParams.HashConsensusParams(), state.AppHash, state.LastResultsHash,
 		proposerProTxHash,

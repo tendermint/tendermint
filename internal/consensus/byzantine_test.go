@@ -297,7 +297,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	wg.Wait()
 
-	proTxHash, err := bzNodeState.privValidator.GetProTxHash(context.Background())
+	proTxHash, err := bzNodeState.privValidator.GetProTxHash(ctx)
 	require.NoError(t, err)
 
 	// don't run more assertions if we've encountered a timeout
