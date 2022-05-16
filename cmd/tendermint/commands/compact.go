@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"path/filepath"
+
 	"github.com/spf13/cobra"
+	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	db "github.com/tendermint/tm-db"
+	"github.com/syndtr/goleveldb/leveldb/util"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -33,12 +36,13 @@ Currently, only GoLevelDB is supported.
 			}
 			for _, dbName := range dbNames {
 				go func() {
-					store, err := db.NewGoLevelDBWithOpts(dbName, cfg.DBDir(), o)
+					dbPath := filepath.Join(cfg.DBDir(), dbName+".db")
+					store, err := leveldb.OpenFile(dbPath, o)
 					if err != nil {
 						logger.Error("failed to initialize tendermint db", "name", dbName, "err", err)
 						return
 					}
-					err = store.ForceCompact(nil, nil)
+					err = store.CompactRange(util.Range{Start: nil, Limit: nil})
 					if err != nil {
 						logger.Error("failed to compact tendermint db", "name", dbName, "err", err)
 					}
