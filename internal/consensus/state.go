@@ -845,8 +845,11 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	requireExtensions := state.ConsensusParams.Vote.RequireExtensions(height)
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators, requireExtensions)
+	if state.ConsensusParams.Vote.RequireExtensions(height) {
+		cs.Votes = cstypes.NewStrictHeightVoteSet(state.ChainID, height, validators)
+	} else {
+		cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	}
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false

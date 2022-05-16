@@ -49,10 +49,19 @@ type HeightVoteSet struct {
 	peerCatchupRounds map[types.NodeID][]int32 // keys: peer.ID; values: at most 2 rounds
 }
 
-func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet, requireExtensions bool) *HeightVoteSet {
+func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		chainID:           chainID,
-		requireExtensions: requireExtensions,
+		requireExtensions: false,
+	}
+	hvs.Reset(height, valSet)
+	return hvs
+}
+
+func NewStrictHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
+	hvs := &HeightVoteSet{
+		chainID:           chainID,
+		requireExtensions: true,
 	}
 	hvs.Reset(height, valSet)
 	return hvs
