@@ -226,11 +226,11 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	return err
 }
 
-// VerifyWithExtension performs the same verification as Verify, but
+// VerifyVoteWithExtension performs the same verification as Verify, but
 // additionally checks whether the vote extension signature corresponds to the
 // given chain ID and public key. We only verify vote extension signatures for
 // precommits.
-func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) error {
+func (vote *Vote) VerifyVoteAndExtension(chainID string, pubKey crypto.PubKey) error {
 	v, err := vote.verifyAndReturnProto(chainID, pubKey)
 	if err != nil {
 		return err
@@ -241,6 +241,20 @@ func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) erro
 		if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 			return ErrVoteInvalidSignature
 		}
+	}
+	return nil
+}
+
+// VerifyExtension checks whether the vote extension signature corresponds to the
+// given chain ID and public key.
+func (vote *Vote) VerifyExtension(chainID string, pubKey crypto.PubKey) error {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsNil() {
+		return nil
+	}
+	v := vote.ToProto()
+	extSignBytes := VoteExtensionSignBytes(chainID, v)
+	if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+		return ErrVoteInvalidSignature
 	}
 	return nil
 }

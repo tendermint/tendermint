@@ -267,7 +267,7 @@ func TestVoteExtension(t *testing.T) {
 			if tc.includeSignature {
 				vote.ExtensionSignature = v.ExtensionSignature
 			}
-			err = vote.VerifyWithExtension("test_chain_id", pk)
+			err = vote.VerifyExtension("test_chain_id", pk)
 			if tc.expectError {
 				require.Error(t, err)
 			} else {

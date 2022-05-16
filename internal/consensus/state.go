@@ -2385,7 +2385,7 @@ func (cs *State) addVote(
 		err := vote.EnsureExtension()
 		if err == nil {
 			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
-			err = vote.VerifyWithExtension(cs.state.ChainID, val.PubKey)
+			err = vote.VerifyExtension(cs.state.ChainID, val.PubKey)
 		}
 		if err == nil {
 			err := cs.blockExec.VerifyVoteExtension(ctx, vote)

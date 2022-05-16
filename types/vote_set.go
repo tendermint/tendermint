@@ -196,19 +196,13 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if voteSet.requireExtensions {
-		if err := vote.VerifyWithExtension(voteSet.chainID, val.PubKey); err != nil {
+	if voteSet.requireExtensions || len(vote.ExtensionSignature) > 0 {
+		if err := vote.VerifyVoteAndExtension(voteSet.chainID, val.PubKey); err != nil {
 			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
 		}
 	} else {
-		if len(vote.ExtensionSignature) != 0 {
-			if err := vote.VerifyWithExtension(voteSet.chainID, val.PubKey); err != nil {
-				return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
-			}
-		} else {
-			if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
-				return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
-			}
+		if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
 		}
 	}
 
