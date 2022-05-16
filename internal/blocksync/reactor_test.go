@@ -334,6 +334,89 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	}
 }
 
+func TestReactor_VoteExtension(t *testing.T) {
+	for _, testCase := range []struct {
+		name                  string
+		manipulateMsg         func(*bcproto.BlockResponse)
+		initialRequiredHeight int64
+		expectSync            bool
+	}{
+		{
+			name:          "not required and receives extension",
+			manipulateMsg: func(_ *bcpro.BlockResponse) {},
+			expectSync:    true,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
+			require.NoError(t, err)
+			defer os.RemoveAll(cfg.RootDir)
+
+			valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
+			genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+			rts := setup(ctx, t, genDoc, privVals[0], []int64{5, 0})
+			require.Equal(t, int64(5), rts.reactors[rts.nodes[0]].store.Height())
+			ch := rts.blockSyncChannels[rts.nodes[0]]
+			modifiedCh := &p2p.Channel{}
+			go func(c context.Context) {
+				iter := ch.Receive(ctx)
+				for iter.Next(ctx) {
+					envelope := iter.Envelope()
+					switch msg := envelope.Message.(type) {
+					case *bcproto.BlockResponse:
+						msg = testCase.manipulateMsg(msg)
+						envelope.Message = msg
+					}
+					modifiedCh.Send(ctx, *envelope)
+				}
+			}()
+			rts.blockSyncChannels[rts.nodes[0]] = modifiedCh
+		})
+	}
+}
+
+/*
+func TestReactor_VoteExtension(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(cfg.RootDir)
+
+		valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
+		genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+		maxBlockHeight := int64(65)
+
+	stateStore := sm.NewStore(db.NewMemDB())
+	blockStore := store.NewBlockStore(db.NewMemDB())
+	p := proxy.New(abciclient.NewLocalClient(log.NewNopLogger(), &abci.BaseApplication{}), log.NewNopLogger(), proxy.NopMetrics())
+	blockExec := state.NewBlockExecutor(stateStore, log.NewNopLogger(), p, &mpmocks.Mempool{}, sm.EmptyEvidencePool{}, blockStore, nil, state.NopMetrics())
+	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		return &p2p.Channel{}, nil
+	}
+
+	reactor := NewReactor(
+		log.NewNopLogger(),
+		sm.NewStore(db.NewMemDB()),
+		blockExec,
+		blockStore,
+		nil,
+		chCreator,
+		nil,
+		true,
+		consensus.NopMetrics(),
+		nil, // eventbus, can be nil
+	)
+
+	err = reactor.Start(ctx)
+	require.NoError(t, err)
+}
+*/
+
 func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// Ultimately, this should be refactored to be less integration test oriented
 	// and more unit test oriented by simply testing channel sends and receives.
