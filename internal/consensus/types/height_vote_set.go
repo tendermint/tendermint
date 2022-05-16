@@ -41,7 +41,7 @@ type HeightVoteSet struct {
 	chainID           string
 	height            int64
 	valSet            *types.ValidatorSet
-	requireExtensions bool
+	extensionsEnabled bool
 
 	mtx               sync.Mutex
 	round             int32                    // max tracked round
@@ -52,16 +52,16 @@ type HeightVoteSet struct {
 func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		chainID:           chainID,
-		requireExtensions: false,
+		extensionsEnabled: false,
 	}
 	hvs.Reset(height, valSet)
 	return hvs
 }
 
-func NewStrictHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
+func NewExtendedHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
 	hvs := &HeightVoteSet{
 		chainID:           chainID,
-		requireExtensions: true,
+		extensionsEnabled: true,
 	}
 	hvs.Reset(height, valSet)
 	return hvs
@@ -120,8 +120,8 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 	// log.Debug("addRound(round)", "round", round)
 	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
 	var precommits *types.VoteSet
-	if hvs.requireExtensions {
-		precommits = types.NewStrictVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
+	if hvs.extensionsEnabled {
+		precommits = types.NewExtendedVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
 	} else {
 		precommits = types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
 	}

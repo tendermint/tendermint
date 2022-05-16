@@ -534,7 +534,7 @@ func TestVoteSet_VoteExtensionsEnabled(t *testing.T) {
 			valSet, privValidators := randValidatorPrivValSet(ctx, t, 5, 10)
 			var voteSet *VoteSet
 			if tc.requireExtensions {
-				voteSet = NewStrictVoteSet("test_chain_id", height, round, tmproto.PrecommitType, valSet)
+				voteSet = NewExtendedVoteSet("test_chain_id", height, round, tmproto.PrecommitType, valSet)
 			} else {
 				voteSet = NewVoteSet("test_chain_id", height, round, tmproto.PrecommitType, valSet)
 			}
@@ -590,7 +590,7 @@ func randVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := randValidatorPrivValSet(ctx, t, numValidators, votingPower)
-	return NewStrictVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewExtendedVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 func deterministicVoteSet(
@@ -603,7 +603,7 @@ func deterministicVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := deterministicValidatorSet(ctx, t)
-	return NewStrictVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewExtendedVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 func randValidatorPrivValSet(ctx context.Context, t testing.TB, numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {

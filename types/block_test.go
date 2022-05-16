@@ -583,7 +583,7 @@ func TestVoteSetToExtendedCommit(t *testing.T) {
 			valSet, vals := randValidatorPrivValSet(ctx, t, 10, 1)
 			var voteSet *VoteSet
 			if testCase.includeExtension {
-				voteSet = NewStrictVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
+				voteSet = NewExtendedVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
 			} else {
 				voteSet = NewVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
 			}
@@ -668,7 +668,7 @@ func TestExtendedCommitToVoteSet(t *testing.T) {
 			chainID := voteSet.ChainID()
 			var voteSet2 *VoteSet
 			if testCase.includeExtension {
-				voteSet2 = extCommit.ToStrictVoteSet(chainID, valSet)
+				voteSet2 = extCommit.ToExtendedVoteSet(chainID, valSet)
 			} else {
 				voteSet2 = extCommit.ToVoteSet(chainID, valSet)
 			}

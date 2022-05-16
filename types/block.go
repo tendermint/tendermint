@@ -1014,18 +1014,19 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 	return &ecc
 }
 
-// ToStrictVoteSet constructs a VoteSet from the Commit and validator set.
+// ToExtendedVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the ExtendedCommit can't be added to the voteset.
 // Panics if any of the votes have invalid or absent vote extension data.
 // Inverse of VoteSet.MakeExtendedCommit().
-func (ec *ExtendedCommit) ToStrictVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
-	voteSet := NewStrictVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+func (ec *ExtendedCommit) ToExtendedVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewExtendedVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
 	ec.addSigsToVoteSet(voteSet)
 	return voteSet
 }
 
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the ExtendedCommit can't be added to the voteset.
+// Panics if any of the votes have extension data.
 // Inverse of VoteSet.MakeExtendedCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)

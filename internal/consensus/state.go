@@ -704,7 +704,7 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 		return
 	}
 	if extensionsEnabled {
-		panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+		panic(fmt.Sprintf("failed to reconstruct last extended commit; %s", err))
 	}
 	votes, err = cs.votesFromSeenCommit(state)
 	if err != nil {
@@ -720,7 +720,7 @@ func (cs *State) votesFromExtendedCommit(state sm.State, extensionsEnabled bool)
 	}
 	var vs *types.VoteSet
 	if extensionsEnabled {
-		vs = ec.ToStrictVoteSet(state.ChainID, state.LastValidators)
+		vs = ec.ToExtendedVoteSet(state.ChainID, state.LastValidators)
 	} else {
 		vs = ec.ToVoteSet(state.ChainID, state.LastValidators)
 	}
@@ -846,7 +846,7 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
 	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(height) {
-		cs.Votes = cstypes.NewStrictHeightVoteSet(state.ChainID, height, validators)
+		cs.Votes = cstypes.NewExtendedHeightVoteSet(state.ChainID, height, validators)
 	} else {
 		cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	}

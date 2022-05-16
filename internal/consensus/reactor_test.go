@@ -669,7 +669,7 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 
 			var voteSet *types.VoteSet
 			if testCase.includeExtensions {
-				voteSet = types.NewStrictVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators)
+				voteSet = types.NewExtendedVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators)
 			} else {
 				voteSet = types.NewVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators)
 			}
