@@ -1016,11 +1016,27 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 	return &ecc
 }
 
+// ToStrictVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if signatures from the ExtendedCommit can't be added to the voteset.
+// Panics if any of the votes have invalid or absent vote extension data.
+// Inverse of VoteSet.MakeExtendedCommit().
+func (ec *ExtendedCommit) ToStrictVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewStrictVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+	ec.addSigsToVoteSet(voteSet)
+	return voteSet
+}
+
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the ExtendedCommit can't be added to the voteset.
 // Inverse of VoteSet.MakeExtendedCommit().
-func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet, requireExtensions bool) *VoteSet {
-	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals, requireExtensions)
+func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+	ec.addSigsToVoteSet(voteSet)
+	return voteSet
+}
+
+// addSigsToVoteSet adds all of the signature to voteSet.
+func (ec *ExtendedCommit) addSigsToVoteSet(voteSet *VoteSet) {
 	for idx, ecs := range ec.ExtendedSignatures {
 		if ecs.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
@@ -1034,14 +1050,13 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet, requireE
 			panic(fmt.Errorf("failed to reconstruct vote set from extended commit: %w", err))
 		}
 	}
-	return voteSet
 }
 
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the commit can't be added to the voteset.
 // Inverse of VoteSet.MakeCommit().
 func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
-	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals, false)
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
 	for idx, cs := range commit.Signatures {
 		if cs.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.

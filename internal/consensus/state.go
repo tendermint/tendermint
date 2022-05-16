@@ -718,7 +718,12 @@ func (cs *State) votesFromExtendedCommit(state sm.State, requireExtensions bool)
 	if ec == nil {
 		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
-	vs := ec.ToVoteSet(state.ChainID, state.LastValidators, requireExtensions)
+	var vs *types.VoteSet
+	if requireExtensions {
+		vs = ec.ToStrictVoteSet(state.ChainID, state.LastValidators)
+	} else {
+		vs = ec.ToVoteSet(state.ChainID, state.LastValidators)
+	}
 	if !vs.HasTwoThirdsMajority() {
 		return nil, errors.New("extended commit does not have +2/3 majority")
 	}

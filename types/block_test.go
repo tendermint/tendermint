@@ -581,7 +581,12 @@ func TestVoteSetToExtendedCommit(t *testing.T) {
 			defer cancel()
 
 			valSet, vals := randValidatorPrivValSet(ctx, t, 10, 1)
-			voteSet := NewVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet, testCase.includeExtension)
+			var voteSet *VoteSet
+			if testCase.includeExtension {
+				voteSet = NewStrictVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
+			} else {
+				voteSet = NewVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
+			}
 			for i := 0; i < len(vals); i++ {
 				pubKey, err := vals[i].GetPubKey(ctx)
 				require.NoError(t, err)
@@ -661,7 +666,12 @@ func TestExtendedCommitToVoteSet(t *testing.T) {
 			}
 
 			chainID := voteSet.ChainID()
-			voteSet2 := extCommit.ToVoteSet(chainID, valSet, testCase.includeExtension)
+			var voteSet2 *VoteSet
+			if testCase.includeExtension {
+				voteSet2 = extCommit.ToStrictVoteSet(chainID, valSet)
+			} else {
+				voteSet2 = extCommit.ToVoteSet(chainID, valSet)
+			}
 
 			for i := int32(0); int(i) < len(vals); i++ {
 				vote1 := voteSet.GetByIndex(i)

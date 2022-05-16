@@ -165,7 +165,7 @@ func generateLightClientAttackEvidence(
 
 	// create a commit for the forged header
 	blockID := makeBlockID(header.Hash(), 1000, []byte("partshash"))
-	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals, false)
+	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
 
 	commit, err := factory.MakeExtendedCommit(ctx, blockID, forgedHeight, 0, voteSet, pv, forgedTime)
 	if err != nil {

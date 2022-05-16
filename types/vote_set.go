@@ -69,26 +69,38 @@ type VoteSet struct {
 	peerMaj23s    map[string]BlockID     // Maj23 for each peer
 }
 
-// Constructs a new VoteSet struct used to accumulate votes for given height/round.
+// NewVoteSet instantiates all fields of a new vote set. This constructor does
+// not require that the votes added to the set contain vote extension data, but
+// if votes are added that contain extension data, the extension data will be
+// verified.
 func NewVoteSet(chainID string, height int64, round int32,
-	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet, requireExtensions bool) *VoteSet {
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		panic("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
 	return &VoteSet{
-		chainID:           chainID,
-		height:            height,
-		round:             round,
-		signedMsgType:     signedMsgType,
-		valSet:            valSet,
-		requireExtensions: requireExtensions,
-		votesBitArray:     bits.NewBitArray(valSet.Size()),
-		votes:             make([]*Vote, valSet.Size()),
-		sum:               0,
-		maj23:             nil,
-		votesByBlock:      make(map[string]*blockVotes, valSet.Size()),
-		peerMaj23s:        make(map[string]BlockID),
+		chainID:       chainID,
+		height:        height,
+		round:         round,
+		signedMsgType: signedMsgType,
+		valSet:        valSet,
+		votesBitArray: bits.NewBitArray(valSet.Size()),
+		votes:         make([]*Vote, valSet.Size()),
+		sum:           0,
+		maj23:         nil,
+		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
+		peerMaj23s:    make(map[string]BlockID),
 	}
+}
+
+// NewStrictVoteSet constructs a vote set with additional vote verification logic.
+// The VoteSet constructed with NewStrictVoteSet verifies the vote extension
+// data for every vote added to the set.
+func NewStrictVoteSet(chainID string, height int64, round int32,
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
+	vs := NewStrictVoteSet(chainID, height, round, signedMsgType, valSet)
+	vs.requireExtensions = true
+	return vs
 }
 
 func (voteSet *VoteSet) ChainID() string {
