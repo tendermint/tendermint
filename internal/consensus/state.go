@@ -2400,13 +2400,10 @@ func (cs *State) addVote(
 		if err == nil {
 			err := cs.blockExec.VerifyVoteExtension(ctx, vote)
 			cs.metrics.MarkVoteExtensionReceived(err == nil)
-		} else {
-			if !errors.Is(err, types.ErrVoteExtensionAbsent) {
-				return false, err
-			}
-			if cs.state.ConsensusParams.Vote.RequireExtensions(cs.Height) {
-				return false, err
-			}
+		} else if !errors.Is(err, types.ErrVoteExtensionAbsent) {
+			return false, err
+		} else if cs.state.ConsensusParams.Vote.RequireExtensions(cs.Height) {
+			return false, err
 		}
 	}
 
