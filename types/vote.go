@@ -318,12 +318,16 @@ func (vote *Vote) ValidateBasic() error {
 // on precommit vote types.
 func (vote *Vote) EnsureExtension() error {
 	// We should always see vote extension signatures in non-nil precommits
-	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
-		if len(vote.ExtensionSignature) == 0 {
-			return ErrVoteExtensionAbsent
-		}
+	if vote.Type != tmproto.PrecommitType {
+		return nil
 	}
-	return nil
+	if vote.BlockID.IsNil() {
+		return nil
+	}
+	if len(vote.ExtensionSignature) > 0 {
+		return nil
+	}
+	return ErrVoteExtensionAbsent
 }
 
 // ToProto converts the handwritten type to proto generated type
