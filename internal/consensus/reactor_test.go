@@ -656,7 +656,7 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 
 			cs.state.LastBlockHeight = testCase.storedHeight
 			cs.state.LastValidators = cs.state.Validators.Copy()
-			cs.state.ConsensusParams.Vote.ExtensionRequireHeight = testCase.initialRequiredHeight
+			cs.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.initialRequiredHeight
 
 			propBlock, err := cs.createProposalBlock(ctx)
 			require.NoError(t, err)

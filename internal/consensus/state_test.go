@@ -2314,7 +2314,7 @@ func TestVoteExtensionRequiredHeight(t *testing.T) {
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m, validators: numValidators})
-			cs1.state.ConsensusParams.Vote.ExtensionRequireHeight = testCase.initialRequiredHeight
+			cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.initialRequiredHeight
 			height, round := cs1.Height, cs1.Round
 
 			timeoutCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryTimeoutPropose)

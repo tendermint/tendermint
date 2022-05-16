@@ -43,7 +43,7 @@ type ConsensusParams struct {
 	Version   VersionParams   `json:"version"`
 	Synchrony SynchronyParams `json:"synchrony"`
 	Timeout   TimeoutParams   `json:"timeout"`
-	Vote      VoteParams      `json:"vote"`
+	ABCI      ABCIParams      `json:"vote"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -97,18 +97,19 @@ type TimeoutParams struct {
 	BypassCommitTimeout bool          `json:"bypass_commit_timeout"`
 }
 
-// VoteParams configure validity rules of the votes within Tendermint consensus.
-type VoteParams struct {
-	ExtensionRequireHeight int64 `json:"extension_require_height"`
+// ABCIParams configure ABCI functionality specific to the Application Blockchain
+// Interface.
+type ABCIParams struct {
+	VoteExtensionsEnableHeight int64 `json:"vote_extensions_enable_height"`
 }
 
-// RequireExtensions returns true if vote extensions are required at height h
+// VoteExtensionsEnabled returns true if vote extensions are enabled at height h
 // and false otherwise.
-func (v VoteParams) RequireExtensions(h int64) bool {
-	if v.ExtensionRequireHeight == 0 {
+func (a ABCIParams) VoteExtensionsEnabled(h int64) bool {
+	if a.VoteExtensionsEnableHeight == 0 {
 		return false
 	}
-	return v.ExtensionRequireHeight <= h
+	return a.VoteExtensionsEnableHeight <= h
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -120,7 +121,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Version:   DefaultVersionParams(),
 		Synchrony: DefaultSynchronyParams(),
 		Timeout:   DefaultTimeoutParams(),
-		Vote:      DefaultVoteParams(),
+		ABCI:      DefaultABCIParams(),
 	}
 }
 
@@ -192,10 +193,10 @@ func DefaultTimeoutParams() TimeoutParams {
 	}
 }
 
-func DefaultVoteParams() VoteParams {
-	return VoteParams{
+func DefaultABCIParams() ABCIParams {
+	return ABCIParams{
 		// When set to 0, vote extensions are not required.
-		ExtensionRequireHeight: 0,
+		VoteExtensionsEnableHeight: 0,
 	}
 }
 

@@ -697,13 +697,13 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 // the method will panic on an absent ExtendedCommit or an ExtendedCommit without
 // extension data.
 func (cs *State) reconstructLastCommit(state sm.State) {
-	requireExtensions := cs.state.ConsensusParams.Vote.RequireExtensions(state.LastBlockHeight)
-	votes, err := cs.votesFromExtendedCommit(state, requireExtensions)
+	extensionsEnabled := cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight)
+	votes, err := cs.votesFromExtendedCommit(state, extensionsEnabled)
 	if err == nil {
 		cs.LastCommit = votes
 		return
 	}
-	if requireExtensions {
+	if extensionsEnabled {
 		panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
 	}
 	votes, err = cs.votesFromSeenCommit(state)
@@ -713,13 +713,13 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 	cs.LastCommit = votes
 }
 
-func (cs *State) votesFromExtendedCommit(state sm.State, requireExtensions bool) (*types.VoteSet, error) {
+func (cs *State) votesFromExtendedCommit(state sm.State, extensionsEnabled bool) (*types.VoteSet, error) {
 	ec := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
 	if ec == nil {
 		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
 	var vs *types.VoteSet
-	if requireExtensions {
+	if extensionsEnabled {
 		vs = ec.ToStrictVoteSet(state.ChainID, state.LastValidators)
 	} else {
 		vs = ec.ToVoteSet(state.ChainID, state.LastValidators)
@@ -845,7 +845,7 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	if state.ConsensusParams.Vote.RequireExtensions(height) {
+	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(height) {
 		cs.Votes = cstypes.NewStrictHeightVoteSet(state.ChainID, height, validators)
 	} else {
 		cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
@@ -2402,7 +2402,7 @@ func (cs *State) addVote(
 			cs.metrics.MarkVoteExtensionReceived(err == nil)
 		} else if !errors.Is(err, types.ErrVoteExtensionAbsent) {
 			return false, err
-		} else if cs.state.ConsensusParams.Vote.RequireExtensions(cs.Height) {
+		} else if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
 			return false, err
 		}
 	}
