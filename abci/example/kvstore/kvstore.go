@@ -191,17 +191,17 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 	app.valsIndex = make(map[string]*types.ValidatorUpdate)
 
 	// Punish validators who committed equivocation.
-	for _, ev := range req.ByzantineValidators {
-		// TODO it seems this code is not needed to keep here
-		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
-			proTxHash := crypto.ProTxHash(ev.Validator.ProTxHash)
-			v, ok := app.valsIndex[proTxHash.String()]
-			if !ok {
-				return nil, fmt.Errorf("wanted to punish val %q but can't find it", proTxHash.ShortString())
-			}
-			v.Power = ev.Validator.Power - 1
-		}
-	}
+	//for _, ev := range req.ByzantineValidators {
+	//	// TODO it seems this code is not needed to keep here
+	//	if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
+	//		proTxHash := crypto.ProTxHash(ev.Validator.ProTxHash)
+	//		v, ok := app.valsIndex[proTxHash.String()]
+	//		if !ok {
+	//			return nil, fmt.Errorf("wanted to punish val %q but can't find it", proTxHash.ShortString())
+	//		}
+	//		v.Power = ev.Validator.Power - 1
+	//	}
+	//}
 
 	respTxs := make([]*types.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
