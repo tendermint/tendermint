@@ -955,6 +955,7 @@ func makeGenesisState(ctx context.Context, t *testing.T, cfg *config.Config, arg
 		args.Time = time.Now()
 	}
 	genDoc, privVals := factory.RandGenesisDoc(cfg, args.Validators, 1, args.Params)
+	genDoc.GenesisTime = args.Time
 	s0, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
 	return s0, privVals
