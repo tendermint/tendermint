@@ -313,7 +313,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Ch
 	switch {
 	case r.options.UseLibP2P:
 		info := r.nodeInfoProducer()
-		ch, err := NewLibP2PChannel(info.Network, chDesc, r.options.NetworkPubSub, r.options.NetworkHost)
+		ch, err := NewLibP2PChannel(ctx, info.Network, chDesc, r.options.NetworkPubSub, r.options.NetworkHost)
 		if err != nil {
 			return nil, err
 		}

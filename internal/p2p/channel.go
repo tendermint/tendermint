@@ -234,6 +234,7 @@ func MergedChannelIterator(ctx context.Context, chs ...Channel) *ChannelIterator
 }
 
 type libp2pChannelImpl struct {
+	ctx     context.Context
 	chDesc  *ChannelDescriptor
 	pubsub  *pubsub.PubSub
 	host    host.Host
@@ -245,8 +246,9 @@ type libp2pChannelImpl struct {
 	errs emt.Catcher
 }
 
-func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
+func NewLibP2PChannel(ctx context.Context, chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
 	ch := &libp2pChannelImpl{
+		ctx:     ctx,
 		chDesc:  chDesc,
 		pubsub:  ps,
 		host:    h,
@@ -418,7 +420,7 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 		return fmt.Errorf("cannot connect to %q", e.To)
 	default:
 		// TODO: should we should attempt to reuse between peers?
-		stream, err := ch.getStream(ctx, peer.ID(e.To))
+		stream, err := ch.getStream(peer.ID(e.To))
 		if err != nil {
 			return err
 		}
@@ -432,7 +434,7 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 	return nil
 }
 
-func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (network.Stream, error) {
+func (ch *libp2pChannelImpl) getStream(peer peer.ID) (network.Stream, error) {
 	conns := ch.host.Network().ConnsToPeer(peer)
 	pid := protocol.ID(ch.canonicalizedTopicName())
 	if len(conns) > 0 {
@@ -453,12 +455,12 @@ func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (netwo
 	// the context that's sending the message closes. Right now
 	// they're functionally synonymous so it's safe, but it'd be
 	// possible to introduce an unintended bug here.
-	conn, err := ch.host.Network().DialPeer(ctx, peer)
+	conn, err := ch.host.Network().DialPeer(ch.ctx, peer)
 	if err != nil {
 		return nil, err
 	}
 
-	stream, err := ch.host.NewStream(ctx, conn.RemotePeer(), pid)
+	stream, err := ch.host.NewStream(ch.ctx, conn.RemotePeer(), pid)
 	if err != nil {
 		return nil, err
 	}
