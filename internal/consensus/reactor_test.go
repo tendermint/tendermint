@@ -648,7 +648,7 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 			defer cancel()
 			cs, vs := makeState(ctx, t, makeStateArgs{validators: 1})
 			validator := vs[0]
