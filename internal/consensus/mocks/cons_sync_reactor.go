@@ -6,7 +6,6 @@ import (
 	testing "testing"
 
 	mock "github.com/stretchr/testify/mock"
-
 	state "github.com/tendermint/tendermint/internal/state"
 )
 

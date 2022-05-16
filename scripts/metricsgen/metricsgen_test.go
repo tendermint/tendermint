@@ -149,7 +149,7 @@ func TestParseMetricsStruct(t *testing.T) {
 		{
 			name: "metric labels",
 			metricsStruct: "type Metrics struct {\n" +
-				"myCounter metrics.Counter `metrics_labels:\"label1, label2\"`\n" +
+				"myCounter metrics.Counter `metrics_labels:\"label1,label2\"`\n" +
 				"}",
 			expected: metricsgen.TemplateData{
 				Package: pkgName,
@@ -158,7 +158,7 @@ func TestParseMetricsStruct(t *testing.T) {
 						TypeName:   "Counter",
 						FieldName:  "myCounter",
 						MetricName: "my_counter",
-						Labels:     "label1, label2",
+						Labels:     "\"label1\",\"label2\"",
 					},
 				},
 			},
