@@ -225,7 +225,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	return err
 }
 
-// VerifyVoteWithExtension performs the same verification as Verify, but
+// VerifyVoteAndExtension performs the same verification as Verify, but
 // additionally checks whether the vote extension signature corresponds to the
 // given chain ID and public key. We only verify vote extension signatures for
 // precommits.
