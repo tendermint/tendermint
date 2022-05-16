@@ -1026,7 +1026,6 @@ func (ec *ExtendedCommit) ToExtendedVoteSet(chainID string, vals *ValidatorSet) 
 
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
 // Panics if signatures from the ExtendedCommit can't be added to the voteset.
-// Panics if any of the votes have extension data.
 // Inverse of VoteSet.MakeExtendedCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
@@ -1083,9 +1082,19 @@ func (ec *ExtendedCommit) EnsureExtensions() error {
 	return nil
 }
 
-// StripExtensions converts an ExtendedCommit to a Commit by removing all vote
+// StripExtensions removes all VoteExtension data from an ExtendedCommit. This
+// is useful when dealing with an ExendedCommit but vote extension data is
+// expected to be absent.
+func (ec *ExtendedCommit) StripExtensions() {
+	for idx := range ec.ExtendedSignatures {
+		ec.ExtendedSignatures[idx].Extension = nil
+		ec.ExtendedSignatures[idx].ExtensionSignature = nil
+	}
+}
+
+// ToCommit converts an ExtendedCommit to a Commit by removing all vote
 // extension-related fields.
-func (ec *ExtendedCommit) StripExtensions() *Commit {
+func (ec *ExtendedCommit) ToCommit() *Commit {
 	cs := make([]CommitSig, len(ec.ExtendedSignatures))
 	for idx, ecs := range ec.ExtendedSignatures {
 		cs[idx] = ecs.CommitSig

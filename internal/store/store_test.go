@@ -107,7 +107,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 
 	// End of setup, test data
-	commitAtH10 := makeTestExtCommit(10, tmtime.Now()).StripExtensions()
+	commitAtH10 := makeTestExtCommit(10, tmtime.Now()).ToCommit()
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -140,7 +140,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 					ChainID:         "block_test",
 					Time:            tmtime.Now(),
 					ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
-				makeTestExtCommit(5, tmtime.Now()).StripExtensions(),
+				makeTestExtCommit(5, tmtime.Now()).ToCommit(),
 			),
 			parts:      validPartSet,
 			seenCommit: makeTestExtCommit(5, tmtime.Now()),
@@ -518,7 +518,7 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 	// produce a few blocks and check that the correct seen and cannoncial commits
 	// are persisted.
 	for h := int64(3); h <= 5; h++ {
-		blockCommit := makeTestExtCommit(h-1, tmtime.Now()).StripExtensions()
+		blockCommit := makeTestExtCommit(h-1, tmtime.Now()).ToCommit()
 		block := factory.MakeBlock(state, h, blockCommit)
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
@@ -527,7 +527,7 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 		c3 := store.LoadSeenCommit()
 		require.NotNil(t, c3)
 		require.Equal(t, h, c3.Height)
-		require.Equal(t, seenCommit.StripExtensions().Hash(), c3.Hash())
+		require.Equal(t, seenCommit.ToCommit().Hash(), c3.Hash())
 		c5 := store.LoadBlockCommit(h)
 		require.Nil(t, c5)
 		c6 := store.LoadBlockCommit(h - 1)

@@ -155,7 +155,7 @@ func (rts *reactorTestSuite) addNode(
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastExtCommit = seenExtCommit.Clone()
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.StripExtensions())
+		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.ToCommit())
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}

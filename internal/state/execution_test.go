@@ -140,7 +140,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 			}
 
 			// block for height 2
-			block := sf.MakeBlock(state, 2, lastCommit.StripExtensions())
+			block := sf.MakeBlock(state, 2, lastCommit.ToCommit())
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
 			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}

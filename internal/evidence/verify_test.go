@@ -236,7 +236,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
 	extCommit, err := factory.MakeExtendedCommit(ctx, blockID, 10, 1, voteSet, conflictingPrivVals[:4], defaultEvidenceTime)
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 
 	ev := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -257,7 +257,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	trustedExtCommit, err := factory.MakeExtendedCommit(ctx, trustedBlockID, 10, 1,
 		trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
-	trustedCommit := trustedExtCommit.StripExtensions()
+	trustedCommit := trustedExtCommit.ToCommit()
 
 	trustedSignedHeader := &types.SignedHeader{
 		Header: trustedHeader,
@@ -339,7 +339,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	voteSet := types.NewVoteSet(evidenceChainID, height, 0, tmproto.SignedMsgType(2), conflictingVals)
 	extCommit, err := factory.MakeExtendedCommit(ctx, blockID, height, 0, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 
 	ev := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -360,7 +360,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	trustedExtCommit, err := factory.MakeExtendedCommit(ctx, trustedBlockID, height, 1,
 		trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
-	trustedCommit := trustedExtCommit.StripExtensions()
+	trustedCommit := trustedExtCommit.ToCommit()
 
 	trustedSignedHeader := &types.SignedHeader{
 		Header: trustedHeader,
@@ -556,7 +556,7 @@ func makeLunaticEvidence(
 	voteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
 	extCommit, err := factory.MakeExtendedCommit(ctx, blockID, height, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 
 	ev = &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -585,7 +585,7 @@ func makeLunaticEvidence(
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), trustedVals)
 	trustedExtCommit, err := factory.MakeExtendedCommit(ctx, trustedBlockID, height, 1, trustedVoteSet, privVals, defaultEvidenceTime)
 	require.NoError(t, err)
-	trustedCommit := trustedExtCommit.StripExtensions()
+	trustedCommit := trustedExtCommit.ToCommit()
 
 	trusted = &types.LightBlock{
 		SignedHeader: &types.SignedHeader{

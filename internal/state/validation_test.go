@@ -124,7 +124,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		*/
 		state, _, lastExtCommit = makeAndCommitGoodBlock(ctx, t,
 			state, height, lastCommit, state.Validators.GetProposer().Address, blockExec, privVals, nil)
-		lastCommit = lastExtCommit.StripExtensions()
+		lastCommit = lastExtCommit.ToCommit()
 	}
 
 	nextHeight := validationTestsStopHeight
@@ -234,7 +234,7 @@ func TestValidateBlockCommit(t *testing.T) {
 			privVals,
 			nil,
 		)
-		lastCommit = lastExtCommit.StripExtensions()
+		lastCommit = lastExtCommit.ToCommit()
 
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
@@ -384,7 +384,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 			privVals,
 			evidence,
 		)
-		lastCommit = lastExtCommit.StripExtensions()
+		lastCommit = lastExtCommit.ToCommit()
 
 	}
 }

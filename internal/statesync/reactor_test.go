@@ -861,7 +861,7 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 	return nextVals, nextPrivVals, &types.LightBlock{
 		SignedHeader: &types.SignedHeader{
 			Header: header,
-			Commit: extCommit.StripExtensions(),
+			Commit: extCommit.ToCommit(),
 		},
 		ValidatorSet: currentVals,
 	}

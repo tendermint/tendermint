@@ -49,7 +49,7 @@ func TestBlockAddEvidence(t *testing.T) {
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, txs, extCommit.StripExtensions(), evList)
+	block := MakeBlock(h, txs, extCommit.ToCommit(), evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -68,7 +68,7 @@ func TestBlockValidateBasic(t *testing.T) {
 	voteSet, valSet, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
 	extCommit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(ctx, h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
@@ -163,7 +163,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.StripExtensions(), evList).MakePartSet(512)
+	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.ToCommit(), evList).MakePartSet(512)
 	require.NoError(t, err)
 
 	assert.NotNil(t, partSet)
@@ -187,7 +187,7 @@ func TestBlockHashesTo(t *testing.T) {
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.StripExtensions(), evList)
+	block := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.ToCommit(), evList)
 	block.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
@@ -483,7 +483,7 @@ func randCommit(ctx context.Context, t *testing.T, now time.Time) *Commit {
 
 	require.NoError(t, err)
 
-	return commit.StripExtensions()
+	return commit.ToCommit()
 }
 
 func hexBytesFromString(t *testing.T, s string) bytes.HexBytes {
@@ -742,7 +742,7 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 		if tc.valid {
 			extCommit := voteSet.MakeExtendedCommit() // panics without > 2/3 valid votes
 			assert.NotNil(t, extCommit)
-			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, extCommit.StripExtensions())
+			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, extCommit.ToCommit())
 			assert.NoError(t, err)
 		} else {
 			assert.Panics(t, func() { voteSet.MakeExtendedCommit() })

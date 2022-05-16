@@ -518,7 +518,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save seen commit (seen +2/3 precommits for block)
-	pbsc := seenCommit.StripExtensions().ToProto()
+	pbsc := seenCommit.ToCommit().ToProto()
 	seenCommitBytes := mustEncode(pbsc)
 	if err := batch.Set(seenCommitKey(), seenCommitBytes); err != nil {
 		panic(err)

@@ -523,7 +523,7 @@ func getSampleCommit(ctx context.Context, t testing.TB) *Commit {
 
 	require.NoError(t, err)
 
-	return commit.StripExtensions()
+	return commit.ToCommit()
 }
 
 func BenchmarkVoteSignBytes(b *testing.B) {
