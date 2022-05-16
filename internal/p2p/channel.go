@@ -453,7 +453,9 @@ func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (netwo
 	}
 
 	// TODO: this context should be a more global context rather
-	// than by the send op to avoid.
+	// than by the send op to avoid shutting down the stream
+	// when the context that's sending the message closes and
+	// rather have it be tied to the process or router lifecycle.
 	stream, err := ch.host.NewStream(ctx, conn.RemotePeer(), pid)
 	if err != nil {
 		return nil, err
