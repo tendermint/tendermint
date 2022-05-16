@@ -580,7 +580,8 @@ func TestVoteSetToExtendedCommit(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			voteSet, _, vals := randVoteSet(ctx, t, 3, 1, tmproto.PrecommitType, 10, 1)
+			valSet, vals := randValidatorPrivValSet(ctx, t, 10, 1)
+			voteSet := NewVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet, testCase.includeExtension)
 			for i := 0; i < len(vals); i++ {
 				pubKey, err := vals[i].GetPubKey(ctx)
 				require.NoError(t, err)
