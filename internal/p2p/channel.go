@@ -447,15 +447,17 @@ func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (netwo
 		}
 
 	}
+
+	// TODO: these context should be a braoder context rather than
+	// the one from send to avoid shutting down the stream when
+	// the context that's sending the message closes. Right now
+	// they're functionally synonymous so it's safe, but it'd be
+	// possible to introduce an unintended bug here.
 	conn, err := ch.host.Network().DialPeer(ctx, peer)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: this context should be a more global context rather
-	// than by the send op to avoid shutting down the stream
-	// when the context that's sending the message closes and
-	// rather have it be tied to the process or router lifecycle.
 	stream, err := ch.host.NewStream(ctx, conn.RemotePeer(), pid)
 	if err != nil {
 		return nil, err
