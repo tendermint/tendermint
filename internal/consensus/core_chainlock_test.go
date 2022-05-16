@@ -40,12 +40,7 @@ func TestValidProposalChainLocks(t *testing.T) {
 	)
 	t.Cleanup(cleanup)
 
-	for i := 0; i < nVals; i++ {
-		ticker := NewTimeoutTicker(states[i].logger)
-		states[i].SetTimeoutTicker(ticker)
-	}
-
-	rts := setupReactor(ctx, t, nVals, states, 40)
+	rts := setupReactor(ctx, t, nVals, states, 100)
 
 	for i := 0; i < 3; i++ {
 		timeoutWaitGroup(t, rts.subs, states, func(sub eventbus.Subscription) {
@@ -80,23 +75,18 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	)
 	t.Cleanup(cleanup)
 
-	for i := 0; i < nVals; i++ {
-		ticker := NewTimeoutTicker(states[i].logger)
-		states[i].SetTimeoutTicker(ticker)
-	}
-
 	// this proposer sends a chain lock at each height
 	byzProposerID := 0
 	byzProposer := states[byzProposerID]
 
 	// update the decide proposal to propose the incorrect height
-	byzProposer.decideProposal = func(j int32) func(context.Context, int64, int32) {
+	byzProposer.decideProposal = func() func(context.Context, int64, int32) {
 		return func(_ context.Context, height int64, round int32) {
-			invalidProposeCoreChainLockFunc(ctx, height, round, states[j])
+			invalidProposeCoreChainLockFunc(ctx, t, height, round, states[0])
 		}
-	}(int32(0))
+	}()
 
-	rts := setupReactor(ctx, t, nVals, states, 40)
+	rts := setupReactor(ctx, t, nVals, states, 100)
 
 	for i := 0; i < 3; i++ {
 		timeoutWaitGroup(t, rts.subs, states, func(sub eventbus.Subscription) {
@@ -130,11 +120,6 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 		newCounterWithBackwardsCoreChainLocks,
 	)
 	t.Cleanup(cleanup)
-
-	for i := 0; i < nVals; i++ {
-		ticker := NewTimeoutTicker(states[i].logger)
-		states[i].SetTimeoutTicker(ticker)
-	}
 
 	rts := setupReactor(ctx, t, nVals, states, 100)
 
@@ -181,14 +166,17 @@ func setupReactor(ctx context.Context, t *testing.T, n int, states []*State, siz
 	return rts
 }
 
-func invalidProposeCoreChainLockFunc(ctx context.Context, height int64, round int32, cs *State) {
+func invalidProposeCoreChainLockFunc(ctx context.Context, t *testing.T, height int64, round int32, cs *State) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers
 	// - disable privValidator (so we don't do normal precommits)
 
-	var block *types.Block
-	var blockParts *types.PartSet
+	var (
+		block      *types.Block
+		blockParts *types.PartSet
+		err        error
+	)
 
 	// Decide on block
 	if cs.ValidBlock != nil {
@@ -196,13 +184,10 @@ func invalidProposeCoreChainLockFunc(ctx context.Context, height int64, round in
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
-		block, err := cs.createProposalBlock(ctx)
-		if err != nil {
-			return
-		}
-		if block == nil {
-			return
-		}
+		block, err = cs.createProposalBlock(ctx)
+		require.NoError(t, err)
+		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
+		require.NoError(t, err)
 	}
 
 	// Flush the WAL. Otherwise, we may not recompute the same proposal to sign,
@@ -214,10 +199,10 @@ func invalidProposeCoreChainLockFunc(ctx context.Context, height int64, round in
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	// It is byzantine because it is not updating the LastCoreChainLockedBlockHeight
-	proposal := types.NewProposal(height, cs.state.LastCoreChainLockedBlockHeight, round, cs.ValidRound, propBlockID, tmtime.Now())
+	proposal := types.NewProposal(height, cs.state.LastCoreChainLockedBlockHeight, round, cs.ValidRound, propBlockID, block.Time)
 	p := proposal.ToProto()
-	_, err := cs.privValidator.SignProposal(
-		context.Background(),
+	_, err = cs.privValidator.SignProposal(
+		ctx,
 		cs.state.ChainID,
 		cs.Validators.QuorumType,
 		cs.Validators.QuorumHash,

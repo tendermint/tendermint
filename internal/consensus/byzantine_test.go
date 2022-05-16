@@ -78,13 +78,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 			// Make Mempool
-			mempool := mempool.NewTxMempool(
+			mp := mempool.NewTxMempool(
 				log.NewNopLogger().With("module", "mempool"),
 				thisConfig.Mempool,
 				proxyAppConnMem,
 			)
 			if thisConfig.Consensus.WaitForTxs() {
-				mempool.EnableTxsAvailable()
+				mp.EnableTxsAvailable()
 			}
 
 			eventBus := eventbus.NewDefault(log.NewNopLogger().With("module", "events"))
@@ -95,10 +95,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			evpool := evidence.NewPool(logger.With("module", "evidence"), evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
 
 			// Make State
-			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mempool, evpool,
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyAppConnCon, mp, evpool,
 				blockStore, eventBus, sm.NopMetrics())
-			cs, err := NewState(logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool,
-				eventBus)
+			cs, err := NewState(logger, thisConfig.Consensus, stateStore, blockExec, blockStore, mp, evpool, eventBus)
 			require.NoError(t, err)
 			// set private validator
 			pv := privVals[i]

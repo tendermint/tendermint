@@ -445,7 +445,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	n := 2
+	n := 4
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 
@@ -670,8 +670,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	cfg := configSetup(t)
 
-	nPeers := 4
-	nVals := 2
+	nPeers := 7
+	nVals := 4
 	states, _, _, cleanup := randConsensusNetWithPeers(
 		ctx,
 		t,
@@ -694,7 +694,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	// map of active validators
 	activeVals := make(map[string]struct{})
 	for i := 0; i < nVals; i++ {
-		proTxHash, err := states[i].privValidator.GetProTxHash(context.Background())
+		proTxHash, err := states[i].privValidator.GetProTxHash(ctx)
 		require.NoError(t, err)
 
 		activeVals[proTxHash.String()] = struct{}{}
@@ -729,15 +729,15 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	require.NoError(t, err)
 
 	// add one validator to a validator set
-	addOneVal, err := valsUpdater.addValidatorsAt(5, 1)
+	addOneVal, err := valsUpdater.addValidatorsAt(ctx, 5, 1)
 	require.NoError(t, err)
 
 	// add two validators to the validator set
-	addTwoVals, err := valsUpdater.addValidatorsAt(10, 2)
+	addTwoVals, err := valsUpdater.addValidatorsAt(ctx, 10, 2)
 	require.NoError(t, err)
 
 	// remove two validators from the validator set
-	removeTwoVals, err := valsUpdater.removeValidatorsAt(15, 2)
+	removeTwoVals, err := valsUpdater.removeValidatorsAt(ctx, 15, 2)
 	require.NoError(t, err)
 
 	// wait till everyone makes block 2
@@ -822,12 +822,12 @@ func newValidatorUpdater(states []*State, nVals int) (*validatorUpdater, error) 
 	return &updater, nil
 }
 
-func (u *validatorUpdater) addValidatorsAt(height int64, count int) (*quorumData, error) {
+func (u *validatorUpdater) addValidatorsAt(ctx context.Context, height int64, count int) (*quorumData, error) {
 	proTxHashes := u.lastProTxHashes
 	l := len(proTxHashes)
 	// add new newProTxHashes
 	for i := l; i < l+count; i++ {
-		proTxHash, err := u.states[i].privValidator.GetProTxHash(context.Background())
+		proTxHash, err := u.states[i].privValidator.GetProTxHash(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -837,18 +837,18 @@ func (u *validatorUpdater) addValidatorsAt(height int64, count int) (*quorumData
 	if err != nil {
 		return nil, err
 	}
-	u.updateStatePrivVals(res, height)
+	u.updateStatePrivVals(ctx, res, height)
 	return res, nil
 }
 
-func (u *validatorUpdater) removeValidatorsAt(height int64, count int) (*quorumData, error) {
+func (u *validatorUpdater) removeValidatorsAt(ctx context.Context, height int64, count int) (*quorumData, error) {
 	l := len(u.lastProTxHashes)
 	if count >= l {
 		return nil, fmt.Errorf("you can not remove all validators")
 	}
 	var newProTxHashes []crypto.ProTxHash
 	for i := 0; i < l-count; i++ {
-		proTxHash, err := u.states[i].privValidator.GetProTxHash(context.Background())
+		proTxHash, err := u.states[i].privValidator.GetProTxHash(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -858,18 +858,18 @@ func (u *validatorUpdater) removeValidatorsAt(height int64, count int) (*quorumD
 	if err != nil {
 		return nil, err
 	}
-	u.updateStatePrivVals(priValUpdate, height)
+	u.updateStatePrivVals(ctx, priValUpdate, height)
 	return priValUpdate, nil
 }
 
-func (u *validatorUpdater) updateStatePrivVals(data *quorumData, height int64) {
+func (u *validatorUpdater) updateStatePrivVals(ctx context.Context, data *quorumData, height int64) {
 	iter := data.Iter()
 	for iter.Next() {
 		proTxHash, qks := iter.Value()
 		j := u.stateIndexMap[proTxHash.String()]
 		priVal := u.states[j].PrivValidator()
 		priVal.UpdatePrivateKey(
-			context.Background(),
+			ctx,
 			qks.PrivKey,
 			data.quorumHash,
 			data.ThresholdPubKey,

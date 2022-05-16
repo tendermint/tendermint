@@ -69,15 +69,16 @@ func NewBlockExecutor(
 	metrics *Metrics,
 ) *BlockExecutor {
 	return &BlockExecutor{
-		eventBus:   eventBus,
-		store:      stateStore,
-		appClient:  appClient,
-		mempool:    pool,
-		evpool:     evpool,
-		logger:     logger,
-		metrics:    metrics,
-		cache:      make(map[string]struct{}),
-		blockStore: blockStore,
+		eventBus:    eventBus,
+		store:       stateStore,
+		appClient:   appClient,
+		mempool:     pool,
+		evpool:      evpool,
+		logger:      logger,
+		metrics:     metrics,
+		cache:       make(map[string]struct{}),
+		blockStore:  blockStore,
+		appHashSize: 32, // TODO change on constant
 	}
 }
 
@@ -258,13 +259,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrInvalidBlock(err)
 	}
 	startTime := time.Now().UnixNano()
+	txs := block.Txs.ToSliceOfBytes()
 	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
 			Height:              block.Header.Height,
 			Time:                block.Header.Time,
-			Txs:                 block.Txs.ToSliceOfBytes(),
+			Txs:                 txs,
 			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			ProposerProTxHash:   block.ProposerProTxHash,

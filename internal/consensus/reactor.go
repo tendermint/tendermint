@@ -960,15 +960,13 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, stateCh *p2p.Channel, p
 
 					// maybe send Height/Round/ProposalPOL
 					if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-						if err := stateCh.Send(ctx, p2p.Envelope{
-							To: ps.peerID,
-							Message: &tmcons.VoteSetMaj23{
-								Height:  prs.Height,
-								Round:   prs.ProposalPOLRound,
-								Type:    tmproto.PrevoteType,
-								BlockID: maj23.ToProto(),
-							},
-						}); err != nil {
+						err := r.send(ctx, ps, stateCh, &tmcons.VoteSetMaj23{
+							Height:  prs.Height,
+							Round:   prs.ProposalPOLRound,
+							Type:    tmproto.PrevoteType,
+							BlockID: maj23.ToProto(),
+						})
+						if err != nil {
 							cancel()
 						}
 					}
@@ -1043,7 +1041,8 @@ func (r *Reactor) isValidator(proTxHash types.ProTxHash) bool {
 // the peer. During peer removal, we remove the peer for our set of peers and
 // signal to all spawned goroutines to gracefully exit in a non-blocking manner.
 func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate, chans channelBundle) {
-	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
+	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status,
+		"peer_proTxHash", peerUpdate.ProTxHash.ShortString())
 
 	switch peerUpdate.Status {
 	case p2p.PeerStatusUp:
