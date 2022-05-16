@@ -389,13 +389,13 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 		e.Message = msg
 	}
 
-	e.From = types.NodeID(ch.host.ID())
-	bz, err := proto.Marshal(e.Message)
-	if err != nil {
-		return err
-	}
-
 	if e.Broadcast {
+		e.From = types.NodeID(ch.host.ID())
+		bz, err := proto.Marshal(e.Message)
+		if err != nil {
+			return err
+		}
+
 		return ch.topic.Publish(ctx, bz)
 	}
 
@@ -404,17 +404,48 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 		return fmt.Errorf("cannot connect to %q", e.To)
 	default:
 		// TODO: should we should attempt to reuse between peers?
-		stream, err := ch.host.NewStream(ctx, peer.ID(e.To), protocol.ID(ch.canonicalizedTopicName()))
+		stream, err := ch.getStream(ctx, peer.ID(e.To))
 		if err != nil {
 			return err
 		}
 
-		_, err = stream.Write(bz)
+		writer := protoio.NewDelimitedWriter(bufio.NewWriter(stream))
+		_, err = writer.WriteMsg(e.Message)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (network.Stream, error) {
+	conns := ch.host.Network().ConnsToPeer(peer)
+	pid := protocol.ID(ch.canonicalizedTopicName())
+	if len(conns) > 0 {
+		for cidx := range conns {
+			streams := conns[cidx].GetStreams()
+			for sidx := range streams {
+				stream := streams[sidx]
+				if stream.Protocol() == pid && stream.Stat().Direction == network.DirOutbound {
+					return stream, nil
+				}
+			}
+		}
+
+	}
+	conn, err := ch.host.Network().DialPeer(ctx, peer)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: this context should be a more global context rather
+	// than by the send op to avoid.
+	stream, err := ch.host.NewStream(ctx, conn.RemotePeer(), pid)
+	if err != nil {
+		return nil, err
+	}
+
+	return stream, nil
 }
 
 func (ch *libp2pChannelImpl) SendError(ctx context.Context, pe PeerError) error {
