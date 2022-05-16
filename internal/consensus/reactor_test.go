@@ -601,6 +601,8 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	wg.Wait()
 }
 
+// TestSwitchToConsensusVoteExtensions tests that the SwitchToConsensus correctly
+// checks for vote extension data when required.
 func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 	for _, testCase := range []struct {
 		name                  string
