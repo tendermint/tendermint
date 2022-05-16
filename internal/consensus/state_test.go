@@ -2115,6 +2115,7 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
 	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
+	cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = cs1.Height
 
 	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
 	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
@@ -2253,44 +2254,50 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	}
 }
 
-// TestVoteExtensionRequiredHeight tests that 'ExtensionRequireHeight' correctly
+// TestVoteExtensionEnableHeight tests that 'ExtensionRequireHeight' correctly
 // enforces that vote extensions be present in consensus for heights greater than
 // or equal to the configured value.
-func TestVoteExtensionRequiredHeight(t *testing.T) {
+func TestVoteExtensionEnableHeight(t *testing.T) {
 	for _, testCase := range []struct {
 		name                  string
-		initialRequiredHeight int64
+		enableHeight          int64
 		hasExtension          bool
+		expectVerifyCalled    bool
 		expectSuccessfulRound bool
 	}{
 		{
-			name:                  "extension present but not required",
+			name:                  "extension present but not enabled",
 			hasExtension:          true,
-			initialRequiredHeight: 0,
+			enableHeight:          0,
+			expectVerifyCalled:    false,
 			expectSuccessfulRound: true,
 		},
 		{
 			name:                  "extension absent but not required",
 			hasExtension:          false,
-			initialRequiredHeight: 0,
+			enableHeight:          0,
+			expectVerifyCalled:    false,
 			expectSuccessfulRound: true,
 		},
 		{
 			name:                  "extension present and required",
 			hasExtension:          true,
-			initialRequiredHeight: 1,
+			enableHeight:          1,
+			expectVerifyCalled:    true,
 			expectSuccessfulRound: true,
 		},
 		{
 			name:                  "extension absent but required",
 			hasExtension:          false,
-			initialRequiredHeight: 1,
+			enableHeight:          1,
+			expectVerifyCalled:    false,
 			expectSuccessfulRound: false,
 		},
 		{
 			name:                  "extension absent but required in future height",
 			hasExtension:          false,
-			initialRequiredHeight: 2,
+			enableHeight:          2,
+			expectVerifyCalled:    false,
 			expectSuccessfulRound: true,
 		},
 	} {
@@ -2306,7 +2313,7 @@ func TestVoteExtensionRequiredHeight(t *testing.T) {
 			}, nil)
 			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
 			m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{}, nil)
-			if testCase.hasExtension {
+			if testCase.expectVerifyCalled {
 				m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
 					Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 				}, nil).Times(numValidators - 1)
@@ -2314,7 +2321,7 @@ func TestVoteExtensionRequiredHeight(t *testing.T) {
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m, validators: numValidators})
-			cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.initialRequiredHeight
+			cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
 			height, round := cs1.Height, cs1.Round
 
 			timeoutCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryTimeoutPropose)

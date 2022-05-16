@@ -2376,34 +2376,35 @@ func (cs *State) addVote(
 		return
 	}
 
-	var myAddr []byte
-	if cs.privValidatorPubKey != nil {
-		myAddr = cs.privValidatorPubKey.Address()
-	}
-	// Verify VoteExtension if precommit and not nil
-	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
-		!bytes.Equal(vote.ValidatorAddress, myAddr) {
-		// The core fields of the vote message were already validated in the
-		// consensus reactor when the vote was received.
-		// Here, we validate that the vote extension was included in the vote
-		// message.
-		// Chains that are not configured to require vote extensions
-		// will consider the vote valid even if the extension is absent.
-		// VerifyVoteExtension will not be called in this case if the extension
-		// is absent.
-		err := vote.EnsureExtension()
-		if err == nil {
-			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
-			err = vote.VerifyExtension(cs.state.ChainID, val.PubKey)
+	// Check to see if the chain is configured to extend votes.
+	if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+		// The chain is configured to extend votes, check that the vote is
+		// not for a nil block and verify the extensions signature against the
+		// corresponding public key.
+
+		var myAddr []byte
+		if cs.privValidatorPubKey != nil {
+			myAddr = cs.privValidatorPubKey.Address()
 		}
-		if err == nil {
+		// Verify VoteExtension if precommit and not nil
+		// https://github.com/tendermint/tendermint/issues/8487
+		if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
+			!bytes.Equal(vote.ValidatorAddress, myAddr) { // Skip the VerifyVoteExtension call if the vote was issued by this validator.
+
+			// The core fields of the vote message were already validated in the
+			// consensus reactor when the vote was received.
+			// Here, we verify the signature of the vote extension included in the vote
+			// message.
+			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
+			if err := vote.VerifyExtension(cs.state.ChainID, val.PubKey); err != nil {
+				return false, err
+			}
+
 			err := cs.blockExec.VerifyVoteExtension(ctx, vote)
 			cs.metrics.MarkVoteExtensionReceived(err == nil)
-		} else if !errors.Is(err, types.ErrVoteExtensionAbsent) {
-			return false, err
-		} else if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
-			return false, err
+			if err != nil {
+				return false, err
+			}
 		}
 	}
 
