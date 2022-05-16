@@ -126,7 +126,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	for _, vs := range vss {
 		vs.clock = clock
 	}
-	pubKey, err := vss[0].PrivValidator.GetPubKey(ctx, state.Validators.QuorumHash)
+	proTxHash, err := vss[0].PrivValidator.GetProTxHash(ctx)
 	require.NoError(t, err)
 
 	eventCh := timestampedCollector(ctx, t, cs.eventBus)
@@ -142,7 +142,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		roundCh:               subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound),
 		ensureProposalCh:      subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal),
 		blockCh:               subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock),
-		ensureVoteCh:          subscribeToVoterBuffered(ctx, t, cs, pubKey.Address()),
+		ensureVoteCh:          subscribeToVoterBuffered(ctx, t, cs, proTxHash),
 		eventCh:               eventCh,
 	}
 }
@@ -219,7 +219,8 @@ func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer
 	ps, err := b.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	bid := types.BlockID{Hash: b.Hash(), PartSetHeader: ps.Header()}
-	prop := types.NewProposal(p.currentHeight, 0, 0, -1, bid, proposedTime)
+	coreChainLockedHeight := p.observedState.state.LastCoreChainLockedBlockHeight
+	prop := types.NewProposal(p.currentHeight, coreChainLockedHeight, 0, -1, bid, proposedTime)
 	tp := prop.ToProto()
 
 	if _, err := proposer.SignProposal(ctx, p.observedState.state.ChainID, quorumType, quorumHash, tp); err != nil {
