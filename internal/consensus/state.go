@@ -2406,6 +2406,15 @@ func (cs *State) addVote(
 				return false, err
 			}
 		}
+	} else {
+		// Vote extensions are not enabled on the network.
+		// strip the extension data from the vote in case any is present.
+		//
+		// TODO punish a peer if it sent a vote with an extension when the feature
+		// is disabled on the network.
+		// https://github.com/tendermint/tendermint/issues/8565
+		vote.Extension = nil
+		vote.ExtensionSignature = nil
 	}
 
 	height := cs.Height
