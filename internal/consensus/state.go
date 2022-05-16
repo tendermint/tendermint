@@ -2376,9 +2376,9 @@ func (cs *State) addVote(
 		return
 	}
 
-	var addr []byte
+	var myAddr []byte
 	if cs.privValidatorPubKey != nil {
-		addr = cs.privValidatorPubKey.Address()
+		myAddr = cs.privValidatorPubKey.Address()
 	}
 	// Verify VoteExtension if precommit and not nil
 	// https://github.com/tendermint/tendermint/issues/8487
