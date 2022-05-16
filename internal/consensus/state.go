@@ -2366,6 +2366,8 @@ func (cs *State) addVote(
 		return
 	}
 
+	_ = vote.ValidatorAddress
+	_ = cs.privValidatorPubKey.Address()
 	// Verify VoteExtension if precommit and not nil
 	// https://github.com/tendermint/tendermint/issues/8487
 	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
