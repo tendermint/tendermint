@@ -2366,12 +2366,14 @@ func (cs *State) addVote(
 		return
 	}
 
-	_ = vote.ValidatorAddress
-	_ = cs.privValidatorPubKey.Address()
+	var addr []byte
+	if cs.privValidatorPubKey != nil {
+		addr = cs.privValidatorPubKey.Address()
+	}
 	// Verify VoteExtension if precommit and not nil
 	// https://github.com/tendermint/tendermint/issues/8487
 	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
-		!bytes.Equal(vote.ValidatorAddress, cs.privValidatorPubKey.Address()) {
+		!bytes.Equal(vote.ValidatorAddress, addr) {
 		// The core fields of the vote message were already validated in the
 		// consensus reactor when the vote was received.
 		// Here, we valdiate that the vote extension was included in the vote
