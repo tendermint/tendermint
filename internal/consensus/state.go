@@ -2386,7 +2386,7 @@ func (cs *State) addVote(
 		!bytes.Equal(vote.ValidatorAddress, myAddr) {
 		// The core fields of the vote message were already validated in the
 		// consensus reactor when the vote was received.
-		// Here, we valdiate that the vote extension was included in the vote
+		// Here, we validate that the vote extension was included in the vote
 		// message.
 		// Chains that are not configured to require vote extensions
 		// will consider the vote valid even if the extension is absent.
