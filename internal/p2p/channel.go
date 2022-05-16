@@ -234,7 +234,6 @@ func MergedChannelIterator(ctx context.Context, chs ...Channel) *ChannelIterator
 }
 
 type libp2pChannelImpl struct {
-	ctx     context.Context
 	chDesc  *ChannelDescriptor
 	pubsub  *pubsub.PubSub
 	host    host.Host
@@ -243,7 +242,15 @@ type libp2pChannelImpl struct {
 	chainID string
 	wrapper Wrapper
 
+	// thread-safe error aggregator used to collect errors seen
+	// during receiving messages into an iterator.
 	errs emt.Catcher
+
+	// the context is passed when the channel is opened and should
+	// cover the lifecycle of the channel itself. The contexts
+	// passed into methods should cover the lifecycle of the
+	// operations they represent.
+	ctx context.Context
 }
 
 func NewLibP2PChannel(ctx context.Context, chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
@@ -419,7 +426,6 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 	case network.CannotConnect:
 		return fmt.Errorf("cannot connect to %q", e.To)
 	default:
-		// TODO: should we should attempt to reuse between peers?
 		stream, err := ch.getStream(peer.ID(e.To))
 		if err != nil {
 			return err
@@ -450,11 +456,6 @@ func (ch *libp2pChannelImpl) getStream(peer peer.ID) (network.Stream, error) {
 
 	}
 
-	// TODO: these context should be a broader context rather than
-	// the one from send to avoid shutting down the stream when
-	// the context that's sending the message closes. Right now
-	// they're functionally synonymous so it's safe, but it'd be
-	// possible to introduce an unintended bug here.
 	conn, err := ch.host.Network().DialPeer(ch.ctx, peer)
 	if err != nil {
 		return nil, err
