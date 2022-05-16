@@ -120,9 +120,8 @@ func (vote *Vote) ExtendedCommitSig() ExtendedCommitSig {
 		return NewExtendedCommitSigAbsent()
 	}
 
-	cs := vote.CommitSig()
 	return ExtendedCommitSig{
-		CommitSig:          cs,
+		CommitSig:          vote.CommitSig(),
 		Extension:          vote.Extension,
 		ExtensionSignature: vote.ExtensionSignature,
 	}

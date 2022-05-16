@@ -1017,7 +1017,7 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 }
 
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
-// Panics if signatures from the commit can't be added to the voteset.
+// Panics if signatures from the ExtendedCommit can't be added to the voteset.
 // Inverse of VoteSet.MakeExtendedCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet, requireExtensions bool) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals, requireExtensions)
