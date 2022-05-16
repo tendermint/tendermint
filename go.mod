@@ -42,6 +42,7 @@ require (
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/golangci/golangci-lint v1.46.0
 	github.com/google/go-cmp v0.5.8
+	github.com/tychoish/emt v0.1.0
 	github.com/vektra/mockery/v2 v2.12.2
 	gotest.tools v2.2.0+incompatible
 )
@@ -213,7 +214,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polyfloyd/go-errorlint v0.0.0-20211125173453-6d6d39c5bb8b // indirect
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.33.0
+	github.com/prometheus/common v0.34.0
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/quasilyte/go-ruleguard v0.3.16-0.20220213074421-6aa060fab41a // indirect
 	github.com/quasilyte/gogrep v0.0.0-20220120141003-628d8b3623b5 // indirect

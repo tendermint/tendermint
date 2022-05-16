@@ -1038,6 +1038,15 @@ func (r *Router) OnStart(ctx context.Context) error {
 // sender's responsibility.
 func (r *Router) OnStop() {
 	if r.options.UseLibP2P {
+		for name, ch := range r.network.channels {
+			if err := ch.Err(); err != nil {
+				r.logger.Error("shutting down channel",
+					"name", name,
+					"err", ch.Err(),
+				)
+			}
+		}
+
 		return
 	}
 
