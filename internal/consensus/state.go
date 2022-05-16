@@ -692,8 +692,10 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from SeenCommit, which we saved along with the block,
-// (which happens even before saving the state)
+// Reconstruct LastCommit from either SeenCommit or the ExtendedCommit. SeenCommit
+// and ExtendedCommit are saved along with the block. If VoteExtensions are required
+// the method will panic on an absent ExtendedCommit or an ExtendedCommit without
+// extension data.
 func (cs *State) reconstructLastCommit(state sm.State) {
 	requireExtensions := cs.state.ConsensusParams.Vote.RequireExtensions(state.LastBlockHeight)
 	votes, err := cs.votesFromExtendedCommit(state, requireExtensions)
@@ -718,7 +720,7 @@ func (cs *State) votesFromExtendedCommit(state sm.State, requireExtensions bool)
 	}
 	vs := ec.ToVoteSet(state.ChainID, state.LastValidators, requireExtensions)
 	if !vs.HasTwoThirdsMajority() {
-		return nil, errors.New("seen commit does not have +2/3 majority")
+		return nil, errors.New("extended commit does not have +2/3 majority")
 	}
 	return vs, nil
 }
