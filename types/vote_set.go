@@ -98,7 +98,7 @@ func NewVoteSet(chainID string, height int64, round int32,
 // data for every vote added to the set.
 func NewStrictVoteSet(chainID string, height int64, round int32,
 	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
-	vs := NewStrictVoteSet(chainID, height, round, signedMsgType, valSet)
+	vs := NewVoteSet(chainID, height, round, signedMsgType, valSet)
 	vs.requireExtensions = true
 	return vs
 }
