@@ -764,7 +764,7 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 	}
 
 	if len(ecs.ExtensionSignature) == 0 && len(ecs.Extension) != 0 {
-		return fmt.Errorf("vote extension signature absent on vote with extension")
+		return errors.New("vote extension signature absent on vote with extension")
 	}
 	return nil
 }
