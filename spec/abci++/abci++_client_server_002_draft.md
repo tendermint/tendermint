@@ -51,7 +51,7 @@ See examples, in various stages of maintenance, in
 
 ### In Process
 
-The simplest implementation uses function calls within Golang.
+The simplest implementation uses function calls in Golang.
 This means ABCI applications written in Golang can be compiled with Tendermint Core and run as a single binary.
 
 ### GRPC
