@@ -1009,16 +1009,26 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 // data that the method receives.
 func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
 	for _, testCase := range []struct {
-		name                  string
-		height                int64
+		name string
+
+		// The height that is about to be proposed
+		height int64
+
+		// The first height during which vote extensions will be required for consensus to proceed.
 		extensionEnableHeight int64
 		expectPanic           bool
 	}{
 		{
-			name:                  "missing extension data after required",
+			name:                  "missing extension data on first required height",
 			height:                2,
 			extensionEnableHeight: 1,
 			expectPanic:           true,
+		},
+		{
+			name:                  "missing extension during before required height",
+			height:                2,
+			extensionEnableHeight: 2,
+			expectPanic:           false,
 		},
 		{
 			name:                  "missing extension data and not required",
@@ -1027,7 +1037,7 @@ func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
 			expectPanic:           false,
 		},
 		{
-			name:                  "missing extension data and required in future",
+			name:                  "missing extension data and required in two heights",
 			height:                2,
 			extensionEnableHeight: 3,
 			expectPanic:           false,
@@ -1051,7 +1061,7 @@ func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
 			err := proxyApp.Start(ctx)
 			require.NoError(t, err)
 
-			state, stateDB, privVals := makeState(t, 1, int(testCase.height))
+			state, stateDB, privVals := makeState(t, 1, int(testCase.height-1))
 			stateStore := sm.NewStore(stateDB)
 			state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.extensionEnableHeight
 			mp := &mpmocks.Mempool{}
@@ -1077,19 +1087,19 @@ func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
 				eventBus,
 				sm.NopMetrics(),
 			)
-			block := sf.MakeBlock(state, 1, new(types.Commit))
+			block := sf.MakeBlock(state, testCase.height, new(types.Commit))
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
 			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 			pa, _ := state.Validators.GetByIndex(0)
-			commit, _ := makeValidCommit(ctx, t, testCase.height, blockID, state.Validators, privVals)
-			stripSignatures(commit)
+			lastCommit, _ := makeValidCommit(ctx, t, testCase.height-1, blockID, state.Validators, privVals)
+			stripSignatures(lastCommit)
 			if testCase.expectPanic {
 				require.Panics(t, func() {
-					blockExec.CreateProposalBlock(ctx, testCase.height, state, commit, pa)
+					blockExec.CreateProposalBlock(ctx, testCase.height, state, lastCommit, pa)
 				})
 			} else {
-				_, err = blockExec.CreateProposalBlock(ctx, testCase.height, state, commit, pa)
+				_, err = blockExec.CreateProposalBlock(ctx, testCase.height, state, lastCommit, pa)
 				require.NoError(t, err)
 			}
 		})
