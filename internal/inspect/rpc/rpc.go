@@ -125,7 +125,8 @@ func serverRPCConfig(r *config.RPCConfig) *server.Config {
 	// If necessary adjust global WriteTimeout to ensure it's greater than
 	// TimeoutBroadcastTxCommit.
 	// See https://github.com/tendermint/tendermint/issues/3435
-	if cfg.WriteTimeout <= r.TimeoutBroadcastTxCommit {
+	// Note we don't need to adjust anything if the timeout is already unlimited.
+	if cfg.WriteTimeout > 0 && cfg.WriteTimeout <= r.TimeoutBroadcastTxCommit {
 		cfg.WriteTimeout = r.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 	return cfg
