@@ -58,6 +58,7 @@ type argInfo struct {
 // with the resulting argument value. It reports an error if parameter parsing
 // fails, otherwise it returns the result from the wrapped function.
 func (rf *RPCFunc) Call(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	// If ctx has its own deadline we will respect it; otherwise use rf.timeout.
 	if _, ok := ctx.Deadline(); !ok && rf.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, rf.timeout)
