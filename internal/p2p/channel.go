@@ -242,11 +242,20 @@ type libp2pChannelImpl struct {
 	chainID string
 	wrapper Wrapper
 
+	// thread-safe error aggregator used to collect errors seen
+	// during receiving messages into an iterator.
 	errs emt.Catcher
+
+	// the context is passed when the channel is opened and should
+	// cover the lifecycle of the channel itself. The contexts
+	// passed into methods should cover the lifecycle of the
+	// operations they represent.
+	ctx context.Context
 }
 
-func NewLibP2PChannel(chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
+func NewLibP2PChannel(ctx context.Context, chainID string, chDesc *ChannelDescriptor, ps *pubsub.PubSub, h host.Host) (Channel, error) {
 	ch := &libp2pChannelImpl{
+		ctx:     ctx,
 		chDesc:  chDesc,
 		pubsub:  ps,
 		host:    h,
@@ -417,8 +426,7 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 	case network.CannotConnect:
 		return fmt.Errorf("cannot connect to %q", e.To)
 	default:
-		// TODO: should we should attempt to reuse between peers?
-		stream, err := ch.getStream(ctx, peer.ID(e.To))
+		stream, err := ch.getStream(peer.ID(e.To))
 		if err != nil {
 			return err
 		}
@@ -432,7 +440,7 @@ func (ch *libp2pChannelImpl) Send(ctx context.Context, e Envelope) error {
 	return nil
 }
 
-func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (network.Stream, error) {
+func (ch *libp2pChannelImpl) getStream(peer peer.ID) (network.Stream, error) {
 	conns := ch.host.Network().ConnsToPeer(peer)
 	pid := protocol.ID(ch.canonicalizedTopicName())
 	if len(conns) > 0 {
@@ -448,17 +456,12 @@ func (ch *libp2pChannelImpl) getStream(ctx context.Context, peer peer.ID) (netwo
 
 	}
 
-	// TODO: these context should be a broader context rather than
-	// the one from send to avoid shutting down the stream when
-	// the context that's sending the message closes. Right now
-	// they're functionally synonymous so it's safe, but it'd be
-	// possible to introduce an unintended bug here.
-	conn, err := ch.host.Network().DialPeer(ctx, peer)
+	conn, err := ch.host.Network().DialPeer(ch.ctx, peer)
 	if err != nil {
 		return nil, err
 	}
 
-	stream, err := ch.host.NewStream(ctx, conn.RemotePeer(), pid)
+	stream, err := ch.host.NewStream(ch.ctx, conn.RemotePeer(), pid)
 	if err != nil {
 		return nil, err
 	}
