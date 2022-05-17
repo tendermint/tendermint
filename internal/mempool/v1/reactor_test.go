@@ -67,7 +67,6 @@ func setupReactors(t *testing.T, numNodes int, chBuf uint) *reactorTestSuite {
 		rts.reactors[nodeID] = NewReactor(
 			rts.logger.With("nodeID", nodeID),
 			cfg.Mempool,
-			rts.network.Nodes[nodeID].PeerManager,
 			mempool,
 			rts.mempoolChannels[nodeID],
 			rts.peerUpdates[nodeID],

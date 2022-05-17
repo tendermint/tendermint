@@ -289,7 +289,6 @@ func makeNode(cfg *config.Config,
 
 	}
 
-<<<<<<< HEAD
 	evReactorShim, evReactor, evPool, err := createEvidenceReactor(
 		cfg, dbProvider, stateDB, blockStore, peerManager, router, logger,
 	)
@@ -297,12 +296,6 @@ func makeNode(cfg *config.Config,
 		return nil, combineCloseError(err, makeCloser(closers))
 
 	}
-=======
-	mpReactor, mp := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
-		peerManager.Subscribe, node.router.OpenChannel)
-	node.rpcEnv.Mempool = mp
-	node.services = append(node.services, mpReactor)
->>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569))
 
 	// make block executor for consensus and blockchain reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
