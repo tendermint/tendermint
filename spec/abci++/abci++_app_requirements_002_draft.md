@@ -200,7 +200,7 @@ thread safe. Up to v0.35.x, both the
 [default in-process ABCI client](https://github.com/tendermint/tendermint/blob/v0.35.x/abci/client/local_client.go#L18)
 and the
 [default Go ABCI server](https://github.com/tendermint/tendermint/blob/v0.35.x/abci/server/socket_server.go#L32)
-used global locks to guard the handling of events across all connections, so they were not
+used a global lock to guard the handling of events across all connections, so they were not
 concurrent at all. This meant if your app was written in Go, and compiled in-process with Tendermint
 using the default `NewLocalClient`, or run out-of-process using the default `SocketServer`,
 ABCI messages from all connections were linearizable (received one at a
