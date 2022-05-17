@@ -466,7 +466,7 @@ func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeigh
 		}
 
 		var ext []byte
-		if ap.VoteExtensionsEnabled(ec.Height) {
+		if ap.VoteExtensionsEnabled(ec.Height) && ecs.BlockIDFlag == types.BlockIDFlagCommit {
 			if err := ecs.EnsureExtension(); err != nil {
 				panic(fmt.Errorf("commit at height %d received with missing vote extensions data", ec.Height))
 			}
