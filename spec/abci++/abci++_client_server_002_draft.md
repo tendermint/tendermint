@@ -37,8 +37,9 @@ server in that language. Tendermint supports four implementations of the ABCI se
 - in Tendermint's repository:
     - In-process
     - ABCI-socket
-    - GRPC
+    - [GRPC](https://grpc.io/)
 - [tendermint-rs](https://github.com/informalsystems/tendermint-rs)
+- [tower-abci](https://github.com/penumbra-zone/tower-abci)
 
 The implementations in Tendermint's repository can be tested using `abci-cli` by setting
 the `--abci` flag appropriately.
@@ -52,34 +53,30 @@ See examples, in various stages of maintenance, in
 ### In Process
 
 The simplest implementation uses function calls in Golang.
-This means ABCI applications written in Golang can be compiled with Tendermint Core and run as a single binary.
+This means ABCI applications written in Golang can be linked with Tendermint Core and run as a single binary.
 
 ### GRPC
 
-If GRPC is available in your language, this is the easiest approach,
+If you are not using Golang,
+but GRPC is available in your language, this is the easiest approach,
 though it will have significant performance overhead.
 
-To get started with GRPC, copy in the [protobuf
-file](../../proto/tendermint/abci/types.proto) and compile it using the GRPC
-plugin for your language. For instance, for Golang, the command is `protoc
---go_out=plugins=grpc:. types.proto`.  See the [grpc documentation](http://www.grpc.io/docs/)
-for more details.  `protoc` will autogenerate all the
-necessary code for ABCI client and server in your language, including whatever
-interface your application must satisfy to be used by the ABCI server for
-handling requests.
+Please check GRPC's documentation to know to set up the Application as an
+ABCI GRPC server.
 
-Note the length-prefixing used in the socket implementation (TSP) does not apply for GRPC.
+### Socket
 
-### TSP
-
-Tendermint Socket Protocol is an asynchronous, raw socket server which provides ordered message passing over unix or tcp.
+Tendermint's socket-based ABCI interface is an asynchronous,
+raw socket server which provides ordered message passing over unix or tcp.
 Messages are serialized using Protobuf3 and length-prefixed with a [signed Varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#signed-integers).
 
 If GRPC is not available in your language, your application requires higher
 performance, or otherwise enjoy programming, you may implement your own
-ABCI server using the Tendermint Socket Protocol. The first step is still to auto-generate the relevant data
-types and codec in your language using `protoc`. In addition to being proto3 encoded, messages coming over
-the socket are length-prefixed to facilitate use as a streaming protocol. proto3 doesn't have an
+ABCI server using the Tendermint's socket-based ABCI interface.
+The first step is to auto-generate the relevant data
+types and codec in your language using `protoc`.
+In addition to being proto3 encoded, messages coming over
+the socket are length-prefixed. proto3 doesn't have an
 official length-prefix standard, so we use our own. The first byte in
 the prefix represents the length of the Big Endian encoded length. The
 remaining bytes in the prefix are the Big Endian encoded length.
@@ -89,22 +86,17 @@ bytes long), the length-prefixed message is `0x0104DEADBEEF` (`01` byte for enco
 encoded ABCI message is 65535 bytes long, the length-prefixed message
 would start with 0x02FFFF.
 
-The benefit of using this `varint` encoding over the old version (where integers were encoded as `<len of len><big endian len>` is that
-it is the standard way to encode integers in Protobuf. It is also generally shorter.
-
-As noted above, this prefixing does not apply for GRPC.
+Note that this length-prefixing scheme does not apply for GRPC.
 
 Note that your ABCI server must be able to support multiple connections, as
 Tendermint uses four connections.
 
 ## Client
 
-There are currently two use-cases for an ABCI client. One is a testing
-tool, as in the `abci-cli`, which allows ABCI requests to be sent via
-command line. The other is a consensus engine, such as Tendermint Core,
-which makes requests to the application every time a new transaction is
-received or a block is committed.
-
-It is unlikely that you will need to implement a client. For details of
-our client, see
-[here](https://github.com/tendermint/tendermint/tree/master/abci/client).
+There are currently two use-cases for an ABCI client. One is testing
+tools that allow ABCI requests to be sent to the actual application via
+command line. An example of this is `abci-cli`, which accepts CLI commands
+to send corresponding ABCI requests.
+The other is a consensus engine, such as Tendermint Core,
+which makes ABCI requests to the application as prescribed by the consensus
+algorithm used.
