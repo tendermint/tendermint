@@ -21,6 +21,7 @@ Special thanks to external contributors on this release:
   - [rpc] \#7982 Add new Events interface and deprecate Subscribe. (@creachadair)
   - [cli] \#8081 make the reset command safe to use by intoducing `reset-state` command. Fixed by \#8259. (@marbar3778, @cmwaters)
   - [config] \#8222 default indexer configuration to null. (@creachadair)
+  - [rpc] \#8570 rework timeouts to be per-method instead of global. (@creachadair)
 
 - Apps
 
