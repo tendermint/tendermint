@@ -455,7 +455,7 @@ The application may set the validator set during
 [`ValidatorUpdate`](./abci%2B%2B_methods_002_draft.md#validatorupdate) is returned.
 
 The `InitChain` method can return a list of validators.
-If the list is empty, Tendermint will use the validators loaded in the genesis
+If the list is empty, Tendermint will use the validators loaded from the genesis
 file.
 If the list returned by `InitChain` is not empty, Tendermint will use its contents as the validator set.
 This way the application can set the initial validator set for the
