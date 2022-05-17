@@ -73,7 +73,7 @@ Note the length-prefixing used in the socket implementation (TSP) does not apply
 ### TSP
 
 Tendermint Socket Protocol is an asynchronous, raw socket server which provides ordered message passing over unix or tcp.
-Messages are serialized using Protobuf3 and length-prefixed with a [signed Varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#signed-integers)
+Messages are serialized using Protobuf3 and length-prefixed with a [signed Varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#signed-integers).
 
 If GRPC is not available in your language, or you require higher
 performance, or otherwise enjoy programming, you may implement your own
