@@ -70,10 +70,8 @@ type VoteSet struct {
 	peerMaj23s    map[string]BlockID     // Maj23 for each peer
 }
 
-// NewVoteSet instantiates all fields of a new vote set. This constructor does
-// not require that the votes added to the set contain vote extension data, but
-// if votes are added that contain extension data, the extension data will be
-// verified.
+// NewVoteSet instantiates all fields of a new vote set. This constructor required
+// that no vote extension data be present on the votes taht are added to the set.
 func NewVoteSet(chainID string, height int64, round int32,
 	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
