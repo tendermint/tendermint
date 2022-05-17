@@ -216,7 +216,7 @@ still received in sequence.
 When the Consensus algorithm decides on a block, Tendermint uses `FinalizeBlock` to send the
 decided block's hash, height, transactions, etc., which the Application uses to transition its state.
 
-The Application should remember the latest height from which it
+The Application must remember the latest height from which it
 has run a successful `Commit` so that it can tell Tendermint where to
 pick up from when it restarts. See information on the Handshake, below.
 
