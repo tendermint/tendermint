@@ -85,7 +85,6 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 			mempool,
 			chCreator,
 			func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
-			rts.network.Nodes[nodeID].PeerManager.GetHeight,
 		)
 		rts.nodes = append(rts.nodes, nodeID)
 
