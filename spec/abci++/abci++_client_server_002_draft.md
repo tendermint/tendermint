@@ -75,7 +75,7 @@ Note the length-prefixing used in the socket implementation (TSP) does not apply
 Tendermint Socket Protocol is an asynchronous, raw socket server which provides ordered message passing over unix or tcp.
 Messages are serialized using Protobuf3 and length-prefixed with a [signed Varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#signed-integers).
 
-If GRPC is not available in your language, or you require higher
+If GRPC is not available in your language, your application requires higher
 performance, or otherwise enjoy programming, you may implement your own
 ABCI server using the Tendermint Socket Protocol. The first step is still to auto-generate the relevant data
 types and codec in your language using `protoc`. In addition to being proto3 encoded, messages coming over
