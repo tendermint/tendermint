@@ -466,7 +466,7 @@ Note that the maximum total power of the validator set is bounded by
 they do not make changes to the validator set that cause it to exceed this
 limit.
 
-Additionally, applications must ensure that a single set of updates does not contain any duplicates &mdash;
+Applications must ensure that a single set of validator updates does not contain duplicates, i.e.
 a given public key can only appear once within a given update. If an update includes
 duplicates, the block execution will fail irrecoverably.
 
