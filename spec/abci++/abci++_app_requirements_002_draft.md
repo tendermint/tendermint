@@ -205,7 +205,7 @@ concurrent at all. This meant whether your app is compiled in-process with
 Tendermint using the `NewLocalClient`, or run out-of-process using the `SocketServer`,
 ABCI messages from all connections were received in sequence, one at a
 time.
-This is no longer the case starting from v0.36.1: the global locks have been removed and it is
+This is no longer the case starting from v0.36.0: the global locks have been removed and it is
 up to the Application to ensure that handling ABCI++ connections is thread safe.
 Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
 still received in sequence.
