@@ -213,8 +213,8 @@ still received in sequence.
 
 #### FinalizeBlock
 
-When the Consensus algorithm decides on a block, Tendermint uses `FinalizeBlock` to send the
-decided block's hash, height, transactions, etc., which the Application uses to transition its state.
+When the consensus algorithm decides on a block, Tendermint uses `FinalizeBlock` to send the
+decided block's data to the Application, which uses it to transition its state.
 
 The Application must remember the latest height from which it
 has run a successful `Commit` so that it can tell Tendermint where to
@@ -260,7 +260,7 @@ The Application may decide to *immediately* execute the given block (i.e., upon 
 or `ProcessProposal`). There are two main reasons why the Application may want to do this:
 
 * *Avoiding invalid transactions in blocks*.
-  In order to be sure that the block does not contain *any* invalid transaction, there is usually
+  In order to be sure that the block does not contain *any* invalid transaction, there may be
   no way other than fully executing the transactions in the block as though it was the *decided*
   block.
 * *Quick `FinalizeBlock` execution*.
@@ -306,9 +306,9 @@ and Tendermint starts gossipping it.
 *CheckTxState* should be reset to the latest committed state
 at the end of every `Commit`.
 
-During the execution of a Consensus instance, the *CheckTxState* may be updated concurrently with the
+During the execution of a consensus instance, the *CheckTxState* may be updated concurrently with the
 *ExecuteTxState*, as messages may be sent concurrently on the Consensus and Mempool connections.
-At the end of the Consensus instance, as described above, Tendermint locks the mempool and flushes
+At the end of the consensus instance, as described above, Tendermint locks the mempool and flushes
 the mempool connection before calling `Commit`. This ensures that all pending `CheckTx` calls are
 responded to and no new ones can begin.
 
@@ -732,7 +732,7 @@ Query functionality if they do not wish to.
 The Tendermint block header includes a number of hashes, each providing an
 anchor for some type of proof about the blockchain. The `ValidatorsHash` enables
 quick verification of the validator set, the `DataHash` gives quick
-verification of the transactions included in the block, etc.
+verification of the transactions included in the block.
 
 The `AppHash` is unique in that it is application specific, and allows for
 application-specific Merkle proofs about the state of the application.
