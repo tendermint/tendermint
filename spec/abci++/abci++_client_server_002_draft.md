@@ -84,7 +84,7 @@ official length-prefix standard, so we use our own. The first byte in
 the prefix represents the length of the Big Endian encoded length. The
 remaining bytes in the prefix are the Big Endian encoded length.
 
-For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
+For example, if the proto3 encoded ABCI message is `0xDEADBEEF` (4
 bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
 encoded ABCI message is 65535 bytes long, the length-prefixed message
 would start with 0x02FFFF.
