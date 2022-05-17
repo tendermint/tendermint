@@ -692,38 +692,34 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from either SeenCommit or the ExtendedCommit. SeenCommit
+// Reconstruct the LastCommit from either SeenCommit or the ExtendedCommit. SeenCommit
 // and ExtendedCommit are saved along with the block. If VoteExtensions are required
 // the method will panic on an absent ExtendedCommit or an ExtendedCommit without
 // extension data.
 func (cs *State) reconstructLastCommit(state sm.State) {
 	extensionsEnabled := cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight)
-	votes, err := cs.votesFromExtendedCommit(state, extensionsEnabled)
-	if err == nil {
+	if !extensionsEnabled {
+		votes, err := cs.votesFromSeenCommit(state)
+		if err != nil {
+			panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+		}
 		cs.LastCommit = votes
 		return
 	}
-	if extensionsEnabled {
-		panic(fmt.Sprintf("failed to reconstruct last extended commit; %s", err))
-	}
-	votes, err = cs.votesFromSeenCommit(state)
+
+	votes, err := cs.votesFromExtendedCommit(state)
 	if err != nil {
-		panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+		panic(fmt.Sprintf("failed to reconstruct last extended commit; %s", err))
 	}
 	cs.LastCommit = votes
 }
 
-func (cs *State) votesFromExtendedCommit(state sm.State, extensionsEnabled bool) (*types.VoteSet, error) {
+func (cs *State) votesFromExtendedCommit(state sm.State) (*types.VoteSet, error) {
 	ec := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
 	if ec == nil {
 		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
-	var vs *types.VoteSet
-	if extensionsEnabled {
-		vs = ec.ToExtendedVoteSet(state.ChainID, state.LastValidators)
-	} else {
-		vs = ec.ToVoteSet(state.ChainID, state.LastValidators)
-	}
+	vs := ec.ToExtendedVoteSet(state.ChainID, state.LastValidators)
 	if !vs.HasTwoThirdsMajority() {
 		return nil, errors.New("extended commit does not have +2/3 majority")
 	}
