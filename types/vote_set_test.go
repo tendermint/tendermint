@@ -525,6 +525,12 @@ func TestVoteSet_VoteExtensionsEnabled(t *testing.T) {
 			addExtension:      false,
 			exepectError:      false,
 		},
+		{
+			name:              "extension and expected",
+			requireExtensions: true,
+			addExtension:      true,
+			exepectError:      false,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
