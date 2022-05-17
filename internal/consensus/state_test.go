@@ -2235,7 +2235,6 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 
 	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
-	cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = 1
 
 	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
 	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
