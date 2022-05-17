@@ -21,7 +21,7 @@ func NewHTTPClient(
 	primaryAddress string,
 	witnessesAddresses []string,
 	trustedStore store.Store,
-	dashCoreRPCClient dashcore.Client,
+	dashCoreRPCClient dashcore.QuorumVerifier,
 	options ...Option) (*Client, error) {
 
 	providers, err := providersFromAddresses(append(witnessesAddresses, primaryAddress), chainID)

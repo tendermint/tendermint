@@ -12,6 +12,7 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -33,8 +34,8 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer/sink"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/internal/store"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
@@ -77,7 +78,6 @@ type nodeImpl struct {
 
 	// Dash
 	validatorConnExecutor *dashquorum.ValidatorConnExecutor
-	dashCoreRPCClient     core.Client
 }
 
 // newDefaultNode returns a Tendermint node with default settings for the
@@ -101,10 +101,6 @@ func newDefaultNode(
 			defaultGenesisDocProviderFunc(cfg),
 		)
 	}
-	pval, err := makeDefaultPrivval(cfg)
-	if err != nil {
-		return nil, err
-	}
 
 	appClient, _, err := proxy.ClientFactory(logger, cfg.ProxyApp, cfg.ABCI, cfg.DBDir())
 	if err != nil {
@@ -114,12 +110,10 @@ func newDefaultNode(
 	return makeNode(
 		ctx,
 		cfg,
-		pval,
 		nodeKey,
 		appClient,
 		defaultGenesisDocProviderFunc(cfg),
 		config.DefaultDBProvider,
-		nil,
 		logger,
 	)
 }
@@ -128,12 +122,10 @@ func newDefaultNode(
 func makeNode(
 	ctx context.Context,
 	cfg *config.Config,
-	filePrivval *privval.FilePV,
 	nodeKey types.NodeKey,
 	client abciclient.Client,
 	genesisDocProvider genesisDocProvider,
 	dbProvider config.DBProvider,
-	dashCoreRPCClient core.Client,
 	logger log.Logger,
 ) (service.Service, error) {
 	var cancel context.CancelFunc
@@ -191,128 +183,38 @@ func makeNode(
 		Metrics:  nodeMetrics.indexer,
 	})
 
-	var proTxHash crypto.ProTxHash
-	privValidator, err := createPrivval(ctx, logger, cfg, genDoc, filePrivval)
-	if err != nil {
-		return nil, combineCloseError(err, makeCloser(closers))
-	}
+	var (
+		proTxHash         crypto.ProTxHash
+		privValidator     types.PrivValidator
+		dashCoreRPCClient core.Client
+	)
+	switch cfg.Mode {
+	case config.ModeValidator:
+		privValidator, err = createPrivval(ctx, logger, cfg, genDoc)
+		if err != nil {
+			return nil, combineCloseError(err, makeCloser(closers))
+		}
+		if dashPrivval, ok := privValidator.(privval.DashPrivValidator); ok {
+			dashCoreRPCClient = dashPrivval.DashRPCClient()
+		}
 
-	switch {
-	case cfg.PrivValidator.CoreRPCHost != "":
-		logger.Info(
-			"Initializing Dash Core Signing",
-			"quorum hash",
-			state.Validators.QuorumHash.String(),
-		)
-		/*
-			llmqType := config.Consensus.QuorumType
+	case config.ModeFull:
+		// Special handling on non-Validator nodes
+		logger.Info("this node is NOT a validator")
+
+		if cfg.PrivValidator.CoreRPCHost != "" {
+			dashCoreRPCClient, err = DefaultDashCoreRPCClient(cfg, logger.With("module", core.ModuleName))
+			if err != nil {
+				return nil, fmt.Errorf("failed to create Dash Core RPC client: %w", err)
+			}
+		} else {
+			llmqType := cfg.Consensus.QuorumType
 			if llmqType == 0 {
 				llmqType = btcjson.LLMQType_100_67
-			}*/
-		if dashCoreRPCClient == nil {
-			rpcClient, err := DefaultDashCoreRPCClient(cfg, logger.With("module", core.ModuleName))
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("failed to create Dash Core RPC client %w", err),
-					makeCloser(closers),
-				)
 			}
-			dashCoreRPCClient = rpcClient
+			// This is used for light client verification only
+			dashCoreRPCClient = core.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
 		}
-
-		if cfg.Mode == config.ModeValidator {
-			// If a local port is provided for Dash Core rpc into the service to sign.
-			privValidator, err = createAndStartPrivValidatorRPCClient(
-				cfg.Consensus.QuorumType,
-				dashCoreRPCClient,
-				logger,
-			)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("error with private validator RPC client: %w", err),
-					makeCloser(closers),
-				)
-			}
-			proTxHash, err = privValidator.GetProTxHash(ctx)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("can't get proTxHash using dash core signing: %w", err),
-					makeCloser(closers),
-				)
-			}
-			logger.Info("Connected to Core RPC Masternode", "proTxHash", proTxHash.String())
-		} else {
-			logger.Info("Connected to Core RPC FullNode")
-		}
-
-	case cfg.PrivValidator.ListenAddr != "":
-		// If an address is provided, listen on the socket for a connection from an
-		// external signing process.
-		// FIXME: we should start services inside OnStart
-		protocol, _ := tmnet.ProtocolAndAddress(cfg.PrivValidator.ListenAddr)
-		// FIXME: we should start services inside OnStart
-		switch protocol {
-		case "grpc":
-			privValidator, err = createAndStartPrivValidatorGRPCClient(ctx, cfg, genDoc.ChainID, genDoc.QuorumHash, logger)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("error with private validator grpc client: %w", err),
-					makeCloser(closers),
-				)
-			}
-		default:
-			privValidator, err = createAndStartPrivValidatorSocketClient(ctx, cfg.PrivValidator.ListenAddr, genDoc.ChainID, genDoc.QuorumHash, logger)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("error with private validator socket client: %w", err),
-					makeCloser(closers),
-				)
-			}
-		}
-		if cfg.Mode == config.ModeValidator {
-			proTxHash, err = privValidator.GetProTxHash(ctx)
-			if err != nil {
-				return nil, combineCloseError(
-					fmt.Errorf("can't get proTxHash using dash core signing: %w", err),
-					makeCloser(closers),
-				)
-			}
-			logger.Info(
-				"Connected to Private Validator through listen address",
-				"proTxHash",
-				proTxHash.String(),
-			)
-		} else {
-			logger.Info("Connected to Private Validator through listen address")
-		}
-	default:
-		privValidator, err = privval.LoadOrGenFilePV(
-			cfg.PrivValidator.KeyFile(),
-			cfg.PrivValidator.StateFile(),
-		)
-		if err != nil {
-			return nil, combineCloseError(
-				fmt.Errorf("error with private validator loaded: %w", err),
-				makeCloser(closers),
-			)
-		}
-		proTxHash, err = privValidator.GetProTxHash(ctx)
-		if err != nil {
-			return nil, combineCloseError(
-				fmt.Errorf("can't get proTxHash through file: %w", err),
-				makeCloser(closers),
-			)
-		}
-		logger.Info("Private Validator using local file", "proTxHash", proTxHash.String())
-	}
-
-	if dashCoreRPCClient == nil {
-		llmqType := cfg.Consensus.QuorumType
-		if llmqType == 0 {
-			llmqType = btcjson.LLMQType_100_67
-		}
-		// This is used for light client verification only
-		dashCoreRPCClient = core.NewMockClient(cfg.ChainID(), llmqType, privValidator, false)
 	}
 
 	weAreOnlyValidator := onlyValidatorIsUs(state, proTxHash)
@@ -363,7 +265,6 @@ func makeNode(
 		shutdownOps: makeCloser(closers),
 
 		validatorConnExecutor: validatorConnExecutor,
-		dashCoreRPCClient:     dashCoreRPCClient,
 
 		rpcEnv: &rpccore.Environment{
 			ProxyApp: proxyApp,
@@ -545,13 +446,17 @@ func makeNode(
 
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart(ctx context.Context) error {
+
 	if err := n.rpcEnv.ProxyApp.Start(ctx); err != nil {
 		return fmt.Errorf("error starting proxy app connections: %w", err)
 	}
 
-	proTxHash, err := n.privValidator.GetProTxHash(ctx)
-	if err != nil {
-		return err
+	var proTxHash tmbytes.HexBytes
+	if n.privValidator != nil {
+		var err error
+		if proTxHash, err = n.privValidator.GetProTxHash(ctx); err != nil {
+			return err
+		}
 	}
 
 	// EventBus and IndexerService must be started before the handshake because
@@ -696,8 +601,10 @@ func (n *nodeImpl) OnStop() {
 	n.router.Wait()
 	n.rpcEnv.IsListening = false
 
-	if pvsc, ok := n.privValidator.(service.Service); ok {
-		pvsc.Wait()
+	if n.privValidator != nil {
+		if pvsc, ok := n.privValidator.(service.Service); ok {
+			pvsc.Wait()
+		}
 	}
 
 	if n.prometheusSrv != nil {

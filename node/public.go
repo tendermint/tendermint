@@ -7,10 +7,8 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/config"
-	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -38,7 +36,6 @@ func New(
 	logger log.Logger,
 	cf abciclient.Client,
 	gen *types.GenesisDoc,
-	dashCoreRPCClient dashcore.Client,
 ) (service.Service, error) {
 	nodeKey, err := types.LoadOrGenNodeKey(conf.NodeKeyFile())
 	if err != nil {
@@ -55,20 +52,13 @@ func New(
 
 	switch conf.Mode {
 	case config.ModeFull, config.ModeValidator:
-		pval, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
-		if err != nil {
-			return nil, err
-		}
-
 		return makeNode(
 			ctx,
 			conf,
-			pval,
 			nodeKey,
 			cf,
 			genProvider,
 			config.DefaultDBProvider,
-			dashCoreRPCClient,
 			logger)
 	case config.ModeSeed:
 		return makeSeedNode(logger, conf, config.DefaultDBProvider, nodeKey, genProvider)

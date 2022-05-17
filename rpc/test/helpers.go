@@ -98,7 +98,7 @@ func StartTendermint(
 		}
 	}
 	papp := abciclient.NewLocalClient(logger, app)
-	tmNode, err := node.New(ctx, conf, logger, papp, nil, nil)
+	tmNode, err := node.New(ctx, conf, logger, papp, nil)
 	if err != nil {
 		return nil, func(_ context.Context) error { cancel(); return nil }, err
 	}

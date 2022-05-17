@@ -393,6 +393,9 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 // HasProTxHash returns true if proTxHash given is in the validator set, false -
 // otherwise.
 func (vals *ValidatorSet) HasProTxHash(proTxHash crypto.ProTxHash) bool {
+	if len(proTxHash) == 0 {
+		return false
+	}
 	for _, val := range vals.Validators {
 		if bytes.Equal(val.ProTxHash, proTxHash) {
 			return true

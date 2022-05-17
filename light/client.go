@@ -110,7 +110,7 @@ type Client struct {
 	pruningSize uint16
 
 	// Rpc client connected to dashd
-	dashCoreRPCClient dashcore.Client
+	dashCoreRPCClient dashcore.QuorumVerifier
 
 	logger log.Logger
 }
@@ -146,7 +146,7 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRPCClient dashcore.Client,
+	dashCoreRPCClient dashcore.QuorumVerifier,
 	options ...Option) (*Client, error) {
 
 	return NewClientAtHeight(ctx, 0, chainID, primary, witnesses, trustedStore, dashCoreRPCClient, options...)
@@ -159,7 +159,7 @@ func NewClientAtHeight(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRPCClient dashcore.Client,
+	dashCoreRPCClient dashcore.QuorumVerifier,
 	options ...Option,
 ) (*Client, error) {
 	// Check that the witness list does not include duplicates or the primary
@@ -189,7 +189,7 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRPCClient dashcore.Client,
+	dashCoreRPCClient dashcore.QuorumVerifier,
 	options ...Option) (*Client, error) {
 
 	if dashCoreRPCClient == nil {
