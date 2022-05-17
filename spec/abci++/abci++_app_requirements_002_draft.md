@@ -444,14 +444,17 @@ including the list of all its transactions synchronously to the Application.
 The block delivered (and thus the transaction order) is the same at all correct nodes as guaranteed
 by the Agreement property of Tendermint consensus.
 
-In same block execution mode, `PrepareProposal` must return `ExecTxResult` so that its data can
+In same block execution mode, field `LastResultsHash` in the block header refers to the results
+of all transactions stored in that block. Therefore,
+`PrepareProposal` must return `ExecTxResult` so that it can
 be used to build the block to be proposed in the current height.
 
 The `Data` field in `ExecTxResult` contains an array of bytes with the transaction result.
 It must be deterministic (i.e., the same value must be returned at all nodes), but it can contain arbitrary
 data. Likewise, the value of `Code` must be deterministic.
 If `Code != 0`, the transaction will be marked invalid,
-though it is still included in the block.
+though it is still included in the block. Invalid transaction are not indexed, as they are
+considered analogous to those that failed `CheckTx`.
 
 Both the `Code` and `Data` are included in a structure that is hashed into the
 `LastResultsHash` of the block header in the next height (next block execution mode), or the
