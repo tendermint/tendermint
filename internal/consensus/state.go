@@ -2403,6 +2403,9 @@ func (cs *State) addVote(
 			}
 		}
 	} else {
+		if vote.Extension != nil || vote.ExtensionSignature != nil {
+			cs.logger.Error("vote included extension data but vote extensions are not enabled", "peer", peerID)
+		}
 		// Vote extensions are not enabled on the network.
 		// strip the extension data from the vote in case any is present.
 		//
