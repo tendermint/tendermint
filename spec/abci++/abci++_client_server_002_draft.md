@@ -37,7 +37,7 @@ server in that language. Tendermint supports four implementations of the ABCI se
 - in Tendermint's repository:
     - In-process
     - ABCI-socket
-    - [GRPC](https://grpc.io/)
+    - GRPC
 - [tendermint-rs](https://github.com/informalsystems/tendermint-rs)
 - [tower-abci](https://github.com/penumbra-zone/tower-abci)
 
@@ -58,7 +58,7 @@ This means ABCI applications written in Golang can be linked with Tendermint Cor
 ### GRPC
 
 If you are not using Golang,
-but GRPC is available in your language, this is the easiest approach,
+but [GRPC](https://grpc.io/) is available in your language, this is the easiest approach,
 though it will have significant performance overhead.
 
 Please check GRPC's documentation to know to set up the Application as an
