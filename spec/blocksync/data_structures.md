@@ -1,20 +1,11 @@
 ### Data structures
 
-These are the core data structures necessary to provide the Blocksync Reactor logic.
+There are four core components of the blocksync reactor: the reactor itself, a block pool, requesters and peers. 
 
-The requester data structure is used to track the assignment of a request for a `block` at position `height` to a peer whose id equals to `peerID`.
+The reactor verifies received blocks, executes them against the application and commits them into the blockstore of the node. It also sends out requests to peers asking for more blocks and contains the logic to switch from blocksync to consenus.
+It contains a pointer to the block pool.
 
-```go
-type bpRequester {
-  mtx          Mutex
-  block        *types.Block
-  height       int64
-  peerID       types.nodeID
-  redoChannel  chan type.nodeID //redo may send multi-time; peerId is used to identify repeat
-  goBlockCh chan struct{}{}
-}
-```
-Pool is a core data structure that stores last executed block (`height`), assignment of requests to peers (`requesters`), current height for each peer and number of pending requests for each peer (`peers`), maximum peer height, etc.
+The block pool stores the last executed block(`height`), keeps track of peers connected to a node, assigns requests to peers (by creating `requesters`), the current height for each peer, along with the number of pending requestes for each peer. 
 
 ```go
 type BlockPool {
@@ -30,7 +21,20 @@ type BlockPool {
 }
 ```
 
-The `Peer` data structure stores for each peer its current `height` and number of pending requests sent to the peer (`numPending`), etc.
+Each requester is used to track the assignement of a request for a `block` at position `height` to a peer whose id equals to `peerID`. 
+
+```go
+type bpRequester {
+  mtx          Mutex
+  block        *types.Block
+  height       int64
+  peerID       types.nodeID
+  redoChannel  chan type.nodeID //redo may send multi-time; peerId is used to identify repeat
+  goBlockCh chan struct{}{}
+}
+```
+
+Each `Peer` data structure stores for each peer its current `height` and number of pending requests sent to the peer (`numPending`), etc. When a block is processed, this number is decremented. 
 
 ```go
 type bpPeer struct {
@@ -41,15 +45,6 @@ type bpPeer struct {
   timeout      *time.Timer
   didTimeout   bool
   pool          *blockPool
-}
-```
-
-BlockRequest is an internal data structure used to denote current mapping of request for a block at some `height` to a peer (`PeerID`).
-
-```go
-type BlockRequest {
-  Height int64
-  PeerID p2p.ID
 }
 ```
 
