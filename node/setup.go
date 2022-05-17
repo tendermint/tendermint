@@ -147,7 +147,6 @@ func createMempoolReactor(
 	memplMetrics *mempool.Metrics,
 	peerEvents p2p.PeerEventSubscriber,
 	chCreator p2p.ChannelCreator,
-	peerHeight func(types.NodeID) int64,
 ) (service.Service, mempool.Mempool) {
 	logger = logger.With("module", "mempool")
 
@@ -166,7 +165,6 @@ func createMempoolReactor(
 		mp,
 		chCreator,
 		peerEvents,
-		peerHeight,
 	)
 
 	if cfg.Consensus.WaitForTxs() {

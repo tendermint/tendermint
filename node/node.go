@@ -266,7 +266,7 @@ func makeNode(
 	node.evPool = evPool
 
 	mpReactor, mp := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
-		peerManager.Subscribe, node.router.OpenChannel, peerManager.GetHeight)
+		peerManager.Subscribe, node.router.OpenChannel)
 	node.rpcEnv.Mempool = mp
 	node.services = append(node.services, mpReactor)
 
