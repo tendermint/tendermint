@@ -465,7 +465,10 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			switch {
 			// TODO(sergio) Might be needed for implementing the upgrading solution. Remove after that
 			//case state.LastBlockHeight > 0 && r.store.LoadBlockExtCommit(state.LastBlockHeight) == nil:
-			case state.LastBlockHeight > 0 && blocksSynced == 0:
+			case state.LastBlockHeight > 0 &&
+				state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) &&
+				// can you switch to consensus if no blocks are sync'd but you already have a ext commit?
+				blocksSynced == 0:
 				// Having state-synced, we need to blocksync at least one block
 				r.logger.Info(
 					"no seen commit yet",
