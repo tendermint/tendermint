@@ -167,6 +167,7 @@ func TestRootConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			cmd := testRootCmd(conf)
+			viper.Set(cli.HomeFlag, conf.RootDir)
 
 			// run with the args and env
 			tc.args = append([]string{cmd.Use}, tc.args...)
