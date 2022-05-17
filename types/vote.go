@@ -14,6 +14,9 @@ import (
 
 const (
 	nilVoteStr string = "nil-Vote"
+
+	// The maximum supported number of bytes in a vote extension.
+	MaxVoteExtensionSize int = 1024 * 1024
 )
 
 var (
@@ -106,6 +109,26 @@ func (vote *Vote) CommitSig() CommitSig {
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
 		Signature:        vote.Signature,
+	}
+}
+
+// ExtendedCommitSig attempts to construct an ExtendedCommitSig from this vote.
+// Panics if either the vote extension signature is missing or if the block ID
+// is not either empty or complete.
+func (vote *Vote) ExtendedCommitSig() ExtendedCommitSig {
+	if vote == nil {
+		return NewExtendedCommitSigAbsent()
+	}
+
+	cs := vote.CommitSig()
+	if vote.BlockID.IsComplete() && len(vote.ExtensionSignature) == 0 {
+		panic(fmt.Sprintf("Invalid vote %v - BlockID is complete but missing vote extension signature", vote))
+	}
+
+	return ExtendedCommitSig{
+		CommitSig:          cs,
+		Extension:          vote.Extension,
+		ExtensionSignature: vote.ExtensionSignature,
 	}
 }
 
@@ -216,12 +239,10 @@ func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) erro
 	if err != nil {
 		return err
 	}
-	// We only verify vote extension signatures for precommits.
-	if vote.Type == tmproto.PrecommitType {
+	// We only verify vote extension signatures for non-nil precommits.
+	if vote.Type == tmproto.PrecommitType && !ProtoBlockIDIsNil(&v.BlockID) {
 		extSignBytes := VoteExtensionSignBytes(chainID, v)
-		// TODO: Remove extension signature nil check to enforce vote extension
-		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+		if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 			return ErrVoteInvalidSignature
 		}
 	}
@@ -273,8 +294,10 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
-	// We should only ever see vote extensions in precommits.
-	if vote.Type != tmproto.PrecommitType {
+	// We should only ever see vote extensions in non-nil precommits, otherwise
+	// this is a violation of the specification.
+	// https://github.com/tendermint/tendermint/issues/8487
+	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsNil()) {
 		if len(vote.Extension) > 0 {
 			return errors.New("unexpected vote extension")
 		}
@@ -294,12 +317,9 @@ func (vote *Vote) ValidateWithExtension() error {
 		return err
 	}
 
-	// We should always see vote extension signatures in precommits
-	if vote.Type == tmproto.PrecommitType {
-		// TODO(thane): Remove extension length check once
-		//              https://github.com/tendermint/tendermint/issues/8272 is
-		//              resolved.
-		if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
+	// We should always see vote extension signatures in non-nil precommits
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+		if len(vote.ExtensionSignature) == 0 {
 			return errors.New("vote extension signature is missing")
 		}
 		if len(vote.ExtensionSignature) > MaxSignatureSize {
