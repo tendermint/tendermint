@@ -1027,20 +1027,6 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 	return delay
 }
 
-// GetHeight returns a peer's height, as reported via SetHeight, or 0 if the
-// peer or height is unknown.
-//
-// FIXME: This is a temporary workaround to share state between the consensus
-// and mempool reactors, carried over from the legacy P2P stack. Reactors should
-// not have dependencies on each other, instead tracking this themselves.
-func (m *PeerManager) GetHeight(peerID types.NodeID) int64 {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	peer, _ := m.store.Get(peerID)
-	return peer.Height
-}
-
 // peerStore stores information about peers. It is not thread-safe, assuming it
 // is only used by PeerManager which handles concurrency control. This allows
 // the manager to execute multiple operations atomically via its own mutex.
