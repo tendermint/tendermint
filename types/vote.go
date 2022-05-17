@@ -112,6 +112,13 @@ func (vote *Vote) CommitSig() CommitSig {
 	}
 }
 
+// StripExtensions removes any extension data from the vote. Useful if the
+// chain has not enabled vote extensions.
+func (vote *Vote) StripExtensions() {
+	vote.Extension = nil
+	vote.ExtensionSignature = nil
+}
+
 // ExtendedCommitSig attempts to construct an ExtendedCommitSig from this vote.
 // Panics if either the vote extension signature is missing or if the block ID
 // is not either empty or complete.

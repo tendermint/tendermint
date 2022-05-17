@@ -2412,8 +2412,7 @@ func (cs *State) addVote(
 		// TODO punish a peer if it sent a vote with an extension when the feature
 		// is disabled on the network.
 		// https://github.com/tendermint/tendermint/issues/8565
-		vote.Extension = nil
-		vote.ExtensionSignature = nil
+		vote.StripExtensions()
 	}
 
 	height := cs.Height
@@ -2612,14 +2611,16 @@ func (cs *State) signAddVote(
 
 	// TODO: pass pubKey to signVote
 	vote, err := cs.signVote(ctx, msgType, hash, header)
-	if err == nil {
-		cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, "", tmtime.Now()})
-		cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
-		return vote
+	if err != nil {
+		cs.logger.Error("failed signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
+		return nil
 	}
-
-	cs.logger.Error("failed signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
-	return nil
+	if !cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(vote.Height) {
+		vote.StripExtensions()
+	}
+	cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, "", tmtime.Now()})
+	cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
+	return vote
 }
 
 // updatePrivValidatorPubKey get's the private validator public key and
