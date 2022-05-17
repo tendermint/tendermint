@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
-	"time"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
@@ -24,13 +23,6 @@ var (
 	_ p2p.Wrapper     = (*protomem.Message)(nil)
 )
 
-// PeerManager defines the interface contract required for getting necessary
-// peer information. This should eventually be replaced with a message-oriented
-// approach utilizing the p2p stack.
-type PeerManager interface {
-	GetHeight(types.NodeID) int64
-}
-
 // Reactor implements a service that contains mempool of txs that are broadcasted
 // amongst peers. It maintains a map from peer ID to counter, to prevent gossiping
 // txs to the peers you received it from.
@@ -40,11 +32,6 @@ type Reactor struct {
 	cfg     *config.MempoolConfig
 	mempool *TxMempool
 	ids     *mempool.MempoolIDs
-
-	// XXX: Currently, this is the only way to get information about a peer. Ideally,
-	// we rely on message-oriented communication to get necessary peer data.
-	// ref: https://github.com/tendermint/tendermint/issues/5670
-	peerMgr PeerManager
 
 	mempoolCh   *p2p.Channel
 	peerUpdates *p2p.PeerUpdates
@@ -66,7 +53,6 @@ type Reactor struct {
 func NewReactor(
 	logger log.Logger,
 	cfg *config.MempoolConfig,
-	peerMgr PeerManager,
 	txmp *TxMempool,
 	mempoolCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
@@ -74,7 +60,6 @@ func NewReactor(
 
 	r := &Reactor{
 		cfg:          cfg,
-		peerMgr:      peerMgr,
 		mempool:      txmp,
 		ids:          mempool.NewMempoolIDs(),
 		mempoolCh:    mempoolCh,
@@ -363,15 +348,6 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 		}
 
 		memTx := nextGossipTx.Value.(*WrappedTx)
-
-		if r.peerMgr != nil {
-			height := r.peerMgr.GetHeight(peerID)
-			if height > 0 && height < memTx.height-1 {
-				// allow for a lag of one block
-				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
-				continue
-			}
-		}
 
 		// NOTE: Transaction batching was disabled due to:
 		// https://github.com/tendermint/tendermint/issues/5796

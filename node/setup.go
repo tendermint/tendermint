@@ -240,7 +240,6 @@ func createMempoolReactor(
 		reactor := mempoolv0.NewReactor(
 			logger,
 			cfg.Mempool,
-			peerManager,
 			mp,
 			channels[mempool.MempoolChannel],
 			peerUpdates,
@@ -266,7 +265,6 @@ func createMempoolReactor(
 		reactor := mempoolv1.NewReactor(
 			logger,
 			cfg.Mempool,
-			peerManager,
 			mp,
 			channels[mempool.MempoolChannel],
 			peerUpdates,
