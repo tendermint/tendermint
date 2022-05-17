@@ -201,7 +201,7 @@ thread safe. Up to v0.35.x, both the
 and the
 [default Go ABCI server](https://github.com/tendermint/tendermint/blob/v0.35.x/abci/server/socket_server.go#L32)
 used a global lock to guard the handling of events across all connections, so they were not
-concurrent at all. This meant whether your app is compiled in-process with
+concurrent at all. This meant whether your app was compiled in-process with
 Tendermint using the `NewLocalClient`, or run out-of-process using the `SocketServer`,
 ABCI messages from all connections were received in sequence, one at a
 time.
@@ -218,22 +218,23 @@ decided block's hash, height, transactions, etc., which the Application uses to 
 
 The Application must remember the latest height from which it
 has run a successful `Commit` so that it can tell Tendermint where to
-pick up from when it restarts. See information on the Handshake, below.
+pick up from when it recovers from a crash. See information on the Handshake
+[here](#crash-recovery).
 
 #### Commit
 
-The Application state should be persisted during `Commit`.
+The Application should persist its state during `Commit`, before returning from it.
 
 Before invoking `Commit`, Tendermint locks the mempool and flushes the mempool connection. This ensures that
 no new messages
 will be received on the mempool connection during this processing step, providing an opportunity to safely
 update all four
-connection states to the latest committed state at once.
+connection states to the latest committed state at the same time.
 
-When `Commit` completes, Tendermint unlocks the mempool.
+When `Commit` returns, Tendermint unlocks the mempool.
 
 WARNING: if the ABCI app logic processing the `Commit` message sends a
-`/broadcast_tx_sync` or `/broadcast_tx_commit` and waits for the response
+`/broadcast_tx_sync` or `/broadcast_tx` and waits for the response
 before proceeding, it will deadlock. Executing `broadcast_tx` calls
 involves acquiring the mempool lock that Tendermint holds during the `Commit` call.
 Synchronous mempool-related calls must be avoided as part of the sequential logic of the
@@ -274,13 +275,13 @@ being delivered to the Application in that height's `FinalizeBlock`.
 Therefore, the state resulting from executing a proposed block, denoted a *candidate state*, should
 be kept in memory as a possible final state for that height. When `FinalizeBlock` is called, the Application should
 check if the decided block corresponds to one of its candidate states; if so, it will apply it as
-its `ExecuteTxState` (see [Consensus Connection](#consensus-connection) below),
+its *ExecuteTxState* (see [Consensus Connection](#consensus-connection) below),
 which will be persisted during the upcoming `Commit` call.
 
-In bad runs (e.g., under network instability), Consensus might take many rounds.
+Under adverse conditions (e.g., network instability), Tendermint might take many rounds.
 In this case, potentially many proposed blocks will be disclosed to the Application for a given height.
-Indeed, by the nature of Consensus, the number of proposed blocks received by the Application for
-a particular height cannot be bound, so Application developers must act with care and use mechanisms
+By the nature of Tendermint's consensus algorithm, the number of proposed blocks received by the Application
+for a particular height cannot be bound, so Application developers must act with care and use mechanisms
 to bound memory usage. As a general rule, the Application should be ready to discard candidate states
 before `FinalizeBlock`, even if one of them might end up corresponding to the
 decided block and thus have to be reexecuted upon `FinalizeBlock`.
@@ -289,24 +290,24 @@ decided block and thus have to be reexecuted upon `FinalizeBlock`.
 
 #### Consensus Connection
 
-The Consensus Connection should maintain an `ExecuteTxState` - the working state
+The Consensus Connection should maintain an *ExecuteTxState* &mdash; the working state
 for block execution. It should be updated by the call to `FinalizeBlock`
 during block execution and committed to disk as the "latest
 committed state" during `Commit`. Execution of a proposed block (via `PrepareProposal`/`ProcessProposal`)
-**must not** update the `ExecuteTxState`, but rather be kept as a separate candidate state until `FinalizeBlock`
-confirms which of the candidate states (if any) can be used to update `ExecuteTxState`.
+**must not** update the *ExecuteTxState*, but rather be kept as a separate candidate state until `FinalizeBlock`
+confirms which of the candidate states (if any) can be used to update *ExecuteTxState*.
 
 #### Mempool Connection
 
-The mempool Connection maintains `CheckTxState`. Tendermint sequentially processes an incoming
-transaction (via RPC from client or P2P from the gossip layer) against `CheckTxState`.
+The mempool Connection maintains *CheckTxState*. Tendermint sequentially processes an incoming
+transaction (via RPC from client or P2P from the gossip layer) against *CheckTxState*.
 If the processing does not return any error, the transaction is accepted into the mempool
 and Tendermint starts gossipping it.
-`CheckTxState` should be reset to the latest committed state
+*CheckTxState* should be reset to the latest committed state
 at the end of every `Commit`.
 
-During the execution of a Consensus instance, the `CheckTxState` may be updated concurrently with the
-`ExecuteTxState`, as messages may be sent concurrently on the Consensus and Mempool connections.
+During the execution of a Consensus instance, the *CheckTxState* may be updated concurrently with the
+*ExecuteTxState*, as messages may be sent concurrently on the Consensus and Mempool connections.
 At the end of the Consensus instance, as described above, Tendermint locks the mempool and flushes
 the mempool connection before calling `Commit`. This ensures that all pending `CheckTx` calls are
 responded to and no new ones can begin.
@@ -348,20 +349,9 @@ and 2) synchronizing Tendermint and the Application at start up time (see
 [Crash Recovery](#crash-recovery))
 or after state sync (see [State Sync](#state-sync)).
 
-`QueryState` is a read-only copy of `ExecuteTxState` as it was after the last
+`QueryState` is a read-only copy of *ExecuteTxState* as it was after the last
 `Commit`, i.e.
 after the full block has been processed and the state committed to disk.
-
-Tendermint Core currently uses the Query connection to filter peers upon
-connecting, according to IP address or node ID. For instance,
-returning non-OK ABCI response to either of the following queries will
-cause Tendermint to not connect to the corresponding peer:
-
-* `p2p/filter/addr/<ip addr>`, where `<ip addr>` is an IP address.
-* `p2p/filter/id/<id>`, where `<is>` is the hex-encoded node ID (the hash of
-  the node's p2p pubkey).
-
-Note: these query formats are subject to change!
 
 #### Snapshot Connection
 
@@ -436,7 +426,7 @@ not broadcasted to other peers and not included in a proposal block.
 
 `Data` contains the result of the `CheckTx` transaction execution, if any. It does not need to be
 deterministic since, given a transaction, nodes' Applications
-might have a different `CheckTxState` values when they receive it and check their validity
+might have a different *CheckTxState* values when they receive it and check their validity
 via `CheckTx`.
 Tendermint ignores this value in `ResponseCheckTx`.
 
@@ -1011,8 +1001,13 @@ P2P configuration options to whitelist a set of trusted peers that can provide v
 
 Once the snapshots have all been restored, Tendermint gathers additional information necessary for
 bootstrapping the node (e.g. chain ID, consensus parameters, validator sets, and block headers)
-from the genesis file and light client RPC servers. It also fetches and records the `AppVersion`
-from the ABCI application.
+from the genesis file and light client RPC servers. It also calls `Info` to verify the following:
+
+* that the app hash from the snapshot it has delivered to the Application matches the apphash
+  stored in the next height's block (in next block execution), or the current block's height
+  (same block execution)
+* that the version that the Application returns in `ResponseInfo` matches the version in the
+  current height's block header
 
 Once the state machine has been restored and Tendermint has gathered this additional
 information, it transitions to block sync (if enabled) to fetch any remaining blocks up the chain
