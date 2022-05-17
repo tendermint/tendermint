@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
-	"time"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
@@ -24,13 +23,6 @@ var (
 	_ p2p.Wrapper     = (*protomem.Message)(nil)
 )
 
-// PeerManager defines the interface contract required for getting necessary
-// peer information. This should eventually be replaced with a message-oriented
-// approach utilizing the p2p stack.
-type PeerManager interface {
-	GetHeight(types.NodeID) int64
-}
-
 // Reactor implements a service that contains mempool of txs that are broadcasted
 // amongst peers. It maintains a map from peer ID to counter, to prevent gossiping
 // txs to the peers you received it from.
@@ -41,6 +33,7 @@ type Reactor struct {
 	mempool *TxMempool
 	ids     *mempool.MempoolIDs
 
+<<<<<<< HEAD:internal/mempool/v1/reactor.go
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.
 	// ref: https://github.com/tendermint/tendermint/issues/5670
@@ -53,6 +46,10 @@ type Reactor struct {
 	// peerWG is used to coordinate graceful termination of all peer broadcasting
 	// goroutines.
 	peerWG sync.WaitGroup
+=======
+	peerEvents p2p.PeerEventSubscriber
+	chCreator  p2p.ChannelCreator
+>>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569)):internal/mempool/reactor.go
 
 	// observePanic is a function for observing panics that were recovered in methods on
 	// Reactor. observePanic is called with the recovered value.
@@ -68,11 +65,17 @@ func NewReactor(
 	cfg *config.MempoolConfig,
 	peerMgr PeerManager,
 	txmp *TxMempool,
+<<<<<<< HEAD:internal/mempool/v1/reactor.go
 	mempoolCh *p2p.Channel,
 	peerUpdates *p2p.PeerUpdates,
+=======
+	chCreator p2p.ChannelCreator,
+	peerEvents p2p.PeerEventSubscriber,
+>>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569)):internal/mempool/reactor.go
 ) *Reactor {
 
 	r := &Reactor{
+<<<<<<< HEAD:internal/mempool/v1/reactor.go
 		cfg:          cfg,
 		peerMgr:      peerMgr,
 		mempool:      txmp,
@@ -81,6 +84,15 @@ func NewReactor(
 		peerUpdates:  peerUpdates,
 		closeCh:      make(chan struct{}),
 		peerRoutines: make(map[types.NodeID]*tmsync.Closer),
+=======
+		logger:       logger,
+		cfg:          cfg,
+		mempool:      txmp,
+		ids:          NewMempoolIDs(),
+		chCreator:    chCreator,
+		peerEvents:   peerEvents,
+		peerRoutines: make(map[types.NodeID]context.CancelFunc),
+>>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569)):internal/mempool/reactor.go
 		observePanic: defaultObservePanic,
 	}
 
@@ -364,6 +376,7 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 
 		memTx := nextGossipTx.Value.(*WrappedTx)
 
+<<<<<<< HEAD:internal/mempool/v1/reactor.go
 		if r.peerMgr != nil {
 			height := r.peerMgr.GetHeight(peerID)
 			if height > 0 && height < memTx.height-1 {
@@ -373,6 +386,8 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 			}
 		}
 
+=======
+>>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569)):internal/mempool/reactor.go
 		// NOTE: Transaction batching was disabled due to:
 		// https://github.com/tendermint/tendermint/issues/5796
 		if ok := r.mempool.txStore.TxHasPeer(memTx.hash, peerMempoolID); !ok {

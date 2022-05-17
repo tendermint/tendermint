@@ -1799,6 +1799,7 @@ func TestPeerManager_Advertise_Self(t *testing.T) {
 		self,
 	}, peerManager.Advertise(dID, 100))
 }
+<<<<<<< HEAD
 
 func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
 	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
@@ -1835,3 +1836,5 @@ func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
 	require.Zero(t, peerManager.GetHeight(a.NodeID))
 	require.Zero(t, peerManager.GetHeight(b.NodeID))
 }
+=======
+>>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569))

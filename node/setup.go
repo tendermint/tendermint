@@ -202,18 +202,34 @@ func createMempoolReactor(
 	proxyApp proxy.AppConns,
 	state sm.State,
 	memplMetrics *mempool.Metrics,
+<<<<<<< HEAD
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
 ) (*p2p.ReactorShim, service.Service, mempool.Mempool, error) {
+=======
+	peerEvents p2p.PeerEventSubscriber,
+	chCreator p2p.ChannelCreator,
+) (service.Service, mempool.Mempool) {
+	logger = logger.With("module", "mempool")
+>>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569))
 
 	logger = logger.With("module", "mempool", "version", cfg.Mempool.Version)
 	channelShims := mempoolv0.GetChannelShims(cfg.Mempool)
 	reactorShim := p2p.NewReactorShim(logger, "MempoolShim", channelShims)
 
+<<<<<<< HEAD
 	var (
 		channels    map[p2p.ChannelID]*p2p.Channel
 		peerUpdates *p2p.PeerUpdates
+=======
+	reactor := mempool.NewReactor(
+		logger,
+		cfg.Mempool,
+		mp,
+		chCreator,
+		peerEvents,
+>>>>>>> 2897b7585 (p2p: remove unused get height methods (#8569))
 	)
 
 	if cfg.P2P.UseLegacy {
