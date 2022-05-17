@@ -32,9 +32,8 @@ type Reactor struct {
 	mempool *TxMempool
 	ids     *IDs
 
-	getPeerHeight func(types.NodeID) int64
-	peerEvents    p2p.PeerEventSubscriber
-	chCreator     p2p.ChannelCreator
+	peerEvents p2p.PeerEventSubscriber
+	chCreator  p2p.ChannelCreator
 
 	// observePanic is a function for observing panics that were recovered in methods on
 	// Reactor. observePanic is called with the recovered value.
