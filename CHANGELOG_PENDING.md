@@ -22,6 +22,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- []() Add public API `BlockStore.Rollback`.
+- [#8574](https://github.com/tendermint/tendermint/pull/8574) Add public API `BlockStore.Rollback`.
 
 ### BUG FIXES
