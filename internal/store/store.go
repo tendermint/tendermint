@@ -280,6 +280,9 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return commit
 }
 
+// LoadExtendedCommit returns the ExtendedCommit for the given height.
+// The extended commit is not guaranteed to contain the same +2/3 precommits data
+// as the commit in the block.
 func (bs *BlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
 	pbec := new(tmproto.ExtendedCommit)
 	bz, err := bs.db.Get(extCommitKey(height))
@@ -565,18 +568,22 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 }
 
-//SaveBlockWithExtendedCommit saves the block along with the extended commit data.
-func (bs *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
+// SaveBlockWithExtendedCommit persists the given block, blockParts, and
+// seenExtendedCommit to the underlying db. seenExtendedCommit is stored under
+// two keys in the database: as the seenCommit and as the ExtendedCommit data for the
+// height. This allows the vote extension data to be persisted for all blocks
+// that are saved.
+func (bs *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenExtendedCommit *types.ExtendedCommit) {
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}
 	batch := bs.db.NewBatch()
-	if err := bs.saveBlockToBatch(batch, block, blockParts, seenCommit.ToCommit()); err != nil {
+	if err := bs.saveBlockToBatch(batch, block, blockParts, seenExtendedCommit.ToCommit()); err != nil {
 		panic(err)
 	}
 	height := block.Height
 
-	pbec := seenCommit.ToProto()
+	pbec := seenExtendedCommit.ToProto()
 	extCommitBytes := mustEncode(pbec)
 	if err := batch.Set(extCommitKey(height), extCommitBytes); err != nil {
 		panic(err)
