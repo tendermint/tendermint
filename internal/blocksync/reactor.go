@@ -202,7 +202,9 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 		extCommit = r.store.LoadBlockExtendedCommit(msg.Height)
 	} else {
 		c := r.store.LoadBlockCommit(msg.Height)
-		extCommit = c.WrappedExtendedCommit()
+		if extCommit != nil {
+			extCommit = c.WrappedExtendedCommit()
+		}
 	}
 	if extCommit == nil {
 		return fmt.Errorf("found block in store with no commit and no extended commit: %v", block)
