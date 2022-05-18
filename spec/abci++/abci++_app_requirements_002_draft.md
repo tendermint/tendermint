@@ -332,13 +332,14 @@ in place for dealing with such behavior is `ProcessProposal`.
 
 ##### Replay Protection
 
-To prevent old transactions from being replayed, `CheckTx` must implement
-replay protection.
-It is possible for old transactions to be sent to the application. So
-it is important `CheckTx` implements some logic to handle them.
+It is possible for old transactions to be sent again to the Application. This is typically
+undesirable for all transactions, except for a generally small subset of them which are idempotent.
 
-Additionally, the mempool has a mechanism to prevent duplicated transactions from being processed.
-This mechanism is nevertheless best-effort and does not provide any guarantee of non duplication.
+The mempool has a mechanism to prevent duplicated transactions from being processed.
+This mechanism is nevertheless best-effort (currently based on the indexer)
+and does not provide any guarantee of non duplication.
+It is thus up to the Application to implement an application-specific
+replay protection mechanism with strong guarantees as part of the logic in `CheckTx`.
 
 #### Info/Query Connection
 
@@ -395,7 +396,7 @@ The default value is `-1`, which means the block gas limit is not enforced, or t
 gas is meaningless.
 
 Responses contain a `GasWanted` and `GasUsed` field. The former is the maximum
-amount of gas the sender of a tx is willing to use, and the latter is how much it actually
+amount of gas the sender of a transaction is willing to use, and the latter is how much it actually
 used. Applications should enforce that `GasUsed <= GasWanted` &mdash; i.e. transaction execution
 or validation should fail before it can use more resources than it requested.
 
@@ -406,18 +407,23 @@ When `MaxGas > -1`, Tendermint enforces the following rules:
 
 If `MaxGas == -1`, no rules about gas are enforced.
 
-In v0.35.x and earlier versions, Tendermint does not enforce anything about Gas in the consensus,
-only the mempool.
+In v0.35.x and earlier versions, Tendermint does not enforce anything about Gas in consensus,
+only in the mempool.
 This means it does not guarantee that committed blocks satisfy these rules.
-It is the application's responsibility to return non-zero response codes when gas limits are exceeded.
+It is the application's responsibility to return non-zero response codes when gas limits are exceeded
+when executing the transactions of a block.
 Since the introduction of `PrepareProposal` and `ProcessProposal` in v.0.36.x, it is now possible
-to enforce that all blocks proposed (and voted for) in consensus &mdash; and thus all
+for the Application to enforce that all blocks proposed (and voted for) in consensus &mdash; and thus all
 blocks decided &mdash; respect the `MaxGas` limits described above.
 
-The `GasUsed` field is ignored by Tendermint. That said, applications should enforce:
+Since the Application should enforce that `GasUsed <= GasWanted` when executing a transaction, and
+it can use `PrepareProposal` and `ProcessProposal` to enforce that `(sum of GasWanted in a block) <= MaxGas`
+in all proposed or prevoted blocks,
+we have:
 
-* `GasUsed <= GasWanted` for any given transaction
 * `(sum of GasUsed in a block) <= MaxGas` for every block
+
+The `GasUsed` field is ignored by Tendermint.
 
 #### Specifics of `ResponseCheckTx`
 
