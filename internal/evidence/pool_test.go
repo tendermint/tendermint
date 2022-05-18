@@ -580,7 +580,7 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) (*store.Blo
 		}
 
 		seenCommit := makeExtCommit(i, valAddr)
-		blockStore.SaveBlock(block, partSet, seenCommit)
+		blockStore.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
 	}
 
 	return blockStore, nil

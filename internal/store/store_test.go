@@ -89,7 +89,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	part2 := validPartSet.GetPart(1)
 
 	seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
-	bs.SaveBlock(block, validPartSet, seenCommit)
+	bs.SaveBlockWithExtendedCommit(block, validPartSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
@@ -209,7 +209,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		bs, db := newInMemoryBlockStore()
 		// SaveBlock
 		res, err, panicErr := doFn(func() (interface{}, error) {
-			bs.SaveBlock(tuple.block, tuple.parts, tuple.seenCommit)
+			bs.SaveBlockWithExtendedCommit(tuple.block, tuple.parts, tuple.seenCommit)
 			if tuple.block == nil {
 				return nil, nil
 			}
@@ -293,7 +293,7 @@ func TestLoadBaseMeta(t *testing.T) {
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestExtCommit(h, tmtime.Now())
-		bs.SaveBlock(block, partSet, seenCommit)
+		bs.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
 	}
 
 	pruned, err := bs.PruneBlocks(4)
@@ -371,7 +371,7 @@ func TestPruneBlocks(t *testing.T) {
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestExtCommit(h, tmtime.Now())
-		bs.SaveBlock(block, partSet, seenCommit)
+		bs.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
 	}
 
 	assert.EqualValues(t, 1, bs.Base())
@@ -479,7 +479,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
 	seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
-	bs.SaveBlock(block, partSet, seenCommit)
+	bs.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
 	blockAtHeight := bs.LoadBlock(bs.Height())
@@ -523,7 +523,7 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 		partSet, err := block.MakePartSet(2)
 		require.NoError(t, err)
 		seenCommit := makeTestExtCommit(h, tmtime.Now())
-		store.SaveBlock(block, partSet, seenCommit)
+		store.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
 		c3 := store.LoadSeenCommit()
 		require.NotNil(t, c3)
 		require.Equal(t, h, c3.Height)

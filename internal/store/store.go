@@ -2,11 +2,13 @@ package store
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/orderedcode"
+	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -466,7 +468,7 @@ func (bs *BlockStore) batchDelete(
 //             If all the nodes restart after committing a block,
 //             we need this to reload the precommits to catch-up nodes to the
 //             most recent height.  Otherwise they'd stall at H-1.
-func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
+func (bs *BlockStore) SaveBlockWithExtensions(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}
@@ -537,6 +539,119 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	if err := batch.Close(); err != nil {
 		panic(err)
 	}
+}
+
+// SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
+// blockParts: Must be parts of the block
+// seenCommit: The +2/3 precommits that were seen which committed at height.
+//             If all the nodes restart after committing a block,
+//             we need this to reload the precommits to catch-up nodes to the
+//             most recent height.  Otherwise they'd stall at H-1.
+func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+	if block == nil {
+		panic("BlockStore can only save a non-nil block")
+	}
+	batch := bs.db.NewBatch()
+	if err := bs.saveBlockToBatch(batch, block, blockParts, seenCommit); err != nil {
+		panic(err)
+	}
+
+	if err := batch.WriteSync(); err != nil {
+		panic(err)
+	}
+
+	if err := batch.Close(); err != nil {
+		panic(err)
+	}
+}
+
+//SaveBlockWithExtendedCommit saves the block along with the extended commit data.
+func (bs *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
+	if block == nil {
+		panic("BlockStore can only save a non-nil block")
+	}
+	batch := bs.db.NewBatch()
+	if err := bs.saveBlockToBatch(batch, block, blockParts, seenCommit.ToCommit()); err != nil {
+		panic(err)
+	}
+	height := block.Height
+
+	pbec := seenCommit.ToProto()
+	extCommitBytes := mustEncode(pbec)
+	if err := batch.Set(extCommitKey(height), extCommitBytes); err != nil {
+		panic(err)
+	}
+
+	if err := batch.WriteSync(); err != nil {
+		panic(err)
+	}
+
+	if err := batch.Close(); err != nil {
+		panic(err)
+	}
+}
+
+func (bs *BlockStore) saveBlockToBatch(batch db.Batch, block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) error {
+	if block == nil {
+		panic("BlockStore can only save a non-nil block")
+	}
+
+	height := block.Height
+	hash := block.Hash()
+
+	if g, w := height, bs.Height()+1; bs.Base() > 0 && g != w {
+		return fmt.Errorf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g)
+	}
+	if !blockParts.IsComplete() {
+		return errors.New("BlockStore can only save complete block part sets")
+	}
+	if height != seenCommit.Height {
+		return fmt.Errorf("BlockStore cannot save seen commit of a different height (block: %d, commit: %d)", height, seenCommit.Height)
+	}
+
+	// Save block parts. This must be done before the block meta, since callers
+	// typically load the block meta first as an indication that the block exists
+	// and then go on to load block parts - we must make sure the block is
+	// complete as soon as the block meta is written.
+	for i := 0; i < int(blockParts.Total()); i++ {
+		part := blockParts.GetPart(i)
+		bs.saveBlockPart(height, i, part, batch)
+	}
+
+	blockMeta := types.NewBlockMeta(block, blockParts)
+	pbm := blockMeta.ToProto()
+	if pbm == nil {
+		return errors.New("nil blockmeta")
+	}
+
+	metaBytes := mustEncode(pbm)
+	if err := batch.Set(blockMetaKey(height), metaBytes); err != nil {
+		return err
+	}
+
+	if err := batch.Set(blockHashKey(hash), []byte(fmt.Sprintf("%d", height))); err != nil {
+		return err
+	}
+
+	pbc := block.LastCommit.ToProto()
+	blockCommitBytes := mustEncode(pbc)
+	if err := batch.Set(blockCommitKey(height-1), blockCommitBytes); err != nil {
+		return err
+	}
+
+	// Save seen commit (seen +2/3 precommits for block)
+	pbsc := seenCommit.ToProto()
+	seenCommitBytes := mustEncode(pbsc)
+	if err := batch.Set(seenCommitKey(), seenCommitBytes); err != nil {
+		return err
+	}
+
+	pbec := seenCommit.ToProto()
+	extCommitBytes := mustEncode(pbec)
+	if err := batch.Set(extCommitKey(height), extCommitBytes); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part, batch dbm.Batch) {

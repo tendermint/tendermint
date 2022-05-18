@@ -183,7 +183,7 @@ func (rts *reactorTestSuite) addNode(
 		state, err = blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
 		require.NoError(t, err)
 
-		blockStore.SaveBlock(thisBlock, thisParts, seenExtCommit)
+		blockStore.SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
 	}
 
 	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)

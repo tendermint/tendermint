@@ -601,7 +601,11 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
-			r.store.SaveBlock(first, firstParts, extCommit)
+			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) {
+				r.store.SaveBlockWithExtendedCommit(first, firstParts, extCommit)
+			} else {
+				r.store.SaveBlock(first, firstParts, extCommit.ToCommit())
+			}
 
 			// TODO: Same thing for app - but we would need a way to get the hash
 			// without persisting the state.
