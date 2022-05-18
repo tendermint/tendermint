@@ -43,7 +43,6 @@ var (
 	ErrInvalidProposalCoreHeight  = errors.New("error invalid proposal core height")
 	ErrInvalidProposalPOLRound    = errors.New("error invalid proposal POL round")
 	ErrAddingVote                 = errors.New("error adding vote")
-	ErrAddingCommit               = errors.New("error adding commit")
 	ErrSignatureFoundInPastBlocks = errors.New("found signature from the same key")
 
 	errProTxHashIsNotSet = errors.New("protxhash is not set. Look for \"Can't get private validator protxhash\" errors")
@@ -2179,11 +2178,7 @@ func (cs *State) tryAddCommit(ctx context.Context, commit *types.Commit, peerID 
 		return false, nil
 	}
 
-	added, err := cs.addCommit(ctx, commit)
-	if err != nil {
-		return added, ErrAddingCommit
-	}
-	return added, nil
+	return cs.addCommit(ctx, commit)
 }
 
 func (cs *State) verifyCommit(ctx context.Context, commit *types.Commit, peerID types.NodeID, ignoreProposalBlock bool) (verified bool, err error) {
@@ -2301,17 +2296,14 @@ func (cs *State) addCommit(ctx context.Context, commit *types.Commit) (added boo
 
 	// This will relay the commit to peers
 	if err := cs.PublishCommitEvent(commit); err != nil {
-		return added, err
+		return false, fmt.Errorf("error adding commit: %w", err)
 	}
 
-	if cs.bypassCommitTimeout() {
-
-	}
 	if cs.bypassCommitTimeout() {
 		cs.enterNewRound(ctx, cs.Height, 0)
 	}
 
-	return added, err
+	return true, nil
 }
 
 // PublishCommitEvent ...
