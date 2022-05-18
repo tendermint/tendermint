@@ -466,6 +466,11 @@ func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeigh
 		}
 
 		var ext []byte
+		// Check if vote extensions were enabled during the commit's height: ec.Height.
+		// ec is the commit from the previous height, so if extensions were enabled
+		// during that height, we ensure they are present and deliver the data to
+		// the proposer. If they were not enabled during this previous height, we
+		// will not deliver extension data.
 		if ap.VoteExtensionsEnabled(ec.Height) && ecs.BlockIDFlag == types.BlockIDFlagCommit {
 			if err := ecs.EnsureExtension(); err != nil {
 				panic(fmt.Errorf("commit at height %d received with missing vote extensions data", ec.Height))
