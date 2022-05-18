@@ -192,8 +192,15 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 			Message: &bcproto.NoBlockResponse{Height: msg.Height},
 		})
 	}
-	extCommit := r.store.LoadBlockExtendedCommit(msg.Height)
-	if extCommit == nil {
+
+	state, err := r.stateStore.Load()
+	if err != nil {
+		return fmt.Errorf("loading state: %w", err)
+	}
+	var extCommit *types.ExtendedCommit
+	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(msg.Height) {
+		extCommit = r.store.LoadBlockExtendedCommit(msg.Height)
+	} else {
 		c := r.store.LoadBlockCommit(msg.Height)
 		extCommit = c.WrappedExtendedCommit()
 	}
