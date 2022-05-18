@@ -375,6 +375,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		state, commit,
 		proposerProTxHash,
 		proposedAppVersion,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -457,6 +458,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		state, commit,
 		proposerProTxHash,
 		0,
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -583,7 +585,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		ctx,
 		math.MaxInt64,
 		state, commit,
-		proposerProTxHash, 0,
+		proposerProTxHash,
+		0,
+		nil,
 	)
 	require.NoError(t, err)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
