@@ -8,7 +8,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/orderedcode"
-	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -519,7 +518,7 @@ func (bs *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts
 	}
 }
 
-func (bs *BlockStore) saveBlockToBatch(batch db.Batch, block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) error {
+func (bs *BlockStore) saveBlockToBatch(batch dbm.Batch, block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) error {
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}

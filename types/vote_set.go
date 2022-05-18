@@ -71,7 +71,7 @@ type VoteSet struct {
 }
 
 // NewVoteSet instantiates all fields of a new vote set. This constructor required
-// that no vote extension data be present on the votes taht are added to the set.
+// that no vote extension data be present on the votes that are added to the set.
 func NewVoteSet(chainID string, height int64, round int32,
 	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
