@@ -604,7 +604,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
-			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) {
+			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 				r.store.SaveBlockWithExtendedCommit(first, firstParts, extCommit)
 			} else {
 				r.store.SaveBlock(first, firstParts, extCommit.ToCommit())
