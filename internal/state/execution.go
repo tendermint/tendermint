@@ -99,6 +99,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	commit *types.Commit,
 	proposerProTxHash []byte,
 	proposedAppVersion uint64,
+	votes []*types.Vote,
 ) (*types.Block, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -129,7 +130,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     extendedCommitInfo(localLastCommit, nil),
+			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			Height:              block.Height,
 			Time:                block.Time,
@@ -510,7 +511,14 @@ func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCom
 	//	Round: c.Round,
 	//	Votes: vs,
 	//}
-	return abci.ExtendedCommitInfo{}
+	vs := make([]abci.ExtendedVoteInfo, len(votes))
+	for i, vote := range votes {
+		vs[i].VoteExtension = vote.Extension
+	}
+	return abci.ExtendedCommitInfo{
+		Round: c.Round,
+		Votes: vs,
+	}
 }
 
 func validateValidatorSetUpdate(

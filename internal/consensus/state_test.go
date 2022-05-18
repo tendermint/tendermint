@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	"strconv"
 	"testing"
 	"time"
@@ -23,6 +22,7 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )

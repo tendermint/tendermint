@@ -4,6 +4,7 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -284,8 +285,8 @@ func decideProposal(
 	require.NoError(t, err)
 
 	cs1.logger.Debug("signed proposal common test", "height", proposal.Height, "round", proposal.Round,
-		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
+		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.HexString(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", hex.EncodeToString(signID))
 
 	proposal.Signature = p.Signature
 
@@ -566,8 +567,14 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 		args.logger = log.NewNopLogger()
 	}
 
+	consensusParams := factory.ConsensusParams()
+	// vote timeout increased because of bls12381 signing/verifying operations are longer performed than ed25519
+	// and 10ms (previous value) is not enough
+	consensusParams.Timeout.Vote = 50 * time.Millisecond
+	consensusParams.Timeout.VoteDelta = 5 * time.Millisecond
+
 	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
-		Params:     factory.ConsensusParams(),
+		Params:     consensusParams,
 		Validators: validators,
 	})
 

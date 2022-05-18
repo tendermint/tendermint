@@ -206,6 +206,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			commit,
 			proposerProTxHash,
 			0,
+			nil,
 		)
 		require.NoError(t, err)
 		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)

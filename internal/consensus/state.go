@@ -1036,8 +1036,10 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo, fromReplay bool) {
 		err = cs.setProposal(msg.Proposal, mi.ReceiveTime)
 
 	case *BlockPartMessage:
+		commitNotExist := cs.Commit == nil
+
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		added, err = cs.addProposalBlockPart(ctx, msg, peerID, fromReplay)
+		added, err = cs.addProposalBlockPart(ctx, msg, peerID)
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
 		// Previously, this code held the lock from the point at which the final block
@@ -1053,8 +1055,8 @@ func (cs *State) handleMsg(ctx context.Context, mi msgInfo, fromReplay bool) {
 		cs.mtx.Unlock()
 
 		cs.mtx.Lock()
-		if added && cs.ProposalBlockParts.IsComplete() {
-			cs.handleCompleteProposal(ctx, msg.Height)
+		if added && commitNotExist && cs.ProposalBlockParts.IsComplete() {
+			cs.handleCompleteProposal(ctx, msg.Height, fromReplay)
 		}
 		if added {
 			select {
@@ -1601,7 +1603,9 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 	}
 	proposerProTxHash := cs.privValidatorProTxHash
 
-	ret, err := cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerProTxHash, cs.proposedAppVersion)
+	votes := cs.LastPrecommits.GetVotes()
+
+	ret, err := cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerProTxHash, cs.proposedAppVersion, votes)
 	if err != nil {
 		panic(err)
 	}
@@ -1796,7 +1800,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 
 	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or " +
 		"did not receive a more recent majority; prevoting nil")
-	cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+	cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
 }
 
 // Enter: any +2/3 prevotes at next round.
@@ -2552,7 +2556,6 @@ func (cs *State) addProposalBlockPart(
 	ctx context.Context,
 	msg *BlockPartMessage,
 	peerID types.NodeID,
-	fromReplay bool,
 ) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
@@ -2633,60 +2636,13 @@ func (cs *State) addProposalBlockPart(
 			cs.logger.Error("failed publishing event complete proposal", "err", err)
 		}
 
-		if cs.Commit == nil {
-			// No commit has come in yet allowing the fast forwarding of these steps
-			// Update Valid* if we can.
-			prevotes := cs.Votes.Prevotes(cs.Round)
-			blockID, hasThreshold := prevotes.TwoThirdsMajority()
-
-			if hasThreshold && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
-				if cs.ProposalBlock.HashesTo(blockID.Hash) {
-					cs.logger.Debug(
-						"updating valid block to new proposal block",
-						"valid_round", cs.Round,
-						"valid_block_hash", cs.ProposalBlock.Hash(),
-					)
-
-					cs.ValidRound = cs.Round
-					cs.ValidBlock = cs.ProposalBlock
-					cs.ValidBlockParts = cs.ProposalBlockParts
-				}
-			}
-
-			if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
-				// Move onto the next step
-				// We should allow old blocks if we are recovering from replay
-				allowOldBlocks := fromReplay
-				cs.logger.Debug("entering prevote after complete proposal", "height", cs.ProposalBlock.Height,
-					"hash", cs.ProposalBlock.Hash())
-				cs.enterPrevote(ctx, height, cs.Round, allowOldBlocks)
-				if hasThreshold { // this is optimisation as this will be triggered when prevote is added
-					cs.logger.Debug(
-						"entering precommit after complete proposal with threshold received",
-						"height",
-						cs.ProposalBlock.Height,
-						"hash",
-						cs.ProposalBlock.Hash(),
-					)
-					cs.enterPrecommit(ctx, height, cs.Round)
-				}
-			} else if cs.Step == cstypes.RoundStepApplyCommit {
-				// If we're waiting on the proposal block...
-				cs.logger.Debug("trying to finalize commit after complete proposal", "height", cs.ProposalBlock.Height,
-					"hash", cs.ProposalBlock.Hash())
-				cs.tryFinalizeCommit(ctx, height)
-			}
-		} else {
+		if cs.Commit != nil {
 			cs.logger.Info("Proposal block fully received", "proposal", cs.ProposalBlock)
 			cs.logger.Info("Commit already present", "commit", cs.Commit)
 			cs.logger.Debug("adding commit after complete proposal", "height", cs.ProposalBlock.Height,
 				"hash", cs.ProposalBlock.Hash())
 			// We received a commit before the block
-			added, err := cs.addCommit(ctx, cs.Commit)
-			if err != nil {
-				return added, ErrAddingCommit
-			}
-			return added, nil
+			return cs.addCommit(ctx, cs.Commit)
 		}
 
 		return added, nil
@@ -2695,7 +2651,7 @@ func (cs *State) addProposalBlockPart(
 	return added, nil
 }
 
-func (cs *State) handleCompleteProposal(ctx context.Context, height int64) {
+func (cs *State) handleCompleteProposal(ctx context.Context, height int64, fromReplay bool) {
 	// Update Valid* if we can.
 	prevotes := cs.Votes.Prevotes(cs.Round)
 	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
@@ -2720,12 +2676,25 @@ func (cs *State) handleCompleteProposal(ctx context.Context, height int64) {
 
 	if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
 		// Move onto the next step
-		cs.enterPrevote(ctx, height, cs.Round, false)
+		// We should allow old blocks if we are recovering from replay
+		allowOldBlocks := fromReplay
+		cs.logger.Debug("entering prevote after complete proposal", "height", cs.ProposalBlock.Height,
+			"hash", cs.ProposalBlock.Hash())
+		cs.enterPrevote(ctx, height, cs.Round, allowOldBlocks)
 		if hasTwoThirds { // this is optimisation as this will be triggered when prevote is added
+			cs.logger.Debug(
+				"entering precommit after complete proposal with threshold received",
+				"height",
+				cs.ProposalBlock.Height,
+				"hash",
+				cs.ProposalBlock.Hash(),
+			)
 			cs.enterPrecommit(ctx, height, cs.Round)
 		}
 	} else if cs.Step == cstypes.RoundStepApplyCommit {
 		// If we're waiting on the proposal block...
+		cs.logger.Debug("trying to finalize commit after complete proposal", "height", cs.ProposalBlock.Height,
+			"hash", cs.ProposalBlock.Hash())
 		cs.tryFinalizeCommit(ctx, height)
 	}
 }
