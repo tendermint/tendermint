@@ -443,6 +443,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 		lastRate    = 0.0
 
 		didProcessCh = make(chan struct{}, 1)
+
+		initialCommitHasExtensions = (r.initialState.LastBlockHeight > 0 && r.store.LoadBlockExtendedCommit(r.initialState.LastBlockHeight) != nil)
 	)
 
 	defer trySyncTicker.Stop()
@@ -466,13 +468,25 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			)
 
 			switch {
-			// TODO(sergio) Might be needed for implementing the upgrading solution. Remove after that
-			//case state.LastBlockHeight > 0 && r.store.LoadBlockExtCommit(state.LastBlockHeight) == nil:
-			case state.LastBlockHeight > 0 &&
-				state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) &&
-				// can you switch to consensus if no blocks are sync'd but you already have a ext commit?
-				blocksSynced == 0:
-				// Having state-synced, we need to blocksync at least one block
+
+			// The case statement below is a bit confusing, so here is a breakdown
+			// of its logic and purpose:
+			//
+			// If VoteExtensions are enabled we cannot switch to consensus without
+			// the vote extension data for the previous height, i.e. state.LastBlockHeight.
+			//
+			// If extensions were required during state.LastBlockHeight and we have
+			// sync'd at least one block, then we are guaranteed to have extensions.
+			// BlockSync requires that the blocks it fetches have extensions if
+			// extensions were enabled during the height.
+			//
+			// If extensions were required during state.LastBlockHeight and we have
+			// not sync'd any blocks, then we can only transition to Consensus
+			// if we already had extensions for the initial height.
+			// If any of these conditions is not met, we continue the loop, looking
+			// for extensions.
+			case state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) &&
+				(blocksSynced == 0 && !initialCommitHasExtensions):
 				r.logger.Info(
 					"no seen commit yet",
 					"height", height,
