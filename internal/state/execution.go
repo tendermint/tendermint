@@ -513,7 +513,9 @@ func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCom
 	//}
 	vs := make([]abci.ExtendedVoteInfo, len(votes))
 	for i, vote := range votes {
-		vs[i].VoteExtension = vote.Extension
+		if vote != nil {
+			vs[i].VoteExtension = vote.Extension
+		}
 	}
 	return abci.ExtendedCommitInfo{
 		Round: c.Round,

@@ -315,14 +315,16 @@ const (
 // 3 - save block and committed with truncated block store and state behind
 var modes = []uint{0, 1, 2, 3}
 
-func findProposer(validatorStubs []*validatorStub, proTxHash crypto.ProTxHash) *validatorStub {
+func findProposer(ctx context.Context, t *testing.T, validatorStubs []*validatorStub, proTxHash crypto.ProTxHash) *validatorStub {
 	for _, validatorStub := range validatorStubs {
-		valProTxHash, _ := validatorStub.GetProTxHash(context.Background())
+		valProTxHash, err := validatorStub.GetProTxHash(ctx)
+		require.NoError(t, err)
 		if bytes.Equal(valProTxHash, proTxHash) {
 			return validatorStub
 		}
 	}
-	panic("validator not found")
+	t.Error("validator not found")
+	return nil
 }
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
@@ -346,7 +348,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		"replay_test",
 		newMockTickerFunc(true),
 		newEpehemeralKVStore)
-	fmt.Printf("initial quorum hash is %X\n", genDoc.QuorumHash)
+	t.Logf("genesis quorum hash is %X\n", genDoc.QuorumHash)
 	sim.Config = cfg
 	defer func() { t.Cleanup(cleanup) }()
 
@@ -361,7 +363,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	vss := make([]*validatorStub, nPeers)
 	for i := 0; i < nPeers; i++ {
-		vss[i] = newValidatorStub(css[i].privValidator, int32(i), genDoc.InitialHeight)
+		vss[i] = newValidatorStub(css[i].privValidator, int32(i), 0)
 	}
 	height, round := css[0].Height, css[0].Round
 
@@ -377,11 +379,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	// randomness of proposer selection
 	css[0].config.DontAutoPropose = true
 
-	signAddVotes(ctx, t, css[0],
-		tmproto.PrecommitType,
-		sim.Config.ChainID(),
-		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
-		vss[1:nVals]...)
+	blockID := types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()}
+	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, sim.Config.ChainID(), blockID, vss[1:nVals]...)
 
 	ensureNewRound(t, newRoundCh, height+1, 0)
 
@@ -400,8 +399,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	propBlock, _ := css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
 	propBlockParts, err := propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
-	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	// stateID := types.StateID{LastAppHash: css[0].state.AppHash}
+	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	proposal := types.NewProposal(vss[1].Height, 1, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
@@ -466,7 +464,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.Equal(t, hvsu4.tx, []byte(propBlock.Txs[0]))
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
-	vssProposer := findProposer(vss, css[0].Validators.Proposer.ProTxHash)
+	vssProposer := findProposer(ctx, t, vss, css[0].Validators.Proposer.ProTxHash)
 	proposal = types.NewProposal(vss[3].Height, 1, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
 	if _, err := vssProposer.SignProposal(ctx, cfg.ChainID(), genDoc.QuorumType, hvsu2.quorumHash, p); err != nil {
@@ -1610,11 +1608,11 @@ func TestHandshakeInitialCoreLockHeight(t *testing.T) {
 
 	const InitialCoreHeight uint32 = 12345
 	logger := log.NewNopLogger()
-	config, err := ResetConfig(t.TempDir(), "handshake_test_initial_core_lock_height")
+	conf, err := ResetConfig(t.TempDir(), "handshake_test_initial_core_lock_height")
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
+	t.Cleanup(func() { _ = os.RemoveAll(conf.RootDir) })
 
-	privVal, err := privval.LoadFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
+	privVal, err := privval.LoadFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
 	require.NoError(t, err)
 
 	eventBus := eventbus.NewDefault(logger)
@@ -1630,11 +1628,11 @@ func TestHandshakeInitialCoreLockHeight(t *testing.T) {
 	require.NoError(t, err)
 	proTxHash, err := privVal.GetProTxHash(ctx)
 	require.NoError(t, err)
-	stateDB, state, store := stateAndStore(t, config, pubKey, 0x0)
+	stateDB, state, store := stateAndStore(t, conf, pubKey, 0x0)
 	stateStore := sm.NewStore(stateDB)
 
 	// now start the app using the handshake - it should sync
-	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	genDoc, _ := sm.MakeGenesisDocFromFile(conf.GenesisFile())
 	handshaker := NewHandshaker(
 		logger,
 		stateStore,
@@ -1643,7 +1641,7 @@ func TestHandshakeInitialCoreLockHeight(t *testing.T) {
 		eventBus,
 		genDoc,
 		proTxHash,
-		config.Consensus.AppHashSize,
+		conf.Consensus.AppHashSize,
 	)
 
 	proxyApp := proxy.New(client, logger, proxy.NopMetrics())

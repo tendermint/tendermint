@@ -413,7 +413,7 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			// If we received non-zero initial core height, we set it here
-			if res.InitialCoreHeight > 0 && res.InitialCoreHeight != res.InitialCoreHeight {
+			if res.InitialCoreHeight > 0 && int64(res.InitialCoreHeight) != h.genDoc.InitialHeight {
 				state.LastCoreChainLockedBlockHeight = res.InitialCoreHeight
 				h.initialState.LastCoreChainLockedBlockHeight = res.InitialCoreHeight
 			}
