@@ -917,6 +917,26 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 	return commit.hash
 }
 
+// WrappedExtendedCommit wraps a commit as an ExtendedCommit.
+// The VoteExtension fields of the resulting value will by nil.
+// Wrapping a Commit as an ExtendedCommit is useful when an API
+// requires an ExtendedCommit wire type but does not
+// need the VoteExtension data.
+func (commit *Commit) WrappedExtendedCommit() *ExtendedCommit {
+	cs := make([]ExtendedCommitSig, len(commit.Signatures))
+	for idx, s := range commit.Signatures {
+		cs[idx] = ExtendedCommitSig{
+			CommitSig: s,
+		}
+	}
+	return &ExtendedCommit{
+		Height:             commit.Height,
+		Round:              commit.Round,
+		BlockID:            commit.BlockID,
+		ExtendedSignatures: cs,
+	}
+}
+
 // StringIndented returns a string representation of the commit.
 func (commit *Commit) StringIndented(indent string) string {
 	if commit == nil {

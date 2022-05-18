@@ -185,31 +185,34 @@ func (r *Reactor) OnStop() {
 // Otherwise, we'll respond saying we do not have it.
 func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
 	block := r.store.LoadBlock(msg.Height)
-	if block != nil {
-		extCommit := r.store.LoadBlockExtendedCommit(msg.Height)
-		if extCommit == nil {
-			return fmt.Errorf("found block in store without extended commit: %v", block)
-		}
-		blockProto, err := block.ToProto()
-		if err != nil {
-			return fmt.Errorf("failed to convert block to protobuf: %w", err)
-		}
-
+	if block == nil {
+		r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
 		return blockSyncCh.Send(ctx, p2p.Envelope{
-			To: peerID,
-			Message: &bcproto.BlockResponse{
-				Block:     blockProto,
-				ExtCommit: extCommit.ToProto(),
-			},
+			To:      peerID,
+			Message: &bcproto.NoBlockResponse{Height: msg.Height},
 		})
 	}
-
-	r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
+	extCommit := r.store.LoadBlockExtendedCommit(msg.Height)
+	if extCommit == nil {
+		c := r.store.LoadBlockCommit(msg.Height)
+		extCommit = c.WrappedExtendedCommit()
+	}
+	if extCommit == nil {
+		return fmt.Errorf("found block in store with no commit and no extended commit: %v", block)
+	}
+	blockProto, err := block.ToProto()
+	if err != nil {
+		return fmt.Errorf("failed to convert block to protobuf: %w", err)
+	}
 
 	return blockSyncCh.Send(ctx, p2p.Envelope{
-		To:      peerID,
-		Message: &bcproto.NoBlockResponse{Height: msg.Height},
+		To: peerID,
+		Message: &bcproto.BlockResponse{
+			Block:     blockProto,
+			ExtCommit: extCommit.ToProto(),
+		},
 	})
+
 }
 
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
