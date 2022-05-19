@@ -248,9 +248,6 @@ func NewState(
 }
 
 func (cs *State) updateStateFromStore() error {
-	if cs.initialStatePopulated {
-		return nil
-	}
 	state, err := cs.stateStore.Load()
 	if err != nil {
 		return fmt.Errorf("loading state: %w", err)
@@ -266,7 +263,6 @@ func (cs *State) updateStateFromStore() error {
 
 	cs.updateToState(state)
 
-	cs.initialStatePopulated = true
 	return nil
 }
 
