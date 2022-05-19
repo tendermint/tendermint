@@ -523,7 +523,7 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionClients:       100,
 		MaxSubscriptionsPerClient:    5,
 		ExperimentalDisableWebsocket: false, // compatible with TM v0.35 and earlier
-		EventLogWindowSize:           0,     // disables /events RPC by default
+		EventLogWindowSize:           30 * time.Second,
 		EventLogMaxItems:             0,
 
 		TimeoutBroadcastTxCommit: 10 * time.Second,
