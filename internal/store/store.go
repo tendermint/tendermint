@@ -497,6 +497,9 @@ func (bs *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")
 	}
+	if err := seenExtendedCommit.EnsureExtensions(); err != nil {
+		panic(fmt.Sprintf("saving block with extensions %w", err))
+	}
 	batch := bs.db.NewBatch()
 	if err := bs.saveBlockToBatch(batch, block, blockParts, seenExtendedCommit.ToCommit()); err != nil {
 		panic(err)
