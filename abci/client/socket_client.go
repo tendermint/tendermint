@@ -112,6 +112,11 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
+			// N.B. We must enqueue before sending out the request, otherwise the
+			// server may reply before we do it, and the receiver will fail for an
+			// unsolicited reply.
+			cli.trackRequest(reqres)
+
 			if err := types.WriteMessage(reqres.Request, bw); err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
@@ -121,8 +126,6 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 				cli.stopForError(fmt.Errorf("flush buffer: %w", err))
 				return
 			}
-
-			cli.trackRequest(reqres)
 		}
 	}
 }
@@ -155,13 +158,14 @@ func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader
 }
 
 func (cli *socketClient) trackRequest(reqres *requestAndResponse) {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-
+	// N.B. We must NOT hold the client state lock while checking this, or we
+	// may deadlock with shutdown.
 	if !cli.IsRunning() {
 		return
 	}
 
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	cli.reqSent.PushBack(reqres)
 }
 
