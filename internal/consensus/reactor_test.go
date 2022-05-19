@@ -686,7 +686,12 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 			added, err := voteSet.AddVote(signedVote)
 			require.NoError(t, err)
 			require.True(t, added)
-			cs.blockStore.SaveBlockWithExtendedCommit(propBlock, blockParts, voteSet.MakeExtendedCommit())
+
+			if testCase.includeExtensions {
+				cs.blockStore.SaveBlockWithExtendedCommit(propBlock, blockParts, voteSet.MakeExtendedCommit())
+			} else {
+				cs.blockStore.SaveBlock(propBlock, blockParts, voteSet.MakeExtendedCommit().ToCommit())
+			}
 			reactor := NewReactor(
 				log.NewNopLogger(),
 				cs,
