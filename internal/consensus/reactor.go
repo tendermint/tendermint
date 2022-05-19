@@ -216,6 +216,8 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		if err := r.state.Start(ctx); err != nil {
 			return err
 		}
+	} else if err := r.state.updateStateFromStore(); err != nil {
+		return err
 	}
 
 	go r.updateRoundStateRoutine(ctx)
