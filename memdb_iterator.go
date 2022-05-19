@@ -56,7 +56,7 @@ func newMemDBIteratorMtxChoice(db *MemDB, start []byte, end []byte, reverse bool
 			abortLessThan []byte
 		)
 		visitor := func(i btree.Item) bool {
-			item := i.(*item)
+			item := i.(item)
 			if skipEqual != nil && bytes.Equal(item.key, skipEqual) {
 				skipEqual = nil
 				return true
@@ -67,7 +67,7 @@ func newMemDBIteratorMtxChoice(db *MemDB, start []byte, end []byte, reverse bool
 			select {
 			case <-ctx.Done():
 				return false
-			case ch <- item:
+			case ch <- &item:
 				return true
 			}
 		}
