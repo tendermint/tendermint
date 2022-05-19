@@ -122,9 +122,8 @@ type State struct {
 	// store blocks and commits
 	blockStore sm.BlockStore
 
-	stateStore            sm.Store
-	initialStatePopulated bool
-	skipBootstrapping     bool
+	stateStore        sm.Store
+	skipBootstrapping bool
 
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
