@@ -578,7 +578,7 @@ func (bs *BlockStore) saveBlockToBatch(batch dbm.Batch, block *types.Block, bloc
 
 	pbec := seenCommit.ToProto()
 	extCommitBytes := mustEncode(pbec)
-	if err := batch.Set(extCommitKey(height), extCommitBytes); err != nil {
+	if err := batch.Set(blockCommitKey(height), extCommitBytes); err != nil {
 		return err
 	}
 	return nil
