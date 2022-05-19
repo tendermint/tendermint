@@ -409,6 +409,9 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 
 // MarshalZerologObject formats this object for logging purposes
 func (vote *Vote) MarshalZerologObject(e *zerolog.Event) {
+	if vote == nil {
+		return
+	}
 	e.Str("vote", vote.String())
 	e.Int64("height", vote.Height)
 	e.Int32("round", vote.Round)
