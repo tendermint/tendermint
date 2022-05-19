@@ -281,6 +281,46 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 }
 
+// TestSaveBlockWithExtendedCommitPanicOnAbsentExtension tests that saving a
+// block with an extended commit panics when the extension data is absent.
+func TestSaveBlockWithExtendedCommitPanicOnAbsentExtension(t *testing.T) {
+	for _, testCase := range []struct {
+		name           string
+		malleateCommit func(*types.ExtendedCommit)
+		shouldPanic    bool
+	}{
+		{
+			name:           "basic save",
+			malleateCommit: func(_ *types.ExtendedCommit) {},
+			shouldPanic:    false,
+		},
+		{
+			name: "save commit with no extensions",
+			malleateCommit: func(c *types.ExtendedCommit) {
+				c.StripExtensions()
+			},
+			shouldPanic: true,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
+			defer cleanup()
+			block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+			seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
+			ps, err := block.MakePartSet(2)
+			require.NoError(t, err)
+			testCase.malleateCommit(seenCommit)
+			if testCase.shouldPanic {
+				require.Panics(t, func() {
+					bs.SaveBlockWithExtendedCommit(block, ps, seenCommit)
+				})
+			} else {
+				bs.SaveBlockWithExtendedCommit(block, ps, seenCommit)
+			}
+		})
+	}
+}
+
 func TestLoadBaseMeta(t *testing.T) {
 	cfg, err := config.ResetTestRoot(t.TempDir(), "blockchain_reactor_test")
 	require.NoError(t, err)
