@@ -266,12 +266,20 @@ func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (
 			Code: 0,
 		}, nil
 	case "/val":
-		key := []byte("val:" + string(reqQuery.Data))
-		value, err := app.state.db.Get(key)
+		vu, err := app.valUpdatesRepo.findBy(reqQuery.Data)
 		if err != nil {
-			panic(err)
+			return &types.ResponseQuery{
+				Code: code.CodeTypeUnknownError,
+				Log:  err.Error(),
+			}, nil
 		}
-
+		value, err := encodeMsg(vu)
+		if err != nil {
+			return &types.ResponseQuery{
+				Code: code.CodeTypeEncodingError,
+				Log:  err.Error(),
+			}, nil
+		}
 		return &types.ResponseQuery{
 			Key:   reqQuery.Data,
 			Value: value,
@@ -406,6 +414,19 @@ func (r *repository) get() (*types.ValidatorSetUpdate, error) {
 		return nil, err
 	}
 	return vsu, nil
+}
+
+func (r *repository) findBy(proTxHash crypto.ProTxHash) (*types.ValidatorUpdate, error) {
+	vsu, err := r.get()
+	if err != nil {
+		return nil, err
+	}
+	for _, vu := range vsu.ValidatorUpdates {
+		if bytes.Equal(vu.ProTxHash, proTxHash) {
+			return &vu, nil
+		}
+	}
+	return nil, err
 }
 
 func isValidatorSetUpdateTx(tx []byte) bool {

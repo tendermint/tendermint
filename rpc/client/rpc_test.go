@@ -547,7 +547,7 @@ func TestClientMethodCalls(t *testing.T) {
 					require.NoError(t, err, "Error reading query result, value %v", qres.Value)
 
 					require.EqualValues(t, pv.Key.ProTxHash, v.ProTxHash, "Stored PubKey not equal with expected, value %v", string(qres.Value))
-					require.Equal(t, int64(9), v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
+					require.Equal(t, types.DefaultDashVotingPower, v.Power, "Stored Power not equal with expected, value %v", string(qres.Value))
 
 					for _, fake := range fakes {
 						_, err := c.BroadcastEvidence(ctx, fake)
