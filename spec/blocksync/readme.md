@@ -54,7 +54,7 @@ The Blocksync reactor is organised as a set of concurrent tasks:
 This section describes the Blocksync reactor and its internals including:
 - [Data structures used](./data_structures.md)
 - [Peer to peer communication pattern](./communication.md)
-- [Block Verification](./block_verification.md)
+- [Block Verification](./verification.md)
 
 More details on how to use the Blocksync reactor and configure it when running Tendermint can be found [here](./../docs/tendermint-core/block-sync/README.md).
 

@@ -3,7 +3,7 @@
 When blocksyncing, a node is not participating in conensus. It is receiving blocks that have already been decided and committed. To avoid being fooled by malicious peers, the node has to verify the received blocks before executing the transactions and storing the block in its store. 
 
 
-The verification in blocksync aims to apply the same logic as the [light client verification](#../light-client/verification.md). The model relies on the existence of an **initial trusted state**. 
+The verification in blocksync aims to apply the same logic as the [light client verification](../light-client/verification.md). The model relies on the existence of an **initial trusted state**. 
 
 Based on this state we verify subsequent blocks. 
 

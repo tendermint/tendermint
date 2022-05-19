@@ -67,6 +67,6 @@ If the checks pass, the `block` field of the requester is populated with the new
 `errorsCh   chan peerError` : size `maxPeerErrBuffer`
 
 `didProcessCh chan struct{}` : size `1`.
-The channel is created within the pool routine of the reactor and is used to signal that the reactor should check the block pool for new blocks. A message is sent to the channel after a fixed timeout (`trySyncTicker`). As we need two blocks to verify one of them (this is more clearly defined in [verification](#./verification.md), if we miss only on of them, we will not wait for the sync timer to time out, but rather try quickly again until we fetch both. 
+The channel is created within the pool routine of the reactor and is used to signal that the reactor should check the block pool for new blocks. A message is sent to the channel after a fixed timeout (`trySyncTicker`). As we need two blocks to verify one of them (this is more clearly defined in [verification](./verification.md), if we miss only on of them, we will not wait for the sync timer to time out, but rather try quickly again until we fetch both. 
 
 `switchToConsensusTicker`. In addition to the sync timeout, in the same routine, the reactor checks periodically whether the conditions to switch to consensus are fullfilled. 
