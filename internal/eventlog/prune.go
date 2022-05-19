@@ -12,7 +12,7 @@ func (lg *Log) checkPrune(head *logEntry, size int, age time.Duration) error {
 	const windowSlop = 30 * time.Second
 
 	if age < (lg.windowSize+windowSlop) && (lg.maxItems <= 0 || size <= lg.maxItems) {
-		lg.numItemsGauge.Set(float64(lg.numItems))
+		lg.metrics.numItems.Set(float64(lg.numItems))
 		return nil // no pruning is needed
 	}
 
@@ -46,7 +46,7 @@ func (lg *Log) checkPrune(head *logEntry, size int, age time.Duration) error {
 	lg.mu.Lock()
 	defer lg.mu.Unlock()
 	lg.numItems = newState.size
-	lg.numItemsGauge.Set(float64(newState.size))
+	lg.metrics.numItems.Set(float64(newState.size))
 	lg.oldestCursor = newState.oldest
 	lg.head = newState.head
 	return err

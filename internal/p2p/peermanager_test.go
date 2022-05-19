@@ -1868,38 +1868,3 @@ func TestPeerManager_Advertise_Self(t *testing.T) {
 		self,
 	}, peerManager.Advertise(dID, 100))
 }
-
-func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
-	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
-	b := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("b", 40))}
-
-	db := dbm.NewMemDB()
-	peerManager, err := p2p.NewPeerManager(selfID, db, p2p.PeerManagerOptions{})
-	require.NoError(t, err)
-
-	// Getting a height should default to 0, for unknown peers and
-	// for known peers without height.
-	added, err := peerManager.Add(a)
-	require.NoError(t, err)
-	require.True(t, added)
-	require.EqualValues(t, 0, peerManager.GetHeight(a.NodeID))
-	require.EqualValues(t, 0, peerManager.GetHeight(b.NodeID))
-
-	// Setting a height should work for a known node.
-	require.NoError(t, peerManager.SetHeight(a.NodeID, 3))
-	require.EqualValues(t, 3, peerManager.GetHeight(a.NodeID))
-
-	// Setting a height should add an unknown node.
-	require.Equal(t, []types.NodeID{a.NodeID}, peerManager.Peers())
-	require.NoError(t, peerManager.SetHeight(b.NodeID, 7))
-	require.EqualValues(t, 7, peerManager.GetHeight(b.NodeID))
-	require.ElementsMatch(t, []types.NodeID{a.NodeID, b.NodeID}, peerManager.Peers())
-
-	// The heights should not be persisted.
-	peerManager, err = p2p.NewPeerManager(selfID, db, p2p.PeerManagerOptions{})
-	require.NoError(t, err)
-
-	require.ElementsMatch(t, []types.NodeID{a.NodeID, b.NodeID}, peerManager.Peers())
-	require.Zero(t, peerManager.GetHeight(a.NodeID))
-	require.Zero(t, peerManager.GetHeight(b.NodeID))
-}
