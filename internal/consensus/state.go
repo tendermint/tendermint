@@ -122,9 +122,8 @@ type State struct {
 	// store blocks and commits
 	blockStore sm.BlockStore
 
-	stateStore            sm.Store
-	initialStatePopulated bool
-	skipBootstrapping     bool
+	stateStore        sm.Store
+	skipBootstrapping bool
 
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
@@ -248,14 +247,20 @@ func NewState(
 }
 
 func (cs *State) updateStateFromStore() error {
-	if cs.initialStatePopulated {
-		return nil
-	}
 	state, err := cs.stateStore.Load()
 	if err != nil {
 		return fmt.Errorf("loading state: %w", err)
 	}
 	if state.IsEmpty() {
+		return nil
+	}
+
+	eq, err := state.Equals(cs.state)
+	if err != nil {
+		return fmt.Errorf("comparing state: %w", err)
+	}
+	// if the new state is equivalent to the old state, we should not trigger a state update.
+	if eq {
 		return nil
 	}
 
@@ -266,7 +271,6 @@ func (cs *State) updateStateFromStore() error {
 
 	cs.updateToState(state)
 
-	cs.initialStatePopulated = true
 	return nil
 }
 
