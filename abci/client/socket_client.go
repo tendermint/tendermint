@@ -42,7 +42,7 @@ var _ Client = (*socketClient)(nil)
 func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		logger:      logger,
-		reqQueue:    make(chan *requestAndResponse, 0),
+		reqQueue:    make(chan *requestAndResponse),
 		mustConnect: mustConnect,
 		addr:        addr,
 		reqSent:     list.New(),
@@ -121,6 +121,7 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 				cli.stopForError(fmt.Errorf("flush buffer: %w", err))
 				return
 			}
+
 			cli.trackRequest(reqres)
 		}
 	}
