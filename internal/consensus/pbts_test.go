@@ -201,8 +201,9 @@ func (p *pbtsTestHarness) height5(ctx context.Context, t *testing.T) (heightResu
 }
 
 func (p *pbtsTestHarness) nextHeight(ctx context.Context, t *testing.T, proposer types.PrivValidator, deliverTime, proposedTime, nextProposedTime time.Time) heightResult {
-	quorumType := p.observedState.state.Validators.QuorumType
-	quorumHash := p.observedState.state.Validators.QuorumHash
+	state := p.observedState.GetState()
+	quorumType := state.Validators.QuorumType
+	quorumHash := state.Validators.QuorumHash
 
 	p.validatorClock.On("Now").Return(nextProposedTime).Times(6)
 
