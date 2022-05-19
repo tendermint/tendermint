@@ -1,6 +1,6 @@
 package eventlog
 
-import "github.com/go-kit/kit/metrics"
+import "github.com/prometheus/client_golang/prometheus"
 
 const MetricsSubsystem = "eventlog"
 
@@ -10,5 +10,5 @@ const MetricsSubsystem = "eventlog"
 type Metrics struct {
 
 	// Number of items currently resident in the event log.
-	numItems metrics.Gauge
+	numItems prometheus.GaugeVec
 }

@@ -3,9 +3,7 @@
 package eventlog
 
 import (
-	"github.com/go-kit/kit/metrics/discard"
-	prometheus "github.com/go-kit/kit/metrics/prometheus"
-	stdprometheus "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
@@ -13,18 +11,22 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	for i := 0; i < len(labelsAndValues); i += 2 {
 		labels = append(labels, labelsAndValues[i])
 	}
-	return &Metrics{
-		numItems: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+	r:= prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "num_items",
 			Help:      "Number of items currently resident in the event log.",
-		}, labels).With(labelsAndValues...),
+		}, labels).MustCurryWith(labelsAndValues...)
+		prometheus.MustRegister(r)
+	return &Metrics{
+		numItems: r,
 	}
 }
 
 func NopMetrics() *Metrics {
+	r:= prometheus.NewGaugeVec(prometheus.GaugeOpts{}, []string{}).WithLabelValues([]string{}...)
+		prometheus.MustRegister(r)
 	return &Metrics{
-		numItems: discard.NewGauge(),
+		numItems: r,
 	}
 }
