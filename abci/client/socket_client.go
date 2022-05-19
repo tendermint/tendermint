@@ -112,6 +112,8 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
+			cli.trackRequest(reqres)
+
 			if err := types.WriteMessage(reqres.Request, bw); err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
@@ -121,8 +123,6 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 				cli.stopForError(fmt.Errorf("flush buffer: %w", err))
 				return
 			}
-
-			cli.trackRequest(reqres)
 		}
 	}
 }
