@@ -1,5 +1,7 @@
 ## Communication between peers and components within the blocksync reactor
 
+A newly joined or recovering node is connecting to a number of peers in order to sync up to the latest height in the blockchain. The peers do not neccessarily have to be validators but we assume that at least one of the peers is correct. The node requests the status of peers to learn the maximum and minimum heights for which the peer has blocks. Based on this, the node decides on the maximum height it needs to sync up to. **There is no additional check** on whether the peers were lying about their heights. 
+
 Each peer has an open p2p channel. The number of total requests in flight is limited (`maxPendingRequests` initially set to `maxTotalRequesters`). Additionally, there is an upper limit on requests **per** peer (20). 
 
 Once a node receives messages via the p2p channel, they are propagated further via the reactor's go channels. This section contains details on each of the open communication channels, their capacity and when they get activated. 
@@ -10,7 +12,9 @@ On startup, the reactor fires up four go routines:
 3. Handle block sync channel messages
 4. Process peer updates
 
-The pool routine picks out blocks form the block pool and processes them. It also checks whether we should switch to consensus if we are caught up. ToDo - change wording (Remove we, discuss whether the pool routing should be the one checking the condition for consensus). 
+The pool routine picks out blocks form the block pool and processes them. It also checks whether we should switch to consensus if we are caught up. ToDo - change wording (Remove we, discuss whether the pool routing should be the one checking the condition for consensus).
+
+Process peer updates is in fact sending a response to a peer requesting our status update. 
 
 
 ### Communication channels
@@ -28,6 +32,8 @@ Messages processed via the channel:
     - `NoBlockResponse{height int64} `: Indicates that a peer does not have a block at `height`.
     - `StatusRequest {} `: Sent to a peer to request its status.
     - `StatusResponse {height int64, base int64} `: Send to a peer the lowest and heights height of blocks within it's store (`store.Height()`, `store.Base()`).
+    -`HeaderRequest{height: int64}`
+    -`HeaderResponse{header: Header}`
 
 ### Reactor channels
 
