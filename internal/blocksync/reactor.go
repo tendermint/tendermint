@@ -497,7 +497,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			case state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) &&
 				(blocksSynced == 0 && !initialCommitHasExtensions):
 				r.logger.Info(
-					"no seen commit yet",
+					"no extended commit yet",
 					"height", height,
 					"last_block_height", state.LastBlockHeight,
 					"initial_height", state.InitialHeight,
