@@ -155,13 +155,14 @@ func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader
 }
 
 func (cli *socketClient) trackRequest(reqres *requestAndResponse) {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-
+	// N.B. We must NOT hold the client state lock while checking this, or we
+	// may deadlock with shutdown.
 	if !cli.IsRunning() {
 		return
 	}
 
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	cli.reqSent.PushBack(reqres)
 }
 
