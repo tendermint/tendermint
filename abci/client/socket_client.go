@@ -112,6 +112,9 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
+			// N.B. We must enqueue before sending out the request, otherwise the
+			// server may reply before we do it, and the receiver will fail for an
+			// unsolicited reply.
 			cli.trackRequest(reqres)
 
 			if err := types.WriteMessage(reqres.Request, bw); err != nil {
