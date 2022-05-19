@@ -149,7 +149,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet, thresholdPublicKey crypto.Pub
 // returns duplicate vote evidence against the validator
 func generateDuplicateVoteEvidence(
 	ctx context.Context,
-	privVals []types.MockPV,
+	privVals []*types.MockPV,
 	height int64,
 	vals *types.ValidatorSet,
 	chainID string,
