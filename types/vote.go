@@ -112,11 +112,14 @@ func (vote *Vote) CommitSig() CommitSig {
 	}
 }
 
-// StripExtensions removes any extension data from the vote. Useful if the
+// StripExtension removes any extension data from the vote. Useful if the
 // chain has not enabled vote extensions.
-func (vote *Vote) StripExtensions() {
+// Returns true if extension data was present before stripping and false otherwise.
+func (vote *Vote) StripExtension() bool {
+	stripped := len(vote.Extension) > 0 || len(vote.ExtensionSignature) > 0
 	vote.Extension = nil
 	vote.ExtensionSignature = nil
+	return stripped
 }
 
 // ExtendedCommitSig attempts to construct an ExtendedCommitSig from this vote.

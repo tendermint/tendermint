@@ -2407,16 +2407,15 @@ func (cs *State) addVote(
 			}
 		}
 	} else {
-		if vote.Extension != nil || vote.ExtensionSignature != nil {
-			cs.logger.Error("vote included extension data but vote extensions are not enabled", "peer", peerID)
-		}
 		// Vote extensions are not enabled on the network.
 		// strip the extension data from the vote in case any is present.
 		//
 		// TODO punish a peer if it sent a vote with an extension when the feature
 		// is disabled on the network.
 		// https://github.com/tendermint/tendermint/issues/8565
-		vote.StripExtensions()
+		if stripped := vote.StripExtension(); stripped {
+			cs.logger.Error("vote included extension data but vote extensions are not enabled", "peer", peerID)
+		}
 	}
 
 	height := cs.Height
@@ -2620,7 +2619,8 @@ func (cs *State) signAddVote(
 		return nil
 	}
 	if !cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(vote.Height) {
-		vote.StripExtensions()
+		// The signer will sign the extension, make sure to remove the data on the way out
+		vote.StripExtension()
 	}
 	cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, "", tmtime.Now()})
 	cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)

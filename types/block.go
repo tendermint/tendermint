@@ -1105,11 +1105,16 @@ func (ec *ExtendedCommit) EnsureExtensions() error {
 // StripExtensions removes all VoteExtension data from an ExtendedCommit. This
 // is useful when dealing with an ExendedCommit but vote extension data is
 // expected to be absent.
-func (ec *ExtendedCommit) StripExtensions() {
+func (ec *ExtendedCommit) StripExtensions() bool {
+	stripped := false
 	for idx := range ec.ExtendedSignatures {
+		if len(ec.ExtendedSignatures[idx].Extension) > 0 || len(ec.ExtendedSignatures[idx].ExtensionSignature) > 0 {
+			stripped = true
+		}
 		ec.ExtendedSignatures[idx].Extension = nil
 		ec.ExtendedSignatures[idx].ExtensionSignature = nil
 	}
+	return stripped
 }
 
 // ToCommit converts an ExtendedCommit to a Commit by removing all vote

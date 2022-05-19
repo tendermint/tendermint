@@ -590,7 +590,9 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				// if vote extensions were required at this height, ensure they exist.
 				err = extCommit.EnsureExtensions()
 			} else if err == nil && !state.ConsensusParams.ABCI.VoteExtensionsEnabled(extCommit.Height) {
-				extCommit.StripExtensions()
+				if stripped := extCommit.StripExtensions(); stripped {
+					r.logger.Error("commit included extension data but vote extensions are not enabled")
+				}
 			}
 			// If either of the checks failed we log the error and request for a new block
 			// at that height
