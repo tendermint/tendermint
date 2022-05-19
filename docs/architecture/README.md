@@ -118,3 +118,4 @@ None
 - [ADR-071: Proposer-Based Timestamps](./adr-071-proposer-based-timestamps.md)
 - [ADR-073: Adopt LibP2P](./adr-073-libp2p.md)
 - [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
+- [ADR-082: The Future of the Socket Protocol](./adr-082-socket-protocol.md)
