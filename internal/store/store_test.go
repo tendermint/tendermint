@@ -210,7 +210,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		bs, db := newInMemoryBlockStore()
 		// SaveBlock
 		res, err, panicErr := doFn(func() (interface{}, error) {
-			fmt.Println(tuple)
 			bs.SaveBlockWithExtendedCommit(tuple.block, tuple.parts, tuple.seenCommit)
 			if tuple.block == nil {
 				return nil, nil
