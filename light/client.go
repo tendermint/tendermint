@@ -219,11 +219,6 @@ func NewClientFromTrustedStore(
 		o(c)
 	}
 
-	// Validate the number of witnesses.
-	if len(c.witnesses) == 0 {
-		return nil, ErrNoWitnesses
-	}
-
 	if err := c.restoreTrustedLightBlock(); err != nil {
 		return nil, err
 	}
@@ -509,12 +504,7 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 	if err := c.verifyBlockSignatureWithDashCore(ctx, newLightBlock); err != nil {
 		return err
 	}
-
-	if err := c.verifyStateIDSignatureWithDashCore(ctx, newLightBlock); err != nil {
-		return err
-	}
-
-	return nil
+	return c.verifyStateIDSignatureWithDashCore(ctx, newLightBlock)
 }
 
 func (c *Client) verifyBlockSignatureWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
@@ -853,7 +843,7 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) < 1 {
+	if len(c.witnesses) == 0 {
 		return nil
 	}
 
@@ -875,7 +865,8 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 			c.logger.Error(fmt.Sprintf("witness #%d has a different header. Please check primary is correct and"+
 				" remove witness. Otherwise, use the different primary", e.WitnessIndex), "witness",
 				c.witnesses[e.WitnessIndex])
-			return err
+			// if attempt to generate conflicting headers failed then remove witness
+			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it
 			c.logger.Info("witness sent an invalid light block, removing...",

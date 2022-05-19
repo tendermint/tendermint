@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/privval"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -60,13 +63,16 @@ func TestExampleClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	pv, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
+	require.NoError(t, err)
+
 	c, err := light.NewClient(
 		ctx,
 		chainID,
 		primary,
 		nil,
 		dbs.New(db),
-		dashcore.NewMockClient(chainID, 100, nil, false),
+		dashcore.NewMockClient(chainID, btcjson.LLMQType_5_60, pv, false),
 		light.Logger(log.NewTestingLogger(t)),
 	)
 
@@ -82,7 +88,7 @@ func TestExampleClient(t *testing.T) {
 	// wait for a few more blocks to be produced
 	time.Sleep(2 * time.Second)
 
-	// veify the block at height 3
+	// verify the block at height 3
 	_, err = c.VerifyLightBlockAtHeight(ctx, 3, time.Now())
 	if err != nil {
 		t.Fatal(err)

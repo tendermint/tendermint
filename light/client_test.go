@@ -126,11 +126,12 @@ func TestClient(t *testing.T) {
 		defer cancel()
 
 		mockFullNode := mockNodeFromHeadersAndVals(headerSet, valSet)
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockFullNode,
-			[]provider.Provider{mockFullNode},
+			nil,
 			dbs.New(dbm.NewMemDB()),
 			dashCoreMockClient,
 		)
@@ -155,8 +156,9 @@ func TestClient(t *testing.T) {
 
 		mockFullNode := &provider_mocks.Provider{}
 		mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockFullNode,
 			nil,
@@ -195,8 +197,9 @@ func TestClient(t *testing.T) {
 			err := trustedStore.SaveLightBlock(l1)
 			require.NoError(t, err)
 
-			c, err := light.NewClient(
+			c, err := light.NewClientAtHeight(
 				ctx,
+				1,
 				chainID,
 				mockNode,
 				nil,
@@ -227,8 +230,9 @@ func TestClient(t *testing.T) {
 
 			mockNode := &provider_mocks.Provider{}
 
-			c, err := light.NewClient(
+			c, err := light.NewClientAtHeight(
 				ctx,
+				1,
 				chainID,
 				mockNode,
 				nil,
@@ -269,8 +273,9 @@ func TestClient(t *testing.T) {
 
 		logger := log.NewNopLogger()
 
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockFullNode,
 			[]provider.Provider{mockWitnessNode},
@@ -299,8 +304,9 @@ func TestClient(t *testing.T) {
 		mockFullNode := &provider_mocks.Provider{}
 		mockFullNode.On("LightBlock", mock.Anything, int64(2)).Return(l2, nil)
 		mockFullNode.On("LightBlock", mock.Anything, int64(1)).Return(l1, nil)
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockFullNode,
 			nil,
@@ -352,8 +358,9 @@ func TestClient(t *testing.T) {
 
 		logger := log.NewNopLogger()
 
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockDeadNode,
 			[]provider.Provider{mockFullNode},
@@ -393,8 +400,9 @@ func TestClient(t *testing.T) {
 		mockDeadNode2.On("LightBlock", mock.Anything, mock.Anything).Return(nil, provider.ErrLightBlockNotFound)
 		mockDeadNode2.On("ID").Return("mockDeadNode2")
 
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockDeadNode1,
 			[]provider.Provider{mockFullNode, mockDeadNode2},
@@ -481,8 +489,9 @@ func TestClient(t *testing.T) {
 			})
 		mockGoodWitness.On("ID").Return("mockGoodWitness")
 
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockFullNode,
 			[]provider.Provider{mockBadValSetNode, mockGoodWitness},
@@ -527,8 +536,9 @@ func TestClient(t *testing.T) {
 		defer cancel()
 		logger := log.NewNopLogger()
 
-		c, err := light.NewClient(
+		c, err := light.NewClientAtHeight(
 			ctx,
+			1,
 			chainID,
 			mockFullNode,
 			[]provider.Provider{mockGoodWitness},
@@ -621,8 +631,9 @@ func TestClient(t *testing.T) {
 					mockBadNode.On("LightBlock", mock.Anything, testCase.errorHeight).Return(nil, testCase.errorToThrow)
 				}
 
-				c, err := light.NewClient(
+				c, err := light.NewClientAtHeight(
 					ctx,
+					1,
 					chainID,
 					mockBadNode,
 					nil,

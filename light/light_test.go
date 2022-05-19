@@ -183,6 +183,10 @@ func TestClientStatusRPC(t *testing.T) {
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	require.NoError(t, err)
 
+	// give Tendermint time to generate some blocks
+	_, err = waitForBlock(ctx, primary, 2)
+	require.NoError(t, err)
+
 	filePV, err := privval.LoadOrGenFilePV(conf.PrivValidator.KeyFile(), conf.PrivValidator.StateFile())
 	require.NoError(t, err)
 
@@ -193,7 +197,8 @@ func TestClientStatusRPC(t *testing.T) {
 	// and only verify the primary IP address.
 	witnesses := []provider.Provider{}
 
-	c, err := light.NewClient(ctx,
+	c, err := light.NewClientAtHeight(ctx,
+		2,
 		chainID,
 		primary,
 		witnesses,
