@@ -478,6 +478,8 @@ skip-timeout-commit = false
 create-empty-blocks = true
 create-empty-blocks-interval = "0s"
 
+create-proof-block-range = 1
+
 # Reactor sleep duration parameters
 peer-gossip-sleep-duration = "100ms"
 peer-query-maj23-sleep-duration = "2s"

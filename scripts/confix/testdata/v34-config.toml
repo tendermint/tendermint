@@ -385,6 +385,8 @@ skip_timeout_commit = false
 create_empty_blocks = true
 create_empty_blocks_interval = "0s"
 
+create_proof_block_range = 1
+
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "100ms"
 peer_query_maj23_sleep_duration = "2s"
