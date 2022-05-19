@@ -17,12 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-const (
-	// reqQueueSize is the max number of queued async requests.
-	// (memory: 256MB max assuming 1MB transactions)
-	reqQueueSize = 256
-)
-
 // This is goroutine-safe, but users should beware that the application in
 // general is not meant to be interfaced with concurrent callers.
 type socketClient struct {
@@ -48,7 +42,7 @@ var _ Client = (*socketClient)(nil)
 func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		logger:      logger,
-		reqQueue:    make(chan *requestAndResponse, reqQueueSize),
+		reqQueue:    make(chan *requestAndResponse),
 		mustConnect: mustConnect,
 		addr:        addr,
 		reqSent:     list.New(),
@@ -127,6 +121,8 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 				cli.stopForError(fmt.Errorf("flush buffer: %w", err))
 				return
 			}
+
+			cli.trackRequest(reqres)
 		}
 	}
 }
@@ -158,7 +154,7 @@ func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader
 	}
 }
 
-func (cli *socketClient) willSendReq(reqres *requestAndResponse) {
+func (cli *socketClient) trackRequest(reqres *requestAndResponse) {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 
@@ -199,7 +195,6 @@ func (cli *socketClient) doRequest(ctx context.Context, req *types.Request) (*ty
 	}
 
 	reqres := makeReqRes(req)
-	cli.willSendReq(reqres)
 
 	select {
 	case cli.reqQueue <- reqres:
