@@ -36,6 +36,7 @@ func makeTestExtCommit(height int64, timestamp time.Time) *types.ExtendedCommit 
 			Timestamp:        timestamp,
 			Signature:        []byte("Signature"),
 		},
+		ExtensionSignature: []byte("ExtensionSignature"),
 	}}
 	return &types.ExtendedCommit{
 		Height: height,
