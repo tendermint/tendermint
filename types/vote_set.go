@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"runtime/debug"
 	"strings"
 	"sync"
 
@@ -228,9 +227,6 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Add vote and get conflicting vote if any.
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower, signID, stateSignID)
 	if conflicting != nil {
-		fmt.Printf("-----\n")
-		debug.PrintStack()
-		fmt.Printf("-----\n")
 		return added, NewConflictingVoteError(conflicting, vote)
 	}
 	if !added {
