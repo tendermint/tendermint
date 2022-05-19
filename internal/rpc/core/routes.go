@@ -28,7 +28,7 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 	out := RoutesMap{
 		// Event subscription. Note that subscribe, unsubscribe, and
 		// unsubscribe_all are only available via the websocket endpoint.
-		"events":          rpc.NewRPCFunc(svc.Events),
+		"events":          rpc.NewRPCFunc(svc.Events).Timeout(0),
 		"subscribe":       rpc.NewWSRPCFunc(svc.Subscribe),
 		"unsubscribe":     rpc.NewWSRPCFunc(svc.Unsubscribe),
 		"unsubscribe_all": rpc.NewWSRPCFunc(svc.UnsubscribeAll),
