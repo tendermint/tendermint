@@ -173,8 +173,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 		attempt := uint16(0)
 		for {
 			res, err := p.client.Validators(ctx, height, &page, &perPage)
-			switch e := err.(type) {
-			case nil: // success!! Now we validate the response
+			if err == nil {
 				if len(res.Validators) == 0 {
 					return nil, provider.ErrBadLightBlock{
 						Reason: fmt.Errorf("validator set is empty (height: %d, page: %d, per_page: %d)",
@@ -187,35 +186,37 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 							res.Total, height, page, perPage),
 					}
 				}
+			} else {
+				switch e := err.(type) {
 
-			case *url.Error:
-				if e.Timeout() {
-					// if we have exceeded retry attempts then return a no response error
-					if attempt == p.maxRetryAttempts {
-						return nil, p.noResponse()
+				case *url.Error:
+					if e.Timeout() {
+						// if we have exceeded retry attempts then return a no response error
+						if attempt == p.maxRetryAttempts {
+							return nil, p.noResponse()
+						}
+						attempt++
+						// request timed out: we wait and try again with exponential backoff
+						time.Sleep(backoffTimeout(attempt))
+						continue
 					}
-					attempt++
-					// request timed out: we wait and try again with exponential backoff
-					time.Sleep(backoffTimeout(attempt))
-					continue
+					return nil, provider.ErrBadLightBlock{Reason: e}
+
+				case *rpctypes.RPCError:
+					// process the rpc error and return the corresponding error to the light client
+					return nil, p.parseRPCError(e)
+
+				default:
+					// check if the error stems from the context
+					if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+						return nil, err
+					}
+
+					// If we don't know the error then by default we return an unreliable provider error and
+					// terminate the connection with the peer.
+					return nil, provider.ErrUnreliableProvider{Reason: e}
 				}
-				return nil, provider.ErrBadLightBlock{Reason: e}
-
-			case *rpctypes.RPCError:
-				// process the rpc error and return the corresponding error to the light client
-				return nil, p.parseRPCError(e)
-
-			default:
-				// check if the error stems from the context
-				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					return nil, err
-				}
-
-				// If we don't know the error then by default we return an unreliable provider error and
-				// terminate the connection with the peer.
-				return nil, provider.ErrUnreliableProvider{Reason: e}
 			}
-
 			// update the total and increment the page index so we can fetch the
 			// next page of validators if need be
 			total = res.Total
@@ -223,6 +224,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 			page++
 			break
 		}
+
 	}
 
 	valSet, err := types.ValidatorSetFromExistingValidators(vals)
