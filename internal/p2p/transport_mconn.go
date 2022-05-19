@@ -40,6 +40,7 @@ type MConnTransportOptions struct {
 // MConnTransport is a Transport implementation using the current multiplexed
 // Tendermint protocol ("MConn").
 type MConnTransport struct {
+	mtx          sync.Mutex
 	logger       log.Logger
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
@@ -164,7 +165,10 @@ func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 	case err := <-errCh:
 		return nil, err
 	case tcpConn := <-conCh:
-		return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
+		m.mtx.Lock()
+		chDescs := m.channelDescs
+		m.mtx.Unlock()
+		return newMConnConnection(m.logger, tcpConn, m.mConnConfig, chDescs), nil
 	}
 
 }
@@ -213,6 +217,8 @@ func (m *MConnTransport) Close() error {
 // connections should be agnostic to everything but the channel ID's which are
 // initialized in the handshake.
 func (m *MConnTransport) AddChannelDescriptors(channelDesc []*ChannelDescriptor) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.channelDescs = append(m.channelDescs, channelDesc...)
 }
 
