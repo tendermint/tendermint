@@ -304,6 +304,7 @@ func TestSaveBlockWithExtendedCommitPanicOnAbsentExtension(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
+			require.NoError(t, err)
 			defer cleanup()
 			block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
 			seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
