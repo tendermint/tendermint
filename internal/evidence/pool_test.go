@@ -596,6 +596,7 @@ func makeExtCommit(height int64, valAddr []byte) *types.ExtendedCommit {
 				Timestamp:        defaultEvidenceTime,
 				Signature:        []byte("Signature"),
 			},
+			ExtensionSignature: []byte("Extended Signature"),
 		}},
 	}
 }
