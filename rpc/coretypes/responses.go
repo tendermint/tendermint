@@ -168,18 +168,73 @@ type Peer struct {
 	URL string       `json:"url"`
 }
 
-// Validators for a height.
+// ResultValidators for a height.
 type ResultValidators struct {
-	BlockHeight int64              `json:"block_height,string"`
+	BlockHeight int64
+	Validators  []*types.Validator
+
+	Count int // Count of actual validators in this result
+	Total int // Total number of validators
+
+	// dash fields
+	ThresholdPublicKey *crypto.PubKey
+	QuorumType         btcjson.LLMQType
+	QuorumHash         *crypto.QuorumHash
+}
+
+type resultValidatorsJSON struct {
+	BlockHeight int64              `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
 
 	Count int `json:"count,string"` // Count of actual validators in this result
 	Total int `json:"total,string"` // Total number of validators
 
 	// dash fields
-	ThresholdPublicKey *crypto.PubKey     `json:"threshold_public_key"`
+	ThresholdPublicKey json.RawMessage    `json:"threshold_public_key"`
 	QuorumType         btcjson.LLMQType   `json:"quorum_type"`
 	QuorumHash         *crypto.QuorumHash `json:"quorum_hash"`
+}
+
+func (r ResultValidators) MarshalJSON() ([]byte, error) {
+	res := resultValidatorsJSON{
+		BlockHeight: r.BlockHeight,
+		Validators:  r.Validators,
+		Count:       r.Count,
+		Total:       r.Total,
+		QuorumType:  r.QuorumType,
+		QuorumHash:  r.QuorumHash,
+	}
+	var err error
+	if r.ThresholdPublicKey != nil {
+		res.ThresholdPublicKey, err = jsontypes.Marshal(*r.ThresholdPublicKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(res)
+}
+
+func (r *ResultValidators) UnmarshalJSON(data []byte) error {
+	var res resultValidatorsJSON
+	err := json.Unmarshal(data, &res)
+	if err != nil {
+		return err
+	}
+	r.Total = res.Total
+	r.Count = res.Count
+	r.BlockHeight = res.BlockHeight
+	r.Validators = res.Validators
+	r.QuorumType = res.QuorumType
+	r.QuorumHash = res.QuorumHash
+	var thresholdPubKey crypto.PubKey
+	if res.ThresholdPublicKey != nil {
+		err = jsontypes.Unmarshal(res.ThresholdPublicKey, &thresholdPubKey)
+		if err != nil {
+			return err
+		}
+		r.ThresholdPublicKey = &thresholdPubKey
+	}
+	return nil
 }
 
 // ConsensusParams for given height
