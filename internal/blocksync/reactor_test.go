@@ -188,7 +188,7 @@ func (rts *reactorTestSuite) addNode(
 	state, err := reactor.stateStore.Load()
 	require.NoError(t, err)
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		block, blockID, partSet, seenExtCommit := makeNextBlock(t, ctx, state, privVal, blockHeight, lastExtCommit)
+		block, blockID, partSet, seenExtCommit := makeNextBlock(ctx, t, state, privVal, blockHeight, lastExtCommit)
 
 		state, err = reactor.blockExec.ApplyBlock(ctx, state, blockID, block)
 		require.NoError(t, err)
@@ -202,8 +202,8 @@ func (rts *reactorTestSuite) addNode(
 	require.True(t, reactor.IsRunning())
 }
 
-func makeNextBlock(t *testing.T,
-	ctx context.Context,
+func makeNextBlock(ctx context.Context,
+	t *testing.T,
 	state sm.State,
 	signer types.PrivValidator,
 	height int64,
