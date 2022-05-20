@@ -587,7 +587,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				// validate the block before we persist it
 				err = r.blockExec.ValidateBlock(ctx, state, first)
 			}
-			if err == nil && state.ConsensusParams.ABCI.VoteExtensionsEnabled(extCommit.Height) {
+			if err == nil && state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 				// if vote extensions were required at this height, ensure they exist.
 				err = extCommit.EnsureExtensions()
 			} else if err == nil && !state.ConsensusParams.ABCI.VoteExtensionsEnabled(extCommit.Height) {
