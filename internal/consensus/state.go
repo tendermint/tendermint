@@ -1418,8 +1418,10 @@ func (cs *State) enterPropose(ctx context.Context, height int64, round int32) {
 	}
 
 	if cs.isProposer(proTxHash) {
-		logger.Debug("propose step; our turn to propose", "proposer", proTxHash.ShortString(), "privValidator",
-			cs.privValidator)
+		logger.Debug("propose step; our turn to propose",
+			"proposer", proTxHash.ShortString(),
+			"privValidator", cs.privValidator,
+		)
 		cs.decideProposal(ctx, height, round)
 	} else {
 		logger.Debug("propose step; not our turn to propose",
@@ -1495,7 +1497,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	validatorsAtProposalHeight := cs.state.ValidatorsAtHeight(p.Height)
 	quorumHash := validatorsAtProposalHeight.QuorumHash
 
-	proTxHash, err := cs.privValidator.GetProTxHash(context.Background())
+	proTxHash, err := cs.privValidator.GetProTxHash(ctx)
 	if err != nil {
 		cs.logger.Error(
 			"propose step; failed signing proposal; couldn't get proTxHash",
@@ -1505,7 +1507,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 		)
 		return
 	}
-	pubKey, err := cs.privValidator.GetPubKey(context.Background(), quorumHash)
+	pubKey, err := cs.privValidator.GetPubKey(ctx, quorumHash)
 	if err != nil {
 		cs.logger.Error(
 			"propose step; failed signing proposal; couldn't get pubKey",

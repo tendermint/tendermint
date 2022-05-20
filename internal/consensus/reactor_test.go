@@ -447,9 +447,15 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	n := 4
 	testName := "consensus_reactor_test"
-	tickerFunc := newMockTickerFunc(true)
+	tickerFunc := newTickerFunc()
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, n, 1, factory.ConsensusParams())
+	consParams := factory.ConsensusParams()
+
+	// if this parameter is not increased, then with a high probability the code will be stuck on proposal step
+	// due to a timeout handler performs before than validators will be ready for the message
+	consParams.Timeout.Propose = 1 * time.Second
+
+	genDoc, privVals := factory.RandGenesisDoc(cfg, n, 1, consParams)
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -679,7 +685,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		nVals,
 		nPeers,
 		"consensus_val_set_changes_test",
-		newMockTickerFunc(true),
+		newTickerFunc(),
 		newEpehemeralKVStore,
 	)
 	t.Cleanup(cleanup)

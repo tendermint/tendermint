@@ -56,24 +56,7 @@ func configSetup(t *testing.T) *config.Config {
 
 	cfg, err := ResetConfig(t.TempDir(), "consensus_reactor_test")
 	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
-
-	consensusReplayConfig, err := ResetConfig(t.TempDir(), "consensus_replay_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(consensusReplayConfig.RootDir) })
-
-	configStateTest, err := ResetConfig(t.TempDir(), "consensus_state_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(configStateTest.RootDir) })
-
-	configMempoolTest, err := ResetConfig(t.TempDir(), "consensus_mempool_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(configMempoolTest.RootDir) })
-
-	configByzantineTest, err := ResetConfig(t.TempDir(), "consensus_byzantine_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
-
+	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
 	walDir := filepath.Dir(cfg.Consensus.WalFile())
 	ensureDir(t, walDir, 0700)
 
@@ -874,7 +857,10 @@ func randConsensusNetWithPeers(
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
 	t.Helper()
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1, factory.ConsensusParams())
+	consParams := factory.ConsensusParams()
+	consParams.Timeout.Propose = 1 * time.Second
+
+	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1, consParams)
 	css := make([]*State, nPeers)
 	t.Helper()
 	logger := consensusLogger()
@@ -975,6 +961,10 @@ func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 			onlyOnce: onlyOnce,
 		}
 	}
+}
+
+func newTickerFunc() func() TimeoutTicker {
+	return func() TimeoutTicker { return NewTimeoutTicker(log.NewNopLogger()) }
 }
 
 // mock ticker only fires on RoundStepNewHeight

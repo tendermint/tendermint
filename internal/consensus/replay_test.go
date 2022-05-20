@@ -160,6 +160,12 @@ LOOP:
 		blockStore := store.NewBlockStore(blockDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
+
+		// default timeout value 30ms is not enough, if this parameter is not increased,
+		// then with a high probability the code will be stuck on proposal step
+		// due to a timeout handler performs before than validators will be ready for the message
+		state.ConsensusParams.Timeout.Propose = 1 * time.Second
+
 		privValidator := loadPrivValidator(t, consensusReplayConfig)
 		cs := newStateWithConfigAndBlockStore(
 			rctx,

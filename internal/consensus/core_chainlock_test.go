@@ -35,7 +35,7 @@ func TestValidProposalChainLocks(t *testing.T) {
 		nVals,
 		nPeers,
 		"consensus_chainlocks_test",
-		newMockTickerFunc(true),
+		newTickerFunc(),
 		newCounterWithCoreChainLocks,
 	)
 	t.Cleanup(cleanup)
@@ -70,7 +70,7 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 		nVals,
 		nPeers,
 		"consensus_chainlocks_test",
-		newMockTickerFunc(true),
+		newTickerFunc(),
 		newCounterWithCoreChainLocks,
 	)
 	t.Cleanup(cleanup)
@@ -116,7 +116,7 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 		nVals,
 		nPeers,
 		"consensus_chainlocks_test",
-		newMockTickerFunc(true),
+		newTickerFunc(),
 		newCounterWithBackwardsCoreChainLocks,
 	)
 	t.Cleanup(cleanup)
@@ -199,29 +199,31 @@ func invalidProposeCoreChainLockFunc(ctx context.Context, t *testing.T, height i
 	// Make proposal
 	propBlockID := types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
 	// It is byzantine because it is not updating the LastCoreChainLockedBlockHeight
-	proposal := types.NewProposal(height, cs.state.LastCoreChainLockedBlockHeight, round, cs.ValidRound, propBlockID, block.Time)
+	proposal := types.NewProposal(height, cs.state.LastCoreChainLockedBlockHeight, round, cs.ValidRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
-	_, err = cs.privValidator.SignProposal(
-		ctx,
-		cs.state.ChainID,
-		cs.Validators.QuorumType,
-		cs.Validators.QuorumHash,
-		p,
-	)
-	if err == nil {
-		proposal.Signature = p.Signature
 
-		// send proposal and block parts on internal msg queue
-		cs.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()})
-		for i := 0; i < int(blockParts.Total()); i++ {
-			part := blockParts.GetPart(i)
-			cs.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, "", tmtime.Now()})
+	validatorsAtProposalHeight := cs.state.ValidatorsAtHeight(p.Height)
+	quorumHash := validatorsAtProposalHeight.QuorumHash
+
+	_, err = cs.privValidator.SignProposal(ctx, cs.state.ChainID, cs.Validators.QuorumType, quorumHash, p)
+	if err != nil {
+		if !cs.replayMode {
+			cs.logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 		}
-		cs.logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-		cs.logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
-	} else if !cs.replayMode {
-		cs.logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
+		return
 	}
+
+	proposal.Signature = p.Signature
+
+	// send proposal and block parts on internal msg queue
+	cs.sendInternalMessage(ctx, msgInfo{&ProposalMessage{proposal}, "", tmtime.Now()})
+	for i := 0; i < int(blockParts.Total()); i++ {
+		part := blockParts.GetPart(i)
+		cs.sendInternalMessage(ctx, msgInfo{&BlockPartMessage{cs.Height, cs.Round, part}, "", tmtime.Now()})
+	}
+
+	cs.logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
+	cs.logger.Debug(fmt.Sprintf("Signed proposal block: %v", block))
 }
 
 func timeoutWaitGroup(
