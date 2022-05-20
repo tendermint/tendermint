@@ -56,6 +56,6 @@ This section describes the Blocksync reactor and its internals including:
 - [Peer to peer communication pattern](./communication.md)
 - [Block Verification](./verification.md)
 
-More details on how to use the Blocksync reactor and configure it when running Tendermint can be found [here](./../docs/tendermint-core/block-sync/README.md).
+More details on how to use the Blocksync reactor and configure it when running Tendermint can be found [here](./../../docs/tendermint-core/block-sync/README.md).
 
 

@@ -51,10 +51,10 @@ If we can trust this initial state at height H, we can use this fact to eliminat
 
 ### Verifying blocks past the trusted state
 
+<img src="img/bc-reactor-blocks.png" alt="block diagram" title="Block overview" width="80%" name="Block_overview"/>
 
-![Block overview](img/bc-reactor-blocks.png)
 
-The [diagram](#Block_overview) shows all blocks at play when verifying block at height ` H + 1` - `newBlock`, where at height `H` we have the trusted block. 
+The diagram above shows all blocks at play when verifying block at height ` H + 1` - `newBlock`, where at height `H` we have the trusted block. 
 
 At a high level, the verification algorithm is represented by the code below. 
 
