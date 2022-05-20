@@ -189,6 +189,8 @@ type makeParamsArgs struct {
 	vote         *time.Duration
 	voteDelta    *time.Duration
 	commit       *time.Duration
+
+	abciExtensionHeight int64
 }
 
 func makeParams(args makeParamsArgs) ConsensusParams {
@@ -234,6 +236,9 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 			VoteDelta:           *args.voteDelta,
 			Commit:              *args.commit,
 			BypassCommitTimeout: args.bypassCommitTimeout,
+		},
+		ABCI: ABCIParams{
+			VoteExtensionsEnableHeight: args.abciExtensionHeight,
 		},
 	}
 }
@@ -287,6 +292,19 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				},
 			},
 			updatedParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: 2 * time.Second, messageDelay: 4 * time.Second}),
+		},
+		{
+			intialParams: makeParams(makeParamsArgs{
+				abciExtensionHeight: 1,
+			}),
+			updates: &tmproto.ConsensusParams{
+				Abci: &tmproto.ABCIParams{
+					VoteExtensionsEnableHeight: 10,
+				},
+			},
+			updatedParams: makeParams(makeParamsArgs{
+				abciExtensionHeight: 10,
+			}),
 		},
 		{
 			// update timeout params
@@ -393,6 +411,16 @@ func TestProto(t *testing.T) {
 		makeParams(makeParamsArgs{blockBytes: 4, blockGas: 6, evidenceAge: 5, maxEvidenceBytes: 1}),
 		makeParams(makeParamsArgs{precision: time.Second, messageDelay: time.Minute}),
 		makeParams(makeParamsArgs{precision: time.Nanosecond, messageDelay: time.Millisecond}),
+		makeParams(makeParamsArgs{abciExtensionHeight: 100}),
+		makeParams(makeParamsArgs{abciExtensionHeight: 100}),
+		makeParams(makeParamsArgs{
+			propose:             durationPtr(2 * time.Second),
+			proposeDelta:        durationPtr(400 * time.Millisecond),
+			vote:                durationPtr(5 * time.Second),
+			voteDelta:           durationPtr(400 * time.Millisecond),
+			commit:              durationPtr(time.Minute),
+			bypassCommitTimeout: true,
+		}),
 	}
 
 	for i := range params {
