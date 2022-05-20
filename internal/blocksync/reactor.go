@@ -549,6 +549,9 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			// TODO: Uncouple from request routine.
 
 			// see if there are any blocks to sync
+			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight + 1) {
+				first, second, extCommit := r.pool.PeekTwoBlocks()
+			}
 			first, second, extCommit := r.pool.PeekTwoBlocks()
 			if first == nil || second == nil || extCommit == nil {
 				if first != nil && extCommit == nil &&

@@ -213,7 +213,20 @@ func (pool *BlockPool) PeekTwoBlocks() (first, second *types.Block, firstExtComm
 
 	if r := pool.requesters[pool.height]; r != nil {
 		first = r.getBlock()
-		firstExtCommit = r.getExtendedCommit()
+	}
+	if r := pool.requesters[pool.height+1]; r != nil {
+		second = r.getBlock()
+	}
+	return
+}
+
+// TODO add comments
+func (pool *BlockPool) PeekTwoBlocksWithExtendedCommit() (first, second *types.Block, firstExtCommit *types.ExtendedCommit) {
+	pool.mtx.RLock()
+	defer pool.mtx.RUnlock()
+
+	if r := pool.requesters[pool.height]; r != nil {
+		first = r.getBlock()
 	}
 	if r := pool.requesters[pool.height+1]; r != nil {
 		second = r.getBlock()
