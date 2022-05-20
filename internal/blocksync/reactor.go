@@ -545,12 +545,13 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 
 			// see if there are any blocks to sync
 			first, second, extCommit := r.pool.PeekTwoBlocks()
-			if first == nil || second == nil || extCommit == nil {
-				if first != nil && extCommit == nil {
-					// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
-					panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
-				}
-				// we need all to sync the first block
+			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight+1) &&
+				first != nil && extCommit == nil {
+				// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
+				panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
+			} else if first == nil || second == nil {
+				// we need to have fetched two consecutive blocks in order to
+				// perform blocksync verification
 				continue
 			} else {
 				// try again quickly next loop
