@@ -43,7 +43,7 @@ type ConsensusParams struct {
 	Version   VersionParams   `json:"version"`
 	Synchrony SynchronyParams `json:"synchrony"`
 	Timeout   TimeoutParams   `json:"timeout"`
-	ABCI      ABCIParams      `json:"vote"`
+	ABCI      ABCIParams      `json:"abci"`
 }
 
 // HashedParams is a subset of ConsensusParams.
