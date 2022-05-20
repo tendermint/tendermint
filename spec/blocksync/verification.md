@@ -29,7 +29,9 @@ It is worth noting that, running block sync from the first height is significant
 
 If we are starting from genesis we trust the validator set given to us in initially.
 
-**Improvement** We expect to 'witness'verify this block against the blocks at the same height from multiple peers. 
+**Performance improvement** Instead of downloading blocks before we verify them, download only headers. Once we verify those, we can download the whole block. As the headers do not contain signatures so we would need to add commits form blocks at subsequent heights as well. 
+
+**Safety Improvement** We expect to 'witness'verify this block against the blocks at the same height from multiple peers. 
 
 **Different proposal** Instead of witness verification, verify against a light client and use backwards verification when applicable. 
 
