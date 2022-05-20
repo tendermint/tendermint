@@ -9,7 +9,7 @@ Based on this state we verify subsequent blocks.
 
 ### Trusted state
 
-The light client additionally relies on the notion of a **trusting period**. A trusting period is the time during which we assume we can trust validators because, if we do detect misbehaviour, we can slash them - they are still bonded. Beyond this period, the validators do not have to have any bonded assets and cannot be held accountable for they misbheaviour. Blocksync-ing blocks will most often be outside this trusting period for a particular block. Therefore, the trusting period assumptions as they are in the light client, cannot be applied here. 
+The light client additionally relies on the notion of a **trusting period**. A trusting period is the time during which we assume we can trust validators because, if we do detect misbehaviour, we can slash them - they are still bonded. Beyond this period, the validators do not have to have any bonded assets and cannot be held accountable for their misbheaviour. Blocksync-ing blocks will most often be outside this trusting period for a particular block. Therefore, the trusting period assumptions as they are in the light client, cannot be applied here. 
 
 This has different implications based on how we obtain the initial trusted state. Currently there are two possibilities. :
  1. If the node is blocksync-ing from genesis, we assume we trust the validators provided in the initial state and use them to verify the initial block received from peers.
@@ -25,7 +25,9 @@ In this case we only verify that the validator hash of the block matches the val
 This is in contrast with the definition of trust period in the light client. The trusting period in the light client is always tied to present time. If we try and validate a block at a time outside this period, we will first find the first block within the trusting period and verify backwards from it.
 
 
-It is worth noting that, running block sync from the first height is significantly slower than running statesync first. However, statesync does not keep the entire blockchain history and some operators might opt not to state sync. If we are starting from gensis we trust the validator set given to us in initially.
+It is worth noting that, running block sync from the first height is significantly slower than running statesync first. However, statesync does not keep the entire blockchain history and some operators might opt not to state sync. The reason is that, if sufficiently many nodes state sync and other nodes who have historical data fail or leave the network, we have no history.
+
+If we are starting from genesis we trust the validator set given to us in initially.
 
 **Improvement** We expect to 'witness'verify this block against the blocks at the same height from multiple peers. 
 
@@ -110,4 +112,3 @@ We have no guarantees on the correctness of this peer.
 - If we connect to subset of peers, they could feed the node faulty data. Eventually, when the node switches to consensus, it would realize there is something wrong, but then the node itself might be blacklisted..
 - There is no check whether the maximum height reported by peers is true or not. A slow node could report a very distant height to the node - for example 2000, when the blockchain is at height 1000 in fact. This would lead to one part of the condition to switch to consensus never being true. To prevent the node switching due to not advancing, the malicious node sends a new block very slowly. Thus the node progresses but can never participate in consensus. This issue could potentially be mitigated if, instead of taking the maximum height reported by peers, we report the lowest of their maximums. The idea is that peers should be close enought to the top of the chain in any case. 
 - A blocksyncing node can flood peers with requests - constantly reporting that it has not synced up. At the moment the maximum amount of requests received is limited and protects peers to some extend against this attack. 
-- 

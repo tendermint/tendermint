@@ -10,7 +10,7 @@ In a proof of work blockchain, syncing with the chain is the same process as sta
 
 The Blocksync Reactor's high level responsibility is to enable peers who are
 far behind the current state of the consensus to quickly catch up by downloading
-many blocks in parallel, verifying their commits, and executing them against the
+many blocks (that have already been decided) in parallel, verifying their commits, and executing them against the
 ABCI application.
 
 Tendermint full nodes run the Blocksync Reactor as a service to provide blocks
@@ -36,9 +36,9 @@ However, receiving messages via the p2p channel and sending status updates to ot
 ### Switching from blocksync to consensus
 Ideally, the switch to consensus is done either after we have caught up to the maximum height reported by a peer or we have not advanced our height for more than 60s. 
 
-The former id checked by calling `isCaughtUp` inside `poolRoutine` periodically. This period is set with `switchToConsensusTicker`. We consider a node to be caught up if it is 1 height away from the maximum height reported by its peers. The reason we **do not catch up until the maximum height** (`pool.maxPeerHeight`)is that we cannot verify block at `pool.maxPeerHeight` without the `lastCommit` of the block at `pool.maxPeerHeight + 1`. 
+The former is checked by calling `isCaughtUp` inside `poolRoutine` periodically. This period is set with `switchToConsensusTicker`. We consider a node to be caught up if it is 1 height away from the maximum height reported by its peers. The reason we **do not catch up until the maximum height** (`pool.maxPeerHeight`)is that we cannot verify block at `pool.maxPeerHeight` without the `lastCommit` of the block at `pool.maxPeerHeight + 1`. 
 
-BlockSync **does not** switch to consensus until we have synced at least one block as we need to have vote extensions in order to participate in consensus . Vote extensions are not provided to the blocksync reactor after state sync and we need to receive them from one of our peers. 
+Blocksync **does not** switch to consensus until we have synced at least one block. We need to have vote extensions in order to participate in consensus and they are not provided to the blocksync reactor after state sync. We therefore need to receive them from one of our peers. 
 
 ## Architecture and algorithm
 

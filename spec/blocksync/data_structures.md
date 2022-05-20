@@ -5,7 +5,46 @@ There are four core components of the blocksync reactor: the reactor itself, a b
 The reactor verifies received blocks, executes them against the application and commits them into the blockstore of the node. It also sends out requests to peers asking for more blocks and contains the logic to switch from blocksync to consenus.
 It contains a pointer to the block pool.
 
-The block pool stores the last executed block(`height`), keeps track of peers connected to a node, assigns requests to peers (by creating `requesters`), the current height for each peer, along with the number of pending requestes for each peer. 
+```go 
+type Reactor struct {
+	service.BaseService
+	logger log.Logger
+
+	// immutable
+	initialState sm.State
+	// store
+	stateStore sm.Store
+
+	blockExec   *sm.BlockExecutor
+	store       sm.BlockStore
+	pool        *BlockPool
+	consReactor consensusReactor
+	blockSync   *atomicBool
+
+	chCreator  p2p.ChannelCreator
+	peerEvents p2p.PeerEventSubscriber
+
+	requestsCh <-chan BlockRequest
+	errorsCh   <-chan peerError
+
+	metrics  *consensus.Metrics
+	eventBus *eventbus.EventBus
+
+	syncStartTime time.Time
+
+  lastTrustedBlock *TrustedBlockData
+}
+```
+
+`TrustedBlockData` contains the last synced and verified block along with the commit used to verify it.
+
+```go
+type TrustedBlockData struct {
+	block  *types.Block
+	commit *types.Commit
+}
+```
+The block pool stores the last executed block(`height`), keeps track of peers connected to a node, the current height for each peer, along with the number of pending requestes for each peer and  assigns requests to peers (by creating `requesters`).
 
 ```go
 type BlockPool {
