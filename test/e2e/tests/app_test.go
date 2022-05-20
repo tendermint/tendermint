@@ -107,6 +107,7 @@ func TestApp_Tx(t *testing.T) {
 
 func TestApp_VoteExtensions(t *testing.T) {
 	testNode(t, func(t *testing.T, node e2e.Node) {
+		t.Skip()
 		client, err := node.Client()
 		require.NoError(t, err)
 

@@ -101,7 +101,7 @@ func TestLightClientAttackEvidenceBasic(t *testing.T) {
 	blockID := makeBlockID(tmhash.Sum([]byte("blockhash")), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	extCommit, err := MakeExtCommit(blockID, height, 1, voteSet, privVals, defaultVoteTime)
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{
@@ -163,7 +163,7 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 	blockID := makeBlockID(header.Hash(), math.MaxInt32, tmhash.Sum([]byte("partshash")))
 	extCommit, err := MakeExtCommit(blockID, height, 1, voteSet, privVals, time.Now())
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 
 	lcae := &LightClientAttackEvidence{
 		ConflictingBlock: &LightBlock{

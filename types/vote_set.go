@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -59,11 +60,12 @@ there's only a limited number of peers.
 NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 */
 type VoteSet struct {
-	chainID       string
-	height        int64
-	round         int32
-	signedMsgType tmproto.SignedMsgType
-	valSet        *ValidatorSet
+	chainID           string
+	height            int64
+	round             int32
+	signedMsgType     tmproto.SignedMsgType
+	valSet            *ValidatorSet
+	extensionsEnabled bool
 
 	mtx           tmsync.Mutex
 	votesBitArray *bits.BitArray
@@ -74,7 +76,8 @@ type VoteSet struct {
 	peerMaj23s    map[P2PID]BlockID      // Maj23 for each peer
 }
 
-// Constructs a new VoteSet struct used to accumulate votes for given height/round.
+// NewVoteSet instantiates all fields of a new vote set. This constructor requires
+// that no vote extension data be present on the votes that are added to the set.
 func NewVoteSet(chainID string, height int64, round int32,
 	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
@@ -93,6 +96,16 @@ func NewVoteSet(chainID string, height int64, round int32,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
 		peerMaj23s:    make(map[P2PID]BlockID),
 	}
+}
+
+// NewExtendedVoteSet constructs a vote set with additional vote verification logic.
+// The VoteSet constructed with NewExtendedVoteSet verifies the vote extension
+// data for every vote added to the set.
+func NewExtendedVoteSet(chainID string, height int64, round int32,
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
+	vs := NewVoteSet(chainID, height, round, signedMsgType, valSet)
+	vs.extensionsEnabled = true
+	return vs
 }
 
 func (voteSet *VoteSet) ChainID() string {
@@ -202,8 +215,17 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if err := vote.VerifyWithExtension(voteSet.chainID, val.PubKey); err != nil {
-		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+	if voteSet.extensionsEnabled {
+		if err := vote.VerifyVoteAndExtension(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
+	} else {
+		if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
+		if len(vote.ExtensionSignature) > 0 || len(vote.Extension) > 0 {
+			return false, errors.New("unexpected vote extension data present in vote")
+		}
 	}
 
 	// Add vote and get conflicting vote if any.

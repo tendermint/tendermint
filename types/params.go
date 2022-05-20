@@ -37,6 +37,7 @@ type ConsensusParams struct {
 	Evidence  EvidenceParams  `json:"evidence"`
 	Validator ValidatorParams `json:"validator"`
 	Version   VersionParams   `json:"version"`
+	ABCI      ABCIParams      `json:"abci"`
 }
 
 // BlockParams define limits on the block size and gas plus minimum time
@@ -63,6 +64,21 @@ type VersionParams struct {
 	App uint64 `json:"app"`
 }
 
+// ABCIParams configure ABCI functionality specific to the Application Blockchain
+// Interface.
+type ABCIParams struct {
+	VoteExtensionsEnableHeight int64 `json:"vote_extensions_enable_height"`
+}
+
+// VoteExtensionsEnabled returns true if vote extensions are enabled at height h
+// and false otherwise.
+func (a ABCIParams) VoteExtensionsEnabled(h int64) bool {
+	if a.VoteExtensionsEnableHeight == 0 {
+		return false
+	}
+	return a.VoteExtensionsEnableHeight <= h
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
@@ -70,6 +86,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Evidence:  DefaultEvidenceParams(),
 		Validator: DefaultValidatorParams(),
 		Version:   DefaultVersionParams(),
+		ABCI:      DefaultABCIParams(),
 	}
 }
 
@@ -101,6 +118,13 @@ func DefaultValidatorParams() ValidatorParams {
 func DefaultVersionParams() VersionParams {
 	return VersionParams{
 		App: 0,
+	}
+}
+
+func DefaultABCIParams() ABCIParams {
+	return ABCIParams{
+		// When set to 0, vote extensions are not required.
+		VoteExtensionsEnableHeight: 0,
 	}
 }
 
