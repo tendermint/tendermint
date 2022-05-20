@@ -108,14 +108,6 @@ type BlockSyncReactor interface {
 	GetRemainingSyncTime() time.Duration
 }
 
-//go:generate ../../scripts/mockery_generate.sh ConsSyncReactor
-// ConsSyncReactor defines an interface used for testing abilities of node.startStateSync.
-type ConsSyncReactor interface {
-	SwitchToConsensus(sm.State, bool)
-	SetStateSyncingMetrics(float64)
-	SetBlockSyncingMetrics(float64)
-}
-
 // Reactor defines a reactor for the consensus service.
 type Reactor struct {
 	service.BaseService
