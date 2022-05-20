@@ -330,6 +330,9 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	if params.Timeout.Commit <= 0 {
 		return fmt.Errorf("timeout.Commit must be greater than 0. Got: %d", params.Timeout.Commit)
 	}
+	if params.ABCI.VoteExtensionsEnableHeight < 0 {
+		return fmt.Errorf("ABCI.VoteExtensionsEnableHeight cannot be negative. Got: %d", params.ABCI.VoteExtensionsEnableHeight)
+	}
 
 	if len(params.Validator.PubKeyTypes) == 0 {
 		return errors.New("len(Validator.PubKeyTypes) must be greater than 0")
@@ -373,6 +376,7 @@ func (params *ConsensusParams) Equals(params2 *ConsensusParams) bool {
 		params.Version == params2.Version &&
 		params.Synchrony == params2.Synchrony &&
 		params.Timeout == params2.Timeout &&
+		params.ABCI == params2.ABCI &&
 		tmstrings.StringSliceEqual(params.Validator.PubKeyTypes, params2.Validator.PubKeyTypes)
 }
 
@@ -429,6 +433,9 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 		}
 		res.Timeout.BypassCommitTimeout = params2.Timeout.GetBypassCommitTimeout()
 	}
+	if params2.Abci != nil {
+		res.ABCI.VoteExtensionsEnableHeight = params2.Abci.GetVoteExtensionsEnableHeight()
+	}
 	return res
 }
 
@@ -460,6 +467,9 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 			VoteDelta:           &params.Timeout.VoteDelta,
 			Commit:              &params.Timeout.Commit,
 			BypassCommitTimeout: params.Timeout.BypassCommitTimeout,
+		},
+		Abci: &tmproto.ABCIParams{
+			VoteExtensionsEnableHeight: params.ABCI.VoteExtensionsEnableHeight,
 		},
 	}
 }
@@ -507,6 +517,9 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 			c.Timeout.Commit = *pbParams.Timeout.GetCommit()
 		}
 		c.Timeout.BypassCommitTimeout = pbParams.Timeout.BypassCommitTimeout
+	}
+	if pbParams.Abci != nil {
+		c.ABCI.VoteExtensionsEnableHeight = pbParams.Abci.GetVoteExtensionsEnableHeight()
 	}
 	return c
 }
