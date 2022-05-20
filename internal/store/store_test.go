@@ -365,41 +365,6 @@ func TestLoadBlockExtendedCommit(t *testing.T) {
 	}
 }
 
-// TestLoadBlockCommit tests loading the commit for a previously saved block.
-// The load method should always return a commit.
-func TestLoadBlockCommit(t *testing.T) {
-	for _, testCase := range []struct {
-		name         string
-		saveExtended bool
-	}{
-		{
-			name:         "save commit",
-			saveExtended: false,
-		},
-		{
-			name:         "save extended commit",
-			saveExtended: true,
-		},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
-			require.NoError(t, err)
-			defer cleanup()
-			block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
-			seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
-			ps, err := block.MakePartSet(2)
-			require.NoError(t, err)
-			if testCase.saveExtended {
-				bs.SaveBlockWithExtendedCommit(block, ps, seenCommit)
-			} else {
-				bs.SaveBlock(block, ps, seenCommit.ToCommit())
-			}
-			res := bs.LoadBlockCommit(block.Height)
-			require.Equal(t, seenCommit.ToCommit(), res)
-		})
-	}
-}
-
 func TestLoadBaseMeta(t *testing.T) {
 	cfg, err := config.ResetTestRoot(t.TempDir(), "blockchain_reactor_test")
 	require.NoError(t, err)
