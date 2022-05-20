@@ -183,50 +183,60 @@ func (rts *reactorTestSuite) addNode(
 	peerEvents := func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] }
 	reactor := makeReactor(ctx, t, nodeID, genDoc, privVal, chCreator, peerEvents)
 
-	var lastExtCommit *types.ExtendedCommit
-
-	// The commit we are building for the current height.
-	seenExtCommit := &types.ExtendedCommit{}
+	lastExtCommit := &types.ExtendedCommit{}
 
 	state, err := reactor.stateStore.Load()
 	require.NoError(t, err)
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastExtCommit = seenExtCommit.Clone()
+		block, blockID, partSet, seenExtCommit := makeNextBlock(t, ctx, state, privVal, blockHeight, lastExtCommit)
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.ToCommit())
-		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
-		require.NoError(t, err)
-		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
-
-		// Simulate a commit for the current height
-		vote, err := factory.MakeVote(
-			ctx,
-			privVal,
-			thisBlock.Header.ChainID,
-			0,
-			thisBlock.Header.Height,
-			0,
-			2,
-			blockID,
-			time.Now(),
-		)
-		require.NoError(t, err)
-		seenExtCommit = &types.ExtendedCommit{
-			Height:             vote.Height,
-			Round:              vote.Round,
-			BlockID:            blockID,
-			ExtendedSignatures: []types.ExtendedCommitSig{vote.ExtendedCommitSig()},
-		}
-
-		state, err = reactor.blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
+		state, err = reactor.blockExec.ApplyBlock(ctx, state, blockID, block)
 		require.NoError(t, err)
 
-		reactor.store.SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
+		reactor.store.SaveBlockWithExtendedCommit(block, partSet, seenExtCommit)
+		lastExtCommit = seenExtCommit
 	}
 
 	rts.reactors[nodeID] = reactor
 	require.NoError(t, reactor.Start(ctx))
 	require.True(t, reactor.IsRunning())
+}
+
+func makeNextBlock(t *testing.T,
+	ctx context.Context,
+	state sm.State,
+	signer types.PrivValidator,
+	height int64,
+	lc *types.ExtendedCommit) (*types.Block, types.BlockID, *types.PartSet, *types.ExtendedCommit) {
+
+	lastExtCommit := lc.Clone()
+
+	block := sf.MakeBlock(state, height, lastExtCommit.ToCommit())
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: partSet.Header()}
+
+	// Simulate a commit for the current height
+	vote, err := factory.MakeVote(
+		ctx,
+		signer,
+		block.Header.ChainID,
+		0,
+		block.Header.Height,
+		0,
+		2,
+		blockID,
+		time.Now(),
+	)
+	require.NoError(t, err)
+	seenExtCommit := &types.ExtendedCommit{
+		Height:             vote.Height,
+		Round:              vote.Round,
+		BlockID:            blockID,
+		ExtendedSignatures: []types.ExtendedCommitSig{vote.ExtendedCommitSig()},
+	}
+	return block, blockID, partSet, seenExtCommit
+
 }
 
 func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
