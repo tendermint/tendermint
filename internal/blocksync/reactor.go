@@ -200,15 +200,11 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 	var extCommit *types.ExtendedCommit
 	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(msg.Height) {
 		extCommit = r.store.LoadBlockExtendedCommit(msg.Height)
-	} else {
-		c := r.store.LoadBlockCommit(msg.Height)
-		if extCommit != nil {
-			extCommit = c.WrappedExtendedCommit()
+		if extCommit == nil {
+			return fmt.Errorf("found block in store with no extended commit: %v", block)
 		}
 	}
-	if extCommit == nil {
-		return fmt.Errorf("found block in store with no commit and no extended commit: %v", block)
-	}
+
 	blockProto, err := block.ToProto()
 	if err != nil {
 		return fmt.Errorf("failed to convert block to protobuf: %w", err)
