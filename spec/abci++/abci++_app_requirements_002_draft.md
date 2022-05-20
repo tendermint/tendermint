@@ -672,6 +672,20 @@ node has received all precommits for a block, forgoing the remaining commit time
 Setting this parameter to `false` (the default) causes Tendermint to wait
 for the full commit timeout configured in `TimeoutParams.Commit`.
 
+##### ABCIParams.VoteExtensionsEnableHeight
+
+This configures the height at which vote extensions become mandatory.
+The default value is 0, and means that so far the Application has not
+set the height yet.
+When the configured height `H` is reached, `PrepareProposal` will not
+include vote extensions yet, but `ExtendVote` and `VerifyVoteExtension` will
+be called. Then, when reaching height `H+1`, `PrepareProposal` will
+include the vote extensions from height `H`. From this point on, vote extensions
+are mandatory although the application can provide 0-length extensions.
+
+Must always be set to a future height. Once set to a value different from
+0, its value must not be changed.
+
 #### Updating Consensus Parameters
 
 The application may set the `ConsensusParams` during
