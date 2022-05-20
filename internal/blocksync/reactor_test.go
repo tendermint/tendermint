@@ -40,8 +40,6 @@ type reactorTestSuite struct {
 	blockSyncChannels map[types.NodeID]*p2p.Channel
 	peerChans         map[types.NodeID]chan p2p.PeerUpdate
 	peerUpdates       map[types.NodeID]*p2p.PeerUpdates
-
-	blockSync bool
 }
 
 func setup(
@@ -69,7 +67,6 @@ func setup(
 		blockSyncChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
 		peerChans:         make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
 		peerUpdates:       make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
-		blockSync:         true,
 	}
 
 	chDesc := &p2p.ChannelDescriptor{ID: BlockSyncChannel, MessageType: new(bcproto.Message)}
@@ -95,6 +92,68 @@ func setup(
 	t.Cleanup(leaktest.Check(t))
 
 	return rts
+}
+
+func makeReactor(
+	ctx context.Context,
+	t *testing.T,
+	nodeID types.NodeID,
+	genDoc *types.GenesisDoc,
+	privVal types.PrivValidator,
+	channelCreator p2p.ChannelCreator,
+	peerEvents p2p.PeerEventSubscriber) *Reactor {
+
+	logger := log.NewNopLogger()
+
+	app := proxy.New(abciclient.NewLocalClient(logger, &abci.BaseApplication{}), logger, proxy.NopMetrics())
+	require.NoError(t, app.Start(ctx))
+
+	blockDB := dbm.NewMemDB()
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(blockDB)
+
+	state, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
+	require.NoError(t, stateStore.Save(state))
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+
+	eventbus := eventbus.NewDefault(logger)
+	require.NoError(t, eventbus.Start(ctx))
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.NewNopLogger(),
+		app,
+		mp,
+		sm.EmptyEvidencePool{},
+		blockStore,
+		eventbus,
+		sm.NopMetrics(),
+	)
+
+	return NewReactor(
+		logger,
+		stateStore,
+		blockExec,
+		blockStore,
+		nil,
+		channelCreator,
+		peerEvents,
+		true,
+		consensus.NopMetrics(),
+		nil, // eventbus, can be nil
+	)
 }
 
 func (rts *reactorTestSuite) addNode(
@@ -201,7 +260,7 @@ func (rts *reactorTestSuite) addNode(
 		nil,
 		chCreator,
 		func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
-		rts.blockSync,
+		true,
 		consensus.NopMetrics(),
 		nil, // eventbus, can be nil
 	)
@@ -415,3 +474,35 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 		len(rts.reactors[newNode.NodeID].pool.peers),
 	)
 }
+
+/*
+func TestReactorReceivesNoExtendedCommit(t *testing.T) {
+	blockDB := dbm.NewMemDB()
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(blockDB)
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		log.NewNopLogger(),
+		rts.app[nodeID],
+		mp,
+		sm.EmptyEvidencePool{},
+		blockStore,
+		eventbus,
+		sm.NopMetrics(),
+	)
+	NewReactor(
+		log.NewNopLogger(),
+		stateStore,
+		blockExec,
+		blockStore,
+		nil,
+		chCreator,
+		func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
+		rts.blockSync,
+		consensus.NopMetrics(),
+		nil, // eventbus, can be nil
+	)
+
+}
+*/
