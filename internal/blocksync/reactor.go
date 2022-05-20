@@ -250,12 +250,16 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, blo
 					"err", err)
 				return err
 			}
-			extCommit, err := types.ExtendedCommitFromProto(msg.ExtCommit)
-			if err != nil {
-				r.logger.Error("failed to convert extended commit from proto",
-					"peer", envelope.From,
-					"err", err)
-				return err
+			var extCommit *types.ExtendedCommit
+			if msg.ExtCommit != nil {
+				var err error
+				extCommit, err = types.ExtendedCommitFromProto(msg.ExtCommit)
+				if err != nil {
+					r.logger.Error("failed to convert extended commit from proto",
+						"peer", envelope.From,
+						"err", err)
+					return err
+				}
 			}
 
 			if err := r.pool.AddBlock(envelope.From, block, extCommit, block.Size()); err != nil {
@@ -629,6 +633,10 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 				r.store.SaveBlockWithExtendedCommit(first, firstParts, extCommit)
 			} else {
+				// We use LastCommit here instead of extCommit. extCommit is not
+				// guaranteed to be populated by the peer if extensions are not enabled.
+				// Currently, the peer should provide an extCommit even if the vote extension data are absent
+				// but this may change so using second.LastCommit is safer.
 				r.store.SaveBlock(first, firstParts, second.LastCommit)
 			}
 
