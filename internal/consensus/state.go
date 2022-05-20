@@ -721,7 +721,7 @@ func (cs *State) reconstructLastCommit(state sm.State) {
 func (cs *State) votesFromExtendedCommit(state sm.State) (*types.VoteSet, error) {
 	ec := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
 	if ec == nil {
-		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
+		return nil, fmt.Errorf("extended commit for height %v not found", state.LastBlockHeight)
 	}
 	vs := ec.ToExtendedVoteSet(state.ChainID, state.LastValidators)
 	if !vs.HasTwoThirdsMajority() {
