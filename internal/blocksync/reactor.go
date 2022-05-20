@@ -629,7 +629,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 				r.store.SaveBlockWithExtendedCommit(first, firstParts, extCommit)
 			} else {
-				r.store.SaveBlock(first, firstParts, extCommit.ToCommit())
+				r.store.SaveBlock(first, firstParts, second.LastCommit)
 			}
 
 			// TODO: Same thing for app - but we would need a way to get the hash
