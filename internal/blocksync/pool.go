@@ -276,13 +276,9 @@ func (pool *BlockPool) RedoRequest(height int64) types.NodeID {
 // height of the extended commit and the height of the block do not match, we
 // do not add the block and return an error.
 // TODO: ensure that blocks come in order for each peer.
-func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, extCommit *types.ExtendedCommit, blockSize int) error {
+func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, blockSize int) error {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
-
-	if block.Height != extCommit.Height {
-		return fmt.Errorf("heights don't match, not adding block (block height: %d, commit height: %d)", block.Height, extCommit.Height)
-	}
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
@@ -296,7 +292,41 @@ func (pool *BlockPool) AddBlock(peerID types.NodeID, block *types.Block, extComm
 		return fmt.Errorf("peer sent us a block we didn't expect (peer: %s, current height: %d, block height: %d)", peerID, pool.height, block.Height)
 	}
 
-	if requester.setBlock(block, extCommit, peerID) {
+	if requester.setBlock(block, peerID) {
+		atomic.AddInt32(&pool.numPending, -1)
+		peer := pool.peers[peerID]
+		if peer != nil {
+			peer.decrPending(blockSize)
+		}
+	} else {
+		err := errors.New("requester is different or block already exists")
+		pool.sendError(err, peerID)
+		return fmt.Errorf("%w (peer: %s, requester: %s, block height: %d)", err, peerID, requester.getPeerID(), block.Height)
+	}
+
+	return nil
+}
+
+func (pool *BlockPool) AddBlockWithExtendedCommit(peerID types.NodeID, block *types.Block, extCommit *types.ExtendedCommit, blockSize int) error {
+	if block.Height != extCommit.Height {
+		return fmt.Errorf("heights don't match, not adding block (block height: %d, commit height: %d)", block.Height, extCommit.Height)
+	}
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
+	requester := pool.requesters[block.Height]
+	if requester == nil {
+		diff := pool.height - block.Height
+		if diff < 0 {
+			diff *= -1
+		}
+		if diff > maxDiffBetweenCurrentAndReceivedBlockHeight {
+			pool.sendError(errors.New("peer sent us a block we didn't expect with a height too far ahead/behind"), peerID)
+		}
+		return fmt.Errorf("peer sent us a block we didn't expect (peer: %s, current height: %d, block height: %d)", peerID, pool.height, block.Height)
+	}
+
+	if requester.setBlockWithExtendedCommit(block, extCommit, peerID) {
 		atomic.AddInt32(&pool.numPending, -1)
 		peer := pool.peers[peerID]
 		if peer != nil {
@@ -590,7 +620,24 @@ func (bpr *bpRequester) OnStart(ctx context.Context) error {
 func (*bpRequester) OnStop() {}
 
 // Returns true if the peer matches and block doesn't already exist.
-func (bpr *bpRequester) setBlock(block *types.Block, extCommit *types.ExtendedCommit, peerID types.NodeID) bool {
+func (bpr *bpRequester) setBlock(block *types.Block, peerID types.NodeID) bool {
+	bpr.mtx.Lock()
+	if bpr.block != nil || bpr.peerID != peerID {
+		bpr.mtx.Unlock()
+		return false
+	}
+	bpr.block = block
+	bpr.mtx.Unlock()
+
+	select {
+	case bpr.gotBlockCh <- struct{}{}:
+	default:
+	}
+	return true
+}
+
+// Returns true if the peer matches and block doesn't already exist.
+func (bpr *bpRequester) setBlockWithExtendedCommit(block *types.Block, extCommit *types.ExtendedCommit, peerID types.NodeID) bool {
 	bpr.mtx.Lock()
 	if bpr.block != nil || bpr.peerID != peerID {
 		bpr.mtx.Unlock()

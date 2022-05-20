@@ -200,11 +200,6 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 	var extCommit *types.ExtendedCommit
 	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(msg.Height) {
 		extCommit = r.store.LoadBlockExtendedCommit(msg.Height)
-	} else {
-		c := r.store.LoadBlockCommit(msg.Height)
-		if extCommit != nil {
-			extCommit = c.WrappedExtendedCommit()
-		}
 	}
 	if extCommit == nil {
 		return fmt.Errorf("found block in store with no commit and no extended commit: %v", block)
@@ -254,16 +249,22 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, blo
 					"err", err)
 				return err
 			}
-			extCommit, err := types.ExtendedCommitFromProto(msg.ExtCommit)
-			if err != nil {
-				r.logger.Error("failed to convert extended commit from proto",
-					"peer", envelope.From,
-					"err", err)
-				return err
-			}
 
-			if err := r.pool.AddBlock(envelope.From, block, extCommit, block.Size()); err != nil {
-				r.logger.Error("failed to add block", "err", err)
+			if msg.ExtCommit != nil {
+				ec, err := types.ExtendedCommitFromProto(msg.ExtCommit)
+				if err != nil {
+					r.logger.Error("failed to convert extended commit from proto",
+						"peer", envelope.From,
+						"err", err)
+					return err
+				}
+				if err := r.pool.AddBlockWithExtendedCommit(envelope.From, block, ec, block.Size()); err != nil {
+					r.logger.Error("failed to add block", "err", err)
+				}
+			} else {
+				if err := r.pool.AddBlock(envelope.From, block, block.Size()); err != nil {
+					r.logger.Error("failed to add block", "err", err)
+				}
 			}
 
 		case *bcproto.StatusRequest:
@@ -550,7 +551,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			// see if there are any blocks to sync
 			first, second, extCommit := r.pool.PeekTwoBlocks()
 			if first == nil || second == nil || extCommit == nil {
-				if first != nil && extCommit == nil {
+				if first != nil && extCommit == nil &&
+					state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 					// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
 					panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
 				}
@@ -589,11 +591,8 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			if err == nil && state.ConsensusParams.ABCI.VoteExtensionsEnabled(extCommit.Height) {
 				// if vote extensions were required at this height, ensure they exist.
 				err = extCommit.EnsureExtensions()
-			} else if err == nil && !state.ConsensusParams.ABCI.VoteExtensionsEnabled(extCommit.Height) {
-				if stripped := extCommit.StripExtensions(); stripped {
-					r.logger.Error("commit included extension data but vote extensions are not enabled")
-				}
 			}
+
 			// If either of the checks failed we log the error and request for a new block
 			// at that height
 			if err != nil {
@@ -632,7 +631,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 				r.store.SaveBlockWithExtendedCommit(first, firstParts, extCommit)
 			} else {
-				r.store.SaveBlock(first, firstParts, extCommit.ToCommit())
+				r.store.SaveBlock(first, firstParts, second.LastCommit)
 			}
 
 			// TODO: Same thing for app - but we would need a way to get the hash
