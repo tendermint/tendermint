@@ -200,9 +200,9 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 	var extCommit *types.ExtendedCommit
 	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(msg.Height) {
 		extCommit = r.store.LoadBlockExtendedCommit(msg.Height)
-	}
-	if extCommit == nil {
-		return fmt.Errorf("found block in store with no commit and no extended commit: %v", block)
+		if extCommit == nil {
+			return fmt.Errorf("found block in store with no commit and no extended commit for height: %d", block.Height)
+		}
 	}
 	blockProto, err := block.ToProto()
 	if err != nil {
