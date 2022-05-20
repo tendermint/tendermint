@@ -350,6 +350,18 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	return nil
 }
 
+func (params ConsensusParams) ValidateUpdate(p ConsensusParams, h int64) error {
+	if params.ABCI.VoteExtensionsEnableHeight != 0 && p.ABCI.VoteExtensionsEnableHeight == 0 {
+		return errors.New("vote extensions cannot be disabled once enabled")
+	}
+	if params.ABCI.VoteExtensionsEnableHeight >= h {
+		return fmt.Errorf("VoteExtensionsEnableHeight cannot be updated once the initial height has been executed,"+
+			"initial height: %d, current height %d",
+			params.ABCI.VoteExtensionsEnableHeight, h)
+	}
+	return nil
+}
+
 // Hash returns a hash of a subset of the parameters to store in the block header.
 // Only the Block.MaxBytes and Block.MaxGas are included in the hash.
 // This allows the ConsensusParams to evolve more without breaking the block
