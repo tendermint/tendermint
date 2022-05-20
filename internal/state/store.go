@@ -2,7 +2,6 @@ package state
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -60,17 +59,10 @@ func abciResponsesKey(height int64) []byte {
 
 // stateKey should never change after being set in init()
 var stateKey []byte
-var tmpABCIKey []byte
 
 func init() {
 	var err error
 	stateKey, err = orderedcode.Append(nil, prefixState)
-	if err != nil {
-		panic(err)
-	}
-	// temporary extra key before consensus param protos are regenerated
-	// TODO(wbanfield) remove in next PR
-	tmpABCIKey, err = orderedcode.Append(nil, int64(10000))
 	if err != nil {
 		panic(err)
 	}
@@ -145,13 +137,6 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 	if err != nil {
 		return state, err
 	}
-	buf, err = store.db.Get(tmpABCIKey)
-	if err != nil {
-		return state, err
-	}
-	h, _ := binary.Varint(buf)
-	sm.ConsensusParams.ABCI.VoteExtensionsEnableHeight = h
-
 	return *sm, nil
 }
 
@@ -193,11 +178,6 @@ func (store dbStore) save(state State, key []byte) error {
 	}
 
 	if err := batch.Set(key, stateBz); err != nil {
-		return err
-	}
-	bz := make([]byte, 5)
-	binary.PutVarint(bz, state.ConsensusParams.ABCI.VoteExtensionsEnableHeight)
-	if err := batch.Set(tmpABCIKey, bz); err != nil {
 		return err
 	}
 
