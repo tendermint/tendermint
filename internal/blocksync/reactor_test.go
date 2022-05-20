@@ -172,45 +172,24 @@ func (rts *reactorTestSuite) addNode(
 	rts.app[nodeID] = proxy.New(abciclient.NewLocalClient(logger, &abci.BaseApplication{}), logger, proxy.NopMetrics())
 	require.NoError(t, rts.app[nodeID].Start(ctx))
 
-	blockDB := dbm.NewMemDB()
-	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(blockDB)
+	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
+	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
+	rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
-	state, err := sm.MakeGenesisState(genDoc)
-	require.NoError(t, err)
-	require.NoError(t, stateStore.Save(state))
-	mp := &mpmocks.Mempool{}
-	mp.On("Lock").Return()
-	mp.On("Unlock").Return()
-	mp.On("FlushAppConn", mock.Anything).Return(nil)
-	mp.On("Update",
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything,
-		mock.Anything).Return(nil)
+	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		return rts.blockSyncChannels[nodeID], nil
+	}
 
-	eventbus := eventbus.NewDefault(logger)
-	require.NoError(t, eventbus.Start(ctx))
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		log.NewNopLogger(),
-		rts.app[nodeID],
-		mp,
-		sm.EmptyEvidencePool{},
-		blockStore,
-		eventbus,
-		sm.NopMetrics(),
-	)
+	peerEvents := func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] }
+	reactor := makeReactor(ctx, t, nodeID, genDoc, privVal, chCreator, peerEvents)
 
 	var lastExtCommit *types.ExtendedCommit
 
 	// The commit we are building for the current height.
 	seenExtCommit := &types.ExtendedCommit{}
 
+	state, err := reactor.stateStore.Load()
+	require.NoError(t, err)
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		lastExtCommit = seenExtCommit.Clone()
 
@@ -239,34 +218,15 @@ func (rts *reactorTestSuite) addNode(
 			ExtendedSignatures: []types.ExtendedCommitSig{vote.ExtendedCommitSig()},
 		}
 
-		state, err = blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
+		state, err = reactor.blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
 		require.NoError(t, err)
 
-		blockStore.SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
+		reactor.store.SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
 	}
 
-	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)
-	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
-	rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
-
-	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
-		return rts.blockSyncChannels[nodeID], nil
-	}
-	rts.reactors[nodeID] = NewReactor(
-		rts.logger.With("nodeID", nodeID),
-		stateStore,
-		blockExec,
-		blockStore,
-		nil,
-		chCreator,
-		func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
-		true,
-		consensus.NopMetrics(),
-		nil, // eventbus, can be nil
-	)
-
-	require.NoError(t, rts.reactors[nodeID].Start(ctx))
-	require.True(t, rts.reactors[nodeID].IsRunning())
+	rts.reactors[nodeID] = reactor
+	require.NoError(t, reactor.Start(ctx))
+	require.True(t, reactor.IsRunning())
 }
 
 func (rts *reactorTestSuite) start(ctx context.Context, t *testing.T) {
