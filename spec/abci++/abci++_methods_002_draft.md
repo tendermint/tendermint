@@ -382,9 +382,9 @@ and _p_'s _validValue_ is `nil`:
           Application removes the transaction from the list
         * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by `TxAction = REMOVED`. As explained above, this compromises client traceability, unless it is implemented at the Application level.
         * reorder transactions - the Application reorders transactions in the list
-4. If the block is modified, the Application sets `ResponsePrepareProposal.modified` to true,
-   and includes the modified block in the return parameters (see the rules in section _Usage_).
-   The Application returns from the call.
+4. The Application
+   includes the transaction list (whether modified or not) in the return parameters (see the rules in section _Usage_),
+   and returns from the call.
 5. _p_'s Tendermint uses the (possibly) modified block as _p_'s proposal in round _r_, height _h_.
 
 Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as proposal and will not call `RequestPrepareProposal`.
