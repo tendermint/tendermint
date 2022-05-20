@@ -737,11 +737,18 @@ OUTER_LOOP:
 		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
 			// Load the block's extended commit for prs.Height,
 			// which contains precommit signatures for prs.Height.
-			if ec := conR.conS.blockStore.LoadBlockExtendedCommit(prs.Height); ec != nil {
-				if ps.PickSendVote(ec) {
-					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
-					continue OUTER_LOOP
-				}
+			var ec *types.ExtendedCommit
+			if conR.conS.state.ConsensusParams.ABCI.VoteExtensionsEnabled(prs.Height) {
+				ec = conR.conS.blockStore.LoadBlockExtendedCommit(prs.Height)
+			} else {
+				ec = conR.conS.blockStore.LoadBlockCommit(prs.Height).WrappedExtendedCommit()
+			}
+			if ec == nil {
+				continue
+			}
+			if ps.PickSendVote(ec) {
+				logger.Debug("Picked Catchup commit to send", "height", prs.Height)
+				continue OUTER_LOOP
 			}
 		}
 
@@ -1685,11 +1692,7 @@ type VoteMessage struct {
 
 // ValidateBasic checks whether the vote within the message is well-formed.
 func (m *VoteMessage) ValidateBasic() error {
-	// Here we validate votes with vote extensions, since we require vote
-	// extensions to be sent in precommit messages during consensus. Prevote
-	// messages should never have vote extensions, and this is also validated
-	// here.
-	return m.Vote.ValidateWithExtension()
+	return m.Vote.ValidateBasic()
 }
 
 // String returns a string representation.

@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := types.RandValidatorSet(10, 1)
 
-	hvs := NewHeightVoteSet(test.DefaultTestChainID, 1, valSet)
+	hvs := NewExtendedHeightVoteSet(test.DefaultTestChainID, 1, valSet)
 
 	vote999_0 := makeVoteHR(t, 1, 0, 999, privVals)
 	added, err := hvs.AddVote(vote999_0, "peer1")

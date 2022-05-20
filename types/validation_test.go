@@ -145,7 +145,7 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
 	extCommit, err := MakeExtCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
 	// malleate 4th signature
@@ -173,7 +173,7 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
 	extCommit, err := MakeExtCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
 	// malleate 4th signature (3 signatures are enough for 2/3+)
@@ -199,7 +199,7 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
 	extCommit, err := MakeExtCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 	require.NoError(t, valSet.VerifyCommit(chainID, blockID, h, commit))
 
 	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
@@ -223,7 +223,7 @@ func TestValidatorSet_VerifyCommitLightTrusting(t *testing.T) {
 		newValSet, _                  = RandValidatorSet(2, 1)
 	)
 	require.NoError(t, err)
-	commit := extCommit.StripExtensions()
+	commit := extCommit.ToCommit()
 
 	testCases := []struct {
 		valSet *ValidatorSet
@@ -265,7 +265,7 @@ func TestValidatorSet_VerifyCommitLightTrustingErrorsOnOverflow(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = valSet.VerifyCommitLightTrusting("test_chain_id", extCommit.StripExtensions(),
+	err = valSet.VerifyCommitLightTrusting("test_chain_id", extCommit.ToCommit(),
 		tmmath.Fraction{Numerator: 25, Denominator: 55})
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "int64 overflow")

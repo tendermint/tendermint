@@ -175,41 +175,49 @@ func TestFinalizeBlockValidators(t *testing.T) {
 
 	var (
 		now        = tmtime.Now()
-		commitSig0 = types.CommitSig{
-			BlockIDFlag:      types.BlockIDFlagCommit,
-			ValidatorAddress: state.Validators.Validators[0].Address,
-			Timestamp:        now,
-			Signature:        []byte("Signature1"),
+		commitSig0 = types.ExtendedCommitSig{
+			CommitSig: types.CommitSig{
+				BlockIDFlag:      types.BlockIDFlagCommit,
+				ValidatorAddress: state.Validators.Validators[0].Address,
+				Timestamp:        now,
+				Signature:        []byte("Signature1"),
+			},
+			Extension:          []byte("extension1"),
+			ExtensionSignature: []byte("extensionSig1"),
 		}
 
-		commitSig1 = types.CommitSig{
-			BlockIDFlag:      types.BlockIDFlagCommit,
-			ValidatorAddress: state.Validators.Validators[1].Address,
-			Timestamp:        now,
-			Signature:        []byte("Signature2"),
+		commitSig1 = types.ExtendedCommitSig{
+			CommitSig: types.CommitSig{
+				BlockIDFlag:      types.BlockIDFlagCommit,
+				ValidatorAddress: state.Validators.Validators[1].Address,
+				Timestamp:        now,
+				Signature:        []byte("Signature2"),
+			},
+			Extension:          []byte("extension2"),
+			ExtensionSignature: []byte("extensionSig2"),
 		}
-		absentSig = types.NewCommitSigAbsent()
+		absentSig = types.NewExtendedCommitSigAbsent()
 	)
 
 	testCases := []struct {
 		desc                     string
-		lastCommitSigs           []types.CommitSig
+		lastCommitSigs           []types.ExtendedCommitSig
 		expectedAbsentValidators []int
 	}{
-		{"none absent", []types.CommitSig{commitSig0, commitSig1}, []int{}},
-		{"one absent", []types.CommitSig{commitSig0, absentSig}, []int{1}},
-		{"multiple absent", []types.CommitSig{absentSig, absentSig}, []int{0, 1}},
+		{"none absent", []types.ExtendedCommitSig{commitSig0, commitSig1}, []int{}},
+		{"one absent", []types.ExtendedCommitSig{commitSig0, absentSig}, []int{1}},
+		{"multiple absent", []types.ExtendedCommitSig{absentSig, absentSig}, []int{0, 1}},
 	}
 
 	for _, tc := range testCases {
-		lastCommit := &types.Commit{
-			Height:     1,
-			BlockID:    prevBlockID,
-			Signatures: tc.lastCommitSigs,
+		lastCommit := &types.ExtendedCommit{
+			Height:             1,
+			BlockID:            prevBlockID,
+			ExtendedSignatures: tc.lastCommitSigs,
 		}
 
 		// block for height 2
-		block := makeBlock(state, 2, lastCommit)
+		block := makeBlock(state, 2, lastCommit.ToCommit())
 
 		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
@@ -931,6 +939,110 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	require.ErrorContains(t, err, "an injected error")
 
 	mp.AssertExpectations(t)
+}
+
+// TestCreateProposalBlockPanicOnAbsentVoteExtensions ensures that the CreateProposalBlock
+// call correctly panics when the vote extension data is missing from the extended commit
+// data that the method receives.
+func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+
+		// The height that is about to be proposed
+		height int64
+
+		// The first height during which vote extensions will be required for consensus to proceed.
+		extensionEnableHeight int64
+		expectPanic           bool
+	}{
+		{
+			name:                  "missing extension data on first required height",
+			height:                2,
+			extensionEnableHeight: 1,
+			expectPanic:           true,
+		},
+		{
+			name:                  "missing extension during before required height",
+			height:                2,
+			extensionEnableHeight: 2,
+			expectPanic:           false,
+		},
+		{
+			name:                  "missing extension data and not required",
+			height:                2,
+			extensionEnableHeight: 0,
+			expectPanic:           false,
+		},
+		{
+			name:                  "missing extension data and required in two heights",
+			height:                2,
+			extensionEnableHeight: 3,
+			expectPanic:           false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			app := abcimocks.NewApplication(t)
+			if !testCase.expectPanic {
+				app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			}
+			cc := proxy.NewLocalClientCreator(app)
+			proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+			err := proxyApp.Start()
+			require.NoError(t, err)
+
+			state, stateDB, privVals := makeState(1, int(testCase.height-1))
+			stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+				DiscardABCIResponses: false,
+			})
+			state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.extensionEnableHeight
+			mp := &mpmocks.Mempool{}
+			mp.On("Lock").Return()
+			mp.On("Unlock").Return()
+			mp.On("FlushAppConn", mock.Anything).Return(nil)
+			mp.On("Update",
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything).Return(nil)
+			mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
+
+			blockStore := store.NewBlockStore(dbm.NewMemDB())
+			blockExec := sm.NewBlockExecutor(
+				stateStore,
+				log.NewNopLogger(),
+				proxyApp.Consensus(),
+				mp,
+				sm.EmptyEvidencePool{},
+				blockStore,
+			)
+			block := makeBlock(state, testCase.height, new(types.Commit))
+
+			bps, err := block.MakePartSet(testPartSize)
+			require.NoError(t, err)
+			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+			pa, _ := state.Validators.GetByIndex(0)
+			lastCommit, _, _ := makeValidCommit(testCase.height-1, blockID, state.Validators, privVals)
+			stripSignatures(lastCommit)
+			if testCase.expectPanic {
+				require.Panics(t, func() {
+					blockExec.CreateProposalBlock(testCase.height, state, lastCommit, pa) //nolint:errcheck
+				})
+			} else {
+				_, err = blockExec.CreateProposalBlock(testCase.height, state, lastCommit, pa)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func stripSignatures(ec *types.ExtendedCommit) {
+	for i, commitSig := range ec.ExtendedSignatures {
+		commitSig.Extension = nil
+		commitSig.ExtensionSignature = nil
+		ec.ExtendedSignatures[i] = commitSig
+	}
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {

@@ -1,10 +1,12 @@
 package state
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 
 	"github.com/cosmos/gogoproto/proto"
+	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -35,6 +37,18 @@ func calcConsensusParamsKey(height int64) []byte {
 
 func calcABCIResponsesKey(height int64) []byte {
 	return []byte(fmt.Sprintf("abciResponsesKey:%v", height))
+}
+
+var tmpABCIKey []byte
+
+func init() {
+	var err error
+	// temporary extra key before consensus param protos are regenerated
+	// TODO(wbanfield) remove in next PR
+	tmpABCIKey, err = orderedcode.Append(nil, int64(10000))
+	if err != nil {
+		panic(err)
+	}
 }
 
 //----------------------
@@ -162,6 +176,12 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 	if err != nil {
 		return state, err
 	}
+	buf, err = store.db.Get(tmpABCIKey)
+	if err != nil {
+		return state, err
+	}
+	h, _ := binary.Varint(buf)
+	sm.ConsensusParams.ABCI.VoteExtensionsEnableHeight = h
 
 	return *sm, nil
 }
@@ -197,6 +217,12 @@ func (store dbStore) save(state State, key []byte) error {
 	if err != nil {
 		return err
 	}
+	bz := make([]byte, 5)
+	binary.PutVarint(bz, state.ConsensusParams.ABCI.VoteExtensionsEnableHeight)
+	if err := store.db.SetSync(tmpABCIKey, bz); err != nil {
+		return err
+	}
+
 	return nil
 }
 

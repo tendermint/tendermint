@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -260,7 +261,7 @@ func TestVoteExtension(t *testing.T) {
 			if tc.includeSignature {
 				vote.ExtensionSignature = v.ExtensionSignature
 			}
-			err = vote.VerifyWithExtension("test_chain_id", pk)
+			err = vote.VerifyExtension("test_chain_id", pk)
 			if tc.expectError {
 				require.Error(t, err)
 			} else {
@@ -349,7 +350,7 @@ func TestValidVotes(t *testing.T) {
 		signVote(t, privVal, "test_chain_id", tc.vote)
 		tc.malleateVote(tc.vote)
 		require.NoError(t, tc.vote.ValidateBasic(), "ValidateBasic for %s", tc.name)
-		require.NoError(t, tc.vote.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+		require.NoError(t, tc.vote.EnsureExtension(), "EnsureExtension for %s", tc.name)
 	}
 }
 
@@ -373,13 +374,13 @@ func TestInvalidVotes(t *testing.T) {
 		signVote(t, privVal, "test_chain_id", prevote)
 		tc.malleateVote(prevote)
 		require.Error(t, prevote.ValidateBasic(), "ValidateBasic for %s in invalid prevote", tc.name)
-		require.Error(t, prevote.ValidateWithExtension(), "ValidateWithExtension for %s in invalid prevote", tc.name)
+		require.NoError(t, prevote.EnsureExtension(), "EnsureExtension for %s in invalid prevote", tc.name)
 
 		precommit := examplePrecommit()
 		signVote(t, privVal, "test_chain_id", precommit)
 		tc.malleateVote(precommit)
 		require.Error(t, precommit.ValidateBasic(), "ValidateBasic for %s in invalid precommit", tc.name)
-		require.Error(t, precommit.ValidateWithExtension(), "ValidateWithExtension for %s in invalid precommit", tc.name)
+		require.NoError(t, precommit.EnsureExtension(), "EnsureExtension for %s in invalid precommit", tc.name)
 	}
 }
 
@@ -398,7 +399,7 @@ func TestInvalidPrevotes(t *testing.T) {
 		signVote(t, privVal, "test_chain_id", prevote)
 		tc.malleateVote(prevote)
 		require.Error(t, prevote.ValidateBasic(), "ValidateBasic for %s", tc.name)
-		require.Error(t, prevote.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+		require.NoError(t, prevote.EnsureExtension(), "EnsureExtension for %s", tc.name)
 	}
 }
 
@@ -413,18 +414,44 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 			v.Extension = []byte("extension")
 			v.ExtensionSignature = nil
 		}},
-		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
-		//{"missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }},
 		{"oversized vote extension signature", func(v *Vote) { v.ExtensionSignature = make([]byte, MaxSignatureSize+1) }},
 	}
 	for _, tc := range testCases {
 		precommit := examplePrecommit()
 		signVote(t, privVal, "test_chain_id", precommit)
 		tc.malleateVote(precommit)
-		// We don't expect an error from ValidateBasic, because it doesn't
-		// handle vote extensions.
-		require.NoError(t, precommit.ValidateBasic(), "ValidateBasic for %s", tc.name)
-		require.Error(t, precommit.ValidateWithExtension(), "ValidateWithExtension for %s", tc.name)
+		// ValidateBasic ensures that vote extensions, if present, are well formed
+		require.Error(t, precommit.ValidateBasic(), "ValidateBasic for %s", tc.name)
+	}
+}
+
+func TestEnsureVoteExtension(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	privVal := NewMockPV()
+
+	testCases := []struct {
+		name         string
+		malleateVote func(*Vote)
+		expectError  bool
+	}{
+		{"vote extension signature absent", func(v *Vote) {
+			v.Extension = nil
+			v.ExtensionSignature = nil
+		}, true},
+		{"vote extension signature present", func(v *Vote) {
+			v.ExtensionSignature = []byte("extension signature")
+		}, false},
+	}
+	for _, tc := range testCases {
+		precommit := examplePrecommit(t)
+		signVote(ctx, t, privVal, "test_chain_id", precommit)
+		tc.malleateVote(precommit)
+		if tc.expectError {
+			require.Error(t, precommit.EnsureExtension(), "EnsureExtension for %s", tc.name)
+		} else {
+			require.NoError(t, precommit.EnsureExtension(), "EnsureExtension for %s", tc.name)
+		}
 	}
 }
 
