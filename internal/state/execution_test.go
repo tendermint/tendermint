@@ -79,9 +79,10 @@ func TestApplyBlock(t *testing.T) {
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
-// TestFinalizeBlockDecidedLastCommit ensures we correctly send the DecidedLastCommit to the
-// application. The test ensures that the DecidedLastCommit properly reflects
-// which validators signed the preceding block.
+// TestFinalizeBlockDecidedLastCommit ensures we correctly send the
+// DecidedLastCommit to the application. The test ensures that the
+// DecidedLastCommit properly reflects which validators signed the preceding
+// block.
 func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -96,7 +97,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 
 	state, stateDB, privVals := makeState(t, 7, 1)
 	stateStore := sm.NewStore(stateDB)
-	absentSig := types.NewCommitSigAbsent()
+	absentSig := types.NewExtendedCommitSigAbsent()
 
 	testCases := []struct {
 		name             string
@@ -134,12 +135,12 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 
 			for idx, isAbsent := range tc.absentCommitSigs {
 				if isAbsent {
-					lastCommit.Signatures[idx] = absentSig
+					lastCommit.ExtendedSignatures[idx] = absentSig
 				}
 			}
 
 			// block for height 2
-			block := sf.MakeBlock(state, 2, lastCommit)
+			block := sf.MakeBlock(state, 2, lastCommit.ToCommit())
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
 			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -198,12 +199,15 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
-				Commit: types.NewCommit(10, 0, makeBlockID(header.Hash(), 100, []byte("partshash")), []types.CommitSig{{
-					BlockIDFlag:      types.BlockIDFlagNil,
-					ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-					Timestamp:        defaultEvidenceTime,
-					Signature:        crypto.CRandBytes(types.MaxSignatureSize),
-				}}),
+				Commit: &types.Commit{
+					Height:  10,
+					BlockID: makeBlockID(header.Hash(), 100, []byte("partshash")),
+					Signatures: []types.CommitSig{{
+						BlockIDFlag:      types.BlockIDFlagNil,
+						ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+						Timestamp:        defaultEvidenceTime,
+						Signature:        crypto.CRandBytes(types.MaxSignatureSize)}},
+				},
 			},
 			ValidatorSet: state.Validators,
 		},
@@ -324,8 +328,10 @@ func TestProcessProposal(t *testing.T) {
 		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
 
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, lastCommitSig)
-	block1 := sf.MakeBlock(state, height, lastCommit)
+	block1 := sf.MakeBlock(state, height, &types.Commit{
+		Height:     height - 1,
+		Signatures: lastCommitSig,
+	})
 	block1.Txs = txs
 
 	expectedRpp := &abci.RequestProcessProposal{
@@ -653,8 +659,8 @@ func TestEmptyPrepareProposal(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 }
 
@@ -708,8 +714,8 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.ErrorContains(t, err, "new transaction incorrectly marked as removed")
 	require.Nil(t, block)
 
@@ -764,8 +770,8 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 	require.Len(t, block.Data.Txs.ToSliceOfBytes(), len(trs)-2)
 
@@ -823,8 +829,8 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 
 	require.Equal(t, txs[0], block.Data.Txs[0])
@@ -879,8 +885,8 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, types.Tx(trs[i].Tx), tx)
@@ -939,9 +945,8 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.ErrorContains(t, err, "transaction data size exceeds maximum")
 	require.Nil(t, block, "")
 
@@ -991,13 +996,122 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
-
-	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa, votes)
+	commit, _ := makeValidCommit(ctx, t, height, types.BlockID{}, state.Validators, privVals)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "an injected error")
 
 	mp.AssertExpectations(t)
+}
+
+// TestCreateProposalBlockPanicOnAbsentVoteExtensions ensures that the CreateProposalBlock
+// call correctly panics when the vote extension data is missing from the extended commit
+// data that the method receives.
+func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
+	for _, testCase := range []struct {
+		name string
+
+		// The height that is about to be proposed
+		height int64
+
+		// The first height during which vote extensions will be required for consensus to proceed.
+		extensionEnableHeight int64
+		expectPanic           bool
+	}{
+		{
+			name:                  "missing extension data on first required height",
+			height:                2,
+			extensionEnableHeight: 1,
+			expectPanic:           true,
+		},
+		{
+			name:                  "missing extension during before required height",
+			height:                2,
+			extensionEnableHeight: 2,
+			expectPanic:           false,
+		},
+		{
+			name:                  "missing extension data and not required",
+			height:                2,
+			extensionEnableHeight: 0,
+			expectPanic:           false,
+		},
+		{
+			name:                  "missing extension data and required in two heights",
+			height:                2,
+			extensionEnableHeight: 3,
+			expectPanic:           false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			logger := log.NewNopLogger()
+
+			eventBus := eventbus.NewDefault(logger)
+			require.NoError(t, eventBus.Start(ctx))
+
+			app := abcimocks.NewApplication(t)
+			if !testCase.expectPanic {
+				app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			}
+			cc := abciclient.NewLocalClient(logger, app)
+			proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+			err := proxyApp.Start(ctx)
+			require.NoError(t, err)
+
+			state, stateDB, privVals := makeState(t, 1, int(testCase.height-1))
+			stateStore := sm.NewStore(stateDB)
+			state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.extensionEnableHeight
+			mp := &mpmocks.Mempool{}
+			mp.On("Lock").Return()
+			mp.On("Unlock").Return()
+			mp.On("FlushAppConn", mock.Anything).Return(nil)
+			mp.On("Update",
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything).Return(nil)
+			mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
+
+			blockExec := sm.NewBlockExecutor(
+				stateStore,
+				logger,
+				proxyApp,
+				mp,
+				sm.EmptyEvidencePool{},
+				nil,
+				eventBus,
+				sm.NopMetrics(),
+			)
+			block := sf.MakeBlock(state, testCase.height, new(types.Commit))
+			bps, err := block.MakePartSet(testPartSize)
+			require.NoError(t, err)
+			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+			pa, _ := state.Validators.GetByIndex(0)
+			lastCommit, _ := makeValidCommit(ctx, t, testCase.height-1, blockID, state.Validators, privVals)
+			stripSignatures(lastCommit)
+			if testCase.expectPanic {
+				require.Panics(t, func() {
+					blockExec.CreateProposalBlock(ctx, testCase.height, state, lastCommit, pa) //nolint:errcheck
+				})
+			} else {
+				_, err = blockExec.CreateProposalBlock(ctx, testCase.height, state, lastCommit, pa)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func stripSignatures(ec *types.ExtendedCommit) {
+	for i, commitSig := range ec.ExtendedSignatures {
+		commitSig.Extension = nil
+		commitSig.ExtensionSignature = nil
+		ec.ExtendedSignatures[i] = commitSig
+	}
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {

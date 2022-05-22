@@ -32,6 +32,7 @@ import (
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -598,6 +599,118 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// TestSwitchToConsensusVoteExtensions tests that the SwitchToConsensus correctly
+// checks for vote extension data when required.
+func TestSwitchToConsensusVoteExtensions(t *testing.T) {
+	for _, testCase := range []struct {
+		name                  string
+		storedHeight          int64
+		initialRequiredHeight int64
+		includeExtensions     bool
+		shouldPanic           bool
+	}{
+		{
+			name:                  "no vote extensions but not required",
+			initialRequiredHeight: 0,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           false,
+		},
+		{
+			name:                  "no vote extensions but required this height",
+			initialRequiredHeight: 2,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           true,
+		},
+		{
+			name:                  "no vote extensions and required in future",
+			initialRequiredHeight: 3,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           false,
+		},
+		{
+			name:                  "no vote extensions and required previous height",
+			initialRequiredHeight: 1,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           true,
+		},
+		{
+			name:                  "vote extensions and required previous height",
+			initialRequiredHeight: 1,
+			storedHeight:          2,
+			includeExtensions:     true,
+			shouldPanic:           false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+			defer cancel()
+			cs, vs := makeState(ctx, t, makeStateArgs{validators: 1})
+			validator := vs[0]
+			validator.Height = testCase.storedHeight
+
+			cs.state.LastBlockHeight = testCase.storedHeight
+			cs.state.LastValidators = cs.state.Validators.Copy()
+			cs.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.initialRequiredHeight
+
+			propBlock, err := cs.createProposalBlock(ctx)
+			require.NoError(t, err)
+
+			// Consensus is preparing to do the next height after the stored height.
+			cs.Height = testCase.storedHeight + 1
+			propBlock.Height = testCase.storedHeight
+			blockParts, err := propBlock.MakePartSet(types.BlockPartSizeBytes)
+			require.NoError(t, err)
+
+			var voteSet *types.VoteSet
+			if testCase.includeExtensions {
+				voteSet = types.NewExtendedVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators)
+			} else {
+				voteSet = types.NewVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators)
+			}
+			signedVote := signVote(ctx, t, validator, tmproto.PrecommitType, cs.state.ChainID, types.BlockID{
+				Hash:          propBlock.Hash(),
+				PartSetHeader: blockParts.Header(),
+			})
+
+			if !testCase.includeExtensions {
+				signedVote.Extension = nil
+				signedVote.ExtensionSignature = nil
+			}
+
+			added, err := voteSet.AddVote(signedVote)
+			require.NoError(t, err)
+			require.True(t, added)
+
+			if testCase.includeExtensions {
+				cs.blockStore.SaveBlockWithExtendedCommit(propBlock, blockParts, voteSet.MakeExtendedCommit())
+			} else {
+				cs.blockStore.SaveBlock(propBlock, blockParts, voteSet.MakeExtendedCommit().ToCommit())
+			}
+			reactor := NewReactor(
+				log.NewNopLogger(),
+				cs,
+				nil,
+				nil,
+				cs.eventBus,
+				true,
+				NopMetrics(),
+			)
+
+			if testCase.shouldPanic {
+				assert.Panics(t, func() {
+					reactor.SwitchToConsensus(ctx, cs.state, false)
+				})
+			} else {
+				reactor.SwitchToConsensus(ctx, cs.state, false)
+			}
+		})
+	}
 }
 
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {

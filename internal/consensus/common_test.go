@@ -160,7 +160,8 @@ func signVote(
 	blockID types.BlockID) *types.Vote {
 
 	var ext []byte
-	if voteType == tmproto.PrecommitType {
+	// Only non-nil precommits are allowed to carry vote extensions.
+	if voteType == tmproto.PrecommitType && !blockID.IsNil() {
 		ext = []byte("extension")
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, ext)
@@ -526,10 +527,11 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 }
 
 type makeStateArgs struct {
-	config      *config.Config
-	logger      log.Logger
-	validators  int
-	application abci.Application
+	config          *config.Config
+	consensusParams *types.ConsensusParams
+	logger          log.Logger
+	validators      int
+	application     abci.Application
 }
 
 func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
@@ -550,9 +552,13 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	if args.logger == nil {
 		args.logger = log.NewNopLogger()
 	}
+	c := factory.ConsensusParams()
+	if args.consensusParams != nil {
+		c = args.consensusParams
+	}
 
 	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
-		Params:     factory.ConsensusParams(),
+		Params:     c,
 		Validators: validators,
 	})
 
