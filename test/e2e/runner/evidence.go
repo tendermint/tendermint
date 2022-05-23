@@ -86,9 +86,15 @@ func InjectEvidence(ctx context.Context, logger log.Logger, r *rand.Rand, testne
 				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		} else {
-			ev, err = generateDuplicateVoteEvidence(ctx,
+			var dve *types.DuplicateVoteEvidence
+			dve, err = generateDuplicateVoteEvidence(ctx,
 				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
+			if dve.VoteA.Height < testnet.VoteExtensionsEnableHeight {
+				dve.VoteA.StripExtension()
+				dve.VoteB.StripExtension()
+			}
+			ev = dve
 		}
 		if err != nil {
 			return err
