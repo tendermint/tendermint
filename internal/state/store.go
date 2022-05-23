@@ -137,7 +137,6 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 	if err != nil {
 		return state, err
 	}
-
 	return *sm, nil
 }
 

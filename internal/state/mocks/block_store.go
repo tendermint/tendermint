@@ -209,7 +209,12 @@ func (_m *BlockStore) PruneBlocks(height int64) (uint64, error) {
 }
 
 // SaveBlock provides a mock function with given fields: block, blockParts, seenCommit
-func (_m *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
+func (_m *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+	_m.Called(block, blockParts, seenCommit)
+}
+
+// SaveBlockWithExtendedCommit provides a mock function with given fields: block, blockParts, seenCommit
+func (_m *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
 	_m.Called(block, blockParts, seenCommit)
 }
 

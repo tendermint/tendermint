@@ -25,19 +25,15 @@ This allows Tendermint to run with applications written in many programming lang
 
 This specification is split as follows:
 
-- [Overview and basic concepts](./abci++_basic_concepts_002_draft.md) - interface's overview and concepts needed to understand other parts of this specification.
+- [Overview and basic concepts](./abci++_basic_concepts_002_draft.md) - interface's overview and concepts
+  needed to understand other parts of this specification.
 - [Methods](./abci++_methods_002_draft.md) - complete details on all ABCI++ methods
   and message types.
 - [Requirements for the Application](./abci++_app_requirements_002_draft.md) - formal requirements
-  on the Application's logic to ensure liveness of Tendermint. These requirements define what
-  Tendermint expects from the Application.
+  on the Application's logic to ensure Tendermint properties such as liveness. These requirements define what
+  Tendermint expects from the Application; second part on managing ABCI application state and related topics.
 - [Tendermint's expected behavior](./abci++_tmint_expected_behavior_002_draft.md) - specification of
   how the different ABCI++ methods may be called by Tendermint. This explains what the Application
   is to expect from Tendermint.
-
->**TODO** Re-read these and remove redundant info
-
-- [Applications](../abci/apps.md) - how to manage ABCI application state and other
-  details about building ABCI applications
 - [Client and Server](../abci/client-server.md) - for those looking to implement their
   own ABCI application servers

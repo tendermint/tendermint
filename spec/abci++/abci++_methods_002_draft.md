@@ -80,13 +80,15 @@ title: Methods
 
 * **Usage**:
     * Called once upon genesis.
-    * If ResponseInitChain.Validators is empty, the initial validator set will be the RequestInitChain.Validators
-    * If ResponseInitChain.Validators is not empty, it will be the initial
-    validator set (regardless of what is in RequestInitChain.Validators).
+    * If `ResponseInitChain.Validators` is empty, the initial validator set will be the `RequestInitChain.Validators`
+    * If `ResponseInitChain.Validators` is not empty, it will be the initial
+      validator set (regardless of what is in `RequestInitChain.Validators`).
     * This allows the app to decide if it wants to accept the initial validator
-    set proposed by tendermint (ie. in the genesis file), or if it wants to use
-    a different one (perhaps computed based on some application specific
-    information in the genesis file).
+      set proposed by tendermint (ie. in the genesis file), or if it wants to use
+      a different one (perhaps computed based on some application specific
+      information in the genesis file).
+    * Both `ResponseInitChain.Validators` and `ResponseInitChain.Validators` are [ValidatorUpdate](#validatorupdate) structs.
+      So, technically, they both are _updating_ the set of validators from the empty set.
 
 ### Query
 
@@ -302,7 +304,11 @@ title: Methods
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
     | tx_records              | repeated [TxRecord](#txrecord)                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
+<<<<<<< HEAD
     | tx_results              | repeated [ExecTxResult](#exectxresult)               | List of structures containing the data resulting from executing the transactions            | 4            |
+=======
+    | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions            | 4            |
+>>>>>>> origin
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
@@ -414,7 +420,11 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     |-------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------|--------------|
     | status                  | [ProposalStatus](#proposalstatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                    | 2            |
+<<<<<<< HEAD
     | tx_results              | repeated [ExecTxResult](#exectxresult)               | List of structures containing the data resulting from executing the transactions. | 3            |
+=======
+    | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions. | 3            |
+>>>>>>> origin
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                    | 5            |
 
@@ -582,7 +592,11 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
     | events                  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
+<<<<<<< HEAD
     | tx_results              | repeated [ExecTxResult](#exectxresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
+=======
+    | tx_results              | repeated [ExecTxResult](#exectxresult)                      | List of structures containing the data resulting from executing the transactions | 2            |
+>>>>>>> origin
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
     | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |
