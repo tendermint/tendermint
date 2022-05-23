@@ -424,9 +424,11 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, 4, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
-	maxBlockHeight := int64(101)
+	// Has to be 100 + the max starting height because we calculate the sync rate based on every 100 blocks processed
+	// Otherwise the test will time out
+	maxBlockHeight := int64(151)
 
-	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 2}) // 2, 0}) //50, 4, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 2, 50, 0})
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 	rts.start(ctx, t)
 
@@ -439,7 +441,7 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 					continue
 				}
 				matching = matching && rts.reactors[rts.nodes[idx]].GetRemainingSyncTime() > time.Nanosecond &&
-					rts.reactors[rts.nodes[idx]].pool.getLastSyncRate() > 0.001
+					rts.reactors[rts.nodes[idx]].pool.getLastSyncRate() > 0.0001
 
 				if !matching {
 					height, _, _ := rts.reactors[rts.nodes[idx]].pool.GetStatus()

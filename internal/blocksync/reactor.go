@@ -110,16 +110,17 @@ func NewReactor(
 	eventBus *eventbus.EventBus,
 ) *Reactor {
 	r := &Reactor{
-		logger:      logger,
-		stateStore:  stateStore,
-		blockExec:   blockExec,
-		store:       *store,
-		consReactor: consReactor,
-		blockSync:   newAtomicBool(blockSync),
-		chCreator:   channelCreator,
-		peerEvents:  peerEvents,
-		metrics:     metrics,
-		eventBus:    eventBus,
+		logger:           logger,
+		stateStore:       stateStore,
+		blockExec:        blockExec,
+		store:            *store,
+		consReactor:      consReactor,
+		blockSync:        newAtomicBool(blockSync),
+		chCreator:        channelCreator,
+		peerEvents:       peerEvents,
+		metrics:          metrics,
+		eventBus:         eventBus,
+		lastTrustedBlock: &TrustedBlockData{},
 	}
 
 	r.BaseService = *service.NewBaseService(logger, "BlockSync", r)
@@ -545,10 +546,10 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			)
 
 			// TODO(sergio, jmalicevic): Should we also validate against the extended commit?
-			if r.lastTrustedBlock == nil || r.lastTrustedBlock.block == nil {
-				if r.initialState.LastBlockHeight != 0 {
-					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(r.initialState.LastBlockHeight), r.store.LoadSeenCommit()}
-					if r.lastTrustedBlock == nil {
+			if r.lastTrustedBlock.block == nil {
+				if state.LastBlockHeight != 0 {
+					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(state.LastBlockHeight), r.store.LoadSeenCommit()}
+					if r.lastTrustedBlock.block == nil {
 						panic("Failed to load last trusted block")
 					}
 				}
@@ -556,7 +557,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			var err error
 			// Check for nil on block to avoid the case where we failed the block validation before persistence
 			// but passed the verification before and created a lastTrustedBlock object
-			if r.lastTrustedBlock != nil && r.lastTrustedBlock.block != nil {
+			if r.lastTrustedBlock.block != nil {
 				err = VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.Validators)
 			} else {
 				oldHash := r.initialState.Validators.Hash()
@@ -566,7 +567,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						"new hash ", newBlock.ValidatorsHash,
 					)
 
-					peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
+					peerID := r.pool.RedoRequest(state.LastBlockHeight)
 					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
 						NodeID: peerID,
 						Err:    ErrValidationFailed{},
@@ -580,11 +581,11 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				// If we ran state sync before blocksync, we can trust the state we have in the store and we will not end up here
 				// If we ran block sync or consensus, we will be able to load the last block from our store
 				// We use the validator set provided in the gensis vile, to verify the new block, using the lastCommit of verifyBlock
-				if r.initialState.LastBlockHeight != 0 {
+				if state.LastBlockHeight != 0 {
 					panic("Cannot be here unles we start from genesis")
 				}
 				err = state.Validators.VerifyCommitLight(newBlock.ChainID, newBlockID, newBlock.Height, verifyBlock.LastCommit)
-				r.lastTrustedBlock = &TrustedBlockData{}
+
 			}
 			if err != nil {
 
