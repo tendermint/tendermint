@@ -11,7 +11,8 @@ Accepted
 ## Context
 
 Adopting libp2p is an larger project that is the culmination of a long
-programme of work in the tendermint codebase.
+programme of work in the Tendermint codebase, and this document
+describes some of the decisions related to that adoption.
 
 ## Alternative Approaches
 
@@ -34,7 +35,7 @@ of the system.
 
 In persuit of this goal, this project has two explicit *non-goals*:
 
-- Do not support message/wire compatibility with legacy stack.
+- Do not require wire compatibility with legacy stack.
 - Do not support dual-mode (legacy/libp2p) in a single node or network.
 
 There does not seem to be a compelling use case of having a release
@@ -46,9 +47,9 @@ confidence.
 ### Target Iterative Progress 
 
 Rather than produce an extensive design document (other than this
-record of decisions,) we will work iteratively in a topic 
-branch--[`main/libp2p`](../../tree/main/libp2p)--to prototype the new libp2p integration. This
-work will aim to: 
+record of decisions,) we will work iteratively in a topic
+branch--[`main/libp2p`](../../tree/main/libp2p)--to prototype the new
+libp2p integration. This work will aim to:
 
 - develop a working implementation (by way of the e2e tests) of the
   p2p layer without requiring changes to the reactor implementations.
@@ -60,7 +61,9 @@ work will aim to:
 
 ### Use libp2p Idiomatically 
 
-
+We should endeavor to use Libp2p as idiomatically as possible and take
+advantage of features and developments available in the libp2p
+ecosystem.
 
 ### Minimize P2P Code
 
@@ -70,15 +73,17 @@ reduce the maintenance burden within Tendermint.
 
 ### Defer Transport Decisions
 
-There are many high level aspects of p2p systems such as handshakes between
-nodes, transport protocols, which are fully configurable in the
-context of libp2p. There is no need to make decisions about these at
-this time, our decisions. 
+There are many high level aspects of p2p systems such as handshakes
+between nodes, transport protocols, which are fully configurable in
+the context of libp2p. There is no need to make decisions about these
+at this time, as these aspects of the system should be below the level
+of concern for tendermint.
 
-We will not make these decisions user-configurable without a specific need.
-We will make it possible for users to pass a custom libp2p connection object
-(`host.Host`) with limited support, but will otherwise not expose configurations
-and customizations of different libp2p fundamentals.
+We will not make these decisions user-configurable without a specific
+need.  We will make it possible for users to pass a custom libp2p
+connection object (`host.Host`) with limited support, but will
+otherwise not expose configurations and customizations of different
+libp2p fundamentals.
 
 ### Use GossipSub for Gossip Communication 
 
@@ -116,6 +121,8 @@ Based on what we currently know about this process, we will:
 - fine-tune settings on default libp2p network configurations.
 
 - run test nets to improve confidence and support tuning.
+
+- add additional details to this section as the design progresses.
 
 ## Consequences
 
