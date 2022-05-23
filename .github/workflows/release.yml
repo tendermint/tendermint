@@ -21,7 +21,7 @@ jobs:
       - run: echo https://github.com/tendermint/tendermint/blob/${GITHUB_REF#refs/tags/}/CHANGELOG.md#${GITHUB_REF#refs/tags/} > ../release_notes.md 
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v3
         with:
           version: latest
           args: release --rm-dist --release-notes=../release_notes.md
