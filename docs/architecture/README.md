@@ -86,6 +86,7 @@ Note the context/background should be written in the present tense.
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
 - [ADR-081: Protocol Buffers Management](./adr-081-protobuf-mgmt.md)
+- [ADR-083 Libp2p Implementation](./adr-083-libp2p-implementation.md)
 
 ### Deprecated
 
@@ -118,4 +119,3 @@ None
 - [ADR-071: Proposer-Based Timestamps](./adr-071-proposer-based-timestamps.md)
 - [ADR-073: Adopt LibP2P](./adr-073-libp2p.md)
 - [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
-- [ADR-080: Libp2p Implementation](./adr-080-libp2p-implementation.md)

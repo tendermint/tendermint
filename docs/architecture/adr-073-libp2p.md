@@ -10,7 +10,6 @@ Proposed.
 
 ## Context
 
-
 As part of the 0.35 development cycle, the Tendermint team completed
 the first phase of the work described in ADRs 61 and 62, which included a
 large scale refactoring of the reactors and the p2p message
