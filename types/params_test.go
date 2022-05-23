@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -398,6 +399,32 @@ func TestConsensusParamsUpdate_AppVersion(t *testing.T) {
 		&tmproto.ConsensusParams{Version: &tmproto.VersionParams{AppVersion: 1}})
 
 	assert.EqualValues(t, 1, updated.Version.AppVersion)
+}
+
+func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
+	t.Run("set to height already run", func(*testing.T) {
+		initialParams := makeParams(makeParamsArgs{
+			abciExtensionHeight: 1,
+		})
+		update := ConsensusParams{
+			ABCI: ABCIParams{
+				VoteExtensionsEnableHeight: 10,
+			},
+		}
+		require.Error(t, initialParams.ValidateUpdate(update, 1))
+		require.Error(t, initialParams.ValidateUpdate(update, 5))
+	})
+	t.Run("reset to 0", func(t *testing.T) {
+		initialParams := makeParams(makeParamsArgs{
+			abciExtensionHeight: 1,
+		})
+		update := ConsensusParams{
+			ABCI: ABCIParams{
+				VoteExtensionsEnableHeight: 0,
+			},
+		}
+		require.Error(t, initialParams.ValidateUpdate(update, 1))
+	})
 }
 
 func TestProto(t *testing.T) {
