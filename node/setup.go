@@ -274,6 +274,7 @@ func createPeerManager(
 }
 
 func createRouter(
+	ctx context.Context,
 	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
 	nodeInfoProducer func() *types.NodeInfo,
@@ -294,7 +295,7 @@ func createRouter(
 		}
 		opts.NetworkHost = host
 
-		ps, err := p2p.NewPubSub(cfg.P2P)
+		ps, err := p2p.NewPubSub(ctx, cfg.P2P, host)
 		if err != nil {
 			return nil, err
 		}

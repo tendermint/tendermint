@@ -39,6 +39,7 @@ type seedNodeImpl struct {
 
 // makeSeedNode returns a new seed node, containing only p2p, pex reactor
 func makeSeedNode(
+	ctx context.Context,
 	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
@@ -74,7 +75,7 @@ func makeSeedNode(
 			closer)
 	}
 
-	router, err := createRouter(logger, p2pMetrics, func() *types.NodeInfo { return &nodeInfo }, nodeKey, peerManager, cfg, nil)
+	router, err := createRouter(ctx, logger, p2pMetrics, func() *types.NodeInfo { return &nodeInfo }, nodeKey, peerManager, cfg, nil)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),

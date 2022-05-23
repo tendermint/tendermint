@@ -31,8 +31,7 @@ func NewDefault(
 // Genesis document: if the value is nil, the genesis document is read
 // from the file specified in the config, and otherwise the node uses
 // value of the final argument.
-func New(
-	ctx context.Context,
+func New(ctx context.Context,
 	conf *config.Config,
 	logger log.Logger,
 	cf abciclient.Client,
@@ -68,7 +67,7 @@ func New(
 			config.DefaultDBProvider,
 			logger)
 	case config.ModeSeed:
-		return makeSeedNode(logger, conf, config.DefaultDBProvider, nodeKey, genProvider)
+		return makeSeedNode(ctx, logger, conf, config.DefaultDBProvider, nodeKey, genProvider)
 	default:
 		return nil, fmt.Errorf("%q is not a valid mode", conf.Mode)
 	}

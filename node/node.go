@@ -88,6 +88,7 @@ func newDefaultNode(
 	}
 	if cfg.Mode == config.ModeSeed {
 		return makeSeedNode(
+			ctx,
 			logger,
 			cfg,
 			config.DefaultDBProvider,
@@ -248,7 +249,7 @@ func makeNode(
 		},
 	}
 
-	node.router, err = createRouter(logger, nodeMetrics.p2p, node.NodeInfo, nodeKey, peerManager, cfg, proxyApp)
+	node.router, err = createRouter(ctx, logger, nodeMetrics.p2p, node.NodeInfo, nodeKey, peerManager, cfg, proxyApp)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create router: %w", err),
