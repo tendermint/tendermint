@@ -56,6 +56,11 @@ type Manifest struct {
 	// testnet via the RPC endpoint of a random node. Default is 0
 	Evidence int `toml:"evidence"`
 
+	// VoteExtensionsEnableHeight configures the first height during which
+	// the chain will use and require vote extension data to be present
+	// in precommit messages.
+	VoteExtensionsEnableHeight int64 `toml:"vote_extensions_enable_height"`
+
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
 	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
 	// builtin will build a complete Tendermint node into the application and

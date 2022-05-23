@@ -131,6 +131,9 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	}
 	// set the app version to 1
 	genesis.ConsensusParams.Version.App = 1
+	genesis.ConsensusParams.Evidence.MaxAgeNumBlocks = e2e.EvidenceAgeHeight
+	genesis.ConsensusParams.Evidence.MaxAgeDuration = e2e.EvidenceAgeTime
+	genesis.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testnet.VoteExtensionsEnableHeight
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,
