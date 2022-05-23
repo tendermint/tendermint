@@ -43,6 +43,7 @@ type ConsensusParams struct {
 	Version   VersionParams   `json:"version"`
 	Synchrony SynchronyParams `json:"synchrony"`
 	Timeout   TimeoutParams   `json:"timeout"`
+	ABCI      ABCIParams      `json:"abci"`
 }
 
 // HashedParams is a subset of ConsensusParams.
@@ -96,6 +97,21 @@ type TimeoutParams struct {
 	BypassCommitTimeout bool          `json:"bypass_commit_timeout"`
 }
 
+// ABCIParams configure ABCI functionality specific to the Application Blockchain
+// Interface.
+type ABCIParams struct {
+	VoteExtensionsEnableHeight int64 `json:"vote_extensions_enable_height"`
+}
+
+// VoteExtensionsEnabled returns true if vote extensions are enabled at height h
+// and false otherwise.
+func (a ABCIParams) VoteExtensionsEnabled(h int64) bool {
+	if a.VoteExtensionsEnableHeight == 0 {
+		return false
+	}
+	return a.VoteExtensionsEnableHeight <= h
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
@@ -105,6 +121,7 @@ func DefaultConsensusParams() *ConsensusParams {
 		Version:   DefaultVersionParams(),
 		Synchrony: DefaultSynchronyParams(),
 		Timeout:   DefaultTimeoutParams(),
+		ABCI:      DefaultABCIParams(),
 	}
 }
 
@@ -173,6 +190,13 @@ func DefaultTimeoutParams() TimeoutParams {
 		VoteDelta:           500 * time.Millisecond,
 		Commit:              1000 * time.Millisecond,
 		BypassCommitTimeout: false,
+	}
+}
+
+func DefaultABCIParams() ABCIParams {
+	return ABCIParams{
+		// When set to 0, vote extensions are not required.
+		VoteExtensionsEnableHeight: 0,
 	}
 }
 
