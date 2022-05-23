@@ -3,6 +3,7 @@ package e2e_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -198,7 +199,13 @@ func TestApp_VoteExtensions(t *testing.T) {
 		require.NoError(t, err)
 
 		extSum, err := strconv.Atoi(string(resp.Response.Value))
-		require.NoError(t, err)
-		require.GreaterOrEqual(t, extSum, 0)
+		// if extensions are not enabled on the network, we should not expect
+		// the app to have any extension value set.
+		if node.Testnet.VoteExtensionsEnableHeight == 0 {
+			require.True(t, errors.Is(err, strconv.NumError))
+		} else {
+			require.NoError(t, err)
+			require.GreaterOrEqual(t, extSum, 0)
+		}
 	})
 }
