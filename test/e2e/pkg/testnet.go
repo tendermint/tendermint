@@ -58,20 +58,21 @@ const (
 
 // Testnet represents a single testnet.
 type Testnet struct {
-	Name             string
-	File             string
-	Dir              string
-	IP               *net.IPNet
-	InitialHeight    int64
-	InitialState     map[string]string
-	Validators       map[*Node]int64
-	ValidatorUpdates map[int64]map[*Node]int64
-	Nodes            []*Node
-	KeyType          string
-	Evidence         int
-	LogLevel         string
-	TxSize           int
-	ABCIProtocol     string
+	Name                      string
+	File                      string
+	Dir                       string
+	IP                        *net.IPNet
+	InitialHeight             int64
+	InitialState              map[string]string
+	Validators                map[*Node]int64
+	ValidatorUpdates          map[int64]map[*Node]int64
+	Nodes                     []*Node
+	KeyType                   string
+	Evidence                  int
+	VoteExtensionEnableHeight int64
+	LogLevel                  string
+	TxSize                    int
+	ABCIProtocol              string
 }
 
 // Node represents a Tendermint node in a testnet.
