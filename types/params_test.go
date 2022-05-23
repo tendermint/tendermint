@@ -402,7 +402,7 @@ func TestConsensusParamsUpdate_AppVersion(t *testing.T) {
 }
 
 func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
-	t.Run("set to height already run", func(*testing.T) {
+	t.Run("set to height but initial height already run", func(*testing.T) {
 		initialParams := makeParams(makeParamsArgs{
 			abciExtensionHeight: 1,
 		})
@@ -424,6 +424,52 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 			},
 		}
 		require.Error(t, initialParams.ValidateUpdate(update, 1))
+	})
+	t.Run("set to height before current height run", func(*testing.T) {
+		initialParams := makeParams(makeParamsArgs{
+			abciExtensionHeight: 100,
+		})
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
+				VoteExtensionsEnableHeight: 10,
+			},
+		}
+		require.Error(t, initialParams.ValidateUpdate(update, 11))
+		require.Error(t, initialParams.ValidateUpdate(update, 99))
+	})
+	t.Run("set to height after current height run", func(*testing.T) {
+		initialParams := makeParams(makeParamsArgs{
+			abciExtensionHeight: 300,
+		})
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
+				VoteExtensionsEnableHeight: 99,
+			},
+		}
+		require.NoError(t, initialParams.ValidateUpdate(update, 11))
+		require.NoError(t, initialParams.ValidateUpdate(update, 98))
+	})
+	t.Run("no error when unchanged", func(*testing.T) {
+		initialParams := makeParams(makeParamsArgs{
+			abciExtensionHeight: 100,
+		})
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
+				VoteExtensionsEnableHeight: 100,
+			},
+		}
+		require.NoError(t, initialParams.ValidateUpdate(update, 500))
+	})
+	t.Run("updated from 0 to 0", func(t *testing.T) {
+		initialParams := makeParams(makeParamsArgs{
+			abciExtensionHeight: 0,
+		})
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
+				VoteExtensionsEnableHeight: 0,
+			},
+		}
+		require.NoError(t, initialParams.ValidateUpdate(update, 100))
 	})
 }
 
