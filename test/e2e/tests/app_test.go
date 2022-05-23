@@ -193,6 +193,7 @@ func TestApp_VoteExtensions(t *testing.T) {
 	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
+		info, err := client.ABCIInfo(ctx)
 
 		// This special value should have been created by way of vote extensions
 		resp, err := client.ABCIQuery(ctx, "", []byte("extensionSum"))
@@ -201,7 +202,8 @@ func TestApp_VoteExtensions(t *testing.T) {
 		extSum, err := strconv.Atoi(string(resp.Response.Value))
 		// if extensions are not enabled on the network, we should not expect
 		// the app to have any extension value set.
-		if node.Testnet.VoteExtensionsEnableHeight == 0 {
+		if node.Testnet.VoteExtensionsEnableHeight == 0 ||
+			info.LastBlockHeight < node.Testnet.VoteExtensionsEnableHeight+1 {
 			require.True(t, errors.Is(err, strconv.NumError))
 		} else {
 			require.NoError(t, err)
