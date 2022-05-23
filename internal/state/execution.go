@@ -554,7 +554,7 @@ func (state State) Update(
 			return state, fmt.Errorf("updating consensus params: %w", err)
 		}
 
-		err = state.ConsensusParams.ValidateUpdate(nextParams, header.Height)
+		err = state.ConsensusParams.ValidateUpdate(consensusParamUpdates, header.Height)
 		if err != nil {
 			return state, fmt.Errorf("updating consensus params: %w", err)
 		}

@@ -406,8 +406,8 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 		initialParams := makeParams(makeParamsArgs{
 			abciExtensionHeight: 1,
 		})
-		update := ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 10,
 			},
 		}
@@ -418,8 +418,8 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 		initialParams := makeParams(makeParamsArgs{
 			abciExtensionHeight: 1,
 		})
-		update := ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 0,
 			},
 		}

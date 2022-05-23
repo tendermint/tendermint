@@ -350,12 +350,15 @@ func (params ConsensusParams) ValidateConsensusParams() error {
 	return nil
 }
 
-func (params ConsensusParams) ValidateUpdate(p ConsensusParams, h int64) error {
-	if params.ABCI.VoteExtensionsEnableHeight != 0 && p.ABCI.VoteExtensionsEnableHeight == 0 {
+func (params ConsensusParams) ValidateUpdate(p *tmproto.ConsensusParams, h int64) error {
+	if p.Abci == nil {
+		return nil
+	}
+	if params.ABCI.VoteExtensionsEnableHeight != 0 && p.Abci.VoteExtensionsEnableHeight == 0 {
 		return errors.New("vote extensions cannot be disabled once enabled")
 	}
 	if h >= params.ABCI.VoteExtensionsEnableHeight {
-		return fmt.Errorf("VoteExtensionsEnableHeight cannot be updated once the initial height has been executed,"+
+		return fmt.Errorf("VoteExtensionsEnableHeight cannot be updated to a past height"+
 			"initial height: %d, current height %d",
 			params.ABCI.VoteExtensionsEnableHeight, h)
 	}
