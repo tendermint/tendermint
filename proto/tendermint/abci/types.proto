@@ -254,8 +254,6 @@ message ResponseCheckTx {
   string         log        = 3;  // nondeterministic
   string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5;
-  int64          gas_used   = 6;
-  repeated Event events     = 7 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string         codespace  = 8;
   string         sender     = 9;
   int64          priority   = 10;
