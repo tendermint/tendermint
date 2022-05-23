@@ -67,7 +67,7 @@ var (
 	ipv6     = uniformChoice{false, true}
 	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
 
-	voteExtensionEnableHeightOffset = uniformChoice{0, 10, 100}
+	voteExtensionEnableHeightOffset = uniformChoice{int64(0), int64(10), int64(100)}
 	voteExtensionEnabled            = uniformChoice{true, false}
 )
 
