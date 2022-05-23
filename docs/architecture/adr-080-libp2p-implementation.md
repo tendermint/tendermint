@@ -47,7 +47,7 @@ confidence.
 
 Rather than produce an extensive design document (other than this
 record of decisions,) we will work iteratively in a topic 
-branch--`main/libp2p`--to prototype the new libp2p integration. This
+branch--[`main/libp2p`](../../tree/main/libp2p)--to prototype the new libp2p integration. This
 work will aim to: 
 
 - develop a working implementation (by way of the e2e tests) of the
