@@ -82,4 +82,12 @@ func TestResultBlockResults_regression8583(t *testing.T) {
 	if diff := cmp.Diff(buf.String(), string(bits)); diff != "" {
 		t.Errorf("Marshaled result (-want, +got):\n%s", diff)
 	}
+
+	back := new(ResultBlockResults)
+	if err := json.Unmarshal(bits, back); err != nil {
+		t.Fatalf("Unmarshaling: %v", err)
+	}
+	if diff := cmp.Diff(rsp, back); diff != "" {
+		t.Errorf("Unmarshaled result (-want, +got):\n%s", diff)
+	}
 }
