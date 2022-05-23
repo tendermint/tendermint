@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	pbcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
@@ -59,7 +60,7 @@ func TestResultBlockResults_regression8583(t *testing.T) {
 	// marshaler will have whitespace folded out so we need to do that too for
 	// the comparison to be valid.
 	var buf bytes.Buffer
-	json.Compact(&buf, []byte(fmt.Sprintf(`
+	require.NoError(t, json.Compact(&buf, []byte(fmt.Sprintf(`
 {
   "height": "0",
   "txs_results": null,
@@ -72,7 +73,7 @@ func TestResultBlockResults_regression8583(t *testing.T) {
     }
   ],
   "consensus_param_updates": null
-}`, wantKey)))
+}`, wantKey))))
 
 	bits, err := json.Marshal(rsp)
 	if err != nil {
