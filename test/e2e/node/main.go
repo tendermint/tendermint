@@ -210,7 +210,8 @@ func startLightNode(ctx context.Context, logger log.Logger, cfg *Config) error {
 	// If necessary adjust global WriteTimeout to ensure it's greater than
 	// TimeoutBroadcastTxCommit.
 	// See https://github.com/tendermint/tendermint/issues/3435
-	if rpccfg.WriteTimeout <= tmcfg.RPC.TimeoutBroadcastTxCommit {
+	// Note we don't need to adjust anything if the timeout is already unlimited.
+	if rpccfg.WriteTimeout > 0 && rpccfg.WriteTimeout <= tmcfg.RPC.TimeoutBroadcastTxCommit {
 		rpccfg.WriteTimeout = tmcfg.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
