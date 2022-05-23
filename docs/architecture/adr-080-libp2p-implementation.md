@@ -50,7 +50,7 @@ record of decisions,) we will work iteratively in a topic
 branch--`main/libp2p`--to prototype the new libp2p integration. This
 work will aim to: 
 
-- develop a working (by way of the e2e tests), implementation of the
+- develop a working implementation (by way of the e2e tests) of the
   p2p layer without requiring changes to the reactor implementations.
 - migrate the reactor tests after completing a prototype. 
 - address design questions as they come up, by amending this document
@@ -75,26 +75,25 @@ nodes, transport protocols, which are fully configurable in the
 context of libp2p. There is no need to make decisions about these at
 this time, our decisions. 
 
-We should not, however, (necessarily) aim to delegate these decisions
-to the users. While we should make it possible for users to pass a
-custom libp2p connection object (`host.Host`) with limited support, we
-should **not** aim to offer too many customizations or configurations
-of different libp2p fundamentals.
+We will not make these decisions user-configurable without a specific need.
+We will make it possible for users to pass a custom libp2p connection object
+(`host.Host`) with limited support, but will otherwise not expose configurations
+and customizations of different libp2p fundamentals.
 
 ### Use GossipSub for Gossip Communication 
 
 An unfortunate consequence of the current p2p implementation is that
-reactors (e.g. mempool, consensus, and evidence) implement their own
+reactors (e.g., mempool, consensus, and evidence) implement their own
 gossip logic, and maintain their own tracking of the connected peer
 network. These workloads should eventually migrate to using gosipsub
-(e.g. setting `broadcats: true` and letting libp2p broadcast,)
+(e.g., setting `broadcast: true` and letting libp2p broadcast,)
 however, this requires removing all of the legacy code. In the short
 term, we should leave the legacy gossip implementation for the first
 phase of the project. 
 
 ## Detailed Design
 
-Based on what we currently know about this process, we should aim to: 
+Based on what we currently know about this process, we will:
 
 - complete basic implementation of P2P fundamentals (e.g. Channel,
   host connection, etc.) for libp2p with the goal of having e2e
@@ -134,7 +133,7 @@ difficult to anticipate and it will be hard to get context for these
 changes without a familiarity with the existing system, although even
 thoroughly designed solutions may also suffer from this weakness. 
 
-Additionally, the iterative approach may lead tendermint initially
+Additionally, the iterative approach may lead Tendermint to initially
 recapitulate some of the problems with the legacy P2P design on top of
 the libp2p infrastructure: this should be ameliorated by the
 additional flexibility. 
