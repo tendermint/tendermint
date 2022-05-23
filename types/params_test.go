@@ -272,19 +272,19 @@ func TestConsensusParamsHash(t *testing.T) {
 
 func TestConsensusParamsUpdate(t *testing.T) {
 	testCases := []struct {
-		intialParams  ConsensusParams
+		initialParams ConsensusParams
 		updates       *tmproto.ConsensusParams
 		updatedParams ConsensusParams
 	}{
 		// empty updates
 		{
-			intialParams:  makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
+			initialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 			updates:       &tmproto.ConsensusParams{},
 			updatedParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 		},
 		{
 			// update synchrony params
-			intialParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: time.Second, messageDelay: 3 * time.Second}),
+			initialParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: time.Second, messageDelay: 3 * time.Second}),
 			updates: &tmproto.ConsensusParams{
 				Synchrony: &tmproto.SynchronyParams{
 					Precision:    durationPtr(time.Second * 2),
@@ -295,7 +295,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		},
 		{
 			// update timeout params
-			intialParams: makeParams(makeParamsArgs{
+			initialParams: makeParams(makeParamsArgs{
 				abciExtensionHeight: 1,
 			}),
 			updates: &tmproto.ConsensusParams{
@@ -309,7 +309,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		},
 		{
 			// update timeout params
-			intialParams: makeParams(makeParamsArgs{
+			initialParams: makeParams(makeParamsArgs{
 				propose:             durationPtr(3 * time.Second),
 				proposeDelta:        durationPtr(500 * time.Millisecond),
 				vote:                durationPtr(time.Second),
@@ -338,7 +338,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		},
 		// fine updates
 		{
-			intialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
+			initialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 			updates: &tmproto.ConsensusParams{
 				Block: &tmproto.BlockParams{
 					MaxBytes: 100,
@@ -360,7 +360,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 				pubkeyTypes:      valSecp256k1}),
 		},
 		{
-			intialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
+			initialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 			updates: &tmproto.ConsensusParams{
 				Block: &tmproto.BlockParams{
 					MaxBytes: 100,
@@ -385,7 +385,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		assert.Equal(t, tc.updatedParams, tc.intialParams.UpdateConsensusParams(tc.updates))
+		assert.Equal(t, tc.updatedParams, tc.initialParams.UpdateConsensusParams(tc.updates))
 	}
 }
 
