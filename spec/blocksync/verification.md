@@ -9,10 +9,13 @@ Based on this state we verify subsequent blocks.
 
 ### Trusted state
 
-The light client additionally relies on the notion of a **trusting period**. A trusting period is the time during which we assume we can trust validators because, if we do detect misbehaviour, we can slash them - they are still bonded. Beyond this period, the validators do not have to have any bonded assets and cannot be held accountable for their misbheaviour. Blocksync-ing blocks will most often be outside this trusting period for a particular block. Therefore, the trusting period assumptions as they are in the light client, cannot be applied here. 
+The light client additionally relies on the notion of a **trusting period**. A trusting period is the time during which we assume we can trust validators because, if we do detect misbehaviour, we can slash them - they are still bonded. Thus, the trusting period is tied to the unbonding period. Beyond this period, the validators do not have to have any bonded assets and cannot be held accountable for their misbheaviour. They could feed us malicious data and never be held accountable for it. 
+Blocksync-ing blocks will most often be outside this trusting period for a particular block. Therefore, the trusting period assumptions, as they are in the light client for example, cannot be applied here. 
 
 This has different implications based on how we obtain the initial trusted state. Currently there are two possibilities. :
- 1. If the node is blocksync-ing from genesis, we assume we trust the validators provided in the initial state and use them to verify the initial block received from peers.
+ 1. If the node is blocksync-ing from genesis, we rely on the assumption that we always have have a correct node that has a correct history and feeds us state we can trust.
+ 
+ [//]: # (trust the validators provided in the initial state and use them to verify the initial block received from peers.)
 
  2. The node loads the last block stored in its local block store. 
 
