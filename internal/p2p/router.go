@@ -54,6 +54,7 @@ type Envelope struct {
 type PeerError struct {
 	NodeID types.NodeID
 	Err    error
+	Fatal  bool
 }
 
 // Channel is a bidirectional channel to exchange Protobuf messages with peers,
