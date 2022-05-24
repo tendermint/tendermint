@@ -155,6 +155,32 @@ title: Methods
     other nodes or included in a proposal block.
     * Tendermint attributes no other value to the response code
 
+### Commit
+
+#### Parameters and Types
+
+* **Request**:
+
+    | Name   | Type  | Description | Field Number |
+    |--------|-------|-------------|--------------|
+
+    Commit signals the application to persist application state. It takes no parameters.
+
+* **Response**:
+
+    | Name          | Type  | Description                                                            | Field Number |
+    |---------------|-------|------------------------------------------------------------------------|--------------|
+    | retain_height | int64 | Blocks below this height may be removed. Defaults to `0` (retain all). | 3            |
+
+* **Usage**:
+
+    * Signal the application to persist the application state.
+      Application is expected to persist its state at the end of this call, before calling `ResponseCommit`.
+    * Use `ResponseCommit.retain_height` with caution! If all nodes in the network remove historical
+      blocks then this data is permanently lost, and no new nodes will be able to join the network and
+      bootstrap. Historical blocks may also be required for other purposes, e.g. auditing, replay of
+      non-persisted heights, light client verification, and so on.
+
 ### ListSnapshots
 
 * **Request**:
@@ -569,7 +595,7 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                     | 1            |
     | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.               | 2            |
     | byzantine_validators | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                             | 3            |
-    | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header). | 4            |
+    | hash                 | bytes                                       | The block header's hash.                                                                 | 4            |
     | height               | int64                                       | The height of the finalized block.                                                       | 5            |
     | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the finalized block.  | 6            |
     | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                   | 7            |
@@ -584,7 +610,6 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
     | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |
-    | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 6            |
 
 * **Usage**:
     * Contains the fields of the newly decided block.
@@ -614,7 +639,6 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
     * In same-block execution mode, Tendermint will log an error and ignore values for
       `ResponseFinalizeBlock.app_hash`, `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`,
       and `ResponsePrepareProposal.consensus_param_updates`, as those must have been provided by `PrepareProposal`.
-    * Application is expected to persist its state at the end of this call, before calling `ResponseFinalizeBlock`.
     * `ResponseFinalizeBlock.app_hash` contains an (optional) Merkle root hash of the application state.
     * `ResponseFinalizeBlock.app_hash` is included
         * [in next-block execution mode] as the `Header.AppHash` in the next block.
@@ -626,10 +650,6 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
           of `RequestFinalizeBlock` and the previous committed state.
     * Later calls to `Query` can return proofs about the application state anchored
       in this Merkle root hash.
-    * Use `ResponseFinalizeBlock.retain_height` with caution! If all nodes in the network remove historical
-      blocks then this data is permanently lost, and no new nodes will be able to join the network and
-      bootstrap. Historical blocks may also be required for other purposes, e.g. auditing, replay of
-      non-persisted heights, light client verification, and so on.
     * Just as `ProcessProposal`, the implementation of `FinalizeBlock` MUST be deterministic, since it is
       making the Application's state evolve in the context of state machine replication.
     * Currently, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were
