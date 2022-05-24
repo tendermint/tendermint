@@ -577,7 +577,14 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			// TODO(sergio, jmalicevic): Should we also validate against the extended commit?
 			if r.lastTrustedBlock.block == nil {
 				if state.LastBlockHeight != 0 {
-					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(state.LastBlockHeight), r.store.LoadSeenCommit()}
+					seenCommit := r.store.LoadSeenCommit()
+
+					if seenCommit.Height != state.LastBlockHeight || !seenCommit.BlockID.Equals(state.LastBlockID) {
+						panic(" The last commit is not corresponding to the last existing height")
+					}
+
+					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(state.LastBlockHeight), seenCommit}
+
 					if r.lastTrustedBlock.block == nil {
 						panic("Failed to load last trusted block")
 					}

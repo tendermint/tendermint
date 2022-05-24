@@ -481,7 +481,7 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 			}
 			return matching
 		},
-		30*time.Second,
+		10*time.Second,
 		10*time.Millisecond,
 		"expected node to be partially synced",
 	)
