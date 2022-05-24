@@ -166,7 +166,7 @@ message RequestFinalizeBlock {
   repeated bytes       txs                  = 1;
   CommitInfo           decided_last_commit  = 2 [(gogoproto.nullable) = false];
   repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
-  // hash is the merkle root hash of the fields of the proposed block.
+  // hash is the merkle root hash of the fields of the decided block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
@@ -364,8 +364,6 @@ message ResponseFinalizeBlock {
   repeated ExecTxResult            tx_results              = 2;
   repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 4;
-  bytes                            app_hash                = 5;
-  int64                            retain_height           = 6;
 }
 
 //----------------------------------------
