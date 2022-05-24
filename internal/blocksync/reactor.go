@@ -373,7 +373,9 @@ func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerU
 func (r *Reactor) SwitchToBlockSync(ctx context.Context, state sm.State) error {
 	r.blockSync.Set()
 	r.initialState = state
-	r.pool.height = state.LastBlockHeight + 1
+	// We fetch the block at the same height whose header we have downloaded so that we can
+	// generate an initial trusted state
+	r.pool.height = state.LastBlockHeight // + 1
 
 	if err := r.pool.Start(ctx); err != nil {
 		return err
@@ -577,29 +579,11 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			)
 
 			// TODO(sergio, jmalicevic): Should we also validate against the extended commit?
-			if r.lastTrustedBlock.block == nil {
-				if state.LastBlockHeight != 0 {
-					seenCommit := r.store.LoadSeenCommit()
-
-					if seenCommit.Height != state.LastBlockHeight || !seenCommit.BlockID.Equals(state.LastBlockID) {
-						panic(" The last commit is not corresponding to the last existing height")
-					}
-
-					r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(state.LastBlockHeight), seenCommit}
-
-					if r.lastTrustedBlock.block == nil {
-						panic("Failed to load last trusted block")
-					}
-				}
-			}
 
 			var err error
-			// Check for nil on block to avoid the case where we failed the block validation before persistence
-			// but passed the verification before and created a lastTrustedBlock object
-			if r.lastTrustedBlock.block != nil {
-				err = VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.Validators)
-			} else {
-				oldHash := r.initialState.Validators.Hash()
+			if state.LastBlockHeight == 0 {
+				// We are starting from genesis
+				oldHash := state.Validators.Hash()
 				if !bytes.Equal(oldHash, newBlock.ValidatorsHash) {
 					r.logger.Error("The validator set provided by the new block does not match the expected validator set",
 						"initial hash ", r.initialState.Validators.Hash(),
@@ -607,6 +591,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					)
 
 					peerID := r.pool.RedoRequest(state.LastBlockHeight)
+					r.logger.Info("Redo peer request 1")
 					if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
 						NodeID: peerID,
 						Err:    ErrValidationFailed{},
@@ -615,16 +600,41 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					}
 					continue
 				}
-				// This case happens only if we do not have any state in our store.
-				// THus we can assume we are starting from genesis (where we trust the validator set).
-				// If we ran state sync before blocksync, we can trust the state we have in the store and we will not end up here
-				// If we ran block sync or consensus, we will be able to load the last block from our store
-				// We use the validator set provided in the gensis vile, to verify the new block, using the lastCommit of verifyBlock
-				if state.LastBlockHeight != 0 {
-					panic("Cannot be here unles we start from genesis")
-				}
 				err = state.Validators.VerifyCommitLight(newBlock.ChainID, newBlockID, newBlock.Height, verifyBlock.LastCommit)
+			} else {
+				if r.lastTrustedBlock.block == nil {
+					seenCommit := r.store.LoadSeenCommit()
+					if state.LastBlockHeight != r.pool.height {
+						// we are not starting from gensis and not switching from state sync -we whould have a block we can trust in the store
+						r.lastTrustedBlock = &TrustedBlockData{r.store.LoadBlock(state.LastBlockHeight), seenCommit}
+						if r.lastTrustedBlock.block == nil {
+							panic("Failed to load last trusted block")
+						}
 
+					} else {
+						// We have just switched from state sync so we have no actual block in the store
+						// but need to use the commit from the store to validate the block we got from our peer
+						// We will still not set the trusted block to equal to newBlock
+						if !seenCommit.BlockID.Equals(newBlockID) || !bytes.Equal(state.LastValidators.Hash(), newBlock.ValidatorsHash) {
+							peerID := r.pool.RedoRequest(r.pool.height)
+							if serr := blockSyncCh.SendError(ctx, p2p.PeerError{
+								NodeID: peerID,
+								Err:    ErrValidationFailed{},
+							}); serr != nil {
+								return
+							}
+							continue
+						}
+						// We light client verified the header and tryign to apply this to the store would conflict with the current state object
+						// so we just use newBlock to set r.lastTrustedBlock properly and move on
+						r.lastTrustedBlock.block = newBlock
+						r.lastTrustedBlock.commit = verifyBlock.LastCommit
+						r.pool.PopRequest()
+						continue
+					}
+				} else { // we have been previously in blocksync, the trusted block should be set and used for further validation
+					err = VerifyNextBlock(newBlock, newBlockID, verifyBlock, r.lastTrustedBlock.block, r.lastTrustedBlock.commit, state.Validators)
+				}
 			}
 
 			if err == nil && state.ConsensusParams.ABCI.VoteExtensionsEnabled(newBlock.Height) {
@@ -657,17 +667,20 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					NodeID: peerID,
 					Err:    err,
 				}); serr != nil {
-					return
+					return // Should this be return? If we disconnected from this peer from some other module or if it was faulty before
+					// the fact that we cannot send it an error might not be the reason to stop blocksyncing
 				}
 				continue
 			}
 
 			// validate the block before we persist it
+
 			err = r.blockExec.ValidateBlock(ctx, state, newBlock)
 			if err != nil {
-				r.logger.Error("The validator set provided by the new block does not match the expected validator set",
+				r.logger.Error("Block validation has failed",
 					"initial hash ", r.initialState.Validators.Hash(),
 					"new hash ", newBlock.ValidatorsHash,
+					err.Error(),
 				)
 
 				peerID := r.pool.RedoRequest(r.lastTrustedBlock.block.Height + 1)
