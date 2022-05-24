@@ -122,19 +122,7 @@ The full solution is detailed and formalized in the [Protocol Specification][alg
 
 - [System Model and Properties][sysmodel]
 - [Protocol Specification][algorithm]
-- [TLA+ Specification][proposertla] (first draft, not updated)
-
-### Open issues
-
-- [PBTS: evidence #355][issue355]: not really clear the context, probably not going to be solved.
-- [PBTS: should synchrony parameters be adaptive? #371][issue371]
-- [PBTS: Treat proposal and block parts explicitly in the spec #372][issue372]
-- [PBTS: margins for proposal times assigned by Byzantine proposers #377][issue377]
-
-### Closed issues
-
-- [Proposer time - fix message filter condition #353][issue353]
-- [PBTS: association between timely predicate and timeout_commit #370][issue370]
+- [TLA+ Specification][proposertla]
 
 [main_v1]: ./v1/pbts_001_draft.md
 
@@ -144,14 +132,7 @@ The full solution is detailed and formalized in the [Protocol Specification][alg
 [sysmodel]: ./pbts-sysmodel_002_draft.md
 [sysmodel_v1]: ./v1/pbts-sysmodel_001_draft.md
 
-[proposertla]: ./tla/TendermintPBT_001_draft.tla
+[proposertla]: ./tla/TendermintPBT.tla
 
 [bfttime]: ./bft-time.md
 [arXiv]: https://arxiv.org/pdf/1807.04938.pdf
-
-[issue353]: https://github.com/tendermint/spec/issues/353
-[issue355]: https://github.com/tendermint/spec/issues/355
-[issue370]: https://github.com/tendermint/spec/issues/370
-[issue371]: https://github.com/tendermint/spec/issues/371
-[issue372]: https://github.com/tendermint/spec/issues/372
-[issue377]: https://github.com/tendermint/spec/issues/377
