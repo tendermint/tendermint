@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-Adopting libp2p is an larger project that is the culmination of a long
+Adopting libp2p is a larger project that is the culmination of a long
 programme of work in the Tendermint codebase, and this document
 describes some of the decisions related to that adoption.
 
