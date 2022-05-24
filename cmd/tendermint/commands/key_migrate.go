@@ -45,13 +45,17 @@ func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 					IsLegacy: true,
 				})
 
+				if err != nil {
+					return fmt.Errorf("constructing source database handle: %w", err)
+				}
+
 				dbTo, err := cfg.DefaultDBProvider(&cfg.DBContext{
 					ID:     fmt.Sprint(dbctx, 0),
 					Config: conf,
 				})
 
 				if err != nil {
-					return fmt.Errorf("constructing database handle: %w", err)
+					return fmt.Errorf("constructing target database handle: %w", err)
 				}
 
 				if err = keymigrate.Migrate(ctx, keymigrate.MigrateDB{
