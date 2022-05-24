@@ -78,7 +78,6 @@ func TestWriteReadMessage2(t *testing.T) {
 	cases := []proto.Message{
 		&ResponseCheckTx{
 			Data:      []byte(phrase),
-			Log:       phrase,
 			GasWanted: 10,
 		},
 		// TODO: add the rest

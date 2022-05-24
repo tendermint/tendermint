@@ -72,11 +72,11 @@ func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]by
 
 func CheckTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
 	res, _ := client.CheckTx(ctx, &types.RequestCheckTx{Tx: txBytes})
-	code, data, log := res.Code, res.Data, res.Log
+	code, data := res.Code, res.Data
 	if code != codeExp {
 		fmt.Println("Failed test: CheckTx")
-		fmt.Printf("CheckTx response code was unexpected. Got %v expected %v. Log: %v\n",
-			code, codeExp, log)
+		fmt.Printf("CheckTx response code was unexpected. Got %v expected %v.,",
+			code, codeExp)
 		return errors.New("checkTx")
 	}
 	if !bytes.Equal(data, dataExp) {
