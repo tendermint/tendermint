@@ -302,14 +302,14 @@ func newConsensusStateForReplay(
 ) (*State, error) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 	// Get BlockStore
-	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
+	blockStoreDB, err := dbm.NewDB("blockstore0", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := dbm.NewDB("state0", dbType, cfg.DBDir())
 	if err != nil {
 		return nil, err
 	}

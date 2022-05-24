@@ -144,7 +144,7 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, error) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 
-	if !os.FileExists(filepath.Join(cfg.DBDir(), "blockstore.db")) {
+	if !os.FileExists(filepath.Join(cfg.DBDir(), "blockstore0.db")) {
 		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
 	}
 
@@ -155,7 +155,7 @@ func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, 
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 
-	if !os.FileExists(filepath.Join(cfg.DBDir(), "state.db")) {
+	if !os.FileExists(filepath.Join(cfg.DBDir(), "state0.db")) {
 		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
 	}
 

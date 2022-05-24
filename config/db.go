@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -28,9 +29,8 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	dbType := dbm.BackendType(ctx.Config.DBBackend)
 	id := ctx.ID
-	if !ctx.IsLegacy {
+	if !ctx.IsLegacy && !strings.HasSuffix(id, "0") {
 		id = fmt.Sprint(id, 0)
 	}
-
 	return dbm.NewDB(id, dbType, ctx.Config.DBDir())
 }

@@ -31,7 +31,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	require.NoError(t, err)
 
 	dbType := dbm.BackendType(cfg.DBBackend)
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := dbm.NewDB("state0", dbType, cfg.DBDir())
 	require.NoError(t, err)
 	stateStore := sm.NewStore(stateDB)
 	state, err := stateStore.Load()

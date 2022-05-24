@@ -114,7 +114,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	defer os.RemoveAll(cfg.RootDir)
 	dbType := dbm.BackendType(cfg.DBBackend)
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
+	stateDB, err := dbm.NewDB("state0", dbType, cfg.DBDir())
 	require.NoError(b, err)
 	stateStore := sm.NewStore(stateDB)
 	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())

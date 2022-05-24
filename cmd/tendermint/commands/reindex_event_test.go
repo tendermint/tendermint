@@ -120,11 +120,11 @@ func TestLoadBlockStore(t *testing.T) {
 	require.Error(t, err)
 
 	dbType := dbm.BackendType(testCfg.DBBackend)
-	bsdb, err := dbm.NewDB("blockstore", dbType, testCfg.DBDir())
+	bsdb, err := dbm.NewDB("blockstore0", dbType, testCfg.DBDir())
 	require.NoError(t, err)
 	bsdb.Close()
 
-	ssdb, err := dbm.NewDB("state", dbType, testCfg.DBDir())
+	ssdb, err := dbm.NewDB("state0", dbType, testCfg.DBDir())
 	require.NoError(t, err)
 	ssdb.Close()
 

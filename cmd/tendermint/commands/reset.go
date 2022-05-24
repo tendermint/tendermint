@@ -94,11 +94,11 @@ func ResetAll(dbDir, privValKeyFile, privValStateFile string, logger log.Logger,
 
 // ResetState removes all blocks, tendermint state, indexed transactions and evidence.
 func ResetState(dbDir string, logger log.Logger) error {
-	blockdb := filepath.Join(dbDir, "blockstore.db")
-	state := filepath.Join(dbDir, "state.db")
+	blockdb := filepath.Join(dbDir, "blockstore0.db")
+	state := filepath.Join(dbDir, "state0.db")
 	wal := filepath.Join(dbDir, "cs.wal")
-	evidence := filepath.Join(dbDir, "evidence.db")
-	txIndex := filepath.Join(dbDir, "tx_index.db")
+	evidence := filepath.Join(dbDir, "evidence0.db")
+	txIndex := filepath.Join(dbDir, "tx_index0.db")
 
 	if tmos.FileExists(blockdb) {
 		if err := os.RemoveAll(blockdb); err == nil {
@@ -174,7 +174,7 @@ func ResetFilePV(privValKeyFile, privValStateFile string, logger log.Logger, key
 // ResetPeerStore removes the peer store containing all information used by the tendermint networking layer
 // In the case of a reset, new peers will need to be set either via the config or through the discovery mechanism
 func ResetPeerStore(dbDir string) error {
-	peerstore := filepath.Join(dbDir, "peerstore.db")
+	peerstore := filepath.Join(dbDir, "peerstore0.db")
 	if tmos.FileExists(peerstore) {
 		return os.RemoveAll(peerstore)
 	}
