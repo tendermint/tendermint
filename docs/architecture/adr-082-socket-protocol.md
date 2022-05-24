@@ -151,6 +151,9 @@ design.
    with a more detailed design for extending and upgrading the protocol to fix
    the existing performance and operational issues with the protocol.
 
+   Moreover, since the gRPC interface has been around for a long time we will
+   also need a deprecation plan for it.
+
 3. If we choose to keep both options, we will still need to do all the work of
    (2), but the gRPC implementation should not require any immediate changes.
 
