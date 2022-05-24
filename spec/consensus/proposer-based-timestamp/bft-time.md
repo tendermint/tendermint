@@ -1,7 +1,6 @@
----
-order: 2
----
 # BFT Time
+
+> BFTTime was removed from Tendermint consensus from v0.36, being replaced by [PBTS](./README.md).
 
 Tendermint provides a deterministic, Byzantine fault-tolerant, source of time.
 Time in Tendermint is defined with the Time field of the block header.
