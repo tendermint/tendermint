@@ -58,5 +58,6 @@ sections.
 - [RFC-018: BLS Signature Aggregation Exploration](./rfc-018-bls-agg-exploration.md)
 - [RFC-019: Configuration File Versioning](./rfc-019-config-version.md)
 - [RFC-020: Onboarding Projects](./rfc-020-onboarding-projects.rst)
+- [RFC-022: Tendermint Command Line Tools](./rfc-022-command-line-tools.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
