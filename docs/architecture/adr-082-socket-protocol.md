@@ -129,8 +129,8 @@ design.
 
 ## Detailed Design
 
-1. If we choose to standardize on gRPC, the main work in in Tendermint core
-   will be removing and cleaning up the code for the socket client and server.
+1. If we choose to standardize on gRPC, the main work in Tendermint core will
+   be removing and cleaning up the code for the socket client and server.
 
    Besides the code cleanup, we will also need to clearly document a
    deprecation schedule, and invest time in making the migration easier for
