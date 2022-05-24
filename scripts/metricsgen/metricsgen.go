@@ -88,8 +88,8 @@ func PrometheusMetrics(namespace string, labelsAndValues...string) *Metrics {
 		{{- if eq (len $metric.Labels) 0 }}
 		}, labels).With(labelsAndValues...),
 		{{ else }}
-		}, append(labels, {{$metric.Labels | printf "%q" }})).With(labelsAndValues...),
-		{{- end }}
+		}, append(labels, {{$metric.Labels}})).With(labelsAndValues...),
+		{{ end }}
 		{{- end }}
 	}
 }
@@ -249,14 +249,8 @@ func findMetricsStruct(files map[string]*ast.File, structName string) (*ast.Stru
 }
 
 func parseMetricField(f *ast.Field) ParsedMetricField {
-	var comment string
-	if f.Doc != nil {
-		for _, c := range f.Doc.List {
-			comment += strings.TrimPrefix(c.Text, "// ")
-		}
-	}
 	pmf := ParsedMetricField{
-		Description: comment,
+		Description: extractHelpMessage(f.Doc),
 		MetricName:  extractFieldName(f.Names[0].String(), f.Tag),
 		FieldName:   f.Names[0].String(),
 		TypeName:    extractTypeName(f.Type),
@@ -272,6 +266,21 @@ func extractTypeName(e ast.Expr) string {
 	return strings.TrimPrefix(path.Ext(types.ExprString(e)), ".")
 }
 
+func extractHelpMessage(cg *ast.CommentGroup) string {
+	if cg == nil {
+		return ""
+	}
+	var help []string //nolint: prealloc
+	for _, c := range cg.List {
+		mt := strings.TrimPrefix(c.Text, "//metrics:")
+		if mt != c.Text {
+			return strings.TrimSpace(mt)
+		}
+		help = append(help, strings.TrimSpace(strings.TrimPrefix(c.Text, "//")))
+	}
+	return strings.Join(help, " ")
+}
+
 func isMetric(e ast.Expr, mPkgName string) bool {
 	return strings.Contains(types.ExprString(e), fmt.Sprintf("%s.", mPkgName))
 }
@@ -280,7 +289,11 @@ func extractLabels(bl *ast.BasicLit) string {
 	if bl != nil {
 		t := reflect.StructTag(strings.Trim(bl.Value, "`"))
 		if v := t.Get(labelsTag); v != "" {
-			return v
+			var res []string
+			for _, s := range strings.Split(v, ",") {
+				res = append(res, strconv.Quote(strings.TrimSpace(s)))
+			}
+			return strings.Join(res, ",")
 		}
 	}
 	return ""

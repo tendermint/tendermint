@@ -1950,7 +1950,7 @@ func TestFinalizeBlockCalled(t *testing.T) {
 		expectCalled bool
 	}{
 		{
-			name:         "finalze block called when block committed",
+			name:         "finalize block called when block committed",
 			voteNil:      false,
 			expectCalled: true,
 		},
@@ -1970,11 +1970,15 @@ func TestFinalizeBlockCalled(t *testing.T) {
 				Status: abci.ResponseProcessProposal_ACCEPT,
 			}, nil)
 			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
-			m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
-				Status: abci.ResponseVerifyVoteExtension_ACCEPT,
-			}, nil)
+			// We only expect VerifyVoteExtension to be called on non-nil precommits.
+			// https://github.com/tendermint/tendermint/issues/8487
+			if !testCase.voteNil {
+				m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{}, nil)
+				m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
+					Status: abci.ResponseVerifyVoteExtension_ACCEPT,
+				}, nil)
+			}
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
-			m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{}, nil)
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})

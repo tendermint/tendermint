@@ -13,7 +13,7 @@ Here we cover the following components of ABCI applications:
   and the differences between `CheckTx` and `DeliverTx`.
 - [Transaction Results](#transaction-results) - rules around transaction
   results and validity
-- [Validator Set Updates](#validator-updates) - how validator sets are
+- [Validator Set Updates](#updating-the-validator-set) - how validator sets are
   changed during `InitChain` and `EndBlock`
 - [Query](#query) - standards for using the `Query` method and proofs about the
   application state
@@ -318,8 +318,8 @@ If `MaxGas == -1`, no limit is enforced.
 ### BlockParams.RecheckTx
 
 This indicates whether all nodes in the network should perform a `CheckTx` on all
-transactions in the mempool directly *after* the execution of every block i.e.
-whenever a new application state is created. This is often useful for garbage
+transactions remaining in the mempool directly *after* the execution of every block,
+i.e. whenever a new application state is created. This is often useful for garbage
 collection.
 
 The change will come into effect immediately after `FinalizeBlock` has been
@@ -367,7 +367,7 @@ are expected to have clocks that differ by at most `Precision`.
 
 ### SynchronyParams.MessageDelay
 
-`SynchronyParams.MessageDelay` is a parameter of the Proposer-Based Timestamps 
+`SynchronyParams.MessageDelay` is a parameter of the Proposer-Based Timestamps
 algorithm that configures the acceptable upper-bound for transmitting a `Proposal`
 message from the proposer to all of the validators on the network.
 

@@ -357,7 +357,7 @@ recv-rate = {{ .P2P.RecvRate }}
 
 # recheck has been moved from a config option to a global
 # consensus param in v0.36
-# See xxxx for more information.
+# See https://github.com/tendermint/tendermint/issues/8244 for more information.
 
 # Set true to broadcast transactions in the mempool to other nodes
 broadcast = {{ .Mempool.Broadcast }}

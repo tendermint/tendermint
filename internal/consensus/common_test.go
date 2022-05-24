@@ -160,7 +160,8 @@ func signVote(
 	blockID types.BlockID) *types.Vote {
 
 	var ext []byte
-	if voteType == tmproto.PrecommitType {
+	// Only non-nil precommits are allowed to carry vote extensions.
+	if voteType == tmproto.PrecommitType && !blockID.IsNil() {
 		ext = []byte("extension")
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, ext)

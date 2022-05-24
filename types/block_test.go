@@ -42,14 +42,14 @@ func TestBlockAddEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(ctx, h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, txs, commit, evList)
+	block := MakeBlock(h, txs, extCommit.StripExtensions(), evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -66,9 +66,9 @@ func TestBlockValidateBasic(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
-
+	extCommit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
+	commit := extCommit.StripExtensions()
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(ctx, h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
@@ -104,7 +104,10 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.LastCommit = nil
 		}, true},
 		{"Invalid LastCommit", func(blk *Block) {
-			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, nil)
+			blk.LastCommit = &Commit{
+				Height:  -1,
+				BlockID: *voteSet.maj23,
+			}
 		}, true},
 		{"Invalid Evidence", func(blk *Block) {
 			emptyEv := &DuplicateVoteEvidence{}
@@ -153,15 +156,14 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
-
+	extCommit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(ctx, h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
+	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.StripExtensions(), evList).MakePartSet(512)
 	require.NoError(t, err)
 
 	assert.NotNil(t, partSet)
@@ -178,14 +180,14 @@ func TestBlockHashesTo(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(ctx, h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
+	block := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.StripExtensions(), evList)
 	block.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
@@ -260,7 +262,7 @@ func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	assert.Equal(t, h-1, commit.Height)
@@ -273,7 +275,7 @@ func TestCommit(t *testing.T) {
 	require.NotNil(t, commit.BitArray())
 	assert.Equal(t, bits.NewBitArray(10).Size(), commit.BitArray().Size())
 
-	assert.Equal(t, voteWithoutExtension(voteSet.GetByIndex(0)), commit.GetByIndex(0))
+	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
 	assert.True(t, commit.IsCommit())
 }
 
@@ -477,11 +479,11 @@ func randCommit(ctx context.Context, t *testing.T, now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, now)
+	commit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, now)
 
 	require.NoError(t, err)
 
-	return commit
+	return commit.StripExtensions()
 }
 
 func hexBytesFromString(t *testing.T, s string) bytes.HexBytes {
@@ -554,7 +556,7 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}
 }
 
-func TestCommitToVoteSet(t *testing.T) {
+func TestExtendedCommitToVoteSet(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
@@ -562,17 +564,16 @@ func TestCommitToVoteSet(t *testing.T) {
 	defer cancel()
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := makeCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
-
+	extCommit, err := makeExtCommit(ctx, lastID, h-1, 1, voteSet, vals, time.Now())
 	assert.NoError(t, err)
 
 	chainID := voteSet.ChainID()
-	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
+	voteSet2 := extCommit.ToVoteSet(chainID, valSet)
 
 	for i := int32(0); int(i) < len(vals); i++ {
-		vote1 := voteWithoutExtension(voteSet.GetByIndex(i))
+		vote1 := voteSet.GetByIndex(i)
 		vote2 := voteSet2.GetByIndex(i)
-		vote3 := commit.GetVote(i)
+		vote3 := extCommit.GetExtendedVote(i)
 
 		vote1bz, err := vote1.ToProto().Marshal()
 		require.NoError(t, err)
@@ -634,12 +635,12 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 		}
 
 		if tc.valid {
-			commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
-			assert.NotNil(t, commit)
-			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, commit)
+			extCommit := voteSet.MakeExtendedCommit() // panics without > 2/3 valid votes
+			assert.NotNil(t, extCommit)
+			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, extCommit.StripExtensions())
 			assert.NoError(t, err)
 		} else {
-			assert.Panics(t, func() { voteSet.MakeCommit() })
+			assert.Panics(t, func() { voteSet.MakeExtendedCommit() })
 		}
 	}
 }

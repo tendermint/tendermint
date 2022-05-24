@@ -83,7 +83,7 @@ require (
 	github.com/charithe/durationcheck v0.0.9 // indirect
 	github.com/chavacava/garif v0.0.0-20220316182200-5cad0b5181d4 // indirect
 	github.com/containerd/continuity v0.2.1 // indirect
-	github.com/creachadair/tomledit v0.0.19
+	github.com/creachadair/tomledit v0.0.22
 	github.com/daixiang0/gci v0.3.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denis-tingaikin/go-header v0.4.3 // indirect

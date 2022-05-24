@@ -148,39 +148,43 @@ func (rts *reactorTestSuite) addNode(
 		sm.NopMetrics(),
 	)
 
+	var lastExtCommit *types.ExtendedCommit
+
+	// The commit we are building for the current height.
+	seenExtCommit := &types.ExtendedCommit{}
+
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, nil)
+		lastExtCommit = seenExtCommit.Clone()
 
-		if blockHeight > 1 {
-			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
-			lastBlock := blockStore.LoadBlock(blockHeight - 1)
-
-			vote, err := factory.MakeVote(
-				ctx,
-				privVal,
-				lastBlock.Header.ChainID, 0,
-				lastBlock.Header.Height, 0, 2,
-				lastBlockMeta.BlockID,
-				time.Now(),
-			)
-			require.NoError(t, err)
-			lastCommit = types.NewCommit(
-				vote.Height,
-				vote.Round,
-				lastBlockMeta.BlockID,
-				[]types.CommitSig{vote.CommitSig()},
-			)
-		}
-
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
+		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.StripExtensions())
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
+		// Simulate a commit for the current height
+		vote, err := factory.MakeVote(
+			ctx,
+			privVal,
+			thisBlock.Header.ChainID,
+			0,
+			thisBlock.Header.Height,
+			0,
+			2,
+			blockID,
+			time.Now(),
+		)
+		require.NoError(t, err)
+		seenExtCommit = &types.ExtendedCommit{
+			Height:             vote.Height,
+			Round:              vote.Round,
+			BlockID:            blockID,
+			ExtendedSignatures: []types.ExtendedCommitSig{vote.ExtendedCommitSig()},
+		}
+
 		state, err = blockExec.ApplyBlock(ctx, state, blockID, thisBlock)
 		require.NoError(t, err)
 
-		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
+		blockStore.SaveBlock(thisBlock, thisParts, seenExtCommit)
 	}
 
 	rts.peerChans[nodeID] = make(chan p2p.PeerUpdate)

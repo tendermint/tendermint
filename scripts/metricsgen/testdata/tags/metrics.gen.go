@@ -19,7 +19,8 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "with_labels",
 			Help:      "",
-		}, append(labels, "step,time")).With(labelsAndValues...), WithExpBuckets: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		}, append(labels, "step", "time")).With(labelsAndValues...),
+		WithExpBuckets: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "with_exp_buckets",

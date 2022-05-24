@@ -17,7 +17,7 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 	chDescs := []*ChannelDescriptor{
 		{ID: 0x01, Priority: 1},
 	}
-	pqueue := newPQScheduler(log.NewNopLogger(), NopMetrics(), chDescs, uint(enqueueLength), 1, 120)
+	pqueue := newPQScheduler(log.NewNopLogger(), NopMetrics(), newMetricsLabelCache(), chDescs, uint(enqueueLength), 1, 120)
 
 	for i := 0; i < enqueueLength; i++ {
 		pqueue.enqueue() <- Envelope{

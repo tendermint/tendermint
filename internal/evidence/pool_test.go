@@ -249,8 +249,8 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		evidenceChainID,
 	)
 	require.NoError(t, err)
-	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
-	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{ev})
+	lastExtCommit := makeExtCommit(height, val.PrivKey.PubKey().Address())
+	block := types.MakeBlock(height+1, []types.Tx{}, lastExtCommit.StripExtensions(), []types.Evidence{ev})
 
 	// update state (partially)
 	state.LastBlockHeight = height + 1
@@ -568,8 +568,8 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) (*store.Blo
 	blockStore := store.NewBlockStore(db)
 
 	for i := int64(1); i <= state.LastBlockHeight; i++ {
-		lastCommit := makeCommit(i-1, valAddr)
-		block := sf.MakeBlock(state, i, lastCommit)
+		lastCommit := makeExtCommit(i-1, valAddr)
+		block := sf.MakeBlock(state, i, lastCommit.StripExtensions())
 
 		block.Header.Time = defaultEvidenceTime.Add(time.Duration(i) * time.Minute)
 		block.Header.Version = version.Consensus{Block: version.BlockProtocol, App: 1}
@@ -579,22 +579,25 @@ func initializeBlockStore(db dbm.DB, state sm.State, valAddr []byte) (*store.Blo
 			return nil, err
 		}
 
-		seenCommit := makeCommit(i, valAddr)
+		seenCommit := makeExtCommit(i, valAddr)
 		blockStore.SaveBlock(block, partSet, seenCommit)
 	}
 
 	return blockStore, nil
 }
 
-func makeCommit(height int64, valAddr []byte) *types.Commit {
-	commitSigs := []types.CommitSig{{
-		BlockIDFlag:      types.BlockIDFlagCommit,
-		ValidatorAddress: valAddr,
-		Timestamp:        defaultEvidenceTime,
-		Signature:        []byte("Signature"),
-	}}
-
-	return types.NewCommit(height, 0, types.BlockID{}, commitSigs)
+func makeExtCommit(height int64, valAddr []byte) *types.ExtendedCommit {
+	return &types.ExtendedCommit{
+		Height: height,
+		ExtendedSignatures: []types.ExtendedCommitSig{{
+			CommitSig: types.CommitSig{
+				BlockIDFlag:      types.BlockIDFlagCommit,
+				ValidatorAddress: valAddr,
+				Timestamp:        defaultEvidenceTime,
+				Signature:        []byte("Signature"),
+			},
+		}},
+	}
 }
 
 func defaultTestPool(ctx context.Context, t *testing.T, height int64) (*evidence.Pool, types.MockPV, *eventbus.EventBus) {

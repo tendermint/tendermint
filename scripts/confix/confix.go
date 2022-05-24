@@ -17,6 +17,7 @@ import (
 	"github.com/creachadair/tomledit"
 	"github.com/creachadair/tomledit/transform"
 	"github.com/spf13/viper"
+
 	"github.com/tendermint/tendermint/config"
 )
 

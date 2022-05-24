@@ -230,10 +230,11 @@ github.com/cpuguy83/go-md2man/v2 v2.0.0/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsr
 github.com/cpuguy83/go-md2man/v2 v2.0.1/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/creachadair/atomicfile v0.2.6 h1:FgYxYvGcqREApTY8Nxg8msM6P/KVKK3ob5h9FaRUTNg=
 github.com/creachadair/atomicfile v0.2.6/go.mod h1:BRq8Une6ckFneYXZQ+kO7p1ZZP3I2fzVzf28JxrIkBc=
+github.com/creachadair/command v0.0.0-20220426235536-a748effdf6a1/go.mod h1:bAM+qFQb/KwWyCc9MLC4U1jvn3XyakqP5QRkds5T6cY=
 github.com/creachadair/taskgroup v0.3.2 h1:zlfutDS+5XG40AOxcHDSThxKzns8Tnr9jnr6VqkYlkM=
 github.com/creachadair/taskgroup v0.3.2/go.mod h1:wieWwecHVzsidg2CsUnFinW1faVN4+kq+TDlRJQ0Wbk=
-github.com/creachadair/tomledit v0.0.19 h1:zbpfUtYFYFdpRjwJY9HJlto1iZ4M5YwYB6qqc37F6UM=
-github.com/creachadair/tomledit v0.0.19/go.mod h1:gvtfnSZLa+YNQD28vaPq0Nk12bRxEhmUdBzAWn+EGF4=
+github.com/creachadair/tomledit v0.0.22 h1:lRtepmrwhzDq+g1gv5ftVn5itgo7CjYbm6abKTToqJ4=
+github.com/creachadair/tomledit v0.0.22/go.mod h1:cIu/4x5L855oSRejIqr+WRFh+mv9g4fWLiUFaApYn/Y=
 github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/cyphar/filepath-securejoin v0.2.2/go.mod h1:FpkQEhXnPnOthhzymB7CGsFk2G9VLXONKD9G7QGMM+4=
