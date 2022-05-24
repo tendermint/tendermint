@@ -274,6 +274,7 @@ func createPeerManager(
 }
 
 func createRouter(
+	ctx context.Context,
 	logger log.Logger,
 	p2pMetrics *p2p.Metrics,
 	nodeInfoProducer func() *types.NodeInfo,
@@ -284,28 +285,42 @@ func createRouter(
 ) (*p2p.Router, error) {
 
 	p2pLogger := logger.With("module", "p2p")
+	opts := getRouterConfig(cfg, appClient)
+	opts.NodeInfoProducer = nodeInfoProducer
 
-	transportConf := conn.DefaultMConnConfig()
-	transportConf.FlushThrottle = cfg.P2P.FlushThrottleTimeout
-	transportConf.SendRate = cfg.P2P.SendRate
-	transportConf.RecvRate = cfg.P2P.RecvRate
-	transportConf.MaxPacketMsgPayloadSize = cfg.P2P.MaxPacketMsgPayloadSize
-	transport := p2p.NewMConnTransport(
-		p2pLogger, transportConf, []*p2p.ChannelDescriptor{},
-		p2p.MConnTransportOptions{
-			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
-		},
-	)
+	if cfg.P2P.UseLibP2P {
+		host, err := p2p.NewHost(cfg.P2P)
+		if err != nil {
+			return nil, err
+		}
+		opts.NetworkHost = host
 
-	ep, err := p2p.NewEndpoint(nodeKey.ID.AddressString(cfg.P2P.ListenAddress))
-	if err != nil {
-		return nil, err
+		ps, err := p2p.NewPubSub(ctx, cfg.P2P, host)
+		if err != nil {
+			return nil, err
+		}
+		opts.NetworkPubSub = ps
+	} else {
+		transportConf := conn.DefaultMConnConfig()
+		transportConf.FlushThrottle = cfg.P2P.FlushThrottleTimeout
+		transportConf.SendRate = cfg.P2P.SendRate
+		transportConf.RecvRate = cfg.P2P.RecvRate
+		transportConf.MaxPacketMsgPayloadSize = cfg.P2P.MaxPacketMsgPayloadSize
+		transport := p2p.NewMConnTransport(
+			p2pLogger, transportConf, []*p2p.ChannelDescriptor{},
+			p2p.MConnTransportOptions{
+				MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
+			},
+		)
+
+		ep, err := p2p.NewEndpoint(nodeKey.ID.AddressString(cfg.P2P.ListenAddress))
+		if err != nil {
+			return nil, err
+		}
+		opts.LegacyEndpoint = ep
+		opts.LegacyTransport = transport
 	}
 
-	opts := getRouterConfig(cfg, appClient)
-	opts.LegacyEndpoint = ep
-	opts.LegacyTransport = transport
-	opts.NodeInfoProducer = nodeInfoProducer
 	return p2p.NewRouter(
 		p2pLogger,
 		p2pMetrics,
