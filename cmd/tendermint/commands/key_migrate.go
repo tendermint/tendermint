@@ -24,12 +24,12 @@ func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 				// this is ordered to put the
 				// (presumably) biggest/most important
 				// subsets first.
-				"blockstore",
-				"state",
-				"peerstore",
 				"tx_index",
-				"evidence",
+				"peerstore",
 				"light",
+				"blockstore",
+				"evidence",
+				"state",
 			}
 
 			for idx, dbctx := range contexts {
