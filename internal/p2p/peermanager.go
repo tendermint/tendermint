@@ -434,7 +434,7 @@ func (m *PeerManager) HasMaxPeerCapacity() bool {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	return len(m.connected) >= int(r.peerManager.options.MaxConnected)
+	return len(m.connected) >= int(m.options.MaxConnected)
 }
 
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
