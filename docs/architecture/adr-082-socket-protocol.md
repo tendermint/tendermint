@@ -68,7 +68,7 @@ applications using it. In particular:
 
   The historical intent of terminating for any error seems to have been that
   all ABCI errors are unrecoverable and hence protocol fatal (see [Note
-  1][note1]).  In practice, however, this greatly complicates debugging a
+  1](#note1)).  In practice, however, this greatly complicates debugging a
   faulty node, since the only way to respond to errors is to panic the node
   which loses valuable context that could have been logged.
 
