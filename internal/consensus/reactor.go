@@ -480,7 +480,7 @@ OUTER_LOOP:
 		rs := r.getRoundState()
 		prs := ps.GetRoundState()
 
-		isValidator := r.isValidator(ps.ProTxHash)
+		isValidator := r.isValidator(ps.GetProTxHash())
 
 		// Send proposal Block parts?
 		if (isValidator && rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartSetHeader)) ||
@@ -799,6 +799,12 @@ func (r *Reactor) gossipCommit(ctx context.Context, voteCh *p2p.Channel, rs *cst
 	}
 
 	if commit == nil {
+		//r.logger.Debug("cannot find a block",
+		//	"prs.Height", prs.Height,
+		//	"rs.Height", rs.Height,
+		//	"blockStoreBase", blockStoreBase,
+		//	"stack", string(debug.Stack()),
+		//)
 		return fmt.Errorf("commit at height %d not found", prs.Height)
 	}
 
