@@ -67,10 +67,10 @@ applications using it. In particular:
   client](https://github.com/tendermint/tendermint/blob/master/abci/client/socket_client.go#L149).
 
   The historical intent of terminating for any error seems to have been that
-  all ABCI errors are unrecoverable and hence protocol fatal.  In practice,
-  however, this greatly complicates debugging a faulty node, since the only way
-  to respond to errors is to panic the node which loses valuable context that
-  could have been logged.
+  all ABCI errors are unrecoverable and hence protocol fatal (see [Note
+  1][note1]).  In practice, however, this greatly complicates debugging a
+  faulty node, since the only way to respond to errors is to panic the node
+  which loses valuable context that could have been logged.
 
 - There are subtle concurrency management dependencies between the client and
   the server that are not clearly documented anywhere, and it is very easy for
@@ -195,6 +195,26 @@ design.
 [socket-server]: https://github.com/tendermint/tendermint/blob/master/abci/server/socket_server.go
 [grpc-client]: https://github.com/tendermint/tendermint/blob/master/abci/client/grpc_client.go
 [abci-start]: https://github.com/tendermint/abci/commit/1ab3c747182aaa38418258679c667090c2bb1e0d
+
+## Notes
+
+- <a id=note1></a>**Note 1**: The choice to make all ABCI errors protocol-fatal
+  was intended to avoid the risk that recovering an application error could
+  cause application state to diverge.  Divergence can break consensus, so it's
+  essential to avoid it.
+
+  This is a sound principle, but conflates protocol errors with "mechanical"
+  errors such as timeouts, resoures exhaustion, failed connections, and so on.
+  Because the protocol has no way to distinguish these conditions, the only way
+  for an application to report an error is to panic or crash.
+
+  Whether a node is running in the same process as the application or as a
+  separate process, application errors should not be suppressed or hidden.
+  However, it's important to ensure that errors are handled at a consistent and
+  well-defined point in the protocol: Having the application panic or crash
+  rather than reporting an error means the node sees different results
+  depending on whether the application runs in-process or out-of-process, even
+  if the application logic is otherwise identical.
 
 ## Appendix: Known Implementations of ABCI Socket Protocol
 
