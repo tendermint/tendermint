@@ -314,6 +314,26 @@ func (sc *DashCoreSignerClient) SignVote(
 		protoVote.StateSignature = stateDecodedSignature
 	}
 
+	if protoVote.Type == tmproto.PrecommitType {
+		if len(protoVote.Extension) > 0 {
+			extSignBytes := types.VoteExtensionSignBytes(chainID, protoVote)
+			extMsgHash := crypto.Checksum(extSignBytes)
+			extReqID := types.VoteExtensionRequestID(protoVote)
+
+			extResp, err := sc.dashCoreRPCClient.QuorumSign(quorumType, extReqID, extMsgHash, quorumHash)
+			if err != nil {
+				return err
+			}
+
+			protoVote.ExtensionSignature, err = hex.DecodeString(extResp.Signature)
+			if err != nil {
+				return err
+			}
+		}
+	} else if len(protoVote.Extension) > 0 {
+		return errors.New("unexpected vote extension - extensions are only allowed in precommits")
+	}
+
 	// fmt.Printf("Signed Vote proTxHash %s stateSignBytes %s block signature %s \n",
 	// proTxHash, hex.EncodeToString(stateSignBytes),
 	// 	hex.EncodeToString(stateDecodedSignature))

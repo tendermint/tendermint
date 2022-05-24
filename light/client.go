@@ -909,12 +909,17 @@ func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
 		}
 	}
 
-	return &types.LightClientInfo{
-		PrimaryID:         c.primary.ID(),
-		WitnessesID:       chunks,
-		NumPeers:          len(chunks) + primaryNotInWitnessList,
-		LastTrustedHeight: c.latestTrustedBlock.Height,
-		LastTrustedHash:   c.latestTrustedBlock.Hash(),
-		LatestBlockTime:   c.latestTrustedBlock.Time,
+	info := &types.LightClientInfo{
+		PrimaryID:   c.primary.ID(),
+		WitnessesID: chunks,
+		NumPeers:    len(chunks) + primaryNotInWitnessList,
 	}
+
+	if c.latestTrustedBlock != nil {
+		info.LastTrustedHeight = c.latestTrustedBlock.Height
+		info.LastTrustedHash = c.latestTrustedBlock.Hash()
+		info.LatestBlockTime = c.latestTrustedBlock.Time
+	}
+
+	return info
 }

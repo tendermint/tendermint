@@ -150,6 +150,11 @@ func VoteExtensionSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.
 	return makeSignID(VoteExtensionSignBytes(chainID, vote), reqID, quorumType, quorumHash)
 }
 
+// VoteExtensionRequestID returns vote extension request ID
+func VoteExtensionRequestID(vote *tmproto.Vote) []byte {
+	return voteHeightRoundRequestID("dpevote", vote.Height, vote.Round)
+}
+
 // VoteBlockSignID returns signID that should be signed for the block
 func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	reqID := voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)

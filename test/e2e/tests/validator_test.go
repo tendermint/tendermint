@@ -135,14 +135,12 @@ func newValidatorSchedule(testnet e2e.Testnet) *validatorSchedule {
 	}
 	if v, ok := testnet.ValidatorUpdates[0]; ok { // InitChain validators
 		valMap = v
-		if t, ok := testnet.ThresholdPublicKeyUpdates[0]; ok { // InitChain threshold public key
-			thresholdPublicKey = t
-		} else {
+		thresholdPublicKey, ok = testnet.ThresholdPublicKeyUpdates[0]
+		if !ok { // InitChain threshold public key
 			panic("threshold public key must be set for height 0 if validator changes")
 		}
-		if q, ok := testnet.QuorumHashUpdates[0]; ok { // InitChain threshold public key
-			quorumHash = q
-		} else {
+		quorumHash, ok = testnet.QuorumHashUpdates[0]
+		if !ok { // InitChain threshold public key
 			panic("quorum hash key must be set for height 0 if validator changes")
 		}
 	}

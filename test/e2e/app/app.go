@@ -355,7 +355,7 @@ func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrep
 	var sum int64
 	var extCount int
 	for _, vote := range req.LocalLastCommit.Votes {
-		if !vote.SignedLastBlock || len(vote.VoteExtension) == 0 {
+		if len(vote.VoteExtension) == 0 {
 			continue
 		}
 		extValue, err := parseVoteExtension(vote.VoteExtension)

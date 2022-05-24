@@ -376,6 +376,9 @@ func validatorListCopy(valsList []*Validator) []*Validator {
 
 // Copy each validator into a new ValidatorSet.
 func (vals *ValidatorSet) Copy() *ValidatorSet {
+	if vals == nil {
+		return nil
+	}
 	return &ValidatorSet{
 		Validators:         validatorListCopy(vals.Validators),
 		Proposer:           vals.Proposer,
