@@ -104,7 +104,7 @@ There is a set of related alternatives to consider:
   for bugs and vulnerabilities, and we should not have multiple options for
   basic interfaces without a clear and well-documented reason.
 
-- Question 2a: Standardize on gRPC and deprecate/remove the socket protocol?
+- Question 2a: Choose gRPC and deprecate/remove the socket protocol?
 
   Claim: Maintaining and improving a custom RPC protocol is a substantial
   project and not directly relevant to the requirements of consensus. We would
