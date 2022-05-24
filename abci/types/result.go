@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 
 	"github.com/gogo/protobuf/jsonpb"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/encoding"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 const (
@@ -100,6 +103,48 @@ func (r *EventAttribute) MarshalJSON() ([]byte, error) {
 func (r *EventAttribute) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
+}
+
+// validatorUpdateJSON is the JSON encoding of a validator update.
+//
+// It handles translation of public keys from the protobuf representation to
+// the legacy Amino-compatible format expected by RPC clients.
+type validatorUpdateJSON struct {
+	PubKey json.RawMessage `json:"pub_key,omitempty"`
+	Power  int64           `json:"power,string"`
+}
+
+func (v *ValidatorUpdate) MarshalJSON() ([]byte, error) {
+	key, err := encoding.PubKeyFromProto(v.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	jkey, err := tmjson.Marshal(key)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(validatorUpdateJSON{
+		PubKey: jkey,
+		Power:  v.GetPower(),
+	})
+}
+
+func (v *ValidatorUpdate) UnmarshalJSON(data []byte) error {
+	var vu validatorUpdateJSON
+	if err := json.Unmarshal(data, &vu); err != nil {
+		return err
+	}
+	var key crypto.PubKey
+	if err := tmjson.Unmarshal(vu.PubKey, &key); err != nil {
+		return err
+	}
+	pkey, err := encoding.PubKeyToProto(key)
+	if err != nil {
+		return err
+	}
+	v.PubKey = pkey
+	v.Power = vu.Power
+	return nil
 }
 
 // Some compile time assertions to ensure we don't

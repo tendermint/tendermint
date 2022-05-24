@@ -12,6 +12,8 @@ Special thanks to external contributors on this release:
 
 - CLI/RPC/Config
 
+   - [rpc] \#8594 fix encoding of block_results responses (@creachadair)
+
 - Apps
 
 - P2P Protocol
