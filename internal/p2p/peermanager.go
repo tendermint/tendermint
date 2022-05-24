@@ -430,6 +430,13 @@ func (m *PeerManager) PeerRatio() float64 {
 	return float64(m.store.Size()) / float64(m.options.MaxPeers)
 }
 
+func (m *PeerManager) HasMaxPeerCapacity() bool {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	return len(m.connected) >= int(m.options.MaxConnected)
+}
+
 // DialNext finds an appropriate peer address to dial, and marks it as dialing.
 // If no peer is found, or all connection slots are full, it blocks until one
 // becomes available. The caller must call Dialed() or DialFailed() for the
@@ -1025,37 +1032,6 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 	}
 
 	return delay
-}
-
-// GetHeight returns a peer's height, as reported via SetHeight, or 0 if the
-// peer or height is unknown.
-//
-// FIXME: This is a temporary workaround to share state between the consensus
-// and mempool reactors, carried over from the legacy P2P stack. Reactors should
-// not have dependencies on each other, instead tracking this themselves.
-func (m *PeerManager) GetHeight(peerID types.NodeID) int64 {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	peer, _ := m.store.Get(peerID)
-	return peer.Height
-}
-
-// SetHeight stores a peer's height, making it available via GetHeight.
-//
-// FIXME: This is a temporary workaround to share state between the consensus
-// and mempool reactors, carried over from the legacy P2P stack. Reactors should
-// not have dependencies on each other, instead tracking this themselves.
-func (m *PeerManager) SetHeight(peerID types.NodeID, height int64) error {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
-
-	peer, ok := m.store.Get(peerID)
-	if !ok {
-		peer = m.newPeerInfo(peerID)
-	}
-	peer.Height = height
-	return m.store.Set(peer)
 }
 
 // peerStore stores information about peers. It is not thread-safe, assuming it

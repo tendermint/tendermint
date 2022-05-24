@@ -757,22 +757,23 @@ func (ecs ExtendedCommitSig) ValidateBasic() error {
 		if len(ecs.Extension) > MaxVoteExtensionSize {
 			return fmt.Errorf("vote extension is too big (max: %d)", MaxVoteExtensionSize)
 		}
-		if len(ecs.ExtensionSignature) == 0 {
-			return errors.New("vote extension signature is missing")
-		}
 		if len(ecs.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
 		return nil
 	}
 
-	// We expect there to not be any vote extension or vote extension signature
-	// on nil or absent votes.
-	if len(ecs.Extension) != 0 {
-		return fmt.Errorf("vote extension is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	if len(ecs.ExtensionSignature) == 0 && len(ecs.Extension) != 0 {
+		return errors.New("vote extension signature absent on vote with extension")
 	}
-	if len(ecs.ExtensionSignature) != 0 {
-		return fmt.Errorf("vote extension signature is present for commit sig with block ID flag %v", ecs.BlockIDFlag)
+	return nil
+}
+
+// EnsureExtensions validates that a vote extensions signature is present for
+// this ExtendedCommitSig.
+func (ecs ExtendedCommitSig) EnsureExtension() error {
+	if ecs.BlockIDFlag == BlockIDFlagCommit && len(ecs.ExtensionSignature) == 0 {
+		return errors.New("vote extension data is missing")
 	}
 	return nil
 }
@@ -916,6 +917,26 @@ func (commit *Commit) Hash() tmbytes.HexBytes {
 	return commit.hash
 }
 
+// WrappedExtendedCommit wraps a commit as an ExtendedCommit.
+// The VoteExtension fields of the resulting value will by nil.
+// Wrapping a Commit as an ExtendedCommit is useful when an API
+// requires an ExtendedCommit wire type but does not
+// need the VoteExtension data.
+func (commit *Commit) WrappedExtendedCommit() *ExtendedCommit {
+	cs := make([]ExtendedCommitSig, len(commit.Signatures))
+	for idx, s := range commit.Signatures {
+		cs[idx] = ExtendedCommitSig{
+			CommitSig: s,
+		}
+	}
+	return &ExtendedCommit{
+		Height:             commit.Height,
+		Round:              commit.Round,
+		BlockID:            commit.BlockID,
+		ExtendedSignatures: cs,
+	}
+}
+
 // StringIndented returns a string representation of the commit.
 func (commit *Commit) StringIndented(indent string) string {
 	if commit == nil {
@@ -1013,17 +1034,33 @@ func (ec *ExtendedCommit) Clone() *ExtendedCommit {
 	return &ecc
 }
 
+// ToExtendedVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if signatures from the ExtendedCommit can't be added to the voteset.
+// Panics if any of the votes have invalid or absent vote extension data.
+// Inverse of VoteSet.MakeExtendedCommit().
+func (ec *ExtendedCommit) ToExtendedVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewExtendedVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+	ec.addSigsToVoteSet(voteSet)
+	return voteSet
+}
+
 // ToVoteSet constructs a VoteSet from the Commit and validator set.
-// Panics if signatures from the commit can't be added to the voteset.
+// Panics if signatures from the ExtendedCommit can't be added to the voteset.
 // Inverse of VoteSet.MakeExtendedCommit().
 func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
 	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+	ec.addSigsToVoteSet(voteSet)
+	return voteSet
+}
+
+// addSigsToVoteSet adds all of the signature to voteSet.
+func (ec *ExtendedCommit) addSigsToVoteSet(voteSet *VoteSet) {
 	for idx, ecs := range ec.ExtendedSignatures {
 		if ecs.BlockIDFlag == BlockIDFlagAbsent {
 			continue // OK, some precommits can be missing.
 		}
 		vote := ec.GetExtendedVote(int32(idx))
-		if err := vote.ValidateWithExtension(); err != nil {
+		if err := vote.ValidateBasic(); err != nil {
 			panic(fmt.Errorf("failed to validate vote reconstructed from LastCommit: %w", err))
 		}
 		added, err := voteSet.AddVote(vote)
@@ -1031,12 +1068,58 @@ func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet
 			panic(fmt.Errorf("failed to reconstruct vote set from extended commit: %w", err))
 		}
 	}
+}
+
+// ToVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if signatures from the commit can't be added to the voteset.
+// Inverse of VoteSet.MakeCommit().
+func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
+	for idx, cs := range commit.Signatures {
+		if cs.BlockIDFlag == BlockIDFlagAbsent {
+			continue // OK, some precommits can be missing.
+		}
+		vote := commit.GetVote(int32(idx))
+		if err := vote.ValidateBasic(); err != nil {
+			panic(fmt.Errorf("failed to validate vote reconstructed from commit: %w", err))
+		}
+		added, err := voteSet.AddVote(vote)
+		if !added || err != nil {
+			panic(fmt.Errorf("failed to reconstruct vote set from commit: %w", err))
+		}
+	}
 	return voteSet
 }
 
-// StripExtensions converts an ExtendedCommit to a Commit by removing all vote
+// EnsureExtensions validates that a vote extensions signature is present for
+// every ExtendedCommitSig in the ExtendedCommit.
+func (ec *ExtendedCommit) EnsureExtensions() error {
+	for _, ecs := range ec.ExtendedSignatures {
+		if err := ecs.EnsureExtension(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// StripExtensions removes all VoteExtension data from an ExtendedCommit. This
+// is useful when dealing with an ExendedCommit but vote extension data is
+// expected to be absent.
+func (ec *ExtendedCommit) StripExtensions() bool {
+	stripped := false
+	for idx := range ec.ExtendedSignatures {
+		if len(ec.ExtendedSignatures[idx].Extension) > 0 || len(ec.ExtendedSignatures[idx].ExtensionSignature) > 0 {
+			stripped = true
+		}
+		ec.ExtendedSignatures[idx].Extension = nil
+		ec.ExtendedSignatures[idx].ExtensionSignature = nil
+	}
+	return stripped
+}
+
+// ToCommit converts an ExtendedCommit to a Commit by removing all vote
 // extension-related fields.
-func (ec *ExtendedCommit) StripExtensions() *Commit {
+func (ec *ExtendedCommit) ToCommit() *Commit {
 	cs := make([]CommitSig, len(ec.ExtendedSignatures))
 	for idx, ecs := range ec.ExtendedSignatures {
 		cs[idx] = ecs.CommitSig
