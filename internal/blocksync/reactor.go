@@ -248,7 +248,9 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, blo
 		case *bcproto.BlockResponse:
 			block, err := types.BlockFromProto(msg.Block)
 			if err != nil {
-				r.logger.Error("failed to convert block from proto", "err", err)
+				r.logger.Error("failed to convert block from proto",
+					"peer", envelope.From,
+					"err", err)
 				return err
 			}
 			var extCommit *types.ExtendedCommit
