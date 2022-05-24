@@ -27,8 +27,8 @@ message BlockParams {
   // Max gas per block.
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-  // Indicates if CheckTx should be called
-  // for all transactions after a block is executed
+  // Indicates if CheckTx should be called on all the transactions
+  // remaining in the mempool after a block is executed.
   bool recheck_tx = 3;
 }
 
