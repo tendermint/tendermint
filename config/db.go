@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -14,8 +15,9 @@ type ServiceProvider func(context.Context, *Config, log.Logger) (service.Service
 
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
-	ID     string
-	Config *Config
+	ID       string
+	Config   *Config
+	IsLegacy bool
 }
 
 // DBProvider takes a DBContext and returns an instantiated DB.
@@ -25,5 +27,10 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // specified in the Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	dbType := dbm.BackendType(ctx.Config.DBBackend)
-	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
+	id := ctx.ID
+	if !ctx.IsLegacy {
+		id = fmt.Sprint(id, 0)
+	}
+
+	return dbm.NewDB(id, dbType, ctx.Config.DBDir())
 }

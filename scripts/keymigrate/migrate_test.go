@@ -178,31 +178,40 @@ func TestMigration(t *testing.T) {
 		})
 		t.Run("Replacement", func(t *testing.T) {
 			t.Run("MissingKey", func(t *testing.T) {
-				db := dbm.NewMemDB()
-				require.NoError(t, replaceKey(db, keyID("hi"), nil))
+				dbs := MigrateDB{
+					From: dbm.NewMemDB(),
+					To:   dbm.NewMemDB(),
+				}
+				require.NoError(t, replaceKey(dbs, keyID("hi"), nil))
 			})
 			t.Run("ReplacementFails", func(t *testing.T) {
-				db := dbm.NewMemDB()
+				dbs := MigrateDB{
+					From: dbm.NewMemDB(),
+					To:   dbm.NewMemDB(),
+				}
 				key := keyID("hi")
-				require.NoError(t, db.Set(key, []byte("world")))
-				require.Error(t, replaceKey(db, key, func(k keyID) (keyID, error) {
+				require.NoError(t, dbs.From.Set(key, []byte("world")))
+				require.Error(t, replaceKey(dbs, key, func(k keyID) (keyID, error) {
 					return nil, errors.New("hi")
 				}))
 			})
 			t.Run("KeyDisappears", func(t *testing.T) {
-				db := dbm.NewMemDB()
+				dbs := MigrateDB{
+					From: dbm.NewMemDB(),
+					To:   dbm.NewMemDB(),
+				}
 				key := keyID("hi")
-				require.NoError(t, db.Set(key, []byte("world")))
-				require.Error(t, replaceKey(db, key, func(k keyID) (keyID, error) {
-					require.NoError(t, db.Delete(key))
+				require.NoError(t, dbs.From.Set(key, []byte("world")))
+				require.Error(t, replaceKey(dbs, key, func(k keyID) (keyID, error) {
+					require.NoError(t, dbs.From.Delete(key))
 					return keyID("wat"), nil
 				}))
 
-				exists, err := db.Has(key)
+				exists, err := dbs.From.Has(key)
 				require.NoError(t, err)
 				require.False(t, exists)
 
-				exists, err = db.Has(keyID("wat"))
+				exists, err = dbs.To.Has(keyID("wat"))
 				require.NoError(t, err)
 				require.False(t, exists)
 			})
@@ -229,9 +238,12 @@ func TestMigration(t *testing.T) {
 		})
 		t.Run("Migrate", func(t *testing.T) {
 			_, db := getLegacyDatabase(t)
-
+			dbs := MigrateDB{
+				From: db,
+				To:   dbm.NewMemDB(),
+			}
 			ctx := context.Background()
-			err := Migrate(ctx, db)
+			err := Migrate(ctx, dbs)
 			require.NoError(t, err)
 			keys, err := getAllLegacyKeys(db)
 			require.NoError(t, err)

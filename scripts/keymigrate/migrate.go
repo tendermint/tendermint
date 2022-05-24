@@ -26,6 +26,11 @@ type (
 	migrateFunc func(keyID) (keyID, error)
 )
 
+type MigrateDB struct {
+	From dbm.DB
+	To   dbm.DB
+}
+
 func getAllLegacyKeys(db dbm.DB) ([]keyID, error) {
 	var out []keyID
 
@@ -374,8 +379,8 @@ func isHex(data []byte) bool {
 	return len(data) != 0
 }
 
-func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {
-	exists, err := db.Has(key)
+func replaceKey(dbs MigrateDB, key keyID, gooseFn migrateFunc) error {
+	exists, err := dbs.From.Has(key)
 	if err != nil {
 		return err
 	}
@@ -388,17 +393,18 @@ func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {
 		return err
 	}
 
-	val, err := db.Get(key)
+	val, err := dbs.From.Get(key)
 	if err != nil {
 		return err
 	}
 
-	batch := db.NewBatch()
+	deleteBatch := dbs.From.NewBatch()
+	batch := dbs.To.NewBatch()
 
 	if err = batch.Set(newKey, val); err != nil {
 		return err
 	}
-	if err = batch.Delete(key); err != nil {
+	if err = deleteBatch.Delete(key); err != nil {
 		return err
 	}
 
@@ -408,13 +414,22 @@ func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {
 		if err = batch.WriteSync(); err != nil {
 			return err
 		}
+		if err = deleteBatch.WriteSync(); err != nil {
+			return err
+		}
 	} else {
 		if err = batch.Write(); err != nil {
+			return err
+		}
+		if err = deleteBatch.Write(); err != nil {
 			return err
 		}
 	}
 
 	if err = batch.Close(); err != nil {
+		return err
+	}
+	if err = deleteBatch.Close(); err != nil {
 		return err
 	}
 
@@ -433,8 +448,8 @@ func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {
 // The context allows for a safe termination of the operation
 // (e.g connected to a singal handler,) to abort the operation
 // in-between migration operations.
-func Migrate(ctx context.Context, db dbm.DB) error {
-	keys, err := getAllLegacyKeys(db)
+func Migrate(ctx context.Context, dbs MigrateDB) error {
+	keys, err := getAllLegacyKeys(dbs.From)
 	if err != nil {
 		return err
 	}
@@ -451,7 +466,7 @@ func Migrate(ctx context.Context, db dbm.DB) error {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			return replaceKey(db, key, migrateKey)
+			return replaceKey(dbs, key, migrateKey)
 		})
 	}
 	if g.Wait() != nil {

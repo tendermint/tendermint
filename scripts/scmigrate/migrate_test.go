@@ -138,20 +138,24 @@ func TestMigrations(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		db := dbm.NewMemDB()
+		dbs := MigrateDB{
+			From: dbm.NewMemDB(),
+			To:   dbm.NewMemDB(),
+		}
+
 		data := appendRandomMigrations([]toMigrate{}, 1000)
-		insertTestData(t, db, data)
+		insertTestData(t, dbs.From, data)
 
 		latestHeight := getLatestHeight(data)
 		for _, test := range []string{"Migration", "Idempotency"} {
 			// run the test twice to make sure that it's
 			// safe to rerun
 			t.Run(test, func(t *testing.T) {
-				if err := Migrate(ctx, db); err != nil {
+				if err := Migrate(ctx, dbs); err != nil {
 					t.Fatalf("Migration failed: %v", err)
 				}
 
-				post, err := getAllSeenCommits(ctx, db)
+				post, err := getAllSeenCommits(ctx, dbs.To)
 				if err != nil {
 					t.Fatalf("Fetching seen commits: %v", err)
 				}

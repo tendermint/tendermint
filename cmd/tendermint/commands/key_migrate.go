@@ -39,8 +39,14 @@ func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 					"total", len(contexts),
 				)
 
-				db, err := cfg.DefaultDBProvider(&cfg.DBContext{
-					ID:     dbctx,
+				dbFrom, err := cfg.DefaultDBProvider(&cfg.DBContext{
+					ID:       dbctx,
+					Config:   conf,
+					IsLegacy: true,
+				})
+
+				dbTo, err := cfg.DefaultDBProvider(&cfg.DBContext{
+					ID:     fmt.Sprint(dbctx, 0),
 					Config: conf,
 				})
 
@@ -48,13 +54,19 @@ func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 					return fmt.Errorf("constructing database handle: %w", err)
 				}
 
-				if err = keymigrate.Migrate(ctx, db); err != nil {
+				if err = keymigrate.Migrate(ctx, keymigrate.MigrateDB{
+					From: dbFrom,
+					To:   dbTo,
+				}); err != nil {
 					return fmt.Errorf("running migration for context %q: %w",
 						dbctx, err)
 				}
 
 				if dbctx == "blockstore" {
-					if err := scmigrate.Migrate(ctx, db); err != nil {
+					if err := scmigrate.Migrate(ctx, scmigrate.MigrateDB{
+						From: dbFrom,
+						To:   dbTo,
+					}); err != nil {
 						return fmt.Errorf("running seen commit migration: %w", err)
 
 					}
