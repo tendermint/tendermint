@@ -14,7 +14,7 @@ Specification of the Tendermint consensus protocol.
 - [Consensus Paper](./consensus-paper) - Latex paper on
   [arxiv](https://arxiv.org/abs/1807.04938) describing the
   core Tendermint consensus state machine with proofs of safety and termination.
-- [BFT Time](./bft-time.md) - How the timestamp in a Tendermint
+- [Block Time](./time.md) - How the Time field in a Tendermint
   block header is computed in a Byzantine Fault Tolerant manner
 - [Creating Proposal](./creating-proposal.md) - How a proposer
   creates a block proposal for consensus

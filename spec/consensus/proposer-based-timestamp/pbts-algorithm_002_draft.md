@@ -123,5 +123,5 @@ Back to [main document][main].
 
 [sysmodel]: ./pbts-sysmodel_002_draft.md
 
-[bfttime]: https://github.com/tendermint/tendermint/blob/master/spec/consensus/bft-time.md
+[bfttime]: ./bft-time.md
 [arXiv]: https://arxiv.org/pdf/1807.04938.pdf
