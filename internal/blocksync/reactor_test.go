@@ -98,7 +98,6 @@ func setup(
 	return rts
 }
 
-<<<<<<< HEAD
 // We add multiple nodes with varying initial heights
 // Allows us to test whether block sync works when a node
 // has previous state
@@ -168,12 +167,13 @@ func (rts *reactorTestSuite) addMultipleNodes(
 	seenExtCommit := &types.ExtendedCommit{}
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeightPerNode[maxBlockHeightIdx]; blockHeight++ {
+
 		lastExtCommit = seenExtCommit.Clone()
 
 		// if blockHeight > 1 {
 		// lastBlockMeta := blockStores[maxBlockHeightIdx].LoadBlockMeta(blockHeight - 1)
 		// lastBlock := blockStores[maxBlockHeightIdx].LoadBlock(blockHeight - 1)
-		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.StripExtensions())
+		thisBlock := sf.MakeBlock(state, blockHeight, lastExtCommit.ToCommit())
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
@@ -214,7 +214,8 @@ func (rts *reactorTestSuite) addMultipleNodes(
 				require.NoError(t, err)
 				state, err = blockExecutors[idx].ApplyBlock(ctx, lastState, blockID, thisBlock)
 				require.NoError(t, err)
-				blockStores[idx].SaveBlock(thisBlock, thisParts, seenExtCommit)
+				blockStores[idx].SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
+
 			}
 		}
 	}
@@ -235,7 +236,7 @@ func (rts *reactorTestSuite) addMultipleNodes(
 			nil,
 			chCreator,
 			func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
-			rts.blockSync,
+			true,
 			consensus.NopMetrics(),
 			nil, // eventbus, can be nil
 		)
@@ -245,10 +246,7 @@ func (rts *reactorTestSuite) addMultipleNodes(
 	}
 }
 
-func (rts *reactorTestSuite) addNode(
-=======
 func makeReactor(
->>>>>>> origin
 	ctx context.Context,
 	t *testing.T,
 	nodeID types.NodeID,

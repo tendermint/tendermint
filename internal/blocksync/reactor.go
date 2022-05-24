@@ -188,35 +188,14 @@ func (r *Reactor) OnStop() {
 // respondToPeer loads a block and sends it to the requesting peer, if we have it.
 // Otherwise, we'll respond saying we do not have it.
 func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, peerID types.NodeID, blockSyncCh *p2p.Channel) error {
-<<<<<<< HEAD
 	block := r.store.LoadBlockProto(msg.Height)
-	if block != nil {
-		extCommit := r.store.LoadBlockExtendedCommit(msg.Height)
-		if extCommit == nil {
-			return fmt.Errorf("found block in store without extended commit: %v", block)
-		}
-		// blockProto, err := block.ToProto()
-		// if err != nil {
-		// 	return fmt.Errorf("failed to convert block to protobuf: %w", err)
-		// }
-
-		return blockSyncCh.Send(ctx, p2p.Envelope{
-			To: peerID,
-			Message: &bcproto.BlockResponse{
-				Block:     block,
-				ExtCommit: extCommit.ToProto(),
-			},
-=======
-	block := r.store.LoadBlock(msg.Height)
 	if block == nil {
 		r.logger.Info("peer requesting a block we do not have", "peer", peerID, "height", msg.Height)
 		return blockSyncCh.Send(ctx, p2p.Envelope{
 			To:      peerID,
 			Message: &bcproto.NoBlockResponse{Height: msg.Height},
->>>>>>> origin
 		})
 	}
-
 	state, err := r.stateStore.Load()
 	if err != nil {
 		return fmt.Errorf("loading state: %w", err)
@@ -229,15 +208,15 @@ func (r *Reactor) respondToPeer(ctx context.Context, msg *bcproto.BlockRequest, 
 		}
 	}
 
-	blockProto, err := block.ToProto()
-	if err != nil {
-		return fmt.Errorf("failed to convert block to protobuf: %w", err)
-	}
+	// blockProto, err := block.ToProto()
+	// if err != nil {
+	// 	return fmt.Errorf("failed to convert block to protobuf: %w", err)
+	// }
 
 	return blockSyncCh.Send(ctx, p2p.Envelope{
 		To: peerID,
 		Message: &bcproto.BlockResponse{
-			Block:     blockProto,
+			Block:     block,
 			ExtCommit: extCommit.ToProto(),
 		},
 	})
@@ -567,18 +546,17 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			//
 			// TODO: Uncouple from request routine.
 
-<<<<<<< HEAD
 			newBlock, verifyBlock, extCommit := r.pool.PeekTwoBlocks()
-
-			if newBlock == nil || verifyBlock == nil || extCommit == nil {
-				if newBlock != nil && extCommit == nil {
-					// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
-					panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", newBlock.Height))
-				}
-				// we need all to sync the first block
-
+			if newBlock != nil && extCommit == nil &&
+				state.ConsensusParams.ABCI.VoteExtensionsEnabled(newBlock.Height) {
+				// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
+				panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", newBlock.Height))
+			} else if newBlock == nil || verifyBlock == nil {
+				// we need to have fetched two consecutive blocks in order to
+				// perform blocksync verification
 				continue
 			} else {
+				// try again quickly next loop instead of waiting for the next timeout
 				didProcessCh <- struct{}{}
 			}
 
@@ -587,28 +565,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				r.logger.Error("failed to make block at ",
 					"height", newBlock.Height,
 					"err", err2.Error())
-=======
-			// see if there are any blocks to sync
-			first, second, extCommit := r.pool.PeekTwoBlocks()
-			if first != nil && extCommit == nil &&
-				state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
-				// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
-				panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
-			} else if first == nil || second == nil {
-				// we need to have fetched two consecutive blocks in order to
-				// perform blocksync verification
-				continue
-			}
 
-			// try again quickly next loop
-			didProcessCh <- struct{}{}
-
-			firstParts, err := first.MakePartSet(types.BlockPartSizeBytes)
-			if err != nil {
-				r.logger.Error("failed to make ",
-					"height", first.Height,
-					"err", err.Error())
->>>>>>> origin
 				return
 			}
 
@@ -626,7 +583,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					}
 				}
 			}
-<<<<<<< HEAD
+
 			var err error
 			// Check for nil on block to avoid the case where we failed the block validation before persistence
 			// but passed the verification before and created a lastTrustedBlock object
@@ -660,14 +617,14 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				err = state.Validators.VerifyCommitLight(newBlock.ChainID, newBlockID, newBlock.Height, verifyBlock.LastCommit)
 
 			}
-=======
-			if err == nil && state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
+
+			if err == nil && state.ConsensusParams.ABCI.VoteExtensionsEnabled(newBlock.Height) {
 				// if vote extensions were required at this height, ensure they exist.
 				err = extCommit.EnsureExtensions()
 			}
 			// If either of the checks failed we log the error and request for a new block
 			// at that height
->>>>>>> origin
+
 			if err != nil {
 
 				switch err.(type) {
@@ -719,19 +676,16 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 			r.pool.PopRequest()
 
 			// TODO: batch saves so we do not persist to disk every block
-<<<<<<< HEAD
-			r.store.SaveBlock(newBlock, newBlockParts, extCommit)
-=======
-			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
-				r.store.SaveBlockWithExtendedCommit(first, firstParts, extCommit)
+
+			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(newBlock.Height) {
+				r.store.SaveBlockWithExtendedCommit(newBlock, newBlockParts, extCommit)
 			} else {
 				// We use LastCommit here instead of extCommit. extCommit is not
 				// guaranteed to be populated by the peer if extensions are not enabled.
 				// Currently, the peer should provide an extCommit even if the vote extension data are absent
 				// but this may change so using second.LastCommit is safer.
-				r.store.SaveBlock(first, firstParts, second.LastCommit)
+				r.store.SaveBlock(newBlock, newBlockParts, verifyBlock.LastCommit)
 			}
->>>>>>> origin
 
 			// TODO: Same thing for app - but we would need a way to get the hash
 			// without persisting the state.
