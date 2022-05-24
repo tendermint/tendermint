@@ -314,8 +314,12 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 					code.CodeTypeOK,
 				}, nil)
 			},
-			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}) },
+			func() error {
+				return servertest.Commit(ctx, client, []byte{
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+				})
+			},
 			func() error {
 				return servertest.FinalizeBlock(ctx, client, [][]byte{
 					{0x00},
@@ -323,8 +327,10 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 					{0x00, 0x02},
 					{0x00, 0x03},
 					{0x00, 0x00, 0x04},
-					[]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6},
+					{
+						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+						0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6,
+					},
 				}, []uint32{
 					code.CodeTypeBadNonce,
 					code.CodeTypeOK,

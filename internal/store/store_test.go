@@ -99,7 +99,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		stdlog.Fatal(err)
 	}
-	block, err := factory.MakeBlock(state, 1, new(types.Commit), nil, 0)
+	block, err = factory.MakeBlock(state, 1, new(types.Commit), nil, 0)
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -134,6 +134,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	// save a block
 	block, err := factory.MakeBlock(state, bs.Height()+1, new(types.Commit), nil, 0)
+	require.NoError(t, err)
 	validPartSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
 	seenCommit := makeTestCommit(10, tmtime.Now())

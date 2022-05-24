@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -67,11 +66,4 @@ func RootCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd.PersistentFlags().String("log-level", conf.LogLevel, "log level")
 	cobra.OnInitialize(func() { cli.InitEnv("TM") })
 	return cmd
-}
-
-// deprecateSnakeCase is a util function for 0.34.1. Should be removed in 0.35
-func deprecateSnakeCase(cmd *cobra.Command, args []string) {
-	if strings.Contains(cmd.CalledAs(), "_") {
-		fmt.Println("Deprecated: snake_case commands will be replaced by hyphen-case commands in the next major release")
-	}
 }

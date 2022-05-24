@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -60,58 +59,6 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 		IP:   ip,
 		Port: port,
 	}
-}
-
-// NewNetAddressString returns a new NetAddress using the provided address in
-// the form of "ID@IP:Port".
-// Also resolves the host if host is not an IP.
-// Errors are of type ErrNetAddressXxx where Xxx is in (NoID, Invalid, Lookup)
-func NewNetAddressString(addr string) (*NetAddress, error) {
-	addrWithoutProtocol := removeProtocolIfDefined(addr)
-	spl := strings.Split(addrWithoutProtocol, "@")
-	if len(spl) != 2 {
-		return nil, ErrNetAddressNoID{addr}
-	}
-
-	id, err := NewNodeID(spl[0])
-	if err != nil {
-		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-	}
-
-	if err := id.Validate(); err != nil {
-		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-	}
-
-	addrWithoutProtocol = spl[1]
-
-	// get host and port
-	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
-	if err != nil {
-		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-	}
-	if len(host) == 0 {
-		return nil, ErrNetAddressInvalid{
-			addrWithoutProtocol,
-			errors.New("host is empty")}
-	}
-
-	ip := net.ParseIP(host)
-	if ip == nil {
-		ips, err := net.LookupIP(host)
-		if err != nil {
-			return nil, ErrNetAddressLookup{host, err}
-		}
-		ip = ips[0]
-	}
-
-	port, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		return nil, ErrNetAddressInvalid{portStr, err}
-	}
-
-	na := NewNetAddressIPPort(ip, uint16(port))
-	na.ID = id
-	return na, nil
 }
 
 // Equals reports whether na and other are the same addresses,

@@ -907,7 +907,8 @@ func randConsensusNetWithPeers(
 		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(ctx, &abci.RequestInitChain{ValidatorSet: &vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{ValidatorSet: &vals})
+		require.NoError(t, err)
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
 		proTxHash, _ := privVal.GetProTxHash(ctx)

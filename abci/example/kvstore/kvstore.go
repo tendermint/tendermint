@@ -21,6 +21,8 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+const ValidatorSetUpdatePrefix string = "vsu:"
+
 var (
 	stateKey        = []byte("stateKey")
 	kvPairPrefixKey = []byte("kvPairKey:")
@@ -100,8 +102,8 @@ func (app *Application) setValSetUpdate(valSetUpdate *types.ValidatorSetUpdate) 
 		return err
 	}
 	app.valsIndex = make(map[string]*types.ValidatorUpdate)
-	for _, v := range valSetUpdate.ValidatorUpdates {
-		app.valsIndex[crypto.ProTxHash(v.ProTxHash).String()] = &v
+	for i, v := range valSetUpdate.ValidatorUpdates {
+		app.valsIndex[crypto.ProTxHash(v.ProTxHash).String()] = &valSetUpdate.ValidatorUpdates[i]
 	}
 	return nil
 }
@@ -364,8 +366,8 @@ func (app *Application) execValidatorSetTx(tx []byte) error {
 	}
 	app.valSetUpdate = *vsu
 	app.valsIndex = make(map[string]*types.ValidatorUpdate)
-	for _, v := range vsu.ValidatorUpdates {
-		app.valsIndex[v.String()] = &v
+	for i, v := range vsu.ValidatorUpdates {
+		app.valsIndex[v.String()] = &vsu.ValidatorUpdates[i]
 	}
 	return nil
 }

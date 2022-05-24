@@ -2,6 +2,7 @@ package factory
 
 import (
 	"context"
+
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )

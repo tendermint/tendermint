@@ -84,6 +84,7 @@ func TestMsgToProto(t *testing.T) {
 		types.BlockID{},
 		types.StateID{},
 	)
+	require.NoError(t, err)
 	pbVote := vote.ToProto()
 
 	testsCases := []struct {

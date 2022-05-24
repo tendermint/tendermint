@@ -1399,7 +1399,7 @@ func BenchmarkUpdates(b *testing.B) {
 	}
 }
 
-func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) { // nolint
+func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

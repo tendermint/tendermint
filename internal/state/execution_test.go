@@ -113,7 +113,6 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 	privVal := privVals[state.Validators.Validators[0].ProTxHash.String()]
-	blockID := makeBlockID([]byte("headerhash"), 1000, []byte("partshash"))
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
 	dve, err := types.NewMockDuplicateVoteEvidenceWithValidator(
@@ -170,7 +169,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 
-	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
 	_, err = blockExec.ApplyBlock(ctx, state, nodeProTxHash, blockID, block)
 	require.NoError(t, err)
@@ -980,22 +979,6 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	require.ErrorContains(t, err, "an injected error")
 
 	mp.AssertExpectations(t)
-}
-
-func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
-	var (
-		h   = make([]byte, crypto.HashSize)
-		psH = make([]byte, crypto.HashSize)
-	)
-	copy(h, hash)
-	copy(psH, partSetHash)
-	return types.BlockID{
-		Hash: h,
-		PartSetHeader: types.PartSetHeader{
-			Total: partSetSize,
-			Hash:  psH,
-		},
-	}
 }
 
 func txsToTxRecords(txs []types.Tx) []*abci.TxRecord {

@@ -2,7 +2,6 @@
 package state_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"testing"
@@ -137,39 +136,6 @@ func makeState(t *testing.T, nVals, height int) (sm.State, dbm.DB, map[string]ty
 	}
 
 	return s, stateDB, privValsByProTxHash
-}
-
-func makeHeaderPartsResponsesValPubKeyChange(
-	t *testing.T,
-	state sm.State,
-	pubkey crypto.PubKey,
-) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
-	require.NoError(t, err)
-	abciResponses := &tmstate.ABCIResponses{}
-	// If the pubkey is new, remove the old and add the new.
-	_, val := state.NextValidators.GetByIndex(0)
-	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
-		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
-		require.NoError(t, err)
-		pbPk, err := encoding.PubKeyToProto(pubkey)
-		require.NoError(t, err)
-		thresholdPubKey, err := encoding.PubKeyToProto(state.NextValidators.ThresholdPublicKey)
-		require.NoError(t, err)
-
-		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
-			ValidatorSetUpdate: &abci.ValidatorSetUpdate{
-				ValidatorUpdates: []abci.ValidatorUpdate{
-					{PubKey: &vPbPk, Power: 0},
-					{PubKey: &pbPk, Power: types.DefaultDashVotingPower},
-				},
-				ThresholdPublicKey: thresholdPubKey,
-				QuorumHash:         state.NextValidators.QuorumHash,
-			},
-		}
-	}
-
-	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesValPowerChange(

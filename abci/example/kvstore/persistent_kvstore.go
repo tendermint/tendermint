@@ -2,7 +2,6 @@ package kvstore
 
 import (
 	"context"
-	"sync"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -10,15 +9,12 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-const ValidatorSetUpdatePrefix string = "vsu:"
-
 //-----------------------------------------
 
 var _ types.Application = (*PersistentKVStoreApplication)(nil)
 
 type PersistentKVStoreApplication struct {
 	*Application
-	mtx sync.Mutex
 }
 
 func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *PersistentKVStoreApplication {

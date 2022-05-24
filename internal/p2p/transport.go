@@ -130,15 +130,15 @@ type Endpoint struct {
 
 // NewEndpoint constructs an Endpoint from a types.NetAddress structure.
 func NewEndpoint(addr string) (*Endpoint, error) {
-	ip, port, err := types.ParseAddressString(addr)
+	na, err := types.ParseAddressString(addr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Endpoint{
 		Protocol: MConnProtocol,
-		IP:       ip,
-		Port:     port,
+		IP:       na.IP,
+		Port:     na.Port,
 	}, nil
 }
 

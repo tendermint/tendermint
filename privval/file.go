@@ -823,5 +823,5 @@ func (pv *FilePV) saveSigned(
 	pv.LastSignState.BlockSignBytes = blockSignBytes
 	pv.LastSignState.StateSignature = stateSig
 	pv.LastSignState.StateSignBytes = stateSignBytes
-	pv.LastSignState.Save()
+	_ = pv.LastSignState.Save()
 }

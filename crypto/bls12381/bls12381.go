@@ -8,10 +8,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/internal/jsontypes"
 	"io"
 
 	bls "github.com/dashpay/bls-signatures/go-bindings"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"

@@ -80,7 +80,7 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 
 	// Set up a list of node addresses to dial, and a peer update subscription
 	// for each node.
-	var dialQueue []p2p.NodeAddress
+	dialQueue := make([]p2p.NodeAddress, 0, len(n.Nodes))
 	subs := map[types.NodeID]*p2p.PeerUpdates{}
 	subctx, subcancel := context.WithCancel(ctx)
 	defer subcancel()
@@ -373,12 +373,14 @@ func MakeChannelDesc(chID p2p.ChannelID) *p2p.ChannelDescriptor {
 	}
 }
 
+type loggerAttrsCtx struct{}
+
 func WithLoggerAttrs(ctx context.Context, attrs ...interface{}) context.Context {
-	return context.WithValue(ctx, "logger_attrs", attrs)
+	return context.WithValue(ctx, loggerAttrsCtx{}, attrs)
 }
 
 func deriveLoggerAttrsFromCtx(ctx context.Context) []interface{} {
-	attrs, ok := ctx.Value("logger_key_vals").([]interface{})
+	attrs, ok := ctx.Value(loggerAttrsCtx{}).([]interface{})
 	if ok {
 		return []interface{}{}
 	}

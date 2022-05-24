@@ -183,7 +183,7 @@ func TestReportConflictingVotes(t *testing.T) {
 	quorumHash := pool.State().Validators.QuorumHash
 
 	val := pv.ExtractIntoValidator(ctx, quorumHash)
-	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height+1, defaultEvidenceTime, &pv, evidenceChainID,
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, height+1, defaultEvidenceTime, pv, evidenceChainID,
 		btcjson.LLMQType_5_60, quorumHash)
 	require.NoError(t, err)
 
@@ -229,7 +229,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	prunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx,
 		1,
 		defaultEvidenceTime.Add(1*time.Minute),
-		&val,
+		val,
 		evidenceChainID,
 		state.Validators.QuorumType,
 		state.Validators.QuorumHash,
@@ -239,7 +239,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	notPrunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx,
 		2,
 		defaultEvidenceTime.Add(2*time.Minute),
-		&val,
+		val,
 		evidenceChainID,
 		state.Validators.QuorumType,
 		state.Validators.QuorumHash,
@@ -253,7 +253,7 @@ func TestEvidencePoolUpdate(t *testing.T) {
 		ctx,
 		height,
 		defaultEvidenceTime.Add(21*time.Minute),
-		&val,
+		val,
 		evidenceChainID,
 		state.Validators.QuorumType,
 		state.Validators.QuorumHash,
@@ -305,7 +305,7 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 		ctx,
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
-		&val,
+		val,
 		evidenceChainID,
 		vals.QuorumType,
 		vals.QuorumHash,
@@ -327,7 +327,7 @@ func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 		ctx,
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
-		&val,
+		val,
 		evidenceChainID,
 		vals.QuorumType,
 		vals.QuorumHash,
@@ -355,7 +355,7 @@ func TestEventOnEvidenceValidated(t *testing.T) {
 		ctx,
 		height,
 		defaultEvidenceTime.Add(1*time.Minute),
-		&val,
+		val,
 		evidenceChainID,
 		vals.QuorumType,
 		vals.QuorumHash,
@@ -570,7 +570,7 @@ func makeCommit(height int64, quorumHash []byte, valProTxHash []byte) *types.Com
 	)
 }
 
-func defaultTestPool(ctx context.Context, t *testing.T, height int64) (*evidence.Pool, types.MockPV, *eventbus.EventBus) {
+func defaultTestPool(ctx context.Context, t *testing.T, height int64) (*evidence.Pool, *types.MockPV, *eventbus.EventBus) {
 	t.Helper()
 	quorumHash := crypto.RandQuorumHash()
 	val := types.NewMockPVForQuorum(quorumHash)
@@ -589,7 +589,7 @@ func defaultTestPool(ctx context.Context, t *testing.T, height int64) (*evidence
 
 	pool := evidence.NewPool(logger, evidenceDB, stateStore, blockStore, evidence.NopMetrics(), eventBus)
 	startPool(t, pool, stateStore)
-	return pool, *val, eventBus
+	return pool, val, eventBus
 }
 
 func createState(height int64, valSet *types.ValidatorSet) sm.State {

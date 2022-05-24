@@ -32,7 +32,6 @@ import (
 const (
 	mySeedID     uint16 = math.MaxUint16 - 1
 	chainID             = "execution_chain"
-	testPartSize uint32 = 65536
 	nTxsPerBlock        = 10
 )
 
@@ -671,7 +670,7 @@ func (app *testApp) Info(context.Context, *abci.RequestInfo) (*abci.ResponseInfo
 
 func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.ByzantineValidators = req.ByzantineValidators
-	var txs []*abci.ExecTxResult
+	txs := make([]*abci.ExecTxResult, 0, len(req.Txs))
 	for _, tx := range req.Txs {
 		txs = append(txs, &abci.ExecTxResult{Data: tx})
 	}

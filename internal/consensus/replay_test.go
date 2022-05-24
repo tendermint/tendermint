@@ -483,7 +483,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		t.Fatal(err)
 	}
 	ensureNewProposal(t, proposalCh, height, round)
-	rs = css[0].GetRoundState()
 	vssForSigning := vss[:nVals+1]
 	vssForSigning = sortVValidatorStubsByPower(ctx, t, vssForSigning)
 
@@ -555,7 +554,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		t.Fatal(err)
 	}
 	ensureNewProposal(t, proposalCh, height, round)
-	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+1; i++ {
 		if i == selfIndex {
 			continue
@@ -659,7 +657,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	selfIndex = valIndexFn(0)
 
 	// All validators should be in now
-	rs = css[0].GetRoundState()
 	for i := 0; i < nVals+3; i++ {
 		if i == selfIndex {
 			continue
@@ -707,7 +704,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	selfIndex = valIndexFn(0)
 	require.NotEqual(t, -1, selfIndex)
 	ensureNewProposal(t, proposalCh, height, round)
-	rs = css[0].GetRoundState()
 
 	// Still have 7 validators
 	for i := 0; i < nVals+3; i++ {
@@ -781,7 +777,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 
 	ensureNewProposal(t, proposalCh, height, round)
-	rs = css[0].GetRoundState()
 	// Reflect the changes to vss[nVals] at height 3 and resort newVss.
 	vssForSigning = vss[0 : nVals+3]
 	sortVValidatorStubsByPower(ctx, t, vssForSigning)

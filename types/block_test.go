@@ -23,7 +23,6 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/merkle"
-	"github.com/tendermint/tendermint/libs/bytes"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -496,7 +495,7 @@ func randCommit(ctx context.Context, t *testing.T, stateID StateID) *Commit {
 	return commit
 }
 
-func hexBytesFromString(t *testing.T, s string) bytes.HexBytes {
+func hexBytesFromString(t *testing.T, s string) tmbytes.HexBytes {
 	t.Helper()
 
 	b, err := hex.DecodeString(s)

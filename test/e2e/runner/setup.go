@@ -118,7 +118,10 @@ func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 			if err != nil {
 				return err
 			}
-			pv.Save()
+			err = pv.Save()
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -137,7 +140,10 @@ func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 			if err != nil {
 				return err
 			}
-			pv.Save()
+			err = pv.Save()
+			if err != nil {
+				return err
+			}
 		}
 		// Set up a dummy validator. Tenderdash requires a file PV even when not used, so we
 		// give it a dummy such that it will fail if it actually tries to use it.
@@ -145,7 +151,10 @@ func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		pv.Save()
+		err = pv.Save()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

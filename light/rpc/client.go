@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/libs"
 	"regexp"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/libs"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"

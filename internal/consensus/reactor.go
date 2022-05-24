@@ -374,23 +374,6 @@ func (r *Reactor) subscribeToBroadcastEvents(ctx context.Context, stateCh *p2p.C
 	}
 }
 
-func makeRoundStepMessage(rs *cstypes.RoundState) *tmcons.NewRoundStep {
-	return &tmcons.NewRoundStep{
-		Height:                rs.Height,
-		Round:                 rs.Round,
-		Step:                  uint32(rs.Step),
-		SecondsSinceStartTime: int64(time.Since(rs.StartTime).Seconds()),
-		LastCommitRound:       rs.LastCommit.GetRound(),
-	}
-}
-
-func (r *Reactor) sendNewRoundStepMessage(ctx context.Context, peerID types.NodeID, stateCh *p2p.Channel) error {
-	return stateCh.Send(ctx, p2p.Envelope{
-		To:      peerID,
-		Message: makeRoundStepMessage(r.getRoundState()),
-	})
-}
-
 func (r *Reactor) updateRoundStateRoutine(ctx context.Context) {
 	t := time.NewTicker(100 * time.Microsecond)
 	defer t.Stop()
