@@ -516,19 +516,12 @@ func (r *Router) routeChannel(
 			if shouldEvict {
 				r.peerManager.Errored(peerError.NodeID, peerError.Err)
 			} else {
-				r.peerManager.processPeerEvent(ctx, PeerUpdate{
+				r.peerManager.processPeerEvent(PeerUpdate{
 					NodeID: peerError.NodeID,
 					Status: PeerStatusBad,
 				})
 			}
-
-<<<<<<< HEAD
-			r.peerManager.Errored(peerError.NodeID, peerError.Err)
-
 		case <-r.stopCh:
-=======
-		case <-ctx.Done():
->>>>>>> d59a53be0 (p2p: reduce ability of SendError to disconnect peers (#8597))
 			return
 		}
 	}
