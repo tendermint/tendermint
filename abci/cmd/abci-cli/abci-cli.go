@@ -645,7 +645,7 @@ func makeKVStoreCmd(logger log.Logger) func(*cobra.Command, []string) error {
 func printResponse(cmd *cobra.Command, args []string, rsp response) {
 
 	if flagVerbose {
-		fmt.Println(">", cmd.Use, strings.Join(args, " "))
+		fmt.Println(">", strings.Join(append([]string{cmd.Use}, args...), " "))
 	}
 
 	// Always print the status code.
