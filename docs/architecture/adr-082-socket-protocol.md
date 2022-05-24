@@ -17,7 +17,7 @@ options available for ABCI applications:
 
 1. **In-process**: Applications written in Go can be linked directly into the
    same binary as the consensus node. Such applications use a "local" ABCI
-   client, which exposes application methods to the node as direct function
+   connection, which exposes application methods to the node as direct function
    calls.
 
 2. **Socket protocol**: Out-of-process applications may export the ABCI service
@@ -120,11 +120,12 @@ There is a set of related alternatives to consider:
 
 **One important consideration** when discussing these questions is that _any
 outcome which includes keeping the socket protocol will have eventual migration
-impacts for clients_ regardless. To fix the limitations of the socket protocol
-as it is currently designed will require making _breaking changes_ to the
-protocol.  So, while we may put off a migration cost for clients by retaining
-the socket protocol in the short term, we will eventually have to pay those
-costs to fix the problems in its current design.
+impacts for out-of-process applications_ regardless. To fix the limitations of
+the socket protocol as it is currently designed will require making _breaking
+changes_ to the protocol.  So, while we may put off a migration cost for
+out-of-process applications by retaining the socket protocol in the short term,
+we will eventually have to pay those costs to fix the problems in its current
+design.
 
 ## Detailed Design
 
