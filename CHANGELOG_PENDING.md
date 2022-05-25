@@ -66,7 +66,7 @@ Special thanks to external contributors on this release:
 - [consensus] \#7382 Update block validation to no longer require the block timestamp to be the median of the timestamps of the previous commit. (@anca)
 - [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still start consensus at the genesis time. (@anca)
 - [cli] \#8281 Add a tool to update old config files to the latest version. (@creachadair)
-- [consenus] \#xxxx move `RecheckTx` from the local node mempool config to a global `ConsensusParams` field in `BlockParams` (@cmwaters)
+- [consenus] \#8514 move `RecheckTx` from the local node mempool config to a global `ConsensusParams` field in `BlockParams` (@cmwaters)
 
 ### IMPROVEMENTS
 
