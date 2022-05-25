@@ -14,15 +14,24 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+func nNodes(testnet *e2e.Testnet, ips []string) int {
+	if testnet == nil {
+		return len(ips)
+	} else {
+		return len(testnet.Nodes)
+	}
+}
+
 // Load generates transactions against the network until the given context is
 // canceled.
-func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Testnet) error {
+func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Testnet, ips []string) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
 	// This also limits the number of TCP connections, since each worker has
 	// a connection to all nodes.
-	concurrency := len(testnet.Nodes) * 2
+
+	concurrency := nNodes(testnet, ips) * 2
 	if concurrency > 32 {
 		concurrency = 32
 	}
@@ -33,17 +42,21 @@ func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Tes
 	defer cancel()
 
 	// Spawn job generator and processors.
+	txSize := 0
+	if testnet != nil {
+		txSize = testnet.TxSize
+	}
 	logger.Info("starting transaction load",
 		"workers", concurrency,
-		"nodes", len(testnet.Nodes),
-		"tx", testnet.TxSize)
+		"nodes", nNodes(testnet, ips),
+		"tx", txSize)
 
 	started := time.Now()
 
-	go loadGenerate(ctx, r, chTx, testnet.TxSize, len(testnet.Nodes))
+	go loadGenerate(ctx, r, chTx, txSize, nNodes(testnet, ips))
 
 	for w := 0; w < concurrency; w++ {
-		go loadProcess(ctx, testnet, chTx, chSuccess)
+		go loadProcess(ctx, testnet, ips, chTx, chSuccess)
 	}
 
 	// Montior transaction to ensure load propagates to the network
@@ -132,10 +145,7 @@ func loadGenerateWaitTime(r *rand.Rand, size int) time.Duration {
 	return time.Duration(baseJitter + sizeJitter)
 }
 
-// loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- int) {
-	// Each worker gets its own client to each usable node, which
-	// allows for some concurrency while still bounding it.
+func prepareClients(testnet *e2e.Testnet) []*rpchttp.HTTP {
 	clients := make([]*rpchttp.HTTP, 0, len(testnet.Nodes))
 
 	for idx := range testnet.Nodes {
@@ -153,6 +163,35 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 		}
 
 		clients = append(clients, client)
+	}
+	return clients
+}
+
+func prepareClientsIp(ips []string) []*rpchttp.HTTP {
+	clients := make([]*rpchttp.HTTP, 0, len(ips))
+
+	for _, ip := range ips {
+		client, err := e2e.NewClient(ip, 6000)
+		if err != nil {
+			continue
+		}
+
+		clients = append(clients, client)
+	}
+	return clients
+}
+
+// loadProcess processes transactions
+func loadProcess(ctx context.Context, testnet *e2e.Testnet, ips []string, chTx <-chan types.Tx, chSuccess chan<- int) {
+	// Each worker gets its own client to each usable node, which
+	// allows for some concurrency while still bounding it.
+
+	var clients []*rpchttp.HTTP
+	if testnet == nil {
+		fmt.Printf("[loadProcess] %v\n", ips)
+		clients = prepareClientsIp(ips)
+	} else {
+		clients = prepareClients(testnet)
 	}
 
 	if len(clients) == 0 {

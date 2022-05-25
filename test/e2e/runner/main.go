@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ func main() {
 type CLI struct {
 	root     *cobra.Command
 	testnet  *e2e.Testnet
+	ips      []string
 	preserve bool
 }
 
@@ -45,16 +47,23 @@ func NewCLI(logger log.Logger) *CLI {
 		SilenceUsage:  true,
 		SilenceErrors: true, // we'll output them ourselves in Run()
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			file, err := cmd.Flags().GetString("file")
+			ips, err := cmd.Flags().GetString("ip-list")
 			if err != nil {
 				return err
 			}
-			testnet, err := e2e.LoadTestnet(file)
-			if err != nil {
-				return err
+			if len(ips) == 0 {
+				file, err := cmd.Flags().GetString("file")
+				if err != nil {
+					return err
+				}
+				testnet, err := e2e.LoadTestnet(file)
+				if err != nil {
+					return err
+				}
+				cli.testnet = testnet
+				return nil
 			}
-
-			cli.testnet = testnet
+			cli.ips = strings.Split(ips, ",")
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -84,7 +93,7 @@ func NewCLI(logger log.Logger) *CLI {
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				chLoadResult <- Load(lctx, logger, r, cli.testnet)
+				chLoadResult <- Load(lctx, logger, r, cli.testnet, nil)
 			}()
 			startAt := time.Now()
 			if err = Start(ctx, logger, cli.testnet); err != nil {
@@ -142,7 +151,7 @@ func NewCLI(logger log.Logger) *CLI {
 	}
 
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
-	_ = cli.root.MarkPersistentFlagRequired("file")
+	cli.root.PersistentFlags().StringP("ip-list", "i", "", "Comma-separated list of ip addresses for load generation")
 
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
@@ -227,6 +236,22 @@ func NewCLI(logger log.Logger) *CLI {
 				logger,
 				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
 				cli.testnet,
+				cli.ips,
+			)
+		},
+	})
+
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "load-ip [comma-separated list of IPs]",
+		Args:  cobra.MaximumNArgs(1),
+		Short: "Generates transaction load to a list of IPs until the command is canceled",
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			return Load(
+				cmd.Context(),
+				logger,
+				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
+				nil,
+				cli.ips,
 			)
 		},
 	})
@@ -328,7 +353,7 @@ Does not run any perbutations.
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				chLoadResult <- Load(lctx, logger, r, cli.testnet)
+				chLoadResult <- Load(lctx, logger, r, cli.testnet, nil)
 			}()
 
 			if err := Start(ctx, logger, cli.testnet); err != nil {
