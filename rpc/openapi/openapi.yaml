@@ -1507,7 +1507,7 @@ components:
       description: Event filter query
       type: object
       properties:
-        filter:
+        query:
           type: string
           example: "tm.event = 'Tx'"
     EventsResponse:
