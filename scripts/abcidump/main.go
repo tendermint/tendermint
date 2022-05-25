@@ -1,25 +1,25 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/scripts/abcidump/cmd"
 )
 
-var logger log.Logger
-
 func main() {
-	logger = log.NewTMLogger(os.Stderr)
 	// logger = log.NewDefaultLogger(log.LogFormatText, log.LogLevelInfo, false)
 
-	rootCmd := MakeRootCmd()
+	rootCmd := cmd.MakeRootCmd()
 
-	parseCmd := ParseCmd{}
+	parseCmd := cmd.ParseCmd{}
+	captureCmd := cmd.CaptureCmd{}
 	rootCmd.AddCommand(
 		parseCmd.Command(),
+		captureCmd.Command(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
-		logger.Error(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 	}
 }

@@ -129,6 +129,19 @@ install_abci:
 	@go install -mod=readonly ./abci/cmd/...
 .PHONY: install_abci
 
+
+##################################################################################
+###                              Build ABCI Dump                               ###
+##################################################################################
+
+build_abcidump:
+	@go build -o build/abcidump ./scripts/abcidump
+.PHONY: build_abcidump
+
+install_abcidump:
+	@go install ./scripts/abcidump
+.PHONY: install_abcidump
+
 ###############################################################################
 ###                              Distribution                               ###
 ###############################################################################
