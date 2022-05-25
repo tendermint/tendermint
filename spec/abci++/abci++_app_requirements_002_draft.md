@@ -436,9 +436,6 @@ might have a different *CheckTxState* values when they receive it and check thei
 via `CheckTx`.
 Tendermint ignores this value in `ResponseCheckTx`.
 
-`Events` include any events for the execution, though since the transaction has not
-been committed yet, they are effectively ignored by Tendermint.
-
 From v0.35.x on, there is a `Priority` field in `ResponseCheckTx` that can be
 used to explicitly prioritize transactions in the mempool for inclusion in a block
 proposal.

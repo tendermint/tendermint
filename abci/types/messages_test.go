@@ -21,14 +21,6 @@ func TestMarshalJSON(t *testing.T) {
 		Code:      1,
 		Data:      []byte("hello"),
 		GasWanted: 43,
-		Events: []Event{
-			{
-				Type: "testEvent",
-				Attributes: []EventAttribute{
-					{Key: "pho", Value: "bo"},
-				},
-			},
-		},
 	}
 	b, err = json.Marshal(&r1)
 	assert.NoError(t, err)
@@ -86,16 +78,7 @@ func TestWriteReadMessage2(t *testing.T) {
 	cases := []proto.Message{
 		&ResponseCheckTx{
 			Data:      []byte(phrase),
-			Log:       phrase,
 			GasWanted: 10,
-			Events: []Event{
-				{
-					Type: "testEvent",
-					Attributes: []EventAttribute{
-						{Key: "abc", Value: "def"},
-					},
-				},
-			},
 		},
 		// TODO: add the rest
 	}
