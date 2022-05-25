@@ -21,15 +21,16 @@ func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
 			defer cancel()
 
 			contexts := []string{
-				// this is ordered to put the
-				// (presumably) biggest/most important
-				// subsets first.
+				// this is ordered to put
+				// the more ephemeral tables first to
+				// forclose the possiblity of the
+				// ephemeral data overwriting later data
+				"tx_index",
+				"peerstore",
+				"light",
 				"blockstore",
 				"state",
-				"peerstore",
-				"tx_index",
 				"evidence",
-				"light",
 			}
 
 			for idx, dbctx := range contexts {
