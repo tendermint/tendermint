@@ -463,7 +463,6 @@ func (n Node) AddressRPC() string {
 }
 
 func NewClient(ip string, port uint32) (*rpchttp.HTTP, error) {
-	fmt.Printf("[NewClient] http://%v:%v\n", ip, port)
 	return rpchttp.New(fmt.Sprintf("http://%v:%v", ip, port))
 }
 

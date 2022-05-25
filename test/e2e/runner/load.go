@@ -188,7 +188,6 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, ips []string, chTx <
 
 	var clients []*rpchttp.HTTP
 	if testnet == nil {
-		fmt.Printf("[loadProcess] %v\n", ips)
 		clients = prepareClientsIp(ips)
 	} else {
 		clients = prepareClients(testnet)
