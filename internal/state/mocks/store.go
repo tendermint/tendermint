@@ -7,8 +7,6 @@ import (
 	state "github.com/tendermint/tendermint/internal/state"
 	tendermintstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -189,8 +187,13 @@ func (_m *Store) SaveValidatorSets(_a0 int64, _a1 int64, _a2 *types.ValidatorSet
 	return r0
 }
 
-// NewStore creates a new instance of Store. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewStore(t testing.TB) *Store {
+type NewStoreT interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewStore creates a new instance of Store. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewStore(t NewStoreT) *Store {
 	mock := &Store{}
 	mock.Mock.Test(t)
 
