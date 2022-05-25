@@ -7,13 +7,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/config"
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/scripts/keymigrate"
 	"github.com/tendermint/tendermint/scripts/scmigrate"
 )
 
-func MakeKeyMigrateCommand(conf *cfg.Config, logger log.Logger) *cobra.Command {
+func MakeKeyMigrateCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "key-migrate",
 		Short: "Run Database key migration",
@@ -49,7 +48,7 @@ func RunDatabaseMigration(ctx context.Context, logger log.Logger, conf *config.C
 			"total", len(contexts),
 		)
 
-		db, err := cfg.DefaultDBProvider(&cfg.DBContext{
+		db, err := config.DefaultDBProvider(&config.DBContext{
 			ID:     dbctx,
 			Config: conf,
 		})
