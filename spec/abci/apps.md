@@ -13,7 +13,7 @@ Here we cover the following components of ABCI applications:
   and the differences between `CheckTx` and `DeliverTx`.
 - [Transaction Results](#transaction-results) - rules around transaction
   results and validity
-- [Validator Set Updates](#validator-updates) - how validator sets are
+- [Validator Set Updates](#updating-the-validator-set) - how validator sets are
   changed during `InitChain` and `EndBlock`
 - [Query](#query) - standards for using the `Query` method and proofs about the
   application state
