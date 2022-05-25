@@ -46,6 +46,7 @@ type Wrapper interface {
 type PeerError struct {
 	NodeID types.NodeID
 	Err    error
+	Fatal  bool
 }
 
 func (pe PeerError) Error() string { return fmt.Sprintf("peer=%q: %s", pe.NodeID, pe.Err.Error()) }
