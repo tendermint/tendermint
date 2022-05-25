@@ -11,10 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-
-	"github.com/dashevo/dashd-go/btcjson"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
@@ -71,6 +70,7 @@ func main() {
 	}
 
 	if err := run(ctx, configFile); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, "ERROR:", err)
 		os.Exit(1)
 	}
 }
@@ -84,63 +84,19 @@ func run(ctx context.Context, configFile string) error {
 
 	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
 	if err != nil {
-		// have print here because we can't log (yet), use the logger
-		// everywhere else.
-		fmt.Fprintln(os.Stderr, "ERROR:", err)
 		return err
 	}
 
 	// Start remote signer (must start before node if running builtin).
 	if cfg.PrivValServer != "" {
-		if cfg.PrivValServerType == "dashcore" {
-			fmt.Printf("Starting mock core server at address %v\n", cfg.PrivValServer)
-			// Start mock core-server
-			coreSrv, err := setupCoreServer(cfg)
-			if err != nil {
-				return fmt.Errorf("unable to setup mock core server: %w", err)
-			}
-			go func() {
-				coreSrv.Start()
-			}()
-
-			dashCoreRPCClient, err = dashcore.NewRPCClient(
-				cfg.PrivValServer,
-				tmcfg.PrivValidator.CoreRPCUsername,
-				tmcfg.PrivValidator.CoreRPCPassword,
-				logger.With("module", dashcore.ModuleName),
-			)
-			if err != nil {
-				return fmt.Errorf("connection to Dash Core RPC failed: %w", err)
-			}
-		} else {
-			if err = startSigner(ctx, logger, cfg); err != nil {
-				logger.Error("starting signer",
-					"server", cfg.PrivValServer,
-					"err", err)
-				return err
-			}
-			if cfg.Protocol == "builtin" {
-				time.Sleep(1 * time.Second)
-			}
+		err := startRemoteSigner(ctx, cfg, logger)
+		if err != nil {
+			return err
 		}
 	}
 
 	// Start app server.
-	switch cfg.Protocol {
-	case "socket", "grpc":
-		err = startApp(ctx, logger, cfg)
-	case "builtin":
-		switch cfg.Mode {
-		case string(e2e.ModeLight):
-			err = startLightNode(ctx, logger, cfg)
-		case string(e2e.ModeSeed):
-			err = startSeedNode(ctx)
-		default:
-			err = startNode(ctx, cfg)
-		}
-	default:
-		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
-	}
+	err = startAppServer(ctx, cfg, logger)
 	if err != nil {
 		logger.Error("starting node",
 			"protocol", cfg.Protocol,
@@ -155,17 +111,74 @@ func run(ctx context.Context, configFile string) error {
 	}
 }
 
+func startAppServer(ctx context.Context, cfg *Config, logger log.Logger) error {
+	switch cfg.Protocol {
+	case "socket", "grpc":
+		return startApp(ctx, logger, cfg)
+	case "builtin":
+		switch cfg.Mode {
+		case string(e2e.ModeLight):
+			return startLightNode(ctx, logger, cfg)
+		case string(e2e.ModeSeed):
+			return startSeedNode(ctx)
+		default:
+			return startNode(ctx, cfg)
+		}
+	}
+	return fmt.Errorf("invalid protocol %q", cfg.Protocol)
+}
+
+func startMockCoreSrv(cfg *Config, logger log.Logger) error {
+	fmt.Printf("Starting mock core server at address %v\n", cfg.PrivValServer)
+	// Start mock core-server
+	coreSrv, err := setupCoreServer(cfg)
+	if err != nil {
+		return fmt.Errorf("unable to setup mock core server: %w", err)
+	}
+	go func() {
+		coreSrv.Start()
+	}()
+
+	dashCoreRPCClient, err = dashcore.NewRPCClient(
+		cfg.PrivValServer,
+		tmcfg.PrivValidator.CoreRPCUsername,
+		tmcfg.PrivValidator.CoreRPCPassword,
+		logger.With("module", dashcore.ModuleName),
+	)
+	if err != nil {
+		return fmt.Errorf("connection to Dash Core RPC failed: %w", err)
+	}
+	return nil
+}
+
+func startRemoteSigner(ctx context.Context, cfg *Config, logger log.Logger) error {
+	if cfg.PrivValServerType == "dashcore" {
+		return startMockCoreSrv(cfg, logger)
+	}
+	err := startSigner(ctx, logger, cfg)
+	if err != nil {
+		logger.Error("starting signer",
+			"server", cfg.PrivValServer,
+			"err", err)
+		return err
+	}
+	if cfg.Protocol == "builtin" {
+		time.Sleep(1 * time.Second)
+	}
+	return nil
+}
+
 // startApp starts the application server, listening for connections from Tendermint.
 func startApp(ctx context.Context, logger log.Logger, cfg *Config) error {
 	app, err := app.NewApplication(cfg.App())
 	if err != nil {
 		return err
 	}
-	server, err := server.NewServer(logger, cfg.Listen, cfg.Protocol, app)
+	srv, err := server.NewServer(logger, cfg.Listen, cfg.Protocol, app)
 	if err != nil {
 		return err
 	}
-	err = server.Start(ctx)
+	err = srv.Start(ctx)
 	if err != nil {
 		return err
 	}
