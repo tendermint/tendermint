@@ -166,7 +166,7 @@ message RequestFinalizeBlock {
   repeated bytes       txs                  = 1;
   CommitInfo           decided_last_commit  = 2 [(gogoproto.nullable) = false];
   repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
-  // hash is the merkle root hash of the fields of the decided block.
+  // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
@@ -251,15 +251,17 @@ message ResponseBeginBlock {
 message ResponseCheckTx {
   uint32         code       = 1;
   bytes          data       = 2;
-  int64          gas_wanted = 3;
-  string         codespace  = 4;
-  string         sender     = 5;
-  int64          priority   = 6;
+  int64          gas_wanted = 5;
+  string         codespace  = 8;
+  string         sender     = 9;
+  int64          priority   = 10;
 
   // mempool_error is set by Tendermint.
 
   // ABCI applications creating a ResponseCheckTX should not set mempool_error.
   string mempool_error = 11;
+
+  reserved 3, 4, 6, 7; // see https://github.com/tendermint/tendermint/issues/8543
 }
 
 message ResponseDeliverTx {
@@ -364,6 +366,8 @@ message ResponseFinalizeBlock {
   repeated ExecTxResult            tx_results              = 2;
   repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 4;
+  bytes                            app_hash                = 5;
+  int64                            retain_height           = 6;
 }
 
 //----------------------------------------
