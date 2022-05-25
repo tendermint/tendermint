@@ -2650,7 +2650,10 @@ func (m *PartSetHeader) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -2786,7 +2789,10 @@ func (m *Part) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -2903,7 +2909,10 @@ func (m *BlockID) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -3409,7 +3418,10 @@ func (m *Header) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -3491,7 +3503,10 @@ func (m *Data) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -3819,7 +3834,10 @@ func (m *Vote) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -3974,7 +3992,10 @@ func (m *Commit) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -4144,7 +4165,10 @@ func (m *CommitSig) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -4299,7 +4323,10 @@ func (m *ExtendedCommit) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -4537,7 +4564,10 @@ func (m *ExtendedCommitSig) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -4763,7 +4793,10 @@ func (m *Proposal) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -4885,7 +4918,10 @@ func (m *SignedHeader) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -5007,7 +5043,10 @@ func (m *LightBlock) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -5161,7 +5200,10 @@ func (m *BlockMeta) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {
@@ -5315,7 +5357,10 @@ func (m *TxProof) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthTypes
 			}
 			if (iNdEx + skippy) > l {

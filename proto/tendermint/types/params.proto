@@ -28,9 +28,6 @@ message BlockParams {
   // Max gas per block.
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-  // Indicates if CheckTx should be called on all the transactions
-  // remaining in the mempool after a block is executed.
-  bool recheck_tx = 3;
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
@@ -144,4 +141,8 @@ message ABCIParams {
   // passed to the application for validation in VerifyVoteExtension and given
   // to the application to use when proposing a block during PrepareProposal.
   int64 vote_extensions_enable_height = 1;
+
+  // Indicates if CheckTx should be called on all the transactions
+  // remaining in the mempool after a block is executed.
+  bool recheck_tx = 2;
 }

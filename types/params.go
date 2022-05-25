@@ -57,9 +57,8 @@ type HashedParams struct {
 // BlockParams define limits on the block size and gas plus minimum time
 // between blocks.
 type BlockParams struct {
-	MaxBytes  int64 `json:"max_bytes,string"`
-	MaxGas    int64 `json:"max_gas,string"`
-	RecheckTx bool  `json:"recheck_tx"`
+	MaxBytes int64 `json:"max_bytes,string"`
+	MaxGas   int64 `json:"max_gas,string"`
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
@@ -102,6 +101,7 @@ type TimeoutParams struct {
 // Interface.
 type ABCIParams struct {
 	VoteExtensionsEnableHeight int64 `json:"vote_extensions_enable_height"`
+	RecheckTx                  bool  `json:"recheck_tx"`
 }
 
 // VoteExtensionsEnabled returns true if vote extensions are enabled at height h
@@ -129,9 +129,8 @@ func DefaultConsensusParams() *ConsensusParams {
 // DefaultBlockParams returns a default BlockParams.
 func DefaultBlockParams() BlockParams {
 	return BlockParams{
-		MaxBytes:  22020096, // 21MB
-		MaxGas:    -1,
-		RecheckTx: true,
+		MaxBytes: 22020096, // 21MB
+		MaxGas:   -1,
 	}
 }
 
@@ -199,6 +198,8 @@ func DefaultABCIParams() ABCIParams {
 	return ABCIParams{
 		// When set to 0, vote extensions are not required.
 		VoteExtensionsEnableHeight: 0,
+		// When true, txs in the mempool will run CheckTx after every height
+		RecheckTx: true,
 	}
 }
 
@@ -380,6 +381,7 @@ func (params ConsensusParams) ValidateUpdate(updated *tmproto.ConsensusParams, h
 // Only the Block.MaxBytes and Block.MaxGas are included in the hash.
 // This allows the ConsensusParams to evolve more without breaking the block
 // protocol. No need for a Merkle tree here, just a small struct to hash.
+// TODO: We should hash the other parameters as well
 func (params ConsensusParams) HashConsensusParams() []byte {
 	hp := tmproto.HashedParams{
 		BlockMaxBytes: params.Block.MaxBytes,
@@ -419,7 +421,6 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	if params2.Block != nil {
 		res.Block.MaxBytes = params2.Block.MaxBytes
 		res.Block.MaxGas = params2.Block.MaxGas
-		res.Block.RecheckTx = params2.Block.RecheckTx
 	}
 	if params2.Evidence != nil {
 		res.Evidence.MaxAgeNumBlocks = params2.Evidence.MaxAgeNumBlocks
@@ -462,6 +463,7 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	}
 	if params2.Abci != nil {
 		res.ABCI.VoteExtensionsEnableHeight = params2.Abci.GetVoteExtensionsEnableHeight()
+		res.ABCI.RecheckTx = params2.Abci.GetRecheckTx()
 	}
 	return res
 }
@@ -469,9 +471,8 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 	return tmproto.ConsensusParams{
 		Block: &tmproto.BlockParams{
-			MaxBytes:  params.Block.MaxBytes,
-			MaxGas:    params.Block.MaxGas,
-			RecheckTx: params.Block.RecheckTx,
+			MaxBytes: params.Block.MaxBytes,
+			MaxGas:   params.Block.MaxGas,
 		},
 		Evidence: &tmproto.EvidenceParams{
 			MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
@@ -498,6 +499,7 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 		},
 		Abci: &tmproto.ABCIParams{
 			VoteExtensionsEnableHeight: params.ABCI.VoteExtensionsEnableHeight,
+			RecheckTx:                  params.ABCI.RecheckTx,
 		},
 	}
 }
@@ -505,9 +507,8 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams {
 	c := ConsensusParams{
 		Block: BlockParams{
-			MaxBytes:  pbParams.Block.MaxBytes,
-			MaxGas:    pbParams.Block.MaxGas,
-			RecheckTx: pbParams.Block.RecheckTx,
+			MaxBytes: pbParams.Block.MaxBytes,
+			MaxGas:   pbParams.Block.MaxGas,
 		},
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: pbParams.Evidence.MaxAgeNumBlocks,
@@ -549,6 +550,7 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 	}
 	if pbParams.Abci != nil {
 		c.ABCI.VoteExtensionsEnableHeight = pbParams.Abci.GetVoteExtensionsEnableHeight()
+		c.ABCI.RecheckTx = pbParams.Abci.GetRecheckTx()
 	}
 	return c
 }

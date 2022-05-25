@@ -216,9 +216,8 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 	}
 	return ConsensusParams{
 		Block: BlockParams{
-			MaxBytes:  args.blockBytes,
-			MaxGas:    args.blockGas,
-			RecheckTx: args.recheck,
+			MaxBytes: args.blockBytes,
+			MaxGas:   args.blockGas,
 		},
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: args.evidenceAge,
@@ -242,6 +241,7 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 		},
 		ABCI: ABCIParams{
 			VoteExtensionsEnableHeight: args.abciExtensionHeight,
+			RecheckTx:                  args.recheck,
 		},
 	}
 }
