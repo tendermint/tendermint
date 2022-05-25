@@ -123,6 +123,7 @@ The full solution is detailed and formalized in the [Protocol Specification][alg
 - [System Model and Properties][sysmodel]
 - [Protocol Specification][algorithm]
 - [TLA+ Specification][proposertla]
+- Collection of PBTS-related issues on [Github][project]
 
 [main_v1]: ./v1/pbts_001_draft.md
 
@@ -136,3 +137,5 @@ The full solution is detailed and formalized in the [Protocol Specification][alg
 
 [bfttime]: ./bft-time.md
 [arXiv]: https://arxiv.org/pdf/1807.04938.pdf
+
+[project]: https://github.com/orgs/tendermint/projects/10
