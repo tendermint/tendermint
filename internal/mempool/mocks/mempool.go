@@ -11,8 +11,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -173,8 +171,13 @@ func (_m *Mempool) Update(ctx context.Context, blockHeight int64, blockTxs types
 	return r0
 }
 
-// NewMempool creates a new instance of Mempool. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewMempool(t testing.TB) *Mempool {
+type NewMempoolT interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewMempool creates a new instance of Mempool. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewMempool(t NewMempoolT) *Mempool {
 	mock := &Mempool{}
 	mock.Mock.Test(t)
 
