@@ -54,6 +54,7 @@ type Envelope struct {
 type PeerError struct {
 	NodeID types.NodeID
 	Err    error
+	Fatal  bool
 }
 
 // Channel is a bidirectional channel to exchange Protobuf messages with peers,
@@ -507,10 +508,20 @@ func (r *Router) routeChannel(
 				return
 			}
 
-			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
-
-			r.peerManager.Errored(peerError.NodeID, peerError.Err)
-
+			shouldEvict := peerError.Fatal || r.peerManager.HasMaxPeerCapacity()
+			r.logger.Error("peer error",
+				"peer", peerError.NodeID,
+				"err", peerError.Err,
+				"evicting", shouldEvict,
+			)
+			if shouldEvict {
+				r.peerManager.Errored(peerError.NodeID, peerError.Err)
+			} else {
+				r.peerManager.processPeerEvent(PeerUpdate{
+					NodeID: peerError.NodeID,
+					Status: PeerStatusBad,
+				})
+			}
 		case <-r.stopCh:
 			return
 		}
