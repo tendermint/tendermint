@@ -70,6 +70,7 @@ var _ queue = (*pqScheduler)(nil)
 type pqScheduler struct {
 	logger       log.Logger
 	metrics      *Metrics
+	lc           *metricsLabelCache
 	size         uint
 	sizes        map[uint]uint // cumulative priority sizes
 	pq           *priorityQueue
@@ -88,6 +89,7 @@ type pqScheduler struct {
 func newPQScheduler(
 	logger log.Logger,
 	m *Metrics,
+	lc *metricsLabelCache,
 	chDescs []*ChannelDescriptor,
 	enqueueBuf, dequeueBuf, capacity uint,
 ) *pqScheduler {
@@ -117,6 +119,7 @@ func newPQScheduler(
 	return &pqScheduler{
 		logger:       logger.With("router", "scheduler"),
 		metrics:      m,
+		lc:           lc,
 		chDescs:      chDescsCopy,
 		capacity:     capacity,
 		chPriorities: chPriorities,
@@ -251,7 +254,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 				s.metrics.PeerSendBytesTotal.With(
 					"chID", chIDStr,
 					"peer_id", string(pqEnv.envelope.To),
-					"message_type", s.metrics.ValueToMetricLabel(pqEnv.envelope.Message)).Add(float64(pqEnv.size))
+					"message_type", s.lc.ValueToMetricLabel(pqEnv.envelope.Message)).Add(float64(pqEnv.size))
 				s.metrics.PeerPendingSendBytes.With(
 					"peer_id", string(pqEnv.envelope.To)).Add(float64(-pqEnv.size))
 				select {

@@ -123,7 +123,7 @@ The full solution is detailed and formalized in the [Protocol Specification][alg
 - [System Model and Properties][sysmodel]
 - [Protocol Specification][algorithm]
 - [TLA+ Specification][proposertla]
-- Collection of PBTS-related issues on [Github][project]
+- [Project on Github][project] (collection of PBTS-related issues)
 
 [main_v1]: ./v1/pbts_001_draft.md
 

@@ -107,6 +107,22 @@ func (_m *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return r0
 }
 
+// LoadBlockExtendedCommit provides a mock function with given fields: height
+func (_m *BlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
+	ret := _m.Called(height)
+
+	var r0 *types.ExtendedCommit
+	if rf, ok := ret.Get(0).(func(int64) *types.ExtendedCommit); ok {
+		r0 = rf(height)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ExtendedCommit)
+		}
+	}
+
+	return r0
+}
+
 // LoadBlockMeta provides a mock function with given fields: height
 func (_m *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	ret := _m.Called(height)
@@ -194,6 +210,11 @@ func (_m *BlockStore) PruneBlocks(height int64) (uint64, error) {
 
 // SaveBlock provides a mock function with given fields: block, blockParts, seenCommit
 func (_m *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+	_m.Called(block, blockParts, seenCommit)
+}
+
+// SaveBlockWithExtendedCommit provides a mock function with given fields: block, blockParts, seenCommit
+func (_m *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
 	_m.Called(block, blockParts, seenCommit)
 }
 

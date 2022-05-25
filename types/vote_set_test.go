@@ -450,7 +450,7 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 	}
 
 	// MakeCommit should fail.
-	assert.Panics(t, func() { voteSet.MakeCommit() }, "Doesn't have +2/3 majority")
+	assert.Panics(t, func() { voteSet.MakeExtendedCommit() }, "Doesn't have +2/3 majority")
 
 	// 7th voted for some other block.
 	{
@@ -487,14 +487,100 @@ func TestVoteSet_MakeCommit(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	commit := voteSet.MakeCommit()
+	extCommit := voteSet.MakeExtendedCommit()
 
 	// Commit should have 10 elements
-	assert.Equal(t, 10, len(commit.Signatures))
+	assert.Equal(t, 10, len(extCommit.ExtendedSignatures))
 
 	// Ensure that Commit is good.
-	if err := commit.ValidateBasic(); err != nil {
+	if err := extCommit.ValidateBasic(); err != nil {
 		t.Errorf("error in Commit.ValidateBasic(): %v", err)
+	}
+}
+
+// TestVoteSet_VoteExtensionsEnabled tests that the vote set correctly validates
+// vote extensions data when either required or not required.
+func TestVoteSet_VoteExtensionsEnabled(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		requireExtensions bool
+		addExtension      bool
+		exepectError      bool
+	}{
+		{
+			name:              "no extension but expected",
+			requireExtensions: true,
+			addExtension:      false,
+			exepectError:      true,
+		},
+		{
+			name:              "invalid extensions but not expected",
+			requireExtensions: true,
+			addExtension:      false,
+			exepectError:      true,
+		},
+		{
+			name:              "no extension and not expected",
+			requireExtensions: false,
+			addExtension:      false,
+			exepectError:      false,
+		},
+		{
+			name:              "extension and expected",
+			requireExtensions: true,
+			addExtension:      true,
+			exepectError:      false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			height, round := int64(1), int32(0)
+			valSet, privValidators := randValidatorPrivValSet(ctx, t, 5, 10)
+			var voteSet *VoteSet
+			if tc.requireExtensions {
+				voteSet = NewExtendedVoteSet("test_chain_id", height, round, tmproto.PrecommitType, valSet)
+			} else {
+				voteSet = NewVoteSet("test_chain_id", height, round, tmproto.PrecommitType, valSet)
+			}
+
+			val0 := privValidators[0]
+
+			val0p, err := val0.GetPubKey(ctx)
+			require.NoError(t, err)
+			val0Addr := val0p.Address()
+			blockHash := crypto.CRandBytes(32)
+			blockPartsTotal := uint32(123)
+			blockPartSetHeader := PartSetHeader{blockPartsTotal, crypto.CRandBytes(32)}
+
+			vote := &Vote{
+				ValidatorAddress: val0Addr,
+				ValidatorIndex:   0,
+				Height:           height,
+				Round:            round,
+				Type:             tmproto.PrecommitType,
+				Timestamp:        tmtime.Now(),
+				BlockID:          BlockID{blockHash, blockPartSetHeader},
+			}
+			v := vote.ToProto()
+			err = val0.SignVote(ctx, voteSet.ChainID(), v)
+			require.NoError(t, err)
+			vote.Signature = v.Signature
+
+			if tc.addExtension {
+				vote.ExtensionSignature = v.ExtensionSignature
+			}
+
+			added, err := voteSet.AddVote(vote)
+			if tc.exepectError {
+				require.Error(t, err)
+				require.False(t, added)
+			} else {
+				require.NoError(t, err)
+				require.True(t, added)
+			}
+		})
 	}
 }
 
@@ -510,7 +596,7 @@ func randVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := randValidatorPrivValSet(ctx, t, numValidators, votingPower)
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewExtendedVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 func deterministicVoteSet(
@@ -523,7 +609,7 @@ func deterministicVoteSet(
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	t.Helper()
 	valSet, privValidators := deterministicValidatorSet(ctx, t)
-	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	return NewExtendedVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 func randValidatorPrivValSet(ctx context.Context, t testing.TB, numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {

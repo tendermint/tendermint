@@ -86,9 +86,15 @@ func InjectEvidence(ctx context.Context, logger log.Logger, r *rand.Rand, testne
 				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		} else {
-			ev, err = generateDuplicateVoteEvidence(ctx,
+			var dve *types.DuplicateVoteEvidence
+			dve, err = generateDuplicateVoteEvidence(ctx,
 				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
+			if dve.VoteA.Height < testnet.VoteExtensionsEnableHeight {
+				dve.VoteA.StripExtension()
+				dve.VoteB.StripExtension()
+			}
+			ev = dve
 		}
 		if err != nil {
 			return err
@@ -165,9 +171,9 @@ func generateLightClientAttackEvidence(
 
 	// create a commit for the forged header
 	blockID := makeBlockID(header.Hash(), 1000, []byte("partshash"))
-	voteSet := types.NewVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
+	voteSet := types.NewExtendedVoteSet(chainID, forgedHeight, 0, tmproto.SignedMsgType(2), conflictingVals)
 
-	commit, err := factory.MakeCommit(ctx, blockID, forgedHeight, 0, voteSet, pv, forgedTime)
+	ec, err := factory.MakeExtendedCommit(ctx, blockID, forgedHeight, 0, voteSet, pv, forgedTime)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +182,7 @@ func generateLightClientAttackEvidence(
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
-				Commit: commit,
+				Commit: ec.ToCommit(),
 			},
 			ValidatorSet: conflictingVals,
 		},

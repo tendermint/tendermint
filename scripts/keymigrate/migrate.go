@@ -86,27 +86,30 @@ const (
 var prefixes = []struct {
 	prefix []byte
 	ktype  keyType
+	check  func(keyID) bool
 }{
-	{[]byte("consensusParamsKey:"), consensusParamsKey},
-	{[]byte("abciResponsesKey:"), abciResponsesKey},
-	{[]byte("validatorsKey:"), validatorsKey},
-	{[]byte("stateKey"), stateStoreKey},
-	{[]byte("H:"), blockMetaKey},
-	{[]byte("P:"), blockPartKey},
-	{[]byte("C:"), commitKey},
-	{[]byte("SC:"), seenCommitKey},
-	{[]byte("BH:"), blockHashKey},
-	{[]byte("size"), lightSizeKey},
-	{[]byte("lb/"), lightBlockKey},
-	{[]byte("\x00"), evidenceCommittedKey},
-	{[]byte("\x01"), evidencePendingKey},
+	{[]byte("consensusParamsKey:"), consensusParamsKey, nil},
+	{[]byte("abciResponsesKey:"), abciResponsesKey, nil},
+	{[]byte("validatorsKey:"), validatorsKey, nil},
+	{[]byte("stateKey"), stateStoreKey, nil},
+	{[]byte("H:"), blockMetaKey, nil},
+	{[]byte("P:"), blockPartKey, nil},
+	{[]byte("C:"), commitKey, nil},
+	{[]byte("SC:"), seenCommitKey, nil},
+	{[]byte("BH:"), blockHashKey, nil},
+	{[]byte("size"), lightSizeKey, nil},
+	{[]byte("lb/"), lightBlockKey, nil},
+	{[]byte("\x00"), evidenceCommittedKey, checkEvidenceKey},
+	{[]byte("\x01"), evidencePendingKey, checkEvidenceKey},
 }
 
 // checkKeyType classifies a candidate key based on its structure.
 func checkKeyType(key keyID) keyType {
 	for _, p := range prefixes {
 		if bytes.HasPrefix(key, p.prefix) {
-			return p.ktype
+			if p.check == nil || p.check(key) {
+				return p.ktype
+			}
 		}
 	}
 
@@ -340,6 +343,35 @@ func convertEvidence(key keyID, newPrefix int64) ([]byte, error) {
 	}
 
 	return orderedcode.Append(nil, newPrefix, binary.BigEndian.Uint64(hb), string(evidenceHash))
+}
+
+// checkEvidenceKey reports whether a candidate key with one of the legacy
+// evidence prefixes has the correct structure for a legacy evidence key.
+//
+// This check is needed because transaction hashes are stored without a prefix,
+// so checking the one-byte prefix alone is not enough to distinguish them.
+// Legacy evidence keys are suffixed with a string of the format:
+//
+//     "%0.16X/%X"
+//
+// where the first element is the height and the second is the hash.  Thus, we
+// check
+func checkEvidenceKey(key keyID) bool {
+	parts := bytes.SplitN(key[1:], []byte("/"), 2)
+	if len(parts) != 2 || len(parts[0]) != 16 || !isHex(parts[0]) || !isHex(parts[1]) {
+		return false
+	}
+	return true
+}
+
+func isHex(data []byte) bool {
+	for _, b := range data {
+		if ('0' <= b && b <= '9') || ('a' <= b && b <= 'f') || ('A' <= b && b <= 'F') {
+			continue
+		}
+		return false
+	}
+	return len(data) != 0
 }
 
 func replaceKey(db dbm.DB, key keyID, gooseFn migrateFunc) error {

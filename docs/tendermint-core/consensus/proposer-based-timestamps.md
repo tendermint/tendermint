@@ -13,14 +13,15 @@ order: 3
 The PBTS algorithm defines a way for a Tendermint blockchain to create block
 timestamps that are within a reasonable bound of the clocks of the validators on
 the network. This replaces the original BFTTime algorithm for timestamp
-assignment that relied on the timestamps included in precommit messages.
+assignment that computed a timestamp using the timestamps included in precommit
+messages.
 
 ## Algorithm Parameters
 
 The functionality of the PBTS algorithm is governed by two parameters within
 Tendermint. These two parameters are [consensus
 parameters](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#L291),
-meaning they are configured by the ABCI application and are expected to be the
+meaning they are configured by the ABCI application and are therefore the same
 same across all nodes on the network.
 
 ### `Precision`
@@ -51,7 +52,7 @@ useful for the protocols and applications built on top of Tendermint.
 The following protocols and application features require a reliable source of time:
 
 * Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/tendermint/blob/master/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
-* Tendermint Evidence validity is determined [either in terms of heights or in terms of time](https://github.com/tendermint/tendermint/blob/master/spec/consensus/evidence.md#verification).
+* Tendermint Evidence expiration is determined [either in terms of heights or in terms of time](https://github.com/tendermint/tendermint/blob/master/spec/consensus/evidence.md#verification).
 * Unbonding of staked assets in the Cosmos Hub [occurs after a period of 21
  days](https://github.com/cosmos/governance/blob/master/params-change/Staking.md#unbondingtime).
 * IBC packets can use either a [timestamp or a height to timeout packet

@@ -15,7 +15,7 @@
     "serve": "trap 'exit 0' SIGINT; vuepress dev --no-cache",
     "postserve": "./post.sh",
     "prebuild": "./pre.sh",
-    "build": "trap 'exit 0' SIGINT; vuepress build --no-cache",
+    "build": "trap 'exit 0' SIGINT; vuepress build --no-cache --silent",
     "postbuild": "./post.sh"
   },
   "author": "",

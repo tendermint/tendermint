@@ -216,6 +216,8 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		if err := r.state.Start(ctx); err != nil {
 			return err
 		}
+	} else if err := r.state.updateStateFromStore(); err != nil {
+		return err
 	}
 
 	go r.updateRoundStateRoutine(ctx)
@@ -794,15 +796,22 @@ func (r *Reactor) gossipVotesRoutine(ctx context.Context, ps *PeerState, voteCh 
 		// catchup logic -- if peer is lagging by more than 1, send Commit
 		blockStoreBase := r.state.blockStore.Base()
 		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
-			// Load the block commit for prs.Height, which contains precommit
+			// Load the block's extended commit for prs.Height, which contains precommit
 			// signatures for prs.Height.
-			if commit := r.state.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if ok, err := r.pickSendVote(ctx, ps, commit, voteCh); err != nil {
-					return
-				} else if ok {
-					logger.Debug("picked Catchup commit to send", "height", prs.Height)
-					continue
-				}
+			var ec *types.ExtendedCommit
+			if r.state.state.ConsensusParams.ABCI.VoteExtensionsEnabled(prs.Height) {
+				ec = r.state.blockStore.LoadBlockExtendedCommit(prs.Height)
+			} else {
+				ec = r.state.blockStore.LoadBlockCommit(prs.Height).WrappedExtendedCommit()
+			}
+			if ec == nil {
+				continue
+			}
+			if ok, err := r.pickSendVote(ctx, ps, ec, voteCh); err != nil {
+				return
+			} else if ok {
+				logger.Debug("picked Catchup commit to send", "height", prs.Height)
+				continue
 			}
 		}
 

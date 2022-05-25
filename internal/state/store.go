@@ -26,6 +26,9 @@ const (
 
 //------------------------------------------------------------------------
 
+// NB: Before modifying these, cross-check them with those in
+// internal/store/store.go
+// TODO(thane): Move these and the ones in internal/store/store.go to their own package.
 const (
 	// prefixes are unique across all tm db's
 	prefixValidators      = int64(5)
@@ -134,7 +137,6 @@ func (store dbStore) loadState(key []byte) (state State, err error) {
 	if err != nil {
 		return state, err
 	}
-
 	return *sm, nil
 }
 

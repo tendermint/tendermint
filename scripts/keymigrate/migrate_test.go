@@ -1,11 +1,11 @@
 package keymigrate
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/google/orderedcode"
@@ -21,6 +21,7 @@ func makeKey(t *testing.T, elems ...interface{}) []byte {
 }
 
 func getLegacyPrefixKeys(val int) map[string][]byte {
+	vstr := fmt.Sprintf("%02x", byte(val))
 	return map[string][]byte{
 		"Height":            []byte(fmt.Sprintf("H:%d", val)),
 		"BlockPart":         []byte(fmt.Sprintf("P:%d:%d", val, val)),
@@ -40,14 +41,19 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"UserKey1":          []byte(fmt.Sprintf("foo/bar/baz/%d/%d", val, val)),
 		"TxHeight":          []byte(fmt.Sprintf("tx.height/%s/%d/%d", fmt.Sprint(val), val, val)),
 		"TxHash": append(
-			bytes.Repeat([]byte{fmt.Sprint(val)[0]}, 16),
-			bytes.Repeat([]byte{fmt.Sprint(val)[len([]byte(fmt.Sprint(val)))-1]}, 16)...,
+			[]byte(strings.Repeat(vstr[:1], 16)),
+			[]byte(strings.Repeat(vstr[1:], 16))...,
 		),
+
+		// Transaction hashes that could be mistaken for evidence keys.
+		"TxHashMimic0": append([]byte{0}, []byte(strings.Repeat(vstr, 16)[:31])...),
+		"TxHashMimic1": append([]byte{1}, []byte(strings.Repeat(vstr, 16)[:31])...),
 	}
 }
 
 func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 	t.Helper()
+	vstr := fmt.Sprintf("%02x", byte(val))
 	return map[string][]byte{
 		"Height":            makeKey(t, int64(0), int64(val)),
 		"BlockPart":         makeKey(t, int64(1), int64(val), int64(val)),
@@ -66,7 +72,9 @@ func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 		"UserKey0":          makeKey(t, "foo", "bar", int64(val), int64(val)),
 		"UserKey1":          makeKey(t, "foo", "bar/baz", int64(val), int64(val)),
 		"TxHeight":          makeKey(t, "tx.height", fmt.Sprint(val), int64(val), int64(val+2), int64(val+val)),
-		"TxHash":            makeKey(t, "tx.hash", string(bytes.Repeat([]byte{[]byte(fmt.Sprint(val))[0]}, 32))),
+		"TxHash":            makeKey(t, "tx.hash", strings.Repeat(vstr, 16)),
+		"TxHashMimic0":      makeKey(t, "tx.hash", "\x00"+strings.Repeat(vstr, 16)[:31]),
+		"TxHashMimic1":      makeKey(t, "tx.hash", "\x01"+strings.Repeat(vstr, 16)[:31]),
 	}
 }
 

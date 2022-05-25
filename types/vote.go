@@ -14,6 +14,9 @@ import (
 
 const (
 	nilVoteStr string = "nil-Vote"
+
+	// The maximum supported number of bytes in a vote extension.
+	MaxVoteExtensionSize int = 1024 * 1024
 )
 
 var (
@@ -24,7 +27,7 @@ var (
 	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
 	ErrVoteNil                       = errors.New("nil vote")
-	ErrVoteInvalidExtension          = errors.New("invalid vote extension")
+	ErrVoteExtensionAbsent           = errors.New("vote extension absent")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -106,6 +109,31 @@ func (vote *Vote) CommitSig() CommitSig {
 		ValidatorAddress: vote.ValidatorAddress,
 		Timestamp:        vote.Timestamp,
 		Signature:        vote.Signature,
+	}
+}
+
+// StripExtension removes any extension data from the vote. Useful if the
+// chain has not enabled vote extensions.
+// Returns true if extension data was present before stripping and false otherwise.
+func (vote *Vote) StripExtension() bool {
+	stripped := len(vote.Extension) > 0 || len(vote.ExtensionSignature) > 0
+	vote.Extension = nil
+	vote.ExtensionSignature = nil
+	return stripped
+}
+
+// ExtendedCommitSig attempts to construct an ExtendedCommitSig from this vote.
+// Panics if either the vote extension signature is missing or if the block ID
+// is not either empty or complete.
+func (vote *Vote) ExtendedCommitSig() ExtendedCommitSig {
+	if vote == nil {
+		return NewExtendedCommitSigAbsent()
+	}
+
+	return ExtendedCommitSig{
+		CommitSig:          vote.CommitSig(),
+		Extension:          vote.Extension,
+		ExtensionSignature: vote.ExtensionSignature,
 	}
 }
 
@@ -207,23 +235,35 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	return err
 }
 
-// VerifyWithExtension performs the same verification as Verify, but
+// VerifyVoteAndExtension performs the same verification as Verify, but
 // additionally checks whether the vote extension signature corresponds to the
 // given chain ID and public key. We only verify vote extension signatures for
 // precommits.
-func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) error {
+func (vote *Vote) VerifyVoteAndExtension(chainID string, pubKey crypto.PubKey) error {
 	v, err := vote.verifyAndReturnProto(chainID, pubKey)
 	if err != nil {
 		return err
 	}
-	// We only verify vote extension signatures for precommits.
-	if vote.Type == tmproto.PrecommitType {
+	// We only verify vote extension signatures for non-nil precommits.
+	if vote.Type == tmproto.PrecommitType && !ProtoBlockIDIsNil(&v.BlockID) {
 		extSignBytes := VoteExtensionSignBytes(chainID, v)
-		// TODO: Remove extension signature nil check to enforce vote extension
-		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+		if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 			return ErrVoteInvalidSignature
 		}
+	}
+	return nil
+}
+
+// VerifyExtension checks whether the vote extension signature corresponds to the
+// given chain ID and public key.
+func (vote *Vote) VerifyExtension(chainID string, pubKey crypto.PubKey) error {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsNil() {
+		return nil
+	}
+	v := vote.ToProto()
+	extSignBytes := VoteExtensionSignBytes(chainID, v)
+	if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+		return ErrVoteInvalidSignature
 	}
 	return nil
 }
@@ -273,8 +313,10 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
-	// We should only ever see vote extensions in precommits.
-	if vote.Type != tmproto.PrecommitType {
+	// We should only ever see vote extensions in non-nil precommits, otherwise
+	// this is a violation of the specification.
+	// https://github.com/tendermint/tendermint/issues/8487
+	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsNil()) {
 		if len(vote.Extension) > 0 {
 			return errors.New("unexpected vote extension")
 		}
@@ -283,31 +325,32 @@ func (vote *Vote) ValidateBasic() error {
 		}
 	}
 
-	return nil
-}
-
-// ValidateWithExtension performs the same validations as ValidateBasic, but
-// additionally checks whether a vote extension signature is present. This
-// function is used in places where vote extension signatures are expected.
-func (vote *Vote) ValidateWithExtension() error {
-	if err := vote.ValidateBasic(); err != nil {
-		return err
-	}
-
-	// We should always see vote extension signatures in precommits
-	if vote.Type == tmproto.PrecommitType {
-		// TODO(thane): Remove extension length check once
-		//              https://github.com/tendermint/tendermint/issues/8272 is
-		//              resolved.
-		if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
-			return errors.New("vote extension signature is missing")
-		}
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
 		if len(vote.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
+		if len(vote.ExtensionSignature) == 0 && len(vote.Extension) != 0 {
+			return fmt.Errorf("vote extension signature absent on vote with extension")
+		}
 	}
 
 	return nil
+}
+
+// EnsureExtension checks for the presence of extensions signature data
+// on precommit vote types.
+func (vote *Vote) EnsureExtension() error {
+	// We should always see vote extension signatures in non-nil precommits
+	if vote.Type != tmproto.PrecommitType {
+		return nil
+	}
+	if vote.BlockID.IsNil() {
+		return nil
+	}
+	if len(vote.ExtensionSignature) > 0 {
+		return nil
+	}
+	return ErrVoteExtensionAbsent
 }
 
 // ToProto converts the handwritten type to proto generated type
