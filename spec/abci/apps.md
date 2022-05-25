@@ -13,7 +13,7 @@ Here we cover the following components of ABCI applications:
   and the differences between `CheckTx` and `DeliverTx`.
 - [Transaction Results](#transaction-results) - rules around transaction
   results and validity
-- [Validator Set Updates](#validator-updates) - how validator sets are
+- [Validator Set Updates](#updating-the-validator-set) - how validator sets are
   changed during `InitChain` and `EndBlock`
 - [Query](#query) - standards for using the `Query` method and proofs about the
   application state
@@ -203,9 +203,6 @@ not broadcasted to other peers and not included in a proposal block.
 
 `Data` contains the result of the CheckTx transaction execution, if any. It is
 semantically meaningless to Tendermint.
-
-`Events` include any events for the execution, though since the transaction has not
-been committed yet, they are effectively ignored by Tendermint.
 
 ### DeliverTx
 
