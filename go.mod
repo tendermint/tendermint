@@ -41,7 +41,7 @@ require (
 	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.1
 	github.com/tendermint/tm-db v0.6.6
-	github.com/vektra/mockery/v2 v2.12.2
+	github.com/vektra/mockery/v2 v2.12.3
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
