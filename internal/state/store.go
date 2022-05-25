@@ -10,6 +10,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/config"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -101,14 +102,18 @@ type Store interface {
 
 // dbStore wraps a db (github.com/tendermint/tm-db)
 type dbStore struct {
-	db dbm.DB
+	db                dbm.DB
+	saveABCIResponses bool
 }
 
 var _ Store = (*dbStore)(nil)
 
 // NewStore creates the dbStore of the state pkg.
-func NewStore(db dbm.DB) Store {
-	return dbStore{db}
+func NewStore(conf config.Config, db dbm.DB) Store {
+	return dbStore{
+		db:                db,
+		saveABCIResponses: conf.BaseConfig.PersistABCIResponses,
+	}
 }
 
 // LoadState loads the State from the database.
@@ -415,6 +420,10 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
 func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
+	if !store.saveABCIResponses {
+		return nil, errors.New("not supported")
+	}
+
 	buf, err := store.db.Get(abciResponsesKey(height))
 	if err != nil {
 		return nil, err
@@ -442,6 +451,10 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 //
 // Exposed for testing.
 func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
+	if !store.saveABCIResponses {
+		return errors.New("not supported")
+	}
+
 	return store.saveABCIResponses(height, abciResponses)
 }
 

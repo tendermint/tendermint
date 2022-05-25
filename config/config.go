@@ -220,6 +220,9 @@ type BaseConfig struct { //nolint: maligned
 	// Mechanism to connect to the ABCI application: socket | grpc
 	ABCI string `mapstructure:"abci"`
 
+	// When true, ABCI respones should be persisted to the state store.
+	PersistABCIResponses bool `mapstructure:"persist-abci-responses"`
+
 	// If true, query the ABCI app on connecting to a new peer
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter-peers"` // false

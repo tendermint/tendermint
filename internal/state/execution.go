@@ -200,7 +200,9 @@ func (blockExec *BlockExecutor) ValidateBlock(ctx context.Context, state State, 
 func (blockExec *BlockExecutor) ApplyBlock(
 	ctx context.Context,
 	state State,
-	blockID types.BlockID, block *types.Block) (State, error) {
+	blockID types.BlockID,
+	block *types.Block,
+) (State, error) {
 	// validate the block if we haven't already
 	if err := blockExec.ValidateBlock(ctx, state, block); err != nil {
 		return state, ErrInvalidBlock(err)
