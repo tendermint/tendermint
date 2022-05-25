@@ -49,13 +49,21 @@ func TestHashDeterministicFieldsOnly(t *testing.T) {
 	tr1 := abci.ExecTxResult{
 		Code:      1,
 		Data:      []byte("transaction"),
+		Log:       "nondeterministic data: abc",
+		Info:      "nondeterministic data: abc",
 		GasWanted: 1000,
+		GasUsed:   1000,
+		Events:    []abci.Event{},
 		Codespace: "nondeterministic.data.abc",
 	}
 	tr2 := abci.ExecTxResult{
 		Code:      1,
 		Data:      []byte("transaction"),
+		Log:       "nondeterministic data: def",
+		Info:      "nondeterministic data: def",
 		GasWanted: 1000,
+		GasUsed:   1000,
+		Events:    []abci.Event{},
 		Codespace: "nondeterministic.data.def",
 	}
 	r1, err := abci.MarshalTxResults([]*abci.ExecTxResult{&tr1})
