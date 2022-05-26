@@ -256,12 +256,7 @@ message ResponseCheckTx {
   string         sender     = 9;
   int64          priority   = 10;
 
-  // mempool_error is set by Tendermint.
-
-  // ABCI applications creating a ResponseCheckTX should not set mempool_error.
-  string mempool_error = 11;
-
-  reserved 3, 4, 6, 7; // see https://github.com/tendermint/tendermint/issues/8543
+  reserved 3, 4, 6, 7, 11; // see https://github.com/tendermint/tendermint/issues/8543
 }
 
 message ResponseDeliverTx {

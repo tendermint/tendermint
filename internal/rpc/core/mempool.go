@@ -58,11 +58,10 @@ func (env *Environment) BroadcastTx(ctx context.Context, req *coretypes.RequestB
 		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Err())
 	case r := <-resCh:
 		return &coretypes.ResultBroadcastTx{
-			Code:         r.Code,
-			Data:         r.Data,
-			Codespace:    r.Codespace,
-			MempoolError: r.MempoolError,
-			Hash:         req.Tx.Hash(),
+			Code:      r.Code,
+			Data:      r.Data,
+			Codespace: r.Codespace,
+			Hash:      req.Tx.Hash(),
 		}, nil
 	}
 }
@@ -94,7 +93,7 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, req *coretypes.Re
 			return &coretypes.ResultBroadcastTxCommit{
 				CheckTx: *r,
 				Hash:    req.Tx.Hash(),
-			}, fmt.Errorf("transaction encountered error (%s)", r.MempoolError)
+			}, fmt.Errorf("wrong ABCI CodeType, got (%d) instead of OK", r.Code)
 		}
 
 		if !indexer.KVSinkEnabled(env.EventSinks) {
