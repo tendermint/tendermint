@@ -13,7 +13,7 @@ jobs:
   fuzz-nightly-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3.1.0
+      - uses: actions/setup-go@v3.2.0
         with:
           go-version: '1.18'
 

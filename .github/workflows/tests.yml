@@ -16,7 +16,7 @@ jobs:
       matrix:
         part: ["00", "01", "02", "03", "04", "05"]
     steps:
-      - uses: actions/setup-go@v3.1.0
+      - uses: actions/setup-go@v3.2.0
         with:
           go-version: "1.18"
       - uses: actions/checkout@v2.3.4
