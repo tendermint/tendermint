@@ -157,13 +157,13 @@ func (_m *Mempool) Unlock() {
 	_m.Called()
 }
 
-// Update provides a mock function with given fields: ctx, blockHeight, blockTxs, txResults, newPreFn, newPostFn
-func (_m *Mempool) Update(ctx context.Context, blockHeight int64, blockTxs types.Txs, txResults []*abcitypes.ExecTxResult, newPreFn mempool.PreCheckFunc, newPostFn mempool.PostCheckFunc) error {
-	ret := _m.Called(ctx, blockHeight, blockTxs, txResults, newPreFn, newPostFn)
+// Update provides a mock function with given fields: ctx, blockHeight, blockTxs, txResults, newPreFn, newPostFn, recheck
+func (_m *Mempool) Update(ctx context.Context, blockHeight int64, blockTxs types.Txs, txResults []*abcitypes.ExecTxResult, newPreFn mempool.PreCheckFunc, newPostFn mempool.PostCheckFunc, recheck bool) error {
+	ret := _m.Called(ctx, blockHeight, blockTxs, txResults, newPreFn, newPostFn, recheck)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, types.Txs, []*abcitypes.ExecTxResult, mempool.PreCheckFunc, mempool.PostCheckFunc) error); ok {
-		r0 = rf(ctx, blockHeight, blockTxs, txResults, newPreFn, newPostFn)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, types.Txs, []*abcitypes.ExecTxResult, mempool.PreCheckFunc, mempool.PostCheckFunc, bool) error); ok {
+		r0 = rf(ctx, blockHeight, blockTxs, txResults, newPreFn, newPostFn, recheck)
 	} else {
 		r0 = ret.Error(0)
 	}

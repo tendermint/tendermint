@@ -101,6 +101,7 @@ type TimeoutParams struct {
 // Interface.
 type ABCIParams struct {
 	VoteExtensionsEnableHeight int64 `json:"vote_extensions_enable_height"`
+	RecheckTx                  bool  `json:"recheck_tx"`
 }
 
 // VoteExtensionsEnabled returns true if vote extensions are enabled at height h
@@ -197,6 +198,8 @@ func DefaultABCIParams() ABCIParams {
 	return ABCIParams{
 		// When set to 0, vote extensions are not required.
 		VoteExtensionsEnableHeight: 0,
+		// When true, run CheckTx on each transaction in the mempool after each height.
+		RecheckTx: true,
 	}
 }
 
@@ -378,6 +381,7 @@ func (params ConsensusParams) ValidateUpdate(updated *tmproto.ConsensusParams, h
 // Only the Block.MaxBytes and Block.MaxGas are included in the hash.
 // This allows the ConsensusParams to evolve more without breaking the block
 // protocol. No need for a Merkle tree here, just a small struct to hash.
+// TODO: We should hash the other parameters as well
 func (params ConsensusParams) HashConsensusParams() []byte {
 	hp := tmproto.HashedParams{
 		BlockMaxBytes: params.Block.MaxBytes,
@@ -459,6 +463,7 @@ func (params ConsensusParams) UpdateConsensusParams(params2 *tmproto.ConsensusPa
 	}
 	if params2.Abci != nil {
 		res.ABCI.VoteExtensionsEnableHeight = params2.Abci.GetVoteExtensionsEnableHeight()
+		res.ABCI.RecheckTx = params2.Abci.GetRecheckTx()
 	}
 	return res
 }
@@ -494,6 +499,7 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 		},
 		Abci: &tmproto.ABCIParams{
 			VoteExtensionsEnableHeight: params.ABCI.VoteExtensionsEnableHeight,
+			RecheckTx:                  params.ABCI.RecheckTx,
 		},
 	}
 }
@@ -544,6 +550,7 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 	}
 	if pbParams.Abci != nil {
 		c.ABCI.VoteExtensionsEnableHeight = pbParams.Abci.GetVoteExtensionsEnableHeight()
+		c.ABCI.RecheckTx = pbParams.Abci.GetRecheckTx()
 	}
 	return c
 }
