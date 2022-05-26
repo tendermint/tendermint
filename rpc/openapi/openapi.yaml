@@ -119,6 +119,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /broadcast_tx:
+    get:
+      summary: Returns with the response from CheckTx. Does not wait for DeliverTx result.
+      tags:
+        - Tx
+      operationId: broadcast_tx
+      description: |
+        This method blocks until CheckTx returns and reports its result, but
+        does not wait for the transaction to be included in a block. To know
+        when the transaction is included in a block, check for the transaction
+        event using JSON-RPC.  See
+        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+
+        See https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          required: true
+          schema:
+            type: string
+          example: "456"
+          description: The transaction
+      responses:
+        "200":
+          description: Empty
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastTxResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /broadcast_tx_async:
     get:
       summary: Returns right away, with no response. Does not wait for CheckTx nor DeliverTx results.
