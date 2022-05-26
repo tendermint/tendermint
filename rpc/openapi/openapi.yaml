@@ -82,6 +82,7 @@ paths:
   /broadcast_tx_sync:
     get:
       summary: Returns with the response from CheckTx. Does not wait for DeliverTx result.
+      deprecated: true
       tags:
         - Tx
       operationId: broadcast_tx_sync
@@ -158,6 +159,7 @@ paths:
   /broadcast_tx_async:
     get:
       summary: Returns right away, with no response. Does not wait for CheckTx nor DeliverTx results.
+      deprecated: true
       tags:
         - Tx
       operationId: broadcast_tx_async
@@ -197,6 +199,7 @@ paths:
   /broadcast_tx_commit:
     get:
       summary: Returns with the responses from CheckTx and DeliverTx.
+      deprecated: true
       tags:
         - Tx
       operationId: broadcast_tx_commit
