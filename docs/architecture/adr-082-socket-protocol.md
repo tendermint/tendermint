@@ -158,6 +158,25 @@ design.
    (2), but the gRPC implementation should not require any immediate changes.
 
 
+## Alternatives Considered
+
+- **FFI**. Another approach we could take is to use a C-based FFI interface so
+  that applications written in other languages are linked directly with the
+  consensus node, an option currently only available for Go applications.
+
+  An FFI interface is possible for a lot of languages, but FFI support varies
+  widely in coverage and quality across languages and the points of friction
+  can be tricky to work around.  Moreover, it's much harder to add FFI support
+  to a language where it's missing after-the-fact for an application developer.
+
+  Although a basic FFI interface is not too difficult on the Go side, the C
+  shims for an FFI can get complicated if there's a lot of variability in the
+  runtime environment on the other end.
+
+  If we want to have one answer for non-Go applications, we are better off
+  picking an IPC-based solution (whether that's gRPC or an extension of our
+  custom socket protocol or something else).
+
 ## Consequences
 
 - **Standardize on gRPC**
