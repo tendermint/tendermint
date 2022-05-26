@@ -57,11 +57,7 @@ jobs:
           export PATH="${PATH}:${tools}/bin"
           export GOBIN="${tools}/bin"
 
-          readonly base='https://github.com/bufbuild/buf/releases/latest/download'
-          readonly OS="$(uname -s)" ARCH="$(uname -m)"
-          curl -sSL "${base}/buf-${OS}-${ARCH}.tar.gz" \
-          | tar -xzf -  -C "$tools" --strip-components=1
-
+          go install github.com/bufbuild/buf/cmd/buf
           go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
 
           make proto-gen
