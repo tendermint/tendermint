@@ -622,10 +622,17 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 				expectedErrString := ""
 				if testCase.err != nil {
 					expectedErrString = testCase.err.Error()
+					require.Equal(t, expectedErrString, txmp.postCheck(tx, res).Error())
+				} else {
+					require.Equal(t, nil, txmp.postCheck(tx, res))
 				}
-				require.Equal(t, expectedErrString, res.MempoolError)
 			}
-			require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
+			if testCase.err == nil {
+				require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
+			} else {
+				err = txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0})
+				fmt.Print(err.Error())
+			}
 		})
 	}
 }
