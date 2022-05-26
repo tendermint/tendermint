@@ -41,6 +41,9 @@ func (p Parser) Parse(msgType string) error {
 	if err := p.Marshaler.Marshal(p.Out, msg); err != nil {
 		return err
 	}
+	if _, err := p.Out.Write([]byte{'\n'}); err != nil {
+		return nil
+	}
 
 	return nil
 }

@@ -14,9 +14,12 @@ func main() {
 
 	parseCmd := cmd.ParseCmd{}
 	captureCmd := cmd.CaptureCmd{}
+	cborCmd := cmd.CborCmd{}
+
 	rootCmd.AddCommand(
 		parseCmd.Command(),
 		captureCmd.Command(),
+		cborCmd.Command(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

@@ -14,6 +14,7 @@ require (
 	github.com/didip/tollbooth/v6 v6.1.1 // indirect
 	github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21 // indirect
 	github.com/fortytw2/leaktest v1.3.0
+	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.0

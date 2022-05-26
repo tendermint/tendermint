@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -36,7 +35,7 @@ func MakeRootCmd() *cobra.Command {
 				return fmt.Errorf("invalid log level %s: %w", logLevel, err)
 			}
 
-			logger = log.NewFilter(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), allowLevel)
+			logger = log.NewFilter(log.NewTMLogger(log.NewSyncWriter(cmd.ErrOrStderr())), allowLevel)
 			logger = logger.With("module", "main")
 			return nil
 		},
