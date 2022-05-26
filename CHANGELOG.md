@@ -2138,7 +2138,7 @@ handshake by authenticating the NetAddress.ID of the peer we're dialing.
 This release fixes yet another issue with the proposer selection algorithm.
 We hope it's the last one, but we won't be surprised if it's not.
 We plan to one day expose the selection algorithm more directly to
-the application ([\#3285](https://github.com/tendermint/tendermint/issues/3285)), and even to support randomness ([\#763](https://github.com/tendermint/tendermint/issues/763)).
+the application ([\#3285](https://github.com/tendermint/tendermint/issues/3285)), and even to support randomness ([\#763](https://github.com/tendermint/tendermint/issues/763)). <!-- markdown-link-check-disable-line -->
 For more, see issues marked
 [proposer-selection](https://github.com/tendermint/tendermint/labels/proposer-selection).
 
