@@ -66,6 +66,9 @@ var (
 	txSize   = uniformChoice{1024, 4096} // either 1kb or 4kb
 	ipv6     = uniformChoice{false, true}
 	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
+
+	voteExtensionEnableHeightOffset = uniformChoice{int64(0), int64(10), int64(100)}
+	voteExtensionEnabled            = uniformChoice{true, false}
 )
 
 // Generate generates random testnets using the given RNG.
@@ -114,6 +117,10 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Evidence:         evidence.Choose(r).(int),
 		QueueType:        opt["queueType"].(string),
 		TxSize:           txSize.Choose(r).(int),
+	}
+
+	if voteExtensionEnabled.Choose(r).(bool) {
+		manifest.VoteExtensionsEnableHeight = manifest.InitialHeight + voteExtensionEnableHeightOffset.Choose(r).(int64)
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int

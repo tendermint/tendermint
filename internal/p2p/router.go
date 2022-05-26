@@ -479,9 +479,20 @@ func (r *Router) routeChannel(
 				return
 			}
 
-			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
-
-			r.legacy.peerManager.Errored(peerError.NodeID, peerError.Err)
+			shouldEvict := peerError.Fatal || r.legacy.peerManager.HasMaxPeerCapacity()
+			r.logger.Error("peer error",
+				"peer", peerError.NodeID,
+				"err", peerError.Err,
+				"evicting", shouldEvict,
+			)
+			if shouldEvict {
+				r.legacy.peerManager.Errored(peerError.NodeID, peerError.Err)
+			} else {
+				r.legacy.peerManager.processPeerEvent(ctx, PeerUpdate{
+					NodeID: peerError.NodeID,
+					Status: PeerStatusBad,
+				})
+			}
 		case <-ctx.Done():
 			return
 		}

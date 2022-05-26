@@ -420,6 +420,7 @@ func (txmp *TxMempool) Update(
 	execTxResult []*abci.ExecTxResult,
 	newPreFn PreCheckFunc,
 	newPostFn PostCheckFunc,
+	recheck bool,
 ) error {
 	txmp.height = blockHeight
 	txmp.notifiedTxsAvailable = false
@@ -452,7 +453,7 @@ func (txmp *TxMempool) Update(
 	// initiate re-CheckTx per remaining transaction or notify that remaining
 	// transactions are left.
 	if txmp.Size() > 0 {
-		if txmp.config.Recheck {
+		if recheck {
 			txmp.logger.Debug(
 				"executing re-CheckTx for all remaining transactions",
 				"num_txs", txmp.Size(),
