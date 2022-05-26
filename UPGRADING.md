@@ -6,6 +6,14 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### ABCI Changes
 
+### ResponseCheckTx Parameter Change
+
+`ResponseCheckTx` had fields that are not used by Tendermint, they are now removed.
+In 0.36, we removed the following fields, from `ResponseCheckTx`: `Log`, `Info`, `Events`,
+ `GasUsed` and `MempoolError`. 
+`MempoolError` was used to signal to operators that a transaction was rejected from the mempool
+by Tendermint itself. Right now, we return a regular error when this happens.
+
 #### ABCI++
 
 Coming soon...
@@ -137,15 +145,7 @@ network-wide coordinated variable so that applications can be written knowing
 either all nodes agree on whether to run `RecheckTx`.
 
 Applications can turn on `RecheckTx` by altering the `ConsensusParams` in the
-`FinalizeBlock` ABCI response.
-
-### ResponseCheckTx Parameter Change
-
-`ResponseCheckTx` had fields that are not used by Tendermint, they are now removed.
-In 0.36, we removed the following fields, from `ResponseCheckTx`: `Log`, `Info`, `Events`,
- `GasUsed` and `MempoolError`. 
-`MempoolError` was used to signal to operators that a transaction was rejected from the mempool
-by Tendermint itself. Right now, we return a regular error when this happens. 
+`FinalizeBlock` ABCI response. 
 
 ### CLI Changes
 
