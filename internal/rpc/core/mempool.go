@@ -23,7 +23,7 @@ import (
 // https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
 // Deprecated and should be removed in 0.37
 func (env *Environment) BroadcastTxAsync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
-	go env.Mempool.CheckTx(ctx, req.Tx, nil, mempool.TxInfo{})
+	go func() { _ = env.Mempool.CheckTx(ctx, req.Tx, nil, mempool.TxInfo{}) }()
 
 	return &coretypes.ResultBroadcastTx{Hash: req.Tx.Hash()}, nil
 }
