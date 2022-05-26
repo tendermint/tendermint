@@ -122,9 +122,8 @@ type State struct {
 	// store blocks and commits
 	blockStore sm.BlockStore
 
-	stateStore            sm.Store
-	initialStatePopulated bool
-	skipBootstrapping     bool
+	stateStore        sm.Store
+	skipBootstrapping bool
 
 	// create and execute blocks
 	blockExec *sm.BlockExecutor
@@ -248,14 +247,20 @@ func NewState(
 }
 
 func (cs *State) updateStateFromStore() error {
-	if cs.initialStatePopulated {
-		return nil
-	}
 	state, err := cs.stateStore.Load()
 	if err != nil {
 		return fmt.Errorf("loading state: %w", err)
 	}
 	if state.IsEmpty() {
+		return nil
+	}
+
+	eq, err := state.Equals(cs.state)
+	if err != nil {
+		return fmt.Errorf("comparing state: %w", err)
+	}
+	// if the new state is equivalent to the old state, we should not trigger a state update.
+	if eq {
 		return nil
 	}
 
@@ -266,7 +271,6 @@ func (cs *State) updateStateFromStore() error {
 
 	cs.updateToState(state)
 
-	cs.initialStatePopulated = true
 	return nil
 }
 
@@ -692,23 +696,54 @@ func (cs *State) sendInternalMessage(ctx context.Context, mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from SeenCommit, which we saved along with the block,
-// (which happens even before saving the state)
+// Reconstruct the LastCommit from either SeenCommit or the ExtendedCommit. SeenCommit
+// and ExtendedCommit are saved along with the block. If VoteExtensions are required
+// the method will panic on an absent ExtendedCommit or an ExtendedCommit without
+// extension data.
 func (cs *State) reconstructLastCommit(state sm.State) {
-	extCommit := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
-	if extCommit == nil {
-		panic(fmt.Sprintf(
-			"failed to reconstruct last commit; commit for height %v not found",
-			state.LastBlockHeight,
-		))
+	extensionsEnabled := cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight)
+	if !extensionsEnabled {
+		votes, err := cs.votesFromSeenCommit(state)
+		if err != nil {
+			panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+		}
+		cs.LastCommit = votes
+		return
 	}
 
-	lastPrecommits := extCommit.ToVoteSet(state.ChainID, state.LastValidators)
-	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("failed to reconstruct last commit; does not have +2/3 maj")
+	votes, err := cs.votesFromExtendedCommit(state)
+	if err != nil {
+		panic(fmt.Sprintf("failed to reconstruct last extended commit; %s", err))
+	}
+	cs.LastCommit = votes
+}
+
+func (cs *State) votesFromExtendedCommit(state sm.State) (*types.VoteSet, error) {
+	ec := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
+	if ec == nil {
+		return nil, fmt.Errorf("extended commit for height %v not found", state.LastBlockHeight)
+	}
+	vs := ec.ToExtendedVoteSet(state.ChainID, state.LastValidators)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("extended commit does not have +2/3 majority")
+	}
+	return vs, nil
+}
+
+func (cs *State) votesFromSeenCommit(state sm.State) (*types.VoteSet, error) {
+	commit := cs.blockStore.LoadSeenCommit()
+	if commit == nil || commit.Height != state.LastBlockHeight {
+		commit = cs.blockStore.LoadBlockCommit(state.LastBlockHeight)
+	}
+	if commit == nil {
+		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
 
-	cs.LastCommit = lastPrecommits
+	vs := commit.ToVoteSet(state.ChainID, state.LastValidators)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("commit does not have +2/3 majority")
+	}
+	return vs, nil
 }
 
 // Updates State and increments height to match that of state.
@@ -810,7 +845,11 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(height) {
+		cs.Votes = cstypes.NewExtendedHeightVoteSet(state.ChainID, height, validators)
+	} else {
+		cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	}
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -1921,8 +1960,12 @@ func (cs *State) finalizeCommit(ctx context.Context, height int64) {
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
 		// but may differ from the LastCommit included in the next block
-		precommits := cs.Votes.Precommits(cs.CommitRound)
-		cs.blockStore.SaveBlock(block, blockParts, precommits.MakeExtendedCommit())
+		seenExtendedCommit := cs.Votes.Precommits(cs.CommitRound).MakeExtendedCommit()
+		if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(block.Height) {
+			cs.blockStore.SaveBlockWithExtendedCommit(block, blockParts, seenExtendedCommit)
+		} else {
+			cs.blockStore.SaveBlock(block, blockParts, seenExtendedCommit.ToCommit())
+		}
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
 		logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
@@ -2337,13 +2380,45 @@ func (cs *State) addVote(
 		return
 	}
 
-	// Verify VoteExtension if precommit and not nil
-	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
-		err := cs.blockExec.VerifyVoteExtension(ctx, vote)
-		cs.metrics.MarkVoteExtensionReceived(err == nil)
-		if err != nil {
-			return false, err
+	// Check to see if the chain is configured to extend votes.
+	if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+		// The chain is configured to extend votes, check that the vote is
+		// not for a nil block and verify the extensions signature against the
+		// corresponding public key.
+
+		var myAddr []byte
+		if cs.privValidatorPubKey != nil {
+			myAddr = cs.privValidatorPubKey.Address()
+		}
+		// Verify VoteExtension if precommit and not nil
+		// https://github.com/tendermint/tendermint/issues/8487
+		if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
+			!bytes.Equal(vote.ValidatorAddress, myAddr) { // Skip the VerifyVoteExtension call if the vote was issued by this validator.
+
+			// The core fields of the vote message were already validated in the
+			// consensus reactor when the vote was received.
+			// Here, we verify the signature of the vote extension included in the vote
+			// message.
+			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
+			if err := vote.VerifyExtension(cs.state.ChainID, val.PubKey); err != nil {
+				return false, err
+			}
+
+			err := cs.blockExec.VerifyVoteExtension(ctx, vote)
+			cs.metrics.MarkVoteExtensionReceived(err == nil)
+			if err != nil {
+				return false, err
+			}
+		}
+	} else {
+		// Vote extensions are not enabled on the network.
+		// strip the extension data from the vote in case any is present.
+		//
+		// TODO punish a peer if it sent a vote with an extension when the feature
+		// is disabled on the network.
+		// https://github.com/tendermint/tendermint/issues/8565
+		if stripped := vote.StripExtension(); stripped {
+			cs.logger.Error("vote included extension data but vote extensions are not enabled", "peer", peerID)
 		}
 	}
 
@@ -2492,18 +2567,18 @@ func (cs *State) signVote(
 
 	// If the signedMessageType is for precommit,
 	// use our local precommit Timeout as the max wait time for getting a singed commit. The same goes for prevote.
-	timeout := cs.voteTimeout(cs.Round)
-
+	timeout := time.Second
 	if msgType == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+		timeout = cs.voteTimeout(cs.Round)
 		// if the signedMessage type is for a non-nil precommit, add
 		// VoteExtension
-		ext, err := cs.blockExec.ExtendVote(ctx, vote)
-		if err != nil {
-			return nil, err
+		if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+			ext, err := cs.blockExec.ExtendVote(ctx, vote)
+			if err != nil {
+				return nil, err
+			}
+			vote.Extension = ext
 		}
-		vote.Extension = ext
-	} else {
-		timeout = time.Second
 	}
 
 	v := vote.ToProto()
@@ -2543,14 +2618,17 @@ func (cs *State) signAddVote(
 
 	// TODO: pass pubKey to signVote
 	vote, err := cs.signVote(ctx, msgType, hash, header)
-	if err == nil {
-		cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, "", tmtime.Now()})
-		cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
-		return vote
+	if err != nil {
+		cs.logger.Error("failed signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
+		return nil
 	}
-
-	cs.logger.Error("failed signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
-	return nil
+	if !cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(vote.Height) {
+		// The signer will sign the extension, make sure to remove the data on the way out
+		vote.StripExtension()
+	}
+	cs.sendInternalMessage(ctx, msgInfo{&VoteMessage{vote}, "", tmtime.Now()})
+	cs.logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
+	return vote
 }
 
 // updatePrivValidatorPubKey get's the private validator public key and

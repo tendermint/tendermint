@@ -17,6 +17,7 @@ message ConsensusParams {
   VersionParams   version   = 4;
   SynchronyParams synchrony = 5;
   TimeoutParams   timeout   = 6;
+  ABCIParams      abci      = 7;
 }
 
 // BlockParams contains limits on the block size.
@@ -126,4 +127,22 @@ message TimeoutParams {
   // Setting bypass_commit_timeout false (the default) causes Tendermint to wait
   // for the full commit timeout.
   bool bypass_commit_timeout = 6;
+}
+
+// ABCIParams configure functionality specific to the Application Blockchain Interface.
+message ABCIParams {
+  // vote_extensions_enable_height configures the first height during which
+  // vote extensions will be enabled. During this specified height, and for all
+  // subsequent heights, precommit messages that do not contain valid extension data
+  // will be considered invalid. Prior to this height, vote extensions will not
+  // be used or accepted by validators on the network.
+  //
+  // Once enabled, vote extensions will be created by the application in ExtendVote,
+  // passed to the application for validation in VerifyVoteExtension and given
+  // to the application to use when proposing a block during PrepareProposal.
+  int64 vote_extensions_enable_height = 1;
+
+  // Indicates if CheckTx should be called on all the transactions
+  // remaining in the mempool after a block is executed.
+  bool recheck_tx = 2;
 }

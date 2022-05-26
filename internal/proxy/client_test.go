@@ -58,7 +58,7 @@ func (app *appConnTest) Info(ctx context.Context, req *types.RequestInfo) (*type
 var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	sockPath := fmt.Sprintf("unix://%s/echo_%v.sock", t.TempDir(), tmrand.Str(6))
 	logger := log.NewNopLogger()
 	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
 	if err != nil {
@@ -98,7 +98,7 @@ func TestEcho(t *testing.T) {
 
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	sockPath := fmt.Sprintf("unix://%s/echo_%v.sock", b.TempDir(), tmrand.Str(6))
 	logger := log.NewNopLogger()
 	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
 	if err != nil {
@@ -146,7 +146,7 @@ func TestInfo(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
+	sockPath := fmt.Sprintf("unix://%s/echo_%v.sock", t.TempDir(), tmrand.Str(6))
 	logger := log.NewNopLogger()
 	client, err := abciclient.NewClient(logger, sockPath, SOCKET, true)
 	if err != nil {

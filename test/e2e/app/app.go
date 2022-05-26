@@ -162,7 +162,6 @@ func (app *Application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*a
 	if err != nil {
 		return &abci.ResponseCheckTx{
 			Code: code.CodeTypeEncodingError,
-			Log:  err.Error(),
 		}, nil
 	}
 	return &abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}, nil

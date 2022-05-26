@@ -546,8 +546,6 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
-		Info: res.Info,
-		Log:  res.Log,
 	})
 	return nil
 }
