@@ -96,6 +96,18 @@ callback.
 For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
 defines and describes the new API in detail.
 
+#### BroadcastTx Methods
+
+All callers should use the new `broadcast_tx` method, which has the
+same semantics as the legacy `broadcast_tx_sync` method. The
+`broadcast_tx_sync` and `broadcast_tx_async` methods are now
+deprecated and will be removed in 0.37.
+
+Additionally the `broadcast_tx_commit` method is *also* deprecated,
+and will be removed in 0.37. Client code that submits a transaction
+and needs to wait for it to be committed to the chain, should poll
+the tendermint to observe the transaction in the committed state.
+
 ### Timeout Parameter Changes
 
 Tendermint v0.36 updates how the Tendermint consensus timing parameters are

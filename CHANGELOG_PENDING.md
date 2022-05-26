@@ -22,6 +22,7 @@ Special thanks to external contributors on this release:
   - [cli] \#8081 make the reset command safe to use by intoducing `reset-state` command. Fixed by \#8259. (@marbar3778, @cmwaters)
   - [config] \#8222 default indexer configuration to null. (@creachadair)
   - [rpc] \#8570 rework timeouts to be per-method instead of global. (@creachadair)
+  - [rpc] \#8624 deprecate `broadcast_tx_commit` and `braodcast_tx_sync` and `broadcast_tx_async` in favor of `braodcast_tx`. (@tychoish)
 
 - Apps
 
