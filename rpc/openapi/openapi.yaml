@@ -86,6 +86,10 @@ paths:
         - Tx
       operationId: broadcast_tx_sync
       description: |
+        This method is deprecated in Tendermint v0.36, and will be
+        removed in v0.37. Use `broadcast_tx`, which has similar
+        semantics.
+
         This method blocks until CheckTx returns and reports its result, but
         does not wait for the transaction to be included in a block. To know
         when the transaction is included in a block, check for the transaction
@@ -122,6 +126,9 @@ paths:
         - Tx
       operationId: broadcast_tx_async
       description: |
+        This method is deprecated in Tendermint v0.36, and will be
+        removed in v0.37. Use `broadcast_tx`.
+
         This method submits the transaction and returns immediately without
         waiting for the transaction to be checked (CheckTx) or committed.  Too
         know when the transaction is included in a block, you can check for the
@@ -165,7 +172,7 @@ paths:
         succeed and report the failing (non-zero) ABCI result code.
 
         WARNING: Use this only for testing and development. For production use,
-        call broadcast_tx_sync or broadcast_tx_async.
+        call broadcast_tx.
 
         To know when a transaction is included in a block, check for the
         transaction event using JSON-RPC.  See
