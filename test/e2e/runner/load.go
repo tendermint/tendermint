@@ -29,7 +29,7 @@ func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Tes
 		nNodes = len(testnet.Nodes)
 	}
 
-	concurrency := nNodes * 2
+	concurrency := nNodes * 20
 	if concurrency > 32 {
 		concurrency = 32
 	}
