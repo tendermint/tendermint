@@ -236,6 +236,18 @@ message ResponseCheckTx {
   reserved 3, 4, 6, 7, 11; // see https://github.com/tendermint/tendermint/issues/8543
 }
 
+message ResponseDeliverTx {
+  uint32         code       = 1;
+  bytes          data       = 2;
+  string         log        = 3;  // nondeterministic
+  string         info       = 4;  // nondeterministic
+  int64          gas_wanted = 5 [json_name = "gas_wanted"];
+  int64          gas_used   = 6 [json_name = "gas_used"];
+  repeated Event events     = 7
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
+  string codespace = 8;
+}
+
 message ResponseCommit {
   // reserve 1
   bytes data          = 2;
