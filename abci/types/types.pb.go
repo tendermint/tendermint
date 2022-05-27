@@ -3060,7 +3060,7 @@ func (m *ExtendedCommitInfo) GetVotes() []ExtendedVoteInfo {
 }
 
 // Event allows application developers to attach additional information to
-// ResponseFinalizeBlock, ExecTxResult
+// ResponseFinalizeBlock, ResponseDeliverTx, ExecTxResult
 // Later, transactions may be queried using these events.
 type Event struct {
 	Type       string           `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
