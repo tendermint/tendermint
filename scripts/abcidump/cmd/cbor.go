@@ -15,23 +15,15 @@ type CborCmd struct {
 	Input io.Reader
 
 	// flags
-	InputData    string
-	InputFormat  string
-	ProtobufType string
-	Raw          bool
+	InputData   string
+	InputFormat string
 }
 
-// func (parseCmd *ParseCmd) fieldType(fieldName string) string {
-// 	return parseCmd.FieldsMap[strings.ToLower(fieldName)]
-// }
-
+// Command returns Cobra command
 func (cborCmd *CborCmd) Command() *cobra.Command {
 	if cborCmd.cmd != nil {
 		return cborCmd.cmd
 	}
-
-	inputFormats := []string{formatHex, formatBase64, formatFile}
-
 	cborCmd.cmd = &cobra.Command{
 		Use:   "cbor",
 		Short: "Decoder for CBOR-encoded messages",
@@ -50,14 +42,11 @@ func (cborCmd *CborCmd) Command() *cobra.Command {
 			}
 		},
 	}
-
-	cborDecodeCmd.Flags().StringVar(&cborCmd.InputData, flagInput, "", "filename or string representing input data")
+	inputFormats := strings.Join([]string{formatHex, formatBase64, formatFile}, ",")
 	cborDecodeCmd.Flags().StringVar(&cborCmd.InputFormat, flagFormat, "",
-		"input data format, one of: "+strings.Join(inputFormats, ", ")+"; defaults to raw bytes read from stdin",
+		"input data format, one of: "+inputFormats+"; defaults to raw bytes read from stdin",
 	)
-	cborDecodeCmd.Flags().StringVarP(&cborCmd.ProtobufType, flagType, "t", "tendermint.abci.Request",
-		"protobuf type of the root message")
-	cborDecodeCmd.Flags().BoolVar(&cborCmd.Raw, flagRaw, false, "read as raw protobuf data (without length prefix)")
+	cborDecodeCmd.Flags().StringVar(&cborCmd.InputData, flagInput, "", "filename or string representing input data")
 
 	cborCmd.cmd.AddCommand(cborDecodeCmd)
 	return cborCmd.cmd
@@ -75,11 +64,10 @@ func (cborCmd *CborCmd) PreRunE(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-const delimeter = '\t'
+const jsonIndent = '\t'
 
 func marshal(data interface{}, depth int) ([]byte, error) {
 	switch typed := data.(type) {
-
 	case map[interface{}]interface{}:
 		ret := []byte("{")
 		isFirst := true
@@ -101,7 +89,7 @@ func marshal(data interface{}, depth int) ([]byte, error) {
 				return nil, err
 			}
 			for i := 0; i < depth; i++ {
-				ret = append(ret, delimeter)
+				ret = append(ret, jsonIndent)
 			}
 
 			ret = append(ret, k1...)
@@ -111,21 +99,16 @@ func marshal(data interface{}, depth int) ([]byte, error) {
 		ret = append(ret, '\n', '}')
 		return ret, nil
 
-	// case string:
-	// 	return []byte("\"" + typed + "\""), nil
-	// case uint64:
-	// 	v1 := strconv.FormatInt(typed, 10)
-	// 	return []byte(v1), nil
 	default:
 		s, err := json.Marshal(data)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse %s: %w", typed, err)
 		}
 		return s, nil
-		// return []byte("\"" + fmt.Sprintf("%s", data) + "\""), nil
 	}
 }
 
+// RunE executes main logic of this command
 func (cborCmd *CborCmd) RunE(cmd *cobra.Command, args []string) error {
 	data, err := io.ReadAll(cborCmd.Input)
 	if err != nil {
@@ -137,7 +120,6 @@ func (cborCmd *CborCmd) RunE(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cborCmd.cmd.OutOrStdout()
-
 	str, err := marshal(s, 1)
 	if err != nil {
 		return err

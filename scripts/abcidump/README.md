@@ -4,11 +4,11 @@
 
 ABCI Dump dumps and parses Protobuf communication. It is designed to dump traffic TCP
 between ABCI App and Tendermint/Tenderdash, parse and display it. It also supports
-parsing of hex-encoded and base64-encoded protobuf messages.
+parsing hex-encoded and base64-encoded protobuf messages.
 
 ABCI Dump can:
 
-* dump live traffic (just as tcpdump), parsing and displaying it in json,
+* dump live traffic (just as `tcpdump`), parsing and displaying it as JSON,
 * parse data passed in hex or base64 format (both length-delimited and raw protobuf data),
 * parse and display base64-encoded data in CBOR format.
 
@@ -16,7 +16,7 @@ ABCI Dump can:
 
 ### Installing dependencies
 
-abcidump requires `libpcap` to operate, and `libpcap-dev` to install:
+ABCI Dump requires `libpcap` to operate, and `libpcap-dev` to build:
 
 ```bash
 apt-get install -y libpcap libpcap-dev
@@ -37,21 +37,9 @@ or:
 make install_abcidump
 ```
 
-### Cross-compiling for Docker usages
+### Using with Docker
 
-
-To cross-compile the binary for use in Docker, use the following set of commands:
-
-```bash
-make build-docker
-ID=abcidump
-docker run -d --rm --name "$ID" --entrypoint ''  "$ID" /bin/sleep 10 
-sleep 3
-docker cp "$ID":/usr/bin/abcidump ./abcidump 
-```
-
-NOTE: As ABCI Dump contains protobuf protocol definitions, you need to build it
-from the same branch/tag as the tenderdash binary.
+Since Tenderdash 0.7.2, ABCI Dump is installed in the docker image as /usr/bin/abcidump
 
 ## Usage
 
@@ -121,4 +109,18 @@ To decode CBOR, use the following command:
 go run ./scripts/abcidump/ cbor decode \
     --format base64 \
     --input 'omdtZXNzYWdleB1DaGFpbkxvY2sgdmVyaWZpY2F0aW9uIGZhaWxlZGRkYXRho2ZoZWlnaHQaJGELXWlibG9ja0hhc2h4QDI1MTc3MzgwZDcyMjdjODcyNWFmNDJlMTlkMWFjNDdhYWViMjZkOTM2YjQwMzQ1MDAwMDAxNTI3ZTBmNjQ5NzVpc2lnbmF0dXJleMA5YTZmNmUxMWUyMDAwMDAwMTNkZmFiNDZjMmEzMWE2ZGRlZGRiYmNjNzQ3OTMzMzBlODI1MTliMTZiNGQyMjYwYWViMDU5MWViMjI3NDAxZjdjMTIxOTU2NWYwMzFlZDg0MzQ0NjVjNjkxZjM4Y2E5MTZhZmI5ZDlmYzViZjIwZGM4ODMxMjdhYmI3MWRmNTE1MzI3ZWQzMGIxZTI2Y2I0ZTNlNjRmN2FmNWY0ODJhODBhYzAyODM4NjRkNjY2ZDI='
+```
+
+### Using inside Docker container
+
+To use, ABCI Dump inside a Docker container, execute the following command:
+
+```bash
+docker exec --user root -ti [image_id] /usr/bin/abcidump
+```
+
+For example:
+
+```bash
+docker exec --user root -ti mn_evo_services_tendermint_1 /usr/bin/abcidump
 ```

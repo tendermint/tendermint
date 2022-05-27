@@ -10,25 +10,25 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 )
 
-type Marshaler interface {
-	Marshal(out io.Writer, pb proto.Message) error
-}
+// Parser reads protobuf data from In, parses it and writes to Out in JSON format
 type Parser struct {
-	In              io.Reader
-	Out             io.Writer
-	LengthDelimeted bool
-	Marshaler       Marshaler
+	In              io.Reader // Input for the parser
+	Out             io.Writer // Output for the parser
+	LengthDelimeted bool      // If true, each input message should start with message length
+	marshaler       jsonpb.Marshaler
 }
 
 func NewParser(in io.Reader) Parser {
 	return Parser{
-		Marshaler:       &jsonpb.Marshaler{Indent: "\t"},
+		marshaler:       jsonpb.Marshaler{Indent: "\t"},
 		In:              in,
 		Out:             &bytes.Buffer{},
 		LengthDelimeted: true,
 	}
 }
 
+// Parse parses next element as protobuf message type `msgType`.
+// Returns io.EOF when there are no more messages in In.
 func (p Parser) Parse(msgType string) error {
 
 	msg, err := NewMessageType(msgType)
@@ -38,7 +38,7 @@ func (p Parser) Parse(msgType string) error {
 	if err := readAndParse(p.In, p.LengthDelimeted, msg); err != nil {
 		return err
 	}
-	if err := p.Marshaler.Marshal(p.Out, msg); err != nil {
+	if err := p.marshaler.Marshal(p.Out, msg); err != nil {
 		return err
 	}
 	if _, err := p.Out.Write([]byte{'\n'}); err != nil {
@@ -59,5 +59,5 @@ func readAndParse(in io.Reader, lengthDelimeted bool, dest proto.Message) error 
 		}
 	}
 
-	return nil // parseCmd.parse(msg)
+	return nil
 }

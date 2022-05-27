@@ -8,10 +8,7 @@ import (
 )
 
 func main() {
-	// logger = log.NewDefaultLogger(log.LogFormatText, log.LogLevelInfo, false)
-
 	rootCmd := cmd.MakeRootCmd()
-
 	parseCmd := cmd.ParseCmd{}
 	captureCmd := cmd.CaptureCmd{}
 	cborCmd := cmd.CborCmd{}

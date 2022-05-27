@@ -36,10 +36,7 @@ type ParseCmd struct {
 	Raw          bool
 }
 
-// func (parseCmd *ParseCmd) fieldType(fieldName string) string {
-// 	return parseCmd.FieldsMap[strings.ToLower(fieldName)]
-// }
-
+// Command returns Cobra command that will parse input data
 func (parseCmd *ParseCmd) Command() *cobra.Command {
 	if parseCmd.cmd != nil {
 		return parseCmd.cmd
@@ -49,11 +46,7 @@ func (parseCmd *ParseCmd) Command() *cobra.Command {
 
 	parseCmd.cmd = &cobra.Command{
 		Use:   "parse",
-		Short: "parse request or response dumped to file with tcpdump",
-		Long: "Parse request or response dumped to a file with tcpdump.\n" +
-			"Example dump command:\n" +
-			"\tdocker exec -ti mn_evo_services_drive_abci_1 " +
-			"tcpdump -s 65535 -w /var/log/drive/dump-26658-`date -u -Is`.pcap port 26658\n",
+		Short: "parse ABCI Protobuf message of the given type",
 
 		PreRunE: parseCmd.PreRunE,
 		RunE:    parseCmd.RunE,
@@ -66,13 +59,13 @@ func (parseCmd *ParseCmd) Command() *cobra.Command {
 		},
 	}
 
-	parseCmd.cmd.Flags().StringVar(&parseCmd.InputData, flagInput, "", "filename or string representing input data")
+	parseCmd.cmd.Flags().StringVar(&parseCmd.InputData, flagInput, "",
+		"string representing input data (or path to input file)")
 	parseCmd.cmd.Flags().StringVar(&parseCmd.InputFormat, flagFormat, "",
 		"input data format, one of: "+strings.Join(inputFormats, ", ")+"; defaults to raw bytes read from stdin",
 	)
-
 	parseCmd.cmd.Flags().StringVarP(&parseCmd.ProtobufType, flagType, "t", "tendermint.abci.Request",
-		"protobuf type of the root message")
+		"name of protobuf type of the message")
 	parseCmd.cmd.Flags().BoolVar(&parseCmd.Raw, flagRaw, false, "read as raw protobuf data (without length prefix)")
 
 	return parseCmd.cmd
@@ -112,20 +105,17 @@ func loadInputData(input, format string) (reader io.Reader, err error) {
 		}
 		return reader, nil
 
-	case "":
+	case "", "-":
 		return nil, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported input format %s", format)
+		return nil, fmt.Errorf("unsupported input format: %s", format)
 	}
 }
 
+// RunE executes parsing logic
 func (parseCmd *ParseCmd) RunE(cmd *cobra.Command, args []string) error {
-	var (
-		// msg proto.Message
-		// ok  bool
-		err error
-	)
+	var err error
 
 	parser := parser.NewParser(cmd.InOrStdin())
 	parser.Out = cmd.OutOrStdout()

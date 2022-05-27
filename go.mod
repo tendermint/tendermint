@@ -14,7 +14,7 @@ require (
 	github.com/didip/tollbooth/v6 v6.1.1 // indirect
 	github.com/didip/tollbooth_chi v0.0.0-20200828173446-a7173453ea21 // indirect
 	github.com/fortytw2/leaktest v1.3.0
-	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.0
@@ -24,7 +24,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/google/btree v1.0.1 // indirect
-	github.com/google/gopacket v1.1.19 // indirect
+	github.com/google/gopacket v1.1.19
 	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/gtank/merlin v0.1.1

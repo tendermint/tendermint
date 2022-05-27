@@ -8,6 +8,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+// NewMessageType loads protobuf message type `typeName` and
+// allocates new instance of this type.
 func NewMessageType(typeName string) (proto.Message, error) {
 	if msgType := proto.MessageType(typeName); msgType != nil {
 		value := reflect.New(msgType.Elem())

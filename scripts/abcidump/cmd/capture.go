@@ -24,6 +24,7 @@ const (
 	flagResponseType = "response-type"
 )
 
+// CaptureCmd captures network traffic and dumps it as JSON message
 type CaptureCmd struct {
 	cmd       *cobra.Command
 	Input     io.Reader
@@ -35,10 +36,7 @@ type CaptureCmd struct {
 	ResponseType string
 }
 
-// func (captureCmd *captureCmd) fieldType(fieldName string) string {
-// 	return captureCmd.FieldsMap[strings.ToLower(fieldName)]
-// }
-
+// Command returns cobra command
 func (captureCmd *CaptureCmd) Command() *cobra.Command {
 	if captureCmd.cmd != nil {
 		return captureCmd.cmd
@@ -48,8 +46,7 @@ func (captureCmd *CaptureCmd) Command() *cobra.Command {
 		Use:   "capture",
 		Short: "capture TCP traffic, parse as ABCI protocol and display it in JSON format",
 
-		PreRunE: captureCmd.PreRunE,
-		RunE:    captureCmd.RunE,
+		RunE: captureCmd.RunE,
 		PostRun: func(cmd *cobra.Command, args []string) {
 			if captureCmd.Input != nil {
 				if closer, ok := captureCmd.Input.(io.Closer); ok {
@@ -61,24 +58,19 @@ func (captureCmd *CaptureCmd) Command() *cobra.Command {
 
 	captureCmd.cmd.Flags().StringVarP(&captureCmd.Interface, flagInterface, "i", "eth0", "interface to use")
 	captureCmd.cmd.Flags().Uint16VarP(&captureCmd.Port, flagPort, "p", 26658, "Port number to use")
-
 	captureCmd.cmd.Flags().StringVar(&captureCmd.RequestType, flagRequestType,
 		"tendermint.abci.Request", "Protobuf type of the request")
 	captureCmd.cmd.Flags().StringVar(&captureCmd.ResponseType, flagResponseType,
 		"tendermint.abci.Response", "Protobuf type of the response")
-
 	captureCmd.cmd.Flags().BoolVar(&captureCmd.Promisc, flagPromisc, false, "Enable promiscuous mode")
 
 	return captureCmd.cmd
 }
 
-// PreRunE parses command line arguments
-func (captureCmd *CaptureCmd) PreRunE(cmd *cobra.Command, args []string) (err error) {
-	return nil
-}
-
+// RunE executes traffic capture
 func (captureCmd *CaptureCmd) RunE(cmd *cobra.Command, args []string) error {
 	logger.Debug("Starting packet capture", "port", captureCmd.Port)
+
 	return captureCmd.capture()
 }
 
@@ -120,8 +112,6 @@ func (captureCmd *CaptureCmd) processPacket(packet gopacket.Packet) error {
 		}
 
 		logger.Debug("packet processed", "isRequest", isRequest, "payload", payload)
-	} else {
-		// logger.Debug("no payload found", "isRequest", isRequest, "packet", packet)
 	}
 
 	return nil
@@ -130,7 +120,6 @@ func (captureCmd *CaptureCmd) processPacket(packet gopacket.Packet) error {
 func (captureCmd *CaptureCmd) parsePacket(packet gopacket.Packet) (payload tmbytes.HexBytes, isRequest bool) {
 	tcpLayer := packet.Layer(layers.LayerTypeTCP)
 	if tcpLayer == nil {
-		// logger.Debug("cannot initialize packet layers", "tcpLayer", tcpLayer, "appLayer", appLayer)
 		return nil, false
 	}
 
@@ -140,15 +129,6 @@ func (captureCmd *CaptureCmd) parsePacket(packet gopacket.Packet) (payload tmbyt
 		logger.Debug("received non-tcp packet", "packet", packet)
 		return nil, false
 	}
-
-	// ipv4l := packet.Layer(layers.LayerTypeIPv4)
-	// ipv4 := ipv4l.(*layers.IPv4)
-	// if !ipv4.DstIP.Equal(net.IPv4(212, 77, 98, 9)) && !ipv4.SrcIP.Equal(net.IPv4(212, 77, 98, 9)) {
-	// 	return nil, false
-	// }
-
-	// payload = appLayer.Payload()
-	// logger.Debug("parsing packet payload", "payload", fmt.Sprintf("%x", payload), "packet", packet)
 
 	if tcp.DstPort == layers.TCPPort(captureCmd.Port) {
 		return payload, true
