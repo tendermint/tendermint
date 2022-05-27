@@ -128,6 +128,8 @@ jobs:
         with:
           path: ~/bls-cache
           key: ${{ runner.os }}-bls-${{ steps.bls-revision.outputs.hash }}
+      - name: Install libpcap
+        run: sudo apt-get install --yes libpcap-dev
       - name: Install BLS library
         run: |
           sudo cp -vr ~/bls-cache/include/* /usr/local/include/

@@ -19,7 +19,7 @@ ABCI Dump can:
 ABCI Dump requires `libpcap` to operate, and `libpcap-dev` to build:
 
 ```bash
-apt-get install -y libpcap libpcap-dev
+apt-get install -y libpcap0.8 libpcap-dev
 ```
 
 
