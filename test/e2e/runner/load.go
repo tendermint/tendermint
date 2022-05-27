@@ -14,14 +14,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func nNodes(testnet *e2e.Testnet, ips []string) int {
-	if testnet == nil {
-		return len(ips)
-	} else {
-		return len(testnet.Nodes)
-	}
-}
-
 // Load generates transactions against the network until the given context is
 // canceled.
 func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Testnet, ips []string) error {
@@ -30,8 +22,14 @@ func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Tes
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
 	// This also limits the number of TCP connections, since each worker has
 	// a connection to all nodes.
+	var nNodes int
+	if testnet == nil {
+		nNodes = len(ips)
+	} else {
+		nNodes = len(testnet.Nodes)
+	}
 
-	concurrency := nNodes(testnet, ips) * 2
+	concurrency := nNodes * 2
 	if concurrency > 32 {
 		concurrency = 32
 	}
@@ -42,18 +40,18 @@ func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Tes
 	defer cancel()
 
 	// Spawn job generator and processors.
-	txSize := 0
+	var txSize int
 	if testnet != nil {
 		txSize = testnet.TxSize
 	}
 	logger.Info("starting transaction load",
 		"workers", concurrency,
-		"nodes", nNodes(testnet, ips),
+		"nodes", nNodes,
 		"tx", txSize)
 
 	started := time.Now()
 
-	go loadGenerate(ctx, r, chTx, txSize, nNodes(testnet, ips))
+	go loadGenerate(ctx, r, chTx, txSize, nNodes)
 
 	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, ips, chTx, chSuccess)
@@ -145,7 +143,7 @@ func loadGenerateWaitTime(r *rand.Rand, size int) time.Duration {
 	return time.Duration(baseJitter + sizeJitter)
 }
 
-func prepareClients(testnet *e2e.Testnet) []*rpchttp.HTTP {
+func prepareClientsTestnet(testnet *e2e.Testnet) []*rpchttp.HTTP {
 	clients := make([]*rpchttp.HTTP, 0, len(testnet.Nodes))
 
 	for idx := range testnet.Nodes {
@@ -167,11 +165,11 @@ func prepareClients(testnet *e2e.Testnet) []*rpchttp.HTTP {
 	return clients
 }
 
-func prepareClientsIp(ips []string) []*rpchttp.HTTP {
+func prepareClientsIps(ips []string) []*rpchttp.HTTP {
 	clients := make([]*rpchttp.HTTP, 0, len(ips))
 
 	for _, ip := range ips {
-		client, err := e2e.NewClient(ip, 6000)
+		client, err := e2e.NewClient(ip, 6000) // Port is hard-coded for the moment
 		if err != nil {
 			continue
 		}
@@ -188,9 +186,9 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, ips []string, chTx <
 
 	var clients []*rpchttp.HTTP
 	if testnet == nil {
-		clients = prepareClientsIp(ips)
+		clients = prepareClientsIps(ips)
 	} else {
-		clients = prepareClients(testnet)
+		clients = prepareClientsTestnet(testnet)
 	}
 
 	if len(clients) == 0 {

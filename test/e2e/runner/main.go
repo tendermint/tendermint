@@ -49,6 +49,7 @@ func NewCLI(logger log.Logger) *CLI {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			ips, err := cmd.Flags().GetString("ip-list")
 			if err != nil {
+				// If flag is absent, no error is returned, but the default value (empty string)
 				return err
 			}
 			if len(ips) == 0 {
@@ -236,21 +237,6 @@ func NewCLI(logger log.Logger) *CLI {
 				logger,
 				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
 				cli.testnet,
-				cli.ips,
-			)
-		},
-	})
-
-	cli.root.AddCommand(&cobra.Command{
-		Use:   "load-ip [comma-separated list of IPs]",
-		Args:  cobra.MaximumNArgs(1),
-		Short: "Generates transaction load to a list of IPs until the command is canceled",
-		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return Load(
-				cmd.Context(),
-				logger,
-				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
-				nil,
 				cli.ips,
 			)
 		},
