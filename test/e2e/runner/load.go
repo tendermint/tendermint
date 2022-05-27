@@ -169,7 +169,7 @@ func prepareClientsIps(ips []string) []*rpchttp.HTTP {
 	clients := make([]*rpchttp.HTTP, 0, len(ips))
 
 	for _, ip := range ips {
-		client, err := e2e.NewClient(ip, 6000) // Port is hard-coded for the moment
+		client, err := e2e.NewClient(ip, 26657) // Port is hard-coded for the moment
 		if err != nil {
 			continue
 		}
