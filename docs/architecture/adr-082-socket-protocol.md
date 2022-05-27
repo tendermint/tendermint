@@ -53,12 +53,15 @@ reasonable language.  However, its simplicity includes some limitations that
 have had a negative impact on the stability and performance of out-of-process
 applications using it. In particular:
 
-- The protocol lacks request identifiers, so the client and server must
-  complete requests in strict FIFO order. Even if the client issues requests
-  that have no dependency on each other, the protocol has no way except order
-  of issue to map responses to requests. This strictly limits the application's
-  ability to process requests concurrently, and has been a source of complaints
-  from some network operators on that basis.
+- The protocol lacks request identifiers, so the client and server must return
+  responses in strict FIFO order. Even if the client issues requests that have
+  no dependency on each other, the protocol has no way except order of issue to
+  map responses to requests.
+
+  This reduces (in some cases substantially) the concurrency an application can
+  exploit, since the parallelism of requests in flight is gated by the slowest
+  active request at any moment.  There have been complaints from some network
+  operators on that basis.
 
 - The protocol lacks method identifiers, so the only way for the client and
   server to understand which operation is requested is to dispatch on the type
