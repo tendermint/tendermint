@@ -396,9 +396,21 @@ func (r *Router) routeChannel(
 				return
 			}
 
-			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
+			shouldEvict := peerError.Fatal || r.peerManager.HasMaxPeerCapacity()
+			r.logger.Error("peer error",
+				"peer", peerError.NodeID,
+				"err", peerError.Err,
+				"evicting", shouldEvict,
+			)
+			if shouldEvict {
+				r.peerManager.Errored(peerError.NodeID, peerError.Err)
+			} else {
+				r.peerManager.processPeerEvent(ctx, PeerUpdate{
+					NodeID: peerError.NodeID,
+					Status: PeerStatusBad,
+				})
+			}
 
-			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 		case <-ctx.Done():
 			return
 		}

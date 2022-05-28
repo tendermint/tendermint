@@ -17,12 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-const (
-	// reqQueueSize is the max number of queued async requests.
-	// (memory: 256MB max assuming 1MB transactions)
-	reqQueueSize = 256
-)
-
 // This is goroutine-safe, but users should beware that the application in
 // general is not meant to be interfaced with concurrent callers.
 type socketClient struct {
@@ -48,7 +42,7 @@ var _ Client = (*socketClient)(nil)
 func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		logger:      logger,
-		reqQueue:    make(chan *requestAndResponse, reqQueueSize),
+		reqQueue:    make(chan *requestAndResponse),
 		mustConnect: mustConnect,
 		addr:        addr,
 		reqSent:     list.New(),
@@ -118,6 +112,11 @@ func (cli *socketClient) sendRequestsRoutine(ctx context.Context, conn io.Writer
 		case <-ctx.Done():
 			return
 		case reqres := <-cli.reqQueue:
+			// N.B. We must enqueue before sending out the request, otherwise the
+			// server may reply before we do it, and the receiver will fail for an
+			// unsolicited reply.
+			cli.trackRequest(reqres)
+
 			if err := types.WriteMessage(reqres.Request, bw); err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
@@ -158,14 +157,15 @@ func (cli *socketClient) recvResponseRoutine(ctx context.Context, conn io.Reader
 	}
 }
 
-func (cli *socketClient) willSendReq(reqres *requestAndResponse) {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-
+func (cli *socketClient) trackRequest(reqres *requestAndResponse) {
+	// N.B. We must NOT hold the client state lock while checking this, or we
+	// may deadlock with shutdown.
 	if !cli.IsRunning() {
 		return
 	}
 
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
 	cli.reqSent.PushBack(reqres)
 }
 
@@ -199,7 +199,6 @@ func (cli *socketClient) doRequest(ctx context.Context, req *types.Request) (*ty
 	}
 
 	reqres := makeReqRes(req)
-	cli.willSendReq(reqres)
 
 	select {
 	case cli.reqQueue <- reqres:

@@ -1204,14 +1204,16 @@ func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	}
 }
 func (bs *mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
-func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
+func (bs *mockBlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenCommit *types.ExtendedCommit) {
+}
+func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }
 
 func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
-	return bs.extCommits[height-1].StripExtensions()
+	return bs.extCommits[height-1].ToCommit()
 }
 func (bs *mockBlockStore) LoadSeenCommit() *types.Commit {
-	return bs.extCommits[len(bs.extCommits)-1].StripExtensions()
+	return bs.extCommits[len(bs.extCommits)-1].ToCommit()
 }
 func (bs *mockBlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
 	return bs.extCommits[height-1]

@@ -7,8 +7,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -68,8 +66,13 @@ func (_m *Provider) ReportEvidence(_a0 context.Context, _a1 types.Evidence) erro
 	return r0
 }
 
-// NewProvider creates a new instance of Provider. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewProvider(t testing.TB) *Provider {
+type NewProviderT interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewProvider creates a new instance of Provider. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewProvider(t NewProviderT) *Provider {
 	mock := &Provider{}
 	mock.Mock.Test(t)
 

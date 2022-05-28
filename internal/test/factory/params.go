@@ -18,5 +18,6 @@ func ConsensusParams() *types.ConsensusParams {
 		VoteDelta:           1 * time.Millisecond,
 		BypassCommitTimeout: true,
 	}
+	c.ABCI.VoteExtensionsEnableHeight = 1
 	return c
 }

@@ -6,6 +6,14 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### ABCI Changes
 
+### ResponseCheckTx Parameter Change
+
+`ResponseCheckTx` had fields that are not used by Tendermint, they are now removed.
+In 0.36, we removed the following fields, from `ResponseCheckTx`: `Log`, `Info`, `Events`,
+ `GasUsed` and `MempoolError`. 
+`MempoolError` was used to signal to operators that a transaction was rejected from the mempool
+by Tendermint itself. Right now, we return a regular error when this happens.
+
 #### ABCI++
 
 Coming soon...
@@ -88,6 +96,18 @@ callback.
 For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
 defines and describes the new API in detail.
 
+#### BroadcastTx Methods
+
+All callers should use the new `broadcast_tx` method, which has the
+same semantics as the legacy `broadcast_tx_sync` method. The
+`broadcast_tx_sync` and `broadcast_tx_async` methods are now
+deprecated and will be removed in 0.37.
+
+Additionally the `broadcast_tx_commit` method is *also* deprecated,
+and will be removed in 0.37. Client code that submits a transaction
+and needs to wait for it to be committed to the chain, should poll
+the tendermint to observe the transaction in the committed state.
+
 ### Timeout Parameter Changes
 
 Tendermint v0.36 updates how the Tendermint consensus timing parameters are
@@ -125,6 +145,19 @@ For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which
 lays out the reasoning for the changes as well as [RFC
 009](https://tinyurl.com/rfc009) for a discussion of the complexities of
 upgrading consensus parameters.
+
+### RecheckTx Parameter Change
+
+`RecheckTx` was previously enabled by the `recheck` parameter in the mempool
+section of the `config.toml`.
+Setting it to true made Tendermint invoke another `CheckTx` ABCI call on
+each transaction remaining in the mempool following the execution of a block.
+Similar to the timeout parameter changes, this parameter makes more sense as a
+network-wide coordinated variable so that applications can be written knowing
+either all nodes agree on whether to run `RecheckTx`.
+
+Applications can turn on `RecheckTx` by altering the `ConsensusParams` in the
+`FinalizeBlock` ABCI response. 
 
 ### CLI Changes
 
