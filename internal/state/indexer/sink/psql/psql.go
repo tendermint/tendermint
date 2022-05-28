@@ -4,12 +4,11 @@ package psql
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/gogo/protobuf/proto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
@@ -182,7 +181,7 @@ func (es *EventSink) IndexTxEvents(txrs []*abci.TxResult) error {
 
 	for _, txr := range txrs {
 		// Encode the result message in protobuf wire format for indexing.
-		resultData, err := proto.Marshal(txr)
+		resultData, err := json.Marshal(txr)
 		if err != nil {
 			return fmt.Errorf("marshaling tx_result: %w", err)
 		}
