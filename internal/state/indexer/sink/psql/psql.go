@@ -4,12 +4,12 @@ package psql
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/jsonpb"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"
@@ -176,12 +176,19 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
 	})
 }
 
+var (
+	jsonpbMarshaller = jsonpb.Marshaler{
+		EnumsAsInts:  true,
+		EmitDefaults: true,
+	}
+)
+
 func (es *EventSink) IndexTxEvents(txrs []*abci.TxResult) error {
 	ts := time.Now().UTC()
 
 	for _, txr := range txrs {
 		// Encode the result message in protobuf wire format for indexing.
-		resultData, err := json.Marshal(txr)
+		resultData, err := jsonpbMarshaller.MarshalToString(txr)
 		if err != nil {
 			return fmt.Errorf("marshaling tx_result: %w", err)
 		}
