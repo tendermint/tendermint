@@ -15,13 +15,13 @@ var (
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
 		"topology":      {"single", "quad", "large"},
-		"queueType":     {"priority"}, // "fifo"
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
+		"abci":       {"builtin", "outofprocess"},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
@@ -32,11 +32,10 @@ var (
 		"rocksdb":   10,
 		"cleveldb":  5,
 	}
-	nodeABCIProtocols = weightedChoice{
-		"builtin": 50,
-		"tcp":     20,
-		"grpc":    20,
-		"unix":    10,
+	ABCIProtocols = weightedChoice{
+		"tcp":  20,
+		"grpc": 20,
+		"unix": 10,
 	}
 	nodePrivvalProtocols = weightedChoice{
 		"file": 50,
@@ -62,10 +61,13 @@ var (
 		"kill":       0.1,
 		"restart":    0.1,
 	}
-	evidence = uniformChoice{0, 1, 10}
-	txSize   = uniformChoice{1024, 4096} // either 1kb or 4kb
-	ipv6     = uniformChoice{false, true}
-	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
+
+	// the following specify random chosen values for the entire testnet
+	evidence   = uniformChoice{0, 1, 10}
+	txSize     = uniformChoice{1024, 4096} // either 1kb or 4kb
+	ipv6       = uniformChoice{false, true}
+	keyType    = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
+	abciDelays = uniformChoice{"none", "small", "large"}
 
 	voteExtensionEnableHeightOffset = uniformChoice{int64(0), int64(10), int64(100)}
 	voteExtensionEnabled            = uniformChoice{true, false}
@@ -107,7 +109,6 @@ type Options struct {
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
-		ABCIProtocol:     nodeABCIProtocols.Choose(r),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -115,12 +116,33 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Nodes:            map[string]*e2e.ManifestNode{},
 		KeyType:          keyType.Choose(r).(string),
 		Evidence:         evidence.Choose(r).(int),
-		QueueType:        opt["queueType"].(string),
+		QueueType:        "priority",
 		TxSize:           txSize.Choose(r).(int),
 	}
 
 	if voteExtensionEnabled.Choose(r).(bool) {
 		manifest.VoteExtensionsEnableHeight = manifest.InitialHeight + voteExtensionEnableHeightOffset.Choose(r).(int64)
+	}
+
+	if opt["abci"] == "builtin" {
+		manifest.ABCIProtocol = string(e2e.ProtocolBuiltin)
+	} else {
+		manifest.ABCIProtocol = string(ABCIProtocols.Choose(r))
+	}
+
+	switch abciDelays.Choose(r).(string) {
+	case "none":
+	case "small":
+		manifest.PrepareProposalDelayMS = 100
+		manifest.ProcessProposalDelayMS = 100
+		manifest.VoteExtensionDelayMS = 20
+		manifest.FinalizeBlockDelayMS = 200
+	case "large":
+		manifest.PrepareProposalDelayMS = 200
+		manifest.ProcessProposalDelayMS = 200
+		manifest.CheckTxDelayMS = 20
+		manifest.VoteExtensionDelayMS = 100
+		manifest.FinalizeBlockDelayMS = 500
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int
