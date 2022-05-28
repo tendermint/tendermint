@@ -11,6 +11,8 @@ import (
 
 	"github.com/tendermint/tendermint/scripts/keymigrate"
 	"github.com/tendermint/tendermint/scripts/scmigrate"
+
+	"github.com/tendermint/tendermint/version"
 )
 
 func Upgrade(ctx context.Context, testnet *e2e.Testnet, logger log.Logger) error {
@@ -70,7 +72,7 @@ func Migrate(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error
 		"evidence",
 	}
 	for _, node := range testnet.Nodes {
-		 if strings.HasPrefix(oldVersion, "v0.34") && newVersion > "v0.35" {
+		 if strings.HasPrefix(testnet.Version, "v0.34") && version.TMVersion > "v0.35" {
 			for _, store := range stores {
 				db, err := node.DB(store)
 				if err != nil {
@@ -89,6 +91,7 @@ func Migrate(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error
 				}
 			}
 		 }
+
 	}
 	return nil
 }
