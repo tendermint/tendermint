@@ -2,6 +2,7 @@ package commands
 
 import (
 	"path/filepath"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -30,26 +31,38 @@ Currently, only GoLevelDB is supported.
 				return
 			}
 
-			dbNames := []string{"state", "blockstore"}
-			o := &opt.Options{
-				DisableSeeksCompaction: true,
-			}
-			for _, dbName := range dbNames {
-				go func() {
-					dbPath := filepath.Join(cfg.DBDir(), dbName+".db")
-					store, err := leveldb.OpenFile(dbPath, o)
-					if err != nil {
-						logger.Error("failed to initialize tendermint db", "name", dbName, "err", err)
-						return
-					}
-					err = store.CompactRange(util.Range{Start: nil, Limit: nil})
-					if err != nil {
-						logger.Error("failed to compact tendermint db", "name", dbName, "err", err)
-					}
-				}()
-			}
+			CompactDBs(cfg.RootDir, logger)
 		},
 	}
 
 	return cmd
+}
+
+func CompactDBs(rootDir string, logger log.Logger) {
+	dbNames := []string{"state", "blockstore"}
+	o := &opt.Options{
+		DisableSeeksCompaction: true,
+	}
+	wg := sync.WaitGroup{}
+
+	for _, dbName := range dbNames {
+		dbName := dbName
+		wg.Add(1)
+		go func() {
+			dbPath := filepath.Join(rootDir, "data", dbName+".db")
+			store, err := leveldb.OpenFile(dbPath, o)
+			if err != nil {
+				logger.Error("failed to initialize tendermint db", "path", dbPath, "err", err)
+				return
+			}
+			defer store.Close()
+
+			err = store.CompactRange(util.Range{Start: nil, Limit: nil})
+			if err != nil {
+				logger.Error("failed to compact tendermint db", "path", dbPath, "err", err)
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 }
