@@ -353,6 +353,14 @@ Does not run any perbutations.
 		},
 	})
 
+	cli.root.AddCommand(&cobra.Command{
+		Use:   "upgrade",
+		Short: "Runs a testnet through an upgrade process from the specified version to the current version",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return Upgrade(cmd.Context(), cli.testnet, logger)
+		},
+	})
+
 	return cli
 }
 

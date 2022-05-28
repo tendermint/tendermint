@@ -8,10 +8,13 @@ import (
 	"math/rand"
 	"net"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -25,7 +28,10 @@ const (
 	proxyPortFirst uint32 = 5701
 	networkIPv4           = "10.186.73.0/24"
 	networkIPv6           = "fd80:b10c::/48"
+	defaultVersion        = "master"
 )
+
+var IsVersionValid = regexp.MustCompile(`master|v0.3[4-6]+.([0-9]+|x)`)
 
 type Mode string
 type Protocol string
@@ -61,6 +67,7 @@ type Testnet struct {
 	Name                       string
 	File                       string
 	Dir                        string
+	Version                    string
 	IP                         *net.IPNet
 	InitialHeight              int64
 	InitialState               map[string]string
@@ -154,6 +161,9 @@ func LoadTestnet(file string) (*Testnet, error) {
 	}
 	if testnet.ABCIProtocol == "" {
 		testnet.ABCIProtocol = string(ProtocolBuiltin)
+	}
+	if testnet.Version == "" {
+		testnet.Version = defaultVersion
 	}
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
@@ -299,6 +309,9 @@ func (t Testnet) Validate() error {
 	}
 	if len(t.Nodes) == 0 {
 		return errors.New("network has no nodes")
+	}
+	if !IsVersionValid.MatchString(t.Version) {
+		return fmt.Errorf("invalid network version %s", t.Version)
 	}
 	switch t.KeyType {
 	case "", types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1:
@@ -470,6 +483,15 @@ func (n Node) Client() (*rpchttp.HTTP, error) {
 // Stateless returns true if the node is either a seed node or a light node
 func (n Node) Stateless() bool {
 	return n.Mode == ModeLight || n.Mode == ModeSeed
+}
+
+func (n Node) DB(name string) (dbm.DB, error) {
+	dbType := dbm.BackendType(n.Database)
+	return dbm.NewDB(name, dbType, filepath.Join(n.Dir(), "data"))
+}
+
+func (n Node) Dir() string { 
+	return filepath.Join(n.Testnet.Dir, n.Name)
 }
 
 // keyGenerator generates pseudorandom Ed25519 keys based on a seed.

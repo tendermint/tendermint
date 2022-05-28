@@ -10,6 +10,9 @@ import (
 
 // Manifest represents a TOML testnet manifest.
 type Manifest struct {
+	// Version of the tendermint e2e-node to use
+	Version string `toml:"version"`
+
 	// IPv6 uses IPv6 networking instead of IPv4. Defaults to IPv4.
 	IPv6 bool `toml:"ipv6"`
 

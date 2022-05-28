@@ -1,6 +1,6 @@
 # This testnet is run by CI, and attempts to cover a broad range of
 # functionality with a single network.
-
+version = "master"
 evidence = 5
 initial_height = 1000
 initial_state = {initial01 = "a", initial02 = "b", initial03 = "c"}
