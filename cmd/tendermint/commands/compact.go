@@ -57,6 +57,8 @@ func CompactDBs(rootDir string, logger log.Logger) {
 			}
 			defer store.Close()
 
+			logger.Info("starting compaction...", "db", dbPath)
+
 			err = store.CompactRange(util.Range{Start: nil, Limit: nil})
 			if err != nil {
 				logger.Error("failed to compact tendermint db", "path", dbPath, "err", err)
