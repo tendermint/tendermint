@@ -127,7 +127,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	if opt["abci"] == "builtin" {
 		manifest.ABCIProtocol = string(e2e.ProtocolBuiltin)
 	} else {
-		manifest.ABCIProtocol = string(ABCIProtocols.Choose(r))
+		manifest.ABCIProtocol = ABCIProtocols.Choose(r)
 	}
 
 	switch abciDelays.Choose(r).(string) {
