@@ -11,9 +11,6 @@ import (
 
 // Tests that all nodes have peered with each other, regardless of discovery method.
 func TestNet_Peers(t *testing.T) {
-	// FIXME Skip test since nodes aren't always able to fully mesh
-	t.SkipNow()
-
 	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
@@ -25,6 +22,10 @@ func TestNet_Peers(t *testing.T) {
 
 		seen := map[string]bool{}
 		for _, n := range node.Testnet.Nodes {
+			// we never save light client addresses as they use RPC
+			if n.Mode == e2e.ModeLight {
+				continue
+			}
 			seen[n.Name] = (n.Name == node.Name) // we've clearly seen ourself
 		}
 		for _, peerInfo := range netInfo.Peers {
