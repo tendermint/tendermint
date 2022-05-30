@@ -278,8 +278,11 @@ func (txmp *TxMempool) CheckTx(
 	}
 
 	txmp.defaultTxCallback(tx, res)
-	txmp.initTxCallback(wtx, res, txInfo)
+	err = txmp.initTxCallback(wtx, res, txInfo)
 
+	if err != nil {
+		return err
+	}
 	if cb != nil {
 		cb(res)
 	}
@@ -488,7 +491,7 @@ func (txmp *TxMempool) Update(
 //
 // NOTE:
 // - An explicit lock is NOT required.
-func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx, txInfo TxInfo) {
+func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx, txInfo TxInfo) error {
 	var err error
 	if txmp.postCheck != nil {
 		err = txmp.postCheck(wtx.tx, res)
@@ -510,10 +513,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 		if !txmp.config.KeepInvalidTxsInCache {
 			txmp.cache.Remove(wtx.tx)
 		}
-		if err != nil {
-			res.MempoolError = err.Error()
-		}
-		return
+		return err
 	}
 
 	sender := res.Sender
@@ -527,7 +527,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 				"sender", sender,
 			)
 			txmp.metrics.RejectedTxs.Add(1)
-			return
+			return nil
 		}
 	}
 
@@ -548,7 +548,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 				"err", err.Error(),
 			)
 			txmp.metrics.RejectedTxs.Add(1)
-			return
+			return nil
 		}
 
 		// evict an existing transaction(s)
@@ -588,6 +588,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 		"num_txs", txmp.Size(),
 	)
 	txmp.notifyTxsAvailable()
+	return nil
 }
 
 // defaultTxCallback is the CheckTx application callback used when a

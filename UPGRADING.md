@@ -6,9 +6,20 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### ABCI Changes
 
+### ResponseCheckTx Parameter Change
+
+`ResponseCheckTx` had fields that are not used by Tendermint, they are now removed.
+In 0.36, we removed the following fields, from `ResponseCheckTx`: `Log`, `Info`, `Events`,
+ `GasUsed` and `MempoolError`. 
+`MempoolError` was used to signal to operators that a transaction was rejected from the mempool
+by Tendermint itself. Right now, we return a regular error when this happens.
+
 #### ABCI++
 
-Coming soon...
+For information on how ABCI++ works, see the
+[Specification](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/README.md).
+In particular, the simplest way to upgrade your application is described
+[here](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/abci++_tmint_expected_behavior_002_draft.md#adapting-existing-applications-that-use-abci).
 
 #### ABCI Mutex
 
@@ -88,6 +99,18 @@ callback.
 For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
 defines and describes the new API in detail.
 
+#### BroadcastTx Methods
+
+All callers should use the new `broadcast_tx` method, which has the
+same semantics as the legacy `broadcast_tx_sync` method. The
+`broadcast_tx_sync` and `broadcast_tx_async` methods are now
+deprecated and will be removed in 0.37.
+
+Additionally the `broadcast_tx_commit` method is *also* deprecated,
+and will be removed in 0.37. Client code that submits a transaction
+and needs to wait for it to be committed to the chain, should poll
+the tendermint to observe the transaction in the committed state.
+
 ### Timeout Parameter Changes
 
 Tendermint v0.36 updates how the Tendermint consensus timing parameters are
@@ -137,7 +160,7 @@ network-wide coordinated variable so that applications can be written knowing
 either all nodes agree on whether to run `RecheckTx`.
 
 Applications can turn on `RecheckTx` by altering the `ConsensusParams` in the
-`FinalizeBlock` ABCI response.
+`FinalizeBlock` ABCI response. 
 
 ### CLI Changes
 

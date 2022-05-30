@@ -11,13 +11,9 @@ cd "$(git rev-parse --show-toplevel)"
 # Run inside Docker to install the correct versions of the required tools
 # without polluting the local system.
 docker run --rm -i -v "$PWD":/w --workdir=/w golang:1.18-alpine sh <<"EOF"
-apk add curl git make
+apk add git make
 
-readonly buf_release='https://github.com/bufbuild/buf/releases/latest/download'
-readonly OS="$(uname -s)" ARCH="$(uname -m)"
-curl -sSL "${buf_release}/buf-${OS}-${ARCH}.tar.gz" \
-        | tar -xzf -  -C /usr/local --strip-components=1
-
+go install github.com/bufbuild/buf/cmd/buf
 go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
 make proto-gen
 EOF
