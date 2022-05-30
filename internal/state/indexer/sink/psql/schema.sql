@@ -28,7 +28,7 @@ CREATE TABLE tx_results (
   rowid BIGSERIAL PRIMARY KEY,
 
   -- The block to which this transaction belongs.
-  block_id BIGINT NOT NULL REFERENCES blocks(rowid),
+  block_id BIGINT NOT NULL REFERENCES blocks(height),
   -- The sequential index of the transaction within the block.
   index INTEGER NOT NULL,
   -- When this result record was logged into the sink, in UTC.
@@ -48,7 +48,7 @@ CREATE TABLE events (
 
   -- The block and transaction this event belongs to.
   -- If tx_id is NULL, this is a block event.
-  block_id BIGINT NOT NULL REFERENCES blocks(rowid),
+  block_id BIGINT NOT NULL REFERENCES blocks(height),
   tx_id    BIGINT NULL REFERENCES tx_results(rowid),
 
   -- The application-defined type label for the event.
