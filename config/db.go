@@ -15,8 +15,7 @@ type ServiceProvider func(context.Context, *Config, log.Logger) (service.Service
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
 	ID     string
-	Backend BackendType
-	Path string
+	Config *Config
 }
 
 // DBProvider takes a DBContext and returns an instantiated DB.
@@ -26,5 +25,5 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // specified in the Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
 	dbType := dbm.BackendType(ctx.Config.DBBackend)
-	return dbm.NewDB(ctx.ID, ctx.Backend, ctx.Path)
+	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBPath)
 }

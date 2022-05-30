@@ -27,7 +27,7 @@ func MakeKeyMigrateCommand(conf *config.Config, logger log.Logger) *cobra.Comman
 	return cmd
 }
 
-func RunDatabaseMigration(ctx context.Context, logger log.Logger, dbPath, dbBackend string) error {
+func RunDatabaseMigration(ctx context.Context, logger log.Logger, conf *config.Config) error {
 	contexts := []string{
 		// this is ordered to put
 		// the more ephemeral tables first to
