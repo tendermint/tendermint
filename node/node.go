@@ -472,11 +472,6 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}()
 	}
 
-	return node, nil
-}
-
-// OnStart starts the Node. It implements service.Service.
-func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
