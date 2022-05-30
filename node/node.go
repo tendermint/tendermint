@@ -198,6 +198,11 @@ func makeNode(
 			dashCoreRPCClient = dashPrivval.DashRPCClient()
 		}
 
+		proTxHash, err = privValidator.GetProTxHash(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 	case config.ModeFull:
 		// Special handling on non-Validator nodes
 		logger.Info("this node is NOT a validator")

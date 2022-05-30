@@ -49,7 +49,7 @@ func TestNodeStartStop(t *testing.T) {
 	ctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
-	logger := log.NewNopLogger()
+	logger := log.NewTestingLogger(t)
 	// create & start node
 	ns, err := newDefaultNode(ctx, cfg, logger)
 	require.NoError(t, err)
