@@ -34,6 +34,7 @@ import (
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 
@@ -469,6 +470,60 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 				close(signal)
 			}
 		}()
+	}
+
+	return node, nil
+}
+
+// OnStart starts the Node. It implements service.Service.
+func (n *nodeImpl) OnStart() error {
+	now := tmtime.Now()
+	genTime := n.genesisDoc.GenesisTime
+	if genTime.After(now) {
+		n.logger.Info("Genesis time is in the future. Sleeping until then...", "genTime", genTime)
+
+		timer := time.NewTimer(genTime.Sub(now))
+		defer timer.Stop()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	state, err = n.stateStore.Load()
+	if err != nil {
+		return err
+	}
+	if err := n.evPool.Start(state); err != nil {
+		return err
+	}
+
+	if n.config.Instrumentation.Prometheus && n.config.Instrumentation.PrometheusListenAddr != "" {
+		n.prometheusSrv = n.startPrometheusServer(ctx, n.config.Instrumentation.PrometheusListenAddr)
+	}
+
+	// Start the transport.
+	if err := n.router.Start(ctx); err != nil {
+		return err
+	}
+	n.rpcEnv.IsListening = true
+
+	for _, reactor := range n.services {
+		if err := reactor.Start(ctx); err != nil {
+			return fmt.Errorf("problem starting service '%T': %w ", reactor, err)
+		}
+	}
+
+	n.rpcEnv.NodeInfo = n.nodeInfo
+	// Start the RPC server before the P2P server
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		var err error
+		n.rpcListeners, err = n.rpcEnv.StartService(ctx, n.config)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
