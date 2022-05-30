@@ -451,7 +451,6 @@ func makeNode(
 
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart(ctx context.Context) error {
-
 	if err := n.rpcEnv.ProxyApp.Start(ctx); err != nil {
 		return fmt.Errorf("error starting proxy app connections: %w", err)
 	}

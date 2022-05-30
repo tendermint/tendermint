@@ -13,7 +13,8 @@ import (
 
 const ModuleName = "rpcclient"
 
-// QuorumVerifier 
+// QuorumVerifier represents subset of priv validator features that
+// allows verification of threshold signatures.
 type QuorumVerifier interface {
 	// QuorumVerify verifies quorum signature
 	QuorumVerify(
