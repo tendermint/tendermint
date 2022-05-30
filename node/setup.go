@@ -189,8 +189,16 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	}
 }
 
-func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
+func hasMajorityVotingPower(state sm.State, pubKey crypto.PubKey) bool {
 	if state.Validators.Size() > 1 {
+		for _, val := range state.Validators.Validators {
+			if val.PubKey.Equals(pubKey) {
+				if val.VotingPower >= state.Validators.TotalVotingPower()*2/3 {
+					return true
+				}
+			}
+		}
+
 		return false
 	}
 	addr, _ := state.Validators.GetByIndex(0)

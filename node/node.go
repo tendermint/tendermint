@@ -222,7 +222,7 @@ func makeNode(cfg *config.Config,
 	}
 
 	// Determine whether we should attempt state sync.
-	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	stateSync := cfg.StateSync.Enable && !hasMajorityVotingPower(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -250,7 +250,7 @@ func makeNode(cfg *config.Config,
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := cfg.BlockSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	blockSync := cfg.BlockSync.Enable && !hasMajorityVotingPower(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, cfg.Mode)
 
@@ -448,6 +448,12 @@ func makeNode(cfg *config.Config,
 			pexReactor, err = createPEXReactorV2(cfg, logger, peerManager, router)
 			if err != nil {
 				return nil, combineCloseError(err, makeCloser(closers))
+			}
+		}
+
+		if len(peerManager.Peers()) == 0 && !hasMajorityVotingPower(state, nodeKey.PubKey()) {
+			if cfg.P2P.PersistentPeers == "" && cfg.P2P.BootstrapPeers == "" {
+				return nil, errors.New("no peers configured or available. Set 'bootstrap-peers' and/or 'persistent-peers'")
 			}
 		}
 	}

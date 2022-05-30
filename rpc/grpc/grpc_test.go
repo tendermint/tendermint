@@ -19,6 +19,7 @@ func NodeSuite(t *testing.T) (service.Service, *config.Config) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	conf, err := rpctest.CreateConfig(t.Name())
+	conf.P2P.BootstrapPeers = "0123456789abcdef0123456789abcdef01234567@127.0.0.1" // placeholder
 	require.NoError(t, err)
 
 	// start a tendermint node in the background to test against
