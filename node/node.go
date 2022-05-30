@@ -401,6 +401,12 @@ func makeNode(
 
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart(ctx context.Context) error {
+	if len(n.peerManager.Peers()) == 0 {
+		if n.config.P2P.PersistentPeers == "" && n.config.P2P.BootstrapPeers == "" {
+			return errors.New("no peers configured or avalible. Set 'bootstrap-peers' and/or 'persistent-peers'")
+		}
+	}
+
 	if err := n.rpcEnv.ProxyApp.Start(ctx); err != nil {
 		return fmt.Errorf("error starting proxy app connections: %w", err)
 	}
@@ -466,6 +472,11 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		}()
 	}
 
+	return node, nil
+}
+
+// OnStart starts the Node. It implements service.Service.
+func (n *nodeImpl) OnStart() error {
 	now := tmtime.Now()
 	genTime := n.genesisDoc.GenesisTime
 	if genTime.After(now) {
