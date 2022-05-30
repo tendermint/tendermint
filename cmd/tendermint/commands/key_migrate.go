@@ -31,7 +31,7 @@ func RunDatabaseMigration(ctx context.Context, logger log.Logger, conf *config.C
 	contexts := []string{
 		// this is ordered to put
 		// the more ephemeral tables first to
-		// forclose the possiblity of the
+		// reduce the possibility of the
 		// ephemeral data overwriting later data
 		"tx_index",
 		"peerstore",
