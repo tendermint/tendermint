@@ -2,6 +2,18 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.5
+
+May 26, 2022
+
+### BUG FIXES
+
+- [p2p] [\#8371](https://github.com/tendermint/tendermint/pull/8371) fix setting in con-tracker (backport #8370) (@tychoish)
+- [blocksync] [\#8496](https://github.com/tendermint/tendermint/pull/8496) validate block against state before persisting it to disk (@cmwaters)
+- [statesync] [\#8494](https://github.com/tendermint/tendermint/pull/8494) avoid potential race (@tychoish)
+- [keymigrate] [\#8467](https://github.com/tendermint/tendermint/pull/8467) improve filtering for legacy transaction hashes (backport #8466) (@creachadair)
+- [rpc] [\#8594](https://github.com/tendermint/tendermint/pull/8594) fix encoding of block_results responses (@creachadair)
+
 ## v0.35.4
 
 April 18, 2022
@@ -2126,7 +2138,7 @@ handshake by authenticating the NetAddress.ID of the peer we're dialing.
 This release fixes yet another issue with the proposer selection algorithm.
 We hope it's the last one, but we won't be surprised if it's not.
 We plan to one day expose the selection algorithm more directly to
-the application ([\#3285](https://github.com/tendermint/tendermint/issues/3285)), and even to support randomness ([\#763](https://github.com/tendermint/tendermint/issues/763)).
+the application ([\#3285](https://github.com/tendermint/tendermint/issues/3285)), and even to support randomness ([\#763](https://github.com/tendermint/tendermint/issues/763)). <!-- markdown-link-check-disable-line -->
 For more, see issues marked
 [proposer-selection](https://github.com/tendermint/tendermint/labels/proposer-selection).
 
