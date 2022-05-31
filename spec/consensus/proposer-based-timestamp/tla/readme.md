@@ -16,6 +16,8 @@ The script `runApalache.sh` runs Apalache against one of the model files in this
     3. `MC` is a Boolean flag that controls whether the model cehcked has a majoricty of correct processes. Default: true
     4. `DD` is a Boolean flag that controls Apalache's `--discard-disabled` flag (See [here](https://apalache.informal.systems/docs/apalache/running.html)). Ignored if `CMD=typecheck`. Default: false
 
+The results will be written to `_apalache-out` (see the [Apalache documentation](https://apalache.informal.systems/docs/adr/009adr-outputs.html)).
+
 Example:
 ```sh
 runApalache.sh check 2
@@ -25,3 +27,7 @@ Checks 2 steps of `MC_PBT_3C_1F.tla` and
 runApalache.sh check 10 false
 ```
 Checks 10 steps of `MC_PBT_2C_2F.tla`
+
+# Updating the experiments log
+
+After running a particularly significant test, copy the raw outputs from `_apalache-out` to `experiment_data` and update `experiment_log.md` accordingly.
