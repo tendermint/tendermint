@@ -30,14 +30,14 @@ require (
 	github.com/stretchr/testify v1.7.1
 	github.com/tendermint/tm-db v0.6.6
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
-	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
+	golang.org/x/net v0.0.0-20220526153639-5463443f8c37
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.46.2
 	pgregory.net/rapid v0.4.7
 )
 
 require (
-	github.com/bufbuild/buf v1.4.0
+	github.com/bufbuild/buf v1.5.0
 	github.com/creachadair/atomicfile v0.2.6
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/golangci/golangci-lint v1.46.0
@@ -48,14 +48,15 @@ require (
 
 require (
 	github.com/GaijinEntertainment/go-exhaustruct/v2 v2.1.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/bufbuild/connect-go v0.0.0-20220525141242-b79148bf7e44 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/firefart/nonamedreturns v1.0.1 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/jdxcode/netrc v0.0.0-20210204082910-926c7f70242a // indirect
 	github.com/jhump/protocompile v0.0.0-20220216033700-d705409f108f // indirect
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753 // indirect
-	github.com/klauspost/compress v1.15.1 // indirect
+	github.com/klauspost/compress v1.15.5 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/lufeee/execinquery v1.0.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
@@ -228,11 +229,11 @@ require (
 	go.etcd.io/bbolt v1.3.6 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
-	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.11-0.20220316014157-77aa08bb151a // indirect
 	golang.org/x/xerrors v0.0.0-20220517211312-f3a8303e98df // indirect
-	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect
+	google.golang.org/genproto v0.0.0-20220525015930-6ca3db687a9d // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
