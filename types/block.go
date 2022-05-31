@@ -894,6 +894,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 
 	c.ThresholdStateSignature = commit.ThresholdStateSignature
 	c.ThresholdBlockSignature = commit.ThresholdBlockSignature
+	c.ThresholdVoteExtensionSignatures = commit.ThresholdVoteExtensionSignatures
 
 	c.QuorumHash = commit.QuorumHash
 
