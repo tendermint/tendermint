@@ -40,7 +40,7 @@ func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Tes
 	defer cancel()
 
 	// Spawn job generator and processors.
-	var txSize int
+	txSize := 1024
 	if testnet != nil {
 		txSize = testnet.TxSize
 	}
