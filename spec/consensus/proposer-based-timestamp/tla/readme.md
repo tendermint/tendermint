@@ -30,4 +30,8 @@ Checks 10 steps of `MC_PBT_2C_2F.tla`
 
 # Updating the experiments log
 
-After running a particularly significant test, copy the raw outputs from `_apalache-out` to `experiment_data` and update `experiment_log.md` accordingly.
+After running a particularly significant test, copy the raw outputs from 
+`_apalache-out` to `experiment_data` and update `experiment_log.md` accordingly.
+See `experiment_data/May2022` for a suggested directory layout. 
+
+Make sure to copy at least the `detailed.log` and `run.txt` files, as well as any counterexample files, if present.
