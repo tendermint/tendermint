@@ -3,17 +3,17 @@
 When blocksyncing, a node is not participating in conensus. It is receiving blocks that have already been decided and committed. To avoid being fooled by malicious peers, the node has to verify the received blocks before executing the transactions and storing the block in its store. 
 
 
-The verification in blocksync aims to apply the same logic as the [light client verification](../light-client/verification/README.md). The model relies on the existence of an **initial trusted state**. 
+The verification in blocksync aims to apply the same logic as the [light client verification](../light-client/verification/README.md). The safety guarantees of the light client model are provided by verifiying blocks starting from an **initial trusted state** and using validators who were bonded within a **trusting period**. Once this period expires, the validators could have unbonded, and we cannot rely on them being hoenst anymore. In blocksync, we can be **outside** the trusting period. Therefore, the guarantees provided by blocksync verification can be divided in two groups: 
 
-Based on this state we verify subsequent blocks. 
+- The block is within the trusting period, we can punish validators, and provide guarantees that if a block is signed by trusted validators, they are indeed correct. 
+- The block is outside the trusting period and we cannot guarantee that the validators are still honest. We can however make a potential attack by those validators more complicated by additionally verifying the block using other peers as *witnesses*.
+
+A state becomes trusted once it passes the validation. The section below discusses this state in more details.
 
 ### Trusted state
 
-The light client additionally relies on the notion of a **trusting period**. A trusting period is the time during which we assume we can trust validators because, if we do detect misbehaviour, we can slash them - they are still bonded. Thus, the trusting period is tied to the unbonding period. Beyond this period, the validators do not have to have any bonded assets and cannot be held accountable for their misbheaviour. They could feed us malicious data and never be held accountable for it. 
-Blocksync-ing blocks will most often be outside this trusting period for a particular block. Therefore, the trusting period assumptions, as they are in the light client for example, cannot be applied here. 
-
-This has different implications based on how we obtain the initial trusted state. Currently there are two possibilities. :
- 1. If the node is blocksync-ing from genesis, we rely on the assumption that we always have have a correct node that has a correct history and feeds us state we can trust.
+Currently there are two possible ways to obtain a trusted state :
+ 1. If the node is blocksync-ing from genesis, we have to verify the very first block and mark it as the initial trusted state.
  
  [//]: # (trust the validators provided in the initial state and use them to verify the initial block received from peers.)
 
@@ -21,22 +21,9 @@ This has different implications based on how we obtain the initial trusted state
 
 **Case 1 - blocksync from genesis**
 
-In this case we only verify that the validator hash of the block matches the validator set of the initial state. 
-
-**Hypothesis** If we assume that at the time when the block was generated `block.Time` is within `trustingPeriod ` of `genesisTime`, then we should trust the validators signing this block. 
-
-This is in contrast with the definition of trust period in the light client. The trusting period in the light client is always tied to present time. If we try and validate a block at a time outside this period, we will first find the first block within the trusting period and verify backwards from it.
-
+In this case we only verify that the validator hash of the block matches the validator set of the initial state. We will use the initially provided validator set for verification and further verify the block against witnisses. In this scenario, this state is very likely to be outside the trusting period. We will accept this block as a trusted state and store it inside the node's block store. 
 
 It is worth noting that, running block sync from the first height is significantly slower than running statesync first. However, statesync does not keep the entire blockchain history and some operators might opt not to state sync. The reason is that, if sufficiently many nodes state sync and other nodes who have historical data fail or leave the network, we have no history.
-
-If we are starting from genesis we trust the validator set given to us in initially.
-
-**Performance improvement** Instead of downloading blocks before we verify them, download only headers. Once we verify those, we can download the whole block. As the headers do not contain signatures so we would need to add commits form blocks at subsequent heights as well. 
-
-**Safety Improvement** We expect to 'witness'verify this block against the blocks at the same height from multiple peers. 
-
-**Different proposal** Instead of witness verification, verify against a light client and use backwards verification when applicable. 
 
 **Case 2 - blocksync starting from pre-existing state**
 
@@ -51,6 +38,12 @@ This can happen in the following two cases:
 In both of these cases, we can trust the state in the store. State sync runs the light client verification protocol. If the crash happened during consensus or sync-ing, the only blocks in the store are blocks that are verified or decided. 
 
 If we can trust this initial state at height H, we can use this fact to eliminate faulty blocks whose `lastCommit` at height H+1 does not verify the trusted block. Additionally, we can double check the validator sets that signed the block at H + 1 against the expected validator sets for this height. The expected validator sets are stored within the trusted state and returned to us upon applying the block and executing it against the application.
+
+**Switching from statesync to blocksync**
+
+If we switch from statesync to blocksync, the last item in the block store is not the entire block. The store holds only the verified header and the commit that verified it. Therefore, we do need to fetch the corresponding block from our peers, verify it against data stored in the store and set the `last trusted block` to this block. 
+
+To enable this, upon switching from statesync, we do not instruct the block pool to fetch blocks at height `H + 1` (where height `H` corresponds to the height of the header last verified with statesync). Instead we let it fetch the block at height H, but do not execute this block against the application (as this would fail - state is already updated to height H + 1. )
 
 ### Verifying blocks past the trusted state
 
@@ -84,13 +77,18 @@ if LastCommit.verify(trustedBlock) {
 We try to increase the trust in the NewBlock by first confirming that  it's `lastCommit` field indeed verifies the trusted block. We then confirm that the validator hash matches the expected hash. But to fully verify the block we need to check it against the signatures that signed it. They are stored within the `lastCommit2` of `verifyBlock` at height `H+2`. As we have no gurantees on this block, we again increase our trust in it by confirming that the validators whose signatures are in `lastCommit2` are a match for the expected validator set.
 
 #### *Witness verification*
+
+**Note**. This is not implemented yet. 
+
 If all these checks pass, the reactor verifies that other peers have the same block at the particular height. 
 
 In order to reduce traffic, we do not ask the peers to provide the whole block to us, rather only the header. If crosschecking the headers fails then the node requests the remainder of the block to decide on whether this peer is faulty or not.
 
 If the block received does not verify using the same verification logic, the peer is faulty. In case the verification passes, but headers mismatch, the node will not know who to trust.
 
+**Performance improvement** Instead of downloading blocks before we verify them, download only headers. Once we verify those, we can download the whole block. As the headers do not contain signatures so we would need to add commits form blocks at subsequent heights as well. 
 
+**Different proposal** Instead of witness verification, verify against a light client and use backwards verification when applicable. 
 
 **Verification failed**
 
