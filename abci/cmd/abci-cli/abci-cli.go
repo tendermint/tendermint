@@ -552,12 +552,12 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res, err := client.Commit(cmd.Context())
+	_, err := client.Commit(cmd.Context())
 	if err != nil {
 		return err
 	}
 	printResponse(cmd, args, response{
-		Data: res.Data,
+		Data: []byte{},
 	})
 	return nil
 }

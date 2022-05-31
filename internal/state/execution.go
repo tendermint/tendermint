@@ -264,7 +264,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, finalizeBlockResponse.TxResults)
+	retainHeight, err := blockExec.Commit(ctx, state, block, finalizeBlockResponse.TxResults, finalizeBlockResponse.AppHash)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -273,7 +273,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	blockExec.evpool.Update(ctx, state, block.Evidence)
 
 	// Update the app hash and save the state.
-	state.AppHash = appHash
+	state.AppHash = finalizeBlockResponse.AppHash
 	if err := blockExec.store.Save(state); err != nil {
 		return state, err
 	}
@@ -338,7 +338,8 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	txResults []*abci.ExecTxResult,
-) ([]byte, int64, error) {
+	appHash []byte,
+) (int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -347,14 +348,14 @@ func (blockExec *BlockExecutor) Commit(
 	err := blockExec.mempool.FlushAppConn(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during mempool.FlushAppConn", "err", err)
-		return nil, 0, err
+		return 0, err
 	}
 
 	// Commit block, get hash back
 	res, err := blockExec.appClient.Commit(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during proxyAppConn.Commit", "err", err)
-		return nil, 0, err
+		return 0, err
 	}
 
 	// ResponseCommit has no error code - just data
@@ -362,7 +363,7 @@ func (blockExec *BlockExecutor) Commit(
 		"committed state",
 		"height", block.Height,
 		"num_txs", len(block.Txs),
-		"app_hash", fmt.Sprintf("%X", res.Data),
+		"app_hash", appHash,
 	)
 
 	// Update mempool.
@@ -376,7 +377,7 @@ func (blockExec *BlockExecutor) Commit(
 		state.ConsensusParams.ABCI.RecheckTx,
 	)
 
-	return res.Data, res.RetainHeight, err
+	return res.RetainHeight, err
 }
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
@@ -708,15 +709,15 @@ func ExecCommitBlock(
 		fireEvents(be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 	}
 
-	// Commit block, get hash back
-	res, err := appConn.Commit(ctx)
+	// Commit block
+	_, err = appConn.Commit(ctx)
 	if err != nil {
-		logger.Error("client error during proxyAppConn.Commit", "err", res)
+		logger.Error("client error during proxyAppConn.Commit", "err", err)
 		return nil, err
 	}
 
-	// ResponseCommit has no error or log, just data
-	return res.Data, nil
+	// ResponseCommit has no error or log
+	return finalizeBlockResponse.AppHash, nil
 }
 
 func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64) (uint64, error) {

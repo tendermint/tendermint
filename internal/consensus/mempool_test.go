@@ -202,10 +202,10 @@ func TestMempoolRmBadTx(t *testing.T) {
 	resFinalize, err := app.FinalizeBlock(ctx, &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	require.NoError(t, err)
 	assert.False(t, resFinalize.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
+	assert.True(t, len(resFinalize.AppHash) > 0)
 
-	resCommit, err := app.Commit(ctx)
+	_, err = app.Commit(ctx)
 	require.NoError(t, err)
-	assert.True(t, len(resCommit.Data) > 0)
 
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})
