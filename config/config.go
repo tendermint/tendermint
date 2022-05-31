@@ -734,9 +734,10 @@ func TestP2PConfig() *P2PConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool.
 type MempoolConfig struct {
-	RootDir   string `mapstructure:"home"`
-	Recheck   bool   `mapstructure:"recheck"`
-	Broadcast bool   `mapstructure:"broadcast"`
+	RootDir string `mapstructure:"home"`
+
+	// Whether to broadcast transactions to other nodes
+	Broadcast bool `mapstructure:"broadcast"`
 
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
@@ -783,7 +784,6 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Recheck:   true,
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck

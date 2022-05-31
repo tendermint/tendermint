@@ -4,7 +4,6 @@ package tendermint.abci;
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
 import "tendermint/crypto/proof.proto";
-import "tendermint/types/types.proto";
 import "tendermint/crypto/keys.proto";
 import "tendermint/types/params.proto";
 import "google/protobuf/timestamp.proto";
@@ -24,10 +23,7 @@ message Request {
     RequestInfo                info                  = 3;
     RequestInitChain           init_chain            = 4;
     RequestQuery               query                 = 5;
-    RequestBeginBlock          begin_block           = 6 [deprecated = true];
     RequestCheckTx             check_tx              = 7;
-    RequestDeliverTx           deliver_tx            = 8 [deprecated = true];
-    RequestEndBlock            end_block             = 9 [deprecated = true];
     RequestCommit              commit                = 10;
     RequestListSnapshots       list_snapshots        = 11;
     RequestOfferSnapshot       offer_snapshot        = 12;
@@ -39,6 +35,7 @@ message Request {
     RequestVerifyVoteExtension verify_vote_extension = 18;
     RequestFinalizeBlock       finalize_block        = 19;
   }
+  reserved 6, 8, 9; // RequestBeginBlock, RequestDeliverTx, RequestEndBlock
 }
 
 message RequestEcho {
@@ -70,13 +67,6 @@ message RequestQuery {
   bool   prove  = 4;
 }
 
-message RequestBeginBlock {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
-}
-
 enum CheckTxType {
   NEW     = 0 [(gogoproto.enumvalue_customname) = "New"];
   RECHECK = 1 [(gogoproto.enumvalue_customname) = "Recheck"];
@@ -85,14 +75,6 @@ enum CheckTxType {
 message RequestCheckTx {
   bytes       tx   = 1;
   CheckTxType type = 2;
-}
-
-message RequestDeliverTx {
-  bytes tx = 1;
-}
-
-message RequestEndBlock {
-  int64 height = 1;
 }
 
 message RequestCommit {}
@@ -186,10 +168,7 @@ message Response {
     ResponseInfo                info                  = 4;
     ResponseInitChain           init_chain            = 5;
     ResponseQuery               query                 = 6;
-    ResponseBeginBlock          begin_block           = 7 [deprecated = true];
     ResponseCheckTx             check_tx              = 8;
-    ResponseDeliverTx           deliver_tx            = 9 [deprecated = true];
-    ResponseEndBlock            end_block             = 10 [deprecated = true];
     ResponseCommit              commit                = 11;
     ResponseListSnapshots       list_snapshots        = 12;
     ResponseOfferSnapshot       offer_snapshot        = 13;
@@ -201,6 +180,7 @@ message Response {
     ResponseVerifyVoteExtension verify_vote_extension = 19;
     ResponseFinalizeBlock       finalize_block        = 20;
   }
+  reserved 7, 9, 10; // ResponseBeginBlock, ResponseDeliverTx, ResponseEndBlock
 }
 
 // nondeterministic
@@ -244,26 +224,15 @@ message ResponseQuery {
   string                     codespace = 10;
 }
 
-message ResponseBeginBlock {
-  repeated Event events = 1 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-}
-
 message ResponseCheckTx {
   uint32         code       = 1;
   bytes          data       = 2;
-  string         log        = 3;  // nondeterministic
-  string         info       = 4;  // nondeterministic
   int64          gas_wanted = 5;
-  int64          gas_used   = 6;
-  repeated Event events     = 7 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
   string         codespace  = 8;
   string         sender     = 9;
   int64          priority   = 10;
 
-  // mempool_error is set by Tendermint.
-
-  // ABCI applications creating a ResponseCheckTX should not set mempool_error.
-  string mempool_error = 11;
+  reserved 3, 4, 6, 7, 11; // see https://github.com/tendermint/tendermint/issues/8543
 }
 
 message ResponseDeliverTx {
@@ -276,12 +245,6 @@ message ResponseDeliverTx {
   repeated Event events     = 7
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
   string codespace = 8;
-}
-
-message ResponseEndBlock {
-  repeated ValidatorUpdate         validator_updates       = 1 [(gogoproto.nullable) = false];
-  tendermint.types.ConsensusParams consensus_param_updates = 2;
-  repeated Event                   events                  = 3 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
 message ResponseCommit {
@@ -392,7 +355,7 @@ message ExtendedCommitInfo {
 }
 
 // Event allows application developers to attach additional information to
-// ResponseBeginBlock, ResponseEndBlock, ResponseCheckTx and ResponseDeliverTx.
+// ResponseFinalizeBlock, ResponseDeliverTx, ExecTxResult
 // Later, transactions may be queried using these events.
 message Event {
   string                  type       = 1;

@@ -242,6 +242,10 @@ func (c *baseRPCClient) BroadcastTxSync(ctx context.Context, tx types.Tx) (*core
 	return c.broadcastTX(ctx, "broadcast_tx_sync", tx)
 }
 
+func (c *baseRPCClient) BroadcastTx(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
+	return c.broadcastTX(ctx, "broadcast_tx_sync", tx)
+}
+
 func (c *baseRPCClient) broadcastTX(ctx context.Context, route string, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	result := new(coretypes.ResultBroadcastTx)
 	if err := c.caller.Call(ctx, route, &coretypes.RequestBroadcastTx{Tx: tx}, result); err != nil {

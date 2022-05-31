@@ -281,7 +281,11 @@ recv-rate = 5120000
 #######################################################
 [mempool]
 
-recheck = true
+# recheck has been moved from a config option to a global
+# consensus param in v0.36
+# See https://github.com/tendermint/tendermint/issues/8244 for more information.
+
+# Set true to broadcast transactions in the mempool to other nodes
 broadcast = true
 
 # Maximum number of transactions in the mempool

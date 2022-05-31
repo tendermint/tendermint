@@ -52,6 +52,10 @@ func (p proxyService) BroadcastTxAsync(ctx context.Context, req *coretypes.Reque
 	return p.Client.BroadcastTxAsync(ctx, req.Tx)
 }
 
+func (p proxyService) BroadcastTx(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
+	return p.Client.BroadcastTx(ctx, req.Tx)
+}
+
 func (p proxyService) BroadcastTxCommit(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTxCommit, error) {
 	return p.Client.BroadcastTxCommit(ctx, req.Tx)
 }

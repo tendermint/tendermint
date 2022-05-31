@@ -173,7 +173,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 
 	// commit half the transactions and ensure we fire an event
 	txmp.Lock()
-	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil, true))
 	txmp.Unlock()
 	ensureTxFire()
 	ensureNoTxFire()
@@ -210,7 +210,7 @@ func TestTxMempool_Size(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil, true))
 	txmp.Unlock()
 
 	require.Equal(t, len(rawTxs)/2, txmp.Size())
@@ -243,7 +243,7 @@ func TestTxMempool_Flush(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, 1, rawTxs[:50], responses, nil, nil, true))
 	txmp.Unlock()
 
 	txmp.Flush()
@@ -501,7 +501,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 				}
 
 				txmp.Lock()
-				require.NoError(t, txmp.Update(ctx, height, reapedTxs, responses, nil, nil))
+				require.NoError(t, txmp.Update(ctx, height, reapedTxs, responses, nil, nil, true))
 				txmp.Unlock()
 
 				height++
@@ -547,7 +547,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(ctx, txmp.height+1, reapedTxs, responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, txmp.height+1, reapedTxs, responses, nil, nil, true))
 	txmp.Unlock()
 
 	require.Equal(t, 95, txmp.Size())
@@ -573,7 +573,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(ctx, txmp.height+10, reapedTxs, responses, nil, nil))
+	require.NoError(t, txmp.Update(ctx, txmp.height+10, reapedTxs, responses, nil, nil, true))
 	txmp.Unlock()
 
 	require.GreaterOrEqual(t, txmp.Size(), 45)
@@ -622,10 +622,17 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 				expectedErrString := ""
 				if testCase.err != nil {
 					expectedErrString = testCase.err.Error()
+					require.Equal(t, expectedErrString, txmp.postCheck(tx, res).Error())
+				} else {
+					require.Equal(t, nil, txmp.postCheck(tx, res))
 				}
-				require.Equal(t, expectedErrString, res.MempoolError)
 			}
-			require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
+			if testCase.err == nil {
+				require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
+			} else {
+				err = txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0})
+				fmt.Print(err.Error())
+			}
 		})
 	}
 }

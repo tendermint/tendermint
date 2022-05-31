@@ -295,7 +295,6 @@ func (app *CounterApplication) CheckTx(_ context.Context, req *abci.RequestCheck
 	if txValue != uint64(app.mempoolTxCount) {
 		return &abci.ResponseCheckTx{
 			Code: code.CodeTypeBadNonce,
-			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue),
 		}, nil
 	}
 	app.mempoolTxCount++
