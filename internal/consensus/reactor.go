@@ -544,12 +544,16 @@ func (r *Reactor) gossipDataForCatchup(rs *cstypes.RoundState, prs *cstypes.Peer
 
 func (r *Reactor) gossipDataRoutine(ps *PeerState) {
 	logger := r.Logger.With("peer", ps.peerID)
+	timer := time.NewTimer(r.state.config.PeerGossipSleepDuration)
+	defer timer.Stop()
 
 OUTER_LOOP:
 	for {
 		if !r.IsRunning() {
 			return
 		}
+
+		timer.Reset(r.state.config.PeerGossipSleepDuration)
 
 		select {
 		case <-r.closeCh:
@@ -558,8 +562,7 @@ OUTER_LOOP:
 			// The peer is marked for removal via a PeerUpdate as the doneCh was
 			// explicitly closed to signal we should exit.
 			return
-
-		default:
+		case <-timer.C:
 		}
 
 		rs := r.getRoundState()
@@ -605,7 +608,6 @@ OUTER_LOOP:
 						"blockstoreBase", blockStoreBase,
 						"blockstoreHeight", r.state.blockStore.Height(),
 					)
-					time.Sleep(r.state.config.PeerGossipSleepDuration)
 				} else {
 					ps.InitProposalBlockParts(blockMeta.BlockID.PartSetHeader)
 				}
@@ -621,7 +623,6 @@ OUTER_LOOP:
 
 		// if height and round don't match, sleep
 		if (rs.Height != prs.Height) || (rs.Round != prs.Round) {
-			time.Sleep(r.state.config.PeerGossipSleepDuration)
 			continue OUTER_LOOP
 		}
 
@@ -676,12 +677,8 @@ OUTER_LOOP:
 				}:
 				}
 			}
-
-			continue OUTER_LOOP
 		}
 
-		// nothing to do -- sleep
-		time.Sleep(r.state.config.PeerGossipSleepDuration)
 		continue OUTER_LOOP
 	}
 }
