@@ -200,6 +200,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, app.state.Size)
 	app.state.AppHash = appHash
+	app.state.Height++
 
 	return &types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates, AppHash: appHash}, nil
 }
@@ -212,7 +213,6 @@ func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error)
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	app.state.Height++
 	saveState(app.state)
 
 	resp := &types.ResponseCommit{}
