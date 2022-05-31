@@ -24,7 +24,7 @@ var (
 // See https://github.com/tendermint/tendermint/issues/6371
 const (
 	// the minimum time one peer can send another request to the same peer
-	minReceiveRequestInterval = 100 * time.Millisecond
+	minReceiveRequestInterval = 200 * time.Millisecond
 
 	// the maximum amount of addresses that can be included in a response
 	maxAddresses uint16 = 100
