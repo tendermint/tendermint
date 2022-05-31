@@ -130,6 +130,7 @@ func addCommands(cmd *cobra.Command, logger log.Logger) {
 	cmd.AddCommand(commitCmd)
 	cmd.AddCommand(versionCmd)
 	cmd.AddCommand(testCmd)
+	cmd.AddCommand(prepareProposalCmd)
 	cmd.AddCommand(getQueryCmd())
 
 	// examples
@@ -220,6 +221,14 @@ var versionCmd = &cobra.Command{
 		fmt.Println(version.ABCIVersion)
 		return nil
 	},
+}
+
+var prepareProposalCmd = &cobra.Command{
+	Use:   "prepare_proposal",
+	Short: "prepare proposal",
+	Long:  "prepare proposal",
+	Args:  cobra.ExactArgs(1),
+	RunE:  cmdPrepareProposal,
 }
 
 func getQueryCmd() *cobra.Command {
@@ -333,6 +342,13 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 				}, nil)
 			},
 			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
+			func() error {
+				return servertest.PrepareProposal(ctx, client, [][]byte{
+					[]byte("abc"),
+				}, []uint32{
+					code.CodeTypeBadNonce,
+				}, nil)
+			},
 		})
 }
 
@@ -433,6 +449,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdInfo(cmd, actualArgs)
 	case "query":
 		return cmdQuery(cmd, actualArgs)
+	case "prepareProposal":
+		return cmdPrepareProposal(cmd, actualArgs)
 	default:
 		return cmdUnimplemented(cmd, pArgs)
 	}
@@ -597,6 +615,43 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 			ProofOps: resQuery.ProofOps,
 		},
 	})
+	return nil
+}
+
+func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Info: "Must provide PrepareProposal parameters",
+			Log:  "",
+		})
+	}
+	txsBytesArray := make([][]byte, len(args))
+
+	for i, arg := range args {
+		txBytes, err := stringOrHexToBytes(arg)
+		if err != nil {
+			return err
+		}
+		txsBytesArray[i] = txBytes
+	}
+	res, err := client.PrepareProposal(cmd.Context(), &types.RequestPrepareProposal{
+		Txs: txsBytesArray,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	for _, tx := range res.TxResults {
+		printResponse(cmd, args, response{
+			Code: tx.Code,
+			Data: tx.Data,
+			Info: tx.Info,
+			Log:  tx.Log,
+		})
+	}
+
 	return nil
 }
 
