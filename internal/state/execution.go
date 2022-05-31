@@ -479,13 +479,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 // original votes relating to that commit, including their vote extensions. The
 // order of votes does not matter.
 func extendedCommitInfo(c abci.CommitInfo) abci.ExtendedCommitInfo {
-	return abci.ExtendedCommitInfo{
-		Round:                   c.Round,
-		QuorumHash:              c.QuorumHash,
-		BlockSignature:          c.BlockSignature,
-		StateSignature:          c.StateSignature,
-		VoteExtensionSignatures: c.VoteExtensionSignatures,
-	}
+	return abci.ExtendedCommitInfo(c)
 }
 
 func validateValidatorSetUpdate(

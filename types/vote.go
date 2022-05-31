@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/rs/zerolog"
 

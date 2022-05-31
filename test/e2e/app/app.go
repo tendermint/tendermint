@@ -491,8 +491,8 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 		}, nil
 	}
 
-	var nums []int64
-	for _, extension := range req.VoteExtensions {
+	nums := make([]int64, len(req.VoteExtensions))
+	for i, extension := range req.VoteExtensions {
 		num, err := parseVoteExtension(extension)
 		if err != nil {
 			app.logger.Error("failed to verify vote extension", "req", req, "err", err)
@@ -500,7 +500,7 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 				Status: abci.ResponseVerifyVoteExtension_REJECT,
 			}, nil
 		}
-		nums = append(nums, num)
+		nums[i] = num
 	}
 
 	app.logger.Info("verified vote extension value", "req", req, "nums", nums)
