@@ -2,7 +2,7 @@
 
 The script `runApalache.sh` runs Apalache against one of the model files in this repository. This document describes how to use it.
 
-1. Get Apalache, by following [these](https://apalache.informal.systems/docs/apalache/installation/index.html) instructions. TLDR (recommended: build from source):
+1. Get Apalache, by following [these](https://apalache.informal.systems/docs/apalache/installation/index.html) instructions. Summarized:
 
     1. `git clone https://github.com/informalsystems/apalache.git`
     2. `make package`

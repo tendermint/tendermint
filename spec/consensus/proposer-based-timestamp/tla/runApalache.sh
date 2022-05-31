@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Works in all cases except running from jar on Windows 
 EXE=$APALACHE_HOME/bin/apalache-mc
 
@@ -23,12 +25,12 @@ if ! [[ -f "$CFG" ]]; then
   echo "write-intermediate: true" >> $CFG
 fi
 
-if [[ MC ]]; then
-  # Run 3c1f
-  $EXE $CMD $FLAGS MC_PBT_3C_1F.tla  
-else
+if [[ "$MC" = false ]]; then
   # Run 2c2f
   $EXE $CMD $FLAGS MC_PBT_2C_2F.tla  
+else
+  # Run 3c1f
+  $EXE $CMD $FLAGS MC_PBT_3C_1F.tla  
 fi
 
 
