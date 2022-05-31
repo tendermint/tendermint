@@ -401,12 +401,6 @@ func makeNode(
 
 // OnStart starts the Node. It implements service.Service.
 func (n *nodeImpl) OnStart(ctx context.Context) error {
-	if len(n.peerManager.Peers()) == 0 {
-		if n.config.P2P.PersistentPeers == "" && n.config.P2P.BootstrapPeers == "" {
-			return errors.New("no peers configured or avalible. Set 'bootstrap-peers' and/or 'persistent-peers'")
-		}
-	}
-
 	if err := n.rpcEnv.ProxyApp.Start(ctx); err != nil {
 		return fmt.Errorf("error starting proxy app connections: %w", err)
 	}
@@ -437,6 +431,12 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 	state, err := n.stateStore.Load()
 	if err != nil {
 		return fmt.Errorf("cannot load state: %w", err)
+	}
+
+	if len(n.peerManager.Peers()) == 0 && !onlyValidatorIsUs(state, n.nodeKey.PubKey()) {
+		if n.config.P2P.PersistentPeers == "" && n.config.P2P.BootstrapPeers == "" {
+			return errors.New("no peers configured or avalible. Set 'bootstrap-peers' and/or 'persistent-peers'")
+		}
 	}
 
 	logNodeStartupInfo(state, n.rpcEnv.PubKey, n.logger, n.config.Mode)
