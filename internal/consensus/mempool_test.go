@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -136,8 +137,10 @@ func checkTxsRange(ctx context.Context, t *testing.T, cs *State, start, end int)
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(t, cs.txNotifier).CheckTx(ctx, txBytes, nil, mempool.TxInfo{})
+		var rCode uint32
+		err := assertMempool(t, cs.txNotifier).CheckTx(ctx, txBytes, func(r *abci.ResponseCheckTx) { rCode = r.Code }, mempool.TxInfo{})
 		require.NoError(t, err, "error after checkTx")
+		require.Equal(t, code.CodeTypeOK, rCode, "checkTx code is error, txBytes %X", txBytes)
 	}
 }
 
@@ -173,6 +176,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 		case msg := <-newBlockHeaderCh:
 			headerEvent := msg.Data().(types.EventDataNewBlockHeader)
 			n += headerEvent.NumTxs
+			logger.Info("new transactions", "nTxs", headerEvent.NumTxs, "total", n)
 		case <-time.After(30 * time.Second):
 			t.Fatal("Timed out waiting 30s to commit blocks with transactions")
 		}
@@ -263,6 +267,7 @@ type CounterApplication struct {
 
 	txCount        int
 	mempoolTxCount int
+	mu             sync.Mutex
 }
 
 func NewCounterApplication() *CounterApplication {
@@ -270,10 +275,16 @@ func NewCounterApplication() *CounterApplication {
 }
 
 func (app *CounterApplication) Info(_ context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	return &abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}, nil
 }
 
 func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	respTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		txValue := txAsUint64(tx)
@@ -290,7 +301,6 @@ func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.Reques
 
 	res := &abci.ResponseFinalizeBlock{TxResults: respTxs}
 
-	app.mempoolTxCount = app.txCount
 	if app.txCount > 0 {
 		res.AppHash = make([]byte, 8)
 		binary.BigEndian.PutUint64(res.AppHash, uint64(app.txCount))
@@ -300,6 +310,9 @@ func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.Reques
 }
 
 func (app *CounterApplication) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	txValue := txAsUint64(req.Tx)
 	if txValue != uint64(app.mempoolTxCount) {
 		return &abci.ResponseCheckTx{
@@ -317,6 +330,10 @@ func txAsUint64(tx []byte) uint64 {
 }
 
 func (app *CounterApplication) Commit(context.Context) (*abci.ResponseCommit, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	app.mempoolTxCount = app.txCount
 	return &abci.ResponseCommit{}, nil
 }
 
