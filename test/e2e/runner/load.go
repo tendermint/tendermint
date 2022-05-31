@@ -54,7 +54,7 @@ func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Tes
 	go loadGenerate(ctx, r, chTx, txSize, nNodes)
 
 	for w := 0; w < concurrency; w++ {
-		go loadProcess(ctx, testnet, ips, chTx, chSuccess)
+		go loadProcess(ctx, logger, testnet, ips, chTx, chSuccess)
 	}
 
 	// Montior transaction to ensure load propagates to the network
@@ -180,7 +180,7 @@ func prepareClientsIps(ips []string) []*rpchttp.HTTP {
 }
 
 // loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, ips []string, chTx <-chan types.Tx, chSuccess chan<- int) {
+func loadProcess(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ips []string, chTx <-chan types.Tx, chSuccess chan<- int) {
 	// Each worker gets its own client to each usable node, which
 	// allows for some concurrency while still bounding it.
 
@@ -213,12 +213,18 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, ips []string, chTx <
 			client := clientRing.Value.(*rpchttp.HTTP)
 
 			if status, err := client.Status(ctx); err != nil {
+				logger.Error("problem with client status",
+					"err", err)
 				continue
 			} else if status.SyncInfo.CatchingUp {
+				logger.Error("problem catching up")
 				continue
 			}
 
 			if _, err := client.BroadcastTxSync(ctx, tx); err != nil {
+				logger.Error("problem broadcasting txsync",
+					"tx", tx,
+					"err", err)
 				continue
 			}
 			successes++
