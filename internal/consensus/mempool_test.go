@@ -287,7 +287,16 @@ func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.Reques
 		app.txCount++
 		respTxs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
-	return &abci.ResponseFinalizeBlock{TxResults: respTxs}, nil
+
+	res := &abci.ResponseFinalizeBlock{TxResults: respTxs}
+
+	app.mempoolTxCount = app.txCount
+	if app.txCount > 0 {
+		res.AppHash = make([]byte, 8)
+		binary.BigEndian.PutUint64(res.AppHash, uint64(app.txCount))
+	}
+
+	return res, nil
 }
 
 func (app *CounterApplication) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
@@ -308,13 +317,7 @@ func txAsUint64(tx []byte) uint64 {
 }
 
 func (app *CounterApplication) Commit(context.Context) (*abci.ResponseCommit, error) {
-	app.mempoolTxCount = app.txCount
-	if app.txCount == 0 {
-		return &abci.ResponseCommit{}, nil
-	}
-	hash := make([]byte, 8)
-	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return &abci.ResponseCommit{Data: hash}, nil
+	return &abci.ResponseCommit{}, nil
 }
 
 func (app *CounterApplication) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
