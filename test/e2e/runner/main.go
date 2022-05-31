@@ -32,10 +32,11 @@ func main() {
 
 // CLI is the Cobra-based command-line interface.
 type CLI struct {
-	root     *cobra.Command
-	testnet  *e2e.Testnet
-	ips      []string
-	preserve bool
+	root      *cobra.Command
+	testnet   *e2e.Testnet
+	ips       []string
+	seedDelta int
+	preserve  bool
 }
 
 // NewCLI sets up the CLI.
@@ -65,6 +66,11 @@ func NewCLI(logger log.Logger) *CLI {
 				return nil
 			}
 			cli.ips = strings.Split(ips, ",")
+			cli.seedDelta, err = cmd.Flags().GetInt("seed-delta")
+			if err != nil {
+				// If flag is absent, no error is returned, but the default value (empty string)
+				return err
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -153,6 +159,7 @@ func NewCLI(logger log.Logger) *CLI {
 
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
 	cli.root.PersistentFlags().StringP("ip-list", "i", "", "Comma-separated list of ip addresses for load generation")
+	cli.root.PersistentFlags().IntP("seed-delta", "s", 0, "Interger to be added to the initial hard-coded seed")
 
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
@@ -235,7 +242,7 @@ func NewCLI(logger log.Logger) *CLI {
 			return Load(
 				cmd.Context(),
 				logger,
-				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
+				rand.New(rand.NewSource(randomSeed+int64(cli.seedDelta))), // nolint: gosec
 				cli.testnet,
 				cli.ips,
 			)
