@@ -105,7 +105,7 @@ type Reactor struct {
 func (r *Reactor) minReceiveRequestInterval() time.Duration {
 	// NOTE: must be less than ensurePeersPeriod, otherwise we'll request
 	// peers too quickly from others and they'll think we're bad!
-	return r.ensurePeersPeriod / 3
+	return minReceiveRequestInterval
 }
 
 // ReactorConfig holds reactor specific configuration data.

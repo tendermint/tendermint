@@ -51,5 +51,5 @@ const (
 
 	// max addresses returned by GetSelection
 	// NOTE: this must match "maxMsgSize"
-	maxGetSelection = 250
+	maxGetSelection = 100
 )
