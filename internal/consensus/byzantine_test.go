@@ -183,7 +183,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		case lazyNodeState.Height == lazyNodeState.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+			commit = types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil)
 		case lazyNodeState.LastCommit != nil:
 			commit = lazyNodeState.LastCommit
 		default: // This shouldn't happen.
@@ -206,7 +206,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			commit,
 			proposerProTxHash,
 			0,
-			nil,
 		)
 		require.NoError(t, err)
 		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)

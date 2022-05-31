@@ -674,6 +674,9 @@ type Commit struct {
 	ThresholdBlockSignature []byte            `json:"threshold_block_signature"`
 	ThresholdStateSignature []byte            `json:"threshold_state_signature"`
 
+	// ThresholdVoteExtensionSignatures keeps the list of recovered threshold signatures for vote-extensions
+	ThresholdVoteExtensionSignatures [][]byte `json:"threshold_vote_ext_signatures"`
+
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
 	// unmarshaling.
@@ -681,17 +684,20 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quorumHash []byte,
-	thresholdBlockSignature []byte, thresholdStateSignature []byte) *Commit {
-	return &Commit{
-		Height:                  height,
-		Round:                   round,
-		BlockID:                 blockID,
-		StateID:                 stateID,
-		QuorumHash:              quorumHash,
-		ThresholdBlockSignature: thresholdBlockSignature,
-		ThresholdStateSignature: thresholdStateSignature,
+func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quorumThresholdSigs *QuorumVoteSigs) *Commit {
+	commit := &Commit{
+		Height:  height,
+		Round:   round,
+		BlockID: blockID,
+		StateID: stateID,
 	}
+	if quorumThresholdSigs != nil {
+		commit.QuorumHash = quorumThresholdSigs.QuorumHash
+		commit.ThresholdBlockSignature = quorumThresholdSigs.BlockSig
+		commit.ThresholdStateSignature = quorumThresholdSigs.StateSig
+		commit.ThresholdVoteExtensionSignatures = quorumThresholdSigs.VoteExtSigs
+	}
+	return commit
 }
 
 // GetCanonicalVote returns the message that is being voted on in the form of a vote without signatures.
@@ -918,6 +924,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.QuorumHash = cp.QuorumHash
 	commit.ThresholdBlockSignature = cp.ThresholdBlockSignature
 	commit.ThresholdStateSignature = cp.ThresholdStateSignature
+	commit.ThresholdVoteExtensionSignatures = cp.ThresholdVoteExtensionSignatures
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round

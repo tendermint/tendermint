@@ -44,9 +44,13 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		vote.Round,
 		vote.BlockID,
 		stateID,
-		quorumHash,
-		vote.BlockSignature,
-		vote.StateSignature,
+		&QuorumVoteSigs{
+			ThresholdVoteSigs: ThresholdVoteSigs{
+				BlockSig: blockSig,
+				StateSig: stateSig,
+			},
+			QuorumHash: quorumHash,
+		},
 	)
 
 	vote2 := *vote
@@ -73,14 +77,19 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		{"wrong height", chainID, vote.BlockID, stateID, vote.Height - 1, commit, true},
 
 		{"incorrect threshold block signature", chainID, vote.BlockID, stateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID, quorumHash, nil, nil), true},
+			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID, &QuorumVoteSigs{QuorumHash: quorumHash}), true},
 
 		{"incorrect threshold state signature", chainID, vote.BlockID, stateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID,
-				quorumHash, vote.BlockSignature, nil), true},
+				&QuorumVoteSigs{QuorumHash: quorumHash, ThresholdVoteSigs: ThresholdVoteSigs{BlockSig: vote.BlockSignature}}), true},
 
 		{"incorrect threshold block signature", chainID, vote.BlockID, stateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID, quorumHash, vote2.BlockSignature, vote2.StateSignature), true},
+			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID,
+				&QuorumVoteSigs{
+					QuorumHash:        quorumHash,
+					ThresholdVoteSigs: ThresholdVoteSigs{BlockSig: vote2.BlockSignature, StateSig: vote2.StateSignature},
+				},
+			), true},
 	}
 
 	for _, tc := range testCases {
@@ -122,7 +131,7 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	require.NoError(t, err)
 	commit.ThresholdBlockSignature = v.BlockSignature
 	commit.ThresholdStateSignature = v.StateSignature
-
+	// add vote-extension threshold
 	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "incorrect threshold block signature")

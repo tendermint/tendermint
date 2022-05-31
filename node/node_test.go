@@ -368,14 +368,13 @@ func TestCreateProposalBlock(t *testing.T) {
 	)
 
 	proposedAppVersion := uint64(1)
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil)
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
 		proposerProTxHash,
 		proposedAppVersion,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -451,14 +450,13 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		sm.NopMetrics(),
 	)
 
-	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil)
 	block, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
 		state, commit,
 		proposerProTxHash,
 		0,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -587,7 +585,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		state, commit,
 		proposerProTxHash,
 		0,
-		nil,
 	)
 	require.NoError(t, err)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)

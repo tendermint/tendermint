@@ -42,4 +42,6 @@ message CanonicalVoteExtension {
   sfixed64 height    = 2;
   sfixed64 round     = 3;
   string   chain_id  = 4;
+
+  tendermint.types.VoteExtensionType type = 5;
 }

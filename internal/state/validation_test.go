@@ -73,7 +73,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	blockExec.SetNextCoreChainLock(nextChainLock)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil)
 
 	// some bad values
 	wrongHash := crypto.Checksum([]byte("this hash is wrong"))
@@ -205,8 +205,8 @@ func TestValidateBlockCommit(t *testing.T) {
 		sm.NopMetrics(),
 	)
 	blockExec.SetNextCoreChainLock(nextChainLock)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
-	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil)
+	wrongVoteMessageSignedCommit := types.NewCommit(1, 0, types.BlockID{}, types.StateID{}, nil)
 	badPrivValQuorumHash := crypto.RandQuorumHash()
 	badPrivVal := types.NewMockPVForQuorum(badPrivValQuorumHash)
 
@@ -230,14 +230,17 @@ func TestValidateBlockCommit(t *testing.T) {
 				stateID,
 			)
 			require.NoError(t, err)
+			thresholdSigs, err := types.NewSigsRecoverer([]*types.Vote{wrongHeightVote}).Recover()
+			require.NoError(t, err)
 			wrongHeightCommit := types.NewCommit(
 				wrongHeightVote.Height,
 				wrongHeightVote.Round,
 				state.LastBlockID,
 				stateID,
-				state.Validators.QuorumHash,
-				wrongHeightVote.BlockSignature,
-				wrongHeightVote.StateSignature,
+				&types.QuorumVoteSigs{
+					ThresholdVoteSigs: *thresholdSigs,
+					QuorumHash:        state.Validators.QuorumHash,
+				},
 			)
 			block, err := statefactory.MakeBlock(state, height, wrongHeightCommit, nextChainLock, 0)
 			require.NoError(t, err)
@@ -332,10 +335,17 @@ func TestValidateBlockCommit(t *testing.T) {
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature
 		goodVote.StateSignature, badVote.StateSignature = g.StateSignature, b.StateSignature
+		goodVote.VoteExtensions = types.ProtoToVoteExtensions(g.VoteExtensions)
+		badVote.VoteExtensions = types.ProtoToVoteExtensions(b.VoteExtensions)
 
+		thresholdSigs, err := types.NewSigsRecoverer([]*types.Vote{badVote}).Recover()
+		require.NoError(t, err)
+		quorumSigs := &types.QuorumVoteSigs{
+			ThresholdVoteSigs: *thresholdSigs,
+			QuorumHash:        state.Validators.QuorumHash,
+		}
 		wrongVoteMessageSignedCommit = types.NewCommit(goodVote.Height, goodVote.Round,
-			blockID, stateID, state.Validators.QuorumHash,
-			badVote.BlockSignature, badVote.StateSignature)
+			blockID, stateID, quorumSigs)
 	}
 }
 
@@ -384,8 +394,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil,
-		nil, nil)
+	lastCommit := types.NewCommit(0, 0, types.BlockID{}, types.StateID{}, nil)
 
 	for height := int64(1); height < validationTestsStopHeight; height++ {
 		proposerProTxHash := state.Validators.GetProposer().ProTxHash

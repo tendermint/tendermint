@@ -66,6 +66,28 @@ func signAddVoteForStateID(ctx context.Context, privVal PrivValidator, vote *Vot
 	}
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
-	vote.ExtensionSignature = v.ExtensionSignature
+	for i, ext := range v.VoteExtensions {
+		vote.VoteExtensions[i].Signature = ext.Signature
+	}
 	return voteSet.AddVote(vote)
+}
+
+// OnlyRecoverable is a specification function to filter out not recoverable vote-extensions
+func OnlyRecoverable() func(ext VoteExtension) bool {
+	return func(ext VoteExtension) bool {
+		return ext.IsRecoverable()
+	}
+}
+
+// VoteExtensions2BytesSlices returns a list of vote-extensions signatures
+func VoteExtensions2BytesSlices(exts []VoteExtension, specs ...func(ext VoteExtension) bool) [][]byte {
+	var sigs [][]byte
+	for _, ext := range exts {
+		for _, spec := range specs {
+			if spec(ext) {
+				sigs = append(sigs, ext.Signature)
+			}
+		}
+	}
+	return sigs
 }

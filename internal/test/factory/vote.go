@@ -41,6 +41,8 @@ func MakeVote(
 
 	v.BlockSignature = vpb.BlockSignature
 	v.StateSignature = vpb.StateSignature
-	v.ExtensionSignature = vpb.ExtensionSignature
+	for i, ext := range vpb.VoteExtensions {
+		v.VoteExtensions[i].Signature = ext.Signature
+	}
 	return v, nil
 }

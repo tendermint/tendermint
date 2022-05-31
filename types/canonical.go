@@ -66,11 +66,12 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 // CanonicalizeVoteExtension extracts the vote extension from the given vote
 // and constructs a CanonicalizeVoteExtension struct, whose representation in
 // bytes is what is signed in order to produce the vote extension's signature.
-func CanonicalizeVoteExtension(chainID string, vote *tmproto.Vote) tmproto.CanonicalVoteExtension {
+func CanonicalizeVoteExtension(chainID string, ext *tmproto.VoteExtension, height int64, round int32) tmproto.CanonicalVoteExtension {
 	return tmproto.CanonicalVoteExtension{
-		Extension: vote.Extension,
-		Height:    vote.Height,
-		Round:     int64(vote.Round),
+		Extension: ext.Extension,
+		Type:      ext.Type,
+		Height:    height,
+		Round:     int64(round),
 		ChainId:   chainID,
 	}
 }

@@ -39,7 +39,9 @@ func MakeCommit(
 		}
 		vote.StateSignature = v.StateSignature
 		vote.BlockSignature = v.BlockSignature
-		vote.ExtensionSignature = v.ExtensionSignature
+		for i, ext := range v.VoteExtensions {
+			vote.VoteExtensions[i].Signature = ext.Signature
+		}
 		if _, err := voteSet.AddVote(vote); err != nil {
 			return nil, err
 		}

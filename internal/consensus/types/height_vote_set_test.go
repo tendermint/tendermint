@@ -90,7 +90,9 @@ func makeVoteHR(
 
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
-	vote.ExtensionSignature = v.ExtensionSignature
+	for i, ext := range v.VoteExtensions {
+		vote.VoteExtensions[i].Signature = ext.Signature
+	}
 
 	return vote
 }
