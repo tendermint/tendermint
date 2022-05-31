@@ -102,12 +102,6 @@ type Reactor struct {
 	crawlPeerInfos map[types.NodeID]crawlPeerInfo
 }
 
-func (r *Reactor) minReceiveRequestInterval() time.Duration {
-	// NOTE: must be less than ensurePeersPeriod, otherwise we'll request
-	// peers too quickly from others and they'll think we're bad!
-	return minReceiveRequestInterval
-}
-
 // ReactorConfig holds reactor specific configuration data.
 type ReactorConfig struct {
 	// Seed/Crawler mode
@@ -331,7 +325,7 @@ func (r *Reactor) receiveRequest(src Peer) error {
 	}
 
 	now := time.Now()
-	minInterval := r.minReceiveRequestInterval()
+	minInterval := minReceiveRequestInterval
 	if now.Sub(lastReceived) < minInterval {
 		return fmt.Errorf(
 			"peer (%v) sent next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
