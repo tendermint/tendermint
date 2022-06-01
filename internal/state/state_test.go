@@ -101,8 +101,8 @@ func TestStateSaveLoad(t *testing.T) {
 		loadedState, state)
 }
 
-// TestABCIResponsesSaveLoad tests saving and loading ABCIResponses.
-func TestABCIResponsesSaveLoad1(t *testing.T) {
+// TestFinalizeResponsesSaveLoad1 tests saving and loading responses to FinalizeBlock.
+func TestFinalizeResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB)
@@ -112,9 +112,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// Build mock responses.
 	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
-	finalizeResponses := new(abci.ResponseFinalizeBlock)
 	dtxs := make([]*abci.ExecTxResult, 2)
-	finalizeResponses = new(abci.ResponseFinalizeBlock)
+	finalizeResponses := new(abci.ResponseFinalizeBlock)
 	finalizeResponses.TxResults = dtxs
 
 	finalizeResponses.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
@@ -123,7 +122,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	require.NoError(t, err)
 	finalizeResponses.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
 
-	err = stateStore.SaveABCIResponses(block.Height, finalizeResponses)
+	err = stateStore.SaveFinalizeResponses(block.Height, finalizeResponses)
 	require.NoError(t, err)
 	loadedFinalizeResponses, err := stateStore.LoadFinalizeResponses(block.Height)
 	require.NoError(t, err)
@@ -132,8 +131,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 		loadedFinalizeResponses, finalizeResponses)
 }
 
-// TestResultsSaveLoad tests saving and loading ABCI results.
-func TestABCIResponsesSaveLoad2(t *testing.T) {
+// TestFinalizeResponsesSaveLoad2 tests saving and loading responses to FinalizeBlock.
+func TestFinalizeResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
 
@@ -199,7 +198,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		responses := &abci.ResponseFinalizeBlock{
 			TxResults: tc.added,
 		}
-		err := stateStore.SaveABCIResponses(h, responses)
+		err := stateStore.SaveFinalizeResponses(h, responses)
 		require.NoError(t, err)
 	}
 

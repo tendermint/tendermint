@@ -94,8 +94,8 @@ type Store interface {
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
-	// SaveABCIResponses saves ABCIResponses for a given height
-	SaveABCIResponses(int64, *abci.ResponseFinalizeBlock) error
+	// SaveFinalizeResponses saves responses to FinalizeBlock for a given height
+	SaveFinalizeResponses(int64, *abci.ResponseFinalizeBlock) error
 	// SaveValidatorSet saves the validator set at a given height
 	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
@@ -254,7 +254,7 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 		return err
 	}
 
-	if err := store.pruneABCIResponses(retainHeight); err != nil {
+	if err := store.pruneFinalizeResponses(retainHeight); err != nil {
 		return err
 	}
 
@@ -345,9 +345,9 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 	)
 }
 
-// pruneABCIResponses calls a reverse iterator from base height to retain height batch deleting
-// all abci responses in between
-func (store dbStore) pruneABCIResponses(height int64) error {
+// pruneFinalizeResponses calls a reverse iterator from base height to retain height batch deleting
+// all responses to FinalizeBlock, and legacy ABCI responses, in between
+func (store dbStore) pruneFinalizeResponses(height int64) error {
 	err := store.pruneRange(finalizeResponsesKey(1), finalizeResponsesKey(height))
 	if err == nil {
 		// Remove any stale legacy ABCI responses
@@ -421,7 +421,7 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 //------------------------------------------------------------------------
 
 // LoadFinalizeResponses loads the responses to FinalizeBlock for the given height from the
-// database. If not found, ErrNoABCIResponsesForHeight is returned.
+// database. If not found, ErrNoFinalizeResponsesForHeight is returned.
 //
 // This is useful for recovering from crashes where we called app.Commit and
 // before we called s.Save(). It can also be used to produce Merkle proofs of
@@ -432,7 +432,7 @@ func (store dbStore) LoadFinalizeResponses(height int64) (*abci.ResponseFinalize
 		return nil, err
 	}
 	if len(buf) == 0 {
-		return nil, ErrNoABCIResponsesForHeight{height}
+		return nil, ErrNoFinalizeResponsesForHeight{height}
 	}
 	if len(buf) == 1 && buf[0] == emptyResponsesMagic {
 		return &abci.ResponseFinalizeBlock{}, nil
@@ -449,13 +449,13 @@ func (store dbStore) LoadFinalizeResponses(height int64) (*abci.ResponseFinalize
 	return finalizeResponses, nil
 }
 
-// SaveABCIResponses persists the ABCIResponses to the database.
+// SaveFinalizeResponses persists to the database the responses to FinalizeBlock.
 // This is useful in case we crash after app.Commit and before s.Save().
 // Responses are indexed by height so they can also be loaded later to produce
 // Merkle proofs.
 //
 // Exposed for testing.
-func (store dbStore) SaveABCIResponses(height int64, finalizeResponses *abci.ResponseFinalizeBlock) error {
+func (store dbStore) SaveFinalizeResponses(height int64, finalizeResponses *abci.ResponseFinalizeBlock) error {
 	return store.saveFinalizeResponses(height, finalizeResponses)
 }
 

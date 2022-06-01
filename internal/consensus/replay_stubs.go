@@ -51,7 +51,7 @@ func (emptyMempool) InitWAL() error { return nil }
 func (emptyMempool) CloseWAL()      {}
 
 //-----------------------------------------------------------------------------
-// mockProxyApp uses ABCIResponses to give the right results.
+// mockProxyApp uses Responses to FinalizeBlock to give the right results.
 //
 // Useful because we don't want to call Commit() twice for the same block on
 // the real app.

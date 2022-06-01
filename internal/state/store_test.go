@@ -235,7 +235,7 @@ func TestPruneStates(t *testing.T) {
 				err := stateStore.Save(state)
 				require.NoError(t, err)
 
-				err = stateStore.SaveABCIResponses(h, &abci.ResponseFinalizeBlock{
+				err = stateStore.SaveFinalizeResponses(h, &abci.ResponseFinalizeBlock{
 					TxResults: []*abci.ExecTxResult{
 						{Data: []byte{1}},
 						{Data: []byte{2}},
