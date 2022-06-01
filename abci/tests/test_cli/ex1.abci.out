@@ -8,6 +8,10 @@
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
+> commit 
+-> code: OK
+-> data.hex: 0x0000000000000000
+
 > prepare_proposal "prepare0x05"
 -> code: OK
 -> log: Succeded. Tx: 0x05 action: ADDED
@@ -30,7 +34,7 @@
 > query "abc"
 -> code: OK
 -> log: exists
--> height: 1
+-> height: 2
 -> key: abc
 -> key.hex: 616263
 -> value: abc
@@ -48,7 +52,7 @@
 > query "def"
 -> code: OK
 -> log: exists
--> height: 2
+-> height: 3
 -> key: def
 -> key.hex: 646566
 -> value: xyz
