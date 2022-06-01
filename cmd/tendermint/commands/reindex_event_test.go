@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/libs/log"
-	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 
 	_ "github.com/lib/pq" // for the psql sink
@@ -154,10 +153,8 @@ func TestReIndexEvent(t *testing.T) {
 		On("IndexTxEvents", mock.AnythingOfType("[]*types.TxResult")).Return(nil)
 
 	dtx := abcitypes.ExecTxResult{}
-	abciResp := &prototmstate.ABCIResponses{
-		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{
-			TxResults: []*abcitypes.ExecTxResult{&dtx},
-		},
+	abciResp := &abcitypes.ResponseFinalizeBlock{
+		TxResults: []*abcitypes.ExecTxResult{&dtx},
 	}
 
 	mockStateStore.
