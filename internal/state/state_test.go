@@ -203,7 +203,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// Query all before, should return expected value.
+	// Query all after, should return expected value.
 	for i, tc := range cases {
 		h := int64(i + 1)
 		res, err := stateStore.LoadABCIResponses(h)

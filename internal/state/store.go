@@ -31,11 +31,13 @@ const (
 // TODO(thane): Move these and the ones in internal/store/store.go to their own package.
 const (
 	// prefixes are unique across all tm db's
-	prefixValidators      = int64(5)
-	prefixConsensusParams = int64(6)
-	//prefixABCIResponses   = int64(7)
+	prefixValidators        = int64(5)
+	prefixConsensusParams   = int64(6)
+	prefixABCIResponses     = int64(7) // deprecated in v0.36
 	prefixState             = int64(8)
-	prefixFinalizeResponses = int64(9) // prefixABCIResponses in v0.36
+	prefixFinalizeResponses = int64(9)
+
+	emptyResponsesMagic = 0xe5 // Magic number
 )
 
 func encodeKey(prefix int64, height int64) []byte {
@@ -52,6 +54,10 @@ func validatorsKey(height int64) []byte {
 
 func consensusParamsKey(height int64) []byte {
 	return encodeKey(prefixConsensusParams, height)
+}
+
+func abciResponsesKey(height int64) []byte {
+	return encodeKey(prefixABCIResponses, height)
 }
 
 func finalizeResponsesKey(height int64) []byte {
@@ -342,7 +348,12 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 // pruneABCIResponses calls a reverse iterator from base height to retain height batch deleting
 // all abci responses in between
 func (store dbStore) pruneABCIResponses(height int64) error {
-	return store.pruneRange(finalizeResponsesKey(1), finalizeResponsesKey(height))
+	err := store.pruneRange(finalizeResponsesKey(1), finalizeResponsesKey(height))
+	if err == nil {
+		// Remove any stale legacy ABCI responses
+		err = store.pruneRange(abciResponsesKey(1), abciResponsesKey(height))
+	}
+	return err
 }
 
 // pruneRange is a generic function for deleting a range of keys in reverse order.
@@ -423,6 +434,9 @@ func (store dbStore) LoadABCIResponses(height int64) (*abci.ResponseFinalizeBloc
 	if len(buf) == 0 {
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
+	if len(buf) == 1 && buf[0] == emptyResponsesMagic {
+		return &abci.ResponseFinalizeBlock{}, nil
+	}
 
 	finalizeResponses := new(abci.ResponseFinalizeBlock)
 	err = finalizeResponses.Unmarshal(buf)
@@ -459,6 +473,9 @@ func (store dbStore) saveFinalizeResponses(height int64, finalizeResponses *abci
 	bz, err := finalizeResponses.Marshal()
 	if err != nil {
 		return err
+	}
+	if len(bz) == 0 {
+		bz = []byte{emptyResponsesMagic}
 	}
 
 	return store.db.SetSync(finalizeResponsesKey(height), bz)
