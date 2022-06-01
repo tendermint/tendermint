@@ -27,13 +27,17 @@ func IsConnTimeout(err error) bool {
 
 // NewSignerListener creates a new SignerListenerEndpoint using the corresponding listen address
 func NewSignerListener(listenAddr string, logger log.Logger) (*SignerListenerEndpoint, error) {
-	var listener net.Listener
-
 	protocol, address := tmnet.ProtocolAndAddress(listenAddr)
+	if protocol != "unix" && protocol != "tcp" { //nolint:goconst
+		return nil, fmt.Errorf("unsupported address family %q, want unix or tcp", protocol)
+	}
+
 	ln, err := net.Listen(protocol, address)
 	if err != nil {
 		return nil, err
 	}
+
+	var listener net.Listener
 	switch protocol {
 	case "unix":
 		listener = NewUnixListener(ln)
@@ -41,13 +45,8 @@ func NewSignerListener(listenAddr string, logger log.Logger) (*SignerListenerEnd
 		// TODO: persist this key so external signer can actually authenticate us
 		listener = NewTCPListener(ln, ed25519.GenPrivKey())
 	default:
-		return nil, fmt.Errorf(
-			"wrong listen address: expected either 'tcp' or 'unix' protocols, got %s",
-			protocol,
-		)
+		panic("invalid protocol: " + protocol) // semantically unreachable
 	}
 
-	pve := NewSignerListenerEndpoint(logger.With("module", "privval"), listener)
-
-	return pve, nil
+	return NewSignerListenerEndpoint(logger.With("module", "privval"), listener), nil
 }
