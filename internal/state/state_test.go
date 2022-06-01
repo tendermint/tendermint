@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	sm "github.com/tendermint/tendermint/internal/state"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -113,24 +112,24 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// Build mock responses.
 	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
-	abciResponses := new(tmstate.ABCIResponses)
+	finalizeResponses := new(abci.ResponseFinalizeBlock)
 	dtxs := make([]*abci.ExecTxResult, 2)
-	abciResponses.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-	abciResponses.FinalizeBlock.TxResults = dtxs
+	finalizeResponses = new(abci.ResponseFinalizeBlock)
+	finalizeResponses.TxResults = dtxs
 
-	abciResponses.FinalizeBlock.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
-	abciResponses.FinalizeBlock.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
+	finalizeResponses.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
+	finalizeResponses.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
 	pbpk, err := encoding.PubKeyToProto(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
-	abciResponses.FinalizeBlock.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
+	finalizeResponses.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
 
-	err = stateStore.SaveABCIResponses(block.Height, abciResponses)
+	err = stateStore.SaveABCIResponses(block.Height, finalizeResponses)
 	require.NoError(t, err)
-	loadedABCIResponses, err := stateStore.LoadABCIResponses(block.Height)
+	loadedFinalizeResponses, err := stateStore.LoadABCIResponses(block.Height)
 	require.NoError(t, err)
-	assert.Equal(t, abciResponses, loadedABCIResponses,
-		"ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
-		loadedABCIResponses, abciResponses)
+	assert.Equal(t, finalizeResponses, loadedFinalizeResponses,
+		"FinalizeResponses don't match:\ngot:       %v\nexpected: %v\n",
+		loadedFinalizeResponses, finalizeResponses)
 }
 
 // TestResultsSaveLoad tests saving and loading ABCI results.
@@ -197,10 +196,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	// Add all cases.
 	for i, tc := range cases {
 		h := int64(i + 1) // last block height, one below what we save
-		responses := &tmstate.ABCIResponses{
-			FinalizeBlock: &abci.ResponseFinalizeBlock{
-				TxResults: tc.added,
-			},
+		responses := &abci.ResponseFinalizeBlock{
+			TxResults: tc.added,
 		}
 		err := stateStore.SaveABCIResponses(h, responses)
 		require.NoError(t, err)
@@ -215,7 +212,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			e, err := abci.MarshalTxResults(tc.expected)
 			require.NoError(t, err)
 			he := merkle.HashFromByteSlices(e)
-			rs, err := abci.MarshalTxResults(res.FinalizeBlock.TxResults)
+			rs, err := abci.MarshalTxResults(res.TxResults)
 			hrs := merkle.HashFromByteSlices(rs)
 			require.NoError(t, err)
 			assert.Equal(t, he, hrs, "%d", i)

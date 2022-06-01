@@ -33,8 +33,9 @@ const (
 	// prefixes are unique across all tm db's
 	prefixValidators      = int64(5)
 	prefixConsensusParams = int64(6)
-	prefixABCIResponses   = int64(7)
-	prefixState           = int64(8)
+	//prefixABCIResponses   = int64(7)
+	prefixState             = int64(8)
+	prefixFinalizeResponses = int64(9) // prefixABCIResponses in v0.36
 )
 
 func encodeKey(prefix int64, height int64) []byte {
@@ -53,8 +54,8 @@ func consensusParamsKey(height int64) []byte {
 	return encodeKey(prefixConsensusParams, height)
 }
 
-func abciResponsesKey(height int64) []byte {
-	return encodeKey(prefixABCIResponses, height)
+func finalizeResponsesKey(height int64) []byte {
+	return encodeKey(prefixFinalizeResponses, height)
 }
 
 // stateKey should never change after being set in init()
@@ -82,13 +83,13 @@ type Store interface {
 	// LoadValidators loads the validator set at a given height
 	LoadValidators(int64) (*types.ValidatorSet, error)
 	// LoadABCIResponses loads the abciResponse for a given height
-	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
+	LoadABCIResponses(int64) (*abci.ResponseFinalizeBlock, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
-	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
+	SaveABCIResponses(int64, *abci.ResponseFinalizeBlock) error
 	// SaveValidatorSet saves the validator set at a given height
 	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
@@ -341,7 +342,7 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 // pruneABCIResponses calls a reverse iterator from base height to retain height batch deleting
 // all abci responses in between
 func (store dbStore) pruneABCIResponses(height int64) error {
-	return store.pruneRange(abciResponsesKey(1), abciResponsesKey(height))
+	return store.pruneRange(finalizeResponsesKey(1), finalizeResponsesKey(height))
 }
 
 // pruneRange is a generic function for deleting a range of keys in reverse order.
@@ -414,25 +415,24 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 // This is useful for recovering from crashes where we called app.Commit and
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
-func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
-	buf, err := store.db.Get(abciResponsesKey(height))
+func (store dbStore) LoadABCIResponses(height int64) (*abci.ResponseFinalizeBlock, error) {
+	buf, err := store.db.Get(finalizeResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
 	if len(buf) == 0 {
-
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
-	abciResponses := new(tmstate.ABCIResponses)
-	err = abciResponses.Unmarshal(buf)
+	finalizeResponses := new(abci.ResponseFinalizeBlock)
+	err = finalizeResponses.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(fmt.Sprintf("data has been corrupted or its spec has changed: %+v", err))
 	}
 	// TODO: ensure that buf is completely read.
 
-	return abciResponses, nil
+	return finalizeResponses, nil
 }
 
 // SaveABCIResponses persists the ABCIResponses to the database.
@@ -441,27 +441,27 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // Merkle proofs.
 //
 // Exposed for testing.
-func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
-	return store.saveABCIResponses(height, abciResponses)
+func (store dbStore) SaveABCIResponses(height int64, finalizeResponses *abci.ResponseFinalizeBlock) error {
+	return store.saveFinalizeResponses(height, finalizeResponses)
 }
 
-func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
+func (store dbStore) saveFinalizeResponses(height int64, finalizeResponses *abci.ResponseFinalizeBlock) error {
 	var dtxs []*abci.ExecTxResult
 	// strip nil values,
-	for _, tx := range abciResponses.FinalizeBlock.TxResults {
+	for _, tx := range finalizeResponses.TxResults {
 		if tx != nil {
 			dtxs = append(dtxs, tx)
 		}
 	}
 
-	abciResponses.FinalizeBlock.TxResults = dtxs
+	finalizeResponses.TxResults = dtxs
 
-	bz, err := abciResponses.Marshal()
+	bz, err := finalizeResponses.Marshal()
 	if err != nil {
 		return err
 	}
 
-	return store.db.SetSync(abciResponsesKey(height), bz)
+	return store.db.SetSync(finalizeResponsesKey(height), bz)
 }
 
 // SaveValidatorSets is used to save the validator set over multiple heights.

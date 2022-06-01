@@ -659,7 +659,7 @@ const (
 	prefixBlockCommit = int64(2)
 	prefixSeenCommit  = int64(3)
 	prefixBlockHash   = int64(4)
-	prefixExtCommit   = int64(9) // 5..8 are used by state/store
+	prefixExtCommit   = int64(10) // 5..9 are used by state/store
 )
 
 func blockMetaKey(height int64) []byte {

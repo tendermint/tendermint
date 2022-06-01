@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -233,12 +232,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		"block_app_hash", fmt.Sprintf("%X", fBlockRes.AppHash),
 	)
 
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: fBlockRes,
-	}
-
 	// Save the results before we commit.
-	if err := blockExec.store.SaveABCIResponses(block.Height, abciResponses); err != nil {
+	if err := blockExec.store.SaveABCIResponses(block.Height, fBlockRes); err != nil {
 		return state, err
 	}
 

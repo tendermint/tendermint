@@ -17,7 +17,6 @@ import (
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -236,15 +235,14 @@ func TestPruneStates(t *testing.T) {
 				err := stateStore.Save(state)
 				require.NoError(t, err)
 
-				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
-					FinalizeBlock: &abci.ResponseFinalizeBlock{
-						TxResults: []*abci.ExecTxResult{
-							{Data: []byte{1}},
-							{Data: []byte{2}},
-							{Data: []byte{3}},
-						},
+				err = stateStore.SaveABCIResponses(h, &abci.ResponseFinalizeBlock{
+					TxResults: []*abci.ExecTxResult{
+						{Data: []byte{1}},
+						{Data: []byte{2}},
+						{Data: []byte{3}},
 					},
-				})
+				},
+				)
 				require.NoError(t, err)
 			}
 

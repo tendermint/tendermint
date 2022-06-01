@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -60,24 +59,24 @@ func (emptyMempool) CloseWAL()      {}
 func newMockProxyApp(
 	logger log.Logger,
 	appHash []byte,
-	abciResponses *tmstate.ABCIResponses,
+	abciResponses *abci.ResponseFinalizeBlock,
 ) (abciclient.Client, error) {
 	return proxy.New(abciclient.NewLocalClient(logger, &mockProxyApp{
-		appHash:       appHash,
-		abciResponses: abciResponses,
+		appHash:           appHash,
+		finalizeResponses: abciResponses,
 	}), logger, proxy.NopMetrics()), nil
 }
 
 type mockProxyApp struct {
 	abci.BaseApplication
 
-	appHash       []byte
-	txCount       int
-	abciResponses *tmstate.ABCIResponses
+	appHash           []byte
+	txCount           int
+	finalizeResponses *abci.ResponseFinalizeBlock
 }
 
 func (mock *mockProxyApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	r := mock.abciResponses.FinalizeBlock
+	r := mock.finalizeResponses
 	mock.txCount++
 	if r == nil {
 		return &abci.ResponseFinalizeBlock{}, nil
