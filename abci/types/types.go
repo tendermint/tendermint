@@ -52,7 +52,6 @@ func (r ResponseQuery) IsOK() bool {
 // IsErr returns true if Code is something other than OK.
 func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
-
 }
 
 func (r ResponseProcessProposal) IsAccepted() bool {
