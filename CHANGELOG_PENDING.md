@@ -23,7 +23,6 @@ Special thanks to external contributors on this release:
   - [config] \#8222 default indexer configuration to null. (@creachadair)
   - [rpc] \#8570 rework timeouts to be per-method instead of global. (@creachadair)
   - [rpc] \#8624 deprecate `broadcast_tx_commit` and `braodcast_tx_sync` and `broadcast_tx_async` in favor of `braodcast_tx`. (@tychoish)
-  - [abci] [ABCI++](https://github.com/orgs/tendermint/projects/9) is not backwards compatible with ABCI. (@sergio-mena)
 
 - Apps
 
