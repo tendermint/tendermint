@@ -30,6 +30,7 @@ Special thanks to external contributors on this release:
   - [tendermint/spec] \#7804 Migrate spec from [spec repo](https://github.com/tendermint/spec).
   - [abci] \#7984 Remove the locks preventing concurrent use of ABCI applications by Tendermint. (@tychoish)
   - [abci] \#8605 Remove info, log, events, gasUsed and mempoolError fields from ResponseCheckTx as they are not used by Tendermint. (@jmalicevic)
+  - [abci] \#8664 Move `app_hash` parameter from `Commit` to `FinalizeBlock`. (@sergio-mena)
 
 - P2P Protocol
 
@@ -69,6 +70,8 @@ Special thanks to external contributors on this release:
 - [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still start consensus at the genesis time. (@anca)
 - [cli] \#8281 Add a tool to update old config files to the latest version. (@creachadair)
 - [consenus] \#8514 move `RecheckTx` from the local node mempool config to a global `ConsensusParams` field in `BlockParams` (@cmwaters)
+- [abci] ABCI++ [specified](https://github.com/tendermint/tendermint/tree/master/spec/abci%2B%2B). (@sergio-mena, @cmwaters, @josef-widder)
+- [abci] ABCI++ [implemented](https://github.com/orgs/tendermint/projects/9). (@williambanfield, @thanethomson, @sergio-mena)
 
 ### IMPROVEMENTS
 
