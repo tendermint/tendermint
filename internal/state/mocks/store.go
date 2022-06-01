@@ -160,8 +160,8 @@ func (_m *Store) Save(_a0 state.State) error {
 	return r0
 }
 
-// SaveABCIResponses provides a mock function with given fields: _a0, _a1
-func (_m *Store) SaveABCIResponses(_a0 int64, _a1 *abcitypes.ResponseFinalizeBlock) error {
+// SaveFinalizeResponses provides a mock function with given fields: _a0, _a1
+func (_m *Store) SaveFinalizeResponses(_a0 int64, _a1 *abcitypes.ResponseFinalizeBlock) error {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 error
