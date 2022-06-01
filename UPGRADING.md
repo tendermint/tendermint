@@ -21,6 +21,14 @@ For information on how ABCI++ works, see the
 In particular, the simplest way to upgrade your application is described
 [here](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/abci++_tmint_expected_behavior_002_draft.md#adapting-existing-applications-that-use-abci).
 
+#### Moving the `app_hash` parameter
+
+The Application's hash (or any data representing the Application's current
+state) is known by the time `FinalizeBlock` finishes its execution.
+Accordingly, the `app_hash` parameter has been moved from `ResponseCommit` to
+`ResponseFinalizeBlock`, since it makes sense for the Application to return
+this value as soon as is it known.
+
 #### ABCI Mutex
 
 In previous versions of ABCI, Tendermint was prevented from making
