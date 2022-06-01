@@ -30,7 +30,6 @@ func NewParser(in io.Reader) Parser {
 // Parse parses next element as protobuf message type `msgType`.
 // Returns io.EOF when there are no more messages in In.
 func (p Parser) Parse(msgType string) error {
-
 	msg, err := NewMessageType(msgType)
 	if err != nil {
 		return err

@@ -92,7 +92,6 @@ func (captureCmd *CaptureCmd) capture() error {
 }
 
 func (captureCmd *CaptureCmd) processPacket(packet gopacket.Packet) error {
-	var err error
 	payload, isRequest := captureCmd.parsePacket(packet)
 	if len(payload) > 0 {
 		in := bytes.NewBuffer(payload)
@@ -106,7 +105,7 @@ func (captureCmd *CaptureCmd) processPacket(packet gopacket.Packet) error {
 			msgType = captureCmd.ResponseType
 		}
 
-		err = p.Parse(msgType)
+		err := p.Parse(msgType)
 		if err != nil {
 			return fmt.Errorf("cannot parse message payload '%x' : %w", payload, err)
 		}

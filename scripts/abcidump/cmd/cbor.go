@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// CborCmd parses data encoded in CBOR format
 type CborCmd struct {
 	cmd   *cobra.Command
 	Input io.Reader
@@ -66,46 +67,78 @@ func (cborCmd *CborCmd) PreRunE(cmd *cobra.Command, args []string) (err error) {
 
 const jsonIndent = '\t'
 
-func marshal(data interface{}, depth int) ([]byte, error) {
-	switch typed := data.(type) {
-	case map[interface{}]interface{}:
-		ret := []byte("{")
-		isFirst := true
-		for key, val := range typed {
-
-			if !isFirst {
-				ret = append(ret, ',')
-			} else {
-				isFirst = false
-			}
-			ret = append(ret, '\n')
-
-			k1, err := marshal(key, depth+1)
-			if err != nil {
-				return nil, err
-			}
-			v1, err := marshal(val, depth+1)
-			if err != nil {
-				return nil, err
-			}
-			for i := 0; i < depth; i++ {
-				ret = append(ret, jsonIndent)
-			}
-
-			ret = append(ret, k1...)
-			ret = append(ret, ':', ' ')
-			ret = append(ret, v1...)
-		}
-		ret = append(ret, '\n', '}')
-		return ret, nil
-
-	default:
-		s, err := json.Marshal(data)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse %s: %w", typed, err)
-		}
-		return s, nil
+// marshal recursively marshals provided data to JSON format
+func marshal(data interface{}, indent []byte, out io.Writer) error {
+	if len(indent) == 0 {
+		indent = []byte{jsonIndent}
 	}
+
+	switch typed := data.(type) {
+	// json.Marshal cannot handle map[interface{}]interface{}
+	case map[interface{}]interface{}:
+		return marshalMap(typed, indent, out)
+	default:
+		marshaled, err := json.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("cannot parse %+v: %w", data, err)
+		}
+		if _, err = out.Write(marshaled); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func marshalMap(mapToMarshal map[interface{}]interface{}, indent []byte, out io.Writer) error {
+	// adding prefix; indent already added by the parent
+	if _, err := out.Write([]byte{'{', '\n'}); err != nil {
+		return err
+	}
+
+	i := 0
+	for key, val := range mapToMarshal {
+		// indentation
+		if _, err := out.Write(indent); err != nil {
+			return err
+		}
+
+		// Write "KEY":"VALUE"
+		if err := marshal(key, append(indent, jsonIndent), out); err != nil {
+			return fmt.Errorf("cannot marshal key %+v: %w", key, err)
+		}
+		if _, err := out.Write([]byte{':', ' '}); err != nil {
+			return err
+		}
+		if err := marshal(val, append(indent, jsonIndent), out); err != nil {
+			return fmt.Errorf("cannot marshal value %+v: %w", val, err)
+		}
+
+		// comma if needed, and new line
+		if i < len(mapToMarshal)-1 { // not last
+			if _, err := out.Write([]byte{','}); err != nil {
+				return err
+			}
+		}
+		if _, err := out.Write([]byte{'\n'}); err != nil {
+			return err
+		}
+		i++
+	}
+
+	// suffix
+	var suffix []byte
+	if len(indent) > 1 {
+		suffix = indent[:len(indent)-1]
+		suffix = append(suffix, '}')
+	} else { // top level
+		suffix = []byte{'}', '\n'}
+	}
+	if _, err := out.Write(suffix); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // RunE executes main logic of this command
@@ -114,17 +147,12 @@ func (cborCmd *CborCmd) RunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("cannot read data: %w", err)
 	}
-	s := map[interface{}]interface{}{}
-	if err := cbor.Unmarshal(data, &s); err != nil {
+	unmarshaled := map[interface{}]interface{}{}
+	if err := cbor.Unmarshal(data, &unmarshaled); err != nil {
 		return err
 	}
-
 	out := cborCmd.cmd.OutOrStdout()
-	str, err := marshal(s, 1)
-	if err != nil {
-		return err
-	}
-	if _, err := out.Write(str); err != nil {
+	if err = marshal(unmarshaled, []byte{jsonIndent}, out); err != nil {
 		return err
 	}
 
