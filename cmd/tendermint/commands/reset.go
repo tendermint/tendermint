@@ -27,6 +27,11 @@ var ResetStateCmd = &cobra.Command{
 	Use:   "reset-state",
 	Short: "Remove all the data and WAL",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		config, err := ParseConfig()
+		if err != nil {
+			return err
+		}
+
 		return resetState(config.DBDir(), logger, keyType)
 	},
 }
@@ -47,13 +52,27 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAllCmd(cmd *cobra.Command, args []string) error {
-	return resetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidator.KeyFile(),
-		config.PrivValidator.StateFile(), logger)
+	config, err := ParseConfig()
+	if err != nil {
+		return err
+	}
+
+	return resetAll(
+		config.DBDir(),
+		config.P2P.AddrBookFile(),
+		config.PrivValidator.KeyFile(),
+		config.PrivValidator.StateFile(),
+		logger,
+	)
 }
 
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) error {
+	config, err := ParseConfig()
+	if err != nil {
+		return err
+	}
 	return resetFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile(), logger, keyType)
 }
 
