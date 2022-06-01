@@ -263,7 +263,7 @@ func TestPruneStates(t *testing.T) {
 				require.NoError(t, err, h)
 				require.NotNil(t, params, h)
 
-				finRes, err := stateStore.LoadABCIResponses(h)
+				finRes, err := stateStore.LoadFinalizeResponses(h)
 				require.NoError(t, err, h)
 				require.NotNil(t, finRes, h)
 			}
@@ -289,7 +289,7 @@ func TestPruneStates(t *testing.T) {
 					require.Equal(t, emptyParams, params, h)
 				}
 
-				finRes, err := stateStore.LoadABCIResponses(h)
+				finRes, err := stateStore.LoadFinalizeResponses(h)
 				require.Error(t, err, h)
 				require.Nil(t, finRes, h)
 			}

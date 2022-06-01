@@ -262,7 +262,7 @@ func TestBlockResults(t *testing.T) {
 	testGasUsed := int64(100)
 	stateStoreMock := &statemocks.Store{}
 	//	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	stateStoreMock.On("LoadABCIResponses", testHeight).Return(&abcitypes.ResponseFinalizeBlock{
+	stateStoreMock.On("LoadFinalizeResponses", testHeight).Return(&abcitypes.ResponseFinalizeBlock{
 		TxResults: []*abcitypes.ExecTxResult{
 			{
 				GasUsed: testGasUsed,

@@ -193,7 +193,7 @@ func eventReIndex(cmd *cobra.Command, args eventReIndexArgs) error {
 				return fmt.Errorf("not able to load block at height %d from the blockstore", i)
 			}
 
-			r, err := args.stateStore.LoadABCIResponses(i)
+			r, err := args.stateStore.LoadFinalizeResponses(i)
 			if err != nil {
 				return fmt.Errorf("not able to load ABCI Response at height %d from the statestore", i)
 			}

@@ -125,7 +125,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 
 	err = stateStore.SaveABCIResponses(block.Height, finalizeResponses)
 	require.NoError(t, err)
-	loadedFinalizeResponses, err := stateStore.LoadABCIResponses(block.Height)
+	loadedFinalizeResponses, err := stateStore.LoadFinalizeResponses(block.Height)
 	require.NoError(t, err)
 	assert.Equal(t, finalizeResponses, loadedFinalizeResponses,
 		"FinalizeResponses don't match:\ngot:       %v\nexpected: %v\n",
@@ -189,7 +189,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	// Query all before, this should return error.
 	for i := range cases {
 		h := int64(i + 1)
-		res, err := stateStore.LoadABCIResponses(h)
+		res, err := stateStore.LoadFinalizeResponses(h)
 		assert.Error(t, err, "%d: %#v", i, res)
 	}
 
@@ -206,7 +206,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	// Query all after, should return expected value.
 	for i, tc := range cases {
 		h := int64(i + 1)
-		res, err := stateStore.LoadABCIResponses(h)
+		res, err := stateStore.LoadFinalizeResponses(h)
 		if assert.NoError(t, err, "%d", i) {
 			t.Log(res)
 			e, err := abci.MarshalTxResults(tc.expected)

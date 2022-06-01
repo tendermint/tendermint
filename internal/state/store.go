@@ -88,8 +88,8 @@ type Store interface {
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
 	LoadValidators(int64) (*types.ValidatorSet, error)
-	// LoadABCIResponses loads the abciResponse for a given height
-	LoadABCIResponses(int64) (*abci.ResponseFinalizeBlock, error)
+	// LoadFinalizeResponses loads the responses to FinalizeBlock for a given height
+	LoadFinalizeResponses(int64) (*abci.ResponseFinalizeBlock, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
@@ -420,13 +420,13 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 
 //------------------------------------------------------------------------
 
-// LoadABCIResponses loads the ABCIResponses for the given height from the
+// LoadFinalizeResponses loads the responses to FinalizeBlock for the given height from the
 // database. If not found, ErrNoABCIResponsesForHeight is returned.
 //
 // This is useful for recovering from crashes where we called app.Commit and
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
-func (store dbStore) LoadABCIResponses(height int64) (*abci.ResponseFinalizeBlock, error) {
+func (store dbStore) LoadFinalizeResponses(height int64) (*abci.ResponseFinalizeBlock, error) {
 	buf, err := store.db.Get(finalizeResponsesKey(height))
 	if err != nil {
 		return nil, err
