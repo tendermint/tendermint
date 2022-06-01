@@ -62,6 +62,11 @@ applications remains correct.
   turned on are not affected. Operators who wish to enable indexing for a new
   node, however, must now edit the `config.toml` explicitly.
 
+- The function of seed nodes was modified in the past release. Now, seed nodes
+  are treated identically to any other peer, however they only run the PEX
+  reactor. Because of this `seeds` has been removed from the config. Users
+  should add any seed nodes in the list of `bootstrap-peers`.
+
 ### RPC Changes
 
 Tendermint v0.36 adds a new RPC event subscription API. The existing event
