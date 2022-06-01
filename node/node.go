@@ -283,7 +283,7 @@ func makeNode(
 	)
 
 	// Determine whether we should attempt state sync.
-	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	stateSync := cfg.StateSync.Enable && !hasMajorityVotingPower(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
@@ -291,7 +291,7 @@ func makeNode(
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := !onlyValidatorIsUs(state, pubKey)
+	blockSync := !hasMajorityVotingPower(state, pubKey)
 	waitSync := stateSync || blockSync
 
 	csState, err := consensus.NewState(logger.With("module", "consensus"),
@@ -433,7 +433,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 		return fmt.Errorf("cannot load state: %w", err)
 	}
 
-	if len(n.peerManager.Peers()) == 0 && !onlyValidatorIsUs(state, n.nodeKey.PubKey()) {
+	if len(n.peerManager.Peers()) == 0 && !hasMajorityVotingPower(state, n.nodeKey.PubKey()) {
 		if n.config.P2P.PersistentPeers == "" && n.config.P2P.BootstrapPeers == "" {
 			return errors.New("no peers configured or avalible. Set 'bootstrap-peers' and/or 'persistent-peers'")
 		}
