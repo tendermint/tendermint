@@ -263,9 +263,9 @@ func TestPruneStates(t *testing.T) {
 				require.NoError(t, err, h)
 				require.NotNil(t, params, h)
 
-				abci, err := stateStore.LoadABCIResponses(h)
+				finRes, err := stateStore.LoadABCIResponses(h)
 				require.NoError(t, err, h)
-				require.NotNil(t, abci, h)
+				require.NotNil(t, finRes, h)
 			}
 
 			emptyParams := types.ConsensusParams{}
@@ -289,9 +289,9 @@ func TestPruneStates(t *testing.T) {
 					require.Equal(t, emptyParams, params, h)
 				}
 
-				abci, err := stateStore.LoadABCIResponses(h)
+				finRes, err := stateStore.LoadABCIResponses(h)
 				require.Error(t, err, h)
-				require.Nil(t, abci, h)
+				require.Nil(t, finRes, h)
 			}
 		})
 	}

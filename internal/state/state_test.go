@@ -279,12 +279,12 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(t, state, power)
-		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.FinalizeBlock.ValidatorUpdates)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.ValidatorUpdates)
 		require.NoError(t, err)
-		rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
+		rs, err := abci.MarshalTxResults(responses.TxResults)
 		require.NoError(t, err)
 		h := merkle.HashFromByteSlices(rs)
-		state, err = state.Update(blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates)
+		state, err = state.Update(blockID, &header, h, responses.ConsensusParamUpdates, validatorUpdates)
 		require.NoError(t, err)
 		err = stateStore.Save(state)
 		require.NoError(t, err)
@@ -1021,12 +1021,12 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 
 	// Save state etc.
 	var validatorUpdates []*types.Validator
-	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.FinalizeBlock.ValidatorUpdates)
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.ValidatorUpdates)
 	require.NoError(t, err)
-	rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
+	rs, err := abci.MarshalTxResults(responses.TxResults)
 	require.NoError(t, err)
 	h := merkle.HashFromByteSlices(rs)
-	state, err = state.Update(blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates)
+	state, err = state.Update(blockID, &header, h, responses.ConsensusParamUpdates, validatorUpdates)
 	require.NoError(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	err = stateStore.Save(state)
@@ -1101,12 +1101,12 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, blockID, responses := makeHeaderPartsResponsesParams(t, state, &cp)
-		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.FinalizeBlock.ValidatorUpdates)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.ValidatorUpdates)
 		require.NoError(t, err)
-		rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
+		rs, err := abci.MarshalTxResults(responses.TxResults)
 		require.NoError(t, err)
 		h := merkle.HashFromByteSlices(rs)
-		state, err = state.Update(blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates)
+		state, err = state.Update(blockID, &header, h, responses.ConsensusParamUpdates, validatorUpdates)
 
 		require.NoError(t, err)
 		err = stateStore.Save(state)
