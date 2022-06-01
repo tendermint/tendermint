@@ -137,8 +137,8 @@ func (s *State) Set(key, value string) {
 	}
 }
 
-// Commit commits the current state.
-func (s *State) Commit() (uint64, []byte, error) {
+// Finalize is called after applying a block, updating the height and returning the new app_hash
+func (s *State) Finalize() []byte {
 	s.Lock()
 	defer s.Unlock()
 	switch {
@@ -150,13 +150,20 @@ func (s *State) Commit() (uint64, []byte, error) {
 		s.Height = 1
 	}
 	s.Hash = hashItems(s.Values, s.Height)
+	return s.Hash
+}
+
+// Commit commits the current state.
+func (s *State) Commit() (uint64, error) {
+	s.Lock()
+	defer s.Unlock()
 	if s.persistInterval > 0 && s.Height%s.persistInterval == 0 {
 		err := s.save()
 		if err != nil {
-			return 0, nil, err
+			return 0, err
 		}
 	}
-	return s.Height, s.Hash, nil
+	return s.Height, nil
 }
 
 func (s *State) Rollback() error {

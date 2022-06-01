@@ -86,5 +86,5 @@ func (mock *mockProxyApp) FinalizeBlock(_ context.Context, req *abci.RequestFina
 }
 
 func (mock *mockProxyApp) Commit(context.Context) (*abci.ResponseCommit, error) {
-	return &abci.ResponseCommit{Data: mock.appHash}, nil
+	return &abci.ResponseCommit{}, nil
 }

@@ -249,7 +249,6 @@ message ResponseDeliverTx {
 
 message ResponseCommit {
   // reserve 1
-  bytes data          = 2;
   int64 retain_height = 3;
 }
 
@@ -332,7 +331,6 @@ message ResponseFinalizeBlock {
   repeated ValidatorUpdate         validator_updates       = 3 [(gogoproto.nullable) = false];
   tendermint.types.ConsensusParams consensus_param_updates = 4;
   bytes                            app_hash                = 5;
-  int64                            retain_height           = 6;
 }
 
 //----------------------------------------
