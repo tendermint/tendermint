@@ -25,7 +25,6 @@ function testExample() {
 	post=$(shasum < "${INPUT}.out.new")
 
 	if [[ "$pre" != "$post" ]]; then
-		diff  "${INPUT}.out" "${INPUT}.out.new"
 		echo "You broke the tutorial"
 		echo "Got:"
 		cat "${INPUT}.out.new"

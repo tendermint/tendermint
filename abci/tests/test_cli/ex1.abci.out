@@ -14,10 +14,10 @@
 
 > prepare_proposal "prepare0x05"
 -> code: OK
--> log: Succeded. Tx: 0x05 action: ADDED
+-> log: Succeeded. Tx: 0x05 action: ADDED
 > prepare_proposal "prepare0x05"
 -> code: OK
--> log: Succeded. Tx: prepare0x05 action: REMOVED
+-> log: Succeeded. Tx: prepare0x05 action: REMOVED
 
 > finalize_block "abc"
 -> code: OK
