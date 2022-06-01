@@ -16,7 +16,10 @@ by Tendermint itself. Right now, we return a regular error when this happens.
 
 #### ABCI++
 
-Coming soon...
+For information on how ABCI++ works, see the
+[Specification](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/README.md).
+In particular, the simplest way to upgrade your application is described
+[here](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/abci++_tmint_expected_behavior_002_draft.md#adapting-existing-applications-that-use-abci).
 
 #### ABCI Mutex
 
@@ -58,6 +61,11 @@ applications remains correct.
   ABCI event metadata. Existing node configurations that already have indexing
   turned on are not affected. Operators who wish to enable indexing for a new
   node, however, must now edit the `config.toml` explicitly.
+
+- The function of seed nodes was modified in the past release. Now, seed nodes
+  are treated identically to any other peer, however they only run the PEX
+  reactor. Because of this `seeds` has been removed from the config. Users
+  should add any seed nodes in the list of `bootstrap-peers`.
 
 ### RPC Changes
 
