@@ -671,7 +671,7 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 		} else {
 			printResponse(cmd, args, response{
 				Code: code.CodeTypeOK,
-				Log:  "Succeded. Tx: " + string(tx.Tx) + " action: " + tx.Action.String(),
+				Log:  "Succeeded. Tx: " + string(tx.Tx) + " action: " + tx.Action.String(),
 			})
 		}
 
