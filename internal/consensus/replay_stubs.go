@@ -59,11 +59,11 @@ func (emptyMempool) CloseWAL()      {}
 func newMockProxyApp(
 	logger log.Logger,
 	appHash []byte,
-	abciResponses *abci.ResponseFinalizeBlock,
+	finalizeResponses *abci.ResponseFinalizeBlock,
 ) (abciclient.Client, error) {
 	return proxy.New(abciclient.NewLocalClient(logger, &mockProxyApp{
 		appHash:           appHash,
-		finalizeResponses: abciResponses,
+		finalizeResponses: finalizeResponses,
 	}), logger, proxy.NopMetrics()), nil
 }
 

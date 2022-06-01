@@ -159,11 +159,9 @@ func makeHeaderPartsResponsesValPubKeyChange(
 		pbPk, err := encoding.PubKeyToProto(pubkey)
 		require.NoError(t, err)
 
-		finalizeResponses = &abci.ResponseFinalizeBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				{PubKey: vPbPk, Power: 0},
-				{PubKey: pbPk, Power: 10},
-			},
+		finalizeResponses.ValidatorUpdates = []abci.ValidatorUpdate{
+			{PubKey: vPbPk, Power: 0},
+			{PubKey: pbPk, Power: 10},
 		}
 	}
 
@@ -178,7 +176,6 @@ func makeHeaderPartsResponsesValPowerChange(
 	t.Helper()
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-
 	finalizeResponses := &abci.ResponseFinalizeBlock{}
 
 	// If the pubkey is new, remove the old and add the new.
@@ -187,10 +184,8 @@ func makeHeaderPartsResponsesValPowerChange(
 		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
 		require.NoError(t, err)
 
-		finalizeResponses = &abci.ResponseFinalizeBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				{PubKey: vPbPk, Power: power},
-			},
+		finalizeResponses.ValidatorUpdates = []abci.ValidatorUpdate{
+			{PubKey: vPbPk, Power: power},
 		}
 	}
 
