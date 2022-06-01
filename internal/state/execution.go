@@ -206,7 +206,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrInvalidBlock(err)
 	}
 	startTime := time.Now().UnixNano()
-	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
+	fBlockRes, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
@@ -225,8 +225,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrProxyAppConn(err)
 	}
 
+	blockExec.logger.Info(
+		"finalized block",
+		"height", block.Height,
+		"num_txs_res", len(fBlockRes.TxResults),
+		"num_val_updates", len(fBlockRes.ValidatorUpdates),
+		"block_app_hash", fmt.Sprintf("%X", fBlockRes.AppHash),
+	)
+
 	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: finalizeBlockResponse,
+		FinalizeBlock: fBlockRes,
 	}
 
 	// Save the results before we commit.
@@ -235,12 +243,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// validate the validator updates and convert to tendermint types
-	err = validateValidatorUpdates(finalizeBlockResponse.ValidatorUpdates, state.ConsensusParams.Validator)
+	err = validateValidatorUpdates(fBlockRes.ValidatorUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, fmt.Errorf("error in validator updates: %w", err)
 	}
 
-	validatorUpdates, err := types.PB2TM.ValidatorUpdates(finalizeBlockResponse.ValidatorUpdates)
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(fBlockRes.ValidatorUpdates)
 	if err != nil {
 		return state, err
 	}
@@ -248,23 +256,23 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 		blockExec.metrics.ValidatorSetUpdates.Add(1)
 	}
-	if finalizeBlockResponse.ConsensusParamUpdates != nil {
+	if fBlockRes.ConsensusParamUpdates != nil {
 		blockExec.metrics.ConsensusParamUpdates.Add(1)
 	}
 
 	// Update the state with the block and responses.
-	rs, err := abci.MarshalTxResults(finalizeBlockResponse.TxResults)
+	rs, err := abci.MarshalTxResults(fBlockRes.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("marshaling TxResults: %w", err)
 	}
 	h := merkle.HashFromByteSlices(rs)
-	state, err = state.Update(blockID, &block.Header, h, finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
+	state, err = state.Update(blockID, &block.Header, h, fBlockRes.ConsensusParamUpdates, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	retainHeight, err := blockExec.Commit(ctx, state, block, finalizeBlockResponse.TxResults, finalizeBlockResponse.AppHash)
+	retainHeight, err := blockExec.Commit(ctx, state, block, fBlockRes.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -273,7 +281,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	blockExec.evpool.Update(ctx, state, block.Evidence)
 
 	// Update the app hash and save the state.
-	state.AppHash = finalizeBlockResponse.AppHash
+	state.AppHash = fBlockRes.AppHash
 	if err := blockExec.store.Save(state); err != nil {
 		return state, err
 	}
@@ -293,7 +301,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, fBlockRes, validatorUpdates)
 
 	return state, nil
 }
@@ -338,7 +346,6 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	txResults []*abci.ExecTxResult,
-	appHash []byte,
 ) (int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
@@ -363,7 +370,7 @@ func (blockExec *BlockExecutor) Commit(
 		"committed state",
 		"height", block.Height,
 		"num_txs", len(block.Txs),
-		"app_hash", fmt.Sprintf("%X", appHash),
+		"block_app_hash", fmt.Sprintf("%X", block.AppHash),
 	)
 
 	// Update mempool.
