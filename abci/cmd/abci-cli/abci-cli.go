@@ -621,8 +621,8 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 }
 
 func inTxArray(txByteArray [][]byte, tx []byte) bool {
-	for _, tx_tmp := range txByteArray {
-		if bytes.Equal(tx_tmp, tx) {
+	for _, txTmp := range txByteArray {
+		if bytes.Equal(txTmp, tx) {
 			return true
 		}
 
