@@ -21,7 +21,7 @@ Currently there are two possible ways to obtain a trusted state :
 
 **Case 1 - blocksync from genesis**
 
-In this case we only verify that the validator hash of the block matches the validator set of the initial state. We will use the initially provided validator set for verification and further verify the block against witnisses. In this scenario, this state is very likely to be outside the trusting period. We will accept this block as a trusted state and store it inside the node's block store. 
+In this case we only verify that the validator hash of the block matches the validator set of the initial state. We will use the initially provided validator set for verification and further verify the block against witnesses. In this scenario, this state is very likely to be outside the trusting period. We will accept this block as a trusted state and store it inside the node's block store. 
 
 It is worth noting that, running block sync from the first height is significantly slower than running statesync first. However, statesync does not keep the entire blockchain history and some operators might opt not to state sync. The reason is that, if sufficiently many nodes state sync and other nodes who have historical data fail or leave the network, we have no history.
 
@@ -86,10 +86,6 @@ In order to reduce traffic, we do not ask the peers to provide the whole block t
 
 If the block received does not verify using the same verification logic, the peer is faulty. In case the verification passes, but headers mismatch, the node will not know who to trust.
 
-**Performance improvement** Instead of downloading blocks before we verify them, download only headers. Once we verify those, we can download the whole block. As the headers do not contain signatures so we would need to add commits form blocks at subsequent heights as well. 
-
-**Different proposal** Instead of witness verification, verify against a light client and use backwards verification when applicable. 
-
 **Verification failed**
 
 In the light client verification model, the client requests from both peers a trace of blocks in order to determine the block where the divergence happened. As the blocks being verified are within the trusted period, the light client can generate evidence and send it to full nodes to vote for it and determine which peer is faulty. 
@@ -110,8 +106,15 @@ The crux of many concerns with regards to the correctness and safety of the bloc
 
 Currently, the only constraint a node has is that it has to connect to **a** peer. An improved design should require a node to connect to at least two peers. 
 
-We have no guarantees on the correctness of this peer. 
+We have no guarantees on the correctness of the peers we are connected to. 
 - Once we replace a peer due to it having timed out or not reporting a correct block, nothing prevents a node from reconnecting to it - *there is no notion of blacklisted peers*.
-- If we connect to subset of peers, they could feed the node faulty data. Eventually, when the node switches to consensus, it would realize there is something wrong, but then the node itself might be blacklisted..
+- If we connect to a subset of peers, they could feed the node faulty data. Eventually, when the node switches to consensus, it would realize there is something wrong, but then the node itself might be blacklisted.
+- Alternatively, a node that is fed faulty data, could, upon switching to conensus, become part of a light client attack by serving as a faulty witness. 
 - There is no check whether the maximum height reported by peers is true or not. A slow node could report a very distant height to the node - for example 2000, when the blockchain is at height 1000 in fact. This would lead to one part of the condition to switch to consensus never being true. To prevent the node switching due to not advancing, the malicious node sends a new block very slowly. Thus the node progresses but can never participate in consensus. This issue could potentially be mitigated if, instead of taking the maximum height reported by peers, we report the lowest of their maximums. The idea is that peers should be close enought to the top of the chain in any case. 
 - A blocksyncing node can flood peers with requests - constantly reporting that it has not synced up. At the moment the maximum amount of requests received is limited and protects peers to some extend against this attack. 
+
+## Additional ideas and suggestions
+
+**Performance improvement** Instead of downloading blocks before we verify them, download only headers. Once we verify those, we can download the whole block. As the headers do not contain signatures so we would need to add commits form blocks at subsequent heights as well. 
+
+**Different proposal** Instead of witness verification, verify against a light client and use backwards verification when applicable. 
