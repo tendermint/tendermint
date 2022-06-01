@@ -137,7 +137,7 @@ func (s *State) Set(key, value string) {
 	}
 }
 
-// Finalize is called after applying a block, returns the new height and app_hash
+// Finalize is called after applying a block, updating the height and returning the new app_hash
 func (s *State) Finalize() []byte {
 	s.Lock()
 	defer s.Unlock()
