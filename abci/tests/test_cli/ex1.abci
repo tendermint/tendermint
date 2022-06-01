@@ -1,6 +1,6 @@
 echo hello
 info
-commit
+prepare_proposal "prepare0x05"
 finalize_block "abc"
 info
 commit

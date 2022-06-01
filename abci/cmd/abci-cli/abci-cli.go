@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -169,7 +170,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "finalize_block", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "finalize_block", "check_tx", "commit", "query", "prepare_proposal"},
 	RunE:      cmdConsole,
 }
 
@@ -344,9 +345,9 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
 			func() error {
 				return servertest.PrepareProposal(ctx, client, [][]byte{
-					[]byte("abc"),
+					{0x01},
 				}, []uint32{
-					code.CodeTypeBadNonce,
+					code.CodeTypeOK,
 				}, nil)
 			},
 		})
@@ -371,6 +372,7 @@ LOOP:
 
 		cmdArgs := persistentArgs(line)
 		if err := muxOnCommands(cmd, cmdArgs); err != nil {
+			fmt.Println(err.Error())
 			return err
 		}
 		fmt.Println()
@@ -449,7 +451,7 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdInfo(cmd, actualArgs)
 	case "query":
 		return cmdQuery(cmd, actualArgs)
-	case "prepareProposal":
+	case "prepare_proposal":
 		return cmdPrepareProposal(cmd, actualArgs)
 	default:
 		return cmdUnimplemented(cmd, pArgs)
@@ -618,38 +620,61 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func inTxArray(txByteArray [][]byte, tx []byte) bool {
+	for _, tx_tmp := range txByteArray {
+		if bytes.Equal(tx_tmp, tx) {
+			return true
+		}
+
+	}
+	return false
+}
 func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,
-			Info: "Must provide PrepareProposal parameters",
-			Log:  "",
+			Info: "Must provide at least one transaction",
+			Log:  "Must provide at least one transaction",
 		})
+		return nil
 	}
 	txsBytesArray := make([][]byte, len(args))
 
 	for i, arg := range args {
 		txBytes, err := stringOrHexToBytes(arg)
 		if err != nil {
+
 			return err
 		}
 		txsBytesArray[i] = txBytes
 	}
+
 	res, err := client.PrepareProposal(cmd.Context(), &types.RequestPrepareProposal{
 		Txs: txsBytesArray,
+		// kvstore has to have this parameter in order not to reject a tx as the default value if 0
+		MaxTxBytes: 120,
 	})
-
 	if err != nil {
 		return err
 	}
 
-	for _, tx := range res.TxResults {
-		printResponse(cmd, args, response{
-			Code: tx.Code,
-			Data: tx.Data,
-			Info: tx.Info,
-			Log:  tx.Log,
-		})
+	for _, tx := range res.TxRecords {
+		existingTx := inTxArray(txsBytesArray, tx.Tx)
+		if tx.Action == types.TxRecord_UNKNOWN ||
+			(existingTx && tx.Action == types.TxRecord_ADDED) ||
+			(!existingTx && (tx.Action == types.TxRecord_UNMODIFIED || tx.Action == types.TxRecord_REMOVED)) {
+			printResponse(cmd, args, response{
+				Code: codeBad,
+				Log:  "Failed. Tx: " + string(tx.GetTx()) + " action: " + tx.Action.String(),
+			})
+
+		} else {
+			printResponse(cmd, args, response{
+				Code: code.CodeTypeOK,
+				Log:  "Succeded. Tx: " + string(tx.Tx) + " action: " + tx.Action.String(),
+			})
+		}
+
 	}
 
 	return nil
