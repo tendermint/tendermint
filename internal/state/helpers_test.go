@@ -19,7 +19,6 @@ import (
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -148,10 +147,10 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	t *testing.T,
 	state sm.State,
 	pubkey crypto.PubKey,
-) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
+) (types.Header, types.BlockID, *abci.ResponseFinalizeBlock) {
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	abciResponses := &tmstate.ABCIResponses{}
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
@@ -160,58 +159,50 @@ func makeHeaderPartsResponsesValPubKeyChange(
 		pbPk, err := encoding.PubKeyToProto(pubkey)
 		require.NoError(t, err)
 
-		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				{PubKey: vPbPk, Power: 0},
-				{PubKey: pbPk, Power: 10},
-			},
+		finalizeBlockResponses.ValidatorUpdates = []abci.ValidatorUpdate{
+			{PubKey: vPbPk, Power: 0},
+			{PubKey: pbPk, Power: 10},
 		}
 	}
 
-	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
 func makeHeaderPartsResponsesValPowerChange(
 	t *testing.T,
 	state sm.State,
 	power int64,
-) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
+) (types.Header, types.BlockID, *abci.ResponseFinalizeBlock) {
 	t.Helper()
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{}
 
-	abciResponses := &tmstate.ABCIResponses{}
-
-	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
 		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
 		require.NoError(t, err)
 
-		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
-			ValidatorUpdates: []abci.ValidatorUpdate{
-				{PubKey: vPbPk, Power: power},
-			},
+		finalizeBlockResponses.ValidatorUpdates = []abci.ValidatorUpdate{
+			{PubKey: vPbPk, Power: power},
 		}
 	}
 
-	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
 func makeHeaderPartsResponsesParams(
 	t *testing.T,
 	state sm.State,
 	params *types.ConsensusParams,
-) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
+) (types.Header, types.BlockID, *abci.ResponseFinalizeBlock) {
 	t.Helper()
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	pbParams := params.ToProto()
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams},
-	}
-	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams}
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
 func randomGenesisDoc() *types.GenesisDoc {
