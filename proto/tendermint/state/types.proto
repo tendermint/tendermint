@@ -4,7 +4,6 @@ package tendermint.state;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/state";
 
 import "gogoproto/gogo.proto";
-import "tendermint/abci/types.proto";
 import "tendermint/types/types.proto";
 import "tendermint/types/validator.proto";
 import "tendermint/types/params.proto";
