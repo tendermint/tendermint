@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tendermint/tendermint/scripts/abcidump/cmd"
+	"github.com/tendermint/tendermint/cmd/abcidump/cmd"
 )
 
 func main() {

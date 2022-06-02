@@ -135,11 +135,11 @@ install_abci:
 ##################################################################################
 
 build_abcidump:
-	@go build -o build/abcidump ./scripts/abcidump
+	@go build -o build/abcidump ./cmd/abcidump
 .PHONY: build_abcidump
 
 install_abcidump:
-	@go install ./scripts/abcidump
+	@go install ./cmd/abcidump
 .PHONY: install_abcidump
 
 ###############################################################################

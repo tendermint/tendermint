@@ -11,8 +11,8 @@ import (
 	"github.com/google/gopacket/pcap"
 	"github.com/spf13/cobra"
 
+	"github.com/tendermint/tendermint/cmd/abcidump/parser"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	"github.com/tendermint/tendermint/scripts/abcidump/parser"
 )
 
 const (
