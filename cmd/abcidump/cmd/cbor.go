@@ -54,7 +54,7 @@ func (cborCmd *CborCmd) Command() *cobra.Command {
 }
 
 // PreRunE parses command line arguments
-func (cborCmd *CborCmd) PreRunE(cmd *cobra.Command, args []string) (err error) {
+func (cborCmd *CborCmd) PreRunE(_ *cobra.Command, args []string) (err error) {
 	if cborCmd.Input, err = loadInputData(cborCmd.InputData, cborCmd.InputFormat); err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func marshalMap(mapToMarshal map[interface{}]interface{}, indent []byte, out io.
 }
 
 // RunE executes main logic of this command
-func (cborCmd *CborCmd) RunE(cmd *cobra.Command, args []string) error {
+func (cborCmd *CborCmd) RunE(_ *cobra.Command, args []string) error {
 	data, err := io.ReadAll(cborCmd.Input)
 	if err != nil {
 		return fmt.Errorf("cannot read data: %w", err)
