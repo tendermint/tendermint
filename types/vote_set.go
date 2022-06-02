@@ -325,7 +325,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 			//  voteSet.height, voteSet.round, voteSet.signedMsgType, quorum)
 			voteSet.maj23 = &maj23BlockID
 			if voteSet.signedMsgType == tmproto.PrecommitType {
-				err := voteSet.recoverThresholdSigsAndVerify(votesByBlock, signIDs)
+				err := voteSet.recoverThresholdSignsAndVerify(votesByBlock, signIDs)
 				if err != nil {
 					// fmt.Printf("error %v quorum %d\n", err, quorum)
 					// for i, vote := range votesByBlock.votes {
@@ -346,7 +346,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 	return true, conflicting
 }
 
-func (voteSet *VoteSet) recoverThresholdSigsAndVerify(blockVotes *blockVotes, signIDs SignIDs) error {
+func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, signIDs SignIDs) error {
 	if len(blockVotes.votes) == 0 {
 		return nil
 	}
@@ -360,7 +360,7 @@ func (voteSet *VoteSet) recoverThresholdSigsAndVerify(blockVotes *blockVotes, si
 		}
 		return nil
 	}
-	err := voteSet.recoverThresholdSigs(blockVotes)
+	err := voteSet.recoverThresholdSigns(blockVotes)
 	if err != nil {
 		return err
 	}
@@ -392,22 +392,22 @@ func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, voteExtSignIDs
 	return nil
 }
 
-func (voteSet *VoteSet) recoverThresholdSigs(blockVotes *blockVotes) error {
+func (voteSet *VoteSet) recoverThresholdSigns(blockVotes *blockVotes) error {
 	if len(blockVotes.votes) < 2 {
 		return fmt.Errorf("attempting to recover a threshold signature with only 1 vote")
 	}
-	sigs := NewSigsRecoverer(blockVotes.votes)
+	signsRecoverer := NewSignsRecoverer(blockVotes.votes)
 	if voteSet.maj23 == nil || voteSet.maj23.Hash == nil {
 		// if the vote is voting for nil, then we do not care to Recover the state signature
-		sigs.recoveryOnlyBlockSig()
+		signsRecoverer.recoveryOnlyBlockSig()
 	}
-	thresholdSigs, err := sigs.Recover()
+	thresholdSigns, err := signsRecoverer.Recover()
 	if err != nil {
 		return err
 	}
-	voteSet.thresholdBlockSig = thresholdSigs.BlockSig
-	voteSet.thresholdStateSig = thresholdSigs.StateSig
-	voteSet.thresholdVoteExtSigs = thresholdSigs.VoteExtSigs
+	voteSet.thresholdBlockSig = thresholdSigns.BlockSign
+	voteSet.thresholdStateSig = thresholdSigns.StateSign
+	voteSet.thresholdVoteExtSigs = thresholdSigns.VoteExtSigns
 	return nil
 }
 
@@ -749,11 +749,11 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		voteSet.GetRound(),
 		*voteSet.maj23,
 		voteSet.stateID,
-		&QuorumVoteSigs{
-			ThresholdVoteSigs: ThresholdVoteSigs{
-				BlockSig:    voteSet.thresholdBlockSig,
-				StateSig:    voteSet.thresholdStateSig,
-				VoteExtSigs: voteSet.thresholdVoteExtSigs,
+		&QuorumVoteSigns{
+			ThresholdVoteSigns: ThresholdVoteSigns{
+				BlockSign:    voteSet.thresholdBlockSig,
+				StateSign:    voteSet.thresholdStateSig,
+				VoteExtSigns: voteSet.thresholdVoteExtSigs,
 			},
 			QuorumHash: voteSet.valSet.QuorumHash,
 		},

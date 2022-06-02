@@ -70,8 +70,8 @@ func TestSigsRecoverer(t *testing.T) {
 				pubKeys = append(pubKeys, pubKey)
 				IDs = append(IDs, vote.ValidatorProTxHash)
 			}
-			sr := NewSigsRecoverer(tc.votes)
-			thresholdSigs, err := sr.Recover()
+			sr := NewSignsRecoverer(tc.votes)
+			thresholdSigns, err := sr.Recover()
 			require.NoError(t, err)
 
 			signIDs, err := MakeSignIDs(chainID, quorumType, quorumHash, tc.votes[0].ToProto(), stateID)
@@ -79,14 +79,14 @@ func TestSigsRecoverer(t *testing.T) {
 
 			thresholdPubKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(pubKeys, IDs)
 			require.NoError(t, err)
-			verified := thresholdPubKey.VerifySignatureDigest(signIDs.BlockID.ID, thresholdSigs.BlockSig)
+			verified := thresholdPubKey.VerifySignatureDigest(signIDs.BlockID.ID, thresholdSigns.BlockSign)
 			require.True(t, verified)
-			verified = thresholdPubKey.VerifySignatureDigest(signIDs.StateID.ID, thresholdSigs.StateSig)
+			verified = thresholdPubKey.VerifySignatureDigest(signIDs.StateID.ID, thresholdSigns.StateSign)
 			require.True(t, verified)
 
 			indexes := recoverableVoteExtensionIndexes(tc.votes)
 			for i, j := range indexes {
-				sig := thresholdSigs.VoteExtSigs[i]
+				sig := thresholdSigns.VoteExtSigns[i]
 				verified = thresholdPubKey.VerifySignatureDigest(signIDs.VoteExtIDs[j].ID, sig)
 				require.True(t, verified)
 			}

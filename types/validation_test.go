@@ -47,10 +47,10 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		vote.Round,
 		vote.BlockID,
 		stateID,
-		&QuorumVoteSigs{
-			ThresholdVoteSigs: ThresholdVoteSigs{
-				BlockSig: blockSig,
-				StateSig: stateSig,
+		&QuorumVoteSigns{
+			ThresholdVoteSigns: ThresholdVoteSigns{
+				BlockSign: blockSig,
+				StateSign: stateSig,
 			},
 			QuorumHash: quorumHash,
 		},
@@ -80,17 +80,17 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		{"wrong height", chainID, vote.BlockID, stateID, vote.Height - 1, commit, true},
 
 		{"incorrect threshold block signature", chainID, vote.BlockID, stateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID, &QuorumVoteSigs{QuorumHash: quorumHash}), true},
+			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID, &QuorumVoteSigns{QuorumHash: quorumHash}), true},
 
 		{"incorrect threshold state signature", chainID, vote.BlockID, stateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID,
-				&QuorumVoteSigs{QuorumHash: quorumHash, ThresholdVoteSigs: ThresholdVoteSigs{BlockSig: vote.BlockSignature}}), true},
+				&QuorumVoteSigns{QuorumHash: quorumHash, ThresholdVoteSigns: ThresholdVoteSigns{BlockSign: vote.BlockSignature}}), true},
 
 		{"incorrect threshold block signature", chainID, vote.BlockID, stateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID,
-				&QuorumVoteSigs{
-					QuorumHash:        quorumHash,
-					ThresholdVoteSigs: ThresholdVoteSigs{BlockSig: vote2.BlockSignature, StateSig: vote2.StateSignature},
+				&QuorumVoteSigns{
+					QuorumHash:         quorumHash,
+					ThresholdVoteSigns: ThresholdVoteSigns{BlockSign: vote2.BlockSignature, StateSign: vote2.StateSignature},
 				},
 			), true},
 	}

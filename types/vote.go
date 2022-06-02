@@ -469,16 +469,16 @@ func makeSignID(signBytes, reqID []byte, quorumType btcjson.LLMQType, quorumHash
 	)
 }
 
-// ThresholdVoteSigs holds all created signatures, block, state and for each recovered vote-extensions
-type ThresholdVoteSigs struct {
-	BlockSig    []byte
-	StateSig    []byte
-	VoteExtSigs [][]byte
+// ThresholdVoteSigns holds all created signatures, block, state and for each recovered vote-extensions
+type ThresholdVoteSigns struct {
+	BlockSign    []byte
+	StateSign    []byte
+	VoteExtSigns [][]byte
 }
 
-// QuorumVoteSigs is used to combine threshold signatures and quorum-hash that were used
-type QuorumVoteSigs struct {
-	ThresholdVoteSigs
+// QuorumVoteSigns is used to combine threshold signatures and quorum-hash that were used
+type QuorumVoteSigns struct {
+	ThresholdVoteSigns
 	QuorumHash []byte
 }
 

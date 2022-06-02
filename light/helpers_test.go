@@ -85,13 +85,13 @@ func (pkz privKeys) signHeader(t testing.TB, header *types.Header, valSet *types
 		}
 		votes[i] = makeVote(t, header, valSet, proTxHash, pkz[i], blockID, stateID)
 	}
-	thresholdSigs, err := types.NewSigsRecoverer(votes).Recover()
+	thresholdSigns, err := types.NewSignsRecoverer(votes).Recover()
 	require.NoError(t, err)
-	quorumSigs := &types.QuorumVoteSigs{
-		ThresholdVoteSigs: *thresholdSigs,
-		QuorumHash:        valSet.QuorumHash,
+	quorumSigns := &types.QuorumVoteSigns{
+		ThresholdVoteSigns: *thresholdSigns,
+		QuorumHash:         valSet.QuorumHash,
 	}
-	return types.NewCommit(header.Height, 1, blockID, stateID, quorumSigs)
+	return types.NewCommit(header.Height, 1, blockID, stateID, quorumSigns)
 }
 
 func makeVote(t testing.TB, header *types.Header, valset *types.ValidatorSet, proTxHash crypto.ProTxHash,

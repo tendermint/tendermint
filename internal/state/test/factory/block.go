@@ -71,8 +71,8 @@ func makeBlockAndPartSet(
 ) (*types.Block, *types.PartSet) {
 	t.Helper()
 
-	quorumSigs := &types.QuorumVoteSigs{QuorumHash: state.LastValidators.QuorumHash}
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, state.StateID(), quorumSigs)
+	quorumSigns := &types.QuorumVoteSigns{QuorumHash: state.LastValidators.QuorumHash}
+	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, state.StateID(), quorumSigns)
 	if height > 1 {
 		vote, err := factory.MakeVote(
 			ctx,
@@ -84,16 +84,16 @@ func makeBlockAndPartSet(
 			state.LastStateID,
 		)
 		require.NoError(t, err)
-		thresholdSigs, err := types.NewSigsRecoverer([]*types.Vote{vote}).Recover()
+		thresholdSigns, err := types.NewSignsRecoverer([]*types.Vote{vote}).Recover()
 		require.NoError(t, err)
 		lastCommit = types.NewCommit(
 			vote.Height,
 			vote.Round,
 			lastBlockMeta.BlockID,
 			state.StateID(),
-			&types.QuorumVoteSigs{
-				ThresholdVoteSigs: *thresholdSigs,
-				QuorumHash:        state.LastValidators.QuorumHash,
+			&types.QuorumVoteSigns{
+				ThresholdVoteSigns: *thresholdSigns,
+				QuorumHash:         state.LastValidators.QuorumHash,
 			},
 		)
 	}

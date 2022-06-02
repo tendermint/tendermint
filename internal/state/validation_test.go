@@ -230,16 +230,16 @@ func TestValidateBlockCommit(t *testing.T) {
 				stateID,
 			)
 			require.NoError(t, err)
-			thresholdSigs, err := types.NewSigsRecoverer([]*types.Vote{wrongHeightVote}).Recover()
+			thresholdSigns, err := types.NewSignsRecoverer([]*types.Vote{wrongHeightVote}).Recover()
 			require.NoError(t, err)
 			wrongHeightCommit := types.NewCommit(
 				wrongHeightVote.Height,
 				wrongHeightVote.Round,
 				state.LastBlockID,
 				stateID,
-				&types.QuorumVoteSigs{
-					ThresholdVoteSigs: *thresholdSigs,
-					QuorumHash:        state.Validators.QuorumHash,
+				&types.QuorumVoteSigns{
+					ThresholdVoteSigns: *thresholdSigns,
+					QuorumHash:         state.Validators.QuorumHash,
 				},
 			)
 			block, err := statefactory.MakeBlock(state, height, wrongHeightCommit, nextChainLock, 0)
@@ -338,14 +338,14 @@ func TestValidateBlockCommit(t *testing.T) {
 		goodVote.VoteExtensions = types.ProtoToVoteExtensions(g.VoteExtensions)
 		badVote.VoteExtensions = types.ProtoToVoteExtensions(b.VoteExtensions)
 
-		thresholdSigs, err := types.NewSigsRecoverer([]*types.Vote{badVote}).Recover()
+		thresholdSigns, err := types.NewSignsRecoverer([]*types.Vote{badVote}).Recover()
 		require.NoError(t, err)
-		quorumSigs := &types.QuorumVoteSigs{
-			ThresholdVoteSigs: *thresholdSigs,
-			QuorumHash:        state.Validators.QuorumHash,
+		quorumSigns := &types.QuorumVoteSigns{
+			ThresholdVoteSigns: *thresholdSigns,
+			QuorumHash:         state.Validators.QuorumHash,
 		}
 		wrongVoteMessageSignedCommit = types.NewCommit(goodVote.Height, goodVote.Round,
-			blockID, stateID, quorumSigs)
+			blockID, stateID, quorumSigns)
 	}
 }
 

@@ -18,9 +18,9 @@ type SigsRecoverer struct {
 	shouldRecoverVoteExtSigs bool
 }
 
-// NewSigsRecoverer creates and returns a new instance of SigsRecoverer
+// NewSignsRecoverer creates and returns a new instance of SigsRecoverer
 // the state fills with signatures from the votes
-func NewSigsRecoverer(votes []*Vote) *SigsRecoverer {
+func NewSignsRecoverer(votes []*Vote) *SigsRecoverer {
 	sigs := SigsRecoverer{
 		shouldRecoveryStateSig:   true,
 		shouldRecoverVoteExtSigs: true,
@@ -41,20 +41,20 @@ func (v *SigsRecoverer) Init(votes []*Vote) {
 }
 
 // Recover recovers threshold signatures for block, state and vote-extensions
-func (v *SigsRecoverer) Recover() (*ThresholdVoteSigs, error) {
-	thresholdSigs := &ThresholdVoteSigs{}
-	recoverFuncs := []func(*ThresholdVoteSigs) error{
+func (v *SigsRecoverer) Recover() (*ThresholdVoteSigns, error) {
+	thresholdSigns := &ThresholdVoteSigns{}
+	recoverFuncs := []func(*ThresholdVoteSigns) error{
 		v.recoverBlockSig,
 		v.recoverStateSig,
 		v.recoverVoteExtensionSigs,
 	}
 	for _, fn := range recoverFuncs {
-		err := fn(thresholdSigs)
+		err := fn(thresholdSigns)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return thresholdSigs, nil
+	return thresholdSigns, nil
 }
 
 func (v *SigsRecoverer) addVoteSigs(vote *Vote) {
@@ -87,37 +87,37 @@ func (v *SigsRecoverer) recoveryOnlyBlockSig() {
 	v.shouldRecoverVoteExtSigs = false
 }
 
-func (v *SigsRecoverer) recoverStateSig(thresholdSigs *ThresholdVoteSigs) error {
+func (v *SigsRecoverer) recoverStateSig(thresholdSigns *ThresholdVoteSigns) error {
 	//fmt.Printf("[debug] v.shouldRecoveryStateSig = %v\n", v.shouldRecoverVoteExtSigs)
 	if !v.shouldRecoveryStateSig {
 		return nil
 	}
 	var err error
-	thresholdSigs.StateSig, err = bls12381.RecoverThresholdSignatureFromShares(v.stateSigs, v.blsIDs)
+	thresholdSigns.StateSign, err = bls12381.RecoverThresholdSignatureFromShares(v.stateSigs, v.blsIDs)
 	if err != nil {
 		return fmt.Errorf("error recovering threshold state sig: %w", err)
 	}
 	return nil
 }
 
-func (v *SigsRecoverer) recoverBlockSig(thresholdSigs *ThresholdVoteSigs) error {
+func (v *SigsRecoverer) recoverBlockSig(thresholdSigns *ThresholdVoteSigns) error {
 	var err error
-	thresholdSigs.BlockSig, err = bls12381.RecoverThresholdSignatureFromShares(v.blockSigs, v.blsIDs)
+	thresholdSigns.BlockSign, err = bls12381.RecoverThresholdSignatureFromShares(v.blockSigs, v.blsIDs)
 	if err != nil {
 		return fmt.Errorf("error recovering threshold block sig: %w", err)
 	}
 	return nil
 }
 
-func (v *SigsRecoverer) recoverVoteExtensionSigs(thresholdSigs *ThresholdVoteSigs) error {
+func (v *SigsRecoverer) recoverVoteExtensionSigs(thresholdSigns *ThresholdVoteSigns) error {
 	if !v.shouldRecoverVoteExtSigs {
 		return nil
 	}
 	var err error
-	thresholdSigs.VoteExtSigs = make([][]byte, len(v.voteExtSigs))
+	thresholdSigns.VoteExtSigns = make([][]byte, len(v.voteExtSigs))
 	for i, sigs := range v.voteExtSigs {
 		if len(sigs) > 0 {
-			thresholdSigs.VoteExtSigs[i], err = bls12381.RecoverThresholdSignatureFromShares(sigs, v.blsIDs)
+			thresholdSigns.VoteExtSigns[i], err = bls12381.RecoverThresholdSignatureFromShares(sigs, v.blsIDs)
 			if err != nil {
 				return fmt.Errorf("error recovering threshold vote-extensin sig: %w", err)
 			}

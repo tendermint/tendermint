@@ -692,14 +692,14 @@ func (pv *FilePV) signVote(
 	// application may have created a different extension. We therefore always
 	// re-sign the vote extensions of precommits. For prevotes, the extension
 	// signature will always be empty.
-	var extSigs [][]byte
+	var extSigns [][]byte
 	if vote.Type == tmproto.PrecommitType {
 		for _, extSignID := range signIDs.VoteExtIDs {
 			extSig, err := privKey.SignDigest(extSignID.ID)
 			if err != nil {
 				return err
 			}
-			extSigs = append(extSigs, extSig)
+			extSigns = append(extSigns, extSig)
 		}
 	} else if len(vote.VoteExtensions) > 0 {
 		return errors.New("unexpected vote extension - extensions are only allowed in precommits")
@@ -717,7 +717,7 @@ func (pv *FilePV) signVote(
 		} else {
 			return errors.New("conflicting data")
 		}
-		for i, extSig := range extSigs {
+		for i, extSig := range extSigns {
 			vote.VoteExtensions[i].Signature = extSig
 		}
 		return nil
@@ -748,7 +748,7 @@ func (pv *FilePV) signVote(
 
 	vote.BlockSignature = sigBlock
 	vote.StateSignature = sigState
-	for i, extSig := range extSigs {
+	for i, extSig := range extSigns {
 		vote.VoteExtensions[i].Signature = extSig
 	}
 

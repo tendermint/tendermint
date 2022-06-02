@@ -94,15 +94,15 @@ func makeValidCommit(
 		require.NoError(t, err)
 		votes[i] = vote
 	}
-	thresholdSigs, err := types.NewSigsRecoverer(votes).Recover()
+	thresholdSigns, err := types.NewSignsRecoverer(votes).Recover()
 	require.NoError(t, err)
 	return types.NewCommit(
 		height, 0,
 		blockID,
 		stateID,
-		&types.QuorumVoteSigs{
-			ThresholdVoteSigs: *thresholdSigs,
-			QuorumHash:        vals.QuorumHash,
+		&types.QuorumVoteSigns{
+			ThresholdVoteSigns: *thresholdSigns,
+			QuorumHash:         vals.QuorumHash,
 		},
 	), votes
 }

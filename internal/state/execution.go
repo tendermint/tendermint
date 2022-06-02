@@ -129,7 +129,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:          maxDataBytes,
 			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     extendedCommitInfo(localLastCommit),
+			LocalLastCommit:     abci.ExtendedCommitInfo(localLastCommit),
 			ByzantineValidators: block.Evidence.ToABCI(),
 			Height:              block.Height,
 			Time:                block.Time,
@@ -473,13 +473,6 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 		StateSignature:          block.LastCommit.ThresholdStateSignature,
 		VoteExtensionSignatures: block.LastCommit.ThresholdVoteExtensionSignatures,
 	}
-}
-
-// extendedCommitInfo expects a CommitInfo struct along with all of the
-// original votes relating to that commit, including their vote extensions. The
-// order of votes does not matter.
-func extendedCommitInfo(c abci.CommitInfo) abci.ExtendedCommitInfo {
-	return abci.ExtendedCommitInfo(c)
 }
 
 func validateValidatorSetUpdate(

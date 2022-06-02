@@ -685,18 +685,18 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quorumThresholdSigs *QuorumVoteSigs) *Commit {
+func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quorumThresholdSigns *QuorumVoteSigns) *Commit {
 	commit := &Commit{
 		Height:  height,
 		Round:   round,
 		BlockID: blockID,
 		StateID: stateID,
 	}
-	if quorumThresholdSigs != nil {
-		commit.QuorumHash = quorumThresholdSigs.QuorumHash
-		commit.ThresholdBlockSignature = quorumThresholdSigs.BlockSig
-		commit.ThresholdStateSignature = quorumThresholdSigs.StateSig
-		commit.ThresholdVoteExtensionSignatures = quorumThresholdSigs.VoteExtSigs
+	if quorumThresholdSigns != nil {
+		commit.QuorumHash = quorumThresholdSigns.QuorumHash
+		commit.ThresholdBlockSignature = quorumThresholdSigns.BlockSign
+		commit.ThresholdStateSignature = quorumThresholdSigns.StateSign
+		commit.ThresholdVoteExtensionSignatures = quorumThresholdSigns.VoteExtSigns
 	}
 	return commit
 }
