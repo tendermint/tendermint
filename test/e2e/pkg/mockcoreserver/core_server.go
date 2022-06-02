@@ -78,7 +78,7 @@ func (c *MockCoreServer) QuorumInfo(ctx context.Context, cmd btcjson.QuorumCmd) 
 }
 
 // QuorumSign returns a quorum-sign result
-func (c *MockCoreServer) QuorumSign(_ context.Context, cmd btcjson.QuorumCmd) btcjson.QuorumSignResult {
+func (c *MockCoreServer) QuorumSign(ctx context.Context, cmd btcjson.QuorumCmd) btcjson.QuorumSignResult {
 	reqID, err := hex.DecodeString(strVal(cmd.RequestID))
 	if err != nil {
 		panic(err)
@@ -100,7 +100,7 @@ func (c *MockCoreServer) QuorumSign(_ context.Context, cmd btcjson.QuorumCmd) bt
 		tmbytes.Reverse(reqID),
 		tmbytes.Reverse(msgHash),
 	)
-	privateKey, err := c.FilePV.GetPrivateKey(context.TODO(), quorumHash)
+	privateKey, err := c.FilePV.GetPrivateKey(ctx, quorumHash)
 	if err != nil {
 		panic(err)
 	}

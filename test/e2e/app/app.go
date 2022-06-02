@@ -464,7 +464,7 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 			},
 			{
 				Type:      types1.VoteExtensionType_THRESHOLD_RECOVER,
-				Extension: ext[:extLen],
+				Extension: []byte(fmt.Sprintf("threshold-%d", app.state.Height)),
 			},
 		},
 	}, nil

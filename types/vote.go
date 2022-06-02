@@ -162,17 +162,6 @@ func VoteExtensionSignBytes(chainID string, height int64, round int32, ext *tmpr
 	return bz
 }
 
-// VoteExtensionSignID returns vote extension signature ID
-func VoteExtensionSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) [][]byte {
-	singIDs := make([][]byte, len(vote.VoteExtensions))
-	reqID := voteHeightRoundRequestID("dpevote", vote.Height, vote.Round)
-	for i, ext := range vote.VoteExtensions {
-		data := VoteExtensionSignBytes(chainID, vote.Height, vote.Round, ext)
-		singIDs[i] = makeSignID(data, reqID, quorumType, quorumHash)
-	}
-	return singIDs
-}
-
 // VoteExtensionRequestID returns vote extension request ID
 func VoteExtensionRequestID(vote *tmproto.Vote) []byte {
 	return voteHeightRoundRequestID("dpevote", vote.Height, vote.Round)
@@ -180,8 +169,8 @@ func VoteExtensionRequestID(vote *tmproto.Vote) []byte {
 
 // VoteBlockSignID returns signID that should be signed for the block
 func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	reqID := voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
-	return makeSignID(VoteBlockSignBytes(chainID, vote), reqID, quorumType, quorumHash)
+	signID := MakeBlockSignID(chainID, vote, quorumType, quorumHash)
+	return signID.ID
 }
 
 func (vote *Vote) Copy() *Vote {
@@ -242,30 +231,27 @@ func (vote *Vote) VerifyWithExtension(
 	pubKey crypto.PubKey,
 	proTxHash ProTxHash,
 	stateID StateID,
-) (SignIDs, error) {
-	var (
-		signIDs SignIDs
-		err     error
-	)
-	v := vote.ToProto()
-	signIDs.BlockID, signIDs.StateID, err = vote.Verify(chainID, quorumType, quorumHash, pubKey, proTxHash, stateID)
+) error {
+	signIDs, err := MakeSignIDs(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
 	if err != nil {
-		return SignIDs{}, err
+		return err
+	}
+	err = vote.verifyBasic(proTxHash, pubKey, signIDs)
+	if err != nil {
+		return err
 	}
 	// We only verify vote extension signatures for precommits.
 	if vote.Type == tmproto.PrecommitType {
-		extSignIDs := VoteExtensionSignID(chainID, v, quorumType, quorumHash)
 		// TODO: Remove extension signature nil check to enforce vote extension
 		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		for i, extSignID := range extSignIDs {
+		for i, extSignID := range signIDs.VoteExtIDs {
 			sig := vote.VoteExtensions[i].Signature
-			if sig != nil && !pubKey.VerifySignatureDigest(extSignID, sig) {
-				return SignIDs{}, ErrVoteInvalidSignature
+			if sig != nil && !pubKey.VerifySignatureDigest(extSignID.ID, sig) {
+				return ErrVoteInvalidSignature
 			}
 		}
-		signIDs.VoteExtSignIDs = extSignIDs
 	}
-	return signIDs, nil
+	return nil
 }
 
 func (vote *Vote) Verify(
@@ -275,61 +261,40 @@ func (vote *Vote) Verify(
 	pubKey crypto.PubKey,
 	proTxHash crypto.ProTxHash,
 	stateID StateID,
-) ([]byte, []byte, error) {
+) error {
+	signIDs, err := MakeSignIDs(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	if err != nil {
+		return err
+	}
+	return vote.verifyBasic(proTxHash, pubKey, signIDs)
+}
+
+func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, signIDs SignIDs) error {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
-		return nil, nil, ErrVoteInvalidValidatorProTxHash
+		return ErrVoteInvalidValidatorProTxHash
 	}
 	if len(pubKey.Bytes()) != bls12381.PubKeySize {
-		return nil, nil, ErrVoteInvalidValidatorPubKeySize
+		return ErrVoteInvalidValidatorPubKeySize
 	}
-	v := vote.ToProto()
-	voteBlockSignBytes := VoteBlockSignBytes(chainID, v)
 
-	blockMessageHash := crypto.Checksum(voteBlockSignBytes)
-
-	blockRequestID := VoteBlockRequestID(vote)
-
-	signID := crypto.SignID(
-		quorumType,
-		tmbytes.Reverse(quorumHash),
-		tmbytes.Reverse(blockRequestID),
-		tmbytes.Reverse(blockMessageHash),
-	)
-
-	// fmt.Printf("block vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(signID), quorumType,
-	//	hex.EncodeToString(quorumHash), hex.EncodeToString(blockRequestID), hex.EncodeToString(blockMessageHash))
-
-	if !pubKey.VerifySignatureDigest(signID, vote.BlockSignature) {
-		return nil, nil, fmt.Errorf(
+	if !pubKey.VerifySignatureDigest(signIDs.BlockID.ID, vote.BlockSignature) {
+		return fmt.Errorf(
 			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
-			proTxHash.ShortString(), pubKey, vote, hex.EncodeToString(voteBlockSignBytes), hex.EncodeToString(vote.BlockSignature))
+			proTxHash.ShortString(), pubKey, vote, hex.EncodeToString([]byte{}), hex.EncodeToString(vote.BlockSignature))
 	}
 
-	stateSignID := []byte(nil)
 	// we must verify the stateID but only if the blockID isn't nil
 	if vote.BlockID.Hash != nil {
-		voteStateSignBytes := stateID.SignBytes(chainID)
-		stateMessageHash := crypto.Checksum(voteStateSignBytes)
-
-		stateRequestID := stateID.SignRequestID()
-
-		stateSignID = crypto.SignID(
-			quorumType,
-			tmbytes.Reverse(quorumHash),
-			tmbytes.Reverse(stateRequestID),
-			tmbytes.Reverse(stateMessageHash))
-
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
-
-		if !pubKey.VerifySignatureDigest(stateSignID, vote.StateSignature) {
-			return nil, nil, ErrVoteInvalidStateSignature
+		if !pubKey.VerifySignatureDigest(signIDs.StateID.ID, vote.StateSignature) {
+			return ErrVoteInvalidStateSignature
 		}
 	} else if vote.StateSignature != nil {
-		return nil, nil, ErrVoteStateSignatureShouldBeNil
+		return ErrVoteStateSignatureShouldBeNil
 	}
 
-	return signID, stateSignID, nil
+	return nil
 }
 
 // ValidateBasic checks whether the vote is well-formed. It does not, however,
@@ -517,127 +482,6 @@ type QuorumVoteSigs struct {
 	QuorumHash []byte
 }
 
-// SingsRecoverer is used to recover threshold block, state, and vote-extension signatures
-// it's possible to avoid recovering state and vote-extension for specific case
-type SingsRecoverer struct {
-	blockSigs   [][]byte
-	stateSigs   [][]byte
-	blsIDs      [][]byte
-	voteExtSigs [][][]byte
-
-	shouldRecoveryStateSig   bool
-	shouldRecoverVoteExtSigs bool
-}
-
-// NewSigsRecoverer creates and returns a new instance of SingsRecoverer
-// the state fills with signatures from the votes
-func NewSigsRecoverer(votes []*Vote) *SingsRecoverer {
-	sigs := SingsRecoverer{
-		shouldRecoveryStateSig:   true,
-		shouldRecoverVoteExtSigs: true,
-	}
-	sigs.Init(votes)
-	return &sigs
-}
-
-// Init initializes a state with a list of votes
-func (v *SingsRecoverer) Init(votes []*Vote) {
-	v.blockSigs = nil
-	v.stateSigs = nil
-	v.blsIDs = nil
-	v.voteExtSigs = nil
-	for _, vote := range votes {
-		v.addVoteSigs(vote)
-	}
-}
-
-// Recover recovers threshold signatures for block, state and vote-extensions
-func (v *SingsRecoverer) Recover() (*ThresholdVoteSigs, error) {
-	thresholdSigs := &ThresholdVoteSigs{
-		VoteExtSigs: make([][]byte, len(v.voteExtSigs)),
-	}
-	recoverFuncs := []func(*ThresholdVoteSigs) error{
-		v.recoverBlockSig,
-		v.recoverStateSig,
-		v.recoverVoteExtensionSigs,
-	}
-	for _, fn := range recoverFuncs {
-		err := fn(thresholdSigs)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return thresholdSigs, nil
-}
-
-func (v *SingsRecoverer) addVoteSigs(vote *Vote) {
-	if vote == nil {
-		return
-	}
-	v.blockSigs = append(v.blockSigs, vote.BlockSignature)
-	v.stateSigs = append(v.stateSigs, vote.StateSignature)
-	v.blsIDs = append(v.blsIDs, vote.ValidatorProTxHash)
-	v.addVoteExtensions(vote.VoteExtensions)
-}
-
-func (v *SingsRecoverer) addVoteExtensions(voteExtensions []VoteExtension) {
-	m := 0
-	for j, ext := range voteExtensions {
-		if !ext.IsRecoverable() {
-			m++
-			continue
-		}
-		k := j - m
-		if k >= len(v.voteExtSigs) {
-			v.voteExtSigs = append(v.voteExtSigs, nil)
-		}
-		v.voteExtSigs[k] = append(v.voteExtSigs[k], ext.Signature)
-	}
-}
-
-func (v *SingsRecoverer) recoveryOnlyBlockSig() {
-	v.shouldRecoveryStateSig = false
-	v.shouldRecoverVoteExtSigs = false
-}
-
-func (v *SingsRecoverer) recoverStateSig(thresholdSigs *ThresholdVoteSigs) error {
-	if !v.shouldRecoveryStateSig {
-		return nil
-	}
-	var err error
-	thresholdSigs.StateSig, err = bls12381.RecoverThresholdSignatureFromShares(v.stateSigs, v.blsIDs)
-	if err != nil {
-		return fmt.Errorf("error recovering threshold state sig: %w", err)
-	}
-	return nil
-}
-
-func (v *SingsRecoverer) recoverBlockSig(thresholdSigs *ThresholdVoteSigs) error {
-	var err error
-	thresholdSigs.BlockSig, err = bls12381.RecoverThresholdSignatureFromShares(v.blockSigs, v.blsIDs)
-	if err != nil {
-		return fmt.Errorf("error recovering threshold block sig: %w", err)
-	}
-	return nil
-}
-
-func (v *SingsRecoverer) recoverVoteExtensionSigs(thresholdSigs *ThresholdVoteSigs) error {
-	if !v.shouldRecoverVoteExtSigs {
-		return nil
-	}
-	var err error
-	thresholdSigs.VoteExtSigs = make([][]byte, len(v.voteExtSigs))
-	for i, sigs := range v.voteExtSigs {
-		if len(sigs) > 0 {
-			thresholdSigs.VoteExtSigs[i], err = bls12381.RecoverThresholdSignatureFromShares(sigs, v.blsIDs)
-			if err != nil {
-				return fmt.Errorf("error recovering threshold vote-extensin sig: %w", err)
-			}
-		}
-	}
-	return nil
-}
-
 // ProtoToVoteExtensions ...
 func ProtoToVoteExtensions(protoExts []*tmproto.VoteExtension) []VoteExtension {
 	exts := make([]VoteExtension, len(protoExts))
@@ -649,13 +493,6 @@ func ProtoToVoteExtensions(protoExts []*tmproto.VoteExtension) []VoteExtension {
 		}
 	}
 	return exts
-}
-
-// SignIDs holds all possible signID, like blockID, stateID and signID for each vote-extensions
-type SignIDs struct {
-	BlockID        []byte
-	StateID        []byte
-	VoteExtSignIDs [][]byte
 }
 
 func recoverableVoteExtensionIndexes(votes []*Vote) []int {

@@ -321,7 +321,7 @@ func TestVoteExtension(t *testing.T) {
 					vote.VoteExtensions[i].Signature = ext.Signature
 				}
 			}
-			_, err = vote.VerifyWithExtension("test_chain_id", btcjson.LLMQType_5_60, quorumHash, pk, proTxHash, stateID)
+			err = vote.VerifyWithExtension("test_chain_id", btcjson.LLMQType_5_60, quorumHash, pk, proTxHash, stateID)
 			if tc.expectError {
 				require.Error(t, err)
 			} else {
@@ -370,14 +370,14 @@ func TestVoteVerify(t *testing.T) {
 	vote.ValidatorProTxHash = proTxHash
 
 	stateID := RandStateID().WithHeight(vote.Height - 1)
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(),
-		crypto.RandProTxHash(), stateID)
+	pubKey := bls12381.GenPrivKey().PubKey()
+	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubKey, crypto.RandProTxHash(), stateID)
 
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID)
+	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID)
 	if assert.Error(t, err) {
 		assert.True(
 			t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error()),

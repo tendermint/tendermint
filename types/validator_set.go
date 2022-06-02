@@ -944,22 +944,32 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
-
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignID, commit.ThresholdBlockSignature) {
-		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-		return fmt.Errorf(
-			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
-			canonicalVoteBlockSignBytes, blockSignID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
+	canonVote := commit.GetCanonicalVote()
+	signIDs, err := MakeSignIDs(chainID, vals.QuorumType, vals.QuorumHash, canonVote.ToProto(), stateID)
+	if err != nil {
+		return err
 	}
 
-	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(signIDs.BlockID.ID, commit.ThresholdBlockSignature) {
+		return fmt.Errorf(
+			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
+			signIDs.BlockID.Raw, signIDs.BlockID.ID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
+	}
 
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignID, commit.ThresholdStateSignature) {
-		commit.StateID.SignBytes(chainID)
-		stateSignBytes := commit.StateID.SignBytes(chainID)
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(signIDs.StateID.ID, commit.ThresholdStateSignature) {
 		return fmt.Errorf("incorrect threshold state signature bytes: %X commit: %v valQuorumHash %X",
-			stateSignBytes, commit, vals.QuorumHash)
+			signIDs.StateID.Raw, commit, vals.QuorumHash)
+	}
+
+	indexes := recoverableVoteExtensionIndexes([]*Vote{canonVote})
+	if len(indexes) > 0 {
+		for i, thresholdSign := range commit.ThresholdVoteExtensionSignatures {
+			ext := signIDs.VoteExtIDs[indexes[i]]
+			if !vals.ThresholdPublicKey.VerifySignatureDigest(ext.ID, thresholdSign) {
+				return fmt.Errorf("incorrect threshold vote-extension signature bytes: %X commit: %v valQuorumHash %X",
+					ext.Raw, commit, vals.QuorumHash)
+			}
+		}
 	}
 
 	return nil

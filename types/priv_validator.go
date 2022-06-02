@@ -99,51 +99,50 @@ type MockPV struct {
 	breakVoteSigning     bool
 }
 
-func NewMockPV() *MockPV {
-	privKey := bls12381.GenPrivKey()
-	quorumHash := crypto.RandQuorumHash()
-	quorumKeys := crypto.QuorumKeys{
-		PrivKey:            privKey,
-		PubKey:             privKey.PubKey(),
-		ThresholdPublicKey: privKey.PubKey(),
-	}
-	privateKeysMap := make(map[string]crypto.QuorumKeys)
-	privateKeysMap[quorumHash.String()] = quorumKeys
-
-	updateHeightsMap := make(map[string]crypto.QuorumHash)
-	firstHeightOfQuorumsMap := make(map[string]string)
-
-	return &MockPV{
-		PrivateKeys:          privateKeysMap,
-		UpdateHeights:        updateHeightsMap,
-		FirstHeightOfQuorums: firstHeightOfQuorumsMap,
-		ProTxHash:            crypto.RandProTxHash(),
-		breakProposalSigning: false,
-		breakVoteSigning:     false,
+// GenKeysForQuorumHash generates the quorum keys for passed quorum hash
+func GenKeysForQuorumHash(quorumHash crypto.QuorumHash) func(pv *MockPV) {
+	return func(pv *MockPV) {
+		pv.PrivateKeys[quorumHash.String()] = generateQuorumKeys()
 	}
 }
 
-func NewMockPVForQuorum(quorumHash crypto.QuorumHash) *MockPV {
+// UseProTxHash sets pro-tx-hash to a private-validator
+func UseProTxHash(proTxHash ProTxHash) func(pv *MockPV) {
+	return func(pv *MockPV) {
+		pv.ProTxHash = proTxHash
+	}
+}
+
+func generateQuorumKeys() crypto.QuorumKeys {
 	privKey := bls12381.GenPrivKey()
-	quorumKeys := crypto.QuorumKeys{
+	return crypto.QuorumKeys{
 		PrivKey:            privKey,
 		PubKey:             privKey.PubKey(),
 		ThresholdPublicKey: privKey.PubKey(),
 	}
-	privateKeysMap := make(map[string]crypto.QuorumKeys)
-	privateKeysMap[quorumHash.String()] = quorumKeys
+}
 
-	updateHeightsMap := make(map[string]crypto.QuorumHash)
-	firstHeightOfQuorumsMap := make(map[string]string)
-
-	return &MockPV{
-		PrivateKeys:          privateKeysMap,
-		UpdateHeights:        updateHeightsMap,
-		FirstHeightOfQuorums: firstHeightOfQuorumsMap,
+func NewMockPV(opts ...func(pv *MockPV)) *MockPV {
+	pv := &MockPV{
+		PrivateKeys:          make(map[string]crypto.QuorumKeys),
+		UpdateHeights:        make(map[string]crypto.QuorumHash),
+		FirstHeightOfQuorums: make(map[string]string),
 		ProTxHash:            crypto.RandProTxHash(),
 		breakProposalSigning: false,
 		breakVoteSigning:     false,
 	}
+	for _, opt := range opts {
+		opt(pv)
+	}
+	if len(pv.PrivateKeys) == 0 {
+		quorumHash := crypto.RandQuorumHash()
+		pv.PrivateKeys[quorumHash.String()] = generateQuorumKeys()
+	}
+	return pv
+}
+
+func NewMockPVForQuorum(quorumHash crypto.QuorumHash) *MockPV {
+	return NewMockPV(GenKeysForQuorumHash(quorumHash))
 }
 
 // NewMockPVWithParams allows one to create a MockPV instance, but with finer
@@ -285,9 +284,12 @@ func (pv *MockPV) SignVote(
 	var extSigs [][]byte
 	// We only sign vote extensions for precommits
 	if vote.Type == tmproto.PrecommitType {
-		extSignIDs := VoteExtensionSignID(useChainID, vote, quorumType, quorumHash)
+		extSignIDs, err := MakeVoteExtensionSignIDs(useChainID, vote, quorumType, quorumHash)
+		if err != nil {
+			return err
+		}
 		for _, extSignID := range extSignIDs {
-			extSig, err := privKey.SignDigest(extSignID)
+			extSig, err := privKey.SignDigest(extSignID.ID)
 			if err != nil {
 				return err
 			}

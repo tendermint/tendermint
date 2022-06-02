@@ -365,8 +365,9 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	assert.NoError(t, err, "expected no error signing vote")
 	assert.NotNil(t, vpb1.VoteExtensions[0].Signature)
 
-	extSignID1 := types.VoteExtensionSignID(chainID, vpb1, quorumType, quorumHash)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignID1[0], vpb1.VoteExtensions[0].Signature))
+	extSignID1, err := types.MakeVoteExtensionSignIDs(chainID, vpb1, quorumType, quorumHash)
+	require.NoError(t, err)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignID1[0].ID, vpb1.VoteExtensions[0].Signature))
 
 	// We duplicate this vote precisely, including its timestamp, but change
 	// its extension
@@ -385,9 +386,10 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	// that validates against the vote extension sign bytes with the new
 	// extension, and does not validate against the vote extension sign bytes
 	// with the old extension.
-	extSignID2 := types.VoteExtensionSignID(chainID, vpb2, quorumType, quorumHash)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignID2[0], vpb2.VoteExtensions[0].Signature))
-	assert.False(t, pubKey.VerifySignatureDigest(extSignID1[0], vpb2.VoteExtensions[0].Signature))
+	extSignID2, err := types.MakeVoteExtensionSignIDs(chainID, vpb2, quorumType, quorumHash)
+	require.NoError(t, err)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignID2[0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignID1[0].ID, vpb2.VoteExtensions[0].Signature))
 
 	vpb2.BlockSignature = nil
 	vpb2.StateSignature = nil
@@ -396,9 +398,10 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, vpb2, stateID, logger)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated timestamp and vote extension")
 
-	extSignID3 := types.VoteExtensionSignID(chainID, vpb2, quorumType, quorumHash)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignID3[0], vpb2.VoteExtensions[0].Signature))
-	assert.False(t, pubKey.VerifySignatureDigest(extSignID1[0], vpb2.VoteExtensions[0].Signature))
+	extSignID3, err := types.MakeVoteExtensionSignIDs(chainID, vpb2, quorumType, quorumHash)
+	require.NoError(t, err)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignID3[0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignID1[0].ID, vpb2.VoteExtensions[0].Signature))
 }
 
 func newVote(proTxHash types.ProTxHash, idx int32, height int64, round int32,

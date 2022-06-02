@@ -674,6 +674,7 @@ type Commit struct {
 	ThresholdBlockSignature []byte            `json:"threshold_block_signature"`
 	ThresholdStateSignature []byte            `json:"threshold_state_signature"`
 
+	VoteExtensions [][]byte
 	// ThresholdVoteExtensionSignatures keeps the list of recovered threshold signatures for vote-extensions
 	ThresholdVoteExtensionSignatures [][]byte `json:"threshold_vote_ext_signatures"`
 

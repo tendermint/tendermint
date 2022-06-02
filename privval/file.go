@@ -678,13 +678,10 @@ func (pv *FilePV) signVote(
 		return fmt.Errorf("invalid height in StateID: is %d, should be %d", stateID.Height, height-1)
 	}
 
-	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
-
-	stateSignID := stateID.SignID(chainID, quorumType, quorumHash)
-
-	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
-
-	stateSignBytes := stateID.SignBytes(chainID)
+	signIDs, err := types.MakeSignIDs(chainID, quorumType, quorumHash, vote, stateID)
+	if err != nil {
+		return err
+	}
 
 	privKey, err := pv.getPrivateKey(ctx, quorumHash)
 	if err != nil {
@@ -697,9 +694,8 @@ func (pv *FilePV) signVote(
 	// signature will always be empty.
 	var extSigs [][]byte
 	if vote.Type == tmproto.PrecommitType {
-		extSignIDs := types.VoteExtensionSignID(chainID, vote, quorumType, quorumHash)
-		for _, extSignID := range extSignIDs {
-			extSig, err := privKey.SignDigest(extSignID)
+		for _, extSignID := range signIDs.VoteExtIDs {
+			extSig, err := privKey.SignDigest(extSignID.ID)
 			if err != nil {
 				return err
 			}
@@ -715,7 +711,7 @@ func (pv *FilePV) signVote(
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(blockSignBytes, lss.BlockSignBytes) && bytes.Equal(stateSignBytes, lss.StateSignBytes) {
+		if bytes.Equal(signIDs.BlockID.Raw, lss.BlockSignBytes) && bytes.Equal(signIDs.StateID.Raw, lss.StateSignBytes) {
 			vote.BlockSignature = lss.BlockSignature
 			vote.StateSignature = lss.StateSignature
 		} else {
@@ -727,14 +723,14 @@ func (pv *FilePV) signVote(
 		return nil
 	}
 
-	sigBlock, err := privKey.SignDigest(blockSignID)
+	sigBlock, err := privKey.SignDigest(signIDs.BlockID.ID)
 	if err != nil {
 		return err
 	}
 
 	var sigState []byte
 	if vote.BlockID.Hash != nil {
-		sigState, err = privKey.SignDigest(stateSignID)
+		sigState, err = privKey.SignDigest(signIDs.StateID.ID)
 		if err != nil {
 			return err
 		}
@@ -748,7 +744,7 @@ func (pv *FilePV) signVote(
 	//	   sigBlock, vote)
 	//  }
 
-	pv.saveSigned(height, round, step, blockSignBytes, sigBlock, stateSignBytes, sigState)
+	pv.saveSigned(height, round, step, signIDs.BlockID.Raw, sigBlock, signIDs.StateID.Raw, sigState)
 
 	vote.BlockSignature = sigBlock
 	vote.StateSignature = sigState

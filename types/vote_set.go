@@ -209,8 +209,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-
-	signIDs, err := vote.VerifyWithExtension(
+	err = vote.VerifyWithExtension(
 		voteSet.chainID,
 		voteSet.valSet.QuorumType,
 		voteSet.valSet.QuorumHash,
@@ -222,6 +221,11 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		return false, ErrInvalidVoteSignature(
 			fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s ProTxHash %s: %w",
 				voteSet.chainID, val.PubKey, val.ProTxHash, err))
+	}
+
+	signIDs, err := MakeSignIDsWithVoteSet(voteSet, vote.ToProto())
+	if err != nil {
+		return false, err
 	}
 
 	// Add vote and get conflicting vote if any.
@@ -321,19 +325,13 @@ func (voteSet *VoteSet) addVerifiedVote(
 			//  voteSet.height, voteSet.round, voteSet.signedMsgType, quorum)
 			voteSet.maj23 = &maj23BlockID
 			if voteSet.signedMsgType == tmproto.PrecommitType {
-				if len(votesByBlock.votes) > 1 {
-					err := voteSet.recoverThresholdSigsAndVerify(votesByBlock, signIDs)
-					if err != nil {
-						// fmt.Printf("error %v quorum %d\n", err, quorum)
-						// for i, vote := range votesByBlock.votes {
-						// 	fmt.Printf("vote %d %v\n", i, vote)
-						// }
-						panic(fmt.Errorf("failed recovering or verifying threshold signature: %v", err))
-					}
-				} else {
-					// there is only 1 validator
-					voteSet.thresholdBlockSig = vote.BlockSignature
-					voteSet.thresholdStateSig = vote.StateSignature
+				err := voteSet.recoverThresholdSigsAndVerify(votesByBlock, signIDs)
+				if err != nil {
+					// fmt.Printf("error %v quorum %d\n", err, quorum)
+					// for i, vote := range votesByBlock.votes {
+					// 	fmt.Printf("vote %d %v\n", i, vote)
+					// }
+					panic(fmt.Errorf("failed recovering or verifying threshold signature: %v", err))
 				}
 			}
 			// And also copy votes over to voteSet.votes
@@ -349,29 +347,46 @@ func (voteSet *VoteSet) addVerifiedVote(
 }
 
 func (voteSet *VoteSet) recoverThresholdSigsAndVerify(blockVotes *blockVotes, signIDs SignIDs) error {
+	if len(blockVotes.votes) == 0 {
+		return nil
+	}
+	if len(blockVotes.votes) == 1 {
+		// there is only 1 validator
+		vote := blockVotes.votes[0]
+		voteSet.thresholdBlockSig = vote.BlockSignature
+		voteSet.thresholdStateSig = vote.StateSignature
+		for _, ext := range vote.VoteExtensions {
+			voteSet.thresholdVoteExtSigs = append(voteSet.thresholdVoteExtSigs, ext.Signature)
+		}
+		return nil
+	}
 	err := voteSet.recoverThresholdSigs(blockVotes)
 	if err != nil {
 		return err
 	}
-	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signIDs.BlockID, voteSet.thresholdBlockSig)
+	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signIDs.BlockID.ID, voteSet.thresholdBlockSig)
 	if !verified {
 		return fmt.Errorf("recovered incorrect threshold signature %X voteSetCount %d",
 			voteSet.thresholdBlockSig, len(blockVotes.votes))
 	}
 	if voteSet.thresholdStateSig != nil {
-		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signIDs.StateID, voteSet.thresholdStateSig)
+		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signIDs.StateID.ID, voteSet.thresholdStateSig)
 		if !verified {
 			return fmt.Errorf("recovered incorrect state threshold signature %X voteSetCount %d",
 				voteSet.thresholdStateSig, len(blockVotes.votes))
 		}
 	}
-	indexes := recoverableVoteExtensionIndexes(blockVotes.votes)
+	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, signIDs.VoteExtIDs)
+}
+
+func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, voteExtSignIDs []SignIDItem) error {
+	indexes := recoverableVoteExtensionIndexes(votes)
 	for i, thresholdVoteExtSig := range voteSet.thresholdVoteExtSigs {
-		signID := signIDs.VoteExtSignIDs[indexes[i]]
-		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signID, thresholdVoteExtSig)
+		signID := voteExtSignIDs[indexes[i]]
+		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signID.ID, thresholdVoteExtSig)
 		if !verified {
-			return fmt.Errorf("recovered incorrect state threshold signature %X voteSetCount %d",
-				voteSet.thresholdStateSig, len(blockVotes.votes))
+			return fmt.Errorf("recovered incorrect vote-extension threshold signature %X voteSetCount %d",
+				thresholdVoteExtSig, len(votes))
 		}
 	}
 	return nil
@@ -381,12 +396,12 @@ func (voteSet *VoteSet) recoverThresholdSigs(blockVotes *blockVotes) error {
 	if len(blockVotes.votes) < 2 {
 		return fmt.Errorf("attempting to recover a threshold signature with only 1 vote")
 	}
-	voteSigs := NewSigsRecoverer(blockVotes.votes)
+	sigs := NewSigsRecoverer(blockVotes.votes)
 	if voteSet.maj23 == nil || voteSet.maj23.Hash == nil {
 		// if the vote is voting for nil, then we do not care to Recover the state signature
-		voteSigs.recoveryOnlyBlockSig()
+		sigs.recoveryOnlyBlockSig()
 	}
-	thresholdSigs, err := voteSigs.Recover()
+	thresholdSigs, err := sigs.Recover()
 	if err != nil {
 		return err
 	}
