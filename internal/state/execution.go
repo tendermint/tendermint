@@ -206,7 +206,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrInvalidBlock(err)
 	}
 	startTime := time.Now().UnixNano()
-	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
+	fBlockRes, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
 			Hash:                block.Hash(),
@@ -225,8 +225,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrProxyAppConn(err)
 	}
 
+	blockExec.logger.Info(
+		"finalized block",
+		"height", block.Height,
+		"num_txs_res", len(fBlockRes.TxResults),
+		"num_val_updates", len(fBlockRes.ValidatorUpdates),
+		"block_app_hash", fmt.Sprintf("%X", fBlockRes.AppHash),
+	)
+
 	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: finalizeBlockResponse,
+		FinalizeBlock: fBlockRes,
 	}
 
 	// Save the results before we commit.
@@ -235,12 +243,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// validate the validator updates and convert to tendermint types
-	err = validateValidatorUpdates(finalizeBlockResponse.ValidatorUpdates, state.ConsensusParams.Validator)
+	err = validateValidatorUpdates(fBlockRes.ValidatorUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, fmt.Errorf("error in validator updates: %w", err)
 	}
 
-	validatorUpdates, err := types.PB2TM.ValidatorUpdates(finalizeBlockResponse.ValidatorUpdates)
+	validatorUpdates, err := types.PB2TM.ValidatorUpdates(fBlockRes.ValidatorUpdates)
 	if err != nil {
 		return state, err
 	}
@@ -248,23 +256,23 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 		blockExec.metrics.ValidatorSetUpdates.Add(1)
 	}
-	if finalizeBlockResponse.ConsensusParamUpdates != nil {
+	if fBlockRes.ConsensusParamUpdates != nil {
 		blockExec.metrics.ConsensusParamUpdates.Add(1)
 	}
 
 	// Update the state with the block and responses.
-	rs, err := abci.MarshalTxResults(finalizeBlockResponse.TxResults)
+	rs, err := abci.MarshalTxResults(fBlockRes.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("marshaling TxResults: %w", err)
 	}
 	h := merkle.HashFromByteSlices(rs)
-	state, err = state.Update(blockID, &block.Header, h, finalizeBlockResponse.ConsensusParamUpdates, validatorUpdates)
+	state, err = state.Update(blockID, &block.Header, h, fBlockRes.ConsensusParamUpdates, validatorUpdates)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, finalizeBlockResponse.TxResults)
+	retainHeight, err := blockExec.Commit(ctx, state, block, fBlockRes.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -273,7 +281,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	blockExec.evpool.Update(ctx, state, block.Evidence)
 
 	// Update the app hash and save the state.
-	state.AppHash = appHash
+	state.AppHash = fBlockRes.AppHash
 	if err := blockExec.store.Save(state); err != nil {
 		return state, err
 	}
@@ -293,7 +301,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, fBlockRes, validatorUpdates)
 
 	return state, nil
 }
@@ -338,7 +346,7 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	txResults []*abci.ExecTxResult,
-) ([]byte, int64, error) {
+) (int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -347,14 +355,14 @@ func (blockExec *BlockExecutor) Commit(
 	err := blockExec.mempool.FlushAppConn(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during mempool.FlushAppConn", "err", err)
-		return nil, 0, err
+		return 0, err
 	}
 
 	// Commit block, get hash back
 	res, err := blockExec.appClient.Commit(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during proxyAppConn.Commit", "err", err)
-		return nil, 0, err
+		return 0, err
 	}
 
 	// ResponseCommit has no error code - just data
@@ -362,7 +370,7 @@ func (blockExec *BlockExecutor) Commit(
 		"committed state",
 		"height", block.Height,
 		"num_txs", len(block.Txs),
-		"app_hash", fmt.Sprintf("%X", res.Data),
+		"block_app_hash", fmt.Sprintf("%X", block.AppHash),
 	)
 
 	// Update mempool.
@@ -376,7 +384,7 @@ func (blockExec *BlockExecutor) Commit(
 		state.ConsensusParams.ABCI.RecheckTx,
 	)
 
-	return res.Data, res.RetainHeight, err
+	return res.RetainHeight, err
 }
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
@@ -708,15 +716,15 @@ func ExecCommitBlock(
 		fireEvents(be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorUpdates)
 	}
 
-	// Commit block, get hash back
-	res, err := appConn.Commit(ctx)
+	// Commit block
+	_, err = appConn.Commit(ctx)
 	if err != nil {
-		logger.Error("client error during proxyAppConn.Commit", "err", res)
+		logger.Error("client error during proxyAppConn.Commit", "err", err)
 		return nil, err
 	}
 
-	// ResponseCommit has no error or log, just data
-	return res.Data, nil
+	// ResponseCommit has no error or log
+	return finalizeBlockResponse.AppHash, nil
 }
 
 func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64) (uint64, error) {
