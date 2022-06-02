@@ -36,8 +36,6 @@ const (
 	prefixABCIResponses          = int64(7) // deprecated in v0.36
 	prefixState                  = int64(8)
 	prefixFinalizeBlockResponses = int64(9)
-
-	emptyResponsesMagic = 0xe5 // Magic number
 )
 
 func encodeKey(prefix int64, height int64) []byte {
@@ -435,9 +433,6 @@ func (store dbStore) LoadFinalizeBlockResponses(height int64) (*abci.ResponseFin
 	if len(buf) == 0 {
 		return nil, ErrNoFinalizeBlockResponsesForHeight{height}
 	}
-	if len(buf) == 1 && buf[0] == emptyResponsesMagic {
-		return &abci.ResponseFinalizeBlock{}, nil
-	}
 
 	finalizeBlockResponses := new(abci.ResponseFinalizeBlock)
 	err = finalizeBlockResponses.Unmarshal(buf)
@@ -476,7 +471,7 @@ func (store dbStore) saveFinalizeBlockResponses(height int64, finalizeBlockRespo
 		return err
 	}
 	if len(bz) == 0 {
-		bz = []byte{emptyResponsesMagic}
+		return ErrNoFinalizeBlockResponsesForHeight{height}
 	}
 
 	return store.db.SetSync(finalizeBlockResponsesKey(height), bz)

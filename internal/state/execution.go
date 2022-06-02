@@ -233,7 +233,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	)
 
 	// Save the results before we commit.
-	if err := blockExec.store.SaveFinalizeBlockResponses(block.Height, fBlockRes); err != nil {
+	err = blockExec.store.SaveFinalizeBlockResponses(block.Height, fBlockRes)
+	if err != nil && !errors.Is(err, ErrNoFinalizeBlockResponsesForHeight{block.Height}) {
+		// It is correct to have an empty ResponseFinalizeBlock for ApplyBlock,
+		// but not for saving it to the state store
 		return state, err
 	}
 
