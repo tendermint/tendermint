@@ -79,7 +79,7 @@ func TestBlockResults(t *testing.T) {
 
 	env := &Environment{}
 	env.StateStore = sm.NewStore(dbm.NewMemDB())
-	err := env.StateStore.SaveFinalizeResponses(100, results)
+	err := env.StateStore.SaveFinalizeBlockResponses(100, results)
 	require.NoError(t, err)
 	mockstore := &mocks.BlockStore{}
 	mockstore.On("Height").Return(int64(100))

@@ -150,7 +150,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 ) (types.Header, types.BlockID, *abci.ResponseFinalizeBlock) {
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	finalizeResponses := &abci.ResponseFinalizeBlock{}
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
@@ -159,13 +159,13 @@ func makeHeaderPartsResponsesValPubKeyChange(
 		pbPk, err := encoding.PubKeyToProto(pubkey)
 		require.NoError(t, err)
 
-		finalizeResponses.ValidatorUpdates = []abci.ValidatorUpdate{
+		finalizeBlockResponses.ValidatorUpdates = []abci.ValidatorUpdate{
 			{PubKey: vPbPk, Power: 0},
 			{PubKey: pbPk, Power: 10},
 		}
 	}
 
-	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
 func makeHeaderPartsResponsesValPowerChange(
@@ -176,7 +176,7 @@ func makeHeaderPartsResponsesValPowerChange(
 	t.Helper()
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-	finalizeResponses := &abci.ResponseFinalizeBlock{}
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{}
 
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
@@ -184,12 +184,12 @@ func makeHeaderPartsResponsesValPowerChange(
 		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
 		require.NoError(t, err)
 
-		finalizeResponses.ValidatorUpdates = []abci.ValidatorUpdate{
+		finalizeBlockResponses.ValidatorUpdates = []abci.ValidatorUpdate{
 			{PubKey: vPbPk, Power: power},
 		}
 	}
 
-	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeResponses
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
 func makeHeaderPartsResponsesParams(
@@ -201,8 +201,8 @@ func makeHeaderPartsResponsesParams(
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	pbParams := params.ToProto()
-	finalizeResponses := &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams}
-	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeResponses
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams}
+	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
 func randomGenesisDoc() *types.GenesisDoc {

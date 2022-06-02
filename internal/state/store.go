@@ -31,11 +31,11 @@ const (
 // TODO(thane): Move these and the ones in internal/store/store.go to their own package.
 const (
 	// prefixes are unique across all tm db's
-	prefixValidators        = int64(5)
-	prefixConsensusParams   = int64(6)
-	prefixABCIResponses     = int64(7) // deprecated in v0.36
-	prefixState             = int64(8)
-	prefixFinalizeResponses = int64(9)
+	prefixValidators             = int64(5)
+	prefixConsensusParams        = int64(6)
+	prefixABCIResponses          = int64(7) // deprecated in v0.36
+	prefixState                  = int64(8)
+	prefixFinalizeBlockResponses = int64(9)
 
 	emptyResponsesMagic = 0xe5 // Magic number
 )
@@ -60,8 +60,8 @@ func abciResponsesKey(height int64) []byte {
 	return encodeKey(prefixABCIResponses, height)
 }
 
-func finalizeResponsesKey(height int64) []byte {
-	return encodeKey(prefixFinalizeResponses, height)
+func finalizeBlockResponsesKey(height int64) []byte {
+	return encodeKey(prefixFinalizeBlockResponses, height)
 }
 
 // stateKey should never change after being set in init()
@@ -88,14 +88,14 @@ type Store interface {
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
 	LoadValidators(int64) (*types.ValidatorSet, error)
-	// LoadFinalizeResponses loads the responses to FinalizeBlock for a given height
-	LoadFinalizeResponses(int64) (*abci.ResponseFinalizeBlock, error)
+	// LoadFinalizeBlockResponses loads the responses to FinalizeBlock for a given height
+	LoadFinalizeBlockResponses(int64) (*abci.ResponseFinalizeBlock, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
-	// SaveFinalizeResponses saves responses to FinalizeBlock for a given height
-	SaveFinalizeResponses(int64, *abci.ResponseFinalizeBlock) error
+	// SaveFinalizeBlockResponses saves responses to FinalizeBlock for a given height
+	SaveFinalizeBlockResponses(int64, *abci.ResponseFinalizeBlock) error
 	// SaveValidatorSet saves the validator set at a given height
 	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
@@ -254,7 +254,7 @@ func (store dbStore) PruneStates(retainHeight int64) error {
 		return err
 	}
 
-	if err := store.pruneFinalizeResponses(retainHeight); err != nil {
+	if err := store.pruneFinalizeBlockResponses(retainHeight); err != nil {
 		return err
 	}
 
@@ -345,10 +345,10 @@ func (store dbStore) pruneConsensusParams(retainHeight int64) error {
 	)
 }
 
-// pruneFinalizeResponses calls a reverse iterator from base height to retain height batch deleting
-// all responses to FinalizeBlock, and legacy ABCI responses, in between
-func (store dbStore) pruneFinalizeResponses(height int64) error {
-	err := store.pruneRange(finalizeResponsesKey(1), finalizeResponsesKey(height))
+// pruneFinalizeBlockResponses calls a reverse iterator from base height to retain height
+// batch deleting all responses to FinalizeBlock, and legacy ABCI responses, in between
+func (store dbStore) pruneFinalizeBlockResponses(height int64) error {
+	err := store.pruneRange(finalizeBlockResponsesKey(1), finalizeBlockResponsesKey(height))
 	if err == nil {
 		// Remove any stale legacy ABCI responses
 		err = store.pruneRange(abciResponsesKey(1), abciResponsesKey(height))
@@ -420,57 +420,58 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 
 //------------------------------------------------------------------------
 
-// LoadFinalizeResponses loads the responses to FinalizeBlock for the given height from the
-// database. If not found, ErrNoFinalizeResponsesForHeight is returned.
+// LoadFinalizeBlockResponses loads the responses to FinalizeBlock for the
+// given height from the database. If not found,
+// ErrNoFinalizeBlockResponsesForHeight is returned.
 //
-// This is useful for recovering from crashes where we called app.Commit and
-// before we called s.Save(). It can also be used to produce Merkle proofs of
-// the result of txs.
-func (store dbStore) LoadFinalizeResponses(height int64) (*abci.ResponseFinalizeBlock, error) {
-	buf, err := store.db.Get(finalizeResponsesKey(height))
+// This is useful for recovering from crashes where we called app.Commit
+// and before we called s.Save(). It can also be used to produce Merkle
+// proofs of the result of txs.
+func (store dbStore) LoadFinalizeBlockResponses(height int64) (*abci.ResponseFinalizeBlock, error) {
+	buf, err := store.db.Get(finalizeBlockResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
 	if len(buf) == 0 {
-		return nil, ErrNoFinalizeResponsesForHeight{height}
+		return nil, ErrNoFinalizeBlockResponsesForHeight{height}
 	}
 	if len(buf) == 1 && buf[0] == emptyResponsesMagic {
 		return &abci.ResponseFinalizeBlock{}, nil
 	}
 
-	finalizeResponses := new(abci.ResponseFinalizeBlock)
-	err = finalizeResponses.Unmarshal(buf)
+	finalizeBlockResponses := new(abci.ResponseFinalizeBlock)
+	err = finalizeBlockResponses.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(fmt.Sprintf("data has been corrupted or its spec has changed: %+v", err))
 	}
 	// TODO: ensure that buf is completely read.
 
-	return finalizeResponses, nil
+	return finalizeBlockResponses, nil
 }
 
-// SaveFinalizeResponses persists to the database the responses to FinalizeBlock.
+// SaveFinalizeBlockResponses persists to the database the responses to FinalizeBlock.
 // This is useful in case we crash after app.Commit and before s.Save().
 // Responses are indexed by height so they can also be loaded later to produce
 // Merkle proofs.
 //
 // Exposed for testing.
-func (store dbStore) SaveFinalizeResponses(height int64, finalizeResponses *abci.ResponseFinalizeBlock) error {
-	return store.saveFinalizeResponses(height, finalizeResponses)
+func (store dbStore) SaveFinalizeBlockResponses(height int64, finalizeBlockResponses *abci.ResponseFinalizeBlock) error {
+	return store.saveFinalizeBlockResponses(height, finalizeBlockResponses)
 }
 
-func (store dbStore) saveFinalizeResponses(height int64, finalizeResponses *abci.ResponseFinalizeBlock) error {
+func (store dbStore) saveFinalizeBlockResponses(height int64, finalizeBlockResponses *abci.ResponseFinalizeBlock) error {
 	var dtxs []*abci.ExecTxResult
 	// strip nil values,
-	for _, tx := range finalizeResponses.TxResults {
+	for _, tx := range finalizeBlockResponses.TxResults {
 		if tx != nil {
 			dtxs = append(dtxs, tx)
 		}
 	}
 
-	finalizeResponses.TxResults = dtxs
+	finalizeBlockResponses.TxResults = dtxs
 
-	bz, err := finalizeResponses.Marshal()
+	bz, err := finalizeBlockResponses.Marshal()
 	if err != nil {
 		return err
 	}
@@ -478,7 +479,7 @@ func (store dbStore) saveFinalizeResponses(height int64, finalizeResponses *abci
 		bz = []byte{emptyResponsesMagic}
 	}
 
-	return store.db.SetSync(finalizeResponsesKey(height), bz)
+	return store.db.SetSync(finalizeBlockResponsesKey(height), bz)
 }
 
 // SaveValidatorSets is used to save the validator set over multiple heights.

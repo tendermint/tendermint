@@ -235,7 +235,7 @@ func TestPruneStates(t *testing.T) {
 				err := stateStore.Save(state)
 				require.NoError(t, err)
 
-				err = stateStore.SaveFinalizeResponses(h, &abci.ResponseFinalizeBlock{
+				err = stateStore.SaveFinalizeBlockResponses(h, &abci.ResponseFinalizeBlock{
 					TxResults: []*abci.ExecTxResult{
 						{Data: []byte{1}},
 						{Data: []byte{2}},
@@ -263,7 +263,7 @@ func TestPruneStates(t *testing.T) {
 				require.NoError(t, err, h)
 				require.NotNil(t, params, h)
 
-				finRes, err := stateStore.LoadFinalizeResponses(h)
+				finRes, err := stateStore.LoadFinalizeBlockResponses(h)
 				require.NoError(t, err, h)
 				require.NotNil(t, finRes, h)
 			}
@@ -289,7 +289,7 @@ func TestPruneStates(t *testing.T) {
 					require.Equal(t, emptyParams, params, h)
 				}
 
-				finRes, err := stateStore.LoadFinalizeResponses(h)
+				finRes, err := stateStore.LoadFinalizeBlockResponses(h)
 				require.Error(t, err, h)
 				require.Nil(t, finRes, h)
 			}

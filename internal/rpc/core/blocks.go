@@ -187,7 +187,7 @@ func (env *Environment) BlockResults(ctx context.Context, req *coretypes.Request
 		return nil, err
 	}
 
-	results, err := env.StateStore.LoadFinalizeResponses(height)
+	results, err := env.StateStore.LoadFinalizeBlockResponses(height)
 	if err != nil {
 		return nil, err
 	}

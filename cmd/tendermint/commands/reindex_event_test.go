@@ -158,9 +158,9 @@ func TestReIndexEvent(t *testing.T) {
 	}
 
 	mockStateStore.
-		On("LoadFinalizeResponses", base).Return(nil, errors.New("")).Once().
-		On("LoadFinalizeResponses", base).Return(abciResp, nil).
-		On("LoadFinalizeResponses", height).Return(abciResp, nil)
+		On("LoadFinalizeBlockResponses", base).Return(nil, errors.New("")).Once().
+		On("LoadFinalizeBlockResponses", base).Return(abciResp, nil).
+		On("LoadFinalizeBlockResponses", height).Return(abciResp, nil)
 
 	testCases := []struct {
 		startHeight int64
@@ -168,7 +168,7 @@ func TestReIndexEvent(t *testing.T) {
 		reIndexErr  bool
 	}{
 		{base, height, true}, // LoadBlock error
-		{base, height, true}, // LoadFinalizeResponses error
+		{base, height, true}, // LoadFinalizeBlockResponses error
 		{base, height, true}, // index block event error
 		{base, height, true}, // index tx event error
 		{base, base, false},

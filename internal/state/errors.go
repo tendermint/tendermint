@@ -46,7 +46,7 @@ type (
 		Height int64
 	}
 
-	ErrNoFinalizeResponsesForHeight struct {
+	ErrNoFinalizeBlockResponsesForHeight struct {
 		Height int64
 	}
 )
@@ -102,6 +102,6 @@ func (e ErrNoConsensusParamsForHeight) Error() string {
 	return fmt.Sprintf("could not find consensus params for height #%d", e.Height)
 }
 
-func (e ErrNoFinalizeResponsesForHeight) Error() string {
+func (e ErrNoFinalizeBlockResponsesForHeight) Error() string {
 	return fmt.Sprintf("could not find FinalizeBlock responses for height #%d", e.Height)
 }

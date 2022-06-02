@@ -233,7 +233,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	)
 
 	// Save the results before we commit.
-	if err := blockExec.store.SaveFinalizeResponses(block.Height, fBlockRes); err != nil {
+	if err := blockExec.store.SaveFinalizeBlockResponses(block.Height, fBlockRes); err != nil {
 		return state, err
 	}
 

@@ -101,8 +101,8 @@ func TestStateSaveLoad(t *testing.T) {
 		loadedState, state)
 }
 
-// TestFinalizeResponsesSaveLoad1 tests saving and loading responses to FinalizeBlock.
-func TestFinalizeResponsesSaveLoad1(t *testing.T) {
+// TestFinalizeBlockResponsesSaveLoad1 tests saving and loading responses to FinalizeBlock.
+func TestFinalizeBlockResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB)
@@ -113,26 +113,26 @@ func TestFinalizeResponsesSaveLoad1(t *testing.T) {
 	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
 	dtxs := make([]*abci.ExecTxResult, 2)
-	finalizeResponses := new(abci.ResponseFinalizeBlock)
-	finalizeResponses.TxResults = dtxs
+	finalizeBlockResponses := new(abci.ResponseFinalizeBlock)
+	finalizeBlockResponses.TxResults = dtxs
 
-	finalizeResponses.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
-	finalizeResponses.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
+	finalizeBlockResponses.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
+	finalizeBlockResponses.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
 	pbpk, err := encoding.PubKeyToProto(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
-	finalizeResponses.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
+	finalizeBlockResponses.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
 
-	err = stateStore.SaveFinalizeResponses(block.Height, finalizeResponses)
+	err = stateStore.SaveFinalizeBlockResponses(block.Height, finalizeBlockResponses)
 	require.NoError(t, err)
-	loadedFinalizeResponses, err := stateStore.LoadFinalizeResponses(block.Height)
+	loadedFinalizeBlockResponses, err := stateStore.LoadFinalizeBlockResponses(block.Height)
 	require.NoError(t, err)
-	assert.Equal(t, finalizeResponses, loadedFinalizeResponses,
-		"FinalizeResponses don't match:\ngot:       %v\nexpected: %v\n",
-		loadedFinalizeResponses, finalizeResponses)
+	assert.Equal(t, finalizeBlockResponses, loadedFinalizeBlockResponses,
+		"FinalizeBlockResponses don't match:\ngot:       %v\nexpected: %v\n",
+		loadedFinalizeBlockResponses, finalizeBlockResponses)
 }
 
-// TestFinalizeResponsesSaveLoad2 tests saving and loading responses to FinalizeBlock.
-func TestFinalizeResponsesSaveLoad2(t *testing.T) {
+// TestFinalizeBlockResponsesSaveLoad2 tests saving and loading responses to FinalizeBlock.
+func TestFinalizeBlockResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
 
@@ -188,7 +188,7 @@ func TestFinalizeResponsesSaveLoad2(t *testing.T) {
 	// Query all before, this should return error.
 	for i := range cases {
 		h := int64(i + 1)
-		res, err := stateStore.LoadFinalizeResponses(h)
+		res, err := stateStore.LoadFinalizeBlockResponses(h)
 		assert.Error(t, err, "%d: %#v", i, res)
 	}
 
@@ -198,14 +198,14 @@ func TestFinalizeResponsesSaveLoad2(t *testing.T) {
 		responses := &abci.ResponseFinalizeBlock{
 			TxResults: tc.added,
 		}
-		err := stateStore.SaveFinalizeResponses(h, responses)
+		err := stateStore.SaveFinalizeBlockResponses(h, responses)
 		require.NoError(t, err)
 	}
 
 	// Query all after, should return expected value.
 	for i, tc := range cases {
 		h := int64(i + 1)
-		res, err := stateStore.LoadFinalizeResponses(h)
+		res, err := stateStore.LoadFinalizeBlockResponses(h)
 		if assert.NoError(t, err, "%d", i) {
 			t.Log(res)
 			e, err := abci.MarshalTxResults(tc.expected)
