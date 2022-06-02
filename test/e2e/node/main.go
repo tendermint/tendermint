@@ -68,35 +68,37 @@ func run(ctx context.Context, configFile string) error {
 		return err
 	}
 
-	// Start remote signer (must start before node if running builtin).
-	if cfg.PrivValServer != "" {
-		if err = startSigner(ctx, logger, cfg); err != nil {
-			logger.Error("starting signer",
-				"server", cfg.PrivValServer,
-				"err", err)
-			return err
+	if cfg.Mode == string(e2e.ModeLight) {
+		err = startLightNode(ctx, logger, cfg)
+	} else {
+		// Start remote signer (must start before node if running builtin).
+		if cfg.PrivValServer != "" {
+			if err = startSigner(ctx, logger, cfg); err != nil {
+				logger.Error("starting signer",
+					"server", cfg.PrivValServer,
+					"err", err)
+				return err
+			}
+			if cfg.Protocol == "builtin" {
+				time.Sleep(1 * time.Second)
+			}
 		}
-		if cfg.Protocol == "builtin" {
-			time.Sleep(1 * time.Second)
+
+		// Start app server.
+		switch cfg.Protocol {
+		case "socket", "grpc", "tcp":
+			err = startApp(ctx, logger, cfg)
+		case "builtin":
+			if cfg.Mode == string(e2e.ModeSeed) {
+				err = startSeedNode(ctx)
+			} else {
+				err = startNode(ctx, cfg)
+			}
+		default:
+			err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
 		}
 	}
 
-	// Start app server.
-	switch cfg.Protocol {
-	case "socket", "grpc":
-		err = startApp(ctx, logger, cfg)
-	case "builtin":
-		switch cfg.Mode {
-		case string(e2e.ModeLight):
-			err = startLightNode(ctx, logger, cfg)
-		case string(e2e.ModeSeed):
-			err = startSeedNode(ctx)
-		default:
-			err = startNode(ctx, cfg)
-		}
-	default:
-		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
-	}
 	if err != nil {
 		logger.Error("starting node",
 			"protocol", cfg.Protocol,
