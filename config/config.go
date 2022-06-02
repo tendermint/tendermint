@@ -1178,9 +1178,6 @@ func (cfg *ConsensusConfig) DeprecatedFieldWarning() error {
 	if cfg.DeprecatedTimeoutCommit != nil {
 		fields = append(fields, "timeout-commit")
 	}
-	if cfg.DeprecatedSkipTimeoutCommit != nil {
-		fields = append(fields, "skip-timeout-commit")
-	}
 	if len(fields) != 0 {
 		return fmt.Errorf("the following deprecated fields were set in the "+
 			"configuration file: %s. These fields were removed in v0.36. Timeout "+

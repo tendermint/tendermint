@@ -18,7 +18,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// DashCoreSignerClient implements PrivValidator.
+// DashPrivValidator is a PrivValidator that uses Dash-specific logic
+type DashPrivValidator interface {
+	types.PrivValidator
+	dashcore.QuorumVerifier
+	DashRPCClient() dashcore.Client
+}
+
+// DashCoreSignerClient implements DashPrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
 	dashCoreRPCClient dashcore.Client
@@ -26,7 +33,7 @@ type DashCoreSignerClient struct {
 	defaultQuorumType btcjson.LLMQType
 }
 
-var _ types.PrivValidator = (*DashCoreSignerClient)(nil)
+var _ DashPrivValidator = (*DashCoreSignerClient)(nil)
 
 // NewDashCoreSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
@@ -307,6 +314,25 @@ func (sc *DashCoreSignerClient) UpdatePrivateKey(
 
 func (sc *DashCoreSignerClient) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	return nil, nil
+}
+
+// QuorumVerify implements dashcore.QuorumVerifier
+func (sc *DashCoreSignerClient) QuorumVerify(
+	quorumType btcjson.LLMQType,
+	requestID tmbytes.HexBytes,
+	messageHash tmbytes.HexBytes,
+	signature tmbytes.HexBytes,
+	quorumHash tmbytes.HexBytes,
+) (bool, error) {
+	return sc.dashCoreRPCClient.QuorumVerify(quorumType, requestID, messageHash, signature, quorumHash)
+}
+
+// DashRPCClient implements DashPrivValidator
+func (sc *DashCoreSignerClient) DashRPCClient() dashcore.Client {
+	if sc == nil {
+		return nil
+	}
+	return sc.dashCoreRPCClient
 }
 
 func (sc *DashCoreSignerClient) signVoteExtensions(

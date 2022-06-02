@@ -207,7 +207,6 @@ func startNode(ctx context.Context, cfg *Config) error {
 		nodeLogger,
 		abciclient.NewLocalClient(nodeLogger, app),
 		nil,
-		dashCoreRPCClient,
 	)
 	if err != nil {
 		return err
@@ -223,7 +222,7 @@ func startSeedNode(ctx context.Context) error {
 
 	tmcfg.Mode = config.ModeSeed
 
-	n, err := node.New(ctx, tmcfg, nodeLogger, nil, nil, nil)
+	n, err := node.New(ctx, tmcfg, nodeLogger, nil, nil)
 	if err != nil {
 		return err
 	}

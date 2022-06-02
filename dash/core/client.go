@@ -13,7 +13,22 @@ import (
 
 const ModuleName = "rpcclient"
 
+// QuorumVerifier represents subset of priv validator features that
+// allows verification of threshold signatures.
+type QuorumVerifier interface {
+	// QuorumVerify verifies quorum signature
+	QuorumVerify(
+		quorumType btcjson.LLMQType,
+		requestID bytes.HexBytes,
+		messageHash bytes.HexBytes,
+		signature bytes.HexBytes,
+		quorumHash bytes.HexBytes,
+	) (bool, error)
+}
+
 type Client interface {
+	QuorumVerifier
+
 	// QuorumInfo returns quorum info
 	QuorumInfo(quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) (*btcjson.QuorumInfoResult, error)
 	// MasternodeStatus returns masternode status
@@ -29,7 +44,6 @@ type Client interface {
 		messageHash bytes.HexBytes,
 		quorumHash bytes.HexBytes,
 	) (*btcjson.QuorumSignResult, error)
-	// QuorumVerify verifies quorum signature
 	QuorumVerify(
 		quorumType btcjson.LLMQType,
 		requestID bytes.HexBytes,

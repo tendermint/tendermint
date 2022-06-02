@@ -480,38 +480,67 @@ func makeDefaultPrivval(conf *config.Config) (*privval.FilePV, error) {
 	return nil, nil
 }
 
-func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, genDoc *types.GenesisDoc, defaultPV *privval.FilePV) (types.PrivValidator, error) {
-	if conf.PrivValidator.ListenAddr != "" {
+// createPrivval creates and returns new PrivVal based on provided config.
+func createPrivval(ctx context.Context, logger log.Logger, conf *config.Config, genDoc *types.GenesisDoc) (types.PrivValidator, error) {
+	switch {
+	case conf.PrivValidator.ListenAddr != "": // Generic tendermint privval
 		protocol, _ := tmnet.ProtocolAndAddress(conf.PrivValidator.ListenAddr)
 		// FIXME: we should return un-started services and
 		// then start them later.
-		switch protocol {
-		case "grpc":
+		if protocol == "grpc" {
 			privValidator, err := createAndStartPrivValidatorGRPCClient(ctx, conf, genDoc.ChainID, genDoc.QuorumHash, logger)
 			if err != nil {
 				return nil, fmt.Errorf("error with private validator grpc client: %w", err)
 			}
 			return privValidator, nil
-		default:
-			privValidator, err := createAndStartPrivValidatorSocketClient(
-				ctx,
-				conf.PrivValidator.ListenAddr,
-				genDoc.ChainID,
-				genDoc.QuorumHash,
-				logger,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("error with private validator socket client: %w", err)
-
-			}
-			return privValidator, nil
 		}
-	}
 
-	return defaultPV, nil
+		privValidator, err := createAndStartPrivValidatorSocketClient(
+			ctx,
+			conf.PrivValidator.ListenAddr,
+			genDoc.ChainID,
+			genDoc.QuorumHash,
+			logger,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error with private validator socket client: %w", err)
+		}
+		return privValidator, nil
+
+	case conf.PrivValidator.CoreRPCHost != "": // DASH Core Privval
+		if conf.Mode != config.ModeValidator {
+			return nil, fmt.Errorf("cannot initialize PrivValidator: this node is NOT a validator")
+		}
+
+		logger.Info("Initializing Dash Core PrivValidator")
+
+		dashCoreRPCClient, err := DefaultDashCoreRPCClient(conf, logger.With("module", dashcore.ModuleName))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Dash Core RPC client: %w", err)
+		}
+
+		// If a local port is provided for Dash Core rpc into the service to sign.
+		privValidator, err := createAndStartPrivValidatorDashCoreClient(
+			conf.Consensus.QuorumType,
+			dashCoreRPCClient,
+			logger,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error with private validator RPC client: %w", err)
+		}
+		proTxHash, err := privValidator.GetProTxHash(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("can't get proTxHash using dash core signing: %w", err)
+		}
+		logger.Info("Connected to Core RPC Masternode", "proTxHash", proTxHash.String())
+
+		return privValidator, nil
+	default:
+		return makeDefaultPrivval(conf)
+	}
 }
 
-func createAndStartPrivValidatorRPCClient(
+func createAndStartPrivValidatorDashCoreClient(
 	defaultQuorumType btcjson.LLMQType,
 	dashCoreRPCClient dashcore.Client,
 	logger log.Logger,

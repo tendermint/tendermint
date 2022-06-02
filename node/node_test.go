@@ -49,7 +49,7 @@ func TestNodeStartStop(t *testing.T) {
 	ctx, bcancel := context.WithCancel(context.Background())
 	defer bcancel()
 
-	logger := log.NewNopLogger()
+	logger := log.NewTestingLogger(t)
 	// create & start node
 	ns, err := newDefaultNode(ctx, cfg, logger)
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
 	require.NoError(t, err)
 
-	pval, err := createPrivval(ctx, logger, cfg, genDoc, nil)
+	pval, err := createPrivval(ctx, logger, cfg, genDoc)
 	require.NoError(t, err)
 
 	assert.IsType(t, &privval.RetrySignerClient{}, pval)
@@ -270,7 +270,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 	genDoc, err := defaultGenesisDocProviderFunc(cfg)()
 	require.NoError(t, err)
 
-	pval, err := createPrivval(ctx, logger, cfg, genDoc, nil)
+	pval, err := createPrivval(ctx, logger, cfg, genDoc)
 	require.NoError(t, err)
 
 	assert.IsType(t, &privval.RetrySignerClient{}, pval)
