@@ -26,16 +26,23 @@ const (
 
 //------------------------------------------------------------------------
 
+// key prefixes
 // NB: Before modifying these, cross-check them with those in
-// internal/store/store.go
-// TODO(thane): Move these and the ones in internal/store/store.go to their own package.
+// * internal/store/store.go    [0..4, 13]
+// * internal/state/store.go    [5..8, 14]
+// * internal/evidence/pool.go  [9..10]
+// * light/store/db/db.go       [11..12]
+// TODO(thane): Move all these to their own package.
+// TODO: what about these (they already collide):
+// * scripts/scmigrate/migrate.go [3]
+// * internal/p2p/peermanager.go  [1]
 const (
 	// prefixes are unique across all tm db's
 	prefixValidators             = int64(5)
 	prefixConsensusParams        = int64(6)
 	prefixABCIResponses          = int64(7) // deprecated in v0.36
 	prefixState                  = int64(8)
-	prefixFinalizeBlockResponses = int64(9)
+	prefixFinalizeBlockResponses = int64(14)
 )
 
 func encodeKey(prefix int64, height int64) []byte {
