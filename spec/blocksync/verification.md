@@ -21,7 +21,7 @@ Currently there are two possible ways to obtain a trusted state :
 
 **Case 1 - blocksync from genesis**
 
-In this case we only verify that the validator hash of the block matches the validator set of the initial state. We will use the initially provided validator set for verification and further verify the block against witnesses. In this scenario, this state is very likely to be outside the trusting period. We will accept this block as a trusted state and store it inside the node's block store. 
+In this case we only verify that the validator hash of the block matches the validator set of the initial state. We will use the initially provided validator set for verification and further verify the block against witne+sses. In this scenario, this state is very likely to be outside the trusting period. We will accept this block as a trusted state and store it inside the node's block store. 
 
 It is worth noting that, running block sync from the first height is significantly slower than running statesync first. However, statesync does not keep the entire blockchain history and some operators might opt not to state sync. The reason is that, if sufficiently many nodes state sync and other nodes who have historical data fail or leave the network, we have no history.
 

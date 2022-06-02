@@ -12,7 +12,7 @@ On startup, the reactor fires up four go routines:
 3. Handle p2p channel messages
 4. Process peer updates
 
-The pool routine picks out blocks form the block pool and processes them. It also checks whether the node  should switch to consensus. ToDo - change wording (Remove we, discuss whether the pool routing should be the one checking the condition for consensus).
+The pool routine picks out blocks form the block pool and processes them. It also checks whether the node  should switch to consensus.
 
 All messages that go through the p2p channel are processed within the `processBlockSyncCh` routine.
 
