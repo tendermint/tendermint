@@ -44,6 +44,7 @@ func main() {
 		commands.MakeKeyMigrateCommand(conf, logger),
 		debug.GetDebugCommand(logger),
 		commands.NewCompletionCmd(rcmd, true),
+		commands.MakeCompactDBCommand(conf, logger),
 	)
 
 	// NOTE:
