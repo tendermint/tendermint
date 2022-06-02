@@ -202,7 +202,6 @@ func makeHeaderPartsResponsesParams(
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	pbParams := params.ToProto()
 	finalizeResponses := &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams}
-
 	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeResponses
 }
 
