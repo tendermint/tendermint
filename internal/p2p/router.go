@@ -835,6 +835,15 @@ func (r *Router) handshakePeer(
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
+
+	if peerInfo.Network != nodeInfo.Network {
+		if err := r.peerManager.store.Delete(peerInfo.NodeID); err != nil {
+			return peerInfo, fmt.Errorf("problem removing peer from store from incorrect network [%s]: %w", peerInfo.Network, err)
+		}
+
+		return peerInfo, fmt.Errorf("connected to peer from wrong network, %q, removed from peer store", peerInfo.Network)
+	}
+
 	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
 			peerInfo.NodeID, types.NodeIDFromPubKey(peerKey))
@@ -843,8 +852,14 @@ func (r *Router) handshakePeer(
 		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
+<<<<<<< HEAD
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
 		return peerInfo, peerKey, ErrRejected{
+=======
+
+	if err := nodeInfo.CompatibleWith(peerInfo); err != nil {
+		return peerInfo, ErrRejected{
+>>>>>>> 666d93338 (p2p: shed peers from store from other networks (#8678))
 			err:            err,
 			id:             peerInfo.ID(),
 			isIncompatible: true,
