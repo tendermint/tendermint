@@ -86,8 +86,8 @@ func (_m *Store) LoadConsensusParams(_a0 int64) (types.ConsensusParams, error) {
 	return r0, r1
 }
 
-// LoadFinalizeResponses provides a mock function with given fields: _a0
-func (_m *Store) LoadFinalizeResponses(_a0 int64) (*abcitypes.ResponseFinalizeBlock, error) {
+// LoadFinalizeBlockResponses provides a mock function with given fields: _a0
+func (_m *Store) LoadFinalizeBlockResponses(_a0 int64) (*abcitypes.ResponseFinalizeBlock, error) {
 	ret := _m.Called(_a0)
 
 	var r0 *abcitypes.ResponseFinalizeBlock
@@ -160,8 +160,8 @@ func (_m *Store) Save(_a0 state.State) error {
 	return r0
 }
 
-// SaveFinalizeResponses provides a mock function with given fields: _a0, _a1
-func (_m *Store) SaveFinalizeResponses(_a0 int64, _a1 *abcitypes.ResponseFinalizeBlock) error {
+// SaveFinalizeBlockResponses provides a mock function with given fields: _a0, _a1
+func (_m *Store) SaveFinalizeBlockResponses(_a0 int64, _a1 *abcitypes.ResponseFinalizeBlock) error {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 error
