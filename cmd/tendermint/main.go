@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+<<<<<<< HEAD
 	rootCmd := cmd.RootCmd
 	rootCmd.AddCommand(
 		cmd.GenValidatorCmd,
@@ -31,6 +32,41 @@ func main() {
 		cmd.RollbackStateCmd,
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
+=======
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conf, err := commands.ParseConfig(config.DefaultConfig())
+	if err != nil {
+		panic(err)
+	}
+
+	logger, err := log.NewDefaultLogger(conf.LogFormat, conf.LogLevel)
+	if err != nil {
+		panic(err)
+	}
+
+	rcmd := commands.RootCommand(conf, logger)
+	rcmd.AddCommand(
+		commands.MakeGenValidatorCommand(),
+		commands.MakeReindexEventCommand(conf, logger),
+		commands.MakeInitFilesCommand(conf, logger),
+		commands.MakeLightCommand(conf, logger),
+		commands.MakeReplayCommand(conf, logger),
+		commands.MakeReplayConsoleCommand(conf, logger),
+		commands.MakeResetCommand(conf, logger),
+		commands.MakeShowValidatorCommand(conf, logger),
+		commands.MakeTestnetFilesCommand(conf, logger),
+		commands.MakeShowNodeIDCommand(conf),
+		commands.GenNodeKeyCmd,
+		commands.VersionCmd,
+		commands.MakeInspectCommand(conf, logger),
+		commands.MakeRollbackStateCommand(conf),
+		commands.MakeKeyMigrateCommand(conf, logger),
+		debug.GetDebugCommand(logger),
+		commands.NewCompletionCmd(rcmd, true),
+		commands.MakeCompactDBCommand(conf, logger),
+>>>>>>> 30bfe51eb (cmd: add tool for compaction of goleveldb (#8564))
 	)
 
 	// NOTE:
