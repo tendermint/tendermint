@@ -32,25 +32,20 @@ func InitChain(ctx context.Context, client abciclient.Client) error {
 	return nil
 }
 
-func Commit(ctx context.Context, client abciclient.Client, hashExp []byte) error {
-	res, err := client.Commit(ctx)
-	data := res.Data
+func Commit(ctx context.Context, client abciclient.Client) error {
+	_, err := client.Commit(ctx)
 	if err != nil {
 		fmt.Println("Failed test: Commit")
 		fmt.Printf("error while committing: %v\n", err)
 		return err
 	}
-	if !bytes.Equal(data, hashExp) {
-		fmt.Println("Failed test: Commit")
-		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n", data, hashExp)
-		return errors.New("commitTx failed")
-	}
 	fmt.Println("Passed test: Commit")
 	return nil
 }
 
-func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]byte, codeExp []uint32, dataExp []byte) error {
+func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]byte, codeExp []uint32, dataExp []byte, hashExp []byte) error {
 	res, _ := client.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Txs: txBytes})
+	appHash := res.AppHash
 	for i, tx := range res.TxResults {
 		code, data, log := tx.Code, tx.Data, tx.Log
 		if code != codeExp[i] {
@@ -65,6 +60,11 @@ func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]by
 				data, dataExp)
 			return errors.New("FinalizeBlock  error")
 		}
+	}
+	if !bytes.Equal(appHash, hashExp) {
+		fmt.Println("Failed test: FinalizeBlock")
+		fmt.Printf("Application hash was unexpected. Got %X expected %X\n", appHash, hashExp)
+		return errors.New("FinalizeBlock  error")
 	}
 	fmt.Println("Passed test: FinalizeBlock")
 	return nil
