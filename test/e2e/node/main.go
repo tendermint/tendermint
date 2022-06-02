@@ -86,7 +86,7 @@ func run(ctx context.Context, configFile string) error {
 
 		// Start app server.
 		switch cfg.Protocol {
-		case "socket", "grpc", "tcp":
+		case "socket", "grpc":
 			err = startApp(ctx, logger, cfg)
 		case "builtin":
 			if cfg.Mode == string(e2e.ModeSeed) {
