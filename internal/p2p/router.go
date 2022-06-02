@@ -852,14 +852,9 @@ func (r *Router) handshakePeer(
 		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
-<<<<<<< HEAD
+	
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
 		return peerInfo, peerKey, ErrRejected{
-=======
-
-	if err := nodeInfo.CompatibleWith(peerInfo); err != nil {
-		return peerInfo, ErrRejected{
->>>>>>> 666d93338 (p2p: shed peers from store from other networks (#8678))
 			err:            err,
 			id:             peerInfo.ID(),
 			isIncompatible: true,
