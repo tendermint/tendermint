@@ -838,10 +838,10 @@ func (r *Router) handshakePeer(
 
 	if peerInfo.Network != nodeInfo.Network {
 		if err := r.peerManager.store.Delete(peerInfo.NodeID); err != nil {
-			return peerInfo, fmt.Errorf("problem removing peer from store from incorrect network [%s]: %w", peerInfo.Network, err)
+			return peerInfo, peerKey, fmt.Errorf("problem removing peer from store from incorrect network [%s]: %w", peerInfo.Network, err)
 		}
 
-		return peerInfo, fmt.Errorf("connected to peer from wrong network, %q, removed from peer store", peerInfo.Network)
+		return peerInfo, peerKey, fmt.Errorf("connected to peer from wrong network, %q, removed from peer store", peerInfo.Network)
 	}
 
 	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
