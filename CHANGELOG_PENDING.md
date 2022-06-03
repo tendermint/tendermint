@@ -2,7 +2,7 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35.6
+## v0.35.7
 
 Month DD, YYYY
 
