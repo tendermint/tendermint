@@ -1979,7 +1979,8 @@ func TestFinalizeBlockCalled(t *testing.T) {
 					Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 				}, nil)
 			}
-			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
+			r := &abci.ResponseFinalizeBlock{AppHash: []byte("the_hash")}
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 
 			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
@@ -2060,7 +2061,8 @@ func TestExtendVoteCalledWhenEnabled(t *testing.T) {
 				}, nil)
 			}
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
-			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
+			r := &abci.ResponseFinalizeBlock{AppHash: []byte("myHash")}
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
 			c := factory.ConsensusParams()
 			if !testCase.enabled {
 				c.ABCI.VoteExtensionsEnableHeight = 0
@@ -2357,7 +2359,8 @@ func TestVoteExtensionEnableHeight(t *testing.T) {
 					Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 				}, nil).Times(numValidators - 1)
 			}
-			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
+			r := &abci.ResponseFinalizeBlock{AppHash: []byte("hashyHash")}
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 			c := factory.ConsensusParams()
 			c.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
