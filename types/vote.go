@@ -500,24 +500,6 @@ func ProtoToVoteExtensions(protoExts []*tmproto.VoteExtension) []VoteExtension {
 	return exts
 }
 
-func recoverableVoteExtensionIndexes(votes []*Vote) []int {
-	var indexes []int
-	for _, vote := range votes {
-		if vote == nil {
-			continue
-		}
-		for i, ext := range vote.VoteExtensions {
-			if ext.IsRecoverable() {
-				indexes = append(indexes, i)
-			}
-		}
-		if len(indexes) > 0 {
-			return indexes
-		}
-	}
-	return nil
-}
-
 func collectExtensions(voteExtensions []VoteExtension, onlyRecoverable bool) [][]byte {
 	exts := make([][]byte, len(voteExtensions))
 	for i, ext := range voteExtensions {
