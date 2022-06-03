@@ -74,12 +74,10 @@ func signAddVoteForStateID(ctx context.Context, privVal PrivValidator, vote *Vot
 
 // VoteExtSigns2BytesSlices returns a list of vote-extensions signatures
 func VoteExtSigns2BytesSlices(exts []VoteExtension, onlyRecoverable bool) [][]byte {
-	var sigs [][]byte
+	sigs := make([][]byte, 0, len(exts))
 	for _, ext := range exts {
-		if onlyRecoverable {
-			if !ext.IsRecoverable() {
-				continue
-			}
+		if onlyRecoverable && !ext.IsRecoverable() {
+			continue
 		}
 		sigs = append(sigs, ext.Signature)
 	}
