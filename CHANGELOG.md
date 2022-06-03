@@ -2,6 +2,18 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.6
+
+June 3, 2022
+
+### BUG FIXES
+
+- [consensus] [\#8651](https://github.com/tendermint/tendermint/pull/8651) restructure peer catchup sleep (@tychoish)
+- [pex] [\#8657](https://github.com/tendermint/tendermint/pull/8657) align max address thresholds (@cmwaters)
+- [cmd] [\#8668](https://github.com/tendermint/tendermint/pull/8668) don't used global config for reset commands (@cmwaters)
+- [migrate] [\#8672](https://github.com/tendermint/tendermint/pull/8672) provide function for database production (backport #8614) (@tychoish)
+- [p2p] [\#8681](https://github.com/tendermint/tendermint/pull/8681) shed peers from store from other networks (backport #8678) (@tychoish)
+
 ## v0.35.5
 
 May 26, 2022
