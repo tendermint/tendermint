@@ -15,10 +15,14 @@ import (
 func TestSigsRecoverer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	const height = 1000
+	const (
+		height  = 1000
+		chainID = "dash-platform"
+	)
 	stateID := RandStateID().WithHeight(height - 1)
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
+	quorumType := crypto.SmallQuorumType()
+	quorumHash := crypto.RandQuorumHash()
 	testCases := []struct {
 		votes []*Vote
 	}{
@@ -45,9 +49,6 @@ func TestSigsRecoverer(t *testing.T) {
 			},
 		},
 	}
-	chainID := "dash-platform-chain"
-	quorumType := crypto.SmallQuorumType()
-	quorumHash := crypto.RandQuorumHash()
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test-case #%d", i), func(t *testing.T) {
 			var (
@@ -98,20 +99,17 @@ func TestSigsRecoverer(t *testing.T) {
 func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
 	const (
-		chainID = "dash-platform-chain"
+		chainID = "dash-platform"
 		height  = 1000
 		n       = 4
 	)
-
 	stateID := RandStateID().WithHeight(height - 1)
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	vals, pvs := RandValidatorSet(n)
 	quorumType := crypto.SmallQuorumType()
 	quorumHash, err := pvs[0].GetFirstQuorumHash(ctx)
 	require.NoError(t, err)
-
 	votes := make([]*Vote, n)
 	for i := 0; i < n; i++ {
 		proTxHash, err := pvs[i].GetProTxHash(ctx)
@@ -146,6 +144,9 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 }
 
 func mockVoteExtensions(t *testing.T, pairs ...interface{}) []VoteExtension {
+	if len(pairs)%2 != 0 {
+		t.Fatalf("the pairs lentght must be even")
+	}
 	exts := make([]VoteExtension, len(pairs)/2)
 	for i := 0; i < len(pairs); i += 2 {
 		ext := VoteExtension{

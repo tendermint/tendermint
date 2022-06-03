@@ -327,10 +327,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 			if voteSet.signedMsgType == tmproto.PrecommitType {
 				err := voteSet.recoverThresholdSignsAndVerify(votesByBlock, quorumSigns)
 				if err != nil {
-					// fmt.Printf("error %v quorum %d\n", err, quorum)
-					// for i, vote := range votesByBlock.votes {
-					// 	fmt.Printf("vote %d %v\n", i, vote)
-					// }
+					// TODO needs to return an error
 					panic(fmt.Errorf("failed recovering or verifying threshold signature: %v", err))
 				}
 			}

@@ -487,7 +487,7 @@ type QuorumVoteSigns struct {
 	QuorumHash []byte
 }
 
-// ProtoToVoteExtensions ...
+// ProtoToVoteExtensions converts protobuf vote-extensions into domain vote-extensions
 func ProtoToVoteExtensions(protoExts []*tmproto.VoteExtension) []VoteExtension {
 	exts := make([]VoteExtension, len(protoExts))
 	for i, ext := range protoExts {
@@ -498,6 +498,16 @@ func ProtoToVoteExtensions(protoExts []*tmproto.VoteExtension) []VoteExtension {
 		}
 	}
 	return exts
+}
+
+// GetFirstVote returns the first not nil vote from a list, otherwise error
+func GetFirstVote(votes []*Vote) (*Vote, error) {
+	for _, vote := range votes {
+		if vote != nil {
+			return vote, nil
+		}
+	}
+	return nil, errors.New("unable to get a vote, votes list is empty")
 }
 
 func collectExtensions(voteExtensions []VoteExtension, onlyRecoverable bool) [][]byte {
@@ -511,14 +521,4 @@ func collectExtensions(voteExtensions []VoteExtension, onlyRecoverable bool) [][
 		exts[i] = ext.Extension
 	}
 	return exts
-}
-
-// GetFirstVote returns the first not nil vote from a list, otherwise error
-func GetFirstVote(votes []*Vote) (*Vote, error) {
-	for _, vote := range votes {
-		if vote != nil {
-			return vote, nil
-		}
-	}
-	return nil, errors.New("unable to get a vote, votes list is empty")
 }

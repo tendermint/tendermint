@@ -113,15 +113,15 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 //-------------------------------------------------------------------
 
 func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
-	var (
-		chainID = "test_chain_id"
-		h       = int64(3)
-		blockID = makeBlockIDRandom()
-		stateID = RandStateID().WithHeight(h - 1)
-	)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	const (
+		chainID = "test_chain_id"
+		h       = int64(3)
+	)
+	blockID := makeBlockIDRandom()
+	stateID := RandStateID().WithHeight(h - 1)
 
 	voteSet, valSet, vals := randVoteSet(ctx, t, h, 0, tmproto.PrecommitType, 4, stateID)
 	commit, err := makeCommit(ctx, blockID, stateID, h, 0, voteSet, vals)
@@ -130,13 +130,21 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	// malleate threshold sigs signature
 	vote := voteSet.GetByIndex(3)
 	v := vote.ToProto()
-	err = vals[3].SignVote(context.Background(), "CentaurusA", valSet.QuorumType, valSet.QuorumHash, v, stateID, nil)
+	err = vals[3].SignVote(ctx, "CentaurusA", valSet.QuorumType, valSet.QuorumHash, v, stateID, nil)
 	require.NoError(t, err)
 	commit.ThresholdBlockSignature = v.BlockSignature
 	commit.ThresholdStateSignature = v.StateSignature
-	// add vote-extension threshold
 	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 	if assert.Error(t, err) {
 		assert.Contains(t, err.Error(), "incorrect threshold block signature")
 	}
+
+	recoverer := NewSignsRecoverer(voteSet.votes)
+	thresholdSigns, err := recoverer.Recover()
+	require.NoError(t, err)
+	commit.ThresholdBlockSignature = thresholdSigns.BlockSign
+	commit.ThresholdStateSignature = thresholdSigns.StateSign
+	commit.ThresholdVoteExtensionSignatures = thresholdSigns.VoteExtSigns
+	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
+	require.NoError(t, err)
 }

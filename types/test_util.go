@@ -40,6 +40,16 @@ func makeCommit(
 			Round:              round,
 			Type:               tmproto.PrecommitType,
 			BlockID:            blockID,
+			VoteExtensions: []VoteExtension{
+				{
+					Type:      tmproto.VoteExtensionType_DEFAULT,
+					Extension: []byte("default"),
+				},
+				{
+					Type:      tmproto.VoteExtensionType_THRESHOLD_RECOVER,
+					Extension: []byte("threshold"),
+				},
+			},
 		}
 
 		_, err = signAddVote(ctx, validators[i], vote, voteSet)

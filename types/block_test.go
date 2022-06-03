@@ -728,6 +728,8 @@ func TestBlockProtoBuf(t *testing.T) {
 			require.EqualValues(t, tc.b1.Header, block.Header, tc.msg)
 			require.EqualValues(t, tc.b1.Data, block.Data, tc.msg)
 			require.EqualValues(t, tc.b1.Evidence, block.Evidence, tc.msg)
+			// set nil due to vote extensions are not presented in protobuf
+			tc.b1.LastCommit.VoteExtensions = nil
 			require.EqualValues(t, *tc.b1.LastCommit, *block.LastCommit, tc.msg)
 		} else {
 			require.Error(t, err, tc.msg)
@@ -845,6 +847,8 @@ func TestSignedHeaderProtoBuf(t *testing.T) {
 	stateID := RandStateID()
 
 	commit := randCommit(ctx, t, stateID)
+	// set nil due to vote-extensions are not presented in protobuf
+	commit.VoteExtensions = nil
 
 	h := MakeRandHeader()
 
