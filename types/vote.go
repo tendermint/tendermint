@@ -98,6 +98,15 @@ func (v *VoteExtension) IsRecoverable() bool {
 	return v.Type == tmproto.VoteExtensionType_THRESHOLD_RECOVER
 }
 
+// Clone returns a copy of current vote-extension
+func (v *VoteExtension) Clone() VoteExtension {
+	return VoteExtension{
+		Type:      v.Type,
+		Extension: v.Extension,
+		Signature: v.Signature,
+	}
+}
+
 // VoteFromProto attempts to convert the given serialization (Protobuf) type to
 // our Vote domain type. No validation is performed on the resulting vote -
 // this is left up to the caller to decide whether to call ValidateBasic or
@@ -205,7 +214,7 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	ext := bytes.Join(collectExtensions(vote.VoteExtensions), nil)
+	ext := bytes.Join(collectExtensions(vote.VoteExtensions, false), nil)
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X %X}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorProTxHash),
@@ -440,10 +449,6 @@ func (vote *Vote) HasVoteMessage() *tmcons.HasVote {
 	}
 }
 
-func VoteBlockRequestID(vote *Vote) []byte {
-	return voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
-}
-
 func VoteBlockRequestIDProto(vote *tmproto.Vote) []byte {
 	return voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
 }
@@ -513,10 +518,25 @@ func recoverableVoteExtensionIndexes(votes []*Vote) []int {
 	return nil
 }
 
-func collectExtensions(voteExtensions []VoteExtension) [][]byte {
+func collectExtensions(voteExtensions []VoteExtension, onlyRecoverable bool) [][]byte {
 	exts := make([][]byte, len(voteExtensions))
 	for i, ext := range voteExtensions {
+		if onlyRecoverable {
+			if !ext.IsRecoverable() {
+				continue
+			}
+		}
 		exts[i] = ext.Extension
 	}
 	return exts
+}
+
+// GetFirstVote returns the first not nil vote from a list, otherwise error
+func GetFirstVote(votes []*Vote) (*Vote, error) {
+	for _, vote := range votes {
+		if vote != nil {
+			return vote, nil
+		}
+	}
+	return nil, errors.New("unable to get a vote, votes list is empty")
 }

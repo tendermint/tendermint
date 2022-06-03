@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -380,14 +379,21 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, quorumSigns.VoteExts)
 }
 
-func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, voteExtSignItems []SignItem) error {
-	indexes := recoverableVoteExtensionIndexes(votes)
-	if len(indexes) != len(voteSet.thresholdVoteExtSigs) {
-		return errors.New("count of threshold signatures at voteSet doesn't match with the count of a recoverable at a vote")
+func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, signItems []SignItem) error {
+	if len(votes) == 0 || len(voteSet.thresholdVoteExtSigs) == 0 {
+		return nil
+	}
+	vote, err := GetFirstVote(votes)
+	if err != nil {
+		return err
+	}
+	signItems = GetRecoverableSingItems(vote.VoteExtensions, signItems)
+	if len(signItems) != len(voteSet.thresholdVoteExtSigs) {
+		return fmt.Errorf("count of threshold signatures (%d) at voteSet doesn't match with the count of a recoverable at a vote (%d) | %X",
+			len(voteSet.thresholdVoteExtSigs), len(signItems), voteSet.thresholdStateSig)
 	}
 	for i, thresholdVoteExtSig := range voteSet.thresholdVoteExtSigs {
-		signItem := voteExtSignItems[indexes[i]]
-		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signItem.ID, thresholdVoteExtSig)
+		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signItems[i].ID, thresholdVoteExtSig)
 		if !verified {
 			return fmt.Errorf("recovered incorrect vote-extension threshold signature %X voteSetCount %d",
 				thresholdVoteExtSig, len(votes))
@@ -748,7 +754,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
 
-	return NewCommit(
+	commit := NewCommit(
 		voteSet.GetHeight(),
 		voteSet.GetRound(),
 		*voteSet.maj23,
@@ -762,6 +768,15 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 			QuorumHash: voteSet.valSet.QuorumHash,
 		},
 	)
+
+	vote, err := GetFirstVote(voteSet.votes)
+	if err == nil {
+		for _, ext := range vote.VoteExtensions {
+			commit.VoteExtensions = append(commit.VoteExtensions, ext.Clone())
+		}
+	}
+
+	return commit
 }
 
 //--------------------------------------------------------------------------------

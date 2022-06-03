@@ -92,6 +92,17 @@ func MakeVoteExtensionSignItems(chainID string, protoVote *types.Vote, quorumTyp
 	return items, nil
 }
 
+// GetRecoverableSingItems returns a list of SignItems only for recoverable vote extensions
+func GetRecoverableSingItems(exts []VoteExtension, signItems []SignItem) []SignItem {
+	var res []SignItem
+	for i, ext := range exts {
+		if ext.IsRecoverable() {
+			res = append(res, signItems[i])
+		}
+	}
+	return res
+}
+
 func newSignItem(quorumType btcjson.LLMQType, quorumHash, reqID, raw []byte) SignItem {
 	return SignItem{
 		ReqID: reqID,

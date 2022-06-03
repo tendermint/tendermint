@@ -84,10 +84,11 @@ func TestSigsRecoverer(t *testing.T) {
 			verified = thresholdPubKey.VerifySignatureDigest(quorumSigns.State.ID, thresholdSigns.StateSign)
 			require.True(t, verified)
 
-			indexes := recoverableVoteExtensionIndexes(tc.votes)
-			for i, j := range indexes {
-				sig := thresholdSigns.VoteExtSigns[i]
-				verified = thresholdPubKey.VerifySignatureDigest(quorumSigns.VoteExts[j].ID, sig)
+			vote, err := GetFirstVote(tc.votes)
+			require.NoError(t, err)
+			signItems := GetRecoverableSingItems(vote.VoteExtensions, quorumSigns.VoteExts)
+			for i, sign := range thresholdSigns.VoteExtSigns {
+				verified = thresholdPubKey.VerifySignatureDigest(signItems[i].ID, sign)
 				require.True(t, verified)
 			}
 		})
