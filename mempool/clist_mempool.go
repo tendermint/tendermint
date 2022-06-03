@@ -191,14 +191,16 @@ func (mem *CListMempool) Unlock() {
 	mem.updateMtx.Unlock()
 }
 
-// Safe for concurrent use by multiple goroutines.
+// Size returns the number of valid transactions in the mempool. It is
+// thread-safe.
 func (mem *CListMempool) Size() int {
-	return mem.txs.Len()
+	return mem.txStore.Size()
 }
 
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) TxsBytes() int64 {
-	return atomic.LoadInt64(&mem.txsBytes)
+// SizeBytes return the total sum in bytes of all the valid transactions in the
+// mempool. It is thread-safe.
+func (mem *CListMempool) SizeBytes() int64 {
+	return atomic.LoadInt64(&mem.sizeBytes)
 }
 
 // Lock() must be help by the caller during execution.
@@ -211,36 +213,28 @@ func (mem *CListMempool) Flush() {
 	mem.updateMtx.RLock()
 	defer mem.updateMtx.RUnlock()
 
-	_ = atomic.SwapInt64(&mem.txsBytes, 0)
-	mem.cache.Reset()
+	mem.heightIndex.Reset()
+	mem.timestampIndex.Reset()
 
-	for e := mem.txs.Front(); e != nil; e = e.Next() {
-		mem.txs.Remove(e)
-		e.DetachPrev()
+	for _, wtx := range mem.txStore.GetAllTxs() {
+		mem.removeTx(wtx, false)
 	}
 
-	mem.txsMap.Range(func(key, _ interface{}) bool {
-		mem.txsMap.Delete(key)
-		return true
-	})
+	atomic.SwapInt64(&mem.sizeBytes, 0)
+	mem.cache.Reset()
 }
 
-// TxsFront returns the first transaction in the ordered list for peer
-// goroutines to call .NextWait() on.
-// FIXME: leaking implementation details!
-//
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) TxsFront() *clist.CElement {
-	return mem.txs.Front()
+// NextGossipTx returns the next valid transaction to gossip. A caller must wait
+// for WaitForNextTx to signal a transaction is available to gossip first. It is
+// thread-safe.
+func (mem *CListMempool) NextGossipTx() *clist.CElement {
+	return mem.gossipIndex.Front()
 }
 
-// TxsWaitChan returns a channel to wait on transactions. It will be closed
-// once the mempool is not empty (ie. the internal `mem.txs` has at least one
-// element)
-//
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) TxsWaitChan() <-chan struct{} {
-	return mem.txs.WaitChan()
+// WaitForNextTx returns a blocking channel that will be closed when the next
+// valid transaction is available to gossip. It is thread-safe.
+func (mem *CListMempool) WaitForNextTx() <-chan struct{} {
+	return mem.gossipIndex.WaitChan()
 }
 
 // It blocks if we're waiting on Update() or Reap().
