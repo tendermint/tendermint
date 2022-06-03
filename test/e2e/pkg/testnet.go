@@ -310,6 +310,12 @@ func (t Testnet) Validate() error {
 	default:
 		return errors.New("unsupported KeyType")
 	}
+	switch t.ABCIProtocol {
+	case ProtocolBuiltin, ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
+	default:
+		return fmt.Errorf("invalid ABCI protocol setting %q", t.ABCIProtocol)
+	}
+
 	for _, node := range t.Nodes {
 		if err := node.Validate(t); err != nil {
 			return fmt.Errorf("invalid node %q: %w", node.Name, err)
