@@ -2796,7 +2796,8 @@ func (cs *State) voteTimeout(round int32) time.Duration {
 }
 
 func (cs *State) commitTime(t time.Time) time.Time {
-	c := cs.state.ConsensusParams.Timeout.Commit
+	tp := cs.state.ConsensusParams.Timeout.TimeoutParamsOrDefaults()
+	c := tp.Commit
 	if cs.config.UnsafeCommitTimeoutOverride != 0 {
 		c = cs.config.UnsafeProposeTimeoutOverride
 	}
@@ -2804,10 +2805,12 @@ func (cs *State) commitTime(t time.Time) time.Time {
 }
 
 func (cs *State) bypassCommitTimeout() bool {
+	tp := cs.state.ConsensusParams.Timeout.TimeoutParamsOrDefaults()
+	b := tp.BypassCommitTimeout
 	if cs.config.UnsafeBypassCommitTimeoutOverride != nil {
 		return *cs.config.UnsafeBypassCommitTimeoutOverride
 	}
-	return cs.state.ConsensusParams.Timeout.BypassCommitTimeout
+	return b
 }
 
 func (cs *State) calculateProposalTimestampDifferenceMetric() {
