@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# This script is invoked by OSS-Fuzz to run fuzz tests against Tendermint core.
+# See https://github.com/google/oss-fuzz/blob/master/projects/tendermint/build.sh
 set -euo pipefail
 
 # Upgrade to Go 1.18. Remove when it's the default.
