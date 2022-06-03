@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 
@@ -11,14 +12,23 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-// Tx is an arbitrary byte array.
-// NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
-// Might we want types here ?
-type Tx []byte
+type (
+	// Tx is an arbitrary byte array.
+	// NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
+	// Might we want types here ?
+	Tx []byte
+
+	// TxKey is the fixed length array key used as an index.
+	TxKey [sha256.Size]byte
+)
 
 // Hash computes the TMHASH hash of the wire encoded transaction.
 func (tx Tx) Hash() []byte {
 	return tmhash.Sum(tx)
+}
+
+func (tx Tx) Key() TxKey {
+	return sha256.Sum256(tx)
 }
 
 // String returns the hex-encoded transaction as a string.
