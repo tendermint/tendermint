@@ -12,6 +12,9 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
+// TxKeySize is the size of the transaction key index
+const TxKeySize = sha256.Size
+
 type (
 	// Tx is an arbitrary byte array.
 	// NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
@@ -19,7 +22,7 @@ type (
 	Tx []byte
 
 	// TxKey is the fixed length array key used as an index.
-	TxKey [sha256.Size]byte
+	TxKey [TxKeySize]byte
 )
 
 // Hash computes the TMHASH hash of the wire encoded transaction.

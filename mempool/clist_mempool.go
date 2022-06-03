@@ -2,9 +2,7 @@ package mempool
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
-	"sync"
 	"sync/atomic"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -20,12 +18,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TxKeySize is the size of the transaction key index
-const TxKeySize = sha256.Size
-
 var newline = []byte("\n")
-
-//--------------------------------------------------------------------------------
 
 // CListMempool is an ordered in-memory pool for transactions before they are
 // proposed in a consensus round. Transaction validity is checked using the
@@ -33,25 +26,35 @@ var newline = []byte("\n")
 // mempool uses a concurrent list structure for storing transactions that can
 // be efficiently accessed by multiple concurrent readers.
 type CListMempool struct {
-	// Atomic integers
-	height   int64 // the last block Update()'d to
-	txsBytes int64 // total size of mempool, in bytes
+	logger       log.Logger
+	metrics      *Metrics
+	config       *cfg.MempoolConfig
+	proxyAppConn proxy.AppConnMempool
 
 	// notify listeners (ie. consensus) when txs are available
 	notifiedTxsAvailable bool
 	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 
-	config *cfg.MempoolConfig
+	// height defines the last block height process during Update()
+	height int64
 
-	// Exclusive mutex for Update method to prevent concurrent execution of
-	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
-	updateMtx tmsync.RWMutex
-	preCheck  PreCheckFunc
-	postCheck PostCheckFunc
+	// sizeBytes defines the total size of the mempool (sum of all tx bytes)
+	sizeBytes int64
 
-	wal          *auto.AutoFile // a log of mempool txs
-	txs          *clist.CList   // concurrent linked-list of good txs
-	proxyAppConn proxy.AppConnMempool
+	wal *auto.AutoFile // a log of mempool txs
+
+	// cache defines a fixed-size cache of already seen transactions as this
+	// reduces pressure on the proxyApp.
+	cache TxCache
+
+	// txStore defines the main storage of valid transactions. Indexes are built
+	// on top of this store.
+	txStore *TxStore
+
+	// gossipIndex defines the gossiping index of valid transactions via a
+	// thread-safe linked-list. We also use the gossip index as a cursor for
+	// rechecking transactions already in the mempool.
+	gossipIndex *clist.CList
 
 	// Track whether we're rechecking txs.
 	// These are not protected by a mutex and are expected to be mutated in
@@ -59,17 +62,23 @@ type CListMempool struct {
 	recheckCursor *clist.CElement // next expected response
 	recheckEnd    *clist.CElement // re-checking stops here
 
-	// Map for quick access to txs to record sender in CheckTx.
-	// txsMap: txKey -> CElement
-	txsMap sync.Map
+	// priorityIndex defines the priority index of valid transactions via a
+	// thread-safe priority queue.
+	priorityIndex *TxPriorityQueue
 
-	// Keep a cache of already-seen txs.
-	// This reduces the pressure on the proxyApp.
-	cache txCache
+	// heightIndex defines a height-based, in ascending order, transaction index.
+	// i.e. older transactions are first.
+	heightIndex *WrappedTxList
 
-	logger log.Logger
+	// timestampIndex defines a timestamp-based, in ascending order, transaction
+	// index. i.e. older transactions are first.
+	timestampIndex *WrappedTxList
 
-	metrics *Metrics
+	// Exclusive mutex for Update method to prevent concurrent execution of
+	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
+	updateMtx tmsync.RWMutex
+	preCheck  PreCheckFunc
+	postCheck PostCheckFunc
 }
 
 var _ Mempool = &CListMempool{}
@@ -84,25 +93,35 @@ func NewCListMempool(
 	height int64,
 	options ...CListMempoolOption,
 ) *CListMempool {
+
 	mempool := &CListMempool{
+		logger:        log.NewNopLogger(),
 		config:        config,
 		proxyAppConn:  proxyAppConn,
-		txs:           clist.New(),
 		height:        height,
-		recheckCursor: nil,
-		recheckEnd:    nil,
-		logger:        log.NewNopLogger(),
+		cache:         NopTxCache{},
 		metrics:       NopMetrics(),
+		txStore:       NewTxStore(),
+		gossipIndex:   clist.New(),
+		priorityIndex: NewTxPriorityQueue(),
+		heightIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+			return wtx1.height >= wtx2.height
+		}),
+		timestampIndex: NewWrappedTxList(func(wtx1, wtx2 *WrappedTx) bool {
+			return wtx1.timestamp.After(wtx2.timestamp) || wtx1.timestamp.Equal(wtx2.timestamp)
+		}),
 	}
+
 	if config.CacheSize > 0 {
-		mempool.cache = newMapTxCache(config.CacheSize)
-	} else {
-		mempool.cache = nopTxCache{}
+		mempool.cache = NewLRUTxCache(config.CacheSize)
 	}
+
 	proxyAppConn.SetResponseCallback(mempool.globalCb)
+
 	for _, option := range options {
 		option(mempool)
 	}
+
 	return mempool
 }
 
