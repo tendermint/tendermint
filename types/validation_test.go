@@ -33,12 +33,12 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 
 	stateID := RandStateID().WithHeight(v.Height - 1)
 
-	signIDs, err := MakeSignIDs(chainID, btcjson.LLMQType_5_60, quorumHash, v, stateID)
+	quorumSigns, err := MakeQuorumSigns(chainID, btcjson.LLMQType_5_60, quorumHash, v, stateID)
 	require.NoError(t, err)
 
-	blockSig, err := privKey.SignDigest(signIDs.BlockID.ID)
+	blockSig, err := privKey.SignDigest(quorumSigns.Block.ID)
 	require.NoError(t, err)
-	stateSig, err := privKey.SignDigest(signIDs.StateID.ID)
+	stateSig, err := privKey.SignDigest(quorumSigns.State.ID)
 	require.NoError(t, err)
 	vote.BlockSignature = blockSig
 	vote.StateSignature = stateSig

@@ -173,7 +173,7 @@ func (rts *reactorTestSuite) addNode(
 					ThresholdVoteSigns: types.ThresholdVoteSigns{
 						BlockSign:    vote.BlockSignature,
 						StateSign:    vote.StateSignature,
-						VoteExtSigns: types.VoteExtensions2BytesSlices(vote.VoteExtensions, types.OnlyRecoverable()),
+						VoteExtSigns: types.VoteExtSigns2BytesSlices(vote.VoteExtensions, true),
 					},
 					QuorumHash: state.Validators.QuorumHash,
 				},

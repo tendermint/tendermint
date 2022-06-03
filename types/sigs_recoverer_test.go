@@ -74,20 +74,20 @@ func TestSigsRecoverer(t *testing.T) {
 			thresholdSigns, err := sr.Recover()
 			require.NoError(t, err)
 
-			signIDs, err := MakeSignIDs(chainID, quorumType, quorumHash, tc.votes[0].ToProto(), stateID)
+			quorumSigns, err := MakeQuorumSigns(chainID, quorumType, quorumHash, tc.votes[0].ToProto(), stateID)
 			require.NoError(t, err)
 
 			thresholdPubKey, err := bls12381.RecoverThresholdPublicKeyFromPublicKeys(pubKeys, IDs)
 			require.NoError(t, err)
-			verified := thresholdPubKey.VerifySignatureDigest(signIDs.BlockID.ID, thresholdSigns.BlockSign)
+			verified := thresholdPubKey.VerifySignatureDigest(quorumSigns.Block.ID, thresholdSigns.BlockSign)
 			require.True(t, verified)
-			verified = thresholdPubKey.VerifySignatureDigest(signIDs.StateID.ID, thresholdSigns.StateSign)
+			verified = thresholdPubKey.VerifySignatureDigest(quorumSigns.State.ID, thresholdSigns.StateSign)
 			require.True(t, verified)
 
 			indexes := recoverableVoteExtensionIndexes(tc.votes)
 			for i, j := range indexes {
 				sig := thresholdSigns.VoteExtSigns[i]
-				verified = thresholdPubKey.VerifySignatureDigest(signIDs.VoteExtIDs[j].ID, sig)
+				verified = thresholdPubKey.VerifySignatureDigest(quorumSigns.VoteExts[j].ID, sig)
 				require.True(t, verified)
 			}
 		})

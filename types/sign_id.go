@@ -13,24 +13,24 @@ var (
 	errUnexpectedVoteType = errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
 )
 
-// SignIDs holds all possible signID, like blockID, stateID and signID for each vote-extensions
-type SignIDs struct {
-	BlockID    SignIDItem
-	StateID    SignIDItem
-	VoteExtIDs []SignIDItem
+// QuorumSigns holds data which is necessary for signing and verification block, state, and each vote-extension in a list
+type QuorumSigns struct {
+	Block    SignItem
+	State    SignItem
+	VoteExts []SignItem
 }
 
-// SignIDItem represents quorum sing data, like a request id, message bytes, sha256 hash of message and signID
-type SignIDItem struct {
+// SignItem represents quorum sing data, like a request id, message bytes, sha256 hash of message and signID
+type SignItem struct {
 	ReqID []byte
 	ID    []byte
 	Hash  []byte
 	Raw   []byte
 }
 
-// MakeSignIDsWithVoteSet creates and returns SignIDs struct built with a vote-set and an added vote
-func MakeSignIDsWithVoteSet(voteSet *VoteSet, vote *types.Vote) (SignIDs, error) {
-	return MakeSignIDs(
+// MakeQuorumSignsWithVoteSet creates and returns QuorumSigns struct built with a vote-set and an added vote
+func MakeQuorumSignsWithVoteSet(voteSet *VoteSet, vote *types.Vote) (QuorumSigns, error) {
+	return MakeQuorumSigns(
 		voteSet.chainID,
 		voteSet.valSet.QuorumType,
 		voteSet.valSet.QuorumHash,
@@ -39,43 +39,43 @@ func MakeSignIDsWithVoteSet(voteSet *VoteSet, vote *types.Vote) (SignIDs, error)
 	)
 }
 
-// MakeSignIDs builds signing data for block, state and vote-extensions
+// MakeQuorumSigns builds signing data for block, state and vote-extensions
 // each a sign-id item consist of request-id, raw data, hash of raw and id
-func MakeSignIDs(
+func MakeQuorumSigns(
 	chainID string,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	protoVote *types.Vote,
 	stateID StateID,
-) (SignIDs, error) {
-	signIDs := SignIDs{
-		BlockID: MakeBlockSignID(chainID, protoVote, quorumType, quorumHash),
-		StateID: MakeStateSignID(chainID, stateID, quorumType, quorumHash),
+) (QuorumSigns, error) {
+	quorumSign := QuorumSigns{
+		Block: MakeBlockSignItem(chainID, protoVote, quorumType, quorumHash),
+		State: MakeStateSignItem(chainID, stateID, quorumType, quorumHash),
 	}
 	var err error
-	signIDs.VoteExtIDs, err = MakeVoteExtensionSignIDs(chainID, protoVote, quorumType, quorumHash)
+	quorumSign.VoteExts, err = MakeVoteExtensionSignItems(chainID, protoVote, quorumType, quorumHash)
 	if err != nil {
-		return SignIDs{}, err
+		return QuorumSigns{}, err
 	}
-	return signIDs, nil
+	return quorumSign, nil
 }
 
-// MakeBlockSignID creates SignIDItem struct for a block
-func MakeBlockSignID(chainID string, vote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) SignIDItem {
+// MakeBlockSignItem creates SignItem struct for a block
+func MakeBlockSignItem(chainID string, vote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) SignItem {
 	reqID := voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
 	raw := VoteBlockSignBytes(chainID, vote)
-	return newSignIDItem(quorumType, quorumHash, reqID, raw)
+	return newSignItem(quorumType, quorumHash, reqID, raw)
 }
 
-// MakeStateSignID creates SignIDItem struct for a state
-func MakeStateSignID(chainID string, stateID StateID, quorumType btcjson.LLMQType, quorumHash []byte) SignIDItem {
+// MakeStateSignItem creates SignItem struct for a state
+func MakeStateSignItem(chainID string, stateID StateID, quorumType btcjson.LLMQType, quorumHash []byte) SignItem {
 	reqID := stateID.SignRequestID()
 	raw := stateID.SignBytes(chainID)
-	return newSignIDItem(quorumType, quorumHash, reqID, raw)
+	return newSignItem(quorumType, quorumHash, reqID, raw)
 }
 
-// MakeVoteExtensionSignIDs  creates a list SignIDItem structs for a vote extensions
-func MakeVoteExtensionSignIDs(chainID string, protoVote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) ([]SignIDItem, error) {
+// MakeVoteExtensionSignItems  creates a list SignItem structs for a vote extensions
+func MakeVoteExtensionSignItems(chainID string, protoVote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) ([]SignItem, error) {
 	// We only sign vote extensions for precommits
 	if protoVote.Type != types.PrecommitType {
 		if len(protoVote.VoteExtensions) > 0 {
@@ -83,17 +83,17 @@ func MakeVoteExtensionSignIDs(chainID string, protoVote *types.Vote, quorumType 
 		}
 		return nil, nil
 	}
-	items := make([]SignIDItem, len(protoVote.VoteExtensions))
+	items := make([]SignItem, len(protoVote.VoteExtensions))
 	reqID := VoteExtensionRequestID(protoVote)
 	for i, ext := range protoVote.VoteExtensions {
 		raw := VoteExtensionSignBytes(chainID, protoVote.Height, protoVote.Round, ext)
-		items[i] = newSignIDItem(quorumType, quorumHash, reqID, raw)
+		items[i] = newSignItem(quorumType, quorumHash, reqID, raw)
 	}
 	return items, nil
 }
 
-func newSignIDItem(quorumType btcjson.LLMQType, quorumHash, reqID, raw []byte) SignIDItem {
-	return SignIDItem{
+func newSignItem(quorumType btcjson.LLMQType, quorumHash, reqID, raw []byte) SignItem {
+	return SignItem{
 		ReqID: reqID,
 		ID:    makeSignID(raw, reqID, quorumType, quorumHash),
 		Hash:  crypto.Checksum(raw),

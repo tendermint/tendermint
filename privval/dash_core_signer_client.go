@@ -238,13 +238,13 @@ func (sc *DashCoreSignerClient) SignVote(
 		return fmt.Errorf("quorum hash is not the right length %s", quorumHash.String())
 	}
 
-	signIDs, err := types.MakeSignIDs(chainID, quorumType, quorumHash, protoVote, stateID)
+	quorumSigns, err := types.MakeQuorumSigns(chainID, quorumType, quorumHash, protoVote, stateID)
 	if err != nil {
 		return err
 	}
-	blockSignID := signIDs.BlockID
+	blockQS := quorumSigns.Block
 
-	qs, err := sc.quorumSign(quorumType, quorumHash, blockSignID)
+	qs, err := sc.quorumSign(quorumType, quorumHash, blockQS)
 	if err != nil {
 		return err
 	}
@@ -253,16 +253,16 @@ func (sc *DashCoreSignerClient) SignVote(
 	proTxHash, _ := sc.GetProTxHash(ctx)
 
 	logger.Debug("signed vote", "height", protoVote.Height, "round", protoVote.Round, "voteType", protoVote.Type,
-		"quorumType", quorumType, "quorumHash", quorumHash, "signature", qs.sign, "signBytes", blockSignID.Raw,
+		"quorumType", quorumType, "quorumHash", quorumHash, "signature", qs.sign, "signBytes", blockQS.Raw,
 		"proTxHash", proTxHash, "coreBlockRequestId", qs.ID, "blockRequestId",
-		hex.EncodeToString(blockSignID.ReqID), "coreSignId", tmbytes.Reverse(qs.signHash),
-		"signId", hex.EncodeToString(blockSignID.ID))
+		hex.EncodeToString(blockQS.ReqID), "coreSignId", tmbytes.Reverse(qs.signHash),
+		"signId", hex.EncodeToString(blockQS.ID))
 
 	pubKey, err := sc.GetPubKey(ctx, quorumHash)
 	if err != nil {
 		return &RemoteSignerError{Code: 500, Description: err.Error()}
 	}
-	verified := pubKey.VerifySignatureDigest(signIDs.BlockID.ID, qs.sign)
+	verified := pubKey.VerifySignatureDigest(quorumSigns.Block.ID, qs.sign)
 	if verified {
 		logger.Debug("Verified core signature", "height", protoVote.Height, "round", protoVote.Round, "pubkey", pubKey)
 	} else {
@@ -273,14 +273,14 @@ func (sc *DashCoreSignerClient) SignVote(
 
 	// Only sign the state when voting for the block
 	if protoVote.BlockID.Hash != nil {
-		resp, err := sc.quorumSign(quorumType, quorumHash, signIDs.StateID)
+		resp, err := sc.quorumSign(quorumType, quorumHash, quorumSigns.State)
 		if err != nil {
 			return err
 		}
 		protoVote.StateSignature = resp.sign
 	}
 
-	return sc.signVoteExtensions(quorumType, quorumHash, protoVote, signIDs)
+	return sc.signVoteExtensions(quorumType, quorumHash, protoVote, quorumSigns)
 }
 
 // SignProposal requests a remote signer to sign a proposal
@@ -290,11 +290,11 @@ func (sc *DashCoreSignerClient) SignProposal(
 	if quorumType == 0 {
 		return nil, fmt.Errorf("error signing proposal with invalid quorum type")
 	}
-	signID := types.SignIDItem{
+	signItem := types.SignItem{
 		ReqID: types.ProposalRequestIDProto(proposalProto),
 		Hash:  crypto.Checksum(types.ProposalBlockSignBytes(chainID, proposalProto)),
 	}
-	resp, err := sc.quorumSign(quorumType, quorumHash, signID)
+	resp, err := sc.quorumSign(quorumType, quorumHash, signItem)
 	if err != nil {
 		return nil, err
 	}
@@ -339,7 +339,7 @@ func (sc *DashCoreSignerClient) signVoteExtensions(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	protoVote *tmproto.Vote,
-	signIDs types.SignIDs,
+	quorumSigns types.QuorumSigns,
 ) error {
 	if protoVote.Type != tmproto.PrecommitType {
 		if len(protoVote.VoteExtensions) > 0 {
@@ -348,7 +348,7 @@ func (sc *DashCoreSignerClient) signVoteExtensions(
 		return nil
 	}
 	for i := range protoVote.VoteExtensions {
-		voteExt := signIDs.VoteExtIDs[i]
+		voteExt := quorumSigns.VoteExts[i]
 		resp, err := sc.quorumSign(quorumType, quorumHash, voteExt)
 		if err != nil {
 			return err
@@ -361,9 +361,9 @@ func (sc *DashCoreSignerClient) signVoteExtensions(
 func (sc *DashCoreSignerClient) quorumSign(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	signID types.SignIDItem,
+	signItem types.SignItem,
 ) (*quorumSignResult, error) {
-	resp, err := sc.dashCoreRPCClient.QuorumSign(quorumType, signID.ReqID, signID.Hash, quorumHash)
+	resp, err := sc.dashCoreRPCClient.QuorumSign(quorumType, signItem.ReqID, signItem.Hash, quorumHash)
 	if err != nil {
 		return nil, &RemoteSignerError{Code: 500, Description: err.Error()}
 	}

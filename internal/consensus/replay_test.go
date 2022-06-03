@@ -1406,7 +1406,7 @@ func makeBlockchainFromWAL(t *testing.T, wal WAL, genDoc *types.GenesisDoc) ([]*
 						ThresholdVoteSigns: types.ThresholdVoteSigns{
 							BlockSign:    p.BlockSignature,
 							StateSign:    p.StateSignature,
-							VoteExtSigns: types.VoteExtensions2BytesSlices(p.VoteExtensions, types.OnlyRecoverable()),
+							VoteExtSigns: types.VoteExtSigns2BytesSlices(p.VoteExtensions, true),
 						},
 						QuorumHash: crypto.RandQuorumHash(),
 					},

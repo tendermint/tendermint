@@ -16,7 +16,7 @@ func TestMakeBlockSignID(t *testing.T) {
 	testCases := []struct {
 		vote       Vote
 		quorumHash []byte
-		want       SignIDItem
+		want       SignItem
 	}{
 		{
 			vote: Vote{
@@ -25,7 +25,7 @@ func TestMakeBlockSignID(t *testing.T) {
 				ValidatorProTxHash: mustHexDecode("9CC13F685BC3EA0FCA99B87F42ABCC934C6305AA47F62A32266A2B9D55306B7B"),
 			},
 			quorumHash: mustHexDecode("6A12D9CF7091D69072E254B297AEF15997093E480FDE295E09A7DE73B31CEEDD"),
-			want: SignIDItem{
+			want: SignItem{
 				ReqID: mustHexDecode("C8F2E1FE35DE03AC94F76191F59CAD1BA1F7A3C63742B7125990D996315001CC"),
 				ID:    mustHexDecode("CE3AA8C6C6E32F54430C703F198E7E810DFBC7680EBCB549D61B9EBE49530339"),
 				Hash:  mustHexDecode("4BEAC39C516BEB1FDEBC569C0468B91D999050CA47B4AA12AFA825CD4E7EDAB3"),
@@ -35,8 +35,8 @@ func TestMakeBlockSignID(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test-case #%d", i), func(t *testing.T) {
-			signID := MakeBlockSignID(chainID, tc.vote.ToProto(), btcjson.LLMQType_5_60, tc.quorumHash)
-			require.Equal(t, tc.want, signID)
+			signItem := MakeBlockSignItem(chainID, tc.vote.ToProto(), btcjson.LLMQType_5_60, tc.quorumHash)
+			require.Equal(t, tc.want, signItem)
 		})
 	}
 }
@@ -46,7 +46,7 @@ func TestMakeStateSignID(t *testing.T) {
 	testCases := []struct {
 		stateID    StateID
 		quorumHash []byte
-		want       SignIDItem
+		want       SignItem
 	}{
 		{
 			stateID: StateID{
@@ -54,7 +54,7 @@ func TestMakeStateSignID(t *testing.T) {
 				LastAppHash: mustHexDecode("524F1D03D1D81E94A099042736D40BD9681B867321443FF58A4568E274DBD83B"),
 			},
 			quorumHash: mustHexDecode("6A12D9CF7091D69072E254B297AEF15997093E480FDE295E09A7DE73B31CEEDD"),
-			want: SignIDItem{
+			want: SignItem{
 				ReqID: mustHexDecode("76D44F9A90D4B7974B3F6CA1A36D203F5163BCDE4A62095E5A0BF65AC94C35C0"),
 				ID:    mustHexDecode("8DE1C69FE4F9E89E7BAB5329CF97BD109ECD4E2D04F0B1B41653B1F02A765BA8"),
 				Hash:  mustHexDecode("85944D1C7755EDCDA86815CC69CF3961E5AAC5F6CB214B256EA5907195603ED4"),
@@ -64,18 +64,18 @@ func TestMakeStateSignID(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test-case #%d", i), func(t *testing.T) {
-			signID := MakeStateSignID(chainID, tc.stateID, btcjson.LLMQType_5_60, tc.quorumHash)
-			require.Equal(t, tc.want, signID)
+			signItem := MakeStateSignItem(chainID, tc.stateID, btcjson.LLMQType_5_60, tc.quorumHash)
+			require.Equal(t, tc.want, signItem)
 		})
 	}
 }
 
-func TestMakeVoteExtensionSignIDs(t *testing.T) {
+func TestMakeVoteExtensionSignsData(t *testing.T) {
 	const chainID = "dash-platform"
 	testCases := []struct {
 		vote       Vote
 		quorumHash []byte
-		want       []SignIDItem
+		want       []SignItem
 	}{
 		{
 			vote: Vote{
@@ -94,7 +94,7 @@ func TestMakeVoteExtensionSignIDs(t *testing.T) {
 				},
 			},
 			quorumHash: mustHexDecode("6A12D9CF7091D69072E254B297AEF15997093E480FDE295E09A7DE73B31CEEDD"),
-			want: []SignIDItem{
+			want: []SignItem{
 				{
 					ReqID: mustHexDecode("FB95F2CA6530F02AC623589D7938643FF22AE79A75DD79AEA1C8871162DE675E"),
 					ID:    mustHexDecode("533524404D3A905F5AC9A30FCEB5A922EAD96F30DA02F979EE41C4342F540467"),
@@ -112,10 +112,10 @@ func TestMakeVoteExtensionSignIDs(t *testing.T) {
 	}
 	for i, tc := range testCases {
 		t.Run(fmt.Sprintf("test-case #%d", i), func(t *testing.T) {
-			signIDs, err := MakeVoteExtensionSignIDs(chainID, tc.vote.ToProto(), btcjson.LLMQType_5_60, tc.quorumHash)
+			signItems, err := MakeVoteExtensionSignItems(chainID, tc.vote.ToProto(), btcjson.LLMQType_5_60, tc.quorumHash)
 			require.NoError(t, err)
-			for j, signID := range signIDs {
-				require.Equal(t, tc.want[j], signID)
+			for j, signItem := range signItems {
+				require.Equal(t, tc.want[j], signItem)
 			}
 		})
 	}

@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -223,13 +224,13 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 				voteSet.chainID, val.PubKey, val.ProTxHash, err))
 	}
 
-	signIDs, err := MakeSignIDsWithVoteSet(voteSet, vote.ToProto())
+	quorumSigns, err := MakeQuorumSignsWithVoteSet(voteSet, vote.ToProto())
 	if err != nil {
 		return false, err
 	}
 
 	// Add vote and get conflicting vote if any.
-	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower, signIDs)
+	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower, quorumSigns)
 	if conflicting != nil {
 		return added, NewConflictingVoteError(conflicting, vote)
 	}
@@ -263,7 +264,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 	vote *Vote,
 	blockKey string,
 	votingPower int64,
-	signIDs SignIDs,
+	quorumSigns QuorumSigns,
 ) (added bool, conflicting *Vote) {
 	valIndex := vote.ValidatorIndex
 
@@ -325,7 +326,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 			//  voteSet.height, voteSet.round, voteSet.signedMsgType, quorum)
 			voteSet.maj23 = &maj23BlockID
 			if voteSet.signedMsgType == tmproto.PrecommitType {
-				err := voteSet.recoverThresholdSignsAndVerify(votesByBlock, signIDs)
+				err := voteSet.recoverThresholdSignsAndVerify(votesByBlock, quorumSigns)
 				if err != nil {
 					// fmt.Printf("error %v quorum %d\n", err, quorum)
 					// for i, vote := range votesByBlock.votes {
@@ -346,7 +347,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 	return true, conflicting
 }
 
-func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, signIDs SignIDs) error {
+func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, quorumSigns QuorumSigns) error {
 	if len(blockVotes.votes) == 0 {
 		return nil
 	}
@@ -364,26 +365,29 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, s
 	if err != nil {
 		return err
 	}
-	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signIDs.BlockID.ID, voteSet.thresholdBlockSig)
+	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.Block.ID, voteSet.thresholdBlockSig)
 	if !verified {
 		return fmt.Errorf("recovered incorrect threshold signature %X voteSetCount %d",
 			voteSet.thresholdBlockSig, len(blockVotes.votes))
 	}
 	if voteSet.thresholdStateSig != nil {
-		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signIDs.StateID.ID, voteSet.thresholdStateSig)
+		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.State.ID, voteSet.thresholdStateSig)
 		if !verified {
 			return fmt.Errorf("recovered incorrect state threshold signature %X voteSetCount %d",
 				voteSet.thresholdStateSig, len(blockVotes.votes))
 		}
 	}
-	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, signIDs.VoteExtIDs)
+	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, quorumSigns.VoteExts)
 }
 
-func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, voteExtSignIDs []SignIDItem) error {
+func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, voteExtSignItems []SignItem) error {
 	indexes := recoverableVoteExtensionIndexes(votes)
+	if len(indexes) != len(voteSet.thresholdVoteExtSigs) {
+		return errors.New("count of threshold signatures at voteSet doesn't match with the count of a recoverable at a vote")
+	}
 	for i, thresholdVoteExtSig := range voteSet.thresholdVoteExtSigs {
-		signID := voteExtSignIDs[indexes[i]]
-		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signID.ID, thresholdVoteExtSig)
+		signItem := voteExtSignItems[indexes[i]]
+		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signItem.ID, thresholdVoteExtSig)
 		if !verified {
 			return fmt.Errorf("recovered incorrect vote-extension threshold signature %X voteSetCount %d",
 				thresholdVoteExtSig, len(votes))

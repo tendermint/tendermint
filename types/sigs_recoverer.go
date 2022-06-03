@@ -88,7 +88,6 @@ func (v *SigsRecoverer) recoveryOnlyBlockSig() {
 }
 
 func (v *SigsRecoverer) recoverStateSig(thresholdSigns *ThresholdVoteSigns) error {
-	//fmt.Printf("[debug] v.shouldRecoveryStateSig = %v\n", v.shouldRecoverVoteExtSigs)
 	if !v.shouldRecoveryStateSig {
 		return nil
 	}

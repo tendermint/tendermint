@@ -678,7 +678,7 @@ func (pv *FilePV) signVote(
 		return fmt.Errorf("invalid height in StateID: is %d, should be %d", stateID.Height, height-1)
 	}
 
-	signIDs, err := types.MakeSignIDs(chainID, quorumType, quorumHash, vote, stateID)
+	quorumSigns, err := types.MakeQuorumSigns(chainID, quorumType, quorumHash, vote, stateID)
 	if err != nil {
 		return err
 	}
@@ -694,8 +694,8 @@ func (pv *FilePV) signVote(
 	// signature will always be empty.
 	var extSigns [][]byte
 	if vote.Type == tmproto.PrecommitType {
-		for _, extSignID := range signIDs.VoteExtIDs {
-			extSig, err := privKey.SignDigest(extSignID.ID)
+		for _, extSignItem := range quorumSigns.VoteExts {
+			extSig, err := privKey.SignDigest(extSignItem.ID)
 			if err != nil {
 				return err
 			}
@@ -711,7 +711,7 @@ func (pv *FilePV) signVote(
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signIDs.BlockID.Raw, lss.BlockSignBytes) && bytes.Equal(signIDs.StateID.Raw, lss.StateSignBytes) {
+		if bytes.Equal(quorumSigns.Block.Raw, lss.BlockSignBytes) && bytes.Equal(quorumSigns.State.Raw, lss.StateSignBytes) {
 			vote.BlockSignature = lss.BlockSignature
 			vote.StateSignature = lss.StateSignature
 		} else {
@@ -723,14 +723,14 @@ func (pv *FilePV) signVote(
 		return nil
 	}
 
-	sigBlock, err := privKey.SignDigest(signIDs.BlockID.ID)
+	sigBlock, err := privKey.SignDigest(quorumSigns.Block.ID)
 	if err != nil {
 		return err
 	}
 
 	var sigState []byte
 	if vote.BlockID.Hash != nil {
-		sigState, err = privKey.SignDigest(signIDs.StateID.ID)
+		sigState, err = privKey.SignDigest(quorumSigns.State.ID)
 		if err != nil {
 			return err
 		}
@@ -744,7 +744,7 @@ func (pv *FilePV) signVote(
 	//	   sigBlock, vote)
 	//  }
 
-	pv.saveSigned(height, round, step, signIDs.BlockID.Raw, sigBlock, signIDs.StateID.Raw, sigState)
+	pv.saveSigned(height, round, step, quorumSigns.Block.Raw, sigBlock, quorumSigns.State.Raw, sigState)
 
 	vote.BlockSignature = sigBlock
 	vote.StateSignature = sigState

@@ -914,15 +914,6 @@ func (vals *ValidatorSet) UpdateWithChangeSet(
 	return vals.updateWithChangeSet(changes, true, newThresholdPublicKey, newQuorumHash)
 }
 
-func (vals *ValidatorSet) CommitSignIds(chainID string, commit *Commit) ([]byte, []byte) {
-
-	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
-
-	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
-
-	return blockSignID, stateSignID
-}
-
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
 //
 // It checks all the signatures! While it's safe to exit as soon as we have
@@ -948,26 +939,26 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 	}
 
 	canonVote := commit.GetCanonicalVote()
-	signIDs, err := MakeSignIDs(chainID, vals.QuorumType, vals.QuorumHash, canonVote.ToProto(), stateID)
+	quorumSigns, err := MakeQuorumSigns(chainID, vals.QuorumType, vals.QuorumHash, canonVote.ToProto(), stateID)
 	if err != nil {
 		return err
 	}
 
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(signIDs.BlockID.ID, commit.ThresholdBlockSignature) {
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.Block.ID, commit.ThresholdBlockSignature) {
 		return fmt.Errorf(
 			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
-			signIDs.BlockID.Raw, signIDs.BlockID.ID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
+			quorumSigns.Block.Raw, quorumSigns.Block.ID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
 	}
 
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(signIDs.StateID.ID, commit.ThresholdStateSignature) {
+	if !vals.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.State.ID, commit.ThresholdStateSignature) {
 		return fmt.Errorf("incorrect threshold state signature bytes: %X commit: %v valQuorumHash %X",
-			signIDs.StateID.Raw, commit, vals.QuorumHash)
+			quorumSigns.State.Raw, commit, vals.QuorumHash)
 	}
 
 	indexes := recoverableVoteExtensionIndexes([]*Vote{canonVote})
 	if len(indexes) > 0 {
 		for i, thresholdSign := range commit.ThresholdVoteExtensionSignatures {
-			ext := signIDs.VoteExtIDs[indexes[i]]
+			ext := quorumSigns.VoteExts[indexes[i]]
 			if !vals.ThresholdPublicKey.VerifySignatureDigest(ext.ID, thresholdSign) {
 				return fmt.Errorf("incorrect threshold vote-extension signature bytes: %X commit: %v valQuorumHash %X",
 					ext.Raw, commit, vals.QuorumHash)

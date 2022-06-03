@@ -281,27 +281,24 @@ func (pv *MockPV) SignVote(
 		vote.StateSignature = stateSignature
 	}
 
-	var extSigns [][]byte
+	if vote.Type != tmproto.PrecommitType {
+		if len(vote.VoteExtensions) > 0 {
+			return errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
+		}
+		return nil
+	}
+
 	// We only sign vote extensions for precommits
-	if vote.Type == tmproto.PrecommitType {
-		extSignIDs, err := MakeVoteExtensionSignIDs(useChainID, vote, quorumType, quorumHash)
+	extSigns, err := MakeVoteExtensionSignItems(useChainID, vote, quorumType, quorumHash)
+	if err != nil {
+		return err
+	}
+	for i, extSign := range extSigns {
+		sign, err := privKey.SignDigest(extSign.ID)
 		if err != nil {
 			return err
 		}
-		for _, extSignID := range extSignIDs {
-			extSig, err := privKey.SignDigest(extSignID.ID)
-			if err != nil {
-				return err
-			}
-			extSigns = append(extSigns, extSig)
-		}
-	} else if len(vote.VoteExtensions) > 0 {
-		return errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
-	}
-	if len(extSigns) > 0 {
-		for i := range vote.VoteExtensions {
-			vote.VoteExtensions[i].Signature = extSigns[i]
-		}
+		vote.VoteExtensions[i].Signature = sign
 	}
 	return nil
 }

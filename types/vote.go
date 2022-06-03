@@ -169,7 +169,7 @@ func VoteExtensionRequestID(vote *tmproto.Vote) []byte {
 
 // VoteBlockSignID returns signID that should be signed for the block
 func VoteBlockSignID(chainID string, vote *tmproto.Vote, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	signID := MakeBlockSignID(chainID, vote, quorumType, quorumHash)
+	signID := MakeBlockSignItem(chainID, vote, quorumType, quorumHash)
 	return signID.ID
 }
 
@@ -232,11 +232,11 @@ func (vote *Vote) VerifyWithExtension(
 	proTxHash ProTxHash,
 	stateID StateID,
 ) error {
-	signIDs, err := MakeSignIDs(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	quorumSigns, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
 	if err != nil {
 		return err
 	}
-	err = vote.verifyBasic(proTxHash, pubKey, signIDs)
+	err = vote.verifyBasic(proTxHash, pubKey, quorumSigns)
 	if err != nil {
 		return err
 	}
@@ -244,9 +244,9 @@ func (vote *Vote) VerifyWithExtension(
 	if vote.Type == tmproto.PrecommitType {
 		// TODO: Remove extension signature nil check to enforce vote extension
 		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		for i, extSignID := range signIDs.VoteExtIDs {
-			sig := vote.VoteExtensions[i].Signature
-			if sig != nil && !pubKey.VerifySignatureDigest(extSignID.ID, sig) {
+		for i, extSignItem := range quorumSigns.VoteExts {
+			sign := vote.VoteExtensions[i].Signature
+			if sign != nil && !pubKey.VerifySignatureDigest(extSignItem.ID, sign) {
 				return ErrVoteInvalidSignature
 			}
 		}
@@ -262,14 +262,14 @@ func (vote *Vote) Verify(
 	proTxHash crypto.ProTxHash,
 	stateID StateID,
 ) error {
-	signIDs, err := MakeSignIDs(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	quorumSigns, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
 	if err != nil {
 		return err
 	}
-	return vote.verifyBasic(proTxHash, pubKey, signIDs)
+	return vote.verifyBasic(proTxHash, pubKey, quorumSigns)
 }
 
-func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, signIDs SignIDs) error {
+func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumSigns QuorumSigns) error {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return ErrVoteInvalidValidatorProTxHash
 	}
@@ -277,7 +277,7 @@ func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, signIDs
 		return ErrVoteInvalidValidatorPubKeySize
 	}
 
-	if !pubKey.VerifySignatureDigest(signIDs.BlockID.ID, vote.BlockSignature) {
+	if !pubKey.VerifySignatureDigest(quorumSigns.Block.ID, vote.BlockSignature) {
 		return fmt.Errorf(
 			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
 			proTxHash.ShortString(), pubKey, vote, hex.EncodeToString([]byte{}), hex.EncodeToString(vote.BlockSignature))
@@ -287,7 +287,7 @@ func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, signIDs
 	if vote.BlockID.Hash != nil {
 		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
 		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
-		if !pubKey.VerifySignatureDigest(signIDs.StateID.ID, vote.StateSignature) {
+		if !pubKey.VerifySignatureDigest(quorumSigns.State.ID, vote.StateSignature) {
 			return ErrVoteInvalidStateSignature
 		}
 	} else if vote.StateSignature != nil {
