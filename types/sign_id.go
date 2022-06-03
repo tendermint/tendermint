@@ -83,11 +83,11 @@ func MakeVoteExtensionSignIDs(chainID string, protoVote *types.Vote, quorumType 
 		}
 		return nil, nil
 	}
-	var items []SignIDItem
+	items := make([]SignIDItem, len(protoVote.VoteExtensions))
 	reqID := VoteExtensionRequestID(protoVote)
-	for _, ext := range protoVote.VoteExtensions {
+	for i, ext := range protoVote.VoteExtensions {
 		raw := VoteExtensionSignBytes(chainID, protoVote.Height, protoVote.Round, ext)
-		items = append(items, newSignIDItem(quorumType, quorumHash, reqID, raw))
+		items[i] = newSignIDItem(quorumType, quorumHash, reqID, raw)
 	}
 	return items, nil
 }
