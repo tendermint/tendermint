@@ -519,10 +519,11 @@ func (cs *State) getOnStopCh() chan *cstypes.RoundState {
 func (cs *State) OnStop() {
 	// If the node is committing a new block, wait until it is finished!
 	if cs.GetRoundState().Step == cstypes.RoundStepCommit {
+		ct := time.Until(cs.commitTime(time.Now()))
 		select {
 		case <-cs.getOnStopCh():
-		case <-time.After(cs.state.ConsensusParams.Timeout.Commit):
-			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", cs.state.ConsensusParams.Timeout.Commit)
+		case <-time.After(ct):
+			cs.logger.Error("OnStop: timeout waiting for commit to finish", "time", ct)
 		}
 	}
 
@@ -1389,7 +1390,7 @@ func (cs *State) defaultDecideProposal(ctx context.Context, height int64, round 
 	p := proposal.ToProto()
 
 	// wait the max amount we would wait for a proposal
-	ctxto, cancel := context.WithTimeout(ctx, cs.state.ConsensusParams.Timeout.Propose)
+	ctxto, cancel := context.WithTimeout(ctx, cs.proposeTimeout(round))
 	defer cancel()
 	if err := cs.privValidator.SignProposal(ctxto, cs.state.ChainID, p); err == nil {
 		proposal.Signature = p.Signature
