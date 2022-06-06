@@ -22,11 +22,15 @@ Special thanks to external contributors on this release:
   - [cli] \#8081 make the reset command safe to use by intoducing `reset-state` command. Fixed by \#8259. (@marbar3778, @cmwaters)
   - [config] \#8222 default indexer configuration to null. (@creachadair)
   - [rpc] \#8570 rework timeouts to be per-method instead of global. (@creachadair)
+  - [rpc] \#8624 deprecate `broadcast_tx_commit` and `braodcast_tx_sync` and `broadcast_tx_async` in favor of `braodcast_tx`. (@tychoish)
+  - [config] \#8654 remove deprecated `seeds` field from config. Users should switch to `bootstrap-peers` instead. (@cmwaters)
 
 - Apps
 
   - [tendermint/spec] \#7804 Migrate spec from [spec repo](https://github.com/tendermint/spec).
   - [abci] \#7984 Remove the locks preventing concurrent use of ABCI applications by Tendermint. (@tychoish)
+  - [abci] \#8605 Remove info, log, events, gasUsed and mempoolError fields from ResponseCheckTx as they are not used by Tendermint. (@jmalicevic)
+  - [abci] \#8664 Move `app_hash` parameter from `Commit` to `FinalizeBlock`. (@sergio-mena)
 
 - P2P Protocol
 
@@ -58,13 +62,16 @@ Special thanks to external contributors on this release:
 - [rpc] [\#7701] Add `ApplicationInfo` to `status` rpc call which contains the application version. (@jonasbostoen)
 - [cli] [#7033](https://github.com/tendermint/tendermint/pull/7033) Add a `rollback` command to rollback to the previous tendermint state in the event of non-determinstic app hash or reverting an upgrade.
 - [mempool, rpc] \#7041  Add removeTx operation to the RPC layer. (@tychoish)
-- [consensus] \#7354 add a new `synchrony` field to the `ConsensusParameter` struct for controlling the parameters of the proposer-based timestamp algorithm. (@williambanfield)
+- [consensus] \#7354 add a new `synchrony` field to the `ConsensusParams` struct for controlling the parameters of the proposer-based timestamp algorithm. (@williambanfield)
 - [consensus] \#7376 Update the proposal logic per the Propose-based timestamps specification so that the proposer will wait for the previous block time to occur before proposing the next block. (@williambanfield)
 - [consensus] \#7391 Use the proposed block timestamp as the proposal timestamp. Update the block validation logic to ensure that the proposed block's timestamp matches the timestamp in the proposal message. (@williambanfield)
 - [consensus] \#7415 Update proposal validation logic to Prevote nil if a proposal does not meet the conditions for Timelyness per the proposer-based timestamp specification. (@anca)
 - [consensus] \#7382 Update block validation to no longer require the block timestamp to be the median of the timestamps of the previous commit. (@anca)
 - [consensus] \#7711 Use the proposer timestamp for the first height instead of the genesis time. Chains will still start consensus at the genesis time. (@anca)
 - [cli] \#8281 Add a tool to update old config files to the latest version. (@creachadair)
+- [consenus] \#8514 move `RecheckTx` from the local node mempool config to a global `ConsensusParams` field in `BlockParams` (@cmwaters)
+- [abci] ABCI++ [specified](https://github.com/tendermint/tendermint/tree/master/spec/abci%2B%2B). (@sergio-mena, @cmwaters, @josef-widder)
+- [abci] ABCI++ [implemented](https://github.com/orgs/tendermint/projects/9). (@williambanfield, @thanethomson, @sergio-mena)
 
 ### IMPROVEMENTS
 

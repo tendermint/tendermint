@@ -141,6 +141,9 @@ func MakeDockerCompose(testnet *e2e.Testnet) ([]byte, error) {
 		"addUint32": func(x, y uint32) uint32 {
 			return x + y
 		},
+		"isBuiltin": func(protocol e2e.Protocol, mode e2e.Mode) bool {
+			return mode == e2e.ModeLight || protocol == e2e.ProtocolBuiltin
+		},
 	}).Parse(`version: '2.4'
 
 networks:
@@ -163,7 +166,7 @@ services:
       e2e: true
     container_name: {{ .Name }}
     image: tendermint/e2e-node
-{{- if eq .ABCIProtocol "builtin" }}
+{{- if isBuiltin $.ABCIProtocol .Mode }}
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if .LogLevel }}
     command: start --log-level {{ .LogLevel }}
@@ -209,6 +212,7 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 	}
 	genesis.ConsensusParams.Evidence.MaxAgeNumBlocks = e2e.EvidenceAgeHeight
 	genesis.ConsensusParams.Evidence.MaxAgeDuration = e2e.EvidenceAgeTime
+	genesis.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testnet.VoteExtensionsEnableHeight
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,
@@ -253,7 +257,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.Mode = string(node.Mode)
 	}
 
-	switch node.ABCIProtocol {
+	switch node.Testnet.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg.ProxyApp = AppAddressUNIX
 	case e2e.ProtocolTCP:
@@ -265,7 +269,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.ProxyApp = ""
 		cfg.ABCI = ""
 	default:
-		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.ABCIProtocol)
+		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.Testnet.ABCIProtocol)
 	}
 
 	// Tendermint errors if it does not have a privval key set up, regardless of whether
@@ -318,14 +322,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		}
 	}
 
-	cfg.P2P.Seeds = "" //nolint: staticcheck
-	for _, seed := range node.Seeds {
-		if len(cfg.P2P.Seeds) > 0 { //nolint: staticcheck
-			cfg.P2P.Seeds += "," //nolint: staticcheck
-		}
-		cfg.P2P.Seeds += seed.AddressP2P(true) //nolint: staticcheck
-	}
-
 	cfg.P2P.PersistentPeers = ""
 	for _, peer := range node.PersistentPeers {
 		if len(cfg.P2P.PersistentPeers) > 0 {
@@ -342,18 +338,24 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":          node.Testnet.Name,
-		"dir":               "data/app",
-		"listen":            AppAddressUNIX,
-		"mode":              node.Mode,
-		"proxy_port":        node.ProxyPort,
-		"protocol":          "socket",
-		"persist_interval":  node.PersistInterval,
-		"snapshot_interval": node.SnapshotInterval,
-		"retain_blocks":     node.RetainBlocks,
-		"key_type":          node.PrivvalKey.Type(),
+		"chain_id":                  node.Testnet.Name,
+		"dir":                       "data/app",
+		"listen":                    AppAddressUNIX,
+		"mode":                      node.Mode,
+		"proxy_port":                node.ProxyPort,
+		"protocol":                  "socket",
+		"persist_interval":          node.PersistInterval,
+		"snapshot_interval":         node.SnapshotInterval,
+		"retain_blocks":             node.RetainBlocks,
+		"key_type":                  node.PrivvalKey.Type(),
+		"prepare_proposal_delay_ms": node.Testnet.PrepareProposalDelayMS,
+		"process_proposal_delay_ms": node.Testnet.ProcessProposalDelayMS,
+		"check_tx_delay_ms":         node.Testnet.CheckTxDelayMS,
+		"vote_extension_delay_ms":   node.Testnet.VoteExtensionDelayMS,
+		"finalize_block_delay_ms":   node.Testnet.FinalizeBlockDelayMS,
 	}
-	switch node.ABCIProtocol {
+
+	switch node.Testnet.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg["listen"] = AppAddressUNIX
 	case e2e.ProtocolTCP:
@@ -365,7 +367,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		delete(cfg, "listen")
 		cfg["protocol"] = "builtin"
 	default:
-		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.ABCIProtocol)
+		return nil, fmt.Errorf("unexpected ABCI protocol setting %q", node.Testnet.ABCIProtocol)
 	}
 	if node.Mode == e2e.ModeValidator {
 		switch node.PrivvalProtocol {

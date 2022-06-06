@@ -396,9 +396,21 @@ func (r *Router) routeChannel(
 				return
 			}
 
-			r.logger.Error("peer error, evicting", "peer", peerError.NodeID, "err", peerError.Err)
+			shouldEvict := peerError.Fatal || r.peerManager.HasMaxPeerCapacity()
+			r.logger.Error("peer error",
+				"peer", peerError.NodeID,
+				"err", peerError.Err,
+				"evicting", shouldEvict,
+			)
+			if shouldEvict {
+				r.peerManager.Errored(peerError.NodeID, peerError.Err)
+			} else {
+				r.peerManager.processPeerEvent(ctx, PeerUpdate{
+					NodeID: peerError.NodeID,
+					Status: PeerStatusBad,
+				})
+			}
 
-			r.peerManager.Errored(peerError.NodeID, peerError.Err)
 		case <-ctx.Done():
 			return
 		}
@@ -708,6 +720,15 @@ func (r *Router) handshakePeer(
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
+
+	if peerInfo.Network != nodeInfo.Network {
+		if err := r.peerManager.store.Delete(peerInfo.NodeID); err != nil {
+			return peerInfo, fmt.Errorf("problem removing peer from store from incorrect network [%s]: %w", peerInfo.Network, err)
+		}
+
+		return peerInfo, fmt.Errorf("connected to peer from wrong network, %q, removed from peer store", peerInfo.Network)
+	}
+
 	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
 		return peerInfo, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
 			peerInfo.NodeID, types.NodeIDFromPubKey(peerKey))
@@ -716,6 +737,7 @@ func (r *Router) handshakePeer(
 		return peerInfo, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
+
 	if err := nodeInfo.CompatibleWith(peerInfo); err != nil {
 		return peerInfo, ErrRejected{
 			err:            err,

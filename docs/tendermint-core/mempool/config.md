@@ -14,9 +14,8 @@ Config:
 ```toml
 [mempool]
 
-recheck = true
+# Set true to broadcast transactions in the mempool to other nodes
 broadcast = true
-wal-dir = ""
 
 # Maximum number of transactions in the mempool
 size = 5000
@@ -43,20 +42,6 @@ max-tx-bytes = 1048576
 # XXX: Unused due to https://github.com/tendermint/tendermint/issues/5796
 max-batch-bytes = 0
 ```
-
-<!-- Flag: `--mempool.recheck=false`
-
-Environment: `TM_MEMPOOL_RECHECK=false` -->
-
-## Recheck
-
-Recheck determines if the mempool rechecks all pending
-transactions after a block was committed. Once a block
-is committed, the mempool removes all valid transactions
-that were successfully included in the block.
-
-If `recheck` is true, then it will rerun CheckTx on
-all remaining transactions with the new block state.
 
 ## Broadcast
 
@@ -92,7 +77,7 @@ Cache size determines the size of the cache holding transactions we have already
 
 ## Keep Invalid Transactions In Cache
 
-Keep invalid transactions in cache determines wether a transaction in the cache, which is invalid, should be evicted. An invalid transaction here may mean that the transaction may rely on a different tx that has not been included in a block. 
+Keep invalid transactions in cache determines wether a transaction in the cache, which is invalid, should be evicted. An invalid transaction here may mean that the transaction may rely on a different tx that has not been included in a block.
 
 ## Max Transaction Bytes
 

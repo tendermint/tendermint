@@ -612,15 +612,6 @@ type P2PConfig struct { //nolint: maligned
 	// Address to advertise to peers for them to dial
 	ExternalAddress string `mapstructure:"external-address"`
 
-	// Comma separated list of seed nodes to connect to
-	// We only use these if we can’t connect to peers in the addrbook
-	//
-	// Deprecated: This value is not used by the new PEX reactor. Use
-	// BootstrapPeers instead.
-	//
-	// TODO(#5670): Remove once the p2p refactor is complete.
-	Seeds string `mapstructure:"seeds"`
-
 	// Comma separated list of peers to be added to the peer store
 	// on startup. Either BootstrapPeers or PersistentPeers are
 	// needed for peer discovery
@@ -734,9 +725,10 @@ func TestP2PConfig() *P2PConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool.
 type MempoolConfig struct {
-	RootDir   string `mapstructure:"home"`
-	Recheck   bool   `mapstructure:"recheck"`
-	Broadcast bool   `mapstructure:"broadcast"`
+	RootDir string `mapstructure:"home"`
+
+	// Whether to broadcast transactions to other nodes
+	Broadcast bool `mapstructure:"broadcast"`
 
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
@@ -783,7 +775,6 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Recheck:   true,
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck

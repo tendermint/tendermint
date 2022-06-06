@@ -151,8 +151,10 @@ where example.file looks something like:
     check_tx 0x00
     check_tx 0xff
     finalize_block 0x00
+    commit
     check_tx 0x00
     finalize_block 0x01 0x04 0xff
+    commit
     info
 `,
 	Args: cobra.ExactArgs(0),
@@ -298,23 +300,23 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 	return compose(
 		[]func() error{
 			func() error { return servertest.InitChain(ctx, client) },
-			func() error { return servertest.Commit(ctx, client, nil) },
+			func() error { return servertest.Commit(ctx, client) },
 			func() error {
 				return servertest.FinalizeBlock(ctx, client, [][]byte{
 					[]byte("abc"),
 				}, []uint32{
 					code.CodeTypeBadNonce,
-				}, nil)
+				}, nil, nil)
 			},
-			func() error { return servertest.Commit(ctx, client, nil) },
+			func() error { return servertest.Commit(ctx, client) },
 			func() error {
 				return servertest.FinalizeBlock(ctx, client, [][]byte{
 					{0x00},
 				}, []uint32{
 					code.CodeTypeOK,
-				}, nil)
+				}, nil, []byte{0, 0, 0, 0, 0, 0, 0, 1})
 			},
-			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
+			func() error { return servertest.Commit(ctx, client) },
 			func() error {
 				return servertest.FinalizeBlock(ctx, client, [][]byte{
 					{0x00},
@@ -330,9 +332,9 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 					code.CodeTypeOK,
 					code.CodeTypeOK,
 					code.CodeTypeBadNonce,
-				}, nil)
+				}, nil, []byte{0, 0, 0, 0, 0, 0, 0, 5})
 			},
-			func() error { return servertest.Commit(ctx, client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
+			func() error { return servertest.Commit(ctx, client) },
 		})
 }
 
@@ -494,7 +496,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 
 const codeBad uint32 = 10
 
-// Append a new tx to application
+// Append new txs to application
 func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
@@ -515,14 +517,19 @@ func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	resps := make([]response, 0, len(res.TxResults)+1)
 	for _, tx := range res.TxResults {
-		printResponse(cmd, args, response{
+		resps = append(resps, response{
 			Code: tx.Code,
 			Data: tx.Data,
 			Info: tx.Info,
 			Log:  tx.Log,
 		})
 	}
+	resps = append(resps, response{
+		Data: res.AppHash,
+	})
+	printResponse(cmd, args, resps...)
 	return nil
 }
 
@@ -546,21 +553,17 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
-		Info: res.Info,
-		Log:  res.Log,
 	})
 	return nil
 }
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res, err := client.Commit(cmd.Context())
+	_, err := client.Commit(cmd.Context())
 	if err != nil {
 		return err
 	}
-	printResponse(cmd, args, response{
-		Data: res.Data,
-	})
+	printResponse(cmd, args, response{})
 	return nil
 }
 
@@ -634,44 +637,46 @@ func makeKVStoreCmd(logger log.Logger) func(*cobra.Command, []string) error {
 
 //--------------------------------------------------------------------------------
 
-func printResponse(cmd *cobra.Command, args []string, rsp response) {
+func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
 
 	if flagVerbose {
 		fmt.Println(">", cmd.Use, strings.Join(args, " "))
 	}
 
-	// Always print the status code.
-	if rsp.Code == types.CodeTypeOK {
-		fmt.Printf("-> code: OK\n")
-	} else {
-		fmt.Printf("-> code: %d\n", rsp.Code)
+	for _, rsp := range rsps {
+		// Always print the status code.
+		if rsp.Code == types.CodeTypeOK {
+			fmt.Printf("-> code: OK\n")
+		} else {
+			fmt.Printf("-> code: %d\n", rsp.Code)
 
-	}
+		}
 
-	if len(rsp.Data) != 0 {
-		// Do no print this line when using the commit command
-		// because the string comes out as gibberish
-		if cmd.Use != "commit" {
-			fmt.Printf("-> data: %s\n", rsp.Data)
+		if len(rsp.Data) != 0 {
+			// Do no print this line when using the finalize_block command
+			// because the string comes out as gibberish
+			if cmd.Use != "finalize_block" {
+				fmt.Printf("-> data: %s\n", rsp.Data)
+			}
+			fmt.Printf("-> data.hex: 0x%X\n", rsp.Data)
 		}
-		fmt.Printf("-> data.hex: 0x%X\n", rsp.Data)
-	}
-	if rsp.Log != "" {
-		fmt.Printf("-> log: %s\n", rsp.Log)
-	}
+		if rsp.Log != "" {
+			fmt.Printf("-> log: %s\n", rsp.Log)
+		}
 
-	if rsp.Query != nil {
-		fmt.Printf("-> height: %d\n", rsp.Query.Height)
-		if rsp.Query.Key != nil {
-			fmt.Printf("-> key: %s\n", rsp.Query.Key)
-			fmt.Printf("-> key.hex: %X\n", rsp.Query.Key)
-		}
-		if rsp.Query.Value != nil {
-			fmt.Printf("-> value: %s\n", rsp.Query.Value)
-			fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
-		}
-		if rsp.Query.ProofOps != nil {
-			fmt.Printf("-> proof: %#v\n", rsp.Query.ProofOps)
+		if rsp.Query != nil {
+			fmt.Printf("-> height: %d\n", rsp.Query.Height)
+			if rsp.Query.Key != nil {
+				fmt.Printf("-> key: %s\n", rsp.Query.Key)
+				fmt.Printf("-> key.hex: %X\n", rsp.Query.Key)
+			}
+			if rsp.Query.Value != nil {
+				fmt.Printf("-> value: %s\n", rsp.Query.Value)
+				fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
+			}
+			if rsp.Query.ProofOps != nil {
+				fmt.Printf("-> proof: %#v\n", rsp.Query.ProofOps)
+			}
 		}
 	}
 }

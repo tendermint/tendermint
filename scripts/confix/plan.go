@@ -222,4 +222,16 @@ var plan = transform.Plan{
 			return fmt.Errorf("unrecognized value: %v", idx.KeyValue)
 		}),
 	},
+	{
+		// Since https://github.com/tendermint/tendermint/pull/8514.
+		Desc:    "Remove the recheck option from the [mempool] section",
+		T:       transform.Remove(parser.Key{"mempool", "recheck"}),
+		ErrorOK: true,
+	},
+	{
+		// Since https://github.com/tendermint/tendermint/pull/8654.
+		Desc:    "Remove the seeds option from the [p2p] section",
+		T:       transform.Remove(parser.Key{"p2p", "seeds"}),
+		ErrorOK: true,
+	},
 }

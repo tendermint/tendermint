@@ -59,8 +59,11 @@ func NewRoutesMap(svc RPCService, opts *RouteOptions) RoutesMap {
 		"num_unconfirmed_txs":  rpc.NewRPCFunc(svc.NumUnconfirmedTxs),
 
 		// tx broadcast API
+		"broadcast_tx": rpc.NewRPCFunc(svc.BroadcastTx),
+		// TODO remove after 0.36
+		// deprecated broadcast tx methods:
 		"broadcast_tx_commit": rpc.NewRPCFunc(svc.BroadcastTxCommit),
-		"broadcast_tx_sync":   rpc.NewRPCFunc(svc.BroadcastTxSync),
+		"broadcast_tx_sync":   rpc.NewRPCFunc(svc.BroadcastTx),
 		"broadcast_tx_async":  rpc.NewRPCFunc(svc.BroadcastTxAsync),
 
 		// abci API
@@ -87,6 +90,7 @@ type RPCService interface {
 	BlockSearch(ctx context.Context, req *coretypes.RequestBlockSearch) (*coretypes.ResultBlockSearch, error)
 	BlockchainInfo(ctx context.Context, req *coretypes.RequestBlockchainInfo) (*coretypes.ResultBlockchainInfo, error)
 	BroadcastEvidence(ctx context.Context, req *coretypes.RequestBroadcastEvidence) (*coretypes.ResultBroadcastEvidence, error)
+	BroadcastTx(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error)
 	BroadcastTxAsync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error)
 	BroadcastTxCommit(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTxCommit, error)
 	BroadcastTxSync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error)
