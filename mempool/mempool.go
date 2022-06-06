@@ -66,16 +66,8 @@ type Mempool interface {
 	// Size returns the number of transactions in the mempool.
 	Size() int
 
-	// TxsBytes returns the total size of all txs in the mempool.
-	TxsBytes() int64
-
-	// InitWAL creates a directory for the WAL file and opens a file itself. If
-	// there is an error, it will be of type *PathError.
-	InitWAL() error
-
-	// CloseWAL closes and discards the underlying WAL file.
-	// Any further writes will not be relayed to disk.
-	CloseWAL()
+	// SizeBytes returns the total size of all txs in the mempool.
+	SizeBytes() int64
 }
 
 //--------------------------------------------------------------------------------

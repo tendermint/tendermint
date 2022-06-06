@@ -33,7 +33,7 @@ const (
 type Reactor struct {
 	p2p.BaseReactor
 	config  *cfg.MempoolConfig
-	mempool *CListMempool
+	mempool *TxMempool
 	ids     *mempoolIDs
 }
 
@@ -101,7 +101,7 @@ func newMempoolIDs() *mempoolIDs {
 }
 
 // NewReactor returns a new Reactor with the given config and mempool.
-func NewReactor(config *cfg.MempoolConfig, mempool *CListMempool) *Reactor {
+func NewReactor(config *cfg.MempoolConfig, mempool *TxMempool) *Reactor {
 	memR := &Reactor{
 		config:  config,
 		mempool: mempool,
@@ -205,17 +205,20 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		if !memR.IsRunning() || !peer.IsRunning() {
 			return
 		}
+
 		// This happens because the CElement we were looking at got garbage
 		// collected (removed). That is, .NextWait() returned nil. Go ahead and
 		// start from the beginning.
 		if next == nil {
 			select {
-			case <-memR.mempool.TxsWaitChan(): // Wait until a tx is available
-				if next = memR.mempool.TxsFront(); next == nil {
+			case <-memR.mempool.WaitForNextTx(): // Wait until a tx is available
+				if next = memR.mempool.NextGossipTx(); next == nil {
 					continue
 				}
+
 			case <-peer.Quit():
 				return
+
 			case <-memR.Quit():
 				return
 			}
@@ -242,7 +245,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 
 		// NOTE: Transaction batching was disabled due to
 		// https://github.com/tendermint/tendermint/issues/5796
-		if _, ok := memTx.senders.Load(peerID); !ok {
+		if ok := memR.mempool.txStore.TxHasPeer(memTx.hash, peerID); !ok {
 			msg := protomem.Message{
 				Sum: &protomem.Message_Txs{
 					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},

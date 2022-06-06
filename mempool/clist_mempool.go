@@ -2,46 +2,50 @@ package mempool
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	auto "github.com/tendermint/tendermint/libs/autofile"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmos "github.com/tendermint/tendermint/libs/os"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
-var newline = []byte("\n")
+var (
+	_ Mempool = (*TxMempool)(nil)
 
-// CListMempool is an ordered in-memory pool for transactions before they are
-// proposed in a consensus round. Transaction validity is checked using the
-// CheckTx abci message before the transaction is added to the pool. The
-// mempool uses a concurrent list structure for storing transactions that can
-// be efficiently accessed by multiple concurrent readers.
-type CListMempool struct {
+	newline = []byte("\n")
+)
+
+// TxMempoolOption sets an optional parameter on the TxMempool.
+type TxMempoolOption func(*TxMempool)
+
+// TxMempool defines a prioritized mempool data structure used by the v1 mempool
+// reactor. It keeps a thread-safe priority queue of transactions that is used
+// when a block proposer constructs a block and a thread-safe linked-list that
+// is used to gossip transactions to peers in a FIFO manner.
+type TxMempool struct {
 	logger       log.Logger
 	metrics      *Metrics
 	config       *cfg.MempoolConfig
 	proxyAppConn proxy.AppConnMempool
 
-	// notify listeners (ie. consensus) when txs are available
+	// txsAvailable fires once for each height when the mempool is not empty
+	txsAvailable         chan struct{}
 	notifiedTxsAvailable bool
-	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 
 	// height defines the last block height process during Update()
 	height int64
 
 	// sizeBytes defines the total size of the mempool (sum of all tx bytes)
 	sizeBytes int64
-
-	wal *auto.AutoFile // a log of mempool txs
 
 	// cache defines a fixed-size cache of already seen transactions as this
 	// reduces pressure on the proxyApp.
@@ -56,9 +60,16 @@ type CListMempool struct {
 	// rechecking transactions already in the mempool.
 	gossipIndex *clist.CList
 
-	// Track whether we're rechecking txs.
-	// These are not protected by a mutex and are expected to be mutated in
-	// serial (ie. by abci responses which are called in serial).
+	// recheckCursor and recheckEnd are used as cursors based on the gossip index
+	// to recheck transactions that are already in the mempool. Iteration is not
+	// thread-safe and transaction may be mutated in serial order.
+	//
+	// XXX/TODO: It might be somewhat of a codesmell to use the gossip index for
+	// iterator and cursor management when rechecking transactions. If the gossip
+	// index changes or is removed in a future refactor, this will have to be
+	// refactored. Instead, we should consider just keeping a slice of a snapshot
+	// of the mempool's current transactions during Update and an integer cursor
+	// into that slice. This, however, requires additional O(n) space complexity.
 	recheckCursor *clist.CElement // next expected response
 	recheckEnd    *clist.CElement // re-checking stops here
 
@@ -74,28 +85,25 @@ type CListMempool struct {
 	// index. i.e. older transactions are first.
 	timestampIndex *WrappedTxList
 
-	// Exclusive mutex for Update method to prevent concurrent execution of
-	// CheckTx or ReapMaxBytesMaxGas(ReapMaxTxs) methods.
-	updateMtx tmsync.RWMutex
+	// A read/write lock is used to safe guard updates, insertions and deletions
+	// from the mempool. A read-lock is implicitly acquired when executing CheckTx,
+	// however, a caller must explicitly grab a write-lock via Lock when updating
+	// the mempool via Update().
+	mtx       tmsync.RWMutex
 	preCheck  PreCheckFunc
 	postCheck PostCheckFunc
 }
 
-var _ Mempool = &CListMempool{}
-
-// CListMempoolOption sets an optional parameter on the mempool.
-type CListMempoolOption func(*CListMempool)
-
-// NewCListMempool returns a new mempool with the given configuration and connection to an application.
-func NewCListMempool(
+func NewTxMempool(
+	logger log.Logger,
 	config *cfg.MempoolConfig,
 	proxyAppConn proxy.AppConnMempool,
 	height int64,
-	options ...CListMempoolOption,
-) *CListMempool {
+	options ...TxMempoolOption,
+) *TxMempool {
 
-	mempool := &CListMempool{
-		logger:        log.NewNopLogger(),
+	txmp := &TxMempool{
+		logger:        logger,
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		height:        height,
@@ -113,170 +121,145 @@ func NewCListMempool(
 	}
 
 	if config.CacheSize > 0 {
-		mempool.cache = NewLRUTxCache(config.CacheSize)
+		txmp.cache = NewLRUTxCache(config.CacheSize)
 	}
 
-	proxyAppConn.SetResponseCallback(mempool.globalCb)
+	proxyAppConn.SetResponseCallback(txmp.defaultTxCallback)
 
-	for _, option := range options {
-		option(mempool)
+	for _, opt := range options {
+		opt(txmp)
 	}
 
-	return mempool
+	return txmp
 }
 
-// NOTE: not thread safe - should only be called once, on startup
-func (mem *CListMempool) EnableTxsAvailable() {
-	mem.txsAvailable = make(chan struct{}, 1)
+// WithPreCheck sets a filter for the mempool to reject a transaction if f(tx)
+// returns an error. This is executed before CheckTx. It only applies to the
+// first created block. After that, Update() overwrites the existing value.
+func WithPreCheck(f PreCheckFunc) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.preCheck = f }
 }
 
-// SetLogger sets the Logger.
-func (mem *CListMempool) SetLogger(l log.Logger) {
-	mem.logger = l
+// WithPostCheck sets a filter for the mempool to reject a transaction if
+// f(tx, resp) returns an error. This is executed after CheckTx. It only applies
+// to the first created block. After that, Update overwrites the existing value.
+func WithPostCheck(f PostCheckFunc) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.postCheck = f }
 }
 
-// WithPreCheck sets a filter for the mempool to reject a tx if f(tx) returns
-// false. This is ran before CheckTx. Only applies to the first created block.
-// After that, Update overwrites the existing value.
-func WithPreCheck(f PreCheckFunc) CListMempoolOption {
-	return func(mem *CListMempool) { mem.preCheck = f }
+// WithMetrics sets the mempool's metrics collector.
+func WithMetrics(metrics *Metrics) TxMempoolOption {
+	return func(txmp *TxMempool) { txmp.metrics = metrics }
 }
 
-// WithPostCheck sets a filter for the mempool to reject a tx if f(tx) returns
-// false. This is ran after CheckTx. Only applies to the first created block.
-// After that, Update overwrites the existing value.
-func WithPostCheck(f PostCheckFunc) CListMempoolOption {
-	return func(mem *CListMempool) { mem.postCheck = f }
+func (txmp *TxMempool) SetLogger(l log.Logger) {
+	txmp.logger = l
 }
 
-// WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) CListMempoolOption {
-	return func(mem *CListMempool) { mem.metrics = metrics }
+// Lock obtains a write-lock on the mempool. A caller must be sure to explicitly
+// release the lock when finished.
+func (txmp *TxMempool) Lock() {
+	txmp.mtx.Lock()
 }
 
-func (mem *CListMempool) InitWAL() error {
-	var (
-		walDir  = mem.config.WalDir()
-		walFile = walDir + "/wal"
-	)
-
-	const perm = 0700
-	if err := tmos.EnsureDir(walDir, perm); err != nil {
-		return err
-	}
-
-	af, err := auto.OpenAutoFile(walFile)
-	if err != nil {
-		return fmt.Errorf("can't open autofile %s: %w", walFile, err)
-	}
-
-	mem.wal = af
-	return nil
-}
-
-func (mem *CListMempool) CloseWAL() {
-	if err := mem.wal.Close(); err != nil {
-		mem.logger.Error("Error closing WAL", "err", err)
-	}
-	mem.wal = nil
-}
-
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) Lock() {
-	mem.updateMtx.Lock()
-}
-
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) Unlock() {
-	mem.updateMtx.Unlock()
+// Unlock releases a write-lock on the mempool.
+func (txmp *TxMempool) Unlock() {
+	txmp.mtx.Unlock()
 }
 
 // Size returns the number of valid transactions in the mempool. It is
 // thread-safe.
-func (mem *CListMempool) Size() int {
-	return mem.txStore.Size()
+func (txmp *TxMempool) Size() int {
+	return txmp.txStore.Size()
 }
 
 // SizeBytes return the total sum in bytes of all the valid transactions in the
 // mempool. It is thread-safe.
-func (mem *CListMempool) SizeBytes() int64 {
-	return atomic.LoadInt64(&mem.sizeBytes)
+func (txmp *TxMempool) SizeBytes() int64 {
+	return atomic.LoadInt64(&txmp.sizeBytes)
 }
 
-// Lock() must be help by the caller during execution.
-func (mem *CListMempool) FlushAppConn() error {
-	return mem.proxyAppConn.FlushSync()
+// FlushAppConn executes FlushSync on the mempool's proxyAppConn.
+//
+// NOTE: The caller must obtain a write-lock via Lock() prior to execution.
+func (txmp *TxMempool) FlushAppConn() error {
+	return txmp.proxyAppConn.FlushSync()
 }
 
-// XXX: Unsafe! Calling Flush may leave mempool in inconsistent state.
-func (mem *CListMempool) Flush() {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
-
-	mem.heightIndex.Reset()
-	mem.timestampIndex.Reset()
-
-	for _, wtx := range mem.txStore.GetAllTxs() {
-		mem.removeTx(wtx, false)
-	}
-
-	atomic.SwapInt64(&mem.sizeBytes, 0)
-	mem.cache.Reset()
+// WaitForNextTx returns a blocking channel that will be closed when the next
+// valid transaction is available to gossip. It is thread-safe.
+func (txmp *TxMempool) WaitForNextTx() <-chan struct{} {
+	return txmp.gossipIndex.WaitChan()
 }
 
 // NextGossipTx returns the next valid transaction to gossip. A caller must wait
 // for WaitForNextTx to signal a transaction is available to gossip first. It is
 // thread-safe.
-func (mem *CListMempool) NextGossipTx() *clist.CElement {
-	return mem.gossipIndex.Front()
+func (txmp *TxMempool) NextGossipTx() *clist.CElement {
+	return txmp.gossipIndex.Front()
 }
 
-// WaitForNextTx returns a blocking channel that will be closed when the next
-// valid transaction is available to gossip. It is thread-safe.
-func (mem *CListMempool) WaitForNextTx() <-chan struct{} {
-	return mem.gossipIndex.WaitChan()
+// EnableTxsAvailable enables the mempool to trigger events when transactions
+// are available on a block by block basis.
+func (txmp *TxMempool) EnableTxsAvailable() {
+	txmp.mtx.Lock()
+	defer txmp.mtx.Unlock()
+
+	txmp.txsAvailable = make(chan struct{}, 1)
 }
 
-// It blocks if we're waiting on Update() or Reap().
-// cb: A callback from the CheckTx command.
-//     It gets called from another goroutine.
-// CONTRACT: Either cb will get called, or err returned.
+// TxsAvailable returns a channel which fires once for every height, and only
+// when transactions are available in the mempool. It is thread-safe.
+func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
+	return txmp.txsAvailable
+}
+
+// CheckTx executes the ABCI CheckTx method for a given transaction. It acquires
+// a read-lock attempts to execute the application's CheckTx ABCI method via
+// CheckTxAsync. We return an error if any of the following happen:
 //
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo TxInfo) error {
-	mem.updateMtx.RLock()
-	// use defer to unlock mutex because application (*local client*) might panic
-	defer mem.updateMtx.RUnlock()
+// - The CheckTxAsync execution fails.
+// - The transaction already exists in the cache and we've already received the
+//   transaction from the peer. Otherwise, if it solely exists in the cache, we
+//   return nil.
+// - The transaction size exceeds the maximum transaction size as defined by the
+//   configuration provided to the mempool.
+// - The transaction fails Pre-Check (if it is defined).
+// - The proxyAppConn fails, e.g. the buffer is full.
+//
+// If the mempool is full, we still execute CheckTx and attempt to find a lower
+// priority transaction to evict. If such a transaction exists, we remove the
+// lower priority transaction and add the new one with higher priority.
+//
+// NOTE:
+// - The applications' CheckTx implementation may panic.
+// - The caller is not to explicitly require any locks for executing CheckTx.
+func (txmp *TxMempool) CheckTx(
+	tx types.Tx,
+	cb func(*abci.Response),
+	txInfo TxInfo,
+) error {
+
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
 
 	txSize := len(tx)
-	if err := mem.isFull(txSize); err != nil {
-		return err
-	}
-
-	if txSize > mem.config.MaxTxBytes {
-		return ErrTxTooLarge{mem.config.MaxTxBytes, txSize}
-	}
-
-	if mem.preCheck != nil {
-		if err := mem.preCheck(tx); err != nil {
-			return ErrPreCheck{err}
+	if txSize > txmp.config.MaxTxBytes {
+		return ErrTxTooLarge{
+			max:    txmp.config.MaxTxBytes,
+			actual: txSize,
 		}
 	}
 
-	// NOTE: writing to the WAL and calling proxy must be done before adding tx
-	// to the cache. otherwise, if either of them fails, next time CheckTx is
-	// called with tx, ErrTxInCache will be returned without tx being checked at
-	// all even once.
-	if mem.wal != nil {
-		// TODO: Notify administrators when WAL fails
-		_, err := mem.wal.Write(append([]byte(tx), newline...))
-		if err != nil {
-			return fmt.Errorf("wal.Write: %w", err)
+	if txmp.preCheck != nil {
+		if err := txmp.preCheck(tx); err != nil {
+			return ErrPreCheck{
+				Reason: err,
+			}
 		}
 	}
 
-	// NOTE: proxyAppConn may error if tx buffer is full
-	if err := mem.proxyAppConn.Error(); err != nil {
+	if err := txmp.proxyAppConn.Error(); err != nil {
 		return err
 	}
 
@@ -285,14 +268,15 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	// We add the transaction to the mempool's cache and if the
 	// transaction is already present in the cache, i.e. false is returned, then we
 	// check if we've seen this transaction and error if we have.
-	if !mem.cache.Push(tx) {
-		mem.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
+	if !txmp.cache.Push(tx) {
+		txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
 		return ErrTxInCache
 	}
 
-	reqRes := mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+	reqRes := txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
+
 	reqRes.SetCallback(func(res *abci.Response) {
-		if mem.recheckCursor != nil {
+		if txmp.recheckCursor != nil {
 			panic("recheck cursor is non-nil in CheckTx callback")
 		}
 
@@ -300,11 +284,9 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 			tx:        tx,
 			hash:      txHash,
 			timestamp: time.Now().UTC(),
-			height:    mem.height,
+			height:    txmp.height,
 		}
-		mem.initTxCallback(wtx, res, txInfo)
-
-		mem.metrics.Size.Set(float64(mem.Size()))
+		txmp.initTxCallback(wtx, res, txInfo)
 
 		if cb != nil {
 			cb(res)
@@ -314,111 +296,190 @@ func (mem *CListMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo Tx
 	return nil
 }
 
-// Global callback that will be called after every ABCI response.
-// Having a single global callback avoids needing to set a callback for each request.
-// However, processing the checkTx response requires the peerID (so we can track which txs we heard from who),
-// and peerID is not included in the ABCI request, so we have to set request-specific callbacks that
-// include this information. If we're not in the midst of a recheck, this function will just return,
-// so the request specific callback can do the work.
+func (txmp *TxMempool) RemoveTxByKey(txKey types.TxKey) error {
+	txmp.Lock()
+	defer txmp.Unlock()
+
+	// remove the committed transaction from the transaction store and indexes
+	if wtx := txmp.txStore.GetTxByHash(txKey); wtx != nil {
+		txmp.removeTx(wtx, false)
+		return nil
+	}
+
+	return errors.New("transaction not found")
+}
+
+// Flush flushes out the mempool. It acquires a read-lock, fetches all the
+// transactions currently in the transaction store and removes each transaction
+// from the store and all indexes and finally resets the cache.
 //
-// When rechecking, we don't need the peerID, so the recheck callback happens
-// here.
-func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
-	if mem.recheckCursor == nil {
-		return
+// NOTE:
+// - Flushing the mempool may leave the mempool in an inconsistent state.
+func (txmp *TxMempool) Flush() {
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
+
+	txmp.heightIndex.Reset()
+	txmp.timestampIndex.Reset()
+
+	for _, wtx := range txmp.txStore.GetAllTxs() {
+		txmp.removeTx(wtx, false)
 	}
 
-	mem.metrics.RecheckTimes.Add(1)
-	mem.resCbRecheck(req, res)
-
-	// update metrics
-	mem.metrics.Size.Set(float64(mem.Size()))
+	atomic.SwapInt64(&txmp.sizeBytes, 0)
+	txmp.cache.Reset()
 }
 
-// // Request specific callback that should be set on individual reqRes objects
-// // to incorporate local information when processing the response.
-// // This allows us to track the peer that sent us this tx, so we can avoid sending it back to them.
-// // NOTE: alternatively, we could include this information in the ABCI request itself.
-// //
-// // External callers of CheckTx, like the RPC, can also pass an externalCb through here that is called
-// // when all other response processing is complete.
-// //
-// // Used in CheckTx to record PeerID who sent us the tx.
-// func (mem *CListMempool) reqResCb(
-// 	tx []byte,
-// 	peerID uint16,
-// 	peerP2PID p2p.ID,
-// 	externalCb func(*abci.Response),
-// ) func(res *abci.Response) {
-// 	return func(res *abci.Response) {
-// 		if mem.recheckCursor != nil {
-// 			// this should never happen
-// 			panic("recheck cursor is not nil in reqResCb")
-// 		}
+// ReapMaxBytesMaxGas returns a list of transactions within the provided size
+// and gas constraints. Transaction are retrieved in priority order.
+//
+// NOTE:
+// - A read-lock is acquired.
+// - Transactions returned are not actually removed from the mempool transaction
+//   store or indexes.
+func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
 
-// 		mem.resCbFirstTime(tx, peerID, peerP2PID, res)
-
-// 		// update metrics
-// 		mem.metrics.Size.Set(float64(mem.Size()))
-
-// 		// passed in by the caller of CheckTx, eg. the RPC
-// 		if externalCb != nil {
-// 			externalCb(res)
-// 		}
-// 	}
-// }
-
-// Called from:
-//  - resCbFirstTime (lock not held) if tx is valid
-func (mem *CListMempool) addTx(memTx *mempoolTx) {
-	e := mem.txs.PushBack(memTx)
-	mem.txsMap.Store(TxKey(memTx.tx), e)
-	atomic.AddInt64(&mem.txsBytes, int64(len(memTx.tx)))
-	mem.metrics.TxSizeBytes.Observe(float64(len(memTx.tx)))
-}
-
-// Called from:
-//  - Update (lock held) if tx was committed
-// 	- resCbRecheck (lock not held) if tx was invalidated
-func (mem *CListMempool) removeTx(tx types.Tx, elem *clist.CElement, removeFromCache bool) {
-	mem.txs.Remove(elem)
-	elem.DetachPrev()
-	mem.txsMap.Delete(TxKey(tx))
-	atomic.AddInt64(&mem.txsBytes, int64(-len(tx)))
-
-	if removeFromCache {
-		mem.cache.Remove(tx)
-	}
-}
-
-// RemoveTxByKey removes a transaction from the mempool by its TxKey index.
-func (mem *CListMempool) RemoveTxByKey(txKey [TxKeySize]byte, removeFromCache bool) {
-	if e, ok := mem.txsMap.Load(txKey); ok {
-		memTx := e.(*clist.CElement).Value.(*mempoolTx)
-		if memTx != nil {
-			mem.removeTx(memTx.tx, e.(*clist.CElement), removeFromCache)
-		}
-	}
-}
-
-// canAddTx returns an error if we cannot insert the provided *WrappedTx into
-// the mempool due to mempool configured constraints. Otherwise, nil is returned
-// and the transaction can be inserted into the mempool.
-func (mem *CListMempool) canAddTx(wtx *WrappedTx) error {
 	var (
-		numTxs    = mem.Size()
-		sizeBytes = mem.SizeBytes()
+		totalGas  int64
+		totalSize int64
 	)
 
-	if numTxs >= mem.config.Size || int64(wtx.Size())+sizeBytes > mem.config.MaxTxsBytes {
-		return ErrMempoolIsFull{
-			numTxs:      numTxs,
-			maxTxs:      mem.config.Size,
-			txsBytes:    sizeBytes,
-			maxTxsBytes: mem.config.MaxTxsBytes,
+	// wTxs contains a list of *WrappedTx retrieved from the priority queue that
+	// need to be re-enqueued prior to returning.
+	wTxs := make([]*WrappedTx, 0, txmp.priorityIndex.NumTxs())
+	defer func() {
+		for _, wtx := range wTxs {
+			txmp.priorityIndex.PushTx(wtx)
+		}
+	}()
+
+	txs := make([]types.Tx, 0, txmp.priorityIndex.NumTxs())
+	for txmp.priorityIndex.NumTxs() > 0 {
+		wtx := txmp.priorityIndex.PopTx()
+		txs = append(txs, wtx.tx)
+		wTxs = append(wTxs, wtx)
+		size := types.ComputeProtoSizeForTxs([]types.Tx{wtx.tx})
+
+		// Ensure we have capacity for the transaction with respect to the
+		// transaction size.
+		if maxBytes > -1 && totalSize+size > maxBytes {
+			return txs[:len(txs)-1]
+		}
+
+		totalSize += size
+
+		// ensure we have capacity for the transaction with respect to total gas
+		gas := totalGas + wtx.gasWanted
+		if maxGas > -1 && gas > maxGas {
+			return txs[:len(txs)-1]
+		}
+
+		totalGas = gas
+	}
+
+	return txs
+}
+
+// ReapMaxTxs returns a list of transactions within the provided number of
+// transactions bound. Transaction are retrieved in priority order.
+//
+// NOTE:
+// - A read-lock is acquired.
+// - Transactions returned are not actually removed from the mempool transaction
+//   store or indexes.
+func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
+	txmp.mtx.RLock()
+	defer txmp.mtx.RUnlock()
+
+	numTxs := txmp.priorityIndex.NumTxs()
+	if max < 0 {
+		max = numTxs
+	}
+
+	cap := tmmath.MinInt(numTxs, max)
+
+	// wTxs contains a list of *WrappedTx retrieved from the priority queue that
+	// need to be re-enqueued prior to returning.
+	wTxs := make([]*WrappedTx, 0, cap)
+	defer func() {
+		for _, wtx := range wTxs {
+			txmp.priorityIndex.PushTx(wtx)
+		}
+	}()
+
+	txs := make([]types.Tx, 0, cap)
+	for txmp.priorityIndex.NumTxs() > 0 && len(txs) < max {
+		wtx := txmp.priorityIndex.PopTx()
+		txs = append(txs, wtx.tx)
+		wTxs = append(wTxs, wtx)
+	}
+
+	return txs
+}
+
+// Update iterates over all the transactions provided by the caller, i.e. the
+// block producer, and removes them from the cache (if applicable) and removes
+// the transactions from the main transaction store and associated indexes.
+// Finally, if there are trainsactions remaining in the mempool, we initiate a
+// re-CheckTx for them (if applicable), otherwise, we notify the caller more
+// transactions are available.
+//
+// NOTE:
+// - The caller must explicitly acquire a write-lock via Lock().
+func (txmp *TxMempool) Update(
+	blockHeight int64,
+	blockTxs types.Txs,
+	deliverTxResponses []*abci.ResponseDeliverTx,
+	newPreFn PreCheckFunc,
+	newPostFn PostCheckFunc,
+) error {
+
+	txmp.height = blockHeight
+	txmp.notifiedTxsAvailable = false
+
+	if newPreFn != nil {
+		txmp.preCheck = newPreFn
+	}
+	if newPostFn != nil {
+		txmp.postCheck = newPostFn
+	}
+
+	for i, tx := range blockTxs {
+		if deliverTxResponses[i].Code == abci.CodeTypeOK {
+			// add the valid committed transaction to the cache (if missing)
+			_ = txmp.cache.Push(tx)
+		} else if !txmp.config.KeepInvalidTxsInCache {
+			// allow invalid transactions to be re-submitted
+			txmp.cache.Remove(tx)
+		}
+
+		// remove the committed transaction from the transaction store and indexes
+		if wtx := txmp.txStore.GetTxByHash(tx.Key()); wtx != nil {
+			txmp.removeTx(wtx, false)
 		}
 	}
 
+	txmp.purgeExpiredTxs(blockHeight)
+
+	// If there any uncommitted transactions left in the mempool, we either
+	// initiate re-CheckTx per remaining transaction or notify that remaining
+	// transactions are left.
+	if txmp.Size() > 0 {
+		if txmp.config.Recheck {
+			txmp.logger.Debug(
+				"executing re-CheckTx for all remaining transactions",
+				"num_txs", txmp.Size(),
+				"height", blockHeight,
+			)
+			txmp.updateReCheckTxs()
+		} else {
+			txmp.notifyTxsAvailable()
+		}
+	}
+
+	txmp.metrics.Size.Set(float64(txmp.Size()))
 	return nil
 }
 
@@ -445,20 +506,20 @@ func (mem *CListMempool) canAddTx(wtx *WrappedTx) error {
 //
 // NOTE:
 // - An explicit lock is NOT required.
-func (mem *CListMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo TxInfo) {
+func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo TxInfo) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
 		return
 	}
 
 	var err error
-	if mem.postCheck != nil {
-		err = mem.postCheck(wtx.tx, checkTxRes.CheckTx)
+	if txmp.postCheck != nil {
+		err = txmp.postCheck(wtx.tx, checkTxRes.CheckTx)
 	}
 
 	if err != nil || checkTxRes.CheckTx.Code != abci.CodeTypeOK {
 		// ignore bad transactions
-		mem.logger.Info(
+		txmp.logger.Info(
 			"rejected bad transaction",
 			"priority", wtx.priority,
 			"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
@@ -467,15 +528,14 @@ func (mem *CListMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txIn
 			"post_check_err", err,
 		)
 
-		mem.metrics.FailedTxs.Add(1)
+		txmp.metrics.FailedTxs.Add(1)
 
-		if !mem.config.KeepInvalidTxsInCache {
-			mem.cache.Remove(wtx.tx)
+		if !txmp.config.KeepInvalidTxsInCache {
+			txmp.cache.Remove(wtx.tx)
 		}
 		if err != nil {
 			checkTxRes.CheckTx.MempoolError = err.Error()
 		}
-
 		return
 	}
 
@@ -483,34 +543,34 @@ func (mem *CListMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txIn
 	priority := checkTxRes.CheckTx.Priority
 
 	if len(sender) > 0 {
-		if wtx := mem.txStore.GetTxBySender(sender); wtx != nil {
-			mem.logger.Error(
+		if wtx := txmp.txStore.GetTxBySender(sender); wtx != nil {
+			txmp.logger.Error(
 				"rejected incoming good transaction; tx already exists for sender",
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"sender", sender,
 			)
-			mem.metrics.FailedTxs.Add(1)
+			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}
 	}
 
-	if err := mem.canAddTx(wtx); err != nil {
-		evictTxs := mem.priorityIndex.GetEvictableTxs(
+	if err := txmp.canAddTx(wtx); err != nil {
+		evictTxs := txmp.priorityIndex.GetEvictableTxs(
 			priority,
 			int64(wtx.Size()),
-			mem.SizeBytes(),
-			mem.config.MaxTxsBytes,
+			txmp.SizeBytes(),
+			txmp.config.MaxTxsBytes,
 		)
 		if len(evictTxs) == 0 {
 			// No room for the new incoming transaction so we just remove it from
 			// the cache.
-			mem.cache.Remove(wtx.tx)
-			mem.logger.Error(
+			txmp.cache.Remove(wtx.tx)
+			txmp.logger.Error(
 				"rejected incoming good transaction; mempool full",
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err.Error(),
 			)
-			mem.metrics.FailedTxs.Add(1)
+			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}
 
@@ -518,16 +578,17 @@ func (mem *CListMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txIn
 		//
 		// NOTE:
 		// - The transaction, toEvict, can be removed while a concurrent
-		// reCheckTx callback is being executed for the same transaction.
+		//   reCheckTx callback is being executed for the same transaction.
 		for _, toEvict := range evictTxs {
-			mem.removeTx(toEvict, true)
-			mem.logger.Debug(
+			txmp.removeTx(toEvict, true)
+			txmp.logger.Debug(
 				"evicted existing good transaction; mempool full",
 				"old_tx", fmt.Sprintf("%X", toEvict.tx.Hash()),
 				"old_priority", toEvict.priority,
 				"new_tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"new_priority", wtx.priority,
 			)
+			txmp.metrics.EvictedTxs.Add(1)
 		}
 	}
 
@@ -538,217 +599,274 @@ func (mem *CListMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txIn
 		txInfo.SenderID: {},
 	}
 
-	mem.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
-	mem.metrics.Size.Set(float64(mem.Size()))
+	txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
+	txmp.metrics.Size.Set(float64(txmp.Size()))
 
-	mem.insertTx(wtx)
-	mem.logger.Debug(
+	txmp.insertTx(wtx)
+	txmp.logger.Debug(
 		"inserted good transaction",
 		"priority", wtx.priority,
 		"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
-		"height", mem.height,
-		"num_txs", mem.Size(),
+		"height", txmp.height,
+		"num_txs", txmp.Size(),
+	)
+	txmp.notifyTxsAvailable()
+
+}
+
+// defaultTxCallback performs the default CheckTx application callback. This is
+// NOT executed when a transaction is first seen/received. Instead, this callback
+// is executed during re-checking transactions (if enabled). A caller, i.e a
+// block proposer, acquires a mempool write-lock via Lock() and when executing
+// Update(), if the mempool is non-empty and Recheck is enabled, then all
+// remaining transactions will be rechecked via CheckTxAsync. The order in which
+// they are rechecked must be the same order in which this callback is called
+// per transaction.
+func (txmp *TxMempool) defaultTxCallback(req *abci.Request, res *abci.Response) {
+	if txmp.recheckCursor == nil {
+		return
+	}
+
+	txmp.metrics.RecheckTimes.Add(1)
+
+	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
+	if !ok {
+		txmp.logger.Error(
+			"received incorrect type in mempool callback",
+			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
+			"got", reflect.TypeOf(res.Value).Name(),
+		)
+		return
+	}
+
+	tx := req.GetCheckTx().Tx
+	wtx := txmp.recheckCursor.Value.(*WrappedTx)
+
+	// Search through the remaining list of tx to recheck for a transaction that matches
+	// the one we received from the ABCI application.
+	for {
+		if bytes.Equal(tx, wtx.tx) {
+			// We've found a tx in the recheck list that matches the tx that we
+			// received from the ABCI application.
+			// Break, and use this transaction for further checks.
+			break
+		}
+
+		txmp.logger.Error(
+			"re-CheckTx transaction mismatch",
+			"got", wtx.tx.Hash(),
+			"expected", types.Tx(tx).Key(),
+		)
+
+		if txmp.recheckCursor == txmp.recheckEnd {
+			// we reached the end of the recheckTx list without finding a tx
+			// matching the one we received from the ABCI application.
+			// Return without processing any tx.
+			txmp.recheckCursor = nil
+			return
+		}
+
+		txmp.recheckCursor = txmp.recheckCursor.Next()
+		wtx = txmp.recheckCursor.Value.(*WrappedTx)
+	}
+
+	// Only evaluate transactions that have not been removed. This can happen
+	// if an existing transaction is evicted during CheckTx and while this
+	// callback is being executed for the same evicted transaction.
+	if !txmp.txStore.IsTxRemoved(wtx.hash) {
+		var err error
+		if txmp.postCheck != nil {
+			err = txmp.postCheck(tx, checkTxRes.CheckTx)
+		}
+
+		if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
+			wtx.priority = checkTxRes.CheckTx.Priority
+		} else {
+			txmp.logger.Debug(
+				"existing transaction no longer valid; failed re-CheckTx callback",
+				"priority", wtx.priority,
+				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
+				"err", err,
+				"code", checkTxRes.CheckTx.Code,
+			)
+
+			if wtx.gossipEl != txmp.recheckCursor {
+				panic("corrupted reCheckTx cursor")
+			}
+
+			txmp.removeTx(wtx, !txmp.config.KeepInvalidTxsInCache)
+		}
+	}
+
+	// move reCheckTx cursor to next element
+	if txmp.recheckCursor == txmp.recheckEnd {
+		txmp.recheckCursor = nil
+	} else {
+		txmp.recheckCursor = txmp.recheckCursor.Next()
+	}
+
+	if txmp.recheckCursor == nil {
+		txmp.logger.Debug("finished rechecking transactions")
+
+		if txmp.Size() > 0 {
+			txmp.notifyTxsAvailable()
+		}
+	}
+
+	txmp.metrics.Size.Set(float64(txmp.Size()))
+}
+
+// updateReCheckTxs updates the recheck cursors by using the gossipIndex. For
+// each transaction, it executes CheckTxAsync. The global callback defined on
+// the proxyAppConn will be executed for each transaction after CheckTx is
+// executed.
+//
+// NOTE:
+// - The caller must have a write-lock when executing updateReCheckTxs.
+func (txmp *TxMempool) updateReCheckTxs() {
+	if txmp.Size() == 0 {
+		panic("attempted to update re-CheckTx txs when mempool is empty")
+	}
+
+	txmp.recheckCursor = txmp.gossipIndex.Front()
+	txmp.recheckEnd = txmp.gossipIndex.Back()
+
+	for e := txmp.gossipIndex.Front(); e != nil; e = e.Next() {
+		wtx := e.Value.(*WrappedTx)
+
+		// Only execute CheckTx if the transaction is not marked as removed which
+		// could happen if the transaction was evicted.
+		if !txmp.txStore.IsTxRemoved(wtx.hash) {
+			txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
+				Tx:   wtx.tx,
+				Type: abci.CheckTxType_Recheck,
+			})
+		}
+	}
+
+	txmp.proxyAppConn.FlushAsync()
+}
+
+// canAddTx returns an error if we cannot insert the provided *WrappedTx into
+// the mempool due to mempool configured constraints. Otherwise, nil is returned
+// and the transaction can be inserted into the mempool.
+func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
+	var (
+		numTxs    = txmp.Size()
+		sizeBytes = txmp.SizeBytes()
 	)
 
-	mem.notifyTxsAvailable()
-}
-
-// callback, which is called after the app rechecked the tx.
-//
-// The case where the app checks the tx for the first time is handled by the
-// resCbFirstTime callback.
-func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
-	switch r := res.Value.(type) {
-	case *abci.Response_CheckTx:
-		tx := req.GetCheckTx().Tx
-		memTx := mem.recheckCursor.Value.(*mempoolTx)
-		if !bytes.Equal(tx, memTx.tx) {
-			panic(fmt.Sprintf(
-				"Unexpected tx response from proxy during recheck\nExpected %X, got %X",
-				memTx.tx,
-				tx))
-		}
-		var postCheckErr error
-		if mem.postCheck != nil {
-			postCheckErr = mem.postCheck(tx, r.CheckTx)
-		}
-		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
-			// Good, nothing to do.
-		} else {
-			// Tx became invalidated due to newly committed block.
-			mem.logger.Debug("tx is no longer valid", "tx", txID(tx), "res", r, "err", postCheckErr)
-			// NOTE: we remove tx from the cache because it might be good later
-			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
-		}
-		if mem.recheckCursor == mem.recheckEnd {
-			mem.recheckCursor = nil
-		} else {
-			mem.recheckCursor = mem.recheckCursor.Next()
-		}
-		if mem.recheckCursor == nil {
-			// Done!
-			mem.logger.Debug("done rechecking txs")
-
-			// incase the recheck removed all txs
-			if mem.Size() > 0 {
-				mem.notifyTxsAvailable()
-			}
-		}
-	default:
-		// ignore other messages
-	}
-}
-
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) TxsAvailable() <-chan struct{} {
-	return mem.txsAvailable
-}
-
-func (mem *CListMempool) notifyTxsAvailable() {
-	if mem.Size() == 0 {
-		panic("notified txs available but mempool is empty!")
-	}
-	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
-		// channel cap is 1, so this will send once
-		mem.notifiedTxsAvailable = true
-		select {
-		case mem.txsAvailable <- struct{}{}:
-		default:
+	if numTxs >= txmp.config.Size || int64(wtx.Size())+sizeBytes > txmp.config.MaxTxsBytes {
+		return ErrMempoolIsFull{
+			numTxs:      numTxs,
+			maxTxs:      txmp.config.Size,
+			txsBytes:    sizeBytes,
+			maxTxsBytes: txmp.config.MaxTxsBytes,
 		}
 	}
-}
-
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
-
-	var totalGas int64
-
-	// TODO: we will get a performance boost if we have a good estimate of avg
-	// size per tx, and set the initial capacity based off of that.
-	// txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max/mem.avgTxSize))
-	txs := make([]types.Tx, 0, mem.txs.Len())
-	for e := mem.txs.Front(); e != nil; e = e.Next() {
-		memTx := e.Value.(*mempoolTx)
-
-		dataSize := types.ComputeProtoSizeForTxs(append(txs, memTx.tx))
-
-		// Check total size requirement
-		if maxBytes > -1 && dataSize > maxBytes {
-			return txs
-		}
-		// Check total gas requirement.
-		// If maxGas is negative, skip this check.
-		// Since newTotalGas < masGas, which
-		// must be non-negative, it follows that this won't overflow.
-		newTotalGas := totalGas + memTx.gasWanted
-		if maxGas > -1 && newTotalGas > maxGas {
-			return txs
-		}
-		totalGas = newTotalGas
-		txs = append(txs, memTx.tx)
-	}
-	return txs
-}
-
-// Safe for concurrent use by multiple goroutines.
-func (mem *CListMempool) ReapMaxTxs(max int) types.Txs {
-	mem.updateMtx.RLock()
-	defer mem.updateMtx.RUnlock()
-
-	if max < 0 {
-		max = mem.txs.Len()
-	}
-
-	txs := make([]types.Tx, 0, tmmath.MinInt(mem.txs.Len(), max))
-	for e := mem.txs.Front(); e != nil && len(txs) <= max; e = e.Next() {
-		memTx := e.Value.(*mempoolTx)
-		txs = append(txs, memTx.tx)
-	}
-	return txs
-}
-
-// Lock() must be help by the caller during execution.
-func (mem *CListMempool) Update(
-	height int64,
-	txs types.Txs,
-	deliverTxResponses []*abci.ResponseDeliverTx,
-	preCheck PreCheckFunc,
-	postCheck PostCheckFunc,
-) error {
-	// Set height
-	mem.height = height
-	mem.notifiedTxsAvailable = false
-
-	if preCheck != nil {
-		mem.preCheck = preCheck
-	}
-	if postCheck != nil {
-		mem.postCheck = postCheck
-	}
-
-	for i, tx := range txs {
-		if deliverTxResponses[i].Code == abci.CodeTypeOK {
-			// Add valid committed tx to the cache (if missing).
-			_ = mem.cache.Push(tx)
-		} else if !mem.config.KeepInvalidTxsInCache {
-			// Allow invalid transactions to be resubmitted.
-			mem.cache.Remove(tx)
-		}
-
-		// Remove committed tx from the mempool.
-		//
-		// Note an evil proposer can drop valid txs!
-		// Mempool before:
-		//   100 -> 101 -> 102
-		// Block, proposed by an evil proposer:
-		//   101 -> 102
-		// Mempool after:
-		//   100
-		// https://github.com/tendermint/tendermint/issues/3322.
-		if e, ok := mem.txsMap.Load(TxKey(tx)); ok {
-			mem.removeTx(tx, e.(*clist.CElement), false)
-		}
-	}
-
-	// Either recheck non-committed txs to see if they became invalid
-	// or just notify there're some txs left.
-	if mem.Size() > 0 {
-		if mem.config.Recheck {
-			mem.logger.Debug("recheck txs", "numtxs", mem.Size(), "height", height)
-			mem.recheckTxs()
-			// At this point, mem.txs are being rechecked.
-			// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
-			// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
-		} else {
-			mem.notifyTxsAvailable()
-		}
-	}
-
-	// Update metrics
-	mem.metrics.Size.Set(float64(mem.Size()))
 
 	return nil
 }
 
-func (mem *CListMempool) recheckTxs() {
-	if mem.Size() == 0 {
-		panic("recheckTxs is called, but the mempool is empty")
+func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
+	txmp.txStore.SetTx(wtx)
+	txmp.priorityIndex.PushTx(wtx)
+	txmp.heightIndex.Insert(wtx)
+	txmp.timestampIndex.Insert(wtx)
+
+	// Insert the transaction into the gossip index and mark the reference to the
+	// linked-list element, which will be needed at a later point when the
+	// transaction is removed.
+	gossipEl := txmp.gossipIndex.PushBack(wtx)
+	wtx.gossipEl = gossipEl
+
+	atomic.AddInt64(&txmp.sizeBytes, int64(wtx.Size()))
+}
+
+func (txmp *TxMempool) removeTx(wtx *WrappedTx, removeFromCache bool) {
+	if txmp.txStore.IsTxRemoved(wtx.hash) {
+		return
 	}
 
-	mem.recheckCursor = mem.txs.Front()
-	mem.recheckEnd = mem.txs.Back()
+	txmp.txStore.RemoveTx(wtx)
+	txmp.priorityIndex.RemoveTx(wtx)
+	txmp.heightIndex.Remove(wtx)
+	txmp.timestampIndex.Remove(wtx)
 
-	// Push txs to proxyAppConn
-	// NOTE: globalCb may be called concurrently.
-	for e := mem.txs.Front(); e != nil; e = e.Next() {
-		memTx := e.Value.(*mempoolTx)
-		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
-			Tx:   memTx.tx,
-			Type: abci.CheckTxType_Recheck,
-		})
+	// Remove the transaction from the gossip index and cleanup the linked-list
+	// element so it can be garbage collected.
+	txmp.gossipIndex.Remove(wtx.gossipEl)
+	wtx.gossipEl.DetachPrev()
+
+	atomic.AddInt64(&txmp.sizeBytes, int64(-wtx.Size()))
+
+	if removeFromCache {
+		txmp.cache.Remove(wtx.tx)
+	}
+}
+
+// purgeExpiredTxs removes all transactions that have exceeded their respective
+// height and/or time based TTLs from their respective indexes. Every expired
+// transaction will be removed from the mempool entirely, except for the cache.
+//
+// NOTE: purgeExpiredTxs must only be called during TxMempool#Update in which
+// the caller has a write-lock on the mempool and so we can safely iterate over
+// the height and time based indexes.
+func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
+	now := time.Now()
+	expiredTxs := make(map[types.TxKey]*WrappedTx)
+
+	if txmp.config.TTLNumBlocks > 0 {
+		purgeIdx := -1
+		for i, wtx := range txmp.heightIndex.txs {
+			if (blockHeight - wtx.height) > txmp.config.TTLNumBlocks {
+				expiredTxs[wtx.tx.Key()] = wtx
+				purgeIdx = i
+			} else {
+				// since the index is sorted, we know no other txs can be be purged
+				break
+			}
+		}
+
+		if purgeIdx >= 0 {
+			txmp.heightIndex.txs = txmp.heightIndex.txs[purgeIdx+1:]
+		}
 	}
 
-	mem.proxyAppConn.FlushAsync()
+	if txmp.config.TTLDuration > 0 {
+		purgeIdx := -1
+		for i, wtx := range txmp.timestampIndex.txs {
+			if now.Sub(wtx.timestamp) > txmp.config.TTLDuration {
+				expiredTxs[wtx.tx.Key()] = wtx
+				purgeIdx = i
+			} else {
+				// since the index is sorted, we know no other txs can be be purged
+				break
+			}
+		}
+
+		if purgeIdx >= 0 {
+			txmp.timestampIndex.txs = txmp.timestampIndex.txs[purgeIdx+1:]
+		}
+	}
+
+	for _, wtx := range expiredTxs {
+		txmp.removeTx(wtx, false)
+	}
+}
+
+func (txmp *TxMempool) notifyTxsAvailable() {
+	if txmp.Size() == 0 {
+		panic("attempt to notify txs available but mempool is empty!")
+	}
+
+	if txmp.txsAvailable != nil && !txmp.notifiedTxsAvailable {
+		// channel cap is 1, so this will send once
+		txmp.notifiedTxsAvailable = true
+
+		select {
+		case txmp.txsAvailable <- struct{}{}:
+		default:
+		}
+	}
 }
