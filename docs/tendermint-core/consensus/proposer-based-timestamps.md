@@ -51,8 +51,8 @@ useful for the protocols and applications built on top of Tendermint.
 
 The following protocols and application features require a reliable source of time:
 
-* Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/tendermint/blob/master/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
-* Tendermint Evidence expiration is determined [either in terms of heights or in terms of time](https://github.com/tendermint/tendermint/blob/master/spec/consensus/evidence.md#verification).
+* Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/tendermint/blob/v0.36.x/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
+* Tendermint Evidence expiration is determined [either in terms of heights or in terms of time](https://github.com/tendermint/tendermint/blob/v0.36.x/spec/consensus/evidence.md#verification).
 * Unbonding of staked assets in the Cosmos Hub [occurs after a period of 21
  days](https://github.com/cosmos/governance/blob/master/params-change/Staking.md#unbondingtime).
 * IBC packets can use either a [timestamp or a height to timeout packet
@@ -92,5 +92,5 @@ proposed by their peers to be valid either.
 
 ## See Also
 
-* [The PBTS specification](https://github.com/tendermint/tendermint/blob/master/spec/consensus/proposer-based-timestamp/README.md)
+* [The PBTS specification](https://github.com/tendermint/tendermint/blob/v0.36.x/spec/consensus/proposer-based-timestamp/README.md)
  contains all of the details of the algorithm.

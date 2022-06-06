@@ -101,7 +101,7 @@ rm -rf ./build/node*
 
 ## Configuring ABCI containers
 
-To use your own ABCI applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) file and add image to your ABCI application.
+To use your own ABCI applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/v0.36.x/docker-compose.yml) file and add image to your ABCI application.
 
 ```yml
  abci0:
@@ -150,7 +150,7 @@ To use your own ABCI applications with 4-node setup edit the [docker-compose.yam
 
 ```
 
-Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's ABCI.
+Override the [command](https://github.com/tendermint/tendermint/blob/v0.36.x/networks/local/localnode/Dockerfile#L12) in each node to connect to it's ABCI.
 
 ```yml
   node0:

@@ -62,7 +62,7 @@ as `abci-cli` above. The kvstore just stores transactions in a merkle
 tree.
 
 Its code can be found
-[here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
+[here](https://github.com/tendermint/tendermint/blob/v0.36.x/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
 ```go
