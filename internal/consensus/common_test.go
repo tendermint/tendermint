@@ -4,7 +4,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -276,7 +275,7 @@ func decideProposal(
 
 	cs1.logger.Debug("signed proposal common test", "height", proposal.Height, "round", proposal.Round,
 		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.HexString(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", hex.EncodeToString(signID))
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID.String())
 
 	proposal.Signature = p.Signature
 

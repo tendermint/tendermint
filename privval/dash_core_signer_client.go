@@ -286,7 +286,7 @@ func (sc *DashCoreSignerClient) SignVote(
 // SignProposal requests a remote signer to sign a proposal
 func (sc *DashCoreSignerClient) SignProposal(
 	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	if quorumType == 0 {
 		return nil, fmt.Errorf("error signing proposal with invalid quorum type")
 	}

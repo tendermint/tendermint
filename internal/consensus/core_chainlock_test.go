@@ -82,7 +82,7 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 	// update the decide proposal to propose the incorrect height
 	byzProposer.decideProposal = func() func(context.Context, int64, int32) {
 		return func(_ context.Context, height int64, round int32) {
-			invalidProposeCoreChainLockFunc(ctx, t, height, round, states[0])
+			invalidProposeCoreChainLockFunc(ctx, t, height, round, states[byzProposerID])
 		}
 	}()
 
