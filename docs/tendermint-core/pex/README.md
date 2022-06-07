@@ -166,8 +166,8 @@ current, past, and rate-of-change data to inform peer quality.
 While a PID trust metric has been implemented, it remains for future work
 to use it in the PEX.
 
-See the [trustmetric](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-006-trust-metric.md)
-and [trustmetric useage](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-007-trust-metric-usage.md)
+See the [trustmetric](https://github.com/tendermint/tendermint/blob/v0.36.x/docs/architecture/adr-006-trust-metric.md)
+and [trustmetric useage](https://github.com/tendermint/tendermint/blob/v0.36.x/docs/architecture/adr-007-trust-metric-usage.md)
 architecture docs for more details.
 
 

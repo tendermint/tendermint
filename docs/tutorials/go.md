@@ -328,7 +328,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 ```
 
 The complete specification can be found
-[here](https://github.com/tendermint/tendermint/tree/master/spec/abci/).
+[here](https://github.com/tendermint/tendermint/blob/v0.36.x/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instances
 
