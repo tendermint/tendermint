@@ -1,7 +1,8 @@
 # Runs randomly generated E2E testnets nightly on master
 
-# !! If you change something in this file, you probably want
-# to update the e2e-nightly-34x workflow as well!
+# !! Relevant changes to this file should be propagated to the e2e-nightly-<V>x
+# files for the supported backport branches, when appropriate, modulo version
+# markers.
 
 name: e2e-nightly-master
 on:

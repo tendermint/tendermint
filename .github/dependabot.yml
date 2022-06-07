@@ -16,6 +16,17 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    target-branch: "v0.34.x"
+    open-pull-requests-limit: 10
+    labels:
+      - T:dependencies
+      - S:automerge
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
     target-branch: "v0.35.x"
     open-pull-requests-limit: 10
     labels:
@@ -69,6 +80,16 @@ updates:
     schedule:
       interval: daily
     target-branch: "v0.35.x"
+    open-pull-requests-limit: 10
+    labels:
+      - T:dependencies
+      - S:automerge
+
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: daily
+    target-branch: "v0.36.x"
     open-pull-requests-limit: 10
     labels:
       - T:dependencies
