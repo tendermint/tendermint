@@ -217,7 +217,7 @@ func TestRPCNotificationInBatch(t *testing.T) {
 
 func TestUnknownRPCPath(t *testing.T) {
 	mux := testMux()
-	req, _ := http.NewRequest("GET", "http://localhost/unknownrpcpath", nil)
+	req, _ := http.NewRequest("GET", "http://localhost/unknownrpcpath", strings.NewReader(""))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	res := rec.Result()

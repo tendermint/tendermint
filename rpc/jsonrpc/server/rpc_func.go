@@ -13,6 +13,7 @@ import (
 // interface on which the result objects are registered, and is popualted with
 // every RPCResponse
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger log.Logger) {
+<<<<<<< HEAD
 	// HTTP endpoints
 	for funcName, rpcFunc := range funcMap {
 		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, logger))
@@ -20,6 +21,17 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 
 	// JSONRPC endpoints
 	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
+=======
+	for name, fn := range funcMap {
+		if fn.ws {
+			continue // skip websocket endpoints, not usable via GET calls
+		}
+		mux.HandleFunc("/"+name, ensureBodyClose(makeHTTPHandler(fn, logger)))
+	}
+
+	// Endpoints for POST.
+	mux.HandleFunc("/", ensureBodyClose(handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger))))
+>>>>>>> 931c98f7a (rpc: always close http bodies (#8712))
 }
 
 // Function introspection
