@@ -64,7 +64,7 @@ type Manifest struct {
 	QueueType string `toml:"queue_type"`
 
 	// Number of bytes per tx. Default is 1kb (1024)
-	TxSize int
+	TxSize int `toml:"tx_size"`
 
 	// VoteExtensionsEnableHeight configures the first height during which
 	// the chain will use and require vote extension data to be present
@@ -76,6 +76,14 @@ type Manifest struct {
 	// builtin will build a complete Tendermint node into the application and
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelayMS uint64 `toml:"prepare_proposal_delay_ms"`
+	ProcessProposalDelayMS uint64 `toml:"process_proposal_delay_ms"`
+	CheckTxDelayMS         uint64 `toml:"check_tx_delay_ms"`
+	VoteExtensionDelayMS   uint64 `toml:"vote_extension_delay_ms"`
+	FinalizeBlockDelayMS   uint64 `toml:"finalize_block_delay_ms"`
 }
 
 // ManifestNode represents a node in a testnet manifest.

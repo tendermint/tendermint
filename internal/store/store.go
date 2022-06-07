@@ -650,8 +650,14 @@ func (bs *BlockStore) Close() error {
 
 // key prefixes
 // NB: Before modifying these, cross-check them with those in
-// internal/state/store.go
-// TODO(thane): Move these and the ones in internal/state/store.go to their own package.
+// * internal/store/store.go    [0..4, 13]
+// * internal/state/store.go    [5..8, 14]
+// * internal/evidence/pool.go  [9..10]
+// * light/store/db/db.go       [11..12]
+// TODO(thane): Move all these to their own package.
+// TODO: what about these (they already collide):
+// * scripts/scmigrate/migrate.go [3] --> Looks OK, as it is also called "SeenCommit"
+// * internal/p2p/peermanager.go  [1]
 const (
 	// prefixes are unique across all tm db's
 	prefixBlockMeta   = int64(0)
@@ -659,7 +665,7 @@ const (
 	prefixBlockCommit = int64(2)
 	prefixSeenCommit  = int64(3)
 	prefixBlockHash   = int64(4)
-	prefixExtCommit   = int64(9) // 5..8 are used by state/store
+	prefixExtCommit   = int64(13)
 )
 
 func blockMetaKey(height int64) []byte {
