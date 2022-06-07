@@ -38,7 +38,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    target-branch: "v0.34.x"
+    target-branch: "v0.36.x"
     open-pull-requests-limit: 10
     labels:
       - T:dependencies
