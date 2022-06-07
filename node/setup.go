@@ -229,11 +229,13 @@ func createPeerManager(
 		maxConns = 64
 	}
 
+	maxUpgradeConns := uint16(4)
+
 	options := p2p.PeerManagerOptions{
 		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
-		MaxConnectedUpgrade:    4,
-		MaxPeers:               1000,
+		MaxConnectedUpgrade:    maxUpgradeConns,
+		MaxPeers:               maxUpgradeConns + 2*maxConns,
 		MinRetryTime:           250 * time.Millisecond,
 		MaxRetryTime:           30 * time.Minute,
 		MaxRetryTimePersistent: 5 * time.Minute,
