@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -222,7 +223,7 @@ func (sc *SignerClient) SignProposal(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	response, err := sc.endpoint.SendRequest(ctx, mustWrapMsg(
 		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID,
 			QuorumType: int32(quorumType), QuorumHash: quorumHash},

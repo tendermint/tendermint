@@ -44,6 +44,7 @@ func TestGetPubKey(t *testing.T) {
 			if tc.err {
 				require.Error(t, err)
 			} else {
+				require.NoError(t, err)
 				quorumHash, err := tc.pv.GetFirstQuorumHash(ctx)
 				require.NoError(t, err)
 				pk, err := tc.pv.GetPubKey(ctx, quorumHash)

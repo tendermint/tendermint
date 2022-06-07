@@ -580,7 +580,7 @@ func (pv *FilePV) SignProposal(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	pv.mtx.RLock()
 	defer pv.mtx.RUnlock()
 
@@ -743,7 +743,10 @@ func (pv *FilePV) signVote(
 	//	   sigBlock, vote)
 	//  }
 
-	pv.saveSigned(height, round, step, blockSignBytes, sigBlock, stateSignBytes, sigState)
+	err = pv.saveSigned(height, round, step, blockSignBytes, sigBlock, stateSignBytes, sigState)
+	if err != nil {
+		return err
+	}
 
 	vote.BlockSignature = sigBlock
 	vote.StateSignature = sigState
@@ -801,7 +804,10 @@ func (pv *FilePV) signProposal(
 	// pv.Key.ProTxHash,
 	// proposal.Height, pv.Key.PrivKey.PubKey().Bytes(), blockSignID, blockSig)
 
-	pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
+	err = pv.saveSigned(height, round, step, blockSignBytes, blockSig, nil, nil)
+	if err != nil {
+		return nil, err
+	}
 	proposal.Signature = blockSig
 	return blockSignID, nil
 }
@@ -815,7 +821,7 @@ func (pv *FilePV) saveSigned(
 	blockSig []byte,
 	stateSignBytes []byte,
 	stateSig []byte,
-) {
+) error {
 	pv.LastSignState.Height = height
 	pv.LastSignState.Round = round
 	pv.LastSignState.Step = step
@@ -823,5 +829,5 @@ func (pv *FilePV) saveSigned(
 	pv.LastSignState.BlockSignBytes = blockSignBytes
 	pv.LastSignState.StateSignature = stateSig
 	pv.LastSignState.StateSignBytes = stateSignBytes
-	_ = pv.LastSignState.Save()
+	return pv.LastSignState.Save()
 }

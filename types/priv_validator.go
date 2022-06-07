@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -54,7 +54,7 @@ type PrivValidator interface {
 		vote *tmproto.Vote, stateID StateID, logger log.Logger) error
 	SignProposal(
 		ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-		proposal *tmproto.Proposal) ([]byte, error)
+		proposal *tmproto.Proposal) (tmbytes.HexBytes, error)
 
 	ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *Validator
 }
@@ -304,7 +304,7 @@ func (pv *MockPV) SignProposal(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
 	if pv.breakProposalSigning {
@@ -398,7 +398,7 @@ func (pv *ErroringMockPV) SignProposal(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	return nil, ErroringMockPVErr
 }
 

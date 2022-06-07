@@ -367,7 +367,7 @@ func (sc *DashCoreSignerClient) SignVote(
 // SignProposal requests a remote signer to sign a proposal
 func (sc *DashCoreSignerClient) SignProposal(
 	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	messageBytes := types.ProposalBlockSignBytes(chainID, proposalProto)
 
 	messageHash := crypto.Checksum(messageBytes)
