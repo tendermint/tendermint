@@ -26,11 +26,11 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 		if fn.ws {
 			continue // skip websocket endpoints, not usable via GET calls
 		}
-		mux.HandleFunc("/"+name, makeHTTPHandler(fn, logger))
+		mux.HandleFunc("/"+name, ensureBodyClose(makeHTTPHandler(fn, logger)))
 	}
 
 	// Endpoints for POST.
-	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
+	mux.HandleFunc("/", ensureBodyClose(handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger))))
 }
 
 // Function introspection
