@@ -8,6 +8,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/orderedcode"
+	pkg_errors "github.com/pkg/errors"
 	dbm "github.com/tendermint/tm-db"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -42,27 +43,27 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 }
 
 // Base returns the first known contiguous block height, or 0 for empty block stores.
-func (bs *BlockStore) Base() int64 {
+func (bs *BlockStore) Base() (int64, error) {
 	iter, err := bs.db.Iterator(
 		blockMetaKey(1),
 		blockMetaKey(1<<63-1),
 	)
 	if err != nil {
-		panic(err)
+		return 0, pkg_errors.Wrap(err, "Error while iterating blockMetaKeys")
 	}
 	defer iter.Close()
 
 	if iter.Valid() {
 		height, err := decodeBlockMetaKey(iter.Key())
 		if err == nil {
-			return height
+			return height, nil
 		}
 	}
 	if err := iter.Error(); err != nil {
 		panic(err)
 	}
 
-	return 0
+	return 0, nil
 }
 
 // Height returns the last known contiguous block height, or 0 for empty block stores.
@@ -90,12 +91,16 @@ func (bs *BlockStore) Height() int64 {
 }
 
 // Size returns the number of blocks in the block store.
-func (bs *BlockStore) Size() int64 {
+func (bs *BlockStore) Size() (int64, error) {
 	height := bs.Height()
 	if height == 0 {
-		return 0
+		return 0, nil
 	}
-	return height + 1 - bs.Base()
+	block_base, err := bs.Base()
+	if err != nil {
+		return 0, pkg_errors.Wrap(err, "Error occurred while calculating base height.")
+	}
+	return height + 1 - block_base, nil
 }
 
 // LoadBase atomically loads the base block meta, or returns nil if no base is found.
@@ -529,7 +534,11 @@ func (bs *BlockStore) saveBlockToBatch(batch dbm.Batch, block *types.Block, bloc
 	height := block.Height
 	hash := block.Hash()
 
-	if g, w := height, bs.Height()+1; bs.Base() > 0 && g != w {
+	block_base, err := bs.Base()
+	if err != nil {
+		return pkg_errors.Wrap(err, "Error in getting block base")
+	}
+	if g, w := height, bs.Height()+1; block_base > 0 && g != w {
 		return fmt.Errorf("BlockStore can only save contiguous blocks. Wanted %v, got %v", w, g)
 	}
 	if !blockParts.IsComplete() {

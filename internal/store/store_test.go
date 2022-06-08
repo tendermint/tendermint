@@ -72,7 +72,9 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
 	defer cleanup()
 	require.NoError(t, err)
-	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
+	blockBase, err := bs.Base()
+	require.Nil(t, err)
+	require.Equal(t, blockBase, int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
 	// check there are no blocks at various heights
@@ -91,7 +93,9 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
 	bs.SaveBlockWithExtendedCommit(block, validPartSet, seenCommit)
-	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
+	blockBase, err = bs.Base()
+	require.Nil(t, err)
+	require.EqualValues(t, 1, blockBase, "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
@@ -388,7 +392,10 @@ func TestLoadBaseMeta(t *testing.T) {
 
 	baseBlock := bs.LoadBaseMeta()
 	assert.EqualValues(t, 4, baseBlock.Header.Height)
-	assert.EqualValues(t, 4, bs.Base())
+
+	blockBase, err := bs.Base()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 4, blockBase)
 }
 
 func TestLoadBlockPart(t *testing.T) {
@@ -444,9 +451,14 @@ func TestPruneBlocks(t *testing.T) {
 	require.NoError(t, err)
 	db := dbm.NewMemDB()
 	bs := NewBlockStore(db)
-	assert.EqualValues(t, 0, bs.Base())
+	blockBase, err := bs.Base()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 0, blockBase)
 	assert.EqualValues(t, 0, bs.Height())
-	assert.EqualValues(t, 0, bs.Size())
+
+	blockSize, err := bs.Size()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 0, blockSize)
 
 	_, err = bs.PruneBlocks(0)
 	require.Error(t, err)
@@ -460,9 +472,14 @@ func TestPruneBlocks(t *testing.T) {
 		bs.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
 	}
 
-	assert.EqualValues(t, 1, bs.Base())
+	blockBase, err = bs.Base()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1, blockBase)
 	assert.EqualValues(t, 1500, bs.Height())
-	assert.EqualValues(t, 1500, bs.Size())
+
+	blockSize, err = bs.Size()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1500, blockSize)
 
 	prunedBlock := bs.LoadBlock(1199)
 
@@ -470,9 +487,15 @@ func TestPruneBlocks(t *testing.T) {
 	pruned, err := bs.PruneBlocks(1200)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1199, pruned)
-	assert.EqualValues(t, 1200, bs.Base())
+
+	blockBase, err = bs.Base()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1200, blockBase)
 	assert.EqualValues(t, 1500, bs.Height())
-	assert.EqualValues(t, 301, bs.Size())
+
+	blockSize, err = bs.Size()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 301, blockSize)
 
 	require.NotNil(t, bs.LoadBlock(1200))
 	require.Nil(t, bs.LoadBlock(1199))
@@ -501,7 +524,10 @@ func TestPruneBlocks(t *testing.T) {
 	pruned, err = bs.PruneBlocks(1300)
 	require.NoError(t, err)
 	assert.EqualValues(t, 100, pruned)
-	assert.EqualValues(t, 1300, bs.Base())
+
+	blockBase, err = bs.Base()
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1300, blockBase)
 
 	// Pruning beyond the current height should error
 	_, err = bs.PruneBlocks(1501)
