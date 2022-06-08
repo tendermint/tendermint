@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	sm "github.com/tendermint/tendermint/internal/state"
 	statefactory "github.com/tendermint/tendermint/internal/state/test/factory"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -102,8 +101,8 @@ func TestStateSaveLoad(t *testing.T) {
 		loadedState, state)
 }
 
-// TestABCIResponsesSaveLoad tests saving and loading ABCIResponses.
-func TestABCIResponsesSaveLoad1(t *testing.T) {
+// TestFinalizeBlockResponsesSaveLoad1 tests saving and loading responses to FinalizeBlock.
+func TestFinalizeBlockResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB)
@@ -113,28 +112,27 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// Build mock responses.
 	block := statefactory.MakeBlock(state, 2, new(types.Commit))
 
-	abciResponses := new(tmstate.ABCIResponses)
 	dtxs := make([]*abci.ExecTxResult, 2)
-	abciResponses.FinalizeBlock = new(abci.ResponseFinalizeBlock)
-	abciResponses.FinalizeBlock.TxResults = dtxs
+	finalizeBlockResponses := new(abci.ResponseFinalizeBlock)
+	finalizeBlockResponses.TxResults = dtxs
 
-	abciResponses.FinalizeBlock.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
-	abciResponses.FinalizeBlock.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
+	finalizeBlockResponses.TxResults[0] = &abci.ExecTxResult{Data: []byte("foo"), Events: nil}
+	finalizeBlockResponses.TxResults[1] = &abci.ExecTxResult{Data: []byte("bar"), Log: "ok", Events: nil}
 	pbpk, err := encoding.PubKeyToProto(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
-	abciResponses.FinalizeBlock.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
+	finalizeBlockResponses.ValidatorUpdates = []abci.ValidatorUpdate{{PubKey: pbpk, Power: 10}}
 
-	err = stateStore.SaveABCIResponses(block.Height, abciResponses)
+	err = stateStore.SaveFinalizeBlockResponses(block.Height, finalizeBlockResponses)
 	require.NoError(t, err)
-	loadedABCIResponses, err := stateStore.LoadABCIResponses(block.Height)
+	loadedFinalizeBlockResponses, err := stateStore.LoadFinalizeBlockResponses(block.Height)
 	require.NoError(t, err)
-	assert.Equal(t, abciResponses, loadedABCIResponses,
-		"ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
-		loadedABCIResponses, abciResponses)
+	assert.Equal(t, finalizeBlockResponses, loadedFinalizeBlockResponses,
+		"FinalizeBlockResponses don't match:\ngot:       %v\nexpected: %v\n",
+		loadedFinalizeBlockResponses, finalizeBlockResponses)
 }
 
-// TestResultsSaveLoad tests saving and loading ABCI results.
-func TestABCIResponsesSaveLoad2(t *testing.T) {
+// TestFinalizeBlockResponsesSaveLoad2 tests saving and loading responses to FinalizeBlock.
+func TestFinalizeBlockResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
 
@@ -190,32 +188,31 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	// Query all before, this should return error.
 	for i := range cases {
 		h := int64(i + 1)
-		res, err := stateStore.LoadABCIResponses(h)
+		res, err := stateStore.LoadFinalizeBlockResponses(h)
 		assert.Error(t, err, "%d: %#v", i, res)
 	}
 
 	// Add all cases.
 	for i, tc := range cases {
 		h := int64(i + 1) // last block height, one below what we save
-		responses := &tmstate.ABCIResponses{
-			FinalizeBlock: &abci.ResponseFinalizeBlock{
-				TxResults: tc.added,
-			},
+		responses := &abci.ResponseFinalizeBlock{
+			TxResults: tc.added,
+			AppHash:   []byte("a_hash"),
 		}
-		err := stateStore.SaveABCIResponses(h, responses)
+		err := stateStore.SaveFinalizeBlockResponses(h, responses)
 		require.NoError(t, err)
 	}
 
-	// Query all before, should return expected value.
+	// Query all after, should return expected value.
 	for i, tc := range cases {
 		h := int64(i + 1)
-		res, err := stateStore.LoadABCIResponses(h)
+		res, err := stateStore.LoadFinalizeBlockResponses(h)
 		if assert.NoError(t, err, "%d", i) {
 			t.Log(res)
 			e, err := abci.MarshalTxResults(tc.expected)
 			require.NoError(t, err)
 			he := merkle.HashFromByteSlices(e)
-			rs, err := abci.MarshalTxResults(res.FinalizeBlock.TxResults)
+			rs, err := abci.MarshalTxResults(res.TxResults)
 			hrs := merkle.HashFromByteSlices(rs)
 			require.NoError(t, err)
 			assert.Equal(t, he, hrs, "%d", i)
@@ -282,12 +279,12 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(t, state, power)
-		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.FinalizeBlock.ValidatorUpdates)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.ValidatorUpdates)
 		require.NoError(t, err)
-		rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
+		rs, err := abci.MarshalTxResults(responses.TxResults)
 		require.NoError(t, err)
 		h := merkle.HashFromByteSlices(rs)
-		state, err = state.Update(blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates)
+		state, err = state.Update(blockID, &header, h, responses.ConsensusParamUpdates, validatorUpdates)
 		require.NoError(t, err)
 		err = stateStore.Save(state)
 		require.NoError(t, err)
@@ -1024,12 +1021,12 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 
 	// Save state etc.
 	var validatorUpdates []*types.Validator
-	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.FinalizeBlock.ValidatorUpdates)
+	validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.ValidatorUpdates)
 	require.NoError(t, err)
-	rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
+	rs, err := abci.MarshalTxResults(responses.TxResults)
 	require.NoError(t, err)
 	h := merkle.HashFromByteSlices(rs)
-	state, err = state.Update(blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates)
+	state, err = state.Update(blockID, &header, h, responses.ConsensusParamUpdates, validatorUpdates)
 	require.NoError(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	err = stateStore.Save(state)
@@ -1104,12 +1101,12 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, blockID, responses := makeHeaderPartsResponsesParams(t, state, &cp)
-		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.FinalizeBlock.ValidatorUpdates)
+		validatorUpdates, err = types.PB2TM.ValidatorUpdates(responses.ValidatorUpdates)
 		require.NoError(t, err)
-		rs, err := abci.MarshalTxResults(responses.FinalizeBlock.TxResults)
+		rs, err := abci.MarshalTxResults(responses.TxResults)
 		require.NoError(t, err)
 		h := merkle.HashFromByteSlices(rs)
-		state, err = state.Update(blockID, &header, h, responses.FinalizeBlock.ConsensusParamUpdates, validatorUpdates)
+		state, err = state.Update(blockID, &header, h, responses.ConsensusParamUpdates, validatorUpdates)
 
 		require.NoError(t, err)
 		err = stateStore.Save(state)

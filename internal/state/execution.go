@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/libs/log"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -233,12 +232,11 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		"block_app_hash", fmt.Sprintf("%X", fBlockRes.AppHash),
 	)
 
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: fBlockRes,
-	}
-
 	// Save the results before we commit.
-	if err := blockExec.store.SaveABCIResponses(block.Height, abciResponses); err != nil {
+	err = blockExec.store.SaveFinalizeBlockResponses(block.Height, fBlockRes)
+	if err != nil && !errors.Is(err, ErrNoFinalizeBlockResponsesForHeight{block.Height}) {
+		// It is correct to have an empty ResponseFinalizeBlock for ApplyBlock,
+		// but not for saving it to the state store
 		return state, err
 	}
 
@@ -538,7 +536,7 @@ func (state State) Update(
 	// and update s.LastValidators and s.Validators.
 	nValSet := state.NextValidators.Copy()
 
-	// Update the validator set with the latest abciResponses.
+	// Update the validator set with the latest responses to FinalizeBlock.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
 		err := nValSet.UpdateWithChangeSet(validatorUpdates)
@@ -552,7 +550,7 @@ func (state State) Update(
 	// Update validator proposer priority and set state variables.
 	nValSet.IncrementProposerPriority(1)
 
-	// Update the params with the latest abciResponses.
+	// Update the params with the latest responses to FinalizeBlock.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if consensusParamUpdates != nil {

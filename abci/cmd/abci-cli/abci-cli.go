@@ -151,8 +151,10 @@ where example.file looks something like:
     check_tx 0x00
     check_tx 0xff
     finalize_block 0x00
+    commit
     check_tx 0x00
     finalize_block 0x01 0x04 0xff
+    commit
     info
 `,
 	Args: cobra.ExactArgs(0),
