@@ -96,18 +96,6 @@ func NewApplication() *Application {
 	}
 }
 
-func (app *Application) setValSetUpdate(valSetUpdate *types.ValidatorSetUpdate) error {
-	err := app.valUpdatesRepo.set(valSetUpdate)
-	if err != nil {
-		return err
-	}
-	app.valsIndex = make(map[string]*types.ValidatorUpdate)
-	for i, v := range valSetUpdate.ValidatorUpdates {
-		app.valsIndex[crypto.ProTxHash(v.ProTxHash).String()] = &valSetUpdate.ValidatorUpdates[i]
-	}
-	return nil
-}
-
 func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
@@ -359,15 +347,11 @@ func (app *Application) execValidatorSetTx(tx []byte) error {
 	if err != nil {
 		return err
 	}
-	err = app.valUpdatesRepo.set(vsu)
+	err = app.setValSetUpdate(vsu)
 	if err != nil {
 		return err
 	}
 	app.valSetUpdate = *vsu
-	app.valsIndex = make(map[string]*types.ValidatorUpdate)
-	for i, v := range vsu.ValidatorUpdates {
-		app.valsIndex[crypto.ProTxHash(v.ProTxHash).String()] = &vsu.ValidatorUpdates[i]
-	}
 	return nil
 }
 
@@ -490,4 +474,20 @@ func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*
 	}
 
 	return append(trs, removed...)
+}
+
+func (app *Application) setValSetUpdate(valSetUpdate *types.ValidatorSetUpdate) error {
+	err := app.valUpdatesRepo.set(valSetUpdate)
+	if err != nil {
+		return err
+	}
+	app.valsIndex = make(map[string]*types.ValidatorUpdate)
+	for i, v := range valSetUpdate.ValidatorUpdates {
+		app.valsIndex[proTxHashString(v.ProTxHash)] = &valSetUpdate.ValidatorUpdates[i]
+	}
+	return nil
+}
+
+func proTxHashString(proTxHash crypto.ProTxHash) string {
+	return proTxHash.String()
 }
