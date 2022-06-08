@@ -473,7 +473,13 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #   1) "null"
 #   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 # 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
+#   3) "psql" - the indexer services backed by PostgreSQL.
+# When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = "{{ .TxIndex.Indexer }}"
+
+# The PostgreSQL connection configuration, the connection format:
+#   postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
+psql-conn = "{{ .TxIndex.PsqlConn }}"
 
 #######################################################
 ###       Instrumentation Configuration Options     ###
