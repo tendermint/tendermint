@@ -51,12 +51,3 @@ func NewSignerListener(listenAddr string, logger log.Logger) (*SignerListenerEnd
 
 	return pve, nil
 }
-
-// GetFreeLocalhostAddrPort returns a free localhost:port address
-func GetFreeLocalhostAddrPort() string {
-	port, err := tmnet.GetFreePort()
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("127.0.0.1:%d", port)
-}

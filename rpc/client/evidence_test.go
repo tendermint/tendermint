@@ -1,21 +1,14 @@
 package client_test
 
 import (
-	"bytes"
 	"context"
 	"testing"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs"
-
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -23,16 +16,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// For some reason the empty node used in tests has a time of
-// 2018-10-10 08:20:13.695936996 +0000 UTC
-// this is because the test genesis time is set here
-// so in order to validate evidence we need evidence to be the same time
-var defaultTestTime = time.Date(2018, 10, 10, 8, 20, 13, 695936996, time.UTC)
-
 func newEvidence(t *testing.T, val *privval.FilePV,
 	vote *types.Vote, vote2 *types.Vote,
 	chainID string, stateID types.StateID,
-	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) *types.DuplicateVoteEvidence {
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	timestamp time.Time,
+) *types.DuplicateVoteEvidence {
 	t.Helper()
 	var err error
 
@@ -57,7 +47,7 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	validator := types.NewValidator(privKey.PubKey(), types.DefaultDashVotingPower, val.Key.ProTxHash, "")
 	valSet := types.NewValidatorSet([]*types.Validator{validator}, validator.PubKey, quorumType, quorumHash, true)
 
-	ev, err := types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
+	ev, err := types.NewDuplicateVoteEvidence(vote, vote2, timestamp, valSet)
 	require.NoError(t, err)
 	return ev
 }
@@ -68,6 +58,7 @@ func makeEvidences(
 	chainID string,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
+	timestamp time.Time,
 ) (correct *types.DuplicateVoteEvidence, fakes []*types.DuplicateVoteEvidence) {
 	vote := types.Vote{
 		ValidatorProTxHash: val.Key.ProTxHash,
@@ -76,10 +67,10 @@ func makeEvidences(
 		Round:              0,
 		Type:               tmproto.PrevoteType,
 		BlockID: types.BlockID{
-			Hash: tmhash.Sum(tmrand.Bytes(tmhash.Size)),
+			Hash: crypto.Checksum(tmrand.Bytes(crypto.HashSize)),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000,
-				Hash:  tmhash.Sum([]byte("partset")),
+				Hash:  crypto.Checksum([]byte("partset")),
 			},
 		},
 	}
@@ -87,8 +78,8 @@ func makeEvidences(
 	stateID := types.RandStateID().WithHeight(vote.Height - 1)
 
 	vote2 := vote
-	vote2.BlockID.Hash = tmhash.Sum([]byte("blockhash2"))
-	correct = newEvidence(t, val, &vote, &vote2, chainID, stateID, quorumType, quorumHash)
+	vote2.BlockID.Hash = crypto.Checksum([]byte("blockhash2"))
+	correct = newEvidence(t, val, &vote, &vote2, chainID, stateID, quorumType, quorumHash, timestamp)
 
 	fakes = make([]*types.DuplicateVoteEvidence, 0)
 
@@ -96,102 +87,37 @@ func makeEvidences(
 	{
 		v := vote2
 		v.ValidatorProTxHash = []byte("some_pro_tx_hash")
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash, timestamp))
 	}
 
 	// different height
 	{
 		v := vote2
 		v.Height = vote.Height + 1
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash, timestamp))
 	}
 
 	// different round
 	{
 		v := vote2
 		v.Round = vote.Round + 1
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash, timestamp))
 	}
 
 	// different type
 	{
 		v := vote2
 		v.Type = tmproto.PrecommitType
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash, timestamp))
 	}
 
 	// exactly same vote
 	{
 		v := vote
-		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash))
+		fakes = append(fakes, newEvidence(t, val, &vote, &v, chainID, stateID, quorumType, quorumHash, timestamp))
 	}
 
 	return correct, fakes
-}
-
-func TestBroadcastEvidence_DuplicateVoteEvidence(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	n, config := NodeSuite(t)
-	chainID := config.ChainID()
-
-	pv, err := privval.LoadOrGenFilePV(config.PrivValidator.KeyFile(), config.PrivValidator.StateFile())
-	require.NoError(t, err)
-
-	for i, c := range GetClients(t, n, config) {
-		vals, err := c.Validators(ctx, libs.Int64Ptr(1), nil, nil, libs.BoolPtr(true))
-		require.NoError(t, err)
-		correct, fakes := makeEvidences(t, pv, chainID, vals.QuorumType, *vals.QuorumHash)
-		t.Logf("client %d", i)
-
-		// make sure that the node has produced enough blocks
-		waitForBlock(ctx, t, c, 2)
-
-		result, err := c.BroadcastEvidence(ctx, correct)
-		require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)
-		assert.Equal(t, correct.Hash(), result.Hash, "expected result hash to match evidence hash")
-
-		status, err := c.Status(ctx)
-		require.NoError(t, err)
-		err = client.WaitForHeight(c, status.SyncInfo.LatestBlockHeight+2, nil)
-		require.NoError(t, err)
-
-		pubKey, err := pv.GetFirstPubKey(context.Background())
-		require.NoError(t, err, "private validator must have a public key")
-		rawpub := pubKey.Bytes()
-		result2, err := c.ABCIQuery(context.Background(), "/vsu", []byte{})
-		require.NoError(t, err)
-		qres := result2.Response
-		require.True(t, qres.IsOK())
-
-		var vsu abci.ValidatorSetUpdate
-		err = abci.ReadMessage(bytes.NewReader(qres.Value), &vsu)
-		require.NoError(t, err, "Error reading query result, value %v", qres.Value)
-		require.Equal(t, 1, len(vsu.ValidatorUpdates))
-		v := vsu.ValidatorUpdates[0]
-		require.Equal(t, pv.Key.ProTxHash.Bytes(), v.ProTxHash)
-
-		pk, err := encoding.PubKeyFromProto(*v.PubKey)
-		require.NoError(t, err)
-
-		require.EqualValues(t, rawpub, pk, "Stored PubKey not equal with expected, value %v", string(qres.Value))
-		require.Equal(t, types.DefaultDashVotingPower, v.Power,
-			"Stored Power not equal with expected, value %v", string(qres.Value))
-
-		for _, fake := range fakes {
-			_, err := c.BroadcastEvidence(ctx, fake)
-			require.Error(t, err, "BroadcastEvidence(%s) succeeded, but the evidence was fake", fake)
-		}
-	}
-}
-
-func TestBroadcastEmptyEvidence(t *testing.T) {
-	n, conf := NodeSuite(t)
-	for _, c := range GetClients(t, n, conf) {
-		_, err := c.BroadcastEvidence(context.Background(), nil)
-		assert.Error(t, err)
-	}
 }
 
 func waitForBlock(ctx context.Context, t *testing.T, c client.Client, height int64) {

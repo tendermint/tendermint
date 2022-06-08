@@ -11,14 +11,21 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-// DashCoreSignerClient implements PrivValidator.
+// DashPrivValidator is a PrivValidator that uses Dash-specific logic
+type DashPrivValidator interface {
+	types.PrivValidator
+	dashcore.QuorumVerifier
+	DashRPCClient() dashcore.Client
+}
+
+// DashCoreSignerClient implements DashPrivValidator.
 // Handles remote validator connections that provide signing services
 type DashCoreSignerClient struct {
 	dashCoreRPCClient dashcore.Client
@@ -26,7 +33,7 @@ type DashCoreSignerClient struct {
 	defaultQuorumType btcjson.LLMQType
 }
 
-var _ types.PrivValidator = (*DashCoreSignerClient)(nil)
+var _ DashPrivValidator = (*DashCoreSignerClient)(nil)
 
 // NewDashCoreSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
@@ -232,7 +239,7 @@ func (sc *DashCoreSignerClient) SignVote(
 	}
 
 	blockSignBytes := types.VoteBlockSignBytes(chainID, protoVote)
-	blockMessageHash := crypto.Sha256(blockSignBytes)
+	blockMessageHash := crypto.Checksum(blockSignBytes)
 	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
 
 	blockResponse, err := sc.dashCoreRPCClient.QuorumSign(quorumType, blockRequestID, blockMessageHash, quorumHash)
@@ -261,7 +268,7 @@ func (sc *DashCoreSignerClient) SignVote(
 		quorumType,
 		tmbytes.Reverse(quorumHash),
 		tmbytes.Reverse(blockRequestID),
-		tmbytes.Reverse(blockMessageHash),
+		tmbytes.Reverse(blockMessageHash[:]),
 	)
 
 	coreSignID, err := hex.DecodeString(blockResponse.SignHash)
@@ -290,7 +297,7 @@ func (sc *DashCoreSignerClient) SignVote(
 	// Only sign the state when voting for the block
 	if protoVote.BlockID.Hash != nil {
 		stateSignBytes := stateID.SignBytes(chainID)
-		stateMessageHash := crypto.Sha256(stateSignBytes)
+		stateMessageHash := crypto.Checksum(stateSignBytes)
 		stateRequestID := stateID.SignRequestID()
 
 		stateResponse, err := sc.dashCoreRPCClient.QuorumSign(
@@ -312,6 +319,26 @@ func (sc *DashCoreSignerClient) SignVote(
 				"decoding signature %d is incorrect size when signing proposal : %v", len(stateDecodedSignature), err)
 		}
 		protoVote.StateSignature = stateDecodedSignature
+	}
+
+	if protoVote.Type == tmproto.PrecommitType {
+		if len(protoVote.Extension) > 0 {
+			extSignBytes := types.VoteExtensionSignBytes(chainID, protoVote)
+			extMsgHash := crypto.Checksum(extSignBytes)
+			extReqID := types.VoteExtensionRequestID(protoVote)
+
+			extResp, err := sc.dashCoreRPCClient.QuorumSign(quorumType, extReqID, extMsgHash, quorumHash)
+			if err != nil {
+				return err
+			}
+
+			protoVote.ExtensionSignature, err = hex.DecodeString(extResp.Signature)
+			if err != nil {
+				return err
+			}
+		}
+	} else if len(protoVote.Extension) > 0 {
+		return errors.New("unexpected vote extension - extensions are only allowed in precommits")
 	}
 
 	// fmt.Printf("Signed Vote proTxHash %s stateSignBytes %s block signature %s \n",
@@ -340,10 +367,10 @@ func (sc *DashCoreSignerClient) SignVote(
 // SignProposal requests a remote signer to sign a proposal
 func (sc *DashCoreSignerClient) SignProposal(
 	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposalProto *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	messageBytes := types.ProposalBlockSignBytes(chainID, proposalProto)
 
-	messageHash := crypto.Sha256(messageBytes)
+	messageHash := crypto.Checksum(messageBytes)
 
 	requestIDHash := types.ProposalRequestIDProto(proposalProto)
 
@@ -412,4 +439,23 @@ func (sc *DashCoreSignerClient) UpdatePrivateKey(
 
 func (sc *DashCoreSignerClient) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
 	return nil, nil
+}
+
+// QuorumVerify implements dashcore.QuorumVerifier
+func (sc *DashCoreSignerClient) QuorumVerify(
+	quorumType btcjson.LLMQType,
+	requestID tmbytes.HexBytes,
+	messageHash tmbytes.HexBytes,
+	signature tmbytes.HexBytes,
+	quorumHash tmbytes.HexBytes,
+) (bool, error) {
+	return sc.dashCoreRPCClient.QuorumVerify(quorumType, requestID, messageHash, signature, quorumHash)
+}
+
+// DashRPCClient implements DashPrivValidator
+func (sc *DashCoreSignerClient) DashRPCClient() dashcore.Client {
+	if sc == nil {
+		return nil
+	}
+	return sc.dashCoreRPCClient
 }

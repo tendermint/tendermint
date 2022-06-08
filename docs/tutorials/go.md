@@ -210,7 +210,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
+specification"](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#gas).
 
 For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,
@@ -328,7 +328,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 ```
 
 The complete specification can be found
-[here](https://docs.tendermint.com/master/spec/abci/).
+[here](https://github.com/tendermint/tendermint/tree/master/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instances
 
@@ -367,7 +367,11 @@ func main() {
 
  flag.Parse()
 
- logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+ logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+ if err != nil {
+  fmt.Fprintf(os.Stderr, "failed to configure logger: %v", err)
+  os.Exit(1)
+ }
 
  server := abciserver.NewSocketServer(socketAddr, app)
  server.SetLogger(logger)
@@ -380,7 +384,6 @@ func main() {
  c := make(chan os.Signal, 1)
  signal.Notify(c, os.Interrupt, syscall.SIGTERM)
  <-c
- os.Exit(0)
 }
 ```
 
@@ -421,7 +424,6 @@ defer server.Stop()
 c := make(chan os.Signal, 1)
 signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
-os.Exit(0)
 ```
 
 ## 1.5 Getting Up and Running
@@ -521,17 +523,15 @@ I[2019-07-16|18:26:20.330] Accepted a new connection
 Now open another tab in your terminal and try sending a transaction:
 
 ```json
-curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
+$ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "check_tx": {
-      "gasWanted": "1"
-    },
-    "deliver_tx": {},
-    "hash": "CDD3C6DFA0A08CAEDF546F9938A2EEC232209C24AA0E4201194E0AFB78A2C2BB",
-    "height": "33"
+  "check_tx": {
+    "gasWanted": "1",
+    ...
+  },
+  "deliver_tx": { ... },
+  "hash": "CDD3C6DFA0A08CAEDF546F9938A2EEC232209C24AA0E4201194E0AFB78A2C2BB",
+  "height": "33"
 }
 ```
 
@@ -540,16 +540,18 @@ Response should contain the height where this transaction was committed.
 Now let's check if the given key now exists and its value:
 
 ```json
-curl -s 'localhost:26657/abci_query?data="tendermint"'
+$ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "response": {
-      "log": "exists",
-      "key": "dGVuZGVybWludA==",
-      "value": "cm9ja3My"
-    }
+  "response": {
+    "code": 0,
+    "log": "exists",
+    "info": "",
+    "index": "0",
+    "key": "dGVuZGVybWludA==",
+    "value": "cm9ja3M=",
+    "proofOps": null,
+    "height": "6",
+    "codespace": ""
   }
 }
 ```

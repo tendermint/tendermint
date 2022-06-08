@@ -6,25 +6,28 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-func aVote() *types.Vote {
+func aVote(t testing.TB) *types.Vote {
+	t.Helper()
+
 	return &types.Vote{
 		Type:   tmproto.SignedMsgType(byte(tmproto.PrevoteType)),
 		Height: 12345,
 		Round:  2,
 		BlockID: types.BlockID{
-			Hash: tmhash.Sum([]byte("blockID_hash")),
+			Hash: crypto.Checksum([]byte("blockID_hash")),
 			PartSetHeader: types.PartSetHeader{
 				Total: 1000000,
-				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+				Hash:  crypto.Checksum([]byte("blockID_part_set_header_hash")),
 			},
 		},
-		ValidatorIndex: 56789,
+		ValidatorProTxHash: crypto.RandProTxHash(),
+		ValidatorIndex:     56789,
 	}
 }
 
@@ -49,14 +52,14 @@ var sink interface{}
 
 func BenchmarkMarshalDelimitedWithMarshalTo(b *testing.B) {
 	msgs := []proto.Message{
-		aVote().ToProto(),
+		aVote(b).ToProto(),
 	}
 	benchmarkMarshalDelimited(b, msgs)
 }
 
 func BenchmarkMarshalDelimitedNoMarshalTo(b *testing.B) {
 	msgs := []proto.Message{
-		&excludedMarshalTo{aVote().ToProto()},
+		&excludedMarshalTo{aVote(b).ToProto()},
 	}
 	benchmarkMarshalDelimited(b, msgs)
 }

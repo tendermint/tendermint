@@ -37,7 +37,7 @@ There are two ways to generate certificates, [openssl](https://www.openssl.org/)
 - Install `Certstrap`:
 
 ```sh
-  go get github.com/square/certstrap@v1.2.0
+  go install github.com/square/certstrap@v1.2.0
 ```
 
 - Create certificate authority for self signing.

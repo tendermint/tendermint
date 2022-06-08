@@ -10,9 +10,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
@@ -97,7 +95,7 @@ type Client struct {
 	maxBlockLag      time.Duration
 
 	// Mutex for locking during changes of the light clients providers
-	providerMutex tmsync.Mutex
+	providerMutex sync.Mutex
 	// Primary provider of new headers.
 	primary provider.Provider
 	// Providers used to "witness" new headers.
@@ -112,19 +110,34 @@ type Client struct {
 	pruningSize uint16
 
 	// Rpc client connected to dashd
-	dashCoreRPCClient dashcore.Client
+	dashCoreRPCClient dashcore.QuorumVerifier
 
 	logger log.Logger
 }
 
+func validatePrimaryAndWitnesses(primary provider.Provider, witnesses []provider.Provider) error {
+	witnessMap := make(map[string]struct{})
+	for _, w := range witnesses {
+		if w.ID() == primary.ID() {
+			return fmt.Errorf("primary (%s) cannot be also configured as witness", primary.ID())
+		}
+		if _, duplicate := witnessMap[w.ID()]; duplicate {
+			return fmt.Errorf("witness list must not contain duplicates; duplicate found: %s", w.ID())
+		}
+		witnessMap[w.ID()] = struct{}{}
+	}
+	return nil
+}
+
 // NewClient returns a new light client. It returns an error if it fails to
-// obtain the light block from the primary or they are invalid (e.g. trust
+// obtain the light block from the primary, or they are invalid (e.g. trust
 // hash does not match with the one from the headers).
 //
 // Witnesses are providers, which will be used for cross-checking the primary
-// provider. At least one witness must be given when skipping verification is
-// used (default). A witness can become a primary iff the current primary is
-// unavailable.
+// provider. At least one witness should be given when skipping verification is
+// used (default). A verified header is compared with the headers at same height
+// obtained from the specified witnesses. A witness can become a primary iff the
+// current primary is unavailable.
 //
 // See all Option(s) for the additional configuration.
 func NewClient(
@@ -133,7 +146,7 @@ func NewClient(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRPCClient dashcore.Client,
+	dashCoreRPCClient dashcore.QuorumVerifier,
 	options ...Option) (*Client, error) {
 
 	return NewClientAtHeight(ctx, 0, chainID, primary, witnesses, trustedStore, dashCoreRPCClient, options...)
@@ -146,8 +159,13 @@ func NewClientAtHeight(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRPCClient dashcore.Client,
-	options ...Option) (*Client, error) {
+	dashCoreRPCClient dashcore.QuorumVerifier,
+	options ...Option,
+) (*Client, error) {
+	// Check that the witness list does not include duplicates or the primary
+	if err := validatePrimaryAndWitnesses(primary, witnesses); err != nil {
+		return nil, err
+	}
 
 	c, err := NewClientFromTrustedStore(chainID, primary, witnesses, trustedStore, dashCoreRPCClient, options...)
 	if err != nil {
@@ -171,11 +189,16 @@ func NewClientFromTrustedStore(
 	primary provider.Provider,
 	witnesses []provider.Provider,
 	trustedStore store.Store,
-	dashCoreRPCClient dashcore.Client,
+	dashCoreRPCClient dashcore.QuorumVerifier,
 	options ...Option) (*Client, error) {
 
 	if dashCoreRPCClient == nil {
 		return nil, ErrNoDashCoreClient
+	}
+
+	// Check that the witness list does not include duplicates or the primary
+	if err := validatePrimaryAndWitnesses(primary, witnesses); err != nil {
+		return nil, err
 	}
 
 	c := &Client{
@@ -194,11 +217,6 @@ func NewClientFromTrustedStore(
 
 	for _, o := range options {
 		o(c)
-	}
-
-	// Validate the number of witnesses.
-	if len(c.witnesses) == 0 {
-		return nil, ErrNoWitnesses
 	}
 
 	if err := c.restoreTrustedLightBlock(); err != nil {
@@ -394,7 +412,7 @@ func (c *Client) VerifyLightBlockAtHeight(ctx context.Context, height int64, now
 // headers are not adjacent, verifySkipping is performed and necessary (not all)
 // intermediate headers will be requested. See the specification for details.
 // Intermediate headers are not saved to database.
-// https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
+// https://github.com/tendermint/tendermint/blob/master/spec/light-client/README.md
 //
 // If the header, which is older than the currently trusted header, is
 // requested and the light client does not have it, VerifyHeader will perform:
@@ -486,12 +504,7 @@ func (c *Client) verifyBlockWithDashCore(ctx context.Context, newLightBlock *typ
 	if err := c.verifyBlockSignatureWithDashCore(ctx, newLightBlock); err != nil {
 		return err
 	}
-
-	if err := c.verifyStateIDSignatureWithDashCore(ctx, newLightBlock); err != nil {
-		return err
-	}
-
-	return nil
+	return c.verifyStateIDSignatureWithDashCore(ctx, newLightBlock)
 }
 
 func (c *Client) verifyBlockSignatureWithDashCore(ctx context.Context, newLightBlock *types.LightBlock) error {
@@ -503,7 +516,7 @@ func (c *Client) verifyBlockSignatureWithDashCore(ctx context.Context, newLightB
 
 	blockSignBytes := types.VoteBlockSignBytes(c.chainID, protoVote)
 
-	blockMessageHash := crypto.Sha256(blockSignBytes)
+	blockMessageHash := crypto.Checksum(blockSignBytes)
 	blockRequestID := types.VoteBlockRequestIDProto(protoVote)
 
 	blockSignatureIsValid, err := c.dashCoreRPCClient.QuorumVerify(
@@ -535,7 +548,7 @@ func (c *Client) verifyStateIDSignatureWithDashCore(ctx context.Context, newLigh
 
 	stateSignBytes := stateID.SignBytes(c.chainID)
 
-	stateMessageHash := crypto.Sha256(stateSignBytes)
+	stateMessageHash := crypto.Checksum(stateSignBytes)
 	stateRequestID := stateID.SignRequestID()
 	stateSignature := newLightBlock.Commit.ThresholdStateSignature
 
@@ -709,7 +722,6 @@ func (c *Client) getLightBlock(ctx context.Context, p provider.Provider, height 
 
 // NOTE: requires a providerMutex lock
 func (c *Client) removeWitnesses(indexes []int) error {
-	// check that we will still have witnesses remaining
 	if len(c.witnesses) <= len(indexes) {
 		return ErrNoWitnesses
 	}
@@ -831,8 +843,8 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 	c.providerMutex.Lock()
 	defer c.providerMutex.Unlock()
 
-	if len(c.witnesses) < 1 {
-		return ErrNoWitnesses
+	if len(c.witnesses) == 0 {
+		return nil
 	}
 
 	errc := make(chan error, len(c.witnesses))
@@ -853,7 +865,8 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 			c.logger.Error(fmt.Sprintf("witness #%d has a different header. Please check primary is correct and"+
 				" remove witness. Otherwise, use the different primary", e.WitnessIndex), "witness",
 				c.witnesses[e.WitnessIndex])
-			return err
+			// if attempt to generate conflicting headers failed then remove witness
+			witnessesToRemove = append(witnessesToRemove, e.WitnessIndex)
 		case errBadWitness:
 			// If witness sent us an invalid header, then remove it
 			c.logger.Info("witness sent an invalid light block, removing...",
@@ -874,4 +887,31 @@ func (c *Client) compareFirstHeaderWithWitnesses(ctx context.Context, h *types.S
 
 	// remove all witnesses that misbehaved
 	return c.removeWitnesses(witnessesToRemove)
+}
+
+func (c *Client) Status(ctx context.Context) *types.LightClientInfo {
+	chunks := make([]string, len(c.witnesses))
+
+	// If primary is in witness list we do not want to count it twice in the number of peers
+	primaryNotInWitnessList := 1
+	for i, val := range c.witnesses {
+		chunks[i] = val.ID()
+		if chunks[i] == c.primary.ID() {
+			primaryNotInWitnessList = 0
+		}
+	}
+
+	info := &types.LightClientInfo{
+		PrimaryID:   c.primary.ID(),
+		WitnessesID: chunks,
+		NumPeers:    len(chunks) + primaryNotInWitnessList,
+	}
+
+	if c.latestTrustedBlock != nil {
+		info.LastTrustedHeight = c.latestTrustedBlock.Height
+		info.LastTrustedHash = c.latestTrustedBlock.Hash()
+		info.LatestBlockTime = c.latestTrustedBlock.Time
+	}
+
+	return info
 }

@@ -2,10 +2,15 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
@@ -16,25 +21,27 @@ import (
 )
 
 func TestReactorInvalidPrecommit(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	config := configSetup(t)
 
-	n := 4
-	states, cleanup := randConsensusState(t,
+	const n = 2
+	states, cleanup := makeConsensusState(ctx, t,
 		config, n, "consensus_reactor_test",
-		newMockTickerFunc(true), newKVStore)
+		newMockTickerFunc(true))
 	t.Cleanup(cleanup)
 
-	for i := 0; i < 4; i++ {
-		ticker := NewTimeoutTicker()
-		ticker.SetLogger(states[i].Logger)
+	for i := 0; i < n; i++ {
+		ticker := NewTimeoutTicker(states[i].logger)
 		states[i].SetTimeoutTicker(ticker)
 	}
 
-	rts := setup(t, n, states, 100) // buffer must be large enough to not deadlock
+	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
 	for _, reactor := range rts.reactors {
 		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(state, false)
+		reactor.SwitchToConsensus(ctx, state, false)
 	}
 
 	// this val sends a random precommit at each height
@@ -43,12 +50,14 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	byzState := rts.states[node.NodeID]
 	byzReactor := rts.reactors[node.NodeID]
 
+	signal := make(chan struct{})
 	// Update the doPrevote function to just send a valid precommit for a random
 	// block and otherwise disable the priv validator.
 	byzState.mtx.Lock()
 	privVal := byzState.privValidator
-	byzState.doPrevote = func(height int64, round int32, _ bool) {
-		invalidDoPrevoteFunc(t, height, round, byzState, byzReactor, privVal)
+	byzState.doPrevote = func(ctx context.Context, height int64, round int32, _ bool) {
+		defer close(signal)
+		invalidDoPrevoteFunc(ctx, t, height, round, byzState, byzReactor, rts.voteChannels[node.NodeID], privVal)
 	}
 	byzState.mtx.Unlock()
 
@@ -56,21 +65,51 @@ func TestReactorInvalidPrecommit(t *testing.T) {
 	//
 	// TODO: Make this tighter by ensuring the halt happens by block 2.
 	var wg sync.WaitGroup
+
 	for i := 0; i < 10; i++ {
 		for _, sub := range rts.subs {
 			wg.Add(1)
 
-			go func(s types.Subscription) {
-				<-s.Out()
-				wg.Done()
+			go func(s eventbus.Subscription) {
+				defer wg.Done()
+				_, err := s.Next(ctx)
+				if ctx.Err() != nil {
+					return
+				}
+				if !assert.NoError(t, err) {
+					cancel() // cancel other subscribers on failure
+				}
 			}(sub)
 		}
 	}
+	wait := make(chan struct{})
+	go func() { defer close(wait); wg.Wait() }()
 
-	wg.Wait()
+	select {
+	case <-wait:
+		if _, ok := <-signal; !ok {
+			t.Fatal("test condition did not fire")
+		}
+	case <-ctx.Done():
+		if _, ok := <-signal; !ok {
+			t.Fatal("test condition did not fire after timeout")
+			return
+		}
+	case <-signal:
+		// test passed
+	}
 }
 
-func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r *Reactor, pv types.PrivValidator) {
+func invalidDoPrevoteFunc(
+	ctx context.Context,
+	t *testing.T,
+	height int64,
+	round int32,
+	cs *State,
+	r *Reactor,
+	voteCh *p2p.Channel,
+	pv types.PrivValidator,
+) {
 	// routine to:
 	// - precommit for a random block
 	// - send precommit to all peers
@@ -79,7 +118,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 		cs.mtx.Lock()
 		cs.privValidator = pv
 
-		proTxHash, err := cs.privValidator.GetProTxHash(context.Background())
+		proTxHash, err := cs.privValidator.GetProTxHash(ctx)
 		require.NoError(t, err)
 
 		valIndex, _ := cs.Validators.GetByProTxHash(proTxHash)
@@ -99,7 +138,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 
 		p := precommit.ToProto()
 		err = cs.privValidator.SignVote(
-			context.Background(),
+			ctx,
 			cs.state.ChainID,
 			cs.Validators.QuorumType,
 			cs.Validators.QuorumHash,
@@ -114,14 +153,30 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, r 
 		cs.privValidator = nil // disable priv val so we don't do normal votes
 		cs.mtx.Unlock()
 
+		r.mtx.Lock()
+		ids := make([]types.NodeID, 0, len(r.peers))
 		for _, ps := range r.peers {
-			cs.Logger.Info("sending bad vote", "block", blockHash, "peer", ps.peerID)
-			_ = r.voteCh.Send(p2p.Envelope{
-				To: ps.peerID,
+			ids = append(ids, ps.peerID)
+		}
+		r.mtx.Unlock()
+
+		count := 0
+		for _, peerID := range ids {
+			count++
+			err := voteCh.Send(ctx, p2p.Envelope{
+				To: peerID,
 				Message: &tmcons.Vote{
 					Vote: precommit.ToProto(),
 				},
 			})
+			// we want to have sent some of these votes,
+			// but if the test completes without erroring
+			// or not sending any messages, then we should
+			// error.
+			if errors.Is(err, context.Canceled) && count > 0 {
+				break
+			}
+			require.NoError(t, err)
 		}
 	}()
 }

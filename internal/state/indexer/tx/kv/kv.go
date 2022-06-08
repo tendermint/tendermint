@@ -12,9 +12,9 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	indexer "github.com/tendermint/tendermint/internal/state/indexer"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
+	"github.com/tendermint/tendermint/internal/pubsub/query/syntax"
+	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -53,7 +53,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	txResult := new(abci.TxResult)
 	err = proto.Unmarshal(rawBytes, txResult)
 	if err != nil {
-		return nil, fmt.Errorf("error reading TxResult: %v", err)
+		return nil, fmt.Errorf("error reading TxResult: %w", err)
 	}
 
 	return txResult, nil

@@ -68,7 +68,8 @@ func (m *BlockRequest) GetHeight() int64 {
 	return 0
 }
 
-// NoBlockResponse informs the node that the peer does not have block at the requested height
+// NoBlockResponse informs the node that the peer does not have block at the
+// requested height
 type NoBlockResponse struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 }

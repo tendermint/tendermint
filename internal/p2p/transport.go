@@ -7,9 +7,7 @@ import (
 	"net"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/p2p/conn"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 //go:generate ../../scripts/mockery_generate.sh Transport|Connection
@@ -20,19 +18,14 @@ const (
 	defaultProtocol Protocol = MConnProtocol
 )
 
-// defaultProtocolVersion populates the Block and P2P versions using
-// the global values, but not the App.
-var defaultProtocolVersion = types.ProtocolVersion{
-	P2P:   version.P2PProtocol,
-	Block: version.BlockProtocol,
-	App:   0,
-}
-
 // Protocol identifies a transport protocol.
 type Protocol string
 
 // Transport is a connection-oriented mechanism for exchanging data with a peer.
 type Transport interface {
+	// Listen starts the transport on the specified endpoint.
+	Listen(*Endpoint) error
+
 	// Protocols returns the protocols supported by the transport. The Router
 	// uses this to pick a transport for an Endpoint.
 	Protocols() []Protocol
@@ -41,18 +34,22 @@ type Transport interface {
 	//
 	// How to listen is transport-dependent, e.g. MConnTransport uses Listen() while
 	// MemoryTransport starts listening via MemoryNetwork.CreateTransport().
-	Endpoints() []Endpoint
+	Endpoint() (*Endpoint, error)
 
 	// Accept waits for the next inbound connection on a listening endpoint, blocking
 	// until either a connection is available or the transport is closed. On closure,
 	// io.EOF is returned and further Accept calls are futile.
-	Accept() (Connection, error)
+	Accept(context.Context) (Connection, error)
 
 	// Dial creates an outbound connection to an endpoint.
-	Dial(context.Context, Endpoint) (Connection, error)
+	Dial(context.Context, *Endpoint) (Connection, error)
 
 	// Close stops accepting new connections, but does not close active connections.
 	Close() error
+
+	// AddChannelDescriptors is only part of this interface
+	// temporarily
+	AddChannelDescriptors([]*ChannelDescriptor)
 
 	// Stringer is used to display the transport, e.g. in logs.
 	//
@@ -88,22 +85,10 @@ type Connection interface {
 
 	// ReceiveMessage returns the next message received on the connection,
 	// blocking until one is available. Returns io.EOF if closed.
-	ReceiveMessage() (ChannelID, []byte, error)
+	ReceiveMessage(context.Context) (ChannelID, []byte, error)
 
 	// SendMessage sends a message on the connection. Returns io.EOF if closed.
-	//
-	// FIXME: For compatibility with the legacy P2P stack, it returns an
-	// additional boolean false if the message timed out waiting to be accepted
-	// into the send buffer. This should be removed.
-	SendMessage(ChannelID, []byte) (bool, error)
-
-	// TrySendMessage is a non-blocking version of SendMessage that returns
-	// immediately if the message buffer is full. It returns true if the message
-	// was accepted.
-	//
-	// FIXME: This method is here for backwards-compatibility with the legacy
-	// P2P stack and should be removed.
-	TrySendMessage(ChannelID, []byte) (bool, error)
+	SendMessage(context.Context, ChannelID, []byte) error
 
 	// LocalEndpoint returns the local endpoint for the connection.
 	LocalEndpoint() Endpoint
@@ -113,18 +98,6 @@ type Connection interface {
 
 	// Close closes the connection.
 	Close() error
-
-	// FlushClose flushes all pending sends and then closes the connection.
-	//
-	// FIXME: This only exists for backwards-compatibility with the current
-	// MConnection implementation. There should really be a separate Flush()
-	// method, but there is no easy way to synchronously flush pending data with
-	// the current MConnection code.
-	FlushClose() error
-
-	// Status returns the current connection status.
-	// FIXME: Only here for compatibility with the current Peer code.
-	Status() conn.ConnectionStatus
 
 	// Stringer is used to display the connection, e.g. in logs.
 	//
@@ -156,12 +129,17 @@ type Endpoint struct {
 }
 
 // NewEndpoint constructs an Endpoint from a types.NetAddress structure.
-func NewEndpoint(na *types.NetAddress) Endpoint {
-	return Endpoint{
+func NewEndpoint(addr string) (*Endpoint, error) {
+	na, err := types.ParseAddressString(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Endpoint{
 		Protocol: MConnProtocol,
 		IP:       na.IP,
 		Port:     na.Port,
-	}
+	}, nil
 }
 
 // NodeAddress converts the endpoint into a NodeAddress for the given node ID.

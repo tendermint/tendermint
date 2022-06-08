@@ -9,6 +9,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/types"
 )
@@ -27,7 +28,7 @@ var (
 
 // List of blocks
 type ResultBlockchainInfo struct {
-	LastHeight int64              `json:"last_height"`
+	LastHeight int64              `json:"last_height,string"`
 	BlockMetas []*types.BlockMeta `json:"block_metas"`
 }
 
@@ -41,8 +42,8 @@ type ResultGenesis struct {
 // document to JSON and then splitting the resulting payload into
 // 16 megabyte blocks and then base64 encoding each block.
 type ResultGenesisChunk struct {
-	ChunkNumber int    `json:"chunk"`
-	TotalChunks int    `json:"total"`
+	ChunkNumber int    `json:"chunk,string"`
+	TotalChunks int    `json:"total,string"`
 	Data        string `json:"data"`
 }
 
@@ -65,13 +66,13 @@ type ResultCommit struct {
 
 // ABCI results from a block
 type ResultBlockResults struct {
-	Height                int64                     `json:"height"`
-	TxsResults            []*abci.ResponseDeliverTx `json:"txs_results"`
-	TotalGasUsed          int64                     `json:"total_gas_used"`
-	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
-	EndBlockEvents        []abci.Event              `json:"end_block_events"`
-	ValidatorSetUpdate    *abci.ValidatorSetUpdate  `json:"validator_set_updates"`
-	ConsensusParamUpdates *types.ConsensusParams    `json:"consensus_param_updates"`
+	Height                int64                    `json:"height,string"`
+	TxsResults            []*abci.ExecTxResult     `json:"txs_results"`
+	TotalGasUsed          int64                    `json:"total_gas_used,string"`
+	FinalizeBlockEvents   []abci.Event             `json:"finalize_block_events"`
+	ValidatorUpdates      []abci.ValidatorUpdate   `json:"validator_updates"`
+	ValidatorSetUpdate    *abci.ValidatorSetUpdate `json:"validator_set_updates"`
+	ConsensusParamUpdates *types.ConsensusParams   `json:"consensus_param_updates"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with
@@ -92,28 +93,32 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 type SyncInfo struct {
 	LatestBlockHash   bytes.HexBytes `json:"latest_block_hash"`
 	LatestAppHash     bytes.HexBytes `json:"latest_app_hash"`
-	LatestBlockHeight int64          `json:"latest_block_height"`
+	LatestBlockHeight int64          `json:"latest_block_height,string"`
 	LatestBlockTime   time.Time      `json:"latest_block_time"`
 
 	EarliestBlockHash   bytes.HexBytes `json:"earliest_block_hash"`
 	EarliestAppHash     bytes.HexBytes `json:"earliest_app_hash"`
-	EarliestBlockHeight int64          `json:"earliest_block_height"`
+	EarliestBlockHeight int64          `json:"earliest_block_height,string"`
 	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
 
-	MaxPeerBlockHeight int64 `json:"max_peer_block_height"`
+	MaxPeerBlockHeight int64 `json:"max_peer_block_height,string"`
 
 	CatchingUp bool `json:"catching_up"`
 
-	TotalSyncedTime time.Duration `json:"total_synced_time"`
-	RemainingTime   time.Duration `json:"remaining_time"`
+	TotalSyncedTime time.Duration `json:"total_synced_time,string"`
+	RemainingTime   time.Duration `json:"remaining_time,string"`
 
-	TotalSnapshots      int64         `json:"total_snapshots"`
-	ChunkProcessAvgTime time.Duration `json:"chunk_process_avg_time"`
-	SnapshotHeight      int64         `json:"snapshot_height"`
-	SnapshotChunksCount int64         `json:"snapshot_chunks_count"`
-	SnapshotChunksTotal int64         `json:"snapshot_chunks_total"`
-	BackFilledBlocks    int64         `json:"backfilled_blocks"`
-	BackFillBlocksTotal int64         `json:"backfill_blocks_total"`
+	TotalSnapshots      int64         `json:"total_snapshots,string"`
+	ChunkProcessAvgTime time.Duration `json:"chunk_process_avg_time,string"`
+	SnapshotHeight      int64         `json:"snapshot_height,string"`
+	SnapshotChunksCount int64         `json:"snapshot_chunks_count,string"`
+	SnapshotChunksTotal int64         `json:"snapshot_chunks_total,string"`
+	BackFilledBlocks    int64         `json:"backfilled_blocks,string"`
+	BackFillBlocksTotal int64         `json:"backfill_blocks_total,string"`
+}
+
+type ApplicationInfo struct {
+	Version string `json:"version"`
 }
 
 // Info about the node's validator
@@ -124,9 +129,11 @@ type ValidatorInfo struct {
 
 // Node Status
 type ResultStatus struct {
-	NodeInfo      types.NodeInfo `json:"node_info"`
-	SyncInfo      SyncInfo       `json:"sync_info"`
-	ValidatorInfo ValidatorInfo  `json:"validator_info"`
+	NodeInfo        types.NodeInfo        `json:"node_info"`
+	ApplicationInfo ApplicationInfo       `json:"application_info,omitempty"`
+	SyncInfo        SyncInfo              `json:"sync_info"`
+	ValidatorInfo   ValidatorInfo         `json:"validator_info"`
+	LightClientInfo types.LightClientInfo `json:"light_client_info,omitempty"`
 }
 
 // Is TxIndexing enabled
@@ -141,7 +148,7 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 type ResultNetInfo struct {
 	Listening bool     `json:"listening"`
 	Listeners []string `json:"listeners"`
-	NPeers    int      `json:"n_peers"`
+	NPeers    int      `json:"n_peers,string"`
 	Peers     []Peer   `json:"peers"`
 }
 
@@ -161,22 +168,78 @@ type Peer struct {
 	URL string       `json:"url"`
 }
 
-// Validators for a height.
+// ResultValidators for a height.
 type ResultValidators struct {
-	BlockHeight        int64              `json:"block_height"`
-	Validators         []*types.Validator `json:"validators"`
-	ThresholdPublicKey *crypto.PubKey     `json:"threshold_public_key"`
+	BlockHeight int64
+	Validators  []*types.Validator
+
+	Count int // Count of actual validators in this result
+	Total int // Total number of validators
+
+	// dash fields
+	ThresholdPublicKey *crypto.PubKey
+	QuorumType         btcjson.LLMQType
+	QuorumHash         *crypto.QuorumHash
+}
+
+type resultValidatorsJSON struct {
+	BlockHeight int64              `json:"block_height"`
+	Validators  []*types.Validator `json:"validators"`
+
+	Count int `json:"count,string"` // Count of actual validators in this result
+	Total int `json:"total,string"` // Total number of validators
+
+	// dash fields
+	ThresholdPublicKey json.RawMessage    `json:"threshold_public_key"`
 	QuorumType         btcjson.LLMQType   `json:"quorum_type"`
 	QuorumHash         *crypto.QuorumHash `json:"quorum_hash"`
-	// Count of actual validators in this result
-	Count int `json:"count"`
-	// Total number of validators
-	Total int `json:"total"`
+}
+
+func (r ResultValidators) MarshalJSON() ([]byte, error) {
+	res := resultValidatorsJSON{
+		BlockHeight: r.BlockHeight,
+		Validators:  r.Validators,
+		Count:       r.Count,
+		Total:       r.Total,
+		QuorumType:  r.QuorumType,
+		QuorumHash:  r.QuorumHash,
+	}
+	var err error
+	if r.ThresholdPublicKey != nil {
+		res.ThresholdPublicKey, err = jsontypes.Marshal(*r.ThresholdPublicKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(res)
+}
+
+func (r *ResultValidators) UnmarshalJSON(data []byte) error {
+	var res resultValidatorsJSON
+	err := json.Unmarshal(data, &res)
+	if err != nil {
+		return err
+	}
+	r.Total = res.Total
+	r.Count = res.Count
+	r.BlockHeight = res.BlockHeight
+	r.Validators = res.Validators
+	r.QuorumType = res.QuorumType
+	r.QuorumHash = res.QuorumHash
+	var thresholdPubKey crypto.PubKey
+	if res.ThresholdPublicKey != nil {
+		err = jsontypes.Unmarshal(res.ThresholdPublicKey, &thresholdPubKey)
+		if err != nil {
+			return err
+		}
+		r.ThresholdPublicKey = &thresholdPubKey
+	}
+	return nil
 }
 
 // ConsensusParams for given height
 type ResultConsensusParams struct {
-	BlockHeight     int64                 `json:"block_height"`
+	BlockHeight     int64                 `json:"block_height,string"`
 	ConsensusParams types.ConsensusParams `json:"consensus_params"`
 }
 
@@ -205,16 +268,15 @@ type ResultBroadcastTx struct {
 	Log          string         `json:"log"`
 	Codespace    string         `json:"codespace"`
 	MempoolError string         `json:"mempool_error"`
-
-	Hash bytes.HexBytes `json:"hash"`
+	Hash         bytes.HexBytes `json:"hash"`
 }
 
 // CheckTx and DeliverTx results
 type ResultBroadcastTxCommit struct {
-	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
-	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      bytes.HexBytes         `json:"hash"`
-	Height    int64                  `json:"height"`
+	CheckTx  abci.ResponseCheckTx `json:"check_tx"`
+	TxResult abci.ExecTxResult    `json:"tx_result"`
+	Hash     bytes.HexBytes       `json:"hash"`
+	Height   int64                `json:"height,string"`
 }
 
 // ResultCheckTx wraps abci.ResponseCheckTx.
@@ -224,31 +286,31 @@ type ResultCheckTx struct {
 
 // Result of querying for a tx
 type ResultTx struct {
-	Hash     bytes.HexBytes         `json:"hash"`
-	Height   int64                  `json:"height"`
-	Index    uint32                 `json:"index"`
-	TxResult abci.ResponseDeliverTx `json:"tx_result"`
-	Tx       types.Tx               `json:"tx"`
-	Proof    types.TxProof          `json:"proof,omitempty"`
+	Hash     bytes.HexBytes    `json:"hash"`
+	Height   int64             `json:"height,string"`
+	Index    uint32            `json:"index"`
+	TxResult abci.ExecTxResult `json:"tx_result"`
+	Tx       types.Tx          `json:"tx"`
+	Proof    types.TxProof     `json:"proof,omitempty"`
 }
 
 // Result of searching for txs
 type ResultTxSearch struct {
 	Txs        []*ResultTx `json:"txs"`
-	TotalCount int         `json:"total_count"`
+	TotalCount int         `json:"total_count,string"`
 }
 
 // ResultBlockSearch defines the RPC response type for a block search by events.
 type ResultBlockSearch struct {
 	Blocks     []*ResultBlock `json:"blocks"`
-	TotalCount int            `json:"total_count"`
+	TotalCount int            `json:"total_count,string"`
 }
 
 // List of mempool txs
 type ResultUnconfirmedTxs struct {
-	Count      int        `json:"n_txs"`
-	Total      int        `json:"total"`
-	TotalBytes int64      `json:"total_bytes"`
+	Count      int        `json:"n_txs,string"`
+	Total      int        `json:"total,string"`
+	TotalBytes int64      `json:"total_bytes,string"`
 	Txs        []types.Tx `json:"txs"`
 }
 
@@ -278,8 +340,89 @@ type (
 
 // Event data from a subscription
 type ResultEvent struct {
-	SubscriptionID string            `json:"subscription_id"`
-	Query          string            `json:"query"`
-	Data           types.TMEventData `json:"data"`
-	Events         []abci.Event      `json:"events"`
+	SubscriptionID string
+	Query          string
+	Data           types.EventData
+	Events         []abci.Event
+}
+
+type resultEventJSON struct {
+	SubscriptionID string          `json:"subscription_id"`
+	Query          string          `json:"query"`
+	Data           json.RawMessage `json:"data"`
+	Events         []abci.Event    `json:"events"`
+}
+
+func (r ResultEvent) MarshalJSON() ([]byte, error) {
+	evt, err := jsontypes.Marshal(r.Data)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(resultEventJSON{
+		SubscriptionID: r.SubscriptionID,
+		Query:          r.Query,
+		Data:           evt,
+		Events:         r.Events,
+	})
+}
+
+func (r *ResultEvent) UnmarshalJSON(data []byte) error {
+	var res resultEventJSON
+	if err := json.Unmarshal(data, &res); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(res.Data, &r.Data); err != nil {
+		return err
+	}
+	r.SubscriptionID = res.SubscriptionID
+	r.Query = res.Query
+	r.Events = res.Events
+	return nil
+}
+
+// Evidence is an argument wrapper for a types.Evidence value, that handles
+// encoding and decoding through JSON.
+type Evidence struct {
+	Value types.Evidence
+}
+
+func (e Evidence) MarshalJSON() ([]byte, error)     { return jsontypes.Marshal(e.Value) }
+func (e *Evidence) UnmarshalJSON(data []byte) error { return jsontypes.Unmarshal(data, &e.Value) }
+
+// ResultEvents is the response from the "/events" RPC endpoint.
+type ResultEvents struct {
+	// The items matching the request parameters, from newest
+	// to oldest, if any were available within the timeout.
+	Items []*EventItem `json:"items"`
+
+	// This is true if there is at least one older matching item
+	// available in the log that was not returned.
+	More bool `json:"more"`
+
+	// The cursor of the oldest item in the log at the time of this reply,
+	// or "" if the log is empty.
+	Oldest string `json:"oldest"`
+
+	// The cursor of the newest item in the log at the time of this reply,
+	// or "" if the log is empty.
+	Newest string `json:"newest"`
+}
+
+type EventItem struct {
+	// The cursor of this item.
+	Cursor string `json:"cursor"`
+
+	// The event label of this item (for example, "Vote").
+	Event string `json:"event,omitempty"`
+
+	// The encoded event data for this item. The content is a JSON object with
+	// the following structure:
+	//
+	//   {
+	//      "type":  "type-tag",
+	//      "value": <json-encoded-value>
+	//   }
+	//
+	// The known type tags are defined by the tendermint/types package.
+	Data json.RawMessage `json:"data"`
 }

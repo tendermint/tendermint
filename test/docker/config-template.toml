@@ -1,2 +1,5 @@
 [rpc]
 laddr = "tcp://0.0.0.0:26657"
+
+[tx-index]
+indexer = ["kv"]

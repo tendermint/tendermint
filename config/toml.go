@@ -3,17 +3,17 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
 	tmos "github.com/tendermint/tendermint/libs/os"
+	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
 
-// DefaultDirPerm is the default permissions used when creating directories.
-const DefaultDirPerm = 0700
+// defaultDirPerm is the default permissions used when creating directories.
+const defaultDirPerm = 0700
 
 var configTemplate *template.Template
 
@@ -32,13 +32,13 @@ func init() {
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
 func EnsureRoot(rootDir string) {
-	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(rootDir, defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), defaultDirPerm); err != nil {
 		panic(err.Error())
 	}
 }
@@ -209,26 +209,10 @@ cors-allowed-methods = [{{ range .RPC.CORSAllowedMethods }}{{ printf "%q, " . }}
 # A list of non simple headers the client is allowed to use with cross-domain requests
 cors-allowed-headers = [{{ range .RPC.CORSAllowedHeaders }}{{ printf "%q, " . }}{{end}}]
 
-# TCP or UNIX socket address for the gRPC server to listen on
-# NOTE: This server only supports /broadcast_tx_commit
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-laddr = "{{ .RPC.GRPCListenAddress }}"
-
-# Maximum number of simultaneous connections.
-# Does not include RPC (HTTP&WebSocket) connections. See max-open-connections
-# If you want to accept a larger number than the default, make sure
-# you increase your OS limits.
-# 0 - unlimited.
-# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
-# 1024 - 40 - 10 - 50 = 924 = ~900
-# Deprecated gRPC  in the RPC layer of Tendermint will be deprecated in 0.36.
-grpc-max-open-connections = {{ .RPC.GRPCMaxOpenConnections }}
-
 # Activate unsafe RPC commands like /dial-seeds and /unsafe-flush-mempool
 unsafe = {{ .RPC.Unsafe }}
 
 # Maximum number of simultaneous connections (including WebSocket).
-# Does not include gRPC connections. See grpc-max-open-connections
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
@@ -242,36 +226,36 @@ max-open-connections = {{ .RPC.MaxOpenConnections }}
 max-subscription-clients = {{ .RPC.MaxSubscriptionClients }}
 
 # Maximum number of unique queries a given client can /subscribe to
-# If you're using GRPC (or Local RPC client) and /broadcast_tx_commit, set to
-# the estimated # maximum number of broadcast_tx_commit calls per block.
+# If you're using a Local RPC client and /broadcast_tx_commit, set this
+# to the estimated maximum number of broadcast_tx_commit calls per block.
 max-subscriptions-per-client = {{ .RPC.MaxSubscriptionsPerClient }}
 
-# Experimental parameter to specify the maximum number of events a node will
-# buffer, per subscription, before returning an error and closing the
-# subscription. Must be set to at least 100, but higher values will accommodate
-# higher event throughput rates (and will use more memory).
-experimental-subscription-buffer-size = {{ .RPC.SubscriptionBufferSize }}
-
-# Experimental parameter to specify the maximum number of RPC responses that
-# can be buffered per WebSocket client. If clients cannot read from the
-# WebSocket endpoint fast enough, they will be disconnected, so increasing this
-# parameter may reduce the chances of them being disconnected (but will cause
-# the node to use more memory).
+# If true, disable the websocket interface to the RPC service.  This has
+# the effect of disabling the /subscribe, /unsubscribe, and /unsubscribe_all
+# methods for event subscription.
 #
-# Must be at least the same as "experimental-subscription-buffer-size",
-# otherwise connections could be dropped unnecessarily. This value should
-# ideally be somewhat higher than "experimental-subscription-buffer-size" to
-# accommodate non-subscription-related RPC responses.
-experimental-websocket-write-buffer-size = {{ .RPC.WebSocketWriteBufferSize }}
+# EXPERIMENTAL: This setting will be removed in Tendermint v0.37.
+experimental-disable-websocket = {{ .RPC.ExperimentalDisableWebsocket }}
 
-# If a WebSocket client cannot read fast enough, at present we may
-# silently drop events instead of generating an error or disconnecting the
-# client.
+# The time window size for the event log. All events up to this long before
+# the latest (up to EventLogMaxItems) will be available for subscribers to
+# fetch via the /events method.  If 0 (the default) the event log and the
+# /events RPC method are disabled.
+event-log-window-size = "{{ .RPC.EventLogWindowSize }}"
+
+# The maxiumum number of events that may be retained by the event log.  If
+# this value is 0, no upper limit is set. Otherwise, items in excess of
+# this number will be discarded from the event log.
 #
-# Enabling this experimental parameter will cause the WebSocket connection to
-# be closed instead if it cannot read fast enough, allowing for greater
-# predictability in subscription behavior.
-experimental-close-on-slow-client = {{ .RPC.CloseOnSlowClient }}
+# Warning: This setting is a safety valve. Setting it too low may cause
+# subscribers to miss events.  Try to choose a value higher than the
+# maximum worst-case expected event load within the chosen window size in
+# ordinary operation.
+#
+# For example, if the window size is 10 minutes and the node typically
+# averages 1000 events per ten minutes, but with occasional known spikes of
+# up to 2000, choose a value > 2000.
+event-log-max-items = {{ .RPC.EventLogMaxItems }}
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
 # WARNING: Using a value larger than 10s will result in increasing the
@@ -308,9 +292,6 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
-# Enable the legacy p2p layer.
-use-legacy = {{ .P2P.UseLegacy }}
-
 # Select the p2p internal queue
 queue-type = "{{ .P2P.QueueType }}"
 
@@ -342,61 +323,11 @@ persistent-peers = "{{ .P2P.PersistentPeers }}"
 # UPNP port forwarding
 upnp = {{ .P2P.UPNP }}
 
-# Path to address book
-# TODO: Remove once p2p refactor is complete in favor of peer store.
-addr-book-file = "{{ js .P2P.AddrBook }}"
-
-# Set true for strict address routability rules
-# Set false for private or local networks
-addr-book-strict = {{ .P2P.AddrBookStrict }}
-
-# Maximum number of inbound peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-inbound-peers = {{ .P2P.MaxNumInboundPeers }}
-
-# Maximum number of outbound peers to connect to, excluding persistent peers
-#
-# TODO: Remove once p2p refactor is complete in favor of MaxConnections.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-max-num-outbound-peers = {{ .P2P.MaxNumOutboundPeers }}
-
 # Maximum number of connections (inbound and outbound).
 max-connections = {{ .P2P.MaxConnections }}
 
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
-
-# List of node IDs, to which a connection will be (re)established ignoring any existing limits
-# TODO: Remove once p2p refactor is complete.
-# ref: https://github.com/tendermint/tendermint/issues/5670
-unconditional-peer-ids = "{{ .P2P.UnconditionalPeerIDs }}"
-
-# Maximum pause when redialing a persistent peer (if zero, exponential backoff is used)
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-persistent-peers-max-dial-period = "{{ .P2P.PersistentPeersMaxDialPeriod }}"
-
-# Time to wait before flushing messages out on the connection
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
-
-# Maximum size of a message packet payload, in bytes
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
-
-# Rate at which packets can be sent, in bytes/second
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-send-rate = {{ .P2P.SendRate }}
-
-# Rate at which packets can be received, in bytes/second
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-recv-rate = {{ .P2P.RecvRate }}
 
 # Set true to enable the peer-exchange reactor
 pex = {{ .P2P.PexReactor }}
@@ -412,15 +343,27 @@ allow-duplicate-ip = {{ .P2P.AllowDuplicateIP }}
 handshake-timeout = "{{ .P2P.HandshakeTimeout }}"
 dial-timeout = "{{ .P2P.DialTimeout }}"
 
+# Time to wait before flushing messages out on the connection
+# TODO: Remove once MConnConnection is removed.
+flush-throttle-timeout = "{{ .P2P.FlushThrottleTimeout }}"
+
+# Maximum size of a message packet payload, in bytes
+# TODO: Remove once MConnConnection is removed.
+max-packet-msg-payload-size = {{ .P2P.MaxPacketMsgPayloadSize }}
+
+# Rate at which packets can be sent, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+send-rate = {{ .P2P.SendRate }}
+
+# Rate at which packets can be received, in bytes/second
+# TODO: Remove once MConnConnection is removed.
+recv-rate = {{ .P2P.RecvRate }}
+
+
 #######################################################
 ###          Mempool Configuration Option          ###
 #######################################################
 [mempool]
-
-# Mempool version to use:
-#   1) "v0" - The legacy non-prioritized mempool reactor.
-#   2) "v1" (default) - The prioritized mempool reactor.
-version = "{{ .Mempool.Version }}"
 
 recheck = {{ .Mempool.Recheck }}
 broadcast = {{ .Mempool.Broadcast }}
@@ -511,43 +454,12 @@ chunk-request-timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 fetchers = "{{ .StateSync.Fetchers }}"
 
 #######################################################
-###       Block Sync Configuration Connections       ###
-#######################################################
-[blocksync]
-
-# If this node is many blocks behind the tip of the chain, BlockSync
-# allows them to catchup quickly by downloading blocks in parallel
-# and verifying their commits
-enable = {{ .BlockSync.Enable }}
-
-# Block Sync version to use:
-#   1) "v0" (default) - the standard Block Sync implementation
-#   2) "v2" - DEPRECATED, please use v0
-version = "{{ .BlockSync.Version }}"
-
-#######################################################
 ###         Consensus Configuration Options         ###
 #######################################################
 [consensus]
 
 wal-file = "{{ js .Consensus.WalPath }}"
 
-# How long we wait for a proposal block before prevoting nil
-timeout-propose = "{{ .Consensus.TimeoutPropose }}"
-# How much timeout-propose increases with each round
-timeout-propose-delta = "{{ .Consensus.TimeoutProposeDelta }}"
-# How long we wait after receiving +2/3 prevotes for “anything” (ie. not a single block or nil)
-timeout-prevote = "{{ .Consensus.TimeoutPrevote }}"
-# How much the timeout-prevote increases with each round
-timeout-prevote-delta = "{{ .Consensus.TimeoutPrevoteDelta }}"
-# How long we wait after receiving +2/3 precommits for “anything” (ie. not a single block or nil)
-timeout-precommit = "{{ .Consensus.TimeoutPrecommit }}"
-# How much the timeout-precommit increases with each round
-timeout-precommit-delta = "{{ .Consensus.TimeoutPrecommitDelta }}"
-# How long we wait after committing a block, before starting on the new
-# height (this gives us a chance to receive some more precommits, even
-# though we already have +2/3).
-timeout-commit = "{{ .Consensus.TimeoutCommit }}"
 # How long is the window for the min proposed block time
 proposed-block-time-window = "{{ .Consensus.ProposedBlockTimeWindow }}"
 
@@ -556,9 +468,6 @@ proposed-block-time-window = "{{ .Consensus.ProposedBlockTimeWindow }}"
 # if the same consensus key was used to sign {double-sign-check-height} last blocks.
 # So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
 double-sign-check-height = {{ .Consensus.DoubleSignCheckHeight }}
-
-# Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
-skip-timeout-commit = {{ .Consensus.SkipTimeoutCommit }}
 
 # EmptyBlocks mode and possible interval between empty blocks
 create-empty-blocks = {{ .Consensus.CreateEmptyBlocks }}
@@ -570,6 +479,50 @@ create-proof-block-range = "{{ .Consensus.CreateProofBlockRange }}"
 # Reactor sleep duration parameters
 peer-gossip-sleep-duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer-query-maj23-sleep-duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
+
+### Unsafe Timeout Overrides ###
+
+# These fields provide temporary overrides for the Timeout consensus parameters.
+# Use of these parameters is strongly discouraged. Using these parameters may have serious
+# liveness implications for the validator and for the chain.
+#
+# These fields will be removed from the configuration file in the v0.37 release of Tendermint.
+# For additional information, see ADR-74:
+# https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-074-timeout-params.md
+
+# This field provides an unsafe override of the Propose timeout consensus parameter.
+# This field configures how long the consensus engine will wait for a proposal block before prevoting nil.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-propose-timeout-override = {{ .Consensus.UnsafeProposeTimeoutOverride }}
+
+# This field provides an unsafe override of the ProposeDelta timeout consensus parameter.
+# This field configures how much the propose timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-propose-timeout-delta-override = {{ .Consensus.UnsafeProposeTimeoutDeltaOverride }}
+
+# This field provides an unsafe override of the Vote timeout consensus parameter.
+# This field configures how long the consensus engine will wait after
+# receiving +2/3 votes in a round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-vote-timeout-override = {{ .Consensus.UnsafeVoteTimeoutOverride }}
+
+# This field provides an unsafe override of the VoteDelta timeout consensus parameter.
+# This field configures how much the vote timeout increases with each round.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-vote-timeout-delta-override = {{ .Consensus.UnsafeVoteTimeoutDeltaOverride }}
+
+# This field provides an unsafe override of the Commit timeout consensus parameter.
+# This field configures how long the consensus engine will wait after receiving
+# +2/3 precommits before beginning the next height.
+# If this field is set to a value greater than 0, it will take effect.
+# unsafe-commit-timeout-override = {{ .Consensus.UnsafeCommitTimeoutOverride }}
+
+# This field provides an unsafe override of the BypassCommitTimeout consensus parameter.
+# This field configures if the consensus engine will wait for the full Commit timeout
+# before proceeding to the next height.
+# If this field is set to true, the consensus engine will proceed to the next height
+# as soon as the node has gathered votes from all of the validators on the network.
+# unsafe-bypass-commit-timeout-override =
 
 # Signing parameters
 quorum-type = "{{ .Consensus.QuorumType }}"
@@ -589,8 +542,8 @@ app-hash-size = "{{ .Consensus.AppHashSize }}"
 # to decide which txs to index based on configuration set in the application.
 #
 # Options:
-#   1) "null"
-#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   1) "null" (default) - no indexer services.
+#   2) "kv" - a simple indexer backed by key-value storage (see DBBackend)
 #   3) "psql" - the indexer services backed by PostgreSQL.
 # When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = [{{ range $i, $e := .TxIndex.Indexer }}{{if $i}}, {{end}}{{ printf "%q" $e}}{{end}}]
@@ -624,21 +577,21 @@ namespace = "{{ .Instrumentation.Namespace }}"
 
 /****** these are for test settings ***********/
 
-func ResetTestRoot(testName string) (*Config, error) {
-	return ResetTestRootWithChainID(testName, "")
+func ResetTestRoot(dir, testName string) (*Config, error) {
+	return ResetTestRootWithChainID(dir, testName, "")
 }
 
-func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) {
+func ResetTestRootWithChainID(dir, testName string, chainID string) (*Config, error) {
 	// create a unique, concurrency-safe test directory under os.TempDir()
-	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
+	rootDir, err := os.MkdirTemp(dir, fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
 		return nil, err
 	}
 	// ensure config and data subdirs are created
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), defaultDirPerm); err != nil {
 		return nil, err
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), defaultDirPerm); err != nil {
 		return nil, err
 	}
 
@@ -670,17 +623,18 @@ func ResetTestRootWithChainID(testName string, chainID string) (*Config, error) 
 	}
 
 	config := TestConfig().SetRoot(rootDir)
+	config.Instrumentation.Namespace = fmt.Sprintf("%s_%s_%s", testName, chainID, tmrand.Str(16))
 	return config, nil
 }
 
 func writeFile(filePath string, contents []byte, mode os.FileMode) error {
-	if err := ioutil.WriteFile(filePath, contents, mode); err != nil {
+	if err := os.WriteFile(filePath, contents, mode); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 	return nil
 }
 
-var testGenesisFmt = `{
+const testGenesisFmt = `{
   "genesis_time": "2018-10-10T08:20:13.695936996Z",
   "chain_id": "%s",
   "initial_height": "1",
@@ -690,6 +644,18 @@ var testGenesisFmt = `{
 			"max_bytes": "22020096",
 			"max_gas": "-1",
 			"time_iota_ms": "10"
+		},
+		"synchrony": {
+			"message_delay": "500000000",
+			"precision": "10000000"
+		},
+		"timeout": {
+			"propose": "30000000",
+			"propose_delta": "50000",
+			"vote": "30000000",
+			"vote_delta": "50000",
+			"commit": "10000000",
+			"bypass_timeout_commit": true
 		},
 		"evidence": {
 			"max_age_num_blocks": "100000",
@@ -709,7 +675,7 @@ var testGenesisFmt = `{
         "type": "tendermint/PubKeyBLS12381",
         "value":"F5BjXeh0DppqaxX7a3LzoWr6CXPZcZeba6VHYdbiUCxQ23b00mFD8FRZpCz9Ug1E"
       },
-      "power": "100",
+      "power": 100,
       "name": "",
       "pro_tx_hash": "51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
     }
@@ -744,7 +710,7 @@ var testPrivValidatorKey = `{
   "pro_tx_hash": "51BF39CC1F41B9FC63DFA5B1EDF3F0CA3AD5CAFAE4B12B4FE9263B08BB50C45F"
 }`
 
-var testPrivValidatorState = `{
+const testPrivValidatorState = `{
   "height": "0",
   "round": 0,
   "step": 0

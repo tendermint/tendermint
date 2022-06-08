@@ -1,305 +1,149 @@
 package proxy
 
 import (
-	"github.com/tendermint/tendermint/libs/bytes"
+	"context"
+
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
-func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
-	return map[string]*rpcserver.RPCFunc{
-		// Subscribe/unsubscribe are reserved for websocket events.
-		"subscribe":       rpcserver.NewWSRPCFunc(c.SubscribeWS, "query"),
-		"unsubscribe":     rpcserver.NewWSRPCFunc(c.UnsubscribeWS, "query"),
-		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAllWS, ""),
-
-		// info API
-		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), "", false),
-		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), "", false),
-		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), "", false),
-		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight", true),
-		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), "", true),
-		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), "", true),
-		"header":               rpcserver.NewRPCFunc(makeHeaderFunc(c), "height", true),
-		"header_by_hash":       rpcserver.NewRPCFunc(makeHeaderByHashFunc(c), "hash", true),
-		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height", true),
-		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash", true),
-		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", true),
-		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height", true),
-		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove", true),
-		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by", false),
-		"block_search":         rpcserver.NewRPCFunc(makeBlockSearchFunc(c), "query,page,per_page,order_by", false),
-		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page,request_quorum_info", true),
-		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), "", false),
-		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), "", false),
-		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height", true),
-		"unconfirmed_txs":      rpcserver.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit", false),
-		"num_unconfirmed_txs":  rpcserver.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), "", false),
-
-		// tx broadcast API
-		"broadcast_tx_commit": rpcserver.NewRPCFunc(makeBroadcastTxCommitFunc(c), "tx", false),
-		"broadcast_tx_sync":   rpcserver.NewRPCFunc(makeBroadcastTxSyncFunc(c), "tx", false),
-		"broadcast_tx_async":  rpcserver.NewRPCFunc(makeBroadcastTxAsyncFunc(c), "tx", false),
-
-		// abci API
-		"abci_query": rpcserver.NewRPCFunc(makeABCIQueryFunc(c), "path,data,height,prove", false),
-		"abci_info":  rpcserver.NewRPCFunc(makeABCIInfoFunc(c), "", true),
-
-		// evidence API
-		"broadcast_evidence": rpcserver.NewRPCFunc(makeBroadcastEvidenceFunc(c), "evidence", false),
-	}
+// proxyService wraps a light RPC client to export the RPC service interfaces.
+// The interfaces are implemented by delegating to the underlying node via the
+// specified client.
+type proxyService struct {
+	Client *lrpc.Client
 }
 
-type rpcHealthFunc func(ctx *rpctypes.Context) (*coretypes.ResultHealth, error)
+func (p proxyService) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) { panic("ok") }
 
-func makeHealthFunc(c *lrpc.Client) rpcHealthFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultHealth, error) {
-		return c.Health(ctx.Context())
-	}
+func (p proxyService) ABCIQuery(ctx context.Context, req *coretypes.RequestABCIQuery) (*coretypes.ResultABCIQuery, error) {
+	return p.Client.ABCIQueryWithOptions(ctx, req.Path, req.Data, rpcclient.ABCIQueryOptions{
+		Height: int64(req.Height),
+		Prove:  req.Prove,
+	})
 }
 
-type rpcStatusFunc func(ctx *rpctypes.Context) (*coretypes.ResultStatus, error)
-
-// nolint: interfacer
-func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultStatus, error) {
-		return c.Status(ctx.Context())
-	}
+func (p proxyService) Block(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlock, error) {
+	return p.Client.Block(ctx, (*int64)(req.Height))
 }
 
-type rpcNetInfoFunc func(ctx *rpctypes.Context) (*coretypes.ResultNetInfo, error)
-
-func makeNetInfoFunc(c *lrpc.Client) rpcNetInfoFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultNetInfo, error) {
-		return c.NetInfo(ctx.Context())
-	}
+func (p proxyService) BlockByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultBlock, error) {
+	return p.Client.BlockByHash(ctx, req.Hash)
 }
 
-type rpcBlockchainInfoFunc func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error)
-
-func makeBlockchainInfoFunc(c *lrpc.Client) rpcBlockchainInfoFunc {
-	return func(ctx *rpctypes.Context, minHeight, maxHeight int64) (*coretypes.ResultBlockchainInfo, error) {
-		return c.BlockchainInfo(ctx.Context(), minHeight, maxHeight)
-	}
+func (p proxyService) BlockResults(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultBlockResults, error) {
+	return p.Client.BlockResults(ctx, (*int64)(req.Height))
 }
 
-type rpcGenesisFunc func(ctx *rpctypes.Context) (*coretypes.ResultGenesis, error)
-
-func makeGenesisFunc(c *lrpc.Client) rpcGenesisFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultGenesis, error) {
-		return c.Genesis(ctx.Context())
-	}
+func (p proxyService) BlockSearch(ctx context.Context, req *coretypes.RequestBlockSearch) (*coretypes.ResultBlockSearch, error) {
+	return p.Client.BlockSearch(ctx, req.Query, req.Page.IntPtr(), req.PerPage.IntPtr(), req.OrderBy)
 }
 
-type rpcGenesisChunkedFunc func(ctx *rpctypes.Context, chunk uint) (*coretypes.ResultGenesisChunk, error)
-
-func makeGenesisChunkedFunc(c *lrpc.Client) rpcGenesisChunkedFunc {
-	return func(ctx *rpctypes.Context, chunk uint) (*coretypes.ResultGenesisChunk, error) {
-		return c.GenesisChunked(ctx.Context(), chunk)
-	}
+func (p proxyService) BlockchainInfo(ctx context.Context, req *coretypes.RequestBlockchainInfo) (*coretypes.ResultBlockchainInfo, error) {
+	return p.Client.BlockchainInfo(ctx, int64(req.MinHeight), int64(req.MaxHeight))
 }
 
-type rpcHeaderFunc func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultHeader, error)
-
-func makeHeaderFunc(c *lrpc.Client) rpcHeaderFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultHeader, error) {
-		return c.Header(ctx.Context(), height)
-	}
+func (p proxyService) BroadcastEvidence(ctx context.Context, req *coretypes.RequestBroadcastEvidence) (*coretypes.ResultBroadcastEvidence, error) {
+	return p.Client.BroadcastEvidence(ctx, req.Evidence)
 }
 
-type rpcHeaderByHashFunc func(ctx *rpctypes.Context, hash []byte) (*coretypes.ResultHeader, error)
-
-func makeHeaderByHashFunc(c *lrpc.Client) rpcHeaderByHashFunc {
-	return func(ctx *rpctypes.Context, hash []byte) (*coretypes.ResultHeader, error) {
-		return c.HeaderByHash(ctx.Context(), hash)
-	}
+func (p proxyService) BroadcastTxAsync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
+	return p.Client.BroadcastTxAsync(ctx, req.Tx)
 }
 
-type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultBlock, error)
-
-func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultBlock, error) {
-		return c.Block(ctx.Context(), height)
-	}
+func (p proxyService) BroadcastTxCommit(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTxCommit, error) {
+	return p.Client.BroadcastTxCommit(ctx, req.Tx)
 }
 
-type rpcBlockByHashFunc func(ctx *rpctypes.Context, hash []byte) (*coretypes.ResultBlock, error)
-
-func makeBlockByHashFunc(c *lrpc.Client) rpcBlockByHashFunc {
-	return func(ctx *rpctypes.Context, hash []byte) (*coretypes.ResultBlock, error) {
-		return c.BlockByHash(ctx.Context(), hash)
-	}
+func (p proxyService) BroadcastTxSync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
+	return p.Client.BroadcastTxSync(ctx, req.Tx)
 }
 
-type rpcBlockResultsFunc func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultBlockResults, error)
-
-func makeBlockResultsFunc(c *lrpc.Client) rpcBlockResultsFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultBlockResults, error) {
-		return c.BlockResults(ctx.Context(), height)
-	}
+func (p proxyService) CheckTx(ctx context.Context, req *coretypes.RequestCheckTx) (*coretypes.ResultCheckTx, error) {
+	return p.Client.CheckTx(ctx, req.Tx)
 }
 
-type rpcCommitFunc func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultCommit, error)
-
-func makeCommitFunc(c *lrpc.Client) rpcCommitFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultCommit, error) {
-		return c.Commit(ctx.Context(), height)
-	}
+func (p proxyService) Commit(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultCommit, error) {
+	return p.Client.Commit(ctx, (*int64)(req.Height))
 }
 
-type rpcTxFunc func(ctx *rpctypes.Context, hash []byte, prove bool) (*coretypes.ResultTx, error)
-
-func makeTxFunc(c *lrpc.Client) rpcTxFunc {
-	return func(ctx *rpctypes.Context, hash []byte, prove bool) (*coretypes.ResultTx, error) {
-		return c.Tx(ctx.Context(), hash, prove)
-	}
+func (p proxyService) ConsensusParams(ctx context.Context, req *coretypes.RequestConsensusParams) (*coretypes.ResultConsensusParams, error) {
+	return p.Client.ConsensusParams(ctx, (*int64)(req.Height))
 }
 
-type rpcTxSearchFunc func(
-	ctx *rpctypes.Context,
-	query string,
-	prove bool,
-	page, perPage *int,
-	orderBy string,
-) (*coretypes.ResultTxSearch, error)
-
-func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
-	return func(
-		ctx *rpctypes.Context,
-		query string,
-		prove bool,
-		page, perPage *int,
-		orderBy string,
-	) (*coretypes.ResultTxSearch, error) {
-		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
-	}
+func (p proxyService) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error) {
+	return p.Client.DumpConsensusState(ctx)
 }
 
-type rpcBlockSearchFunc func(
-	ctx *rpctypes.Context,
-	query string,
-	prove bool,
-	page, perPage *int,
-	orderBy string,
-) (*coretypes.ResultBlockSearch, error)
-
-func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
-	return func(
-		ctx *rpctypes.Context,
-		query string,
-		prove bool,
-		page, perPage *int,
-		orderBy string,
-	) (*coretypes.ResultBlockSearch, error) {
-		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
-	}
+func (p proxyService) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
+	return p.Client.Events(ctx, req)
 }
 
-type rpcValidatorsFunc func(ctx *rpctypes.Context, height *int64,
-	page, perPage *int, requestThresholdPublicKey *bool) (*coretypes.ResultValidators, error)
-
-func makeValidatorsFunc(c *lrpc.Client) rpcValidatorsFunc {
-	return func(ctx *rpctypes.Context, height *int64, page, perPage *int,
-		requestQuorumInfo *bool) (*coretypes.ResultValidators, error) {
-		return c.Validators(ctx.Context(), height, page, perPage, requestQuorumInfo)
-	}
+func (p proxyService) Genesis(ctx context.Context) (*coretypes.ResultGenesis, error) {
+	return p.Client.Genesis(ctx)
 }
 
-type rpcDumpConsensusStateFunc func(ctx *rpctypes.Context) (*coretypes.ResultDumpConsensusState, error)
-
-func makeDumpConsensusStateFunc(c *lrpc.Client) rpcDumpConsensusStateFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultDumpConsensusState, error) {
-		return c.DumpConsensusState(ctx.Context())
-	}
+func (p proxyService) GenesisChunked(ctx context.Context, req *coretypes.RequestGenesisChunked) (*coretypes.ResultGenesisChunk, error) {
+	return p.Client.GenesisChunked(ctx, uint(req.Chunk))
 }
 
-type rpcConsensusStateFunc func(ctx *rpctypes.Context) (*coretypes.ResultConsensusState, error)
-
-func makeConsensusStateFunc(c *lrpc.Client) rpcConsensusStateFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultConsensusState, error) {
-		return c.ConsensusState(ctx.Context())
-	}
+func (p proxyService) GetConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error) {
+	return p.Client.ConsensusState(ctx)
 }
 
-type rpcConsensusParamsFunc func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultConsensusParams, error)
-
-func makeConsensusParamsFunc(c *lrpc.Client) rpcConsensusParamsFunc {
-	return func(ctx *rpctypes.Context, height *int64) (*coretypes.ResultConsensusParams, error) {
-		return c.ConsensusParams(ctx.Context(), height)
-	}
+func (p proxyService) Header(ctx context.Context, req *coretypes.RequestBlockInfo) (*coretypes.ResultHeader, error) {
+	return p.Client.Header(ctx, (*int64)(req.Height))
 }
 
-type rpcUnconfirmedTxsFunc func(ctx *rpctypes.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error)
-
-func makeUnconfirmedTxsFunc(c *lrpc.Client) rpcUnconfirmedTxsFunc {
-	return func(ctx *rpctypes.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error) {
-		return c.UnconfirmedTxs(ctx.Context(), limit)
-	}
+func (p proxyService) HeaderByHash(ctx context.Context, req *coretypes.RequestBlockByHash) (*coretypes.ResultHeader, error) {
+	return p.Client.HeaderByHash(ctx, req.Hash)
 }
 
-type rpcNumUnconfirmedTxsFunc func(ctx *rpctypes.Context) (*coretypes.ResultUnconfirmedTxs, error)
-
-func makeNumUnconfirmedTxsFunc(c *lrpc.Client) rpcNumUnconfirmedTxsFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultUnconfirmedTxs, error) {
-		return c.NumUnconfirmedTxs(ctx.Context())
-	}
+func (p proxyService) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
+	return p.Client.Health(ctx)
 }
 
-type rpcBroadcastTxCommitFunc func(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error)
-
-func makeBroadcastTxCommitFunc(c *lrpc.Client) rpcBroadcastTxCommitFunc {
-	return func(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTxCommit, error) {
-		return c.BroadcastTxCommit(ctx.Context(), tx)
-	}
+func (p proxyService) NetInfo(ctx context.Context) (*coretypes.ResultNetInfo, error) {
+	return p.Client.NetInfo(ctx)
 }
 
-type rpcBroadcastTxSyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error)
-
-func makeBroadcastTxSyncFunc(c *lrpc.Client) rpcBroadcastTxSyncFunc {
-	return func(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-		return c.BroadcastTxSync(ctx.Context(), tx)
-	}
+func (p proxyService) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {
+	return p.Client.NumUnconfirmedTxs(ctx)
 }
 
-type rpcBroadcastTxAsyncFunc func(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error)
-
-func makeBroadcastTxAsyncFunc(c *lrpc.Client) rpcBroadcastTxAsyncFunc {
-	return func(ctx *rpctypes.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
-		return c.BroadcastTxAsync(ctx.Context(), tx)
-	}
+func (p proxyService) RemoveTx(ctx context.Context, req *coretypes.RequestRemoveTx) error {
+	return p.Client.RemoveTx(ctx, req.TxKey)
 }
 
-type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string,
-	data bytes.HexBytes, height int64, prove bool) (*coretypes.ResultABCIQuery, error)
-
-func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
-	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes,
-		height int64, prove bool) (*coretypes.ResultABCIQuery, error) {
-
-		return c.ABCIQueryWithOptions(ctx.Context(), path, data, rpcclient.ABCIQueryOptions{
-			Height: height,
-			Prove:  prove,
-		})
-	}
+func (p proxyService) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
+	return p.Client.Status(ctx)
 }
 
-type rpcABCIInfoFunc func(ctx *rpctypes.Context) (*coretypes.ResultABCIInfo, error)
-
-func makeABCIInfoFunc(c *lrpc.Client) rpcABCIInfoFunc {
-	return func(ctx *rpctypes.Context) (*coretypes.ResultABCIInfo, error) {
-		return c.ABCIInfo(ctx.Context())
-	}
+func (p proxyService) Subscribe(ctx context.Context, req *coretypes.RequestSubscribe) (*coretypes.ResultSubscribe, error) {
+	return p.Client.SubscribeWS(ctx, req.Query)
 }
 
-type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error)
+func (p proxyService) Tx(ctx context.Context, req *coretypes.RequestTx) (*coretypes.ResultTx, error) {
+	return p.Client.Tx(ctx, req.Hash, req.Prove)
+}
 
-// nolint: interfacer
-func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
-	return func(ctx *rpctypes.Context, ev types.Evidence) (*coretypes.ResultBroadcastEvidence, error) {
-		return c.BroadcastEvidence(ctx.Context(), ev)
-	}
+func (p proxyService) TxSearch(ctx context.Context, req *coretypes.RequestTxSearch) (*coretypes.ResultTxSearch, error) {
+	return p.Client.TxSearch(ctx, req.Query, req.Prove, req.Page.IntPtr(), req.PerPage.IntPtr(), req.OrderBy)
+}
+
+func (p proxyService) UnconfirmedTxs(ctx context.Context, req *coretypes.RequestUnconfirmedTxs) (*coretypes.ResultUnconfirmedTxs, error) {
+	return p.Client.UnconfirmedTxs(ctx, req.Page.IntPtr(), req.PerPage.IntPtr())
+}
+
+func (p proxyService) Unsubscribe(ctx context.Context, req *coretypes.RequestUnsubscribe) (*coretypes.ResultUnsubscribe, error) {
+	return p.Client.UnsubscribeWS(ctx, req.Query)
+}
+
+func (p proxyService) UnsubscribeAll(ctx context.Context) (*coretypes.ResultUnsubscribe, error) {
+	return p.Client.UnsubscribeAllWS(ctx)
+}
+
+func (p proxyService) Validators(ctx context.Context, req *coretypes.RequestValidators) (*coretypes.ResultValidators, error) {
+	return p.Client.Validators(ctx, (*int64)(req.Height), req.Page.IntPtr(), req.PerPage.IntPtr(), req.RequestQuorumInfo)
 }

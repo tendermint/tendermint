@@ -12,7 +12,7 @@ The app has no replay protection (other than what the mempool provides).
 ## PersistentKVStoreApplication
 
 The PersistentKVStoreApplication wraps the KVStoreApplication
-and provides two additional features:
+and provides three additional features:
 
 1) persistence of state across app restarts (using Tendermint's ABCI-Handshake mechanism)
 2) validator set changes

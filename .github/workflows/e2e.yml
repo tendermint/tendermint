@@ -20,13 +20,13 @@ jobs:
     env:
       FULLNODE_PUBKEY_KEEP: false
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: '1.17'
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: technote-space/get-diff-action@v5
+      - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS: |
             **/**.go

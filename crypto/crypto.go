@@ -2,18 +2,23 @@ package crypto
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 const (
+	// HashSize is the size in bytes of an AddressHash.
+	HashSize = sha256.Size
+
 	// AddressSize is the size of a pubkey address.
-	AddressSize        = tmhash.TruncatedSize
+	AddressSize        = 20
 	DefaultHashSize    = 32
 	LargeAppHashSize   = DefaultHashSize
 	SmallAppHashSize   = 20
@@ -45,8 +50,23 @@ type ProTxHash = tmbytes.HexBytes
 
 type QuorumHash = tmbytes.HexBytes
 
+// AddressHash computes a truncated SHA-256 hash of bz for use as
+// a peer address.
+//
+// See: https://docs.tendermint.com/master/spec/core/data_structures.html#address
+func AddressHash(bz []byte) Address {
+	h := sha256.Sum256(bz)
+	return Address(h[:AddressSize])
+}
+
+// Checksum returns the SHA256 of the bz.
+func Checksum(bz []byte) []byte {
+	h := sha256.Sum256(bz)
+	return h[:]
+}
+
 func ProTxHashFromSeedBytes(bz []byte) ProTxHash {
-	return tmhash.Sum(bz)
+	return Checksum(bz)
 }
 
 func RandProTxHash() ProTxHash {
@@ -98,9 +118,50 @@ func (sptxh SortProTxHash) Swap(i, j int) {
 }
 
 type QuorumKeys struct {
-	PrivKey            PrivKey `json:"priv_key"`
-	PubKey             PubKey  `json:"pub_key"`
-	ThresholdPublicKey PubKey  `json:"threshold_public_key"`
+	PrivKey            PrivKey
+	PubKey             PubKey
+	ThresholdPublicKey PubKey
+}
+
+type quorumKeysJSON struct {
+	PrivKey            json.RawMessage `json:"priv_key"`
+	PubKey             json.RawMessage `json:"pub_key"`
+	ThresholdPublicKey json.RawMessage `json:"threshold_public_key"`
+}
+
+func (pvKey QuorumKeys) MarshalJSON() ([]byte, error) {
+	var keys quorumKeysJSON
+	var err error
+	keys.PrivKey, err = jsontypes.Marshal(pvKey.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+	keys.PubKey, err = jsontypes.Marshal(pvKey.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	keys.ThresholdPublicKey, err = jsontypes.Marshal(pvKey.ThresholdPublicKey)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(keys)
+}
+
+func (pvKey *QuorumKeys) UnmarshalJSON(data []byte) error {
+	var keys quorumKeysJSON
+	err := json.Unmarshal(data, &keys)
+	if err != nil {
+		return err
+	}
+	err = jsontypes.Unmarshal(keys.PrivKey, &pvKey.PrivKey)
+	if err != nil {
+		return err
+	}
+	err = jsontypes.Unmarshal(keys.PubKey, &pvKey.PubKey)
+	if err != nil {
+		return err
+	}
+	return jsontypes.Unmarshal(keys.ThresholdPublicKey, &pvKey.ThresholdPublicKey)
 }
 
 // Validator is a validator interface
@@ -109,7 +170,6 @@ type Validator interface {
 }
 
 type PubKey interface {
-	HexStringer
 	Address() Address
 	Bytes() []byte
 	VerifySignature(msg []byte, sig []byte) bool
@@ -118,8 +178,11 @@ type PubKey interface {
 	VerifyAggregateSignature(msgs [][]byte, sig []byte) bool
 	Equals(PubKey) bool
 	Type() string
-	TypeValue() KeyType
-	String() string
+
+	// Implementations must support tagged encoding in JSON.
+	jsontypes.Tagged
+	fmt.Stringer
+	HexStringer
 }
 
 type PrivKey interface {
@@ -129,7 +192,9 @@ type PrivKey interface {
 	PubKey() PubKey
 	Equals(PrivKey) bool
 	Type() string
-	TypeValue() KeyType
+
+	// Implementations must support tagged encoding in JSON.
+	jsontypes.Tagged
 }
 
 type Symmetric interface {

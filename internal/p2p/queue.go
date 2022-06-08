@@ -1,7 +1,7 @@
 package p2p
 
 import (
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"sync"
 )
 
 // default capacity for the size of a queue
@@ -32,28 +32,22 @@ type queue interface {
 // in the order they were received, and blocks until message is received.
 type fifoQueue struct {
 	queueCh chan Envelope
-	closer  *tmsync.Closer
+	closeFn func()
+	closeCh <-chan struct{}
 }
 
 func newFIFOQueue(size int) queue {
+	closeCh := make(chan struct{})
+	once := &sync.Once{}
+
 	return &fifoQueue{
 		queueCh: make(chan Envelope, size),
-		closer:  tmsync.NewCloser(),
+		closeFn: func() { once.Do(func() { close(closeCh) }) },
+		closeCh: closeCh,
 	}
 }
 
-func (q *fifoQueue) enqueue() chan<- Envelope {
-	return q.queueCh
-}
-
-func (q *fifoQueue) dequeue() <-chan Envelope {
-	return q.queueCh
-}
-
-func (q *fifoQueue) close() {
-	q.closer.Close()
-}
-
-func (q *fifoQueue) closed() <-chan struct{} {
-	return q.closer.Done()
-}
+func (q *fifoQueue) enqueue() chan<- Envelope { return q.queueCh }
+func (q *fifoQueue) dequeue() <-chan Envelope { return q.queueCh }
+func (q *fifoQueue) close()                   { q.closeFn() }
+func (q *fifoQueue) closed() <-chan struct{}  { return q.closeCh }

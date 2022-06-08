@@ -1,6 +1,7 @@
 package types
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -57,7 +58,8 @@ func (cl CoreChainLock) RequestID() []byte {
 	binary.LittleEndian.PutUint32(coreBlockHeightBytes[:], cl.CoreBlockHeight)
 
 	s = append(s, coreBlockHeightBytes[:]...)
-	return crypto.Sha256(crypto.Sha256(s))
+	hash := sha256.Sum256(s)
+	return hash[:]
 }
 
 // ValidateBasic performs stateless validation on a Chain Lock returning an error

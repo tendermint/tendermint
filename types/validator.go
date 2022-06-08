@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	ce "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -19,12 +21,50 @@ import (
 // make sure to update that method if changes are made here
 // The ProTxHash is part of Dash additions required for BLS threshold signatures
 type Validator struct {
-	PubKey      crypto.PubKey    `json:"pub_key"`
-	VotingPower int64            `json:"voting_power"`
-	ProTxHash   ProTxHash        `json:"pro_tx_hash"`
-	NodeAddress ValidatorAddress `json:"address"`
+	ProTxHash   ProTxHash
+	PubKey      crypto.PubKey
+	VotingPower int64
+	NodeAddress ValidatorAddress
 
-	ProposerPriority int64 `json:"proposer_priority"`
+	ProposerPriority int64
+}
+
+type validatorJSON struct {
+	PubKey           json.RawMessage  `json:"pub_key,omitempty"`
+	VotingPower      int64            `json:"voting_power,string"`
+	ProTxHash        ProTxHash        `json:"pro_tx_hash"`
+	NodeAddress      ValidatorAddress `json:"address"`
+	ProposerPriority int64            `json:"proposer_priority,string"`
+}
+
+func (v Validator) MarshalJSON() ([]byte, error) {
+	val := validatorJSON{
+		ProTxHash:        v.ProTxHash,
+		VotingPower:      v.VotingPower,
+		ProposerPriority: v.ProposerPriority,
+	}
+	if v.PubKey != nil {
+		pk, err := jsontypes.Marshal(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		val.PubKey = pk
+	}
+	return json.Marshal(val)
+}
+
+func (v *Validator) UnmarshalJSON(data []byte) error {
+	var val validatorJSON
+	if err := json.Unmarshal(data, &val); err != nil {
+		return err
+	}
+	if err := jsontypes.Unmarshal(val.PubKey, &v.PubKey); err != nil {
+		return err
+	}
+	v.ProTxHash = val.ProTxHash
+	v.VotingPower = val.VotingPower
+	v.ProposerPriority = val.ProposerPriority
+	return nil
 }
 
 func NewTestValidatorGeneratedFromProTxHash(proTxHash crypto.ProTxHash) *Validator {

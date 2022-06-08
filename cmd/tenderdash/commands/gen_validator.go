@@ -1,42 +1,33 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	keyType string
-)
-
-// GenValidatorCmd allows the generation of a keypair for a
+// MakeGenValidatorCommand allows the generation of a keypair for a
 // validator.
-var GenValidatorCmd = &cobra.Command{
-	Use:   "gen-validator",
-	Short: "Generate new validator keypair",
-	RunE:  genValidator,
-}
+func MakeGenValidatorCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "gen-validator",
+		Short: "Generate new validator keypair",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pv := privval.GenFilePV("", "")
 
-func init() {
-	GenValidatorCmd.Flags().StringVar(&keyType, "key", types.ABCIPubKeyTypeEd25519,
-		"Key type to generate privval file with. Options: ed25519, secp256k1")
-}
+			jsbz, err := json.Marshal(pv)
+			if err != nil {
+				return fmt.Errorf("validator -> json: %w", err)
+			}
 
-func genValidator(cmd *cobra.Command, args []string) error {
-	pv := privval.GenFilePV("", "")
+			fmt.Printf("%v\n", string(jsbz))
 
-	jsbz, err := tmjson.Marshal(pv)
-	if err != nil {
-		return fmt.Errorf("validator -> json: %w", err)
+			return nil
+		},
 	}
 
-	fmt.Printf(`%v
-`, string(jsbz))
-
-	return nil
+	return cmd
 }

@@ -11,8 +11,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	dashcore "github.com/tendermint/tendermint/dashcore/rpc"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	dashcore "github.com/tendermint/tendermint/dash/core"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
@@ -42,10 +41,11 @@ type StateProvider interface {
 }
 
 type stateProviderRPC struct {
-	tmsync.Mutex  // light.Client is not concurrency-safe
+	sync.Mutex    // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
 	providers     map[lightprovider.Provider]string
+	logger        log.Logger
 }
 
 // NewRPCStateProvider creates a new StateProvider using a light client and RPC clients.
@@ -82,6 +82,7 @@ func NewRPCStateProvider(
 		return nil, err
 	}
 	return &stateProviderRPC{
+		logger:        logger,
 		lc:            lc,
 		initialHeight: initialHeight,
 		providers:     providerRemotes,
@@ -89,7 +90,7 @@ func NewRPCStateProvider(
 }
 
 func (s *stateProviderRPC) verifyLightBlockAtHeight(ctx context.Context, height uint64, ts time.Time) (*types.LightBlock, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	return s.lc.VerifyLightBlockAtHeight(ctx, int64(height), ts)
 }
@@ -187,7 +188,7 @@ func (s *stateProviderRPC) State(ctx context.Context, height uint64) (sm.State, 
 	if err != nil {
 		return sm.State{}, fmt.Errorf("unable to create RPC client: %w", err)
 	}
-	rpcclient := lightrpc.NewClient(primaryRPC, s.lc)
+	rpcclient := lightrpc.NewClient(s.logger, primaryRPC, s.lc)
 	result, err := rpcclient.ConsensusParams(ctx, &currentLightBlock.Height)
 	if err != nil {
 		return sm.State{}, fmt.Errorf("unable to fetch consensus parameters for height %v: %w",
@@ -208,10 +209,10 @@ func rpcClient(server string) (*rpchttp.HTTP, error) {
 }
 
 type stateProviderP2P struct {
-	tmsync.Mutex  // light.Client is not concurrency-safe
+	sync.Mutex    // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
-	paramsSendCh  chan<- p2p.Envelope
+	paramsSendCh  *p2p.Channel
 	paramsRecvCh  chan types.ConsensusParams
 }
 
@@ -223,7 +224,7 @@ func NewP2PStateProvider(
 	initialHeight int64,
 	trustHeight int64,
 	providers []lightprovider.Provider,
-	paramsSendCh chan<- p2p.Envelope,
+	paramsSendCh *p2p.Channel,
 	logger log.Logger,
 	dashCoreClient dashcore.Client,
 ) (StateProvider, error) {
@@ -246,7 +247,7 @@ func NewP2PStateProvider(
 }
 
 func (s *stateProviderP2P) verifyLightBlockAtHeight(ctx context.Context, height uint64, ts time.Time) (*types.LightBlock, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	return s.lc.VerifyLightBlockAtHeight(ctx, int64(height), ts)
 }
@@ -385,7 +386,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			}
 
 			wg.Add(1)
-			go func(p *BlockProvider, peer types.NodeID, requestCh chan<- p2p.Envelope, responseCh <-chan types.ConsensusParams) {
+			go func(peer types.NodeID) {
 				defer wg.Done()
 
 				timer := time.NewTimer(0)
@@ -394,14 +395,17 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 
 				for {
 					iterCount++
-					select {
-					case s.paramsSendCh <- p2p.Envelope{
+					if err := s.paramsSendCh.Send(ctx, p2p.Envelope{
 						To: peer,
 						Message: &ssproto.ParamsRequest{
 							Height: uint64(height),
 						},
-					}:
-					case <-ctx.Done():
+					}); err != nil {
+						// this only errors if
+						// the context is
+						// canceled which we
+						// don't need to
+						// propagate here
 						return
 					}
 
@@ -414,7 +418,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 						continue
 					case <-ctx.Done():
 						return
-					case params, ok := <-responseCh:
+					case params, ok := <-s.paramsRecvCh:
 						if !ok {
 							return
 						}
@@ -427,7 +431,7 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 					}
 				}
 
-			}(p, peer, s.paramsSendCh, s.paramsRecvCh)
+			}(peer)
 		}
 		sig := make(chan struct{})
 		go func() { wg.Wait(); close(sig) }()
@@ -462,4 +466,5 @@ func (s *stateProviderP2P) consensusParams(ctx context.Context, height int64) (t
 			return param, nil
 		}
 	}
+
 }

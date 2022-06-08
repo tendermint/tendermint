@@ -40,6 +40,7 @@ The following metrics are available:
 | consensus_fast_syncing                 | gauge     |               | either 0 (not fast syncing) or 1 (syncing)                             |
 | consensus_state_syncing                | gauge     |               | either 0 (not state syncing) or 1 (syncing)                            |
 | consensus_block_size_bytes             | Gauge     |               | Block size in bytes                                                    |
+| evidence_pool_num_evidence             | Gauge     |               | Number of evidence in the evidence pool 
 | p2p_peers                              | Gauge     |               | Number of peers node's connected to                                    |
 | p2p_peer_receive_bytes_total           | counter   | peer_id, chID | number of bytes per channel received from a given peer                 |
 | p2p_peer_send_bytes_total              | counter   | peer_id, chID | number of bytes per channel sent to a given peer                       |

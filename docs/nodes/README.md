@@ -1,7 +1,7 @@
 ---
 order: 1
 parent:
-  title: Nodes
+  title: Node Operators
   order: 4
 ---
 

@@ -40,14 +40,15 @@ type MConnTransportOptions struct {
 // MConnTransport is a Transport implementation using the current multiplexed
 // Tendermint protocol ("MConn").
 type MConnTransport struct {
+	mtx          sync.Mutex
 	logger       log.Logger
 	options      MConnTransportOptions
 	mConnConfig  conn.MConnConfig
 	channelDescs []*ChannelDescriptor
-	closeCh      chan struct{}
-	closeOnce    sync.Once
 
-	listener net.Listener
+	closeOnce sync.Once
+	doneCh    chan struct{}
+	listener  net.Listener
 }
 
 // NewMConnTransport sets up a new MConnection transport. This uses the
@@ -63,7 +64,7 @@ func NewMConnTransport(
 		logger:       logger,
 		options:      options,
 		mConnConfig:  mConnConfig,
-		closeCh:      make(chan struct{}),
+		doneCh:       make(chan struct{}),
 		channelDescs: channelDescs,
 	}
 }
@@ -78,24 +79,25 @@ func (m *MConnTransport) Protocols() []Protocol {
 	return []Protocol{MConnProtocol, TCPProtocol}
 }
 
-// Endpoints implements Transport.
-func (m *MConnTransport) Endpoints() []Endpoint {
+// Endpoint implements Transport.
+func (m *MConnTransport) Endpoint() (*Endpoint, error) {
 	if m.listener == nil {
-		return []Endpoint{}
+		return nil, errors.New("listenter not defined")
 	}
 	select {
-	case <-m.closeCh:
-		return []Endpoint{}
+	case <-m.doneCh:
+		return nil, errors.New("transport closed")
 	default:
 	}
-	endpoint := Endpoint{
+
+	endpoint := &Endpoint{
 		Protocol: MConnProtocol,
 	}
 	if addr, ok := m.listener.Addr().(*net.TCPAddr); ok {
 		endpoint.IP = addr.IP
 		endpoint.Port = uint16(addr.Port)
 	}
-	return []Endpoint{endpoint}
+	return endpoint, nil
 }
 
 // Listen asynchronously listens for inbound connections on the given endpoint.
@@ -105,7 +107,7 @@ func (m *MConnTransport) Endpoints() []Endpoint {
 // FIXME: Listen currently only supports listening on a single endpoint, it
 // might be useful to support listening on multiple addresses (e.g. IPv4 and
 // IPv6, or a private and public address) via multiple Listen() calls.
-func (m *MConnTransport) Listen(endpoint Endpoint) error {
+func (m *MConnTransport) Listen(endpoint *Endpoint) error {
 	if m.listener != nil {
 		return errors.New("transport is already listening")
 	}
@@ -132,26 +134,47 @@ func (m *MConnTransport) Listen(endpoint Endpoint) error {
 }
 
 // Accept implements Transport.
-func (m *MConnTransport) Accept() (Connection, error) {
+func (m *MConnTransport) Accept(ctx context.Context) (Connection, error) {
 	if m.listener == nil {
 		return nil, errors.New("transport is not listening")
 	}
 
-	tcpConn, err := m.listener.Accept()
-	if err != nil {
-		select {
-		case <-m.closeCh:
-			return nil, io.EOF
-		default:
-			return nil, err
+	conCh := make(chan net.Conn)
+	errCh := make(chan error)
+	go func() {
+		tcpConn, err := m.listener.Accept()
+		if err != nil {
+			select {
+			case errCh <- err:
+			case <-ctx.Done():
+			}
 		}
+		select {
+		case conCh <- tcpConn:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		m.listener.Close()
+		return nil, io.EOF
+	case <-m.doneCh:
+		m.listener.Close()
+		return nil, io.EOF
+	case err := <-errCh:
+		return nil, err
+	case tcpConn := <-conCh:
+		m.mtx.Lock()
+		chDescs := m.channelDescs
+		m.mtx.Unlock()
+		return newMConnConnection(m.logger, tcpConn, m.mConnConfig, chDescs), nil
 	}
 
-	return newMConnConnection(m.logger, tcpConn, m.mConnConfig, m.channelDescs), nil
 }
 
 // Dial implements Transport.
-func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connection, error) {
+func (m *MConnTransport) Dial(ctx context.Context, endpoint *Endpoint) (Connection, error) {
 	if err := m.validateEndpoint(endpoint); err != nil {
 		return nil, err
 	}
@@ -178,7 +201,7 @@ func (m *MConnTransport) Dial(ctx context.Context, endpoint Endpoint) (Connectio
 func (m *MConnTransport) Close() error {
 	var err error
 	m.closeOnce.Do(func() {
-		close(m.closeCh) // must be closed first, to handle error in Accept()
+		close(m.doneCh)
 		if m.listener != nil {
 			err = m.listener.Close()
 		}
@@ -194,11 +217,13 @@ func (m *MConnTransport) Close() error {
 // connections should be agnostic to everything but the channel ID's which are
 // initialized in the handshake.
 func (m *MConnTransport) AddChannelDescriptors(channelDesc []*ChannelDescriptor) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.channelDescs = append(m.channelDescs, channelDesc...)
 }
 
 // validateEndpoint validates an endpoint.
-func (m *MConnTransport) validateEndpoint(endpoint Endpoint) error {
+func (m *MConnTransport) validateEndpoint(endpoint *Endpoint) error {
 	if err := endpoint.Validate(); err != nil {
 		return err
 	}
@@ -222,7 +247,7 @@ type mConnConnection struct {
 	channelDescs []*ChannelDescriptor
 	receiveCh    chan mConnMessage
 	errorCh      chan error
-	closeCh      chan struct{}
+	doneCh       chan struct{}
 	closeOnce    sync.Once
 
 	mconn *conn.MConnection // set during Handshake()
@@ -248,7 +273,7 @@ func newMConnConnection(
 		channelDescs: channelDescs,
 		receiveCh:    make(chan mConnMessage),
 		errorCh:      make(chan error, 1), // buffered to avoid onError leak
-		closeCh:      make(chan struct{}),
+		doneCh:       make(chan struct{}),
 	}
 }
 
@@ -277,7 +302,12 @@ func (c *mConnConnection) Handshake(
 		}()
 		var err error
 		mconn, peerInfo, peerKey, err = c.handshake(ctx, nodeInfo, privKey)
-		errCh <- err
+
+		select {
+		case errCh <- err:
+		case <-ctx.Done():
+		}
+
 	}()
 
 	select {
@@ -290,8 +320,7 @@ func (c *mConnConnection) Handshake(
 			return types.NodeInfo{}, nil, err
 		}
 		c.mconn = mconn
-		c.logger = mconn.Logger
-		if err = c.mconn.Start(); err != nil {
+		if err = c.mconn.Start(ctx); err != nil {
 			return types.NodeInfo{}, nil, err
 		}
 		return peerInfo, peerKey, nil
@@ -315,49 +344,67 @@ func (c *mConnConnection) handshake(
 		return nil, types.NodeInfo{}, nil, err
 	}
 
+	wg := &sync.WaitGroup{}
 	var pbPeerInfo p2pproto.NodeInfo
 	errCh := make(chan error, 2)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		_, err := protoio.NewDelimitedWriter(secretConn).WriteMsg(nodeInfo.ToProto())
-		errCh <- err
-	}()
-	go func() {
-		_, err := protoio.NewDelimitedReader(secretConn, types.MaxNodeInfoSize()).ReadMsg(&pbPeerInfo)
-		errCh <- err
-	}()
-	for i := 0; i < cap(errCh); i++ {
-		if err = <-errCh; err != nil {
-			return nil, types.NodeInfo{}, nil, err
+		select {
+		case errCh <- err:
+		case <-ctx.Done():
 		}
+
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err := protoio.NewDelimitedReader(secretConn, types.MaxNodeInfoSize()).ReadMsg(&pbPeerInfo)
+		select {
+		case errCh <- err:
+		case <-ctx.Done():
+		}
+	}()
+
+	wg.Wait()
+
+	if err, ok := <-errCh; ok && err != nil {
+		return nil, types.NodeInfo{}, nil, err
 	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, types.NodeInfo{}, nil, err
+	}
+
 	peerInfo, err := types.NodeInfoFromProto(&pbPeerInfo)
 	if err != nil {
 		return nil, types.NodeInfo{}, nil, err
 	}
 
-	mconn := conn.NewMConnectionWithConfig(
+	mconn := conn.NewMConnection(
+		c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)),
 		secretConn,
 		c.channelDescs,
 		c.onReceive,
 		c.onError,
 		c.mConnConfig,
 	)
-	mconn.SetLogger(c.logger.With("peer", c.RemoteEndpoint().NodeAddress(peerInfo.NodeID)))
 
 	return mconn, peerInfo, secretConn.RemotePubKey(), nil
 }
 
 // onReceive is a callback for MConnection received messages.
-func (c *mConnConnection) onReceive(chID byte, payload []byte) {
+func (c *mConnConnection) onReceive(ctx context.Context, chID ChannelID, payload []byte) {
 	select {
-	case c.receiveCh <- mConnMessage{channelID: ChannelID(chID), payload: payload}:
-	case <-c.closeCh:
+	case c.receiveCh <- mConnMessage{channelID: chID, payload: payload}:
+	case <-ctx.Done():
 	}
 }
 
 // onError is a callback for MConnection errors. The error is passed via errorCh
 // to ReceiveMessage (but not SendMessage, for legacy P2P stack behavior).
-func (c *mConnConnection) onError(e interface{}) {
+func (c *mConnConnection) onError(ctx context.Context, e interface{}) {
 	err, ok := e.(error)
 	if !ok {
 		err = fmt.Errorf("%v", err)
@@ -367,7 +414,7 @@ func (c *mConnConnection) onError(e interface{}) {
 	_ = c.Close()
 	select {
 	case c.errorCh <- err:
-	case <-c.closeCh:
+	case <-ctx.Done():
 	}
 }
 
@@ -377,41 +424,32 @@ func (c *mConnConnection) String() string {
 }
 
 // SendMessage implements Connection.
-func (c *mConnConnection) SendMessage(chID ChannelID, msg []byte) (bool, error) {
+func (c *mConnConnection) SendMessage(ctx context.Context, chID ChannelID, msg []byte) error {
 	if chID > math.MaxUint8 {
-		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
+		return fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
 	}
 	select {
 	case err := <-c.errorCh:
-		return false, err
-	case <-c.closeCh:
-		return false, io.EOF
+		return err
+	case <-ctx.Done():
+		return io.EOF
 	default:
-		return c.mconn.Send(byte(chID), msg), nil
-	}
-}
+		if ok := c.mconn.Send(chID, msg); !ok {
+			return errors.New("sending message timed out")
+		}
 
-// TrySendMessage implements Connection.
-func (c *mConnConnection) TrySendMessage(chID ChannelID, msg []byte) (bool, error) {
-	if chID > math.MaxUint8 {
-		return false, fmt.Errorf("MConnection only supports 1-byte channel IDs (got %v)", chID)
-	}
-	select {
-	case err := <-c.errorCh:
-		return false, err
-	case <-c.closeCh:
-		return false, io.EOF
-	default:
-		return c.mconn.TrySend(byte(chID), msg), nil
+		return nil
 	}
 }
 
 // ReceiveMessage implements Connection.
-func (c *mConnConnection) ReceiveMessage() (ChannelID, []byte, error) {
+func (c *mConnConnection) ReceiveMessage(ctx context.Context) (ChannelID, []byte, error) {
 	select {
 	case err := <-c.errorCh:
 		return 0, nil, err
-	case <-c.closeCh:
+	case <-c.doneCh:
+		return 0, nil, io.EOF
+	case <-ctx.Done():
 		return 0, nil, io.EOF
 	case msg := <-c.receiveCh:
 		return msg.channelID, msg.payload, nil
@@ -442,38 +480,17 @@ func (c *mConnConnection) RemoteEndpoint() Endpoint {
 	return endpoint
 }
 
-// Status implements Connection.
-func (c *mConnConnection) Status() conn.ConnectionStatus {
-	if c.mconn == nil {
-		return conn.ConnectionStatus{}
-	}
-	return c.mconn.Status()
-}
-
 // Close implements Connection.
 func (c *mConnConnection) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
-		if c.mconn != nil && c.mconn.IsRunning() {
-			err = c.mconn.Stop()
-		} else {
-			err = c.conn.Close()
-		}
-		close(c.closeCh)
-	})
-	return err
-}
+		defer close(c.doneCh)
 
-// FlushClose implements Connection.
-func (c *mConnConnection) FlushClose() error {
-	var err error
-	c.closeOnce.Do(func() {
 		if c.mconn != nil && c.mconn.IsRunning() {
-			c.mconn.FlushStop()
+			c.mconn.Stop()
 		} else {
 			err = c.conn.Close()
 		}
-		close(c.closeCh)
 	})
 	return err
 }

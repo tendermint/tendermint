@@ -6,16 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/dashevo/dashd-go/btcjson"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -27,20 +25,16 @@ import (
 
 const chainID = "chain-id"
 
-func dialer(pv types.PrivValidator, logger log.Logger) (*grpc.Server, func(context.Context, string) (net.Conn, error)) {
+func dialer(t *testing.T, pv types.PrivValidator, logger log.Logger) (*grpc.Server, func(context.Context, string) (net.Conn, error)) {
 	listener := bufconn.Listen(1024 * 1024)
 
 	server := grpc.NewServer()
 
-	s := tmgrpc.NewSignerServer(chainID, pv, logger)
+	s := tmgrpc.NewSignerServer(logger, chainID, pv)
 
 	privvalproto.RegisterPrivValidatorAPIServer(server, s)
 
-	go func() {
-		if err := server.Serve(listener); err != nil {
-			panic(err)
-		}
-	}()
+	go func() { require.NoError(t, server.Serve(listener)) }()
 
 	return server, func(context.Context, string) (net.Conn, error) {
 		return listener.Dial()
@@ -49,19 +43,19 @@ func dialer(pv types.PrivValidator, logger log.Logger) (*grpc.Server, func(conte
 
 func TestSignerClient_GetPubKey(t *testing.T) {
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	mockPV := types.NewMockPV()
-	logger := log.TestingLogger()
-	srv, dialer := dialer(mockPV, logger)
+	logger := log.NewTestingLogger(t)
+	srv, dialer := dialer(t, mockPV, logger)
 	defer srv.Stop()
 
 	conn, err := grpc.DialContext(ctx, "",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 	)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	quorumHash, err := mockPV.GetFirstQuorumHash(ctx)
@@ -76,27 +70,26 @@ func TestSignerClient_GetPubKey(t *testing.T) {
 }
 
 func TestSignerClient_SignVote(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	ctx := context.Background()
 	quorumHash := crypto.RandQuorumHash()
 	mockPV := types.NewMockPVForQuorum(quorumHash)
-	logger := log.TestingLogger()
-	srv, dialer := dialer(mockPV, logger)
+	logger := log.NewTestingLogger(t)
+	srv, dialer := dialer(t, mockPV, logger)
 	defer srv.Stop()
 
 	conn, err := grpc.DialContext(ctx, "",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 	)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
 
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 	proTxHash := crypto.RandProTxHash()
 
 	want := &types.Vote{
@@ -135,28 +128,27 @@ func TestSignerClient_SignVote(t *testing.T) {
 }
 
 func TestSignerClient_SignProposal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	ctx := context.Background()
 	quorumHash := crypto.RandQuorumHash()
 	mockPV := types.NewMockPVForQuorum(quorumHash)
-	logger := log.TestingLogger()
-	srv, dialer := dialer(mockPV, logger)
+	logger := log.NewTestingLogger(t)
+	srv, dialer := dialer(t, mockPV, logger)
 	defer srv.Stop()
 
 	conn, err := grpc.DialContext(ctx, "",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(dialer),
 	)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	client, err := tmgrpc.NewSignerClient(conn, chainID, logger)
 	require.NoError(t, err)
 
 	ts := time.Now()
-	hash := tmrand.Bytes(tmhash.Size)
+	hash := tmrand.Bytes(crypto.HashSize)
 
 	have := &types.Proposal{
 		Type:      tmproto.ProposalType,
@@ -177,12 +169,12 @@ func TestSignerClient_SignProposal(t *testing.T) {
 
 	pbHave := have.ToProto()
 
-	_, err = client.SignProposal(context.Background(), chainID, btcjson.LLMQType_5_60, quorumHash, pbHave)
+	_, err = client.SignProposal(ctx, chainID, btcjson.LLMQType_5_60, quorumHash, pbHave)
 	require.NoError(t, err)
 
 	pbWant := want.ToProto()
 
-	_, err = mockPV.SignProposal(context.Background(), chainID, btcjson.LLMQType_5_60, quorumHash, pbWant)
+	_, err = mockPV.SignProposal(ctx, chainID, btcjson.LLMQType_5_60, quorumHash, pbWant)
 	require.NoError(t, err)
 
 	assert.Equal(t, pbWant.Signature, pbHave.Signature)

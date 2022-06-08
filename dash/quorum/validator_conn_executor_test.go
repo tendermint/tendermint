@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	testifymock "github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -15,9 +16,11 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/dash/quorum/mock"
 	"github.com/tendermint/tendermint/dash/quorum/selectpeers"
-	mmock "github.com/tendermint/tendermint/internal/mempool/mock"
+	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/mempool/mocks"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -27,12 +30,8 @@ import (
 )
 
 const (
-	mySeedID uint16 = math.MaxUint16 - 1
-)
-
-var (
+	mySeedID     uint16 = math.MaxUint16 - 1
 	chainID             = "execution_chain"
-	testPartSize uint32 = 65536
 	nTxsPerBlock        = 10
 )
 
@@ -342,54 +341,64 @@ func TestValidatorConnExecutor_ValidatorUpdatesSequence(t *testing.T) {
 
 // TestEndBlock verifies if ValidatorConnExecutor is called correctly during processing of EndBlock
 // message from the ABCI app.
-func TestEndBlock(t *testing.T) {
+func TestFinalizeBlock(t *testing.T) {
 	const timeout = 3 * time.Second // how long we'll wait for connection
-	app := newTestApp()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	clientCreator := abciclient.NewLocalCreator(app)
-	require.NotNil(t, clientCreator)
-	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
+	app := newTestApp()
+	logger := log.NewTestingLogger(t)
+
+	client := abciclient.NewLocalClient(logger, app)
+	require.NotNil(t, client)
+	proxyApp := proxy.New(client, logger, proxy.NopMetrics())
 	require.NotNil(t, proxyApp)
 
-	err := proxyApp.Start()
+	err := proxyApp.Start(ctx)
 	require.Nil(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(3, 1)
 	nodeProTxHash := state.Validators.Validators[0].ProTxHash
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
+	mp := mocks.NewMempool(t)
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", testifymock.Anything).Return(nil)
+	mp.On("Update",
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything,
+		testifymock.Anything).Return(nil)
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
-		log.TestingLogger(),
-		proxyApp.Consensus(),
-		proxyApp.Query(),
-		mmock.Mempool{},
+		logger,
+		proxyApp,
+		mp,
 		sm.EmptyEvidencePool{},
 		blockStore,
-		nil,
+		eventBus,
+		sm.NopMetrics(),
 	)
 
-	eventBus := types.NewEventBus()
-	err = eventBus.Start()
-	require.NoError(t, err)
-	defer eventBus.Stop() //nolint:errcheck // ignore for tests
-
-	blockExec.SetEventBus(eventBus)
-
-	updatesSub, err := eventBus.Subscribe(
-		context.Background(),
-		"TestEndBlockValidatorUpdates",
-		types.EventQueryValidatorSetUpdates,
+	updatesSub, err := eventBus.SubscribeWithArgs(
+		ctx,
+		pubsub.SubscribeArgs{
+			ClientID: "TestEndBlockValidatorUpdates",
+			Query:    types.EventQueryValidatorSetUpdates,
+		},
 	)
 	require.NoError(t, err)
 
 	block := makeBlock(state, 1, new(types.Commit))
-	blockID := types.BlockID{
-		Hash:          block.Hash(),
-		PartSetHeader: block.MakePartSet(testPartSize).Header(),
-	}
+	blockID, err := block.BlockID()
+	require.NoError(t, err)
 
 	vals := state.Validators
 	proTxHashes := vals.GetProTxHashes()
@@ -411,13 +420,12 @@ func TestEndBlock(t *testing.T) {
 	proTxHash := newVals.Validators[0].ProTxHash
 	vc, err := NewValidatorConnExecutor(proTxHash, eventBus, sw)
 	require.NoError(t, err)
-	err = vc.Start()
+	err = vc.Start(ctx)
 	require.NoError(t, err)
-	defer func() { err := vc.Stop(); require.NoError(t, err) }()
 
 	app.ValidatorSetUpdates[1] = newVals.ABCIEquivalentValidatorUpdates()
 
-	state, err = blockExec.ApplyBlock(state, nodeProTxHash, blockID, block)
+	state, err = blockExec.ApplyBlock(ctx, state, nodeProTxHash, blockID, block)
 	require.Nil(t, err)
 	// test new validator was added to NextValidators
 	require.Equal(t, state.Validators.Size()+100, state.NextValidators.Size())
@@ -426,31 +434,29 @@ func TestEndBlock(t *testing.T) {
 		assert.Contains(t, nextValidatorsProTxHashes, addProTxHash)
 	}
 
+	sCtx, sCancel := context.WithTimeout(ctx, 1*time.Second)
+	defer sCancel()
 	// test we threw an event
-	select {
-	case msg := <-updatesSub.Out():
-		event, ok := msg.Data().(types.EventDataValidatorSetUpdate)
-		require.True(
-			t,
-			ok,
-			"Expected event of type EventDataValidatorSetUpdates, got %T",
-			msg.Data(),
-		)
-		if assert.NotEmpty(t, event.ValidatorSetUpdates) {
-			for _, addProTxHash := range addProTxHashes {
-				assert.Contains(t, mock.ValidatorsProTxHashes(event.ValidatorSetUpdates), addProTxHash)
-			}
-			assert.EqualValues(
-				t,
-				types.DefaultDashVotingPower,
-				event.ValidatorSetUpdates[1].VotingPower,
-			)
-			assert.NotEmpty(t, event.QuorumHash)
+	msg, err := updatesSub.Next(sCtx)
+	require.NoError(t, err)
+
+	event, ok := msg.Data().(types.EventDataValidatorSetUpdate)
+	require.True(
+		t,
+		ok,
+		"Expected event of type EventDataValidatorSetUpdate, got %T",
+		msg.Data(),
+	)
+	if assert.NotEmpty(t, event.ValidatorSetUpdates) {
+		for _, addProTxHash := range addProTxHashes {
+			assert.Contains(t, mock.ValidatorsProTxHashes(event.ValidatorSetUpdates), addProTxHash)
 		}
-	case <-updatesSub.Canceled():
-		t.Fatalf("updatesSub was canceled (reason: %v)", updatesSub.Err())
-	case <-time.After(1 * time.Second):
-		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
+		assert.EqualValues(
+			t,
+			types.DefaultDashVotingPower,
+			event.ValidatorSetUpdates[1].VotingPower,
+		)
+		assert.NotEmpty(t, event.QuorumHash)
 	}
 
 	// ensure some history got generated inside the Switch; we expect 1 dial event
@@ -475,7 +481,10 @@ func executeTestCase(t *testing.T, tc testCase) {
 	// const TIMEOUT = 100 * time.Millisecond
 	const TIMEOUT = 5 * time.Second
 
-	eventBus, sw, vc := setup(t, tc.me)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	eventBus, sw, vc := setup(ctx, t, tc.me)
 	defer cleanup(t, eventBus, sw, vc)
 
 	for updateID, update := range tc.validatorUpdates {
@@ -560,28 +569,29 @@ func allowedParamsDefaults(
 // setup creates ValidatorConnExecutor and some dependencies.
 // Use `defer cleanup()` to free the resources.
 func setup(
+	ctx context.Context,
 	t *testing.T,
 	me *types.Validator,
-) (eventBus *types.EventBus, sw *mock.DashDialer, vc *ValidatorConnExecutor) {
-	eventBus = types.NewEventBus()
-	err := eventBus.Start()
+) (eventBus *eventbus.EventBus, sw *mock.DashDialer, vc *ValidatorConnExecutor) {
+	logger := log.NewTestingLogger(t)
+	eventBus = eventbus.NewDefault(logger)
+	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
 	sw = mock.NewDashDialer()
 
-	proTxHash := me.ProTxHash
-	vc, err = NewValidatorConnExecutor(proTxHash, eventBus, sw, WithLogger(log.TestingLogger()))
+	vc, err = NewValidatorConnExecutor(me.ProTxHash, eventBus, sw, WithLogger(logger))
 	require.NoError(t, err)
-	err = vc.Start()
+	err = vc.Start(ctx)
 	require.NoError(t, err)
 
 	return eventBus, sw, vc
 }
 
 // cleanup frees some resources allocated for tests
-func cleanup(t *testing.T, bus *types.EventBus, dialer p2p.DashDialer, vc *ValidatorConnExecutor) {
-	assert.NoError(t, bus.Stop())
-	assert.NoError(t, vc.Stop())
+func cleanup(t *testing.T, bus *eventbus.EventBus, dialer p2p.DashDialer, vc *ValidatorConnExecutor) {
+	bus.Stop()
+	vc.Stop()
 }
 
 // SOME UTILS //
@@ -629,9 +639,10 @@ func makeState(nVals int, height int64) (sm.State, dbm.DB, map[string]types.Priv
 }
 
 func makeBlock(state sm.State, height int64, commit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, nil, makeTxs(state.LastBlockHeight),
-		commit, nil, state.Validators.GetProposer().ProTxHash, 0)
-	return block
+	return state.MakeBlock(
+		height, nil, makeTxs(state.LastBlockHeight),
+		commit, nil, state.Validators.GetProposer().ProTxHash, 0,
+	)
 }
 
 // TEST APP //
@@ -640,48 +651,47 @@ func makeBlock(state sm.State, height int64, commit *types.Commit) *types.Block 
 type testApp struct {
 	abci.BaseApplication
 
-	ByzantineValidators []abci.Evidence
+	ByzantineValidators []abci.Misbehavior
 	ValidatorSetUpdates map[int64]*abci.ValidatorSetUpdate
 }
 
 func newTestApp() *testApp {
 	return &testApp{
-		ByzantineValidators: []abci.Evidence{},
+		ByzantineValidators: []abci.Misbehavior{},
 		ValidatorSetUpdates: map[int64]*abci.ValidatorSetUpdate{},
 	}
 }
 
 var _ abci.Application = (*testApp)(nil)
 
-func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
-	return abci.ResponseInfo{}
+func (app *testApp) Info(context.Context, *abci.RequestInfo) (*abci.ResponseInfo, error) {
+	return &abci.ResponseInfo{}, nil
 }
 
-func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.ByzantineValidators = req.ByzantineValidators
-	return abci.ResponseBeginBlock{}
-}
-
-func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return abci.ResponseEndBlock{
+	txs := make([]*abci.ExecTxResult, 0, len(req.Txs))
+	for _, tx := range req.Txs {
+		txs = append(txs, &abci.ExecTxResult{Data: tx})
+	}
+	return &abci.ResponseFinalizeBlock{
+		Events:             []abci.Event{},
+		TxResults:          txs,
 		ValidatorSetUpdate: app.ValidatorSetUpdates[req.Height],
 		ConsensusParamUpdates: &tmproto.ConsensusParams{
-			Version: &tmproto.VersionParams{
-				AppVersion: 1}}}
+			Version: &tmproto.VersionParams{AppVersion: 1},
+		},
+	}, nil
 }
 
-func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Events: []abci.Event{}}
+func (app *testApp) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
+	return &abci.ResponseCheckTx{Code: abci.CodeTypeOK}, nil
 }
 
-func (app *testApp) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
-	return abci.ResponseCheckTx{}
+func (app *testApp) Commit(_ context.Context) (*abci.ResponseCommit, error) {
+	return &abci.ResponseCommit{RetainHeight: 1}, nil
 }
 
-func (app *testApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{RetainHeight: 1}
-}
-
-func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
-	return
+func (app *testApp) Query(_ context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
+	return &abci.ResponseQuery{}, nil
 }

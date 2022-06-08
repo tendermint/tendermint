@@ -4,14 +4,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/crypto"
 )
 
 func TestValidatorProtoBuf(t *testing.T) {
-	val, _ := randValidatorInQuorum(crypto.RandQuorumHash())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	val, _ := randValidatorInQuorum(ctx, t, crypto.RandQuorumHash())
 	testCases := []struct {
 		msg      string
 		v1       *Validator
