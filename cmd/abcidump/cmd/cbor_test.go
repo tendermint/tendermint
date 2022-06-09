@@ -24,7 +24,7 @@ func TestCborBase64(t *testing.T) {
 
 	errBuf := &bytes.Buffer{}
 	cmd.SetErr(errBuf)
-	logger = log.NewTMLogger(errBuf)
+	logger = log.TestingLoggerWithOutput(errBuf)
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
