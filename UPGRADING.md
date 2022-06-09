@@ -6,9 +6,28 @@ This guide provides instructions for upgrading to specific versions of Tendermin
 
 ### ABCI Changes
 
+### ResponseCheckTx Parameter Change
+
+`ResponseCheckTx` had fields that are not used by Tendermint, they are now removed.
+In 0.36, we removed the following fields, from `ResponseCheckTx`: `Log`, `Info`, `Events`,
+ `GasUsed` and `MempoolError`. 
+`MempoolError` was used to signal to operators that a transaction was rejected from the mempool
+by Tendermint itself. Right now, we return a regular error when this happens.
+
 #### ABCI++
 
-Coming soon...
+For information on how ABCI++ works, see the
+[Specification](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/README.md).
+In particular, the simplest way to upgrade your application is described
+[here](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/abci++_tmint_expected_behavior_002_draft.md#adapting-existing-applications-that-use-abci).
+
+#### Moving the `app_hash` parameter
+
+The Application's hash (or any data representing the Application's current
+state) is known by the time `FinalizeBlock` finishes its execution.
+Accordingly, the `app_hash` parameter has been moved from `ResponseCommit` to
+`ResponseFinalizeBlock`, since it makes sense for the Application to return
+this value as soon as is it known.
 
 #### ABCI Mutex
 
@@ -51,6 +70,11 @@ applications remains correct.
   turned on are not affected. Operators who wish to enable indexing for a new
   node, however, must now edit the `config.toml` explicitly.
 
+- The function of seed nodes was modified in the past release. Now, seed nodes
+  are treated identically to any other peer, however they only run the PEX
+  reactor. Because of this `seeds` has been removed from the config. Users
+  should add any seed nodes in the list of `bootstrap-peers`.
+
 ### RPC Changes
 
 Tendermint v0.36 adds a new RPC event subscription API. The existing event
@@ -87,6 +111,18 @@ callback.
 
 For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
 defines and describes the new API in detail.
+
+#### BroadcastTx Methods
+
+All callers should use the new `broadcast_tx` method, which has the
+same semantics as the legacy `broadcast_tx_sync` method. The
+`broadcast_tx_sync` and `broadcast_tx_async` methods are now
+deprecated and will be removed in 0.37.
+
+Additionally the `broadcast_tx_commit` method is *also* deprecated,
+and will be removed in 0.37. Client code that submits a transaction
+and needs to wait for it to be committed to the chain, should poll
+the tendermint to observe the transaction in the committed state.
 
 ### Timeout Parameter Changes
 
@@ -137,7 +173,7 @@ network-wide coordinated variable so that applications can be written knowing
 either all nodes agree on whether to run `RecheckTx`.
 
 Applications can turn on `RecheckTx` by altering the `ConsensusParams` in the
-`FinalizeBlock` ABCI response.
+`FinalizeBlock` ABCI response. 
 
 ### CLI Changes
 

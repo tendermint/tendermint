@@ -81,9 +81,15 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 	}
 }
 
+func ensureBodyClose(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		next(w, r)
+	}
+}
+
 func handleInvalidJSONRPCPaths(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Since the pattern "/" matches all paths not matched by other registered patterns,
 		//  we check whether the path is indeed "/", otherwise return a 404 error
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)

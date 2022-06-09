@@ -509,10 +509,12 @@ OUTER_LOOP:
 			return
 		}
 
+		timer.Reset(r.state.config.PeerGossipSleepDuration)
+
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-timer.C:
 		}
 
 		rs := r.getRoundState()
@@ -560,13 +562,6 @@ OUTER_LOOP:
 						"blockstoreBase", blockStoreBase,
 						"blockstoreHeight", r.state.blockStore.Height(),
 					)
-
-					timer.Reset(r.state.config.PeerGossipSleepDuration)
-					select {
-					case <-timer.C:
-					case <-ctx.Done():
-						return
-					}
 				} else {
 					ps.InitProposalBlockParts(blockMeta.BlockID.PartSetHeader)
 				}
@@ -582,12 +577,6 @@ OUTER_LOOP:
 
 		// if height and round don't match, sleep
 		if (rs.Height != prs.Height) || (rs.Round != prs.Round) {
-			timer.Reset(r.state.config.PeerGossipSleepDuration)
-			select {
-			case <-timer.C:
-			case <-ctx.Done():
-				return
-			}
 			continue OUTER_LOOP
 		}
 
@@ -637,18 +626,7 @@ OUTER_LOOP:
 					return
 				}
 			}
-
-			continue OUTER_LOOP
 		}
-
-		// nothing to do -- sleep
-		timer.Reset(r.state.config.PeerGossipSleepDuration)
-		select {
-		case <-timer.C:
-		case <-ctx.Done():
-			return
-		}
-		continue OUTER_LOOP
 	}
 }
 
