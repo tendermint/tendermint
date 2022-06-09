@@ -6,9 +6,8 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
-	tmjson "github.com/tendermint/tendermint/libs/json"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/internal/jsontypes"
+	tmquery "github.com/tendermint/tendermint/internal/pubsub/query"
 )
 
 // Reserved event types (alphabetically sorted).
@@ -39,10 +38,13 @@ const (
 	EventStateSyncStatusValue = "StateSyncStatus"
 	EventTimeoutProposeValue  = "TimeoutPropose"
 	EventTimeoutWaitValue     = "TimeoutWait"
-	EventUnlockValue          = "Unlock"
 	EventValidBlockValue      = "ValidBlock"
 	EventVoteValue            = "Vote"
 	EventCommitValue          = "Commit"
+
+	// Events emitted by the evidence reactor when evidence is validated
+	// and before it is committed
+	EventEvidenceValidatedValue = "EvidenceValidated"
 )
 
 // Pre-populated ABCI Tendermint-reserved events
@@ -90,24 +92,31 @@ var (
 
 // ENCODING / DECODING
 
-// TMEventData implements events.EventData.
-type TMEventData interface {
-	// empty interface
+// EventData is satisfied by types that can be published as event data.
+//
+// Implementations of this interface that contain ABCI event metadata should
+// also implement the eventlog.ABCIEventer extension interface to expose those
+// metadata to the event log machinery. Event data that do not contain ABCI
+// metadata can safely omit this.
+type EventData interface {
+	// The value must support encoding as a type-tagged JSON object.
+	jsontypes.Tagged
 }
 
 func init() {
-	tmjson.RegisterType(EventDataNewBlock{}, "tendermint/event/NewBlock")
-	tmjson.RegisterType(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader")
-	tmjson.RegisterType(EventDataNewEvidence{}, "tendermint/event/NewEvidence")
-	tmjson.RegisterType(EventDataTx{}, "tendermint/event/Tx")
-	tmjson.RegisterType(EventDataRoundState{}, "tendermint/event/RoundState")
-	tmjson.RegisterType(EventDataNewRound{}, "tendermint/event/NewRound")
-	tmjson.RegisterType(EventDataCompleteProposal{}, "tendermint/event/CompleteProposal")
-	tmjson.RegisterType(EventDataVote{}, "tendermint/event/Vote")
-	tmjson.RegisterType(EventDataValidatorSetUpdate{}, "tendermint/event/ValidatorSetUpdate")
-	tmjson.RegisterType(EventDataString(""), "tendermint/event/ProposalString")
-	tmjson.RegisterType(EventDataBlockSyncStatus{}, "tendermint/event/FastSyncStatus")
-	tmjson.RegisterType(EventDataStateSyncStatus{}, "tendermint/event/StateSyncStatus")
+	jsontypes.MustRegister(EventDataBlockSyncStatus{})
+	jsontypes.MustRegister(EventDataCompleteProposal{})
+	jsontypes.MustRegister(EventDataNewBlock{})
+	jsontypes.MustRegister(EventDataNewBlockHeader{})
+	jsontypes.MustRegister(EventDataNewEvidence{})
+	jsontypes.MustRegister(EventDataNewRound{})
+	jsontypes.MustRegister(EventDataRoundState{})
+	jsontypes.MustRegister(EventDataStateSyncStatus{})
+	jsontypes.MustRegister(EventDataTx{})
+	jsontypes.MustRegister(EventDataVote{})
+	jsontypes.MustRegister(EventDataValidatorSetUpdate{})
+	jsontypes.MustRegister(EventDataEvidenceValidated{})
+	jsontypes.MustRegister(EventDataString(""))
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -117,35 +126,63 @@ type EventDataNewBlock struct {
 	Block   *Block  `json:"block"`
 	BlockID BlockID `json:"block_id"`
 
-	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
-	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+	ResultFinalizeBlock abci.ResponseFinalizeBlock `json:"result_finalize_block"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewBlock) TypeTag() string { return "tendermint/event/NewBlock" }
+
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataNewBlock) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
 
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
-	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
-	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
-	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+	NumTxs              int64                      `json:"num_txs,string"` // Number of txs in a block
+	ResultFinalizeBlock abci.ResponseFinalizeBlock `json:"result_finalize_block"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewBlockHeader) TypeTag() string { return "tendermint/event/NewBlockHeader" }
+
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataNewBlockHeader) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
 
 type EventDataNewEvidence struct {
 	Evidence Evidence `json:"evidence"`
 
-	Height int64 `json:"height"`
+	Height int64 `json:"height,string"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewEvidence) TypeTag() string { return "tendermint/event/NewEvidence" }
 
 // All txs fire EventDataTx
 type EventDataTx struct {
 	abci.TxResult
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataTx) TypeTag() string { return "tendermint/event/Tx" }
+
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataTx) ABCIEvents() []abci.Event {
+	base := []abci.Event{
+		eventWithAttr(TxHashKey, fmt.Sprintf("%X", Tx(e.Tx).Hash())),
+		eventWithAttr(TxHeightKey, fmt.Sprintf("%d", e.Height)),
+	}
+	return append(base, e.Result.Events...)
+}
+
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
-	Height int64  `json:"height"`
+	Height int64  `json:"height,string"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataRoundState) TypeTag() string { return "tendermint/event/RoundState" }
 
 type ValidatorInfo struct {
 	ProTxHash ProTxHash `json:"pro_tx_hash"`
@@ -153,30 +190,45 @@ type ValidatorInfo struct {
 }
 
 type EventDataNewRound struct {
-	Height int64  `json:"height"`
+	Height int64  `json:"height,string"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
 	Proposer ValidatorInfo `json:"proposer"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataNewRound) TypeTag() string { return "tendermint/event/NewRound" }
+
 type EventDataCompleteProposal struct {
-	Height int64  `json:"height"`
+	Height int64  `json:"height,string"`
 	Round  int32  `json:"round"`
 	Step   string `json:"step"`
 
 	BlockID BlockID `json:"block_id"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataCompleteProposal) TypeTag() string { return "tendermint/event/CompleteProposal" }
+
 type EventDataVote struct {
 	Vote *Vote
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataVote) TypeTag() string { return "tendermint/event/Vote" }
 
 type EventDataCommit struct {
 	Commit *Commit
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataCommit) TypeTag() string { return "tendermint/event/Commit" }
+
 type EventDataString string
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataString) TypeTag() string { return "tendermint/event/ProposalString" }
 
 type EventDataValidatorSetUpdate struct {
 	ValidatorSetUpdates []*Validator      `json:"validator_updates"`
@@ -184,19 +236,37 @@ type EventDataValidatorSetUpdate struct {
 	QuorumHash          crypto.QuorumHash `json:"quorum_hash"`
 }
 
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataValidatorSetUpdate) TypeTag() string { return "tendermint/event/ValidatorSetUpdates" }
+
 // EventDataBlockSyncStatus shows the fastsync status and the
 // height when the node state sync mechanism changes.
 type EventDataBlockSyncStatus struct {
 	Complete bool  `json:"complete"`
-	Height   int64 `json:"height"`
+	Height   int64 `json:"height,string"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataBlockSyncStatus) TypeTag() string { return "tendermint/event/FastSyncStatus" }
 
 // EventDataStateSyncStatus shows the statesync status and the
 // height when the node state sync mechanism changes.
 type EventDataStateSyncStatus struct {
 	Complete bool  `json:"complete"`
-	Height   int64 `json:"height"`
+	Height   int64 `json:"height,string"`
 }
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataStateSyncStatus) TypeTag() string { return "tendermint/event/StateSyncStatus" }
+
+type EventDataEvidenceValidated struct {
+	Evidence Evidence `json:"evidence"`
+
+	Height int64 `json:"height,string"`
+}
+
+// TypeTag implements the required method of jsontypes.Tagged.
+func (EventDataEvidenceValidated) TypeTag() string { return "tendermint/event/EvidenceValidated" }
 
 // PUBSUB
 
@@ -210,12 +280,11 @@ const (
 	// see EventBus#PublishEventTx
 	TxHeightKey = "tx.height"
 
-	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
-	// events.
+	// BlockHeightKey is a reserved key used for indexing FinalizeBlock events.
 	BlockHeightKey = "block.height"
 
-	EventTypeBeginBlock = "begin_block"
-	EventTypeEndBlock   = "end_block"
+	// EventTypeFinalizeBlock is a reserved key used for indexing FinalizeBlock events.
+	EventTypeFinalizeBlock = "finalize_block"
 )
 
 var (
@@ -231,31 +300,44 @@ var (
 	EventQueryTimeoutPropose      = QueryForEvent(EventTimeoutProposeValue)
 	EventQueryTimeoutWait         = QueryForEvent(EventTimeoutWaitValue)
 	EventQueryTx                  = QueryForEvent(EventTxValue)
-	EventQueryUnlock              = QueryForEvent(EventUnlockValue)
 	EventQueryValidatorSetUpdates = QueryForEvent(EventValidatorSetUpdateValue)
 	EventQueryValidBlock          = QueryForEvent(EventValidBlockValue)
 	EventQueryVote                = QueryForEvent(EventVoteValue)
 	EventQueryBlockSyncStatus     = QueryForEvent(EventBlockSyncStatusValue)
 	EventQueryStateSyncStatus     = QueryForEvent(EventStateSyncStatusValue)
+	EventQueryEvidenceValidated   = QueryForEvent(EventEvidenceValidatedValue)
 )
 
-func EventQueryTxFor(tx Tx) tmpubsub.Query {
+func EventQueryTxFor(tx Tx) *tmquery.Query {
 	return tmquery.MustCompile(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTxValue, TxHashKey, tx.Hash()))
 }
 
-func QueryForEvent(eventValue string) tmpubsub.Query {
+func QueryForEvent(eventValue string) *tmquery.Query {
 	return tmquery.MustCompile(fmt.Sprintf("%s='%s'", EventTypeKey, eventValue))
 }
 
 // BlockEventPublisher publishes all block related events
 type BlockEventPublisher interface {
-	PublishEventNewBlock(block EventDataNewBlock) error
-	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
-	PublishEventNewEvidence(evidence EventDataNewEvidence) error
+	PublishEventNewBlock(EventDataNewBlock) error
+	PublishEventNewBlockHeader(EventDataNewBlockHeader) error
+	PublishEventNewEvidence(EventDataNewEvidence) error
 	PublishEventTx(EventDataTx) error
 	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdate) error
 }
 
 type TxEventPublisher interface {
 	PublishEventTx(EventDataTx) error
+}
+
+// eventWithAttr constructs a single abci.Event with a single attribute.
+// The type of the event and the name of the attribute are obtained by
+// splitting the event type on period (e.g., "foo.bar").
+func eventWithAttr(etype, value string) abci.Event {
+	parts := strings.SplitN(etype, ".", 2)
+	return abci.Event{
+		Type: parts[0],
+		Attributes: []abci.EventAttribute{{
+			Key: parts[1], Value: value,
+		}},
+	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/version"
@@ -75,20 +76,23 @@ func TestNodeInfoValidate(t *testing.T) {
 	name := "testing"
 
 	// test case passes
-	ni = testNodeInfo(nodeKeyID, name)
+	ni = testNodeInfo(t, nodeKeyID, name)
 	ni.Channels = channels
 	assert.NoError(t, ni.Validate())
 
 	for _, tc := range testCases {
-		ni := testNodeInfo(nodeKeyID, name)
-		ni.Channels = channels
-		tc.malleateNodeInfo(&ni)
-		err := ni.Validate()
-		if tc.expectErr {
-			assert.Error(t, err, tc.testName)
-		} else {
-			assert.NoError(t, err, tc.testName)
-		}
+		t.Run(tc.testName, func(t *testing.T) {
+			ni := testNodeInfo(t, nodeKeyID, name)
+			ni.Channels = channels
+			tc.malleateNodeInfo(&ni)
+			err := ni.Validate()
+			if tc.expectErr {
+				assert.Error(t, err, tc.testName)
+			} else {
+				assert.NoError(t, err, tc.testName)
+			}
+		})
+
 	}
 
 }
@@ -97,11 +101,12 @@ func testNodeID() NodeID {
 	return NodeIDFromPubKey(ed25519.GenPrivKey().PubKey())
 }
 
-func testNodeInfo(id NodeID, name string) NodeInfo {
-	return testNodeInfoWithNetwork(id, name, "testing")
+func testNodeInfo(t *testing.T, id NodeID, name string) NodeInfo {
+	return testNodeInfoWithNetwork(t, id, name, "testing")
 }
 
-func testNodeInfoWithNetwork(id NodeID, name, network string) NodeInfo {
+func testNodeInfoWithNetwork(t *testing.T, id NodeID, name, network string) NodeInfo {
+	t.Helper()
 	return NodeInfo{
 		ProtocolVersion: ProtocolVersion{
 			P2P:   version.P2PProtocol,
@@ -109,23 +114,22 @@ func testNodeInfoWithNetwork(id NodeID, name, network string) NodeInfo {
 			App:   0,
 		},
 		NodeID:     id,
-		ListenAddr: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", getFreePort(t)),
 		Network:    network,
 		Version:    "1.2.3-rc0-deadbeef",
 		Channels:   []byte{testCh},
 		Moniker:    name,
 		Other: NodeInfoOther{
 			TxIndex:    "on",
-			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort()),
+			RPCAddress: fmt.Sprintf("127.0.0.1:%d", getFreePort(t)),
 		},
 	}
 }
 
-func getFreePort() int {
+func getFreePort(t *testing.T) int {
+	t.Helper()
 	port, err := tmnet.GetFreePort()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	return port
 }
 
@@ -137,8 +141,8 @@ func TestNodeInfoCompatible(t *testing.T) {
 	var newTestChannel byte = 0x2
 
 	// test NodeInfo is compatible
-	ni1 := testNodeInfo(nodeKey1ID, name)
-	ni2 := testNodeInfo(nodeKey2ID, name)
+	ni1 := testNodeInfo(t, nodeKey1ID, name)
+	ni2 := testNodeInfo(t, nodeKey2ID, name)
 	assert.NoError(t, ni1.CompatibleWith(ni2))
 
 	// add another channel; still compatible
@@ -155,14 +159,14 @@ func TestNodeInfoCompatible(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		ni := testNodeInfo(nodeKey2ID, name)
+		ni := testNodeInfo(t, nodeKey2ID, name)
 		tc.malleateNodeInfo(&ni)
 		assert.Error(t, ni1.CompatibleWith(ni))
 	}
 }
 
 func TestNodeInfoAddChannel(t *testing.T) {
-	nodeInfo := testNodeInfo(testNodeID(), "testing")
+	nodeInfo := testNodeInfo(t, testNodeID(), "testing")
 	nodeInfo.Channels = []byte{}
 	require.Empty(t, nodeInfo.Channels)
 
@@ -172,4 +176,81 @@ func TestNodeInfoAddChannel(t *testing.T) {
 	// adding the same channel again shouldn't be a problem
 	nodeInfo.AddChannel(2)
 	require.Contains(t, nodeInfo.Channels, byte(0x02))
+}
+
+func TestParseAddressString(t *testing.T) {
+	testCases := []struct {
+		name     string
+		addr     string
+		expected string
+		correct  bool
+	}{
+		{"no node id and no protocol", "127.0.0.1:8080", "", false},
+		{"no node id w/ tcp input", "tcp://127.0.0.1:8080", "", false},
+		{"no node id w/ udp input", "udp://127.0.0.1:8080", "", false},
+
+		{
+			"no protocol",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+		{
+			"tcp input",
+			"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+		{
+			"udp input",
+			"udp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+		{"malformed tcp input", "tcp//deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
+		{"malformed udp input", "udp//deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
+
+		// {"127.0.0:8080", false},
+		{"invalid host", "notahost", "", false},
+		{"invalid port", "127.0.0.1:notapath", "", false},
+		{"invalid host w/ port", "notahost:8080", "", false},
+		{"just a port", "8082", "", false},
+		{"non-existent port", "127.0.0:8080000", "", false},
+
+		{"too short nodeId", "deadbeef@127.0.0.1:8080", "", false},
+		{"too short, not hex nodeId", "this-isnot-hex@127.0.0.1:8080", "", false},
+		{"not hex nodeId", "xxxxbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
+
+		{"too short nodeId w/tcp", "tcp://deadbeef@127.0.0.1:8080", "", false},
+		{"too short notHex nodeId w/tcp", "tcp://this-isnot-hex@127.0.0.1:8080", "", false},
+		{"notHex nodeId w/tcp", "tcp://xxxxbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
+		{
+			"correct nodeId w/tcp",
+			"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080",
+			true,
+		},
+
+		{"no node id", "tcp://@127.0.0.1:8080", "", false},
+		{"no node id or IP", "tcp://@", "", false},
+		{"tcp no host, w/ port", "tcp://:26656", "", false},
+		{"empty", "", "", false},
+		{"node id delimiter 1", "@", "", false},
+		{"node id delimiter 2", " @", "", false},
+		{"node id delimiter 3", " @ ", "", false},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			na, err := ParseAddressString(tc.addr)
+			if tc.correct {
+				require.NoError(t, err, tc.addr)
+				assert.Contains(t, tc.expected, na.IP.String())
+				assert.Contains(t, tc.expected, fmt.Sprint(na.Port))
+			} else {
+				assert.Error(t, err, "%v", tc.addr)
+			}
+		})
+	}
 }

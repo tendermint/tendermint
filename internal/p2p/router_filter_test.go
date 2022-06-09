@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/internal/libs/sync"
+
 	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestConnectionFiltering(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	logger := log.TestingLogger()
+	logger := log.NewNopLogger()
 
 	filterByIPCount := 0
 	router := &Router{
@@ -29,6 +29,6 @@ func TestConnectionFiltering(t *testing.T) {
 		},
 	}
 	require.Equal(t, 0, filterByIPCount)
-	router.openConnection(ctx, &MemoryConnection{logger: logger, closer: sync.NewCloser()})
+	router.openConnection(ctx, &MemoryConnection{logger: logger, closeFn: func() {}})
 	require.Equal(t, 1, filterByIPCount)
 }

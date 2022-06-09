@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"net"
 	"net/url"
 	"regexp"
@@ -15,7 +16,6 @@ import (
 
 var (
 	reSchemeIsHost = regexp.MustCompile(`^[^/:]+:\d+(/|$)`)
-	rng            = tmrand.NewRand()
 )
 
 // ValidatorAddress is a ValidatorAddress that does not require node ID to be set
@@ -136,14 +136,14 @@ func (va ValidatorAddress) String() string {
 
 // NetAddress converts ValidatorAddress to a NetAddress object
 func (va ValidatorAddress) NetAddress() (*NetAddress, error) {
-	return NewNetAddressString(va.String())
+	return ParseAddressString(va.String())
 }
 
 // RandValidatorAddress generates a random validator address. Used in tests.
 // It will panic in (very unlikely) case of error.
 func RandValidatorAddress() ValidatorAddress {
 	nodeID := tmrand.Bytes(20)
-	port := rng.Int()%math.MaxUint16 + 1
+	port := rand.Int()%math.MaxUint16 + 1 // nolint
 	addr, err := ParseValidatorAddress(fmt.Sprintf("tcp://%x@127.0.0.1:%d", nodeID, port))
 	if err != nil {
 		panic(fmt.Sprintf("cannot generate random validator address: %s", err))

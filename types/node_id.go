@@ -31,8 +31,7 @@ func NewNodeID(nodeID string) (NodeID, error) {
 // IDAddressString returns id@hostPort. It strips the leading
 // protocol from protocolHostPort if it exists.
 func (id NodeID) AddressString(protocolHostPort string) string {
-	hostPort := removeProtocolIfDefined(protocolHostPort)
-	return fmt.Sprintf("%s@%s", id, hostPort)
+	return fmt.Sprintf("%s@%s", id, removeProtocolIfDefined(protocolHostPort))
 }
 
 // NodeIDFromPubKey creates a node ID from a given PubKey address.

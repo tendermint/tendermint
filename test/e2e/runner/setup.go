@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -25,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
@@ -47,7 +47,7 @@ const (
 )
 
 // Setup sets up the testnet configuration.
-func Setup(testnet *e2e.Testnet) error {
+func Setup(logger log.Logger, testnet *e2e.Testnet) error {
 	logger.Info(fmt.Sprintf("Generating testnet files in %q", testnet.Dir))
 
 	err := os.MkdirAll(testnet.Dir, os.ModePerm)
@@ -59,7 +59,7 @@ func Setup(testnet *e2e.Testnet) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0644)
+	err = os.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0644)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func Setup(testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
+		err = os.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
 		if err != nil {
 			return err
 		}
@@ -118,7 +118,10 @@ func Setup(testnet *e2e.Testnet) error {
 			if err != nil {
 				return err
 			}
-			pv.Save()
+			err = pv.Save()
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -137,7 +140,10 @@ func Setup(testnet *e2e.Testnet) error {
 			if err != nil {
 				return err
 			}
-			pv.Save()
+			err = pv.Save()
+			if err != nil {
+				return err
+			}
 		}
 		// Set up a dummy validator. Tenderdash requires a file PV even when not used, so we
 		// give it a dummy such that it will fail if it actually tries to use it.
@@ -145,7 +151,10 @@ func Setup(testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		pv.Save()
+		err = pv.Save()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -289,6 +298,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg := config.DefaultConfig()
 	cfg.Moniker = node.Name
 	cfg.ProxyApp = AppAddressTCP
+	cfg.TxIndex = config.TestTxIndexConfig()
 
 	if node.LogLevel != "" {
 		cfg.LogLevel = node.LogLevel
@@ -297,9 +307,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	cfg.RPC.ListenAddress = "tcp://0.0.0.0:26657"
 	cfg.RPC.PprofListenAddress = ":6060"
 	cfg.P2P.ExternalAddress = fmt.Sprintf("tcp://%v", node.AddressP2P(false))
-	cfg.P2P.AddrBookStrict = false
 	cfg.Consensus.AppHashSize = crypto.DefaultAppHashSize
-	cfg.P2P.UseLegacy = node.UseLegacyP2P
 	cfg.P2P.QueueType = node.QueueType
 	cfg.DBBackend = node.Database
 	cfg.StateSync.DiscoveryTime = 5 * time.Second
@@ -360,16 +368,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		return nil, fmt.Errorf("unexpected mode %q", node.Mode)
 	}
 
-	if node.Mempool != "" {
-		cfg.Mempool.Version = node.Mempool
-	}
-
-	if node.BlockSync == "" {
-		cfg.BlockSync.Enable = false
-	} else {
-		cfg.BlockSync.Version = node.BlockSync
-	}
-
 	switch node.StateSync {
 	case e2e.StateSyncP2P:
 		cfg.StateSync.Enable = true
@@ -418,14 +416,13 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"listen":              AppAddressUNIX,
 		"mode":                node.Mode,
 		"proxy_port":          node.ProxyPort,
-		"privval_server_type": "dashcore",
-		"privval_server":      PrivvalAddressDashCore,
 		"protocol":            "socket",
 		"persist_interval":    node.PersistInterval,
 		"snapshot_interval":   node.SnapshotInterval,
 		"retain_blocks":       node.RetainBlocks,
 		"key_type":            bls12381.KeyType,
-		"use_legacy_p2p":      node.UseLegacyP2P,
+		"privval_server_type": "dashcore",
+		"privval_server":      PrivvalAddressDashCore,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -528,13 +525,13 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 
 	// FIXME Apparently there's no function to simply load a config file without
 	// involving the entire Viper apparatus, so we'll just resort to regexps.
-	bz, err := ioutil.ReadFile(cfgPath)
+	bz, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return err
 	}
 	bz = regexp.MustCompile(`(?m)^trust-height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-height = %v`, height)))
 	bz = regexp.MustCompile(`(?m)^trust-hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-hash = "%X"`, hash)))
-	return ioutil.WriteFile(cfgPath, bz, 0644)
+	return os.WriteFile(cfgPath, bz, 0644)
 }
 
 func newDefaultFilePV(node *e2e.Node, nodeDir string) (*privval.FilePV, error) {

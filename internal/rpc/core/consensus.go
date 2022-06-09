@@ -1,14 +1,11 @@
 package core
 
 import (
-	"errors"
+	"context"
 
-	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/libs"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Validators gets the validator set at the given block height.
@@ -18,13 +15,9 @@ import (
 // for the validators in the set as used in computing their Merkle root.
 //
 // More: https://docs.tendermint.com/master/rpc/#/Info/validators
-func (env *Environment) Validators(
-	ctx *rpctypes.Context,
-	heightPtr *int64,
-	pagePtr, perPagePtr *int, requestQuorumInfo *bool) (*coretypes.ResultValidators, error) {
-
+func (env *Environment) Validators(ctx context.Context, req *coretypes.RequestValidators) (*coretypes.ResultValidators, error) {
 	// The latest validator that we know is the NextValidator of the last block.
-	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)
+	height, err := env.getHeight(env.latestUncommittedHeight(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +28,8 @@ func (env *Environment) Validators(
 	}
 
 	totalCount := len(validators.Validators)
-	perPage := env.validatePerPage(perPagePtr)
-	page, err := validatePage(pagePtr, perPage, totalCount)
+	perPage := env.validatePerPage(req.PerPage.IntPtr())
+	page, err := validatePage(req.Page.IntPtr(), perPage, totalCount)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +42,9 @@ func (env *Environment) Validators(
 		BlockHeight: height,
 		Validators:  v,
 		Count:       len(v),
-		Total:       totalCount}
-	if requestQuorumInfo != nil && libs.BoolValue(requestQuorumInfo) {
+		Total:       totalCount,
+	}
+	if libs.BoolValue(req.RequestQuorumInfo) {
 		result.QuorumHash = &validators.QuorumHash
 		result.QuorumType = validators.QuorumType
 		result.ThresholdPublicKey = &validators.ThresholdPublicKey
@@ -61,56 +55,32 @@ func (env *Environment) Validators(
 // DumpConsensusState dumps consensus state.
 // UNSTABLE
 // More: https://docs.tendermint.com/master/rpc/#/Info/dump_consensus_state
-func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*coretypes.ResultDumpConsensusState, error) {
+func (env *Environment) DumpConsensusState(ctx context.Context) (*coretypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
 
 	var peerStates []coretypes.PeerStateInfo
-	switch {
-	case env.P2PPeers != nil:
-		peers := env.P2PPeers.Peers().List()
-		peerStates = make([]coretypes.PeerStateInfo, 0, len(peers))
-		for _, peer := range peers {
-			peerState, ok := peer.Get(types.PeerStateKey).(*consensus.PeerState)
-			if !ok { // peer does not have a state yet
-				continue
-			}
-			peerStateJSON, err := peerState.ToJSON()
-			if err != nil {
-				return nil, err
-			}
+	peers := env.PeerManager.Peers()
+	peerStates = make([]coretypes.PeerStateInfo, 0, len(peers))
+	for _, pid := range peers {
+		peerState, ok := env.ConsensusReactor.GetPeerState(pid)
+		if !ok {
+			continue
+		}
+
+		peerStateJSON, err := peerState.ToJSON()
+		if err != nil {
+			return nil, err
+		}
+
+		addr := env.PeerManager.Addresses(pid)
+		if len(addr) != 0 {
 			peerStates = append(peerStates, coretypes.PeerStateInfo{
 				// Peer basic info.
-				NodeAddress: peer.SocketAddr().String(),
+				NodeAddress: addr[0].String(),
 				// Peer consensus state.
 				PeerState: peerStateJSON,
 			})
 		}
-	case env.PeerManager != nil:
-		peers := env.PeerManager.Peers()
-		peerStates = make([]coretypes.PeerStateInfo, 0, len(peers))
-		for _, pid := range peers {
-			peerState, ok := env.ConsensusReactor.GetPeerState(pid)
-			if !ok {
-				continue
-			}
-
-			peerStateJSON, err := peerState.ToJSON()
-			if err != nil {
-				return nil, err
-			}
-
-			addr := env.PeerManager.Addresses(pid)
-			if len(addr) >= 1 {
-				peerStates = append(peerStates, coretypes.PeerStateInfo{
-					// Peer basic info.
-					NodeAddress: addr[0].String(),
-					// Peer consensus state.
-					PeerState: peerStateJSON,
-				})
-			}
-		}
-	default:
-		return nil, errors.New("no peer system configured")
 	}
 
 	// Get self round state.
@@ -120,13 +90,14 @@ func (env *Environment) DumpConsensusState(ctx *rpctypes.Context) (*coretypes.Re
 	}
 	return &coretypes.ResultDumpConsensusState{
 		RoundState: roundState,
-		Peers:      peerStates}, nil
+		Peers:      peerStates,
+	}, nil
 }
 
 // ConsensusState returns a concise summary of the consensus state.
 // UNSTABLE
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_state
-func (env *Environment) GetConsensusState(ctx *rpctypes.Context) (*coretypes.ResultConsensusState, error) {
+func (env *Environment) GetConsensusState(ctx context.Context) (*coretypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := env.ConsensusState.GetRoundStateSimpleJSON()
 	return &coretypes.ResultConsensusState{RoundState: bz}, err
@@ -135,13 +106,10 @@ func (env *Environment) GetConsensusState(ctx *rpctypes.Context) (*coretypes.Res
 // ConsensusParams gets the consensus parameters at the given block height.
 // If no height is provided, it will fetch the latest consensus params.
 // More: https://docs.tendermint.com/master/rpc/#/Info/consensus_params
-func (env *Environment) ConsensusParams(
-	ctx *rpctypes.Context,
-	heightPtr *int64) (*coretypes.ResultConsensusParams, error) {
-
-	// The latest consensus params that we know is the consensus params after the
-	// last block.
-	height, err := env.getHeight(env.latestUncommittedHeight(), heightPtr)
+func (env *Environment) ConsensusParams(ctx context.Context, req *coretypes.RequestConsensusParams) (*coretypes.ResultConsensusParams, error) {
+	// The latest consensus params that we know is the consensus params after
+	// the last block.
+	height, err := env.getHeight(env.latestUncommittedHeight(), (*int64)(req.Height))
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +118,9 @@ func (env *Environment) ConsensusParams(
 	if err != nil {
 		return nil, err
 	}
+
+	consensusParams.Synchrony = consensusParams.Synchrony.SynchronyParamsOrDefaults()
+	consensusParams.Timeout = consensusParams.Timeout.TimeoutParamsOrDefaults()
 
 	return &coretypes.ResultConsensusParams{
 		BlockHeight:     height,

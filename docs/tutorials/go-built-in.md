@@ -11,14 +11,14 @@ Core application from scratch. It does not assume that you have any prior
 experience with Tendermint Core.
 
 Tendermint Core is a service that provides a Byzantine fault tolerant consensus engine
-for state-machine replication. The replicated state-machine, or "application", can be written 
+for state-machine replication. The replicated state-machine, or "application", can be written
 in any language that can send and receive protocol buffer messages.
 
 This tutorial is written for Go and uses Tendermint as a library, but applications not
 written in Go can use Tendermint to drive state-machine replication in a client-server
 model.
 
-This tutorial expects some understanding of the Go programming language. 
+This tutorial expects some understanding of the Go programming language.
 If you have never written Go, you may want to go through [Learn X in Y minutes
 Where X=Go](https://learnxinyminutes.com/docs/go/) first to familiarize
 yourself with the syntax.
@@ -26,9 +26,15 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core application
 called kvstore, a (very) simple distributed BFT key-value store.
 
-> Note: please use a released version of Tendermint with this guide. The guides will work with the latest released version.
-> Be aware that they may not apply to unreleased changes on master.
-> We strongly advise against using unreleased commits for your development.
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master.
+
+## Built-in app vs external app
+
+Running your application inside the same process as Tendermint Core will give
+you the best possible performance.
+
+For other languages, your application have to communicate with Tendermint Core
+through a TCP, Unix domain socket or gRPC.
 
 ## 1.1 Installing Go
 
@@ -79,11 +85,11 @@ Hello, Tendermint Core
 ## 1.3 Writing a Tendermint Core application
 
 Tendermint Core communicates with an application through the Application
-BlockChain Interface (ABCI) protocol. All of the message types Tendermint uses for 
+BlockChain Interface (ABCI) protocol. All of the message types Tendermint uses for
 communicating with the application can be found in the ABCI [protobuf
 file](https://github.com/tendermint/spec/blob/b695d30aae69933bc0e630da14949207d18ae02c/proto/tendermint/abci/types.proto).
 
-We will begin by creating the basic scaffolding for an ABCI application in 
+We will begin by creating the basic scaffolding for an ABCI application in
 a new `app.go` file. The first step is to create a new type, `KVStoreApplication`
 with methods that implement the abci `Application` interface.
 
@@ -158,17 +164,17 @@ func (app *KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshot
 Our application will need to write its state out to persistent storage so that it
 can stop and start without losing all of its data.
 
-For this tutorial, we will use [BadgerDB](https://github.com/dgraph-io/badger). 
-Badger is a fast embedded key-value store. 
+For this tutorial, we will use [BadgerDB](https://github.com/dgraph-io/badger).
+Badger is a fast embedded key-value store.
 
 First, add Badger as a dependency of your go module using the `go get` command:
 
 `go get github.com/dgraph-io/badger/v3`
 
-Next, let's update the application and its constructor to receive a handle to the 
-database. 
+Next, let's update the application and its constructor to receive a handle to the
+database.
 
-Update the application struct as follows: 
+Update the application struct as follows:
 
 ```go
 type KVStoreApplication struct {
@@ -237,10 +243,15 @@ information on why the transaction was rejected.
 
 Note that `CheckTx` _does not execute_ the transaction, it only verifies that that the
 transaction _could_ be executed. We do not know yet if the rest of the network has
-agreed to accept this transaction into a block. 
+agreed to accept this transaction into a block.
 
-Finally, make sure to add the `bytes` package to the your import stanza
-at the top of `app.go`:
+Valid transactions will eventually be committed given they are not too big and
+have enough gas. To learn more about gas, check out ["the
+specification"](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#gas).
+
+For the underlying key-value store we'll use
+[badger](https://github.com/dgraph-io/badger), which is an embeddable,
+persistent and fast key-value (KV) database.
 
 ```go
 import(
@@ -268,7 +279,7 @@ receive a block.
 `EndBlock` is called once to indicate to the application that no more transactions
 will be delivered to the application.
 
-To implement these calls in our application we're going to make use of Badger's 
+To implement these calls in our application we're going to make use of Badger's
 transaction mechanism. Bagder uses the term _transaction_ in the context of databases,
 be careful not to confuse it with _blockchain transactions_.
 
@@ -374,23 +385,15 @@ func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.Respo
 }
 ```
 
-## 1.3.4 Additional Methods
-
-You'll notice that we left several methods unchanged. Specifically, we have yet
-to implement the `Info` and `InitChain` methods and we did not implement 
-any of the `*Snapthot` methods. These methods are all important for running Tendermint
-applications in production but are not required for getting a very simple application
-up and running. 
-
-To better understand these methods and why they are useful, check out the Tendermint 
-[specification on ABCI](https://github.com/tendermint/spec/tree/20b2abb5f9a83c2d9d97b53e555e4ea5a6bd7dc4/spec/abci).
+The complete specification can be found
+[here](https://github.com/tendermint/tendermint/tree/master/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
 Now that we have the basic functionality of our application in place, let's put it
 all together inside of our `main.go` file.
 
-Add the following code to your `main.go` file: 
+Add the following code to your `main.go` file:
 
 ```go
 package main
@@ -554,7 +557,7 @@ Finally, we start the node:
 The additional logic at the end of the file allows the program to catch `SIGTERM`.
 This means that the node can shutdown gracefully when an operator tries to kill the program:
 
-```go 
+```go
 ...
 c := make(chan os.Signal, 1)
 signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -583,14 +586,14 @@ From the root of your project, run:
 go run github.com/tendermint/tendermint/cmd/tendermint@v0.35.0 init validator --home ./tendermint-home
 ```
 
-Next, build the application: 
+Next, build the application:
 ```bash
 go build -mod=mod -o my-app  # use -mod=mod to automatically update go.sum
 ```
 
 Everything is now in place to run your application.
 
-Run: 
+Run:
 ```bash
 $ rm -rf /tmp/example
 $ TMHOME="/tmp/example" tenderdash init validator
@@ -617,9 +620,18 @@ Open another terminal window and run the following curl command:
 
 ```bash
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
+{
+  "check_tx": {
+    "gasWanted": "1",
+    ...
+  },
+  "deliver_tx": { ... },
+  "hash": "1B3C5A1093DB952C331B1749A21DCCBB0F6C7F4E0055CD04D16346472FC60EC6",
+  "height": "128"
+}
 ```
 
-If everything went well, you should see a response indicating which height the 
+If everything went well, you should see a response indicating which height the
 transaction was included in the blockchain.
 
 Finally, let's make sure that transaction really was persisted by the application.
@@ -628,20 +640,23 @@ Run the following command:
 
 ```bash
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
-```
-
-Let's examine the response object that this request returns.
-The request returns a `json` object with a `key` and `value` field set.
-
-```json
-...
-      "key": "dGVuZGVybWludA==",
-      "value": "cm9ja3M=",
-...
+{
+  "response": {
+    "code": 0,
+    "log": "exists",
+    "info": "",
+    "index": "0",
+    "key": "dGVuZGVybWludA==",
+    "value": "cm9ja3M=",
+    "proofOps": null,
+    "height": "6",
+    "codespace": ""
+  }
+}
 ```
 
 Those values don't look like the `key` and `value` we sent to Tendermint,
-what's going on here? 
+what's going on here?
 
 The response contain a `base64` encoded representation of the data we submitted.
 To get the original value out of this data, we can use the `base64` command line utility.

@@ -11,6 +11,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sync"
 	"time"
 
 	gogotypes "github.com/gogo/protobuf/types"
@@ -24,9 +25,8 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/libs/async"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/libs/async"
 	tmprivval "github.com/tendermint/tendermint/proto/tendermint/privval"
 )
 
@@ -80,11 +80,11 @@ type SecretConnection struct {
 	// are independent, so we can use two mtxs.
 	// All .Read are covered by recvMtx,
 	// all .Write are covered by sendMtx.
-	recvMtx    tmsync.Mutex
+	recvMtx    sync.Mutex
 	recvBuffer []byte
 	recvNonce  *[aeadNonceSize]byte
 
-	sendMtx   tmsync.Mutex
+	sendMtx   sync.Mutex
 	sendNonce *[aeadNonceSize]byte
 }
 
@@ -99,7 +99,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	)
 
 	// Generate ephemeral keys for perfect forward secrecy.
-	locEphPub, locEphPriv := genEphKeys()
+	locEphPub, locEphPriv, err := genEphKeys()
+	if err != nil {
+		return nil, err
+	}
 
 	// Write local ephemeral pubkey and receive one too.
 	// NOTE: every 32-byte string is accepted as a Curve25519 public key (see
@@ -132,7 +135,10 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Generate the secret used for receiving, sending, challenge via HKDF-SHA2
 	// on the transcript state (which itself also uses HKDF-SHA2 to derive a key
 	// from the dhSecret).
-	recvSecret, sendSecret := deriveSecrets(dhSecret, locIsLeast)
+	recvSecret, sendSecret, err := deriveSecrets(dhSecret, locIsLeast)
+	if err != nil {
+		return nil, err
+	}
 
 	const challengeSize = 32
 	var challenge [challengeSize]byte
@@ -214,7 +220,10 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 
 			// encrypt the frame
 			sc.sendAead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
-			incrNonce(sc.sendNonce)
+			if err := incrNonce(sc.sendNonce); err != nil {
+				return err
+			}
+
 			// end encryption
 
 			_, err = sc.conn.Write(sealedFrame)
@@ -258,7 +267,9 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	if err != nil {
 		return n, fmt.Errorf("failed to decrypt SecretConnection: %w", err)
 	}
-	incrNonce(sc.recvNonce)
+	if err = incrNonce(sc.recvNonce); err != nil {
+		return
+	}
 	// end decryption
 
 	// copy checkLength worth into data,
@@ -288,14 +299,13 @@ func (sc *SecretConnection) SetWriteDeadline(t time.Time) error {
 	return sc.conn.(net.Conn).SetWriteDeadline(t)
 }
 
-func genEphKeys() (ephPub, ephPriv *[32]byte) {
-	var err error
+func genEphKeys() (ephPub, ephPriv *[32]byte, err error) {
 	// TODO: Probably not a problem but ask Tony: different from the rust implementation (uses x25519-dalek),
 	// we do not "clamp" the private key scalar:
 	// see: https://github.com/dalek-cryptography/x25519-dalek/blob/34676d336049df2bba763cc076a75e47ae1f170f/src/x25519.rs#L56-L74
 	ephPub, ephPriv, err = box.GenerateKey(crand.Reader)
 	if err != nil {
-		panic("Could not generate ephemeral key-pair")
+		return
 	}
 	return
 }
@@ -339,14 +349,14 @@ func shareEphPubKey(conn io.ReadWriter, locEphPub *[32]byte) (remEphPub *[32]byt
 func deriveSecrets(
 	dhSecret *[32]byte,
 	locIsLeast bool,
-) (recvSecret, sendSecret *[aeadKeySize]byte) {
+) (recvSecret, sendSecret *[aeadKeySize]byte, err error) {
 	hash := sha256.New
 	hkdf := hkdf.New(hash, dhSecret[:], nil, secretConnKeyAndChallengeGen)
 	// get enough data for 2 aead keys, and a 32 byte challenge
 	res := new([2*aeadKeySize + 32]byte)
-	_, err := io.ReadFull(hkdf, res[:])
+	_, err = io.ReadFull(hkdf, res[:])
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
 	recvSecret = new([aeadKeySize]byte)
@@ -454,13 +464,14 @@ func shareAuthSignature(sc io.ReadWriter, pubKey crypto.PubKey, signature []byte
 // Due to chacha20poly1305 expecting a 12 byte nonce we do not use the first four
 // bytes. We only increment a 64 bit unsigned int in the remaining 8 bytes
 // (little-endian in nonce[4:]).
-func incrNonce(nonce *[aeadNonceSize]byte) {
+func incrNonce(nonce *[aeadNonceSize]byte) error {
 	counter := binary.LittleEndian.Uint64(nonce[4:])
 	if counter == math.MaxUint64 {
 		// Terminates the session and makes sure the nonce would not re-used.
 		// See https://github.com/tendermint/tendermint/issues/3531
-		panic("can't increase nonce without overflow")
+		return errors.New("can't increase nonce without overflow")
 	}
 	counter++
 	binary.LittleEndian.PutUint64(nonce[4:], counter)
+	return nil
 }

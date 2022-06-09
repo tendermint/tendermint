@@ -17,30 +17,15 @@ jobs:
         with:
           go-version: '1.18'
 
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v3
 
       - name: Install go-fuzz
         working-directory: test/fuzz
-        run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
+        run: go install github.com/dvyukov/go-fuzz/go-fuzz@latest github.com/dvyukov/go-fuzz/go-fuzz-build@latest
 
-      - name: Fuzz mempool-v1
+      - name: Fuzz mempool
         working-directory: test/fuzz
-        run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool-v1
-        continue-on-error: true
-
-      - name: Fuzz mempool-v0
-        working-directory: test/fuzz
-        run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool-v0
-        continue-on-error: true
-
-      - name: Fuzz p2p-addrbook
-        working-directory: test/fuzz
-        run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-addrbook
-        continue-on-error: true
-
-      - name: Fuzz p2p-pex
-        working-directory: test/fuzz
-        run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-pex
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool
         continue-on-error: true
 
       - name: Fuzz p2p-sc
@@ -54,14 +39,14 @@ jobs:
         continue-on-error: true
 
       - name: Archive crashers
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: crashers
           path: test/fuzz/**/crashers
           retention-days: 3
 
       - name: Archive suppressions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: suppressions
           path: test/fuzz/**/suppressions

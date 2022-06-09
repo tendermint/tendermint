@@ -6,10 +6,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-func Start(ctx context.Context, testnet *e2e.Testnet) error {
+func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error {
 	if len(testnet.Nodes) == 0 {
 		return fmt.Errorf("no nodes in testnet")
 	}
@@ -51,7 +52,7 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 			ctx, cancel := context.WithTimeout(ctx, time.Minute)
 			defer cancel()
 
-			_, err := waitForNode(ctx, node, 0)
+			_, err := waitForNode(ctx, logger, node, 0)
 			return err
 		}(); err != nil {
 			return err
@@ -110,7 +111,7 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 		}
 
 		wctx, wcancel := context.WithTimeout(ctx, 8*time.Minute)
-		status, err := waitForNode(wctx, node, node.StartAt)
+		status, err := waitForNode(wctx, logger, node, node.StartAt)
 		if err != nil {
 			wcancel()
 			return err
@@ -118,8 +119,17 @@ func Start(ctx context.Context, testnet *e2e.Testnet) error {
 		wcancel()
 
 		node.HasStarted = true
+
+		var lastNodeHeight int64
+
+		// If the node is a light client, we fetch its current height
+		if node.Mode == e2e.ModeLight {
+			lastNodeHeight = status.LightClientInfo.LastTrustedHeight
+		} else {
+			lastNodeHeight = status.SyncInfo.LatestBlockHeight
+		}
 		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v at height %v",
-			node.Name, node.ProxyPort, status.SyncInfo.LatestBlockHeight))
+			node.Name, node.ProxyPort, lastNodeHeight))
 	}
 
 	return nil

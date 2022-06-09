@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -14,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	coregrpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
@@ -24,6 +24,7 @@ type Options struct {
 	suppressStdout bool
 }
 
+// waitForRPC connects to the RPC service and blocks until a /status call succeeds.
 func waitForRPC(ctx context.Context, conf *config.Config) {
 	laddr := conf.RPC.ListenAddress
 	client, err := rpcclient.New(laddr)
@@ -32,23 +33,13 @@ func waitForRPC(ctx context.Context, conf *config.Config) {
 	}
 	result := new(coretypes.ResultStatus)
 	for {
-		_, err := client.Call(ctx, "status", map[string]interface{}{}, result)
+		err := client.Call(ctx, "status", map[string]interface{}{}, result)
 		if err == nil {
 			return
 		}
 
 		fmt.Println("error", err)
 		time.Sleep(time.Millisecond)
-	}
-}
-
-func waitForGRPC(ctx context.Context, conf *config.Config) {
-	client := GetGRPCClient(conf)
-	for {
-		_, err := client.Ping(ctx, &coregrpc.RequestPing{})
-		if err == nil {
-			return
-		}
 	}
 }
 
@@ -60,38 +51,37 @@ func randPort() int {
 	return port
 }
 
-func makeAddrs() (string, string, string) {
-	return fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
-		fmt.Sprintf("tcp://127.0.0.1:%d", randPort()),
-		fmt.Sprintf("tcp://127.0.0.1:%d", randPort())
+// makeAddrs constructs local listener addresses for node services.  This
+// implementation uses random ports so test instances can run concurrently.
+func makeAddrs() (p2pAddr, rpcAddr string) {
+	const addrTemplate = "tcp://127.0.0.1:%d"
+	return fmt.Sprintf(addrTemplate, randPort()), fmt.Sprintf(addrTemplate, randPort())
 }
 
-func CreateConfig(testName string) (*config.Config, error) {
-	c, err := config.ResetTestRoot(testName)
+func CreateConfig(t *testing.T, testName string) (*config.Config, error) {
+	c, err := config.ResetTestRoot(t.TempDir(), testName)
 	if err != nil {
 		return nil, err
 	}
 
-	// and we use random ports to run in parallel
-	tm, rpc, grpc := makeAddrs()
-	c.P2P.ListenAddress = tm
-	c.RPC.ListenAddress = rpc
+	p2pAddr, rpcAddr := makeAddrs()
+	c.P2P.ListenAddress = p2pAddr
+	c.RPC.ListenAddress = rpcAddr
+	c.RPC.EventLogWindowSize = 5 * time.Minute
+	c.Consensus.WalPath = "rpc-test"
 	c.RPC.CORSAllowedOrigins = []string{"https://tendermint.com/"}
-	c.RPC.GRPCListenAddress = grpc
 	return c, nil
-}
-
-func GetGRPCClient(conf *config.Config) coregrpc.BroadcastAPIClient {
-	grpcAddr := conf.RPC.GRPCListenAddress
-	return coregrpc.StartGRPCClient(grpcAddr)
 }
 
 type ServiceCloser func(context.Context) error
 
-func StartTendermint(ctx context.Context,
+func StartTendermint(
+	ctx context.Context,
 	conf *config.Config,
 	app abci.Application,
-	opts ...func(*Options)) (service.Service, ServiceCloser, error) {
+	opts ...func(*Options),
+) (service.Service, ServiceCloser, error) {
+	ctx, cancel := context.WithCancel(ctx)
 
 	nodeOpts := &Options{}
 	for _, opt := range opts {
@@ -101,33 +91,31 @@ func StartTendermint(ctx context.Context,
 	if nodeOpts.suppressStdout {
 		logger = log.NewNopLogger()
 	} else {
-		logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
+		var err error
+		logger, err = log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+		if err != nil {
+			return nil, func(_ context.Context) error { cancel(); return nil }, err
+		}
 	}
-	papp := abciclient.NewLocalCreator(app)
-	//signer, err := privval.NewDashCoreSignerClient()
-
-	tmNode, err := node.New(conf, logger, papp, nil, nil)
+	papp := abciclient.NewLocalClient(logger, app)
+	tmNode, err := node.New(ctx, conf, logger, papp, nil)
 	if err != nil {
-		return nil, func(_ context.Context) error { return nil }, err
+		return nil, func(_ context.Context) error { cancel(); return nil }, err
 	}
 
-	err = tmNode.Start()
+	err = tmNode.Start(ctx)
 	if err != nil {
-		return nil, func(_ context.Context) error { return nil }, err
+		return nil, func(_ context.Context) error { cancel(); return nil }, err
 	}
 
-	// wait for rpc
 	waitForRPC(ctx, conf)
-	waitForGRPC(ctx, conf)
 
 	if !nodeOpts.suppressStdout {
 		fmt.Println("Tendermint running!")
 	}
 
 	return tmNode, func(ctx context.Context) error {
-		if err := tmNode.Stop(); err != nil {
-			logger.Error("Error when trying to stop node", "err", err)
-		}
+		cancel()
 		tmNode.Wait()
 		os.RemoveAll(conf.RootDir)
 		return nil

@@ -1,0 +1,7 @@
+-M consensus.blocktime-iota
++M mempool.max-txs-bytes
++M rpc.max-subscription-clients
++M rpc.max-subscriptions-per-client
++M rpc.timeout-broadcast-tx-commit
++M rpc.tls-cert-file
++M rpc.tls-key-file

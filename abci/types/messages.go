@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 )
 
@@ -38,21 +39,15 @@ func ToRequestFlush() *Request {
 	}
 }
 
-func ToRequestInfo(req RequestInfo) *Request {
+func ToRequestInfo(req *RequestInfo) *Request {
 	return &Request{
-		Value: &Request_Info{&req},
+		Value: &Request_Info{req},
 	}
 }
 
-func ToRequestDeliverTx(req RequestDeliverTx) *Request {
+func ToRequestCheckTx(req *RequestCheckTx) *Request {
 	return &Request{
-		Value: &Request_DeliverTx{&req},
-	}
-}
-
-func ToRequestCheckTx(req RequestCheckTx) *Request {
-	return &Request{
-		Value: &Request_CheckTx{&req},
+		Value: &Request_CheckTx{req},
 	}
 }
 
@@ -62,51 +57,69 @@ func ToRequestCommit() *Request {
 	}
 }
 
-func ToRequestQuery(req RequestQuery) *Request {
+func ToRequestQuery(req *RequestQuery) *Request {
 	return &Request{
-		Value: &Request_Query{&req},
+		Value: &Request_Query{req},
 	}
 }
 
-func ToRequestInitChain(req RequestInitChain) *Request {
+func ToRequestInitChain(req *RequestInitChain) *Request {
 	return &Request{
-		Value: &Request_InitChain{&req},
+		Value: &Request_InitChain{req},
 	}
 }
 
-func ToRequestBeginBlock(req RequestBeginBlock) *Request {
+func ToRequestListSnapshots(req *RequestListSnapshots) *Request {
 	return &Request{
-		Value: &Request_BeginBlock{&req},
+		Value: &Request_ListSnapshots{req},
 	}
 }
 
-func ToRequestEndBlock(req RequestEndBlock) *Request {
+func ToRequestOfferSnapshot(req *RequestOfferSnapshot) *Request {
 	return &Request{
-		Value: &Request_EndBlock{&req},
+		Value: &Request_OfferSnapshot{req},
 	}
 }
 
-func ToRequestListSnapshots(req RequestListSnapshots) *Request {
+func ToRequestLoadSnapshotChunk(req *RequestLoadSnapshotChunk) *Request {
 	return &Request{
-		Value: &Request_ListSnapshots{&req},
+		Value: &Request_LoadSnapshotChunk{req},
 	}
 }
 
-func ToRequestOfferSnapshot(req RequestOfferSnapshot) *Request {
+func ToRequestApplySnapshotChunk(req *RequestApplySnapshotChunk) *Request {
 	return &Request{
-		Value: &Request_OfferSnapshot{&req},
+		Value: &Request_ApplySnapshotChunk{req},
 	}
 }
 
-func ToRequestLoadSnapshotChunk(req RequestLoadSnapshotChunk) *Request {
+func ToRequestExtendVote(req *RequestExtendVote) *Request {
 	return &Request{
-		Value: &Request_LoadSnapshotChunk{&req},
+		Value: &Request_ExtendVote{req},
 	}
 }
 
-func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
+func ToRequestVerifyVoteExtension(req *RequestVerifyVoteExtension) *Request {
 	return &Request{
-		Value: &Request_ApplySnapshotChunk{&req},
+		Value: &Request_VerifyVoteExtension{req},
+	}
+}
+
+func ToRequestPrepareProposal(req *RequestPrepareProposal) *Request {
+	return &Request{
+		Value: &Request_PrepareProposal{req},
+	}
+}
+
+func ToRequestProcessProposal(req *RequestProcessProposal) *Request {
+	return &Request{
+		Value: &Request_ProcessProposal{req},
+	}
+}
+
+func ToRequestFinalizeBlock(req *RequestFinalizeBlock) *Request {
+	return &Request{
+		Value: &Request_FinalizeBlock{req},
 	}
 }
 
@@ -130,73 +143,86 @@ func ToResponseFlush() *Response {
 	}
 }
 
-func ToResponseInfo(res ResponseInfo) *Response {
+func ToResponseInfo(res *ResponseInfo) *Response {
 	return &Response{
-		Value: &Response_Info{&res},
-	}
-}
-func ToResponseDeliverTx(res ResponseDeliverTx) *Response {
-	return &Response{
-		Value: &Response_DeliverTx{&res},
+		Value: &Response_Info{res},
 	}
 }
 
-func ToResponseCheckTx(res ResponseCheckTx) *Response {
+func ToResponseCheckTx(res *ResponseCheckTx) *Response {
 	return &Response{
-		Value: &Response_CheckTx{&res},
+		Value: &Response_CheckTx{res},
 	}
 }
 
-func ToResponseCommit(res ResponseCommit) *Response {
+func ToResponseCommit(res *ResponseCommit) *Response {
 	return &Response{
-		Value: &Response_Commit{&res},
+		Value: &Response_Commit{res},
 	}
 }
 
-func ToResponseQuery(res ResponseQuery) *Response {
+func ToResponseQuery(res *ResponseQuery) *Response {
 	return &Response{
-		Value: &Response_Query{&res},
+		Value: &Response_Query{res},
 	}
 }
 
-func ToResponseInitChain(res ResponseInitChain) *Response {
+func ToResponseInitChain(res *ResponseInitChain) *Response {
 	return &Response{
-		Value: &Response_InitChain{&res},
+		Value: &Response_InitChain{res},
 	}
 }
 
-func ToResponseBeginBlock(res ResponseBeginBlock) *Response {
+func ToResponseListSnapshots(res *ResponseListSnapshots) *Response {
 	return &Response{
-		Value: &Response_BeginBlock{&res},
+		Value: &Response_ListSnapshots{res},
 	}
 }
 
-func ToResponseEndBlock(res ResponseEndBlock) *Response {
+func ToResponseOfferSnapshot(res *ResponseOfferSnapshot) *Response {
 	return &Response{
-		Value: &Response_EndBlock{&res},
+		Value: &Response_OfferSnapshot{res},
 	}
 }
 
-func ToResponseListSnapshots(res ResponseListSnapshots) *Response {
+func ToResponseLoadSnapshotChunk(res *ResponseLoadSnapshotChunk) *Response {
 	return &Response{
-		Value: &Response_ListSnapshots{&res},
+		Value: &Response_LoadSnapshotChunk{res},
 	}
 }
 
-func ToResponseOfferSnapshot(res ResponseOfferSnapshot) *Response {
+func ToResponseApplySnapshotChunk(res *ResponseApplySnapshotChunk) *Response {
 	return &Response{
-		Value: &Response_OfferSnapshot{&res},
+		Value: &Response_ApplySnapshotChunk{res},
 	}
 }
 
-func ToResponseLoadSnapshotChunk(res ResponseLoadSnapshotChunk) *Response {
+func ToResponseExtendVote(res *ResponseExtendVote) *Response {
 	return &Response{
-		Value: &Response_LoadSnapshotChunk{&res},
+		Value: &Response_ExtendVote{res},
 	}
 }
 
-func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
+func ToResponseVerifyVoteExtension(res *ResponseVerifyVoteExtension) *Response {
 	return &Response{
-		Value: &Response_ApplySnapshotChunk{&res},
+		Value: &Response_VerifyVoteExtension{res},
+	}
+}
+
+func ToResponsePrepareProposal(res *ResponsePrepareProposal) *Response {
+	return &Response{
+		Value: &Response_PrepareProposal{res},
+	}
+}
+
+func ToResponseProcessProposal(res *ResponseProcessProposal) *Response {
+	return &Response{
+		Value: &Response_ProcessProposal{res},
+	}
+}
+
+func ToResponseFinalizeBlock(res *ResponseFinalizeBlock) *Response {
+	return &Response{
+		Value: &Response_FinalizeBlock{res},
 	}
 }

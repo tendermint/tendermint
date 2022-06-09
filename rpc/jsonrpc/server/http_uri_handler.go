@@ -2,233 +2,104 @@ package server
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
-	"regexp"
+	"strconv"
 	"strings"
 
-	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-// HTTP + URI handler
-
-var reInt = regexp.MustCompile(`^-?[0-9]+$`)
+// uriReqID is a placeholder ID used for GET requests, which do not receive a
+// JSON-RPC request ID from the caller.
+const uriReqID = -1
 
 // convert from a function name to the http handler
 func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
-	// Always return -1 as there's no ID here.
-	dummyID := rpctypes.JSONRPCIntID(-1) // URIClientRequestID
-
-	// Exception for websocket endpoints
-	if rpcFunc.ws {
-		return func(w http.ResponseWriter, r *http.Request) {
-			res := rpctypes.RPCMethodNotFoundError(dummyID)
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
-		}
-	}
-
-	// All other endpoints
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger.Debug("HTTP HANDLER", "req", r)
-
-		ctx := &rpctypes.Context{HTTPReq: r}
-		args := []reflect.Value{reflect.ValueOf(ctx)}
-
-		fnArgs, err := httpParamsToArgs(rpcFunc, r)
+	return func(w http.ResponseWriter, req *http.Request) {
+		ctx := rpctypes.WithCallInfo(req.Context(), &rpctypes.CallInfo{
+			HTTPRequest: req,
+		})
+		args, err := parseURLParams(rpcFunc.args, req)
 		if err != nil {
-			res := rpctypes.RPCInvalidParamsError(dummyID,
-				fmt.Errorf("error converting http params to arguments: %w", err),
-			)
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintln(w, err.Error())
 			return
 		}
-		args = append(args, fnArgs...)
-
-		returns := rpcFunc.f.Call(args)
-
-		logger.Debug("HTTPRestRPC", "method", r.URL.Path, "args", args, "returns", returns)
-		result, err := unreflectResult(returns)
-		switch e := err.(type) {
-		// if no error then return a success response
-		case nil:
-			res := rpctypes.NewRPCSuccessResponse(dummyID, result)
-			if wErr := WriteRPCResponseHTTP(w, rpcFunc.cache, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
-
-		// if this already of type RPC error then forward that error.
-		case *rpctypes.RPCError:
-			res := rpctypes.NewRPCErrorResponse(dummyID, e.Code, e.Message, e.Data)
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
-
-		default: // we need to unwrap the error and parse it accordingly
-			var res rpctypes.RPCResponse
-
-			switch errors.Unwrap(err) {
-			case coretypes.ErrZeroOrNegativeHeight,
-				coretypes.ErrZeroOrNegativePerPage,
-				coretypes.ErrPageOutOfRange,
-				coretypes.ErrInvalidRequest:
-				res = rpctypes.RPCInvalidRequestError(dummyID, err)
-			default: // ctypes.ErrHeightNotAvailable, ctypes.ErrHeightExceedsChainHead:
-				res = rpctypes.RPCInternalError(dummyID, err)
-			}
-
-			if wErr := WriteRPCResponseHTTPError(w, res); wErr != nil {
-				logger.Error("failed to write response", "res", res, "err", wErr)
-			}
+		jreq := rpctypes.NewRequest(uriReqID)
+		result, err := rpcFunc.Call(ctx, args)
+		if err == nil {
+			writeHTTPResponse(w, logger, jreq.MakeResponse(result))
+		} else {
+			writeHTTPResponse(w, logger, jreq.MakeError(err))
 		}
-
 	}
 }
 
-// Covert an http query to a list of properly typed values.
-// To be properly decoded the arg must be a concrete type from tendermint (if its an interface).
-func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error) {
-	// skip types.Context
-	const argsOffset = 1
+func parseURLParams(args []argInfo, req *http.Request) ([]byte, error) {
+	if err := req.ParseForm(); err != nil {
+		return nil, fmt.Errorf("invalid HTTP request: %w", err)
+	}
+	getArg := func(name string) (string, bool) {
+		if req.Form.Has(name) {
+			return req.Form.Get(name), true
+		}
+		return "", false
+	}
 
-	values := make([]reflect.Value, len(rpcFunc.argNames))
-
-	for i, name := range rpcFunc.argNames {
-		argType := rpcFunc.args[i+argsOffset]
-
-		values[i] = reflect.Zero(argType) // set default for that type
-
-		arg := getParam(r, name)
-		// log.Notice("param to arg", "argType", argType, "name", name, "arg", arg)
-
-		if arg == "" {
+	params := make(map[string]interface{})
+	for _, arg := range args {
+		v, ok := getArg(arg.name)
+		if !ok {
 			continue
 		}
-
-		v, ok, err := nonJSONStringToArg(argType, arg)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			values[i] = v
-			continue
-		}
-
-		values[i], err = jsonStringToArg(argType, arg)
-		if err != nil {
-			return nil, err
+		if z, err := decodeInteger(v); err == nil {
+			params[arg.name] = z
+		} else if b, err := strconv.ParseBool(v); err == nil {
+			params[arg.name] = b
+		} else if lc := strings.ToLower(v); strings.HasPrefix(lc, "0x") {
+			dec, err := hex.DecodeString(lc[2:])
+			if err != nil {
+				return nil, fmt.Errorf("invalid hex string: %w", err)
+			} else if len(dec) == 0 {
+				return nil, errors.New("invalid empty hex string")
+			}
+			if arg.isBinary {
+				params[arg.name] = dec
+			} else {
+				params[arg.name] = string(dec)
+			}
+		} else if isQuotedString(v) {
+			var dec string
+			if err := json.Unmarshal([]byte(v), &dec); err != nil {
+				return nil, fmt.Errorf("invalid quoted string: %w", err)
+			}
+			if arg.isBinary {
+				params[arg.name] = []byte(dec)
+			} else {
+				params[arg.name] = dec
+			}
+		} else {
+			params[arg.name] = v
 		}
 	}
-
-	return values, nil
+	return json.Marshal(params)
 }
 
-func jsonStringToArg(rt reflect.Type, arg string) (reflect.Value, error) {
-	rv := reflect.New(rt)
-	err := tmjson.Unmarshal([]byte(arg), rv.Interface())
-	if err != nil {
-		return rv, err
-	}
-	rv = rv.Elem()
-	return rv, nil
+// isQuotedString reports whether s is enclosed in double quotes.
+func isQuotedString(s string) bool {
+	return len(s) >= 2 && strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)
 }
 
-func nonJSONStringToArg(rt reflect.Type, arg string) (reflect.Value, bool, error) {
-	if rt.Kind() == reflect.Ptr {
-		rv1, ok, err := nonJSONStringToArg(rt.Elem(), arg)
-		switch {
-		case err != nil:
-			return reflect.Value{}, false, err
-		case ok:
-			rv := reflect.New(rt.Elem())
-			rv.Elem().Set(rv1)
-			return rv, true, nil
-		default:
-			return reflect.Value{}, false, nil
-		}
-	} else {
-		return _nonJSONStringToArg(rt, arg)
+// decodeInteger decodes s into an int64. If s is "double quoted" the quotes
+// are removed; otherwise s must be a base-10 digit string.
+func decodeInteger(s string) (int64, error) {
+	if isQuotedString(s) {
+		s = s[1 : len(s)-1]
 	}
-}
-
-// NOTE: rt.Kind() isn't a pointer.
-func _nonJSONStringToArg(rt reflect.Type, arg string) (reflect.Value, bool, error) {
-	isIntString := reInt.Match([]byte(arg))
-	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
-	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
-
-	var expectingString, expectingByteSlice, expectingInt bool
-	switch rt.Kind() {
-	case reflect.Int,
-		reflect.Uint,
-		reflect.Int8,
-		reflect.Uint8,
-		reflect.Int16,
-		reflect.Uint16,
-		reflect.Int32,
-		reflect.Uint32,
-		reflect.Int64,
-		reflect.Uint64:
-		expectingInt = true
-	case reflect.String:
-		expectingString = true
-	case reflect.Slice:
-		expectingByteSlice = rt.Elem().Kind() == reflect.Uint8
-	}
-
-	if isIntString && expectingInt {
-		qarg := `"` + arg + `"`
-		rv, err := jsonStringToArg(rt, qarg)
-		if err != nil {
-			return rv, false, err
-		}
-
-		return rv, true, nil
-	}
-
-	if isHexString {
-		if !expectingString && !expectingByteSlice {
-			err := fmt.Errorf("got a hex string arg, but expected '%s'",
-				rt.Kind().String())
-			return reflect.ValueOf(nil), false, err
-		}
-
-		var value []byte
-		value, err := hex.DecodeString(arg[2:])
-		if err != nil {
-			return reflect.ValueOf(nil), false, err
-		}
-		if rt.Kind() == reflect.String {
-			return reflect.ValueOf(string(value)), true, nil
-		}
-		return reflect.ValueOf(value), true, nil
-	}
-
-	if isQuotedString && expectingByteSlice {
-		v := reflect.New(reflect.TypeOf(""))
-		err := tmjson.Unmarshal([]byte(arg), v.Interface())
-		if err != nil {
-			return reflect.ValueOf(nil), false, err
-		}
-		v = v.Elem()
-		return reflect.ValueOf([]byte(v.String())), true, nil
-	}
-
-	return reflect.ValueOf(nil), false, nil
-}
-
-func getParam(r *http.Request, param string) string {
-	s := r.URL.Query().Get(param)
-	if s == "" {
-		s = r.FormValue(param)
-	}
-	return s
+	return strconv.ParseInt(s, 10, 64)
 }

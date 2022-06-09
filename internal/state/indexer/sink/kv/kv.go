@@ -6,10 +6,10 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	kvb "github.com/tendermint/tendermint/internal/state/indexer/block/kv"
 	kvt "github.com/tendermint/tendermint/internal/state/indexer/tx/kv"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -18,14 +18,16 @@ var _ indexer.EventSink = (*EventSink)(nil)
 // The EventSink is an aggregator for redirecting the call path of the tx/block kvIndexer.
 // For the implementation details please see the kv.go in the indexer/block and indexer/tx folder.
 type EventSink struct {
-	txi *kvt.TxIndex
-	bi  *kvb.BlockerIndexer
+	txi   *kvt.TxIndex
+	bi    *kvb.BlockerIndexer
+	store dbm.DB
 }
 
 func NewEventSink(store dbm.DB) indexer.EventSink {
 	return &EventSink{
-		txi: kvt.NewTxIndex(store),
-		bi:  kvb.New(store),
+		txi:   kvt.NewTxIndex(store),
+		bi:    kvb.New(store),
+		store: store,
 	}
 }
 
@@ -58,5 +60,5 @@ func (kves *EventSink) HasBlock(h int64) (bool, error) {
 }
 
 func (kves *EventSink) Stop() error {
-	return nil
+	return kves.store.Close()
 }

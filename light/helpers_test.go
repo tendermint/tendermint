@@ -1,6 +1,7 @@
 package light_test
 
 import (
+	"testing"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -39,21 +39,25 @@ func exposeMockPVKeys(pvs []types.PrivValidator, quorumHash crypto.QuorumHash) p
 // (should be enough for testing).
 func (pkz privKeys) ToValidators(thresholdPublicKey crypto.PubKey) *types.ValidatorSet {
 	res := make([]*types.Validator, len(pkz))
+
 	for i, k := range pkz {
-		res[i] = types.NewValidatorDefaultVotingPower(k.PubKey(), crypto.Sha256(k.PubKey().Address()))
+		res[i] = types.NewValidatorDefaultVotingPower(k.PubKey(), crypto.Checksum(k.PubKey().Address()))
 	}
+
 	// Quorum hash is pseudorandom
 	return types.NewValidatorSet(
 		res,
 		thresholdPublicKey,
 		btcjson.LLMQType_5_60,
-		crypto.Sha256(thresholdPublicKey.Bytes()),
+		crypto.Checksum(thresholdPublicKey.Bytes()),
 		true,
 	)
 }
 
 // signHeader properly signs the header with all keys from first to last exclusive.
-func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet, first, last int) *types.Commit {
+func (pkz privKeys) signHeader(t testing.TB, header *types.Header, valSet *types.ValidatorSet, first, last int) *types.Commit {
+	t.Helper()
+
 	var blockSigs [][]byte
 	var stateSigs [][]byte
 	var blsIDs [][]byte
@@ -82,7 +86,7 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 		if !privateKey.PubKey().Equals(val.PubKey) {
 			panic("light client keys do not match")
 		}
-		vote := makeVote(header, valSet, proTxHash, pkz[i], blockID, stateID)
+		vote := makeVote(t, header, valSet, proTxHash, pkz[i], blockID, stateID)
 		blockSigs = append(blockSigs, vote.BlockSignature)
 		stateSigs = append(stateSigs, vote.StateSignature)
 		blsIDs = append(blsIDs, vote.ValidatorProTxHash)
@@ -94,8 +98,9 @@ func (pkz privKeys) signHeader(header *types.Header, valSet *types.ValidatorSet,
 	return types.NewCommit(header.Height, 1, blockID, stateID, valSet.QuorumHash, thresholdBlockSig, thresholdStateSig)
 }
 
-func makeVote(header *types.Header, valset *types.ValidatorSet, proTxHash crypto.ProTxHash,
+func makeVote(t testing.TB, header *types.Header, valset *types.ValidatorSet, proTxHash crypto.ProTxHash,
 	key crypto.PrivKey, blockID types.BlockID, stateID types.StateID) *types.Vote {
+	t.Helper()
 
 	idx, val := valset.GetByProTxHash(proTxHash)
 	if val == nil {
@@ -152,51 +157,38 @@ func genHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
 }
 
 // GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
-func (pkz privKeys) GenSignedHeader(chainID string, height int64, bTime time.Time, txs types.Txs,
+func (pkz privKeys) GenSignedHeader(t testing.TB, chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) *types.SignedHeader {
+
+	t.Helper()
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	return &types.SignedHeader{
 		Header: header,
-		Commit: pkz.signHeader(header, valset, first, last),
+		Commit: pkz.signHeader(t, header, valset, first, last),
 	}
 }
 
 // GenSignedHeaderLastBlockID calls genHeader and signHeader and combines them into a SignedHeader.
-func (pkz privKeys) GenSignedHeaderLastBlockID(chainID string, height int64, bTime time.Time, txs types.Txs,
+func (pkz privKeys) GenSignedHeaderLastBlockID(t testing.TB, chainID string, height int64, bTime time.Time, txs types.Txs,
 	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int,
 	lastBlockID types.BlockID) *types.SignedHeader {
+
+	t.Helper()
 
 	header := genHeader(chainID, height, bTime, txs, valset, nextValset, appHash, consHash, resHash)
 	header.LastBlockID = lastBlockID
 	return &types.SignedHeader{
 		Header: header,
-		Commit: pkz.signHeader(header, valset, first, last),
+		Commit: pkz.signHeader(t, header, valset, first, last),
 	}
-}
-
-func hash(s string) []byte {
-	return tmhash.Sum([]byte(s))
-}
-
-func mockNodeFromHeadersAndVals(
-	headers map[int64]*types.SignedHeader,
-	vals map[int64]*types.ValidatorSet,
-) *provider_mocks.Provider {
-	provider := &provider_mocks.Provider{}
-	for i, header := range headers {
-		lb := &types.LightBlock{SignedHeader: header, ValidatorSet: vals[i]}
-		provider.
-			On("LightBlock", mock.Anything, i).
-			Return(lb, nil)
-	}
-	return provider
 }
 
 // genLightBlocksWithValidatorsRotatingEveryBlock generates the header and validator set to create
 // blocks to height. BlockIntervals are in per minute.
 // NOTE: Expected to have a large validator set size ~ 100 validators.
 func genLightBlocksWithValidatorsRotatingEveryBlock(
+	t testing.TB,
 	chainID string,
 	numBlocks int64,
 	valSize int,
@@ -204,6 +196,7 @@ func genLightBlocksWithValidatorsRotatingEveryBlock(
 	map[int64]*types.SignedHeader,
 	map[int64]*types.ValidatorSet,
 	[]types.PrivValidator) {
+	t.Helper()
 
 	var (
 		headers = make(map[int64]*types.SignedHeader, numBlocks)
@@ -220,7 +213,7 @@ func genLightBlocksWithValidatorsRotatingEveryBlock(
 	newKeys := exposeMockPVKeys(newPrivVals, newVals.QuorumHash)
 
 	// genesis header and vals
-	lastHeader := keys.GenSignedHeader(chainID, 1, bTime.Add(1*time.Minute), nil,
+	lastHeader := keys.GenSignedHeader(t, chainID, 1, bTime.Add(1*time.Minute), nil,
 		vals, newVals, hash("app_hash"), hash("cons_hash"),
 		hash("results_hash"), 0, len(keys))
 	currentHeader := lastHeader
@@ -235,7 +228,7 @@ func genLightBlocksWithValidatorsRotatingEveryBlock(
 		)
 		newKeys = exposeMockPVKeys(newPrivVals, newVals.QuorumHash)
 
-		currentHeader = keys.GenSignedHeaderLastBlockID(chainID, height, bTime.Add(time.Duration(height)*time.Minute),
+		currentHeader = keys.GenSignedHeaderLastBlockID(t, chainID, height, bTime.Add(time.Duration(height)*time.Minute),
 			nil,
 			vals, newVals, hash("app_hash"), hash("cons_hash"),
 			hash("results_hash"), 0, len(keys), types.BlockID{Hash: lastHeader.Hash()})
@@ -246,4 +239,18 @@ func genLightBlocksWithValidatorsRotatingEveryBlock(
 	}
 
 	return headers, valset, newPrivVals
+}
+
+func mockNodeFromHeadersAndVals(headers map[int64]*types.SignedHeader,
+	vals map[int64]*types.ValidatorSet) *provider_mocks.Provider {
+	mockNode := &provider_mocks.Provider{}
+	for i, header := range headers {
+		lb := &types.LightBlock{SignedHeader: header, ValidatorSet: vals[i]}
+		mockNode.On("LightBlock", mock.Anything, i).Return(lb, nil)
+	}
+	return mockNode
+}
+
+func hash(s string) []byte {
+	return crypto.Checksum([]byte(s))
 }

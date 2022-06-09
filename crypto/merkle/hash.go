@@ -3,7 +3,7 @@ package merkle
 import (
 	"hash"
 
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 // TODO: make these have a large predefined capacity
@@ -14,12 +14,12 @@ var (
 
 // returns tmhash(<empty>)
 func emptyHash() []byte {
-	return tmhash.Sum([]byte{})
+	return crypto.Checksum([]byte{})
 }
 
 // returns tmhash(0x00 || leaf)
 func leafHash(leaf []byte) []byte {
-	return tmhash.Sum(append(leafPrefix, leaf...))
+	return crypto.Checksum(append(leafPrefix, leaf...))
 }
 
 // returns tmhash(0x00 || leaf)
@@ -36,7 +36,7 @@ func innerHash(left []byte, right []byte) []byte {
 	n := copy(data, innerPrefix)
 	n += copy(data[n:], left)
 	copy(data[n:], right)
-	return tmhash.Sum(data)
+	return crypto.Checksum(data)[:]
 }
 
 func innerHashOpt(s hash.Hash, left []byte, right []byte) []byte {

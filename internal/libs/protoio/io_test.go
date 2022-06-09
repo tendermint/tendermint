@@ -44,7 +44,8 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 )
 
-func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
+func iotest(t *testing.T, writer protoio.WriteCloser, reader protoio.ReadCloser) error {
+	t.Helper()
 	varint := make([]byte, binary.MaxVarintLen64)
 	size := 1000
 	msgs := make([]*test.NinOptNative, size)
@@ -94,9 +95,7 @@ func iotest(writer protoio.WriteCloser, reader protoio.ReadCloser) error {
 		}
 		i++
 	}
-	if i != size {
-		panic("not enough messages read")
-	}
+	require.Equal(t, size, i, "messages read ≠ messages written")
 	if err := reader.Close(); err != nil {
 		return err
 	}
@@ -121,7 +120,7 @@ func TestVarintNormal(t *testing.T) {
 	buf := newBuffer()
 	writer := protoio.NewDelimitedWriter(buf)
 	reader := protoio.NewDelimitedReader(buf, 1024*1024)
-	err := iotest(writer, reader)
+	err := iotest(t, writer, reader)
 	require.NoError(t, err)
 	require.True(t, buf.closed, "did not close buffer")
 }
@@ -130,7 +129,7 @@ func TestVarintNoClose(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	writer := protoio.NewDelimitedWriter(buf)
 	reader := protoio.NewDelimitedReader(buf, 1024*1024)
-	err := iotest(writer, reader)
+	err := iotest(t, writer, reader)
 	require.NoError(t, err)
 }
 
@@ -139,7 +138,7 @@ func TestVarintMaxSize(t *testing.T) {
 	buf := newBuffer()
 	writer := protoio.NewDelimitedWriter(buf)
 	reader := protoio.NewDelimitedReader(buf, 20)
-	err := iotest(writer, reader)
+	err := iotest(t, writer, reader)
 	require.Error(t, err)
 }
 

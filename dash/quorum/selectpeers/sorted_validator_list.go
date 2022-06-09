@@ -23,7 +23,7 @@ func newSortedValidatorList(validators []*types.Validator, quorumHash tmbytes.He
 	return ret
 }
 
-// Sort() sorts this sortableValidatorList
+// Sort sorts this sortableValidatorList
 func (vl sortedValidatorList) Sort() {
 	sort.Sort(vl)
 }

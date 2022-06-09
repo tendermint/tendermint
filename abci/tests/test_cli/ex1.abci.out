@@ -3,24 +3,24 @@
 -> data: hello
 -> data.hex: 0x68656C6C6F
 
-> info 
+> info
 -> code: OK
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
-> commit 
+> commit
 -> code: OK
 -> data.hex: 0x0000000000000000000000000000000000000000000000000000000000000000
 
-> deliver_tx "abc"
+> finalize_block "abc"
 -> code: OK
 
-> info 
+> info
 -> code: OK
 -> data: {"size":1}
 -> data.hex: 0x7B2273697A65223A317D
 
-> commit 
+> commit
 -> code: OK
 -> data.hex: 0x0200000000000000000000000000000000000000000000000000000000000000
 
@@ -33,12 +33,14 @@
 -> value: abc
 -> value.hex: 616263
 
-> deliver_tx "def=xyz"
+> finalize_block "def=xyz" "ghi=123"
+-> code: OK
+> finalize_block "def=xyz" "ghi=123"
 -> code: OK
 
-> commit 
+> commit
 -> code: OK
--> data.hex: 0x0400000000000000000000000000000000000000000000000000000000000000
+-> data.hex: 0x0600000000000000000000000000000000000000000000000000000000000000
 
 > query "def"
 -> code: OK

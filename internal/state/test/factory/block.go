@@ -1,8 +1,12 @@
 package factory
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -10,8 +14,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
-	blocks := make([]*types.Block, 0)
+func MakeBlocks(ctx context.Context, t *testing.T, n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
+	t.Helper()
+
+	blocks := make([]*types.Block, n)
 
 	var (
 		prevBlock     *types.Block
@@ -22,10 +28,7 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 	for i := 0; i < n; i++ {
 		height := int64(i + 1)
 
-		block, parts, err := makeBlockAndPartSet(*state, prevBlock, prevBlockMeta, privVal, height)
-		if err != nil {
-			return nil, fmt.Errorf("error making blocks %v", err)
-		}
+		block, parts := makeBlockAndPartSet(ctx, t, *state, prevBlock, prevBlockMeta, privVal, height)
 		blocks = append(blocks, block)
 
 		prevBlock = block
@@ -39,35 +42,40 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 		state.LastBlockHeight = height
 	}
 
-	return blocks, nil
+	return blocks
 }
 
 func MakeBlock(state sm.State, height int64, c *types.Commit, coreChainLock *types.CoreChainLock, proposedAppVersion uint64) (*types.Block, error) {
-
 	if state.LastBlockHeight != (height - 1) {
-		return nil, fmt.Errorf("requested height %d should be 1 more than last block height %d",
-			height, state.LastBlockHeight)
+		return nil, fmt.Errorf("requested height %d should be 1 more than last block height %d", height, state.LastBlockHeight)
 	}
-
-	block, _ := state.MakeBlock(
+	return state.MakeBlock(
 		height,
 		coreChainLock,
-		factory.MakeTenTxs(state.LastBlockHeight),
+		factory.MakeNTxs(state.LastBlockHeight, 10),
 		c,
 		nil,
 		state.Validators.GetProposer().ProTxHash,
 		proposedAppVersion,
-	)
-	return block, nil
+	), nil
 }
 
-func makeBlockAndPartSet(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet, error) {
+func makeBlockAndPartSet(
+	ctx context.Context,
+	t *testing.T,
+	state sm.State,
+	lastBlock *types.Block,
+	lastBlockMeta *types.BlockMeta,
+	privVal types.PrivValidator,
+	height int64,
+) (*types.Block, *types.PartSet) {
+	t.Helper()
 
 	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, state.StateID(), state.LastValidators.QuorumHash,
 		nil, nil)
-	if height > state.InitialHeight {
+	if height > 1 {
 		vote, err := factory.MakeVote(
+			ctx,
 			privVal,
 			state.Validators,
 			lastBlock.Header.ChainID,
@@ -75,12 +83,14 @@ func makeBlockAndPartSet(state sm.State, lastBlock *types.Block, lastBlockMeta *
 			lastBlockMeta.BlockID,
 			state.LastStateID,
 		)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error when creating vote at height %d: %s", height, err)
-		}
+		require.NoError(t, err)
 		lastCommit = types.NewCommit(vote.Height, vote.Round,
 			lastBlockMeta.BlockID, state.StateID(), state.LastValidators.QuorumHash, vote.BlockSignature, vote.StateSignature)
 	}
-	block, partSet := state.MakeBlock(height, nil, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().ProTxHash, 0)
-	return block, partSet, nil
+
+	block := state.MakeBlock(height, nil, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().ProTxHash, 0)
+	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(t, err)
+
+	return block, partSet
 }

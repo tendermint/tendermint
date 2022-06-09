@@ -1,20 +1,15 @@
 package bytes
 
 import (
-	"bytes"
+	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"strings"
 )
 
-// HexBytes enables HEX-encoding for json/encoding.
+// HexBytes is a wrapper around []byte that encodes data as hexadecimal strings
+// for use in JSON.
 type HexBytes []byte
-
-var (
-	_ json.Marshaler   = HexBytes{}
-	_ json.Unmarshaler = &HexBytes{}
-)
 
 // Marshal needed for protobuf compatibility
 func (bz HexBytes) Marshal() ([]byte, error) {
@@ -27,41 +22,30 @@ func (bz *HexBytes) Unmarshal(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaler interface. The encoding is a JSON
-// quoted string of hexadecimal digits.
-func (bz HexBytes) MarshalJSON() ([]byte, error) {
-	size := hex.EncodedLen(len(bz)) + 2 // +2 for quotation marks
-	buf := make([]byte, size)
-	hex.Encode(buf[1:], []byte(bz))
-	buf[0] = '"'
-	buf[size-1] = '"'
-
-	// Ensure letter digits are capitalized.
-	for i := 1; i < size-1; i++ {
-		if buf[i] >= 'a' && buf[i] <= 'f' {
-			buf[i] = 'A' + (buf[i] - 'a')
-		}
-	}
-	return buf, nil
+// MarshalText encodes a HexBytes value as hexadecimal digits.
+// This method is used by json.Marshal.
+func (bz HexBytes) MarshalText() ([]byte, error) {
+	enc := hex.EncodeToString([]byte(bz))
+	return []byte(strings.ToUpper(enc)), nil
 }
 
-// UnmarshalJSON implements the json.Umarshaler interface.
-func (bz *HexBytes) UnmarshalJSON(data []byte) error {
-	if bytes.Equal(data, []byte("null")) {
+// UnmarshalText handles decoding of HexBytes from JSON strings.
+// This method is used by json.Unmarshal.
+// It allows decoding of both hex and base64-encoded byte arrays.
+func (bz *HexBytes) UnmarshalText(data []byte) error {
+	input := string(data)
+	if input == "" || input == "null" {
 		return nil
 	}
-
-	if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-		return fmt.Errorf("invalid hex string: %s", data)
-	}
-
-	bz2, err := hex.DecodeString(string(data[1 : len(data)-1]))
+	dec, err := hex.DecodeString(input)
 	if err != nil {
-		return err
+		dec, err = base64.StdEncoding.DecodeString(input)
+
+		if err != nil {
+			return err
+		}
 	}
-
-	*bz = bz2
-
+	*bz = HexBytes(dec)
 	return nil
 }
 

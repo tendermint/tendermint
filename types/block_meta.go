@@ -10,11 +10,13 @@ import (
 
 // BlockMeta contains meta information.
 type BlockMeta struct {
-	BlockID          BlockID `json:"block_id"`
-	BlockSize        int     `json:"block_size"`
-	Header           Header  `json:"header"`
-	HasCoreChainLock bool    `json:"has_core_chain_lock"`
-	NumTxs           int     `json:"num_txs"`
+	BlockID   BlockID `json:"block_id"`
+	BlockSize int     `json:"block_size,string"`
+	Header    Header  `json:"header"`
+	NumTxs    int     `json:"num_txs,string"`
+
+	// dash fields
+	HasCoreChainLock bool `json:"has_core_chain_lock"`
 }
 
 // NewBlockMeta returns a new BlockMeta.

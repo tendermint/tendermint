@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/tendermint/tendermint/internal/state/mocks"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/rpc/coretypes"
-	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 func TestBlockchainInfo(t *testing.T) {
@@ -71,13 +71,13 @@ func TestBlockchainInfo(t *testing.T) {
 
 func TestBlockResults(t *testing.T) {
 	results := &tmstate.ABCIResponses{
-		DeliverTxs: []*abci.ResponseDeliverTx{
-			{Code: 0, Data: []byte{0x01}, Log: "ok", GasUsed: 10},
-			{Code: 0, Data: []byte{0x02}, Log: "ok", GasUsed: 5},
-			{Code: 1, Log: "not ok", GasUsed: 0},
+		FinalizeBlock: &abci.ResponseFinalizeBlock{
+			TxResults: []*abci.ExecTxResult{
+				{Code: 0, Data: []byte{0x01}, Log: "ok", GasUsed: 10},
+				{Code: 0, Data: []byte{0x02}, Log: "ok", GasUsed: 5},
+				{Code: 1, Log: "not ok", GasUsed: 0},
+			},
 		},
-		EndBlock:   &abci.ResponseEndBlock{},
-		BeginBlock: &abci.ResponseBeginBlock{},
 	}
 
 	env := &Environment{}
@@ -99,17 +99,19 @@ func TestBlockResults(t *testing.T) {
 		{101, true, nil},
 		{100, false, &coretypes.ResultBlockResults{
 			Height:                100,
-			TxsResults:            results.DeliverTxs,
+			TxsResults:            results.FinalizeBlock.TxResults,
 			TotalGasUsed:          15,
-			BeginBlockEvents:      results.BeginBlock.Events,
-			EndBlockEvents:        results.EndBlock.Events,
-			ValidatorSetUpdate:    results.EndBlock.ValidatorSetUpdate,
-			ConsensusParamUpdates: consensusParamsPtrFromProtoPtr(results.EndBlock.ConsensusParamUpdates),
+			FinalizeBlockEvents:   results.FinalizeBlock.Events,
+			ValidatorSetUpdate:    results.FinalizeBlock.ValidatorSetUpdate,
+			ConsensusParamUpdates: consensusParamsPtrFromProtoPtr(results.FinalizeBlock.ConsensusParamUpdates),
 		}},
 	}
 
+	ctx := context.Background()
 	for _, tc := range testCases {
-		res, err := env.BlockResults(&rpctypes.Context{}, &tc.height)
+		res, err := env.BlockResults(ctx, &coretypes.RequestBlockInfo{
+			Height: (*coretypes.Int64)(&tc.height),
+		})
 		if tc.wantErr {
 			assert.Error(t, err)
 		} else {

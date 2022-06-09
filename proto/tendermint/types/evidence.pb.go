@@ -99,7 +99,8 @@ func (*Evidence) XXX_OneofWrappers() []interface{} {
 	}
 }
 
-// DuplicateVoteEvidence contains evidence of a validator signed two conflicting votes.
+// DuplicateVoteEvidence contains evidence of a validator signed two conflicting
+// votes.
 type DuplicateVoteEvidence struct {
 	VoteA            *Vote     `protobuf:"bytes,1,opt,name=vote_a,json=voteA,proto3" json:"vote_a,omitempty"`
 	VoteB            *Vote     `protobuf:"bytes,2,opt,name=vote_b,json=voteB,proto3" json:"vote_b,omitempty"`

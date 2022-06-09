@@ -8,18 +8,18 @@ package flowrate
 
 import (
 	"math"
+	"sync"
 	"time"
-
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 )
 
 // Monitor monitors and limits the transfer rate of a data stream.
 type Monitor struct {
-	mu      tmsync.Mutex  // Mutex guarding access to all internal fields
-	active  bool          // Flag indicating an active transfer
-	start   time.Duration // Transfer start time (clock() value)
-	bytes   int64         // Total number of bytes transferred
-	samples int64         // Total number of samples taken
+	mu       sync.Mutex    // Mutex guarding access to all internal fields
+	active   bool          // Flag indicating an active transfer
+	start    time.Duration // Transfer start time (clock() value)
+	pStartAt time.Time     // time of process start
+	bytes    int64         // Total number of bytes transferred
+	samples  int64         // Total number of samples taken
 
 	rSample float64 // Most recent transfer rate sample (bytes per second)
 	rEMA    float64 // Exponential moving average of rSample
@@ -46,21 +46,22 @@ type Monitor struct {
 //
 // The default values for sampleRate and windowSize (if <= 0) are 100ms and 1s,
 // respectively.
-func New(sampleRate, windowSize time.Duration) *Monitor {
+func New(startAt time.Time, sampleRate, windowSize time.Duration) *Monitor {
 	if sampleRate = clockRound(sampleRate); sampleRate <= 0 {
 		sampleRate = 5 * clockRate
 	}
 	if windowSize <= 0 {
 		windowSize = 1 * time.Second
 	}
-	now := clock()
+	now := clock(startAt)
 	return &Monitor{
-		active:  true,
-		start:   now,
-		rWindow: windowSize.Seconds(),
-		sLast:   now,
-		sRate:   sampleRate,
-		tLast:   now,
+		active:   true,
+		start:    now,
+		rWindow:  windowSize.Seconds(),
+		sLast:    now,
+		sRate:    sampleRate,
+		tLast:    now,
+		pStartAt: startAt,
 	}
 }
 
@@ -130,7 +131,7 @@ func (m *Monitor) Status() Status {
 	now := m.update(0)
 	s := Status{
 		Active:   m.active,
-		Start:    clockToTime(m.start),
+		Start:    m.pStartAt.Add(m.start),
 		Duration: m.sLast - m.start,
 		Idle:     now - m.tLast,
 		Bytes:    m.bytes,
@@ -223,7 +224,7 @@ func (m *Monitor) update(n int) (now time.Duration) {
 	if !m.active {
 		return
 	}
-	if now = clock(); n > 0 {
+	if now = clock(m.pStartAt); n > 0 {
 		m.tLast = now
 	}
 	m.sBytes += int64(n)
@@ -273,4 +274,16 @@ func (m *Monitor) waitNextSample(now time.Duration) time.Duration {
 		now = m.update(0)
 	}
 	return now
+}
+
+// CurrentTransferRate returns the current transfer rate
+func (m *Monitor) CurrentTransferRate() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.sLast > m.start && m.active {
+		return round(m.rEMA)
+	}
+
+	return 0
 }

@@ -8,6 +8,7 @@ import (
 )
 
 func MakeVote(
+	ctx context.Context,
 	val types.PrivValidator,
 	valSet *types.ValidatorSet,
 	chainID string,
@@ -18,10 +19,11 @@ func MakeVote(
 	blockID types.BlockID,
 	stateID types.StateID,
 ) (*types.Vote, error) {
-	proTxHash, err := val.GetProTxHash(context.Background())
+	proTxHash, err := val.GetProTxHash(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	v := &types.Vote{
 		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     valIndex,
@@ -33,12 +35,12 @@ func MakeVote(
 
 	vpb := v.ToProto()
 
-	if err := val.SignVote(context.Background(), chainID, valSet.QuorumType, valSet.QuorumHash, vpb, stateID, nil); err != nil {
+	if err := val.SignVote(ctx, chainID, valSet.QuorumType, valSet.QuorumHash, vpb, stateID, nil); err != nil {
 		return nil, err
 	}
 
 	v.BlockSignature = vpb.BlockSignature
 	v.StateSignature = vpb.StateSignature
-
+	v.ExtensionSignature = vpb.ExtensionSignature
 	return v, nil
 }

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/encoding"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -20,6 +20,7 @@ import (
 // SignerClient implements PrivValidator.
 // Handles remote validator connections that provide signing services
 type SignerClient struct {
+	logger   log.Logger
 	endpoint *SignerListenerEndpoint
 	chainID  string
 }
@@ -28,19 +29,28 @@ var _ types.PrivValidator = (*SignerClient)(nil)
 
 // NewSignerClient returns an instance of SignerClient.
 // it will start the endpoint (if not already started)
-func NewSignerClient(endpoint *SignerListenerEndpoint, chainID string) (*SignerClient, error) {
+func NewSignerClient(ctx context.Context, endpoint *SignerListenerEndpoint, chainID string) (*SignerClient, error) {
 	if !endpoint.IsRunning() {
-		if err := endpoint.Start(); err != nil {
+		if err := endpoint.Start(ctx); err != nil {
 			return nil, fmt.Errorf("failed to start listener endpoint: %w", err)
 		}
 	}
 
-	return &SignerClient{endpoint: endpoint, chainID: chainID}, nil
+	return &SignerClient{
+		logger:   endpoint.logger,
+		endpoint: endpoint,
+		chainID:  chainID,
+	}, nil
 }
 
 // Close closes the underlying connection
 func (sc *SignerClient) Close() error {
-	return sc.endpoint.Close()
+	sc.endpoint.Stop()
+	err := sc.endpoint.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // IsConnected indicates with the signer is connected to a remote signing service
@@ -49,18 +59,18 @@ func (sc *SignerClient) IsConnected() bool {
 }
 
 // WaitForConnection waits maxWait for a connection or returns a timeout error
-func (sc *SignerClient) WaitForConnection(maxWait time.Duration) error {
-	return sc.endpoint.WaitForConnection(maxWait)
+func (sc *SignerClient) WaitForConnection(ctx context.Context, maxWait time.Duration) error {
+	return sc.endpoint.WaitForConnection(ctx, maxWait)
 }
 
 //--------------------------------------------------------
 // Implement PrivValidator
 
 // Ping sends a ping request to the remote signer
-func (sc *SignerClient) Ping() error {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.PingRequest{}))
+func (sc *SignerClient) Ping(ctx context.Context) error {
+	response, err := sc.endpoint.SendRequest(ctx, mustWrapMsg(&privvalproto.PingRequest{}))
 	if err != nil {
-		sc.endpoint.Logger.Error("SignerClient::Ping", "err", err)
+		sc.logger.Error("SignerClient::Ping", "err", err)
 		return nil
 	}
 
@@ -88,7 +98,7 @@ func (sc *SignerClient) ExtractIntoValidator(ctx context.Context, quorumHash cry
 // GetPubKey retrieves a public key from a remote signer
 // returns an error if client is not able to provide the key
 func (sc *SignerClient) GetPubKey(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
-	response, err := sc.endpoint.SendRequest(
+	response, err := sc.endpoint.SendRequest(ctx,
 		mustWrapMsg(&privvalproto.PubKeyRequest{ChainId: sc.chainID, QuorumHash: quorumHash}),
 	)
 	if err != nil {
@@ -112,7 +122,7 @@ func (sc *SignerClient) GetPubKey(ctx context.Context, quorumHash crypto.QuorumH
 }
 
 func (sc *SignerClient) GetProTxHash(ctx context.Context) (crypto.ProTxHash, error) {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&privvalproto.ProTxHashRequest{ChainId: sc.chainID}))
+	response, err := sc.endpoint.SendRequest(ctx, mustWrapMsg(&privvalproto.ProTxHashRequest{ChainId: sc.chainID}))
 	if err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
@@ -141,7 +151,7 @@ func (sc *SignerClient) GetThresholdPublicKey(ctx context.Context, quorumHash cr
 		return nil, fmt.Errorf("quorum hash must be 32 bytes long if requesting public key from dash core")
 	}
 
-	response, err := sc.endpoint.SendRequest(
+	response, err := sc.endpoint.SendRequest(ctx,
 		mustWrapMsg(&privvalproto.ThresholdPubKeyRequest{ChainId: sc.chainID, QuorumHash: quorumHash}),
 	)
 	if err != nil {
@@ -169,8 +179,14 @@ func (sc *SignerClient) GetHeight(ctx context.Context, quorumHash crypto.QuorumH
 
 // SignVote requests a remote signer to sign a vote
 func (sc *SignerClient) SignVote(
-	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-	vote *tmproto.Vote, stateID types.StateID, logger log.Logger) error {
+	ctx context.Context,
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	vote *tmproto.Vote,
+	stateID types.StateID,
+	logger log.Logger,
+) error {
 	// fmt.Printf("--> sending request to sign vote (%d/%d) %v - %v", vote.Height, vote.Round, vote.BlockID, vote)
 	stateIDProto := stateID.ToProto()
 
@@ -182,7 +198,7 @@ func (sc *SignerClient) SignVote(
 		StateId:    &stateIDProto,
 	}
 
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(&voteRequest))
+	response, err := sc.endpoint.SendRequest(ctx, mustWrapMsg(&voteRequest))
 	if err != nil {
 		return err
 	}
@@ -202,9 +218,13 @@ func (sc *SignerClient) SignVote(
 
 // SignProposal requests a remote signer to sign a proposal
 func (sc *SignerClient) SignProposal(
-	ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, proposal *tmproto.Proposal,
-) ([]byte, error) {
-	response, err := sc.endpoint.SendRequest(mustWrapMsg(
+	ctx context.Context,
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	proposal *tmproto.Proposal,
+) (tmbytes.HexBytes, error) {
+	response, err := sc.endpoint.SendRequest(ctx, mustWrapMsg(
 		&privvalproto.SignProposalRequest{Proposal: proposal, ChainId: chainID,
 			QuorumType: int32(quorumType), QuorumHash: quorumHash},
 	))

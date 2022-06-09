@@ -15,8 +15,8 @@ type AppConnSnapshot struct {
 	mock.Mock
 }
 
-// ApplySnapshotChunkSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnSnapshot) ApplySnapshotChunkSync(_a0 context.Context, _a1 types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+// ApplySnapshotChunk provides a mock function with given fields: _a0, _a1
+func (_m *AppConnSnapshot) ApplySnapshotChunk(_a0 context.Context, _a1 types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseApplySnapshotChunk
@@ -52,8 +52,8 @@ func (_m *AppConnSnapshot) Error() error {
 	return r0
 }
 
-// ListSnapshotsSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnSnapshot) ListSnapshotsSync(_a0 context.Context, _a1 types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
+// ListSnapshots provides a mock function with given fields: _a0, _a1
+func (_m *AppConnSnapshot) ListSnapshots(_a0 context.Context, _a1 types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseListSnapshots
@@ -75,8 +75,8 @@ func (_m *AppConnSnapshot) ListSnapshotsSync(_a0 context.Context, _a1 types.Requ
 	return r0, r1
 }
 
-// LoadSnapshotChunkSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnSnapshot) LoadSnapshotChunkSync(_a0 context.Context, _a1 types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+// LoadSnapshotChunk provides a mock function with given fields: _a0, _a1
+func (_m *AppConnSnapshot) LoadSnapshotChunk(_a0 context.Context, _a1 types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseLoadSnapshotChunk
@@ -98,8 +98,8 @@ func (_m *AppConnSnapshot) LoadSnapshotChunkSync(_a0 context.Context, _a1 types.
 	return r0, r1
 }
 
-// OfferSnapshotSync provides a mock function with given fields: _a0, _a1
-func (_m *AppConnSnapshot) OfferSnapshotSync(_a0 context.Context, _a1 types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
+// OfferSnapshot provides a mock function with given fields: _a0, _a1
+func (_m *AppConnSnapshot) OfferSnapshot(_a0 context.Context, _a1 types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseOfferSnapshot

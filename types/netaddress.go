@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -60,58 +59,6 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 		IP:   ip,
 		Port: port,
 	}
-}
-
-// NewNetAddressString returns a new NetAddress using the provided address in
-// the form of "ID@IP:Port".
-// Also resolves the host if host is not an IP.
-// Errors are of type ErrNetAddressXxx where Xxx is in (NoID, Invalid, Lookup)
-func NewNetAddressString(addr string) (*NetAddress, error) {
-	addrWithoutProtocol := removeProtocolIfDefined(addr)
-	spl := strings.Split(addrWithoutProtocol, "@")
-	if len(spl) != 2 {
-		return nil, ErrNetAddressNoID{addr}
-	}
-
-	id, err := NewNodeID(spl[0])
-	if err != nil {
-		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-	}
-
-	if err := id.Validate(); err != nil {
-		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-	}
-
-	addrWithoutProtocol = spl[1]
-
-	// get host and port
-	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
-	if err != nil {
-		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
-	}
-	if len(host) == 0 {
-		return nil, ErrNetAddressInvalid{
-			addrWithoutProtocol,
-			errors.New("host is empty")}
-	}
-
-	ip := net.ParseIP(host)
-	if ip == nil {
-		ips, err := net.LookupIP(host)
-		if err != nil {
-			return nil, ErrNetAddressLookup{host, err}
-		}
-		ip = ips[0]
-	}
-
-	port, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		return nil, ErrNetAddressInvalid{portStr, err}
-	}
-
-	na := NewNetAddressIPPort(ip, uint16(port))
-	na.ID = id
-	return na, nil
 }
 
 // Equals reports whether na and other are the same addresses,
@@ -312,14 +259,6 @@ func (na *NetAddress) RFC4862() bool     { return rfc4862.Contains(na.IP) }
 func (na *NetAddress) RFC6052() bool     { return rfc6052.Contains(na.IP) }
 func (na *NetAddress) RFC6145() bool     { return rfc6145.Contains(na.IP) }
 func (na *NetAddress) OnionCatTor() bool { return onionCatNet.Contains(na.IP) }
-
-func removeProtocolIfDefined(addr string) string {
-	if strings.Contains(addr, "://") {
-		return strings.Split(addr, "://")[1]
-	}
-	return addr
-
-}
 
 // ipNet returns a net.IPNet struct given the passed IP address string, number
 // of one bits to include at the start of the mask, and the total number of bits

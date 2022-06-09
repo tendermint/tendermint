@@ -5,8 +5,7 @@ import (
 )
 
 func NewNopLogger() Logger {
-	return defaultLogger{
+	return &defaultLogger{
 		Logger: zerolog.Nop(),
-		trace:  false,
 	}
 }

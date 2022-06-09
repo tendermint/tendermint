@@ -57,7 +57,7 @@ echo "... testing query with /abci_query 2"
 
 # we should be able to look up the key
 RESPONSE=`curl -s "127.0.0.1:26657/abci_query?path=\"\"&data=$(toHex $KEY)&prove=false"`
-RESPONSE=`echo $RESPONSE | jq .result.response.log`
+RESPONSE=`echo $RESPONSE | jq .response.log`
 
 set +e
 A=`echo $RESPONSE | grep 'exists'`
@@ -70,7 +70,7 @@ set -e
 
 # we should not be able to look up the value
 RESPONSE=`curl -s "127.0.0.1:26657/abci_query?path=\"\"&data=$(toHex $VALUE)&prove=false"`
-RESPONSE=`echo $RESPONSE | jq .result.response.log`
+RESPONSE=`echo $RESPONSE | jq .response.log`
 set +e
 A=`echo $RESPONSE | grep 'exists'`
 if [[ $? == 0 ]]; then

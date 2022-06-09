@@ -3,8 +3,8 @@ package mock
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"sync"
 
-	"github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/types"
 )

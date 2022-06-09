@@ -8,57 +8,62 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/spf13/cobra"
-	cfg "github.com/tendermint/tendermint/config"
+
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
 )
 
-// InitFilesCmd initializes a fresh Tendermint Core instance.
-var InitFilesCmd = &cobra.Command{
-	Use:       "init [full|validator|seed|single]",
-	Short:     "Initializes a Tenderdash node",
-	ValidArgs: []string{"full", "validator", "seed", "single"},
-	// We allow for zero args so we can throw a more informative error
-	Args: cobra.MaximumNArgs(1),
-	RunE: initFiles,
-}
-
-var (
+type nodeConfig struct {
+	*config.Config
 	quorumType             int
 	coreChainLockedHeight  uint32
 	initChainInitialHeight int64
 	appHash                []byte
 	proTxHash              []byte
-)
-
-func AddInitFlags(cmd *cobra.Command) {
-	cmd.Flags().IntVar(&quorumType, "quorumType", 0, "Quorum Type")
-	cmd.Flags().Uint32Var(&coreChainLockedHeight, "coreChainLockedHeight", 1, "Initial Core Chain Locked Height")
-	cmd.Flags().Int64Var(&initChainInitialHeight, "initialHeight", 0, "Initial Height")
-	cmd.Flags().BytesHexVar(&proTxHash, "proTxHash", []byte(nil), "Node pro tx hash")
-	cmd.Flags().BytesHexVar(&appHash, "appHash", []byte(nil), "App hash")
 }
 
-func initFiles(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return errors.New("must specify a node type: tendermint init [validator|full|seed|single]")
+// MakeInitFilesCommand returns the command to initialize a fresh Tendermint Core instance.
+func MakeInitFilesCommand(conf *config.Config, logger log.Logger) *cobra.Command {
+	nodeConf := nodeConfig{Config: conf}
+
+	cmd := &cobra.Command{
+		Use:       "init [full|validator|seed]",
+		Short:     "Initializes a Tenderdash node",
+		ValidArgs: []string{"full", "validator", "seed"},
+		// We allow for zero args so we can throw a more informative error
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return errors.New("must specify a node type: tendermint init [validator|full|seed]")
+			}
+			nodeConf.Mode = args[0]
+			return initFilesWithConfig(cmd.Context(), nodeConf, logger)
+		},
 	}
-	config.Mode = args[0]
-	return initFilesWithConfig(config)
+
+	cmd.Flags().IntVar(&nodeConf.quorumType, "quorumType", 0, "Quorum Type")
+	cmd.Flags().Uint32Var(&nodeConf.coreChainLockedHeight, "coreChainLockedHeight", 1, "Initial Core Chain Locked Height")
+	cmd.Flags().Int64Var(&nodeConf.initChainInitialHeight, "initialHeight", 0, "Initial Height")
+	cmd.Flags().BytesHexVar(&nodeConf.proTxHash, "proTxHash", []byte(nil), "Node pro tx hash")
+	cmd.Flags().BytesHexVar(&nodeConf.appHash, "appHash", []byte(nil), "App hash")
+
+	return cmd
 }
 
-func initFilesWithConfig(config *cfg.Config) error {
+func initFilesWithConfig(ctx context.Context, conf nodeConfig, logger log.Logger) error {
 	var (
 		pv  *privval.FilePV
 		err error
 	)
 
-	if config.Mode == cfg.ModeValidator {
+	if conf.Mode == config.ModeValidator {
 		// private validator
-		privValKeyFile := config.PrivValidator.KeyFile()
-		privValStateFile := config.PrivValidator.StateFile()
+		privValKeyFile := conf.PrivValidator.KeyFile()
+		privValStateFile := conf.PrivValidator.StateFile()
 		if tmos.FileExists(privValKeyFile) {
 			pv, err = privval.LoadFilePV(privValKeyFile, privValStateFile)
 			if err != nil {
@@ -72,13 +77,15 @@ func initFilesWithConfig(config *cfg.Config) error {
 			if err != nil {
 				return err
 			}
-			pv.Save()
+			if err := pv.Save(); err != nil {
+				return err
+			}
 			logger.Info("Generated private validator", "keyFile", privValKeyFile,
 				"stateFile", privValStateFile)
 		}
 	}
 
-	nodeKeyFile := config.NodeKeyFile()
+	nodeKeyFile := conf.NodeKeyFile()
 	if tmos.FileExists(nodeKeyFile) {
 		logger.Info("Found node key", "path", nodeKeyFile)
 	} else {
@@ -89,7 +96,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 	}
 
 	// genesis file
-	genFile := config.GenesisFile()
+	genFile := conf.GenesisFile()
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
@@ -98,13 +105,13 @@ func initFilesWithConfig(config *cfg.Config) error {
 			ChainID:                      fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
 			GenesisTime:                  time.Now(),
 			ConsensusParams:              types.DefaultConsensusParams(),
-			QuorumType:                   btcjson.LLMQType(quorumType),
-			InitialCoreChainLockedHeight: coreChainLockedHeight,
-			InitialHeight:                initChainInitialHeight,
-			AppHash:                      appHash,
+			QuorumType:                   btcjson.LLMQType(conf.quorumType),
+			InitialCoreChainLockedHeight: conf.coreChainLockedHeight,
+			InitialHeight:                conf.initChainInitialHeight,
+			AppHash:                      conf.appHash,
 		}
 
-		ctx, cancel := context.WithTimeout(context.TODO(), ctxTimeout)
+		ctx, cancel := context.WithTimeout(ctx, ctxTimeout)
 		defer cancel()
 
 		// if this is a validator we add it to genesis
@@ -139,10 +146,10 @@ func initFilesWithConfig(config *cfg.Config) error {
 	}
 
 	// write config file
-	if err := cfg.WriteConfigFile(config.RootDir, config); err != nil {
+	if err := config.WriteConfigFile(conf.RootDir, conf.Config); err != nil {
 		return err
 	}
-	logger.Info("Generated config", "mode", config.Mode)
+	logger.Info("Generated config", "mode", conf.Mode)
 
 	return nil
 }

@@ -5,9 +5,9 @@ option go_package = "github.com/tendermint/tendermint/proto/tendermint/version";
 
 import "gogoproto/gogo.proto";
 
-// Consensus captures the consensus rules for processing a block in the blockchain,
-// including all blockchain data structures and the rules of the application's
-// state transition machine.
+// Consensus captures the consensus rules for processing a block in the
+// blockchain, including all blockchain data structures and the rules of the
+// application's state transition machine.
 message Consensus {
   option (gogoproto.equal) = true;
 

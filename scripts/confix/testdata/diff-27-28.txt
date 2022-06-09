@@ -1,0 +1,3 @@
+-M priv-validator-file
++M priv-validator-key-file
++M priv-validator-state-file

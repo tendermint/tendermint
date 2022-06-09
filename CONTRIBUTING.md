@@ -105,11 +105,33 @@ specify exactly the dependency you want to update, eg.
 
 ## Protobuf
 
-We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
+We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along
+with [`gogoproto`](https://github.com/gogo/protobuf) to generate code for use
+across Tendermint Core.
 
-For linting, checking breaking changes and generating proto stubs, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+To generate proto stubs, lint, and check protos for breaking changes, you will
+need to install [buf](https://buf.build/) and `gogoproto`. Then, from the root
+of the repository, run:
 
-We use [Docker](https://www.docker.com/) to generate the protobuf stubs. To generate the stubs yourself, make sure docker is running then run `make proto-gen`.
+```bash
+# Lint all of the .proto files in proto/tendermint
+make proto-lint
+
+# Check if any of your local changes (prior to committing to the Git repository)
+# are breaking
+make proto-check-breaking
+
+# Generate Go code from the .proto files in proto/tendermint
+make proto-gen
+```
+
+To automatically format `.proto` files, you will need
+[`clang-format`](https://clang.llvm.org/docs/ClangFormat.html) installed. Once
+installed, you can run:
+
+```bash
+make proto-format
+```
 
 ### Visual Studio Code
 
@@ -226,150 +248,6 @@ Fixes #nnnn
 ```
 
 Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
-
-### Release procedure
-
-#### A note about backport branches
-Tendermint's `master` branch is under active development.
-Releases are specified using tags and are built from long-lived "backport" branches.
-Each release "line" (e.g. 0.34 or 0.33) has its own long-lived backport branch,
-and the backport branches have names like `v0.34.x` or `v0.33.x`
-(literally, `x`; it is not a placeholder in this case).
-
-As non-breaking changes land on `master`, they should also be backported (cherry-picked)
-to these backport branches.
-
-We use Mergify's [backport feature](https://mergify.io/features/backports) to automatically backport
-to the needed branch. There should be a label for any backport branch that you'll be targeting.
-To notify the bot to backport a pull request, mark the pull request with
-the label `S:backport-to-<backport_branch>`.
-Once the original pull request is merged, the bot will try to cherry-pick the pull request
-to the backport branch. If the bot fails to backport, it will open a pull request.
-The author of the original pull request is responsible for solving the conflicts and
-merging the pull request.
-
-#### Creating a backport branch
-
-If this is the first release candidate for a major release, you get to have the honor of creating
-the backport branch!
-
-Note that, after creating the backport branch, you'll also need to update the tags on `master`
-so that `go mod` is able to order the branches correctly. You should tag `master` with a "dev" tag
-that is "greater than" the backport branches tags. See #6072 for more context.
-
-In the following example, we'll assume that we're making a backport branch for
-the 0.35.x line.
-
-1. Start on `master`
-2. Create the backport branch:
-   `git checkout -b v0.35.x`
-3. Go back to master and tag it as the dev branch for the _next_ major release and push it back up:
-   `git tag -a v0.36.0-dev; git push v0.36.0-dev`
-4. Create a new workflow to run the e2e nightlies for this backport branch.
-   (See https://github.com/tendermint/tendermint/blob/master/.github/workflows/e2e-nightly-34x.yml
-   for an example.)
-
-#### Release candidates
-
-Before creating an official release, especially a major release, we may want to create a
-release candidate (RC) for our friends and partners to test out. We use git tags to
-create RCs, and we build them off of backport branches.
-
-Tags for RCs should follow the "standard" release naming conventions, with `-rcX` at the end
-(for example, `v0.35.0-rc0`).
-
-(Note that branches and tags _cannot_ have the same names, so it's important that these branches
-have distinct names from the tags/release names.)
-
-If this is the first RC for a major release, you'll have to make a new backport branch (see above).
-Otherwise:
-
-1. Start from the backport branch (e.g. `v0.35.x`).
-1. Run the integration tests and the e2e nightlies
-   (which can be triggered from the Github UI;
-   e.g., https://github.com/tendermint/tendermint/actions/workflows/e2e-nightly-34x.yml).
-1. Prepare the changelog:
-   - Move the changes included in `CHANGELOG_PENDING.md` into `CHANGELOG.md`.
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
-     all PRs
-   - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
-      or other upgrading flows.
-   - Bump TMVersionDefault version in  `version.go`
-   - Bump P2P and block protocol versions in  `version.go`, if necessary
-   - Bump ABCI protocol version in `version.go`, if necessary
-1. Open a PR with these changes against the backport branch.
-1. Once these changes have landed on the backport branch, be sure to pull them back down locally.
-2. Once you have the changes locally, create the new tag, specifying a name and a tag "message":
-   `git tag -a v0.35.0-rc0 -m "Release Candidate v0.35.0-rc0`
-3. Push the tag back up to origin:
-   `git push origin v0.35.0-rc0`
-   Now the tag should be available on the repo's releases page.
-4. Future RCs will continue to be built off of this branch.
-
-Note that this process should only be used for "true" RCs--
-release candidates that, if successful, will be the next release.
-For more experimental "RCs," create a new, short-lived branch and tag that instead.
-
-#### Major release
-
-This major release process assumes that this release was preceded by release candidates.
-If there were no release candidates, begin by creating a backport branch, as described above.
-
-1. Start on the backport branch (e.g. `v0.35.x`)
-2. Run integration tests and the e2e nightlies.
-3. Prepare the release:
-   - "Squash" changes from the changelog entries for the RCs into a single entry,
-      and add all changes included in `CHANGELOG_PENDING.md`.
-      (Squashing includes both combining all entries, as well as removing or simplifying
-      any intra-RC changes. It may also help to alphabetize the entries by package name.)
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
-     all PRs
-   - Ensure that UPGRADING.md is up-to-date and includes notes on any breaking changes
-      or other upgrading flows.
-   - Bump TMVersionDefault version in  `version.go`
-   - Bump P2P and block protocol versions in  `version.go`, if necessary
-   - Bump ABCI protocol version in `version.go`, if necessary
-4. Open a PR with these changes against the backport branch.
-5. Once these changes are on the backport branch, push a tag with prepared release details.
-   This will trigger the actual release `v0.35.0`.
-   - `git tag -a v0.35.0 -m 'Release v0.35.0'`
-   - `git push origin v0.35.0`
-7. Make sure that `master` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
-8. Add the release to the documentation site generator config (see
-   [DOCS_README.md](./docs/DOCS_README.md) for more details). In summary:
-   - Start on branch `master`.
-   - Add a new line at the bottom of [`docs/versions`](./docs/versions) to
-     ensure the newest release is the default for the landing page.
-   - Add a new entry to `themeConfig.versions` in
-     [`docs/.vuepress/config.js`](./docs/.vuepress/config.js) to include the
-	 release in the dropdown versions menu.
-
-#### Minor release (point releases)
-
-Minor releases are done differently from major releases: They are built off of long-lived backport branches, rather than from master.
-As non-breaking changes land on `master`, they should also be backported (cherry-picked) to these backport branches.
-
-Minor releases don't have release candidates by default, although any tricky changes may merit a release candidate.
-
-To create a minor release:
-
-1. Checkout the long-lived backport branch: `git checkout v0.35.x`
-2. Run integration tests (`make test_integrations`) and the nightlies.
-3. Check out a new branch and prepare the release:
-   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - Reset the `CHANGELOG_PENDING.md`
-   - Bump the ABCI version number, if necessary.
-     (Note that ABCI follows semver, and that ABCI versions are the only versions
-     which can change during minor releases, and only field additions are valid minor changes.)
-4. Open a PR with these changes that will land them back on `v0.35.x`
-5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
-   - `git tag -a v0.35.1 -m 'Release v0.35.1'`
-   - `git push origin v0.35.1`
-6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
-   - Remove all `R:minor` labels from the pull requests that were included in the release.
-   - Do not merge the backport branch into master.
 
 ## Testing
 

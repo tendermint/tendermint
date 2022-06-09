@@ -1,0 +1,23 @@
+name: Check Markdown links
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches: [master]
+
+jobs:
+  markdown-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: technote-space/get-diff-action@v6
+        with:
+          PATTERNS: |
+            **/**.md
+      - uses: creachadair/github-action-markdown-link-check@master
+        with:
+          check-modified-files-only: 'yes'
+          config-file: '.md-link-check.json'
+        if: env.GIT_DIFF

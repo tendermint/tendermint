@@ -17,7 +17,7 @@ The light client protocol verifies headers by retrieving a chain of headers,
 commits and validator sets from a trusted height to the target height, verifying
 the signatures of each of these intermediary signed headers till it reaches the
 target height. From there, all the application state is verifiable with
-[merkle proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
+[merkle proofs](https://github.com/tendermint/tendermint/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
 
 ## Properties
 
@@ -38,7 +38,7 @@ a provider and a set of witnesses. This sets the trust period: the period that
 full nodes should be accountable for faulty behavior and a trust level: the
 fraction of validators in a validator set with which we trust that at least one
 is correct. As Tendermint consensus can withstand 1/3 byzantine faults, this is
-the default trust level, however, for greater security you can increase it (max:  
+the default trust level, however, for greater security you can increase it (max:
 1).
 
 Similar to a full node, light clients can also be subject to byzantine attacks.

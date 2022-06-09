@@ -5,19 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	mrand "math/rand"
+	"math/rand"
 	"regexp"
 	"strings"
+	"sync"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	tmmath "github.com/tendermint/tendermint/libs/math"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
 // BitArray is a thread-safe implementation of a bit array.
 type BitArray struct {
-	mtx   tmsync.RWMutex
+	mtx   sync.RWMutex
 	Bits  int      `json:"bits"`  // NOTE: persisted via reflect, must be exported
 	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
 }
@@ -25,14 +24,24 @@ type BitArray struct {
 // NewBitArray returns a new bit array.
 // It returns nil if the number of bits is zero.
 func NewBitArray(bits int) *BitArray {
-	// Reseed non-deterministically.
-	tmrand.Reseed()
 	if bits <= 0 {
 		return nil
 	}
-	return &BitArray{
-		Bits:  bits,
-		Elems: make([]uint64, numElems(bits)),
+	bA := &BitArray{}
+	bA.reset(bits)
+	return bA
+}
+
+// reset changes size of BitArray to `bits` and re-allocates (zeroed) data buffer
+func (bA *BitArray) reset(bits int) {
+	bA.mtx.Lock()
+	defer bA.mtx.Unlock()
+
+	bA.Bits = bits
+	if bits == 0 {
+		bA.Elems = nil
+	} else {
+		bA.Elems = make([]uint64, numElems(bits))
 	}
 }
 
@@ -63,7 +72,7 @@ func (bA *BitArray) getIndex(i int) bool {
 }
 
 // SetIndex sets the bit at index i within the bit array.
-// The behavior is undefined if i >= bA.Bits
+// This method returns false if i is out of range of the BitArray.
 func (bA *BitArray) SetIndex(i int, v bool) bool {
 	if bA == nil {
 		return false
@@ -74,7 +83,7 @@ func (bA *BitArray) SetIndex(i int, v bool) bool {
 }
 
 func (bA *BitArray) setIndex(i int, v bool) bool {
-	if i >= bA.Bits {
+	if i < 0 || i >= bA.Bits {
 		return false
 	}
 	if v {
@@ -253,8 +262,14 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	if len(trueIndices) == 0 { // no bits set to true
 		return 0, false
 	}
+
+	// NOTE: using the default math/rand might result in somewhat
+	// amount of determinism here. It would be possible to use
+	// rand.New(rand.NewSeed(time.Now().Unix())).Intn() to
+	// counteract this possibility if it proved to be material.
+	//
 	// nolint:gosec // G404: Use of weak random number generator
-	return trueIndices[mrand.Intn(len(trueIndices))], true
+	return trueIndices[rand.Intn(len(trueIndices))], true
 }
 
 func (bA *BitArray) getTrueIndices() []int {
@@ -404,8 +419,7 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 	if b == "null" {
 		// This is required e.g. for encoding/json when decoding
 		// into a pointer with pre-allocated BitArray.
-		bA.Bits = 0
-		bA.Elems = nil
+		bA.reset(0)
 		return nil
 	}
 
@@ -415,16 +429,15 @@ func (bA *BitArray) UnmarshalJSON(bz []byte) error {
 		return fmt.Errorf("bitArray in JSON should be a string of format %q but got %s", bitArrayJSONRegexp.String(), b)
 	}
 	bits := match[1]
-
-	// Construct new BitArray and copy over.
 	numBits := len(bits)
-	bA2 := NewBitArray(numBits)
+
+	bA.reset(numBits)
 	for i := 0; i < numBits; i++ {
 		if bits[i] == 'x' {
-			bA2.SetIndex(i, true)
+			bA.SetIndex(i, true)
 		}
 	}
-	*bA = *bA2 //nolint:govet
+
 	return nil
 }
 

@@ -13,8 +13,8 @@ import (
 )
 
 func TestMarshalJSON(t *testing.T) {
-	b, err := json.Marshal(&ResponseDeliverTx{})
-	assert.Nil(t, err)
+	b, err := json.Marshal(&ExecTxResult{Code: 1})
+	assert.NoError(t, err)
 	// include empty fields.
 	assert.True(t, strings.Contains(string(b), "code"))
 	r1 := ResponseCheckTx{
@@ -31,11 +31,11 @@ func TestMarshalJSON(t *testing.T) {
 		},
 	}
 	b, err = json.Marshal(&r1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	var r2 ResponseCheckTx
 	err = json.Unmarshal(b, &r2)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, r1, r2)
 }
 
@@ -49,11 +49,11 @@ func TestWriteReadMessageSimple(t *testing.T) {
 	for _, c := range cases {
 		buf := new(bytes.Buffer)
 		err := WriteMessage(c, buf)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		msg := new(RequestEcho)
 		err = ReadMessage(buf, msg)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		assert.True(t, proto.Equal(c, msg))
 	}
@@ -71,11 +71,11 @@ func TestWriteReadMessage(t *testing.T) {
 	for _, c := range cases {
 		buf := new(bytes.Buffer)
 		err := WriteMessage(c, buf)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		msg := new(tmproto.Header)
 		err = ReadMessage(buf, msg)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		assert.True(t, proto.Equal(c, msg))
 	}
@@ -103,11 +103,11 @@ func TestWriteReadMessage2(t *testing.T) {
 	for _, c := range cases {
 		buf := new(bytes.Buffer)
 		err := WriteMessage(c, buf)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		msg := new(ResponseCheckTx)
 		err = ReadMessage(buf, msg)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 
 		assert.True(t, proto.Equal(c, msg))
 	}

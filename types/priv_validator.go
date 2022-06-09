@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/dashevo/dashd-go/btcjson"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -54,7 +54,7 @@ type PrivValidator interface {
 		vote *tmproto.Vote, stateID StateID, logger log.Logger) error
 	SignProposal(
 		ctx context.Context, chainID string, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
-		proposal *tmproto.Proposal) ([]byte, error)
+		proposal *tmproto.Proposal) (tmbytes.HexBytes, error)
 
 	ExtractIntoValidator(ctx context.Context, quorumHash crypto.QuorumHash) *Validator
 }
@@ -222,6 +222,10 @@ func (pv *MockPV) GetPrivateKey(ctx context.Context, quorumHash crypto.QuorumHas
 	return pv.PrivateKeys[quorumHash.String()].PrivKey, nil
 }
 
+func (pv *MockPV) getPrivateKey(quorumHash crypto.QuorumHash) crypto.PrivKey {
+	return pv.PrivateKeys[quorumHash.String()].PrivKey
+}
+
 // ThresholdPublicKeyForQuorumHash ...
 func (pv *MockPV) ThresholdPublicKeyForQuorumHash(ctx context.Context, quorumHash crypto.QuorumHash) (crypto.PubKey, error) {
 	pv.mtx.RLock()
@@ -257,12 +261,7 @@ func (pv *MockPV) SignVote(
 
 	blockSignID := VoteBlockSignID(useChainID, vote, quorumType, quorumHash)
 
-	var privKey crypto.PrivKey
-	if quorumKeys, ok := pv.PrivateKeys[quorumHash.String()]; ok {
-		privKey = quorumKeys.PrivKey
-	} else {
-		return fmt.Errorf("file private validator could not sign vote for quorum hash %v", quorumHash)
-	}
+	privKey := pv.getPrivateKey(quorumHash)
 
 	blockSignature, err := privKey.SignDigest(blockSignID)
 	// fmt.Printf("validator %X signing vote of type %d at height %d with key %X blockSignBytes %X stateSignBytes %X\n",
@@ -283,6 +282,18 @@ func (pv *MockPV) SignVote(
 		vote.StateSignature = stateSignature
 	}
 
+	var extSig []byte
+	// We only sign vote extensions for precommits
+	if vote.Type == tmproto.PrecommitType {
+		extSignID := VoteExtensionSignID(useChainID, vote, quorumType, quorumHash)
+		extSig, err = privKey.SignDigest(extSignID)
+		if err != nil {
+			return err
+		}
+	} else if len(vote.Extension) > 0 {
+		return errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
+	}
+	vote.ExtensionSignature = extSig
 	return nil
 }
 
@@ -293,7 +304,7 @@ func (pv *MockPV) SignProposal(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
 	if pv.breakProposalSigning {
@@ -353,7 +364,7 @@ func (pv *MockPV) ExtractIntoValidator(ctx context.Context, quorumHash crypto.Qu
 
 // String returns a string representation of the MockPV.
 func (pv *MockPV) String() string {
-	proTxHash, _ := pv.GetProTxHash(context.Background()) // mockPV will never return an error, ignored here
+	proTxHash, _ := pv.GetProTxHash(context.TODO()) // mockPV will never return an error, ignored here
 	return fmt.Sprintf("MockPV{%v}", proTxHash)
 }
 
@@ -387,7 +398,7 @@ func (pv *ErroringMockPV) SignProposal(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	proposal *tmproto.Proposal,
-) ([]byte, error) {
+) (tmbytes.HexBytes, error) {
 	return nil, ErroringMockPVErr
 }
 
