@@ -257,3 +257,4 @@ visual inspection.
 - [abci_server](https://github.com/KrzysiekJ/abci_server) (Erlang): [server](https://github.com/KrzysiekJ/abci_server/blob/master/src/abci_server.erl)
 - [py-abci](https://github.com/davebryson/py-abci) (Python): [server](https://github.com/davebryson/py-abci/blob/master/src/abci/server.py)
 - [scala-tendermint-server](https://github.com/intechsa/scala-tendermint-server) (Scala): [server](https://github.com/InTechSA/scala-tendermint-server/blob/master/src/main/scala/lu/intech/tendermint/Server.scala)
+- [kepler](https://github.com/f-o-a-m/kepler) (Rust): [server](https://github.com/f-o-a-m/kepler/blob/master/hs-abci-server/src/Network/ABCI/Server.hs)
