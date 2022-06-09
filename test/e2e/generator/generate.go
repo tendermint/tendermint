@@ -14,14 +14,14 @@ var (
 	// testnetCombinations defines global testnet options, where we generate a
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
-		"topology":      {"single", "quad", "large"},
-		"initialHeight": {0, 1000},
+		"topology": {"single", "quad", "large"},
 		"initialState": {
 			map[string]string{},
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
 		"abci":       {"builtin", "outofprocess"},
+		"txSize":     {1024, 2048, 4096, 8192},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
@@ -63,11 +63,11 @@ var (
 	}
 
 	// the following specify random chosen values for the entire testnet
-	evidence   = uniformChoice{0, 1, 10}
-	txSize     = uniformChoice{1024, 4096} // either 1kb or 4kb
-	ipv6       = uniformChoice{false, true}
-	keyType    = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
-	abciDelays = uniformChoice{"none", "small", "large"}
+	initialHeight = uniformChoice{0, 1000}
+	evidence      = uniformChoice{0, 1, 10}
+	ipv6          = uniformChoice{false, true}
+	keyType       = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
+	abciDelays    = uniformChoice{"none", "small", "large"}
 
 	voteExtensionEnableHeightOffset = uniformChoice{int64(0), int64(10), int64(100)}
 	voteExtensionEnabled            = uniformChoice{true, false}
@@ -109,7 +109,6 @@ type Options struct {
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
-		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
@@ -117,8 +116,10 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		KeyType:          keyType.Choose(r).(string),
 		Evidence:         evidence.Choose(r).(int),
 		QueueType:        "priority",
-		TxSize:           txSize.Choose(r).(int),
+		TxSize:           opt["txSize"].(int),
 	}
+
+	manifest.InitialHeight = int64(initialHeight.Choose(r).(int))
 
 	if voteExtensionEnabled.Choose(r).(bool) {
 		manifest.VoteExtensionsEnableHeight = manifest.InitialHeight + voteExtensionEnableHeightOffset.Choose(r).(int64)
