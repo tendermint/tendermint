@@ -1,10 +1,165 @@
-## [0.8.0-dev.3] - 2022-04-22
+## [0.8.0-dev.4] - 2022-05-03
 
 ### Bug Fixes
 
+- Add a missed "info" field to broadcast-tx-response (#369)
+
+### Backport
+
+- V0.7.1 into v0.8-dev (#361)
+
+## [0.8.0-dev.3] - 2022-04-22
+
+### Miscellaneous Tasks
+
+- Update changelog and version to 0.8.0-dev.3
+
+## [0.8.0-dev.2] - 2022-04-22
+
+### Bug Fixes
+
+- Cannot read properties of undefined
 - Use thread-safely way to get pro-tx-hash from peer-state (#344)
 - Slightly modify a way of interacting with p2p channels in consensus reactor (#357)
 - Remove select block to don't block sending a witness response (#336)
+- Unsupported priv validator type - dashcore.RPCClient (#353)
+
+### Documentation
+
+- Go tutorial fixed for 0.35.0 version (#7329) (#7330) (#7331)
+- Update go ws code snippets (#7486) (#7487)
+- Remove spec section from v0.35 docs (#7899)
+
+### Miscellaneous Tasks
+
+- Temporarily disable ARM build which is broken
+- Backport Tendermint 0.35.1 to Tenderdash 0.8 (#309)
+- Update CI e2e action workflow (#319)
+- Change dockerhub build target
+- Inspect context
+- Bump golang version
+- Remove debug
+- Use gha cache from docker
+- Revert dev changes
+- Remove obsolete cache step
+- If the tenderdash source code is not tracked by git then cloning "develop_0.1" branch as fallback scenario to build a project (#356)
+- Update changelog and version to 0.8.0-dev.2 (#333)
+
+### Refactor
+
+- [**breaking**] Replace is-masternode config with mode=validator (#308)
+- Add MustPubKeyToProto helper function (#311)
+- Implementing LLMQ generator (#310)
+- Move bls CI code to a separate action and improve ARM build (#314)
+- Persistent kvstore abci (#313)
+- Improve statesync.backfill (#316)
+- Small improvement in test four add four minus one genesis validators (#318)
+- Consolidate redundant code (#322)
+
+### Testing
+
+- Fix validator conn executor test backport
+- Update mockery mocks
+- Fix test test_abci_cli
+
+### Backport
+
+- Add basic metrics to the indexer package. (#7250) (#7252)
+
+### Build
+
+- Bump google.golang.org/grpc from 1.41.0 to 1.42.0 (#7218)
+- Bump github.com/lib/pq from 1.10.3 to 1.10.4
+- Bump github.com/tendermint/tm-db from 0.6.4 to 0.6.6 (#7285)
+- Bump github.com/spf13/viper from 1.9.0 to 1.10.0 (#7435)
+- Bump github.com/adlio/schema from 1.2.2 to 1.2.3 (#7436)
+- Bump github.com/spf13/cobra from 1.2.1 to 1.3.0 (#7457)
+- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1 (#7467)
+- Downgrade tm-db from v0.6.7 to v0.6.6
+- Use Go 1.18 to fix issue building curve25519-voi
+- Provide base branch to make as variable (#321)
+- Implement full release workflow in the release script (#332)
+
+### Ci
+
+- Move test execution to makefile (#7372) (#7374)
+- Update mergify for tenderdash 0.8
+- Cleanup build/test targets (backport #7393) (#7395)
+- Skip docker image builds during PRs (#7397) (#7398)
+- Fix super-linter configuration settings (backport #7708) (#7710)
+- Fixes for arm builds
+
+### Cmd
+
+- Cosmetic changes for errors and print statements (#7377) (#7408)
+- Add integration test for rollback functionality (backport #7315) (#7369)
+
+### Config
+
+- Add a Deprecation annotation to P2PConfig.Seeds. (#7496) (#7497)
+
+### Consensus
+
+- Add some more checks to vote counting (#7253) (#7262)
+- Additional timing metrics (backport #7849) (#7875)
+
+### E2e
+
+- Stabilize validator update form (#7340) (#7351)
+- Clarify apphash reporting (#7348) (#7352)
+- Generate keys for more stable load (#7344) (#7353)
+- App hash test cleanup (0.35 backport) (#7350)
+
+### Evidence
+
+- Remove source of non-determinism from test (#7266) (#7268)
+
+### Internal/libs/protoio
+
+- Optimize MarshalDelimited by plain byteslice allocations+sync.Pool (#7325) (#7426)
+
+### Internal/proxy
+
+- Add initial set of abci metrics backport (#7342)
+
+### Lint
+
+- Remove lll check (#7346) (#7357)
+
+### P2p
+
+- Reduce peer score for dial failures (backport #7265) (#7271)
+- Plumb rudamentary service discovery to rectors and update statesync (backport #8030) (#8036)
+- Update shim to transfer information about peers (#8047)
+
+### Pubsub
+
+- Report a non-nil error when shutting down. (#7310)
+
+### Rpc
+
+- Backport experimental buffer size control parameters from #7230 (tm v0.35.x) (#7276)
+- Implement header and header_by_hash queries (backport #7270) (#7367)
+
+### Statesync
+
+- Assert app version matches (backport #7856) (#7886)
+- Avoid compounding retry logic for fetching consensus parameters (backport #8032) (#8041)
+
+### Types
+
+- Fix path handling in node key tests (#7493) (#7502)
+
+## [0.8.0-dev.1] - 2022-03-24
+
+### Bug Fixes
+
+- Detect and fix data-race in MockPV (#262)
+- Race condition when logging (#271)
+- Decrease memory used by debug logs (#280)
+- Tendermint stops when validator node id lookup fails (#279)
+- Backport e2e tests (#248)
+- Remove option c form linux build (#305)
 
 ### Documentation
 
@@ -14,11 +169,25 @@
 - Redirect master links to the latest release version (backport #7936) (#7954)
 - Fix cosmos theme version. (#7966)
 - Point docs/master to the same content as the latest release (backport #7980) (#7998)
-- Remove spec section from v0.35 docs (#7899)
+
+### Miscellaneous Tasks
+
+- Update unit tests after backport fo tendermint v0.35 (#245)
+- Backport Tenderdash 0.7 to 0.8 (#246)
+- Fix e2e tests and protxhash population (#273)
+- Improve logging for debug purposes
+- Stabilize consensus algorithm (#284)
 
 ### Refactor
 
-- Consolidate redundant code (#322)
+- Change node's proTxHash on slice from pointer of slice (#263)
+- Some minor changes in validate-conn-executor and routerDashDialer (#277)
+- Populate proTxHash in address-book (#274)
+- Replace several functions with an identical body (processStateCh,processDataCh,processVoteCh,processVoteSetBitsCh) on one function processMsgCh (#296)
+
+### Testing
+
+- KeepInvalidTxsInCache test is invalid
 
 ### Abci
 
@@ -28,18 +197,24 @@
 
 - Bump github.com/prometheus/client_golang (#7731)
 - Bump github.com/gorilla/websocket from 1.4.2 to 1.5.0 (#7830)
+- Bump docker/build-push-action from 2.7.0 to 2.9.0
+- Bump github.com/gorilla/websocket from 1.4.2 to 1.5.0
+- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1
+- Bump actions/github-script from 5 to 6
+- Bump docker/login-action from 1.10.0 to 1.12.0
 - Bump github.com/golangci/golangci-lint (#7853)
+- Bump docker/login-action from 1.12.0 to 1.13.0
+- Bump docker/login-action from 1.13.0 to 1.14.1
+- Bump golangci/golangci-lint-action from 2.5.2 to 3.1.0
 
 ### Ci
 
-- Fix super-linter configuration settings (backport #7708) (#7710)
 - Fix super-linter configuration settings (backport #7708) (#7710)
 
 ### Consensus
 
 - Delay start of peer routines (backport of #7753) (#7760)
 - Refactor operations in consensus queryMaj23Routine (backport #7791) (#7793)
-- Additional timing metrics (backport #7849) (#7875)
 - Additional timing metrics (backport #7849) (#7875)
 
 ### Light
@@ -57,8 +232,6 @@
 - Retry failed connections slightly more aggressively (backport #8010) (#8012)
 - Plumb rudamentary service discovery to rectors and update statesync (backport #8030) (#8036)
 - Update shim to transfer information about peers (#8047)
-- Plumb rudamentary service discovery to rectors and update statesync (backport #8030) (#8036)
-- Update shim to transfer information about peers (#8047)
 
 ### Proxy
 
@@ -72,86 +245,23 @@
 
 - Assert app version matches (backport #7856) (#7886)
 - Avoid compounding retry logic for fetching consensus parameters (backport #8032) (#8041)
-- Assert app version matches (backport #7856) (#7886)
-- Avoid compounding retry logic for fetching consensus parameters (backport #8032) (#8041)
 
-## [0.8.0-dev.2] - 2022-04-22
-
-### Bug Fixes
-
-- Don't disconnect already disconnected validators
-- Cannot read properties of undefined
+## [0.7.0] - 2022-01-27
 
 ### Documentation
 
-- Go tutorial fixed for 0.35.0 version (#7329) (#7330) (#7331)
-- Update go ws code snippets (#7486) (#7487)
 - Fixup the builtin tutorial  (#7488)
-- Go tutorial fixed for 0.35.0 version (#7329) (#7330) (#7331)
-- Update go ws code snippets (#7486) (#7487)
-
-### Features
-
-- Improve logging for better elasticsearch compatibility (#220)
-- InitChain can set initial core lock height (#222)
-- Add empty block on h-1 and h-2 apphash change (#241)
-- Inter-validator set communication (#187)
-- Add create_proof_block_range config option (#243)
 
 ### Miscellaneous Tasks
 
 - Create only 1 proof block by default
 - Release script and initial changelog (#250)
 - [**breaking**] Bump ABCI version and update release.sh to change TMVersionDefault automatically (#253)
+- Eliminate compile errors after backport of tendermint 0.35 (#238)
 - Update changelog and version to 0.7.0
-- Temporarily disable ARM build which is broken
-- Backport Tendermint 0.35.1 to Tenderdash 0.8 (#309)
-- Update CI e2e action workflow (#319)
-- Change dockerhub build target
-- Inspect context
-- Bump golang version
-- Remove debug
-- Use gha cache from docker
-- Revert dev changes
-- Remove obsolete cache step
-- If the tenderdash source code is not tracked by git then cloning "develop_0.1" branch as fallback scenario to build a project (#356)
-
-### Refactor
-
-- [**breaking**] Replace is-masternode config with mode=validator (#308)
-- Add MustPubKeyToProto helper function (#311)
-- Implementing LLMQ generator (#310)
-- Move bls CI code to a separate action and improve ARM build (#314)
-- Persistent kvstore abci (#313)
-- Improve statesync.backfill (#316)
-- Small improvement in test four add four minus one genesis validators (#318)
-
-### Testing
-
-- Fix validator conn executor test backport
-- Update mockery mocks
-- Fix test test_abci_cli
-
-### Backport
-
-- Add basic metrics to the indexer package. (#7250) (#7252)
-- Add basic metrics to the indexer package. (#7250) (#7252)
 
 ### Build
 
-- Bump google.golang.org/grpc from 1.41.0 to 1.42.0 (#7218)
-- Bump github.com/lib/pq from 1.10.3 to 1.10.4 (#7260)
-- Bump github.com/tendermint/tm-db from 0.6.4 to 0.6.6 (#7285)
-- Bump github.com/adlio/schema from 1.1.14 to 1.1.15 (#7406)
-- Bump github.com/adlio/schema from 1.1.15 to 1.2.2 (#7422)
-- Bump github.com/spf13/viper from 1.9.0 to 1.10.0 (#7435)
-- Bump github.com/adlio/schema from 1.2.2 to 1.2.3 (#7436)
-- Bump google.golang.org/grpc from 1.42.0 to 1.43.0 (#7458)
-- Bump github.com/spf13/cobra from 1.2.1 to 1.3.0 (#7457)
-- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1 (#7467)
-- Bump github.com/spf13/viper from 1.10.0 to 1.10.1 (#7468)
-- Bump github.com/rs/cors from 1.8.0 to 1.8.2
-- Bump github.com/rs/cors from 1.8.0 to 1.8.2 (#7485)
 - Bump github.com/BurntSushi/toml from 0.4.1 to 1.0.0 (#7560)
 - Make sure to test packages with external tests (backport #7608) (#7635)
 - Bump github.com/prometheus/client_golang (#7637)
@@ -160,192 +270,19 @@
 - Bump github.com/vektra/mockery/v2 from 2.9.4 to 2.10.0 (#7684)
 - Bump google.golang.org/grpc from 1.43.0 to 1.44.0 (#7693)
 - Bump github.com/golangci/golangci-lint (#7696)
-- Bump google.golang.org/grpc from 1.41.0 to 1.42.0 (#7218)
-- Bump github.com/lib/pq from 1.10.3 to 1.10.4
-- Bump github.com/tendermint/tm-db from 0.6.4 to 0.6.6 (#7285)
-- Bump github.com/spf13/viper from 1.9.0 to 1.10.0 (#7435)
-- Bump github.com/adlio/schema from 1.2.2 to 1.2.3 (#7436)
-- Bump github.com/spf13/cobra from 1.2.1 to 1.3.0 (#7457)
-- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1 (#7467)
-- Downgrade tm-db from v0.6.7 to v0.6.6
-- Use Go 1.18 to fix issue building curve25519-voi
-- Provide base branch to make as variable (#321)
-- Implement full release workflow in the release script (#332)
-
-### Ci
-
-- Move test execution to makefile (#7372) (#7374)
-- Cleanup build/test targets (backport #7393) (#7395)
-- Skip docker image builds during PRs (#7397) (#7398)
-- Move test execution to makefile (#7372) (#7374)
-- Update mergify for tenderdash 0.8
-- Cleanup build/test targets (backport #7393) (#7395)
-- Skip docker image builds during PRs (#7397) (#7398)
-- Fixes for arm builds
-
-### Cmd
-
-- Cosmetic changes for errors and print statements (#7377) (#7408)
-- Add integration test for rollback functionality (backport #7315) (#7369)
-- Cosmetic changes for errors and print statements (#7377) (#7408)
-- Add integration test for rollback functionality (backport #7315) (#7369)
-
-### Config
-
-- Add a Deprecation annotation to P2PConfig.Seeds. (#7496) (#7497)
-- Add a Deprecation annotation to P2PConfig.Seeds. (#7496) (#7497)
 
 ### Consensus
 
-- Add some more checks to vote counting (#7253) (#7262)
 - Calculate prevote message delay metric (backport #7551) (#7618)
 - Check proposal non-nil in prevote message delay metric (#7625) (#7632)
-- Add some more checks to vote counting (#7253) (#7262)
-
-### E2e
-
-- Stabilize validator update form (#7340) (#7351)
-- Clarify apphash reporting (#7348) (#7352)
-- Generate keys for more stable load (#7344) (#7353)
-- App hash test cleanup (0.35 backport) (#7350)
-- Limit legacyp2p and statesyncp2p (#7361)
-- Use more simple strings for generated transactions (#7513) (#7514)
-- Constrain test parallelism and reporting (backport #7516) (#7517)
-- Make tx test more stable (backport #7523) (#7527)
-- Stabilize validator update form (#7340) (#7351)
-- Clarify apphash reporting (#7348) (#7352)
-- Generate keys for more stable load (#7344) (#7353)
-- App hash test cleanup (0.35 backport) (#7350)
-
-### Evidence
-
-- Remove source of non-determinism from test (#7266) (#7268)
-- Remove source of non-determinism from test (#7266) (#7268)
-
-### Internal/libs/protoio
-
-- Optimize MarshalDelimited by plain byteslice allocations+sync.Pool (#7325) (#7426)
-- Optimize MarshalDelimited by plain byteslice allocations+sync.Pool (#7325) (#7426)
-
-### Internal/proxy
-
-- Add initial set of abci metrics backport (#7342)
-- Add initial set of abci metrics backport (#7342)
-
-### Lint
-
-- Remove lll check (#7346) (#7357)
-- Remove lll check (#7346) (#7357)
 
 ### P2p
 
-- Reduce peer score for dial failures (backport #7265) (#7271)
 - Always advertise self, to enable mutual address discovery (#7620)
-- Reduce peer score for dial failures (backport #7265) (#7271)
-
-### Pubsub
-
-- Report a non-nil error when shutting down. (#7310)
-- Report a non-nil error when shutting down. (#7310)
 
 ### Rpc
 
-- Backport experimental buffer size control parameters from #7230 (tm v0.35.x) (#7276)
-- Implement header and header_by_hash queries (backport #7270) (#7367)
 - Check error code for broadcast_tx_commit (#7683) (#7688)
-- Backport experimental buffer size control parameters from #7230 (tm v0.35.x) (#7276)
-- Implement header and header_by_hash queries (backport #7270) (#7367)
-
-### Types
-
-- Fix path handling in node key tests (#7493) (#7502)
-- Fix path handling in node key tests (#7493) (#7502)
-
-## [0.8.0-dev.1] - 2022-03-24
-
-### Backport
-
-- Backport of [Tendermint 0.35.0](https://github.com/tendermint/tendermint/releases/tag/v0.35.0)
-
-### Bug Fixes
-
-- Panic on precommits does not have any +2/3 votes
-- Improved error handling  in DashCoreSignerClient
-- Abci/example, cmd and test packages were fixed after the upstream backport
-- Some fixes to be able to compile the add
-- Some fixes made by PR feedback
-- Use types.DefaultDashVotingPower rather than internal dashDefaultVotingPower
-- Detect and fix data-race in MockPV (#262)
-- Race condition when logging (#271)
-- Decrease memory used by debug logs (#280)
-- Tendermint stops when validator node id lookup fails (#279)
-- Backport e2e tests (#248)
-
-### Miscellaneous Tasks
-
-- Eliminate compile errors after backport of tendermint 0.35 (#238)
-- Update unit tests after backport fo tendermint v0.35 (#245)
-- Backport Tenderdash 0.7 to 0.8 (#246)
-- Fix e2e tests and protxhash population (#273)
-- Improve logging for debug purposes
-- Stabilize consensus algorithm (#284)
-
-### Refactor
-
-- Apply peer review feedback
-- Change node's proTxHash on slice from pointer of slice (#263)
-- Some minor changes in validate-conn-executor and routerDashDialer (#277)
-- Populate proTxHash in address-book (#274)
-- Replace several functions with an identical body (processStateCh,processDataCh,processVoteCh,processVoteSetBitsCh) on one function processMsgCh (#296)
-
-### Testing
-
-- Ensure commit stateid in wal is OK
-- KeepInvalidTxsInCache test is invalid
-
-### Build
-
-- Bump github.com/lib/pq from 1.10.3 to 1.10.4
-- Run e2e tests in parallel
-- Bump technote-space/get-diff-action from 5.0.1 to 5.0.2
-- Bump github.com/adlio/schema from 1.1.14 to 1.1.15
-- Bump github.com/adlio/schema from 1.1.15 to 1.2.3
-- Bump docker/build-push-action from 2.7.0 to 2.9.0
-- Bump github.com/gorilla/websocket from 1.4.2 to 1.5.0
-- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1
-- Bump actions/github-script from 5 to 6
-- Bump docker/login-action from 1.10.0 to 1.12.0
-- Bump docker/login-action from 1.12.0 to 1.13.0
-- Bump docker/login-action from 1.13.0 to 1.14.1
-- Bump golangci/golangci-lint-action from 2.5.2 to 3.1.0
-
-## [0.7.1] - 2022-04-13
-
-### Build
-
-- Implement full release workflow in the release script (#332) (#345)
-
-### Bug Fixes
-
-- Network stuck due to outdated proposal block (#327)
-- Don't process WAL logs for old rounds (#331)
-
-### Miscellaneous Tasks
-
-- Update changelog generation config
-
-## [0.7.0] - 2022-01-24
-
-### Miscellaneous Tasks
-
-- Create only 1 proof block by default
-- Release script and initial changelog (#250)
-- [**breaking**] Bump ABCI version and update release.sh to change TMVersionDefault automatically (#253)
-
-### Build
-
-- Bump github.com/prometheus/client_golang (#249)
-- Bump github.com/BurntSushi/toml from 0.4.1 to 1.0.0
 
 ## [0.7.0-dev.6] - 2022-01-07
 
@@ -356,13 +293,21 @@
 - Ensure seed at least once connects to another seed (#200)
 - Panic on precommits does not have any +2/3 votes
 - Improved error handling  in DashCoreSignerClient
+- Abci/example, cmd and test packages were fixed after the upstream backport
+- Some fixes to be able to compile the add
+- Some fixes made by PR feedback
+- Use types.DefaultDashVotingPower rather than internal dashDefaultVotingPower
 - Don't disconnect already disconnected validators
 
 ### Documentation
 
+- Fix broken links and layout (#7154) (#7163)
 - Add description about how to keep validators public keys at full node
 - Add information how to sue preset for network generation
 - Change a type of code block
+- Add upgrading info about node service (#7241) (#7242)
+- Go tutorial fixed for 0.35.0 version (#7329) (#7330) (#7331)
+- Update go ws code snippets (#7486) (#7487)
 
 ### Features
 
@@ -390,6 +335,10 @@
 - Close db in randConsensusNetWithPeers, just as it is in randConsensusNet
 - Ensure commit stateid in wal is OK
 
+### Backport
+
+- Add basic metrics to the indexer package. (#7250) (#7252)
+
 ### Buf
 
 - Modify buf.yml, add buf generate (#5653)
@@ -399,16 +348,101 @@
 - Fix proto-lint step in Makefile
 - Github workflows: fix dependabot and code coverage (#191)
 - Bump github.com/adlio/schema from 1.1.13 to 1.1.14
+- Bump github.com/adlio/schema from 1.1.13 to 1.1.14 (#7217)
+- Bump github.com/golangci/golangci-lint (#7224)
+- Bump github.com/rs/zerolog from 1.25.0 to 1.26.0 (#7222)
+- Bump google.golang.org/grpc from 1.41.0 to 1.42.0 (#7218)
 - Bump github.com/lib/pq from 1.10.3 to 1.10.4
 - Run e2e tests in parallel
+- Bump github.com/lib/pq from 1.10.3 to 1.10.4 (#7260)
 - Bump technote-space/get-diff-action from 5.0.1 to 5.0.2
+- Bump github.com/tendermint/tm-db from 0.6.4 to 0.6.6 (#7285)
+- Bump github.com/adlio/schema from 1.1.14 to 1.1.15 (#7406)
 - Bump github.com/adlio/schema from 1.1.14 to 1.1.15
+- Bump github.com/adlio/schema from 1.1.15 to 1.2.2 (#7422)
 - Bump github.com/adlio/schema from 1.1.15 to 1.2.3
+- Bump github.com/spf13/viper from 1.9.0 to 1.10.0 (#7435)
+- Bump github.com/adlio/schema from 1.2.2 to 1.2.3 (#7436)
+- Bump google.golang.org/grpc from 1.42.0 to 1.43.0 (#7458)
+- Bump github.com/spf13/cobra from 1.2.1 to 1.3.0 (#7457)
+- Bump github.com/rs/zerolog from 1.26.0 to 1.26.1 (#7467)
+- Bump github.com/spf13/viper from 1.10.0 to 1.10.1 (#7468)
 - Bump github.com/rs/cors from 1.8.0 to 1.8.2
+- Bump github.com/rs/cors from 1.8.0 to 1.8.2 (#7485)
+
+### Ci
+
+- Backport lint configuration changes (#7226)
+- Move test execution to makefile (#7372) (#7374)
+- Cleanup build/test targets (backport #7393) (#7395)
+- Skip docker image builds during PRs (#7397) (#7398)
+
+### Cmd
+
+- Cosmetic changes for errors and print statements (#7377) (#7408)
+- Add integration test for rollback functionality (backport #7315) (#7369)
+
+### Config
+
+- Backport file writing changes (#7182)
+- Add a Deprecation annotation to P2PConfig.Seeds. (#7496) (#7497)
+
+### Consensus
+
+- Add some more checks to vote counting (#7253) (#7262)
 
 ### E2e
 
 - Add option to dump and analyze core dumps
+- Stabilize validator update form (#7340) (#7351)
+- Clarify apphash reporting (#7348) (#7352)
+- Generate keys for more stable load (#7344) (#7353)
+- App hash test cleanup (0.35 backport) (#7350)
+- Limit legacyp2p and statesyncp2p (#7361)
+- Use more simple strings for generated transactions (#7513) (#7514)
+- Constrain test parallelism and reporting (backport #7516) (#7517)
+- Make tx test more stable (backport #7523) (#7527)
+
+### Evidence
+
+- Remove source of non-determinism from test (#7266) (#7268)
+
+### Internal/libs/protoio
+
+- Optimize MarshalDelimited by plain byteslice allocations+sync.Pool (#7325) (#7426)
+
+### Internal/proxy
+
+- Add initial set of abci metrics backport (#7342)
+
+### Lint
+
+- Cleanup branch lint errors (#7238)
+- Remove lll check (#7346) (#7357)
+
+### P2p
+
+- Add message type into the send/recv bytes metrics (backport #7155) (#7161)
+- Reduce peer score for dial failures (backport #7265) (#7271)
+
+### Pex
+
+- Allow disabled pex reactor (backport #7198) (#7201)
+- Avoid starting reactor twice (#7239)
+
+### Pubsub
+
+- Use distinct client IDs for test subscriptions. (#7178) (#7179)
+- Report a non-nil error when shutting down. (#7310)
+
+### Rpc
+
+- Backport experimental buffer size control parameters from #7230 (tm v0.35.x) (#7276)
+- Implement header and header_by_hash queries (backport #7270) (#7367)
+
+### Types
+
+- Fix path handling in node key tests (#7493) (#7502)
 
 ## [0.6.1-dev.1] - 2021-10-26
 
@@ -419,6 +453,10 @@
 - Safe state access in TestReactorInvalidBlockChainLock
 - Safe state access in TestReactorInvalidBlockChainLock
 - Seeds should not hang when disconnected from all nodes
+
+### Documentation
+
+- Add reactor sections (backport #6510) (#7151)
 
 ### Buf
 
@@ -433,7 +471,19 @@
 
 - Fix panic when empty commit is received from server
 
+### Mempool
+
+- Remove panic when recheck-tx was not sent to ABCI application (#7134) (#7142)
+
+### State
+
+- Add height assertion to rollback function (#7143) (#7148)
+
 ## [0.6.0] - 2021-10-14
+
+### .github
+
+- Remove tessr and bez from codeowners (#7028)
 
 ### Bug Fixes
 
@@ -457,12 +507,15 @@
 - Cleanup e2e Readme.md
 - Remove height 1008 from dashcore
 - Race condition in p2p_switch and pex_reactor (#7015)
+- Race condition in p2p_switch and pex_reactor (#7015)
 - Fix MD after the lint
 - To avoid potential race conditions the validator-set-update is needed to copy rather than using the pointer to the field at PersistentKVStoreApplication, 'cause it leads to a race condition
 - Update a comment block
 
 ### Documentation
 
+- Add documentation of unsafe_flush_mempool to openapi (#6947)
+- Fix openapi yaml lint (#6948)
 - State ID
 - State-id.md typos and grammar
 - Remove invalid info about initial state id
@@ -522,32 +575,111 @@
 
 ### Abci
 
+- Flush socket requests and responses immediately. (#6997)
 - Change client to use multi-reader mutexes (backport #6306) (#6873)
 
 ### Add
 
 - Update e2e doc
 
+### Blocksync
+
+- Fix shutdown deadlock issue (#7030)
+
 ### Build
 
+- Bump codecov/codecov-action from 2.0.3 to 2.1.0 (#6938)
+- Bump github.com/vektra/mockery/v2 from 2.9.0 to 2.9.3 (#6951)
+- Bump github.com/vektra/mockery/v2 from 2.9.3 to 2.9.4 (#6956)
+- Bump github.com/spf13/viper from 1.8.1 to 1.9.0 (#6961)
 - E2e docker app can be run with dlv debugger
 - Improve e2e docker container debugging
+- Bump github.com/go-kit/kit from 0.11.0 to 0.12.0 (#6988)
+- Bump google.golang.org/grpc from 1.40.0 to 1.41.0 (#7003)
 - Update all deps to most recent version
 - Replace github.com/go-kit/kit/log with github.com/go-kit/log
+- Fix build-docker to include the full context. (#7114) (#7116)
+
+### Changelog
+
+- Add entry for interanlizations (#6989)
+
+### Ci
+
+- Disable codecov patch status check (#6930)
+- Skip coverage for non-go changes (#6927)
+- Skip coverage tasks for test infrastructure (#6934)
+- Reduce number of groups for 0.34 e2e runs (#6968)
+- Use smart merges (#6993)
+- Use cheaper codecov data collection (#7009)
 
 ### Cleanup
 
+- Reduce and normalize import path aliasing. (#6975)
 - Remove not needed binary test/app/grpc_client
+
+### Cli
+
+- Allow node operator to rollback last state (backport #7033) (#7081)
 
 ### Config
 
 - Add example on external_address (backport #6621) (#6624)
 
+### Config/docs
+
+- Update and deprecated (#6879)
+
+### Consensus
+
+- Avoid unbuffered channel in state test (#7025)
+- Wait until peerUpdates channel is closed to close remaining peers (#7058) (#7060)
+
+### Crypto/armor
+
+- Remove unused package (#6963)
+
 ### E2e
 
+- Compile tests (#6926)
+- Improve p2p mode selection (#6929)
+- Reduce load volume (#6932)
+- Slow load processes with longer evidence timeouts (#6936)
+- Reduce load pressure (#6939)
+- Tweak semantics of waitForHeight (#6943)
+- Skip broadcastTxCommit check (#6949)
+- Allow load generator to succed for short tests (#6952)
+- Cleanup on all errors if preserve not specified (#6950)
+- Run multiple should use preserve (#6972)
+- Improve manifest sorting algorithim (#6979)
+- Only check validator sets after statesync (#6980)
+- Always preserve failed networks (#6981)
+- Load should be proportional to network (#6983)
+- Avoid non-determinism in app hash check (#6985)
+- Tighten timing for load generation (#6990)
+- Skip validation of status apphash (#6991)
+- Do not inject evidence through light proxy (#6992)
+- Add limit and sort to generator (#6998)
+- Reduce number of statesyncs in test networks (#6999)
+- Improve chances of statesyncing success (#7001)
+- Allow running of single node using the e2e app (#6982)
+- Reduce log noise (#7004)
+- Avoid seed nodes when statesyncing (#7006)
+- Add generator tests (#7008)
+- Reduce number of stateless nodes in test networks (#7010)
+- Use smaller transactions (#7016)
+- Use network size in load generator (#7019)
+- Generator ensure p2p modes (#7021)
+- Automatically prune old app snapshots (#7034) (#7063)
+- Abci protocol should be consistent across networks (#7078) (#7086)
+- Light nodes should use builtin abci app (#7095) (#7097)
 - Disable app tests for light client (#6672)
 - Avoid starting nodes from the future (#6835) (#6838)
 - Cleanup node start function (#6842) (#6848)
+
+### Inspect
+
+- Remove duplicated construction path (#6966)
 
 ### Internal/consensus
 
@@ -555,43 +687,198 @@
 
 ### Light
 
+- Update links in package docs. (#7099) (#7101)
 - Fix early erroring (#6905)
+
+### Mempool,rpc
+
+- Add removetx rpc method (#7047) (#7065)
+
+### Proto
+
+- Regenerate code (#6977)
+
+### Proxy
+
+- Move proxy package to internal (#6953)
+
+### Readme
+
+- Update discord links (#6965)
+
+### Rfc
+
+- E2e improvements (#6941)
+- Add performance taxonomy rfc (#6921)
+- Fix a few typos and formatting glitches p2p roadmap (#6960)
+- Event system (#6957)
 
 ### Rpc
 
+- Strip down the base RPC client interface. (#6971)
+- Implement BroadcastTxCommit without event subscriptions (#6984)
 - Add chunked rpc interface (backport #6445) (#6717)
+
+### State
+
+- Move package to internal (#6964)
 
 ### Statesync
 
+- Shut down node when statesync fails (#6944)
+- Clean up reactor/syncer lifecylce (#6995)
+- Add logging while waiting for peers (#7007)
+- Ensure test network properly configured (#7026)
+- Remove deadlock on init fail (#7029)
+- Improve rare p2p race condition (#7042)
 - Improve stateprovider handling in the syncer (backport) (#6881)
 
+### Statesync/rpc
+
+- Metrics for the statesync and the rpc SyncInfo (#6795)
+
+### Store
+
+- Move pacakge to internal (#6978)
+
 ## [0.6.0-dev.2] - 2021-09-10
+
+### Documentation
+
+- Add package godoc for indexer (#6839)
+- Remove return code in normal case from go built-in example (#6841)
+- Fix a typo in the indexing section (#6909)
 
 ### Features
 
 - Info field with arbitrary data to ResultBroadcastTx
 
+### Security
+
+- Bump github.com/rs/zerolog from 1.24.0 to 1.25.0 (#6923)
+
 ### Abci
 
 - Change client to use multi-reader mutexes (backport #6306) (#6873)
 
+### Blocksync
+
+- Complete transition from Blockchain to BlockSync (#6847)
+
+### Build
+
+- Bump docker/build-push-action from 2.6.1 to 2.7.0 (#6845)
+- Bump codecov/codecov-action from 2.0.2 to 2.0.3 (#6860)
+- Bump github.com/rs/zerolog from 1.23.0 to 1.24.0 (#6874)
+- Bump github.com/lib/pq from 1.10.2 to 1.10.3 (#6890)
+- Bump docker/setup-buildx-action from 1.5.0 to 1.6.0 (#6903)
+- Bump github.com/golangci/golangci-lint (#6907)
+
+### Ci
+
+- Drop codecov bot (#6917)
+- Tweak code coverage settings (#6920)
+
+### Cleanup
+
+- Fix order of linters in the golangci-lint config (#6910)
+
+### Cmd
+
+- Remove deprecated snakes (#6854)
+
+### Contributing
+
+- Remove release_notes.md reference (#6846)
+
 ### E2e
 
+- Cleanup node start function (#6842)
 - Cleanup node start function (#6842) (#6848)
+- More consistent node selection during tests (#6857)
+- Add weighted random configuration selector (#6869)
+- More reliable method for selecting node to inject evidence (#6880)
+- Change restart mechanism (#6883)
+- Weight protocol dimensions (#6884)
+- Skip light clients when waiting for height (#6891)
+- Wait for all nodes rather than just one (#6892)
+- Skip assertions for stateless nodes (#6894)
+- Clean up generation of evidence (#6904)
+- Introduce canonical ordering of manifests (#6918)
+- Load generation and logging changes (#6912)
+- Increase retain height to at least twice evidence age (#6924)
+- Test multiple broadcast tx methods (#6925)
+
+### Inspect
+
+- Add inspect mode for debugging crashed tendermint node (#6785)
 
 ### Internal/consensus
 
+- Update error log (#6863)
 - Update error log (#6863) (#6867)
 
 ### Light
 
 - Fix early erroring (#6905)
 
+### Lint
+
+- Change deprecated linter (#6861)
+
+### Network
+
+- Update terraform config (#6901)
+
+### Networks
+
+- Update to latest DigitalOcean modules (#6902)
+
+### P2p
+
+- Change default to use new stack (#6862)
+
+### Psql
+
+- Add documentation and simplify constructor API (#6856)
+
+### Pubsub
+
+- Improve handling of closed blocking subsciptions. (#6852)
+
+### Rfc
+
+- P2p next steps (#6866)
+- Fix link style (#6870)
+- Database storage engine (#6897)
+
+### Rpc
+
+- Fix hash encoding in JSON parameters (#6813)
+
 ### Statesync
 
 - Improve stateprovider handling in the syncer (backport) (#6881)
+- Implement p2p state provider (#6807)
+
+### Time
+
+- Make median time library type private (#6853)
+
+### Types
+
+- Move mempool error for consistency (#6875)
+
+### Upgrading
+
+- Add information into the UPGRADING.md for users of the codebase wishing to upgrade (#6898)
 
 ## [0.6.0-dev.1] - 2021-08-19
+
+### Documentation
+
+- Upgrade documentation for custom mempools (#6794)
+- Fix typos in /tx_search and /tx. (#6823)
 
 ### Features
 
@@ -605,37 +892,214 @@
 
 - Install abci-cli when running make tests_integrations (#6834)
 
+### Adr
+
+- Node initialization (#6562)
+
+### Build
+
+- Bump google.golang.org/grpc from 1.39.0 to 1.39.1 (#6801)
+- Bump google.golang.org/grpc from 1.39.1 to 1.40.0 (#6819)
+- Bump github.com/golangci/golangci-lint (#6837)
+
+### Bytes
+
+- Clean up and simplify encoding of HexBytes (#6810)
+
 ### Changelog
 
 - Prepare for v0.34.12 (#6831)
+- Update to reflect 0.34.12 release (#6833)
+- Linkify the 0.34.11 release notes (#6836)
 
 ### Changelog_pending
 
+- Add missing item (#6829)
 - Add missing entry (#6830)
+
+### Commands
+
+- Add key migration cli (#6790)
+
+### Contributing
+
+- Update release instructions to use backport branches (#6827)
 
 ### E2e
 
+- Avoid starting nodes from the future (#6835)
 - Avoid starting nodes from the future (#6835) (#6838)
+
+### Node
+
+- Minimize hardcoded service initialization (#6798)
+
+### Pubsub
+
+- Unsubscribe locking handling (#6816)
 
 ### Rpc
 
+- Avoid panics in unsafe rpc calls with new p2p stack (#6817)
+- Support new p2p infrastructure (#6820)
+- Log update (#6825)
 - Log update (backport #6825) (#6826)
 
 ### Version
 
 - Bump for 0.34.12 (#6832)
 
+## [0.5.12-dev.1] - 2021-08-06
+
+### Documentation
+
+- Fix typo (#6789)
+- Fix a typo in the genesis_chunked description (#6792)
+
+### Build
+
+- Bump technote-space/get-diff-action from 4 to 5 (#6788)
+- Bump github.com/BurntSushi/toml from 0.3.1 to 0.4.1 (#6796)
+
+### Clist
+
+- Add simple property tests (#6791)
+
+### Mempool/v1
+
+- Test reactor does not panic on broadcast (#6772)
+
 ## [0.5.11-dev.4] - 2021-07-31
+
+### Blockstore
+
+- Fix problem with seen commit (#6782)
+
+### Build
+
+- Bump styfle/cancel-workflow-action from 0.9.0 to 0.9.1 (#6786)
 
 ### State/privval
 
 - Vote timestamp fix (backport #6748) (#6783)
 
+### Tools
+
+- Add mockery to tools.go and remove mockery version strings (#6787)
+
+## [0.5.11-dev.3] - 2021-07-30
+
+### Blockchain
+
+- Rename to blocksync service (#6755)
+
+### Cleanup
+
+- Remove redundant error plumbing (#6778)
+
+### Light
+
+- Replace homegrown mock with mockery (#6735)
+
+### Rpc
+
+- Add documentation for genesis chunked api (#6776)
+
+### State/privval
+
+- Vote timestamp fix (#6748)
+
+## [0.5.11-dev.2] - 2021-07-28
+
+### Abci
+
+- Add changelog entry for mempool_error field (#6770)
+
+### Cli/indexer
+
+- Reindex events (#6676)
+
+### Light
+
+- Wait for tendermint node to start before running example test (#6744)
+
+## [0.5.10-dev.3] - 2021-07-26
+
+### Testing
+
+- Add mechanism to reproduce found fuzz errors (#6768)
+
+## [0.5.10-dev.1] - 2021-07-26
+
+### P2p
+
+- Add test for pqueue dequeue full error (#6760)
+
 ## [0.5.10] - 2021-07-26
+
+### Testing
+
+- Add test to reproduce found fuzz errors (#6757)
 
 ### Build
 
 - Bump golangci/golangci-lint-action from 2.3.0 to 2.5.2
+- Bump codecov/codecov-action from 1.5.2 to 2.0.1 (#6739)
+- Bump codecov/codecov-action from 2.0.1 to 2.0.2 (#6764)
+
+### E2e
+
+- Avoid systematic key-type variation (#6736)
+- Drop single node hybrid configurations (#6737)
+- Remove cartesian testing of ipv6 (#6734)
+- Run tests in fewer groups (#6742)
+- Prevent adding light clients as persistent peers (#6743)
+- Longer test harness timeouts (#6728)
+- Allow for both v0 and v1 mempool implementations (#6752)
+
+### Fastsync/event
+
+- Emit fastsync status event when switching consensus/fastsync (#6619)
+
+### Internal
+
+- Update blockchain reactor godoc (#6749)
+
+### Light
+
+- Run examples as integration tests (#6745)
+- Improve error handling and allow providers to be added (#6733)
+
+### Mempool
+
+- Return mempool errors to the abci client (#6740)
+
+### P2p
+
+- Add coverage for mConnConnection.TrySendMessage (#6754)
+- Avoid blocking on the dequeCh (#6765)
+
+### Statesync/event
+
+- Emit statesync start/end event  (#6700)
+
+## [0.5.8] - 2021-07-20
+
+### Blockchain
+
+- Error on v2 selection (#6730)
+
+### Clist
+
+- Add a few basic clist tests (#6727)
+
+### Libs/clist
+
+- Revert clear and detach changes while debugging (#6731)
+
+### Mempool
+
+- Add TTL configuration to mempool (#6715)
 
 ## [0.5.7] - 2021-07-16
 
@@ -650,7 +1114,11 @@
 ### Documentation
 
 - Rename tenderdash and update target repo
+- Update events (#6658)
+- Add sentence about windows support (#6655)
+- Add docs file for the peer exchange (#6665)
 - Update github issue and pr templates (#131)
+- Fix broken links (#6719)
 
 ### Features
 
@@ -661,6 +1129,50 @@
 
 - Target production dockerhub org
 - Use official docker action
+
+### RPC
+
+- Mark grpc as deprecated (#6725)
+
+### Security
+
+- Bump github.com/spf13/viper from 1.8.0 to 1.8.1 (#6622)
+- Bump github.com/rs/cors from 1.7.0 to 1.8.0 (#6635)
+- Bump github.com/spf13/cobra from 1.2.0 to 1.2.1 (#6650)
+
+### Testing
+
+- Add current fuzzing to oss-fuzz-build script (#6576)
+- Fix wrong compile fuzzer command (#6579)
+- Fix wrong path for some p2p fuzzing packages (#6580)
+- Fix non-deterministic backfill test (#6648)
+
+### Abci
+
+- Fix gitignore abci-cli (#6668)
+- Remove counter app (#6684)
+
+### Build
+
+- Bump github.com/rs/zerolog from 1.22.0 to 1.23.0 (#6575)
+- Bump github.com/spf13/viper from 1.7.1 to 1.8.0 (#6586)
+- Bump docker/login-action from 1.9.0 to 1.10.0 (#6614)
+- Bump docker/setup-buildx-action from 1.3.0 to 1.4.0 (#6629)
+- Bump docker/setup-buildx-action from 1.4.0 to 1.4.1 (#6632)
+- Bump google.golang.org/grpc from 1.38.0 to 1.39.0 (#6633)
+- Bump github.com/spf13/cobra from 1.1.3 to 1.2.0 (#6640)
+- Bump docker/build-push-action from 2.5.0 to 2.6.1 (#6639)
+- Bump docker/setup-buildx-action from 1.4.1 to 1.5.0 (#6649)
+- Bump github.com/go-kit/kit from 0.10.0 to 0.11.0 (#6651)
+- Bump gaurav-nelson/github-action-markdown-link-check (#6679)
+- Bump github.com/golangci/golangci-lint (#6686)
+- Bump github.com/google/uuid from 1.2.0 to 1.3.0 (#6708)
+- Bump actions/stale from 3.0.19 to 4 (#6726)
+
+### Changelog
+
+- Have a single friendly bug bounty reminder (#6600)
+- Update and regularize changelog entries (#6594)
 
 ### Ci
 
@@ -675,49 +1187,228 @@
 - Set release to workflow dispatch (manual) trigger
 - Enable arm64 in CI
 
+### Cmd/tendermint/commands
+
+- Replace $HOME/.some/test/dir with t.TempDir (#6623)
+
 ### Config
 
+- Add root dir to priv validator (#6585)
+- Add example on external_address (#6621)
 - Add example on external_address (backport #6621) (#6624)
+
+### Consensus
+
+- Skip all messages during sync (#6577)
+
+### Crypto
+
+- Use a different library for ed25519/sr25519 (#6526)
+
+### Deps
+
+- Remove pkg errors (#6666)
+- Run go mod tidy (#6677)
 
 ### E2e
 
+- Fix looping problem while waiting (#6568)
+- Allow variable tx size  (#6659)
 - Disable app tests for light client (#6672)
+- Remove colorized output from docker-compose (#6670)
+- Extend timeouts in test harness (#6694)
+- Ensure evidence validator set matches nodes validator set (#6712)
+- Tweak sleep for pertubations (#6723)
+
+### Evidence
+
+- Update ADR 59 and add comments to the use of common height (#6628)
+
+### Fastsync
+
+- Update the metrics during fast-sync (#6590)
+
+### Fastsync/rpc
+
+- Add TotalSyncedTime & RemainingTime to SyncInfo in /status RPC (#6620)
+
+### Fuzz
+
+- Initial support for fuzzing (#6558)
+
+### Internal/blockchain/v0
+
+- Prevent all possible race for blockchainCh.Out (#6637)
+
+### Libs/CList
+
+- Automatically detach the prev/next elements in Remove function (#6626)
+
+### Libs/log
+
+- Text logging format changes (#6589)
+
+### Libs/time
+
+- Move types/time into libs (#6595)
 
 ### Light
 
 - Correctly handle contexts (backport -> v0.34.x) (#6685)
+- Correctly handle contexts (#6687)
 - Add case to catch cancelled contexts within the detector (backport #6701) (#6720)
+
+### Linter
+
+- Linter checks non-ASCII identifiers (#6574)
+
+### Mempool
+
+- Move errors to be public (#6613)
+
+### P2p
+
+- Increase queue size to 16MB (#6588)
+- Avoid retry delay in error case (#6591)
+- Address audit issues with the peer manager (#6603)
+- Make NodeID and NetAddress public (#6583)
+- Reduce buffering on channels (#6609)
+- Do not redial peers with different chain id (#6630)
+- Track peer channels to avoid sending across a channel a peer doesn't have (#6601)
+- Remove annoying error log (#6688)
+
+### Pkg
+
+- Expose p2p functions (#6627)
+
+### Privval
+
+- Missing privval type check in SetPrivValidator (#6645)
+
+### Psql
+
+- Close opened rows in tests (#6669)
+
+### Pubsub
+
+- Refactor Event Subscription (#6634)
 
 ### Release
 
 - Prepare changelog for v0.34.11 (#6597)
+- Update changelog and version (#6599)
+
+### Router/statesync
+
+- Add helpful log messages (#6724)
 
 ### Rpc
 
+- Fix RPC client doesn't handle url's without ports (#6507)
+- Add subscription id to events (#6386)
+- Use shorter path names for tests (#6602)
+- Add max peer block height into /status rpc call (#6610)
+- Add `TotalGasUsed` to `block_results` response (#6615)
+- Re-index missing events (#6535)
 - Add chunked rpc interface (backport #6445) (#6717)
+
+### State
+
+- Move pruneBlocks from consensus/state to state/execution (#6541)
+
+### State/indexer
+
+- Close row after query (#6664)
+
+### State/privval
+
+- No GetPubKey retry beyond the proposal/voting window (#6578)
+
+### State/types
+
+- Refactor makeBlock, makeBlocks and makeTxs (#6567)
 
 ### Statesync
 
+- Tune backfill process (#6565)
 - Increase chunk priority and robustness (#6582)
+- Make fetching chunks more robust (#6587)
+- Keep peer despite lightblock query fail (#6692)
+- Remove outgoingCalls race condition in dispatcher (#6699)
+- Use initial height as a floor to backfilling (#6709)
+- Increase dispatcher timeout (#6714)
+- Dispatcher test uses internal channel for timing (#6713)
+
+### Tooling
+
+- Use go version 1.16 as minimum version (#6642)
+
+### Tools
+
+- Remove k8s (#6625)
+- Move tools.go to subdir (#6689)
+
+### Types
+
+- Move NodeInfo from p2p (#6618)
+
+## [0.4.2] - 2021-06-10
+
+### Blockchain/v0
+
+- Fix data race in blockchain channel (#6518)
+
+### Build
+
+- Bump github.com/btcsuite/btcd (#6560)
+- Bump codecov/codecov-action from 1.5.0 to 1.5.2 (#6559)
+
+### Indexer
+
+- Use INSERT ... ON CONFLICT in the psql eventsink insert functions (#6556)
+
+### Node
+
+- Fix genesis on start up (#6563)
 
 ## [0.4.1] - 2021-06-09
 
 ### .github
 
-- Split the issue template into two seperate templates (#2073)
 - Add markdown link checker (#4513)
 - Move checklist from PR description into an auto-comment (#4745)
 - Fix whitespace for autocomment (#4747)
 - Fix whitespace for auto-comment (#4750)
+- Move mergify config
+- Move codecov.yml into .github
+- Move codecov config into .github
+- Fix fuzz-nightly job (#5965)
+- Archive crashers and fix set-crashers-count step (#5992)
+- Rename crashers output (fuzz-nightly-test) (#5993)
+- Clean up PR template (#6050)
+- Use job ID (not step ID) inside if condition (#6060)
+- Remove erik as reviewer from dependapot (#6076)
 - Rename crashers output (fuzz-nightly-test) (#5993)
 - Archive crashers and fix set-crashers-count step (#5992)
 - Fix fuzz-nightly job (#5965)
 - Use job ID (not step ID) inside if condition (#6060)
 - Remove erik as reviewer from dependapot (#6076)
+- Jepsen workflow - initial version (#6123)
+- [jepsen] fix inputs and remove TTY from docker (#6134)
+- [jepsen] use working-directory instead of 'cd' (#6135)
+- [jepsen] use "bash -c" to execute lein run cmd (#6136)
+- [jepsen] cd inside the container, not outside (#6137)
+- [jepsen] fix directory name (#6138)
+- [jepsen] source .bashrc (#6139)
+- [jepsen] add more docs (#6141)
+- [jepsen] archive results (#6164)
+- Remove myself from CODEOWNERS (#6248)
 - Make core team codeowners (#6384)
+- Make core team codeowners (#6383)
 
 ### .github/codeowners
 
+- Add alexanderbez (#5913)
 - Add alexanderbez (#5913)
 
 ### .github/issue_template
@@ -726,31 +1417,44 @@
 
 ### .github/workflows
 
+- Enable manual dispatch for some workflows (#5929)
+- Try different e2e nightly test set (#6036)
+- Separate e2e workflows for 0.34.x and master (#6041)
+- Fix whitespace in e2e config file (#6043)
+- Cleanup yaml for e2e nightlies (#6049)
 - Try different e2e nightly test set (#6036)
 - Separate e2e workflows for 0.34.x and master (#6041)
 - Fix whitespace in e2e config file (#6043)
 - Cleanup yaml for e2e nightlies (#6049)
 
+### .gitignore
+
+- Sort (#5690)
+
 ### .golangci
 
 - Disable new linters (#4024)
+- Set locale to US for misspell linter (#6038)
 
 ### .goreleaser
 
 - Don't build linux/arm
 - Build for windows
+- Add windows, remove arm (32 bit) (#5692)
 - Remove arm64 build instructions and bump changelog again (#6131)
+
+### .vscode
+
+- Remove directory (#5626)
+
+### ABCI
+
+- Update readme to fix broken link to proto (#5847)
+- Fix ReCheckTx for Socket Client (#6124)
 
 ### ADR
 
-- Fix malleability problems in Secp256k1 signatures
 - Add missing numbers as blank templates (#5154)
-
-### ADR-016
-
-- Add versions to Block and State (#2644)
-- Add protocol Version to NodeInfo (#2654)
-- Update ABCI Info method for versions (#2662)
 
 ### ADR-037
 
@@ -765,54 +1469,2100 @@
 
 - RPC (#4857)
 
-### BROKEN
+### ADR-062
 
-- Attempt to replace go-wire.JSON with json.Unmarshall in rpc
+- Update with new P2P core implementation (#6051)
 
 ### Backport
 
 - #6494 (#6506)
 
-### Bech32
-
-- Wrap error messages
-
 ### Bug Fixes
 
 - Fix spelling of comment (#4566)
+- Make p2p evidence_pending test not timing dependent (#6252)
+- Avoid race with a deeper copy (#6285)
+- Jsonrpc url parsing and dial function (#6264)
 - Jsonrpc url parsing and dial function (#6264) (#6288)
+- Theoretical leak in clisit.Init (#6302)
+- Test fixture peer manager in mempool reactor tests (#6308)
+- Benchmark single operation in parallel benchmark not b.N (#6422)
 
 ### CHANGELOG
 
-- Update release date
-- Update release date
 - Update release/v0.32.8 details (#4162)
 - Update to reflect 0.33.5 (#4915)
 - Add 0.32.12 changelog entry (#4918)
 - Update for 0.34.0-rc4 (#5400)
+- Update to reflect v0.34.0-rc6 (#5622)
+- Add breaking Version name change (#5628)
 - Prepare 0.34.1-rc1 (#5832)
 
 ### CHANGELOG_PENDING
 
 - Fix the upcoming release number (#5103)
+- Update changelog for changes to American spelling (#6100)
 
 ### CODEOWNERS
 
 - Specify more precise codeowners (#5333)
+- Remove erikgrinaker (#6057)
 - Remove erikgrinaker (#6057)
 
 ### CONTRIBUTING
 
 - Include instructions for installing protobuf
 - Update minor release process (#4909)
+- Update to match the release flow used for 0.34.0 (#5697)
+
+### CONTRIBUTING.md
+
+- Update testing section (#5979)
+
+### Documentation
+
+- Fix broken links (#3482) (#3488)
+- Fix broken links (#3482) (#3488)
+- Fix block.Header.Time description (#3529)
+- Abci#Commit: better explain the possible deadlock (#3536)
+- Fix typo in clist readme (#3574)
+- Update contributing.md (#3503)
+- Fix minor typo (#3681)
+- Update RPC docs for /subscribe & /unsubscribe (#3705)
+- Update /block_results RPC docs (#3708)
+- Missing 'b' in python command (#3728)
+- Fix some language issues and deprecated link (#3733)
+- (rpc/broadcast_tx_*) write expectations for a client (#3749)
+- Update JS section of abci-cli.md (#3747)
+- Update to contributing.md (#3760)
+- Add readme image (#3763)
+- Remove confusing statement from contributing.md (#3764)
+- Quick link fixes throughout docs and repo (#3776)
+- Replace priv_validator.json with priv_validator_key.json (#3786)
+- Fix consensus spec formatting (#3804)
+- "Writing a built-in Tendermint Core application in Go" guide (#3608)
+- Add guides to docs (#3830)
+- Add a footer to guides (#3835)
+- "Writing a Tendermint Core application in Kotlin (gRPC)" guide (#3838)
+- "Writing a Tendermint Core application in Java (gRPC)" guide (#3887)
+- Fix some typos and changelog entries (#3915)
+- Switch the data in `/unconfirmed_txs` and `num_unconfirmed_txs` (#3933)
+- Add dev sessions from YouTube (#3929)
+- Move dev sessions into docs (#3934)
+- Specify a fix for badger err on Windows (#3974)
+- Remove traces of develop branch (#4022)
+- Any path can be absolute or relative (#4035)
+- Add previous dev sessions (#4040)
+- Add ABCI Overview (2/2) dev session (#4044)
+- Update fork-accountability.md (#4068)
+- Add assumption to getting started with abci-cli (#4098)
+- Fix build instructions (#4123)
+- Add GA for docs.tendermint.com (#4149)
+- Replace dead original whitepaper link (#4155)
+- Update wording (#4174)
+- Mention that Evidence votes are now sorted
+- Fix broken links (#4186)
+- Fix broken links in consensus/readme.md (#4200)
+- Update ADR 43 with links to PRs (#4207)
+- Add flag documentation (#4219)
+- Fix broken rpc link (#4221)
+- Fix broken ecosystem link (#4222)
+- Add notes on architecture intro (#4175)
+- Remove "0 means latest" from swagger docs (#4236)
+- Update app-architecture.md (#4259)
+- Link fixes in readme (#4268)
+- Add link for installing Tendermint (#4307)
+- Update theme version (#4315)
+- Minor doc fixes (#4335)
+- Update links to rpc (#4348)
+- Update npm dependencies (#4364)
+- Update guides proto paths (#4365)
+- Fix incorrect link (#4377)
+- Fix spec links (#4384)
+- Update Light Client Protocol page (#4405)
+- Adr-046 add bisection algorithm details (#4496)
+- `tendermint node --help` dumps all supported flags (#4511)
+- Write about debug kill and dump (#4516)
+- Fix links (#4531)
+- Validator setup & Key info (#4604)
+- Add adr-55 for proto repo design (#4623)
+- Amend adr-54 with changes in the sdk (#4684)
+- Create adr 56: prove amnesia attack
+- Mention unbonding period in MaxAgeNumBlocks/MaxAgeDuration
+- State we don't support non constant time crypto
+- Move tcp-window.png to imgs/
+- Document open file limit in production guide (#4945)
+- Update amnesia adr (#4994)
+- Update .vuepress/config.js (#5043)
+- Add warning for chainid (#5072)
+- Added further documentation to the subscribing to events page (#5110)
+- Tweak light client documentation (#5121)
+- Modify needed proto files for guides (#5123)
+- EventAttribute#Index is not deterministic (#5132)
+- Event hashing ADR 058 (#5134)
+- Simplify choosing an ADR number (#5156)
+- Add more details on Vote struct from /consensus_state (#5164)
+- Document ConsensusParams (#5165)
+- Document canonical field (#5166)
+- Cleanup (#5252)
+- Dont display duplicate  (#5271)
+- Rename swagger to openapi (#5263)
+- Fix go tutorials (#5267)
+- Versioned (#5241)
+- Remove duplicate secure p2p (#5279)
+- Remove interview transcript (#5282)
+- Add block retention to upgrading.md (#5284)
+- Updates to various sections (#5285)
+- Add algolia docsearch configs (#5309)
+- Add doc on state sync configuration (#5304)
+- Move subscription to tendermint-core (#5323)
+- Add missing metrics (#5325)
+- Add more description to initial_height (#5350)
+- Make rfc section disppear (#5353)
+- Document max entries for `/blockchain` RPC (#5356)
+- Fix incorrect time_iota_ms configuration (#5385)
+- Minor tweaks (#5404)
+- Update state sync config with discovery_time (#5405)
+- Add explanation of p2p configuration options (#5397)
+- Specify TM version in go tutorials (#5427)
+- Revise ADR 56, documenting short term decision around amnesia evidence  (#5440)
+- Fix links to adr 56 (#5464)
+- Docs-staging → master (#5468)
+- Make /master the default (#5474)
+- Update url for kms repo (#5510)
+- Footer cleanup (#5457)
+- Remove DEV_SESSIONS list (#5579)
+- Add ADR on P2P refactor scope (#5592)
+- Bump vuepress-theme-cosmos (#5614)
+- Add missing ADRs to README, update status of ADR 034 (#5663)
+- Add P2P architecture ADR (#5637)
+- Warn developers about calling blocking funcs in Receive (#5679)
+- Add nodes section  (#5604)
+- Add version dropdown and v0.34 docs(#5762)
+- Fix link (#5763)
+- Use hyphens instead of snake case (#5802)
+- Specify master for tutorials (#5822)
+- Specify 0.34 (#5823)
+- Fix broken redirect links (#5881)
+- Update package-lock.json (#5928)
+- Package-lock.json fix (#5948)
+- Change v0.33 version (#5950)
+- Bump package-lock.json of v0.34.x (#5952)
+- Dont login when in PR (#5961)
+- Release Linux/ARM64 image (#5925)
+- Log level docs (#5945)
+- Fix typo in state sync example (#5989)
+- External address (#6035)
+- Reword configuration (#6039)
+- Change v0.33 version (#5950)
+- Release Linux/ARM64 image (#5925)
+- Dont login when in PR (#5961)
+- Fix typo in state sync example (#5989)
+- Fix proto file names (#6112)
+- How to add tm version to RPC (#6151)
+- Add preallocated list of security vulnerability names (#6167)
+- Fix sample code (#6186)
+- Fix sample code #6186
+- Bump vuepress-theme-cosmos (#6344)
+- Remove RFC section and s/RFC001/ADR066 (#6345)
+- Adr-65 adjustments (#6401)
+- Adr cleanup (#6489)
+- Hide security page (second attempt) (#6511)
+- Rename tendermint-core to system (#6515)
+- Logger updates (#6545)
+
+### Makefile
+
+- Parse TENDERMINT_BUILD_OPTIONS (#4738)
+- Use git 2.20-compatible branch detection (#5778)
+- Always pull image in proto-gen-docker. (#5953)
+- Always pull image in proto-gen-docker. (#5953)
+
+### P2P
+
+- Evidence Reactor Test Refactor (#6238)
+
+### README
+
+- Specify supported versions (#4660)
+- Update chat link with Discord instead of Riot (#5071)
+- Clean up README (#5391)
+- Update link to Tendermint blog (#5713)
+
+### RPC
+
+- Don't cap page size in unsafe mode (#6329)
+
+### Security
+
+- Refactor Remote signers (#3370)
+- Cross-check new header with all witnesses (#4373)
+- [Security] Bump websocket-extensions from 0.1.3 to 0.1.4 in /docs (#4976)
+- [Security] Bump lodash from 4.17.15 to 4.17.19 in /docs
+- [Security] Bump prismjs from 1.20.0 to 1.21.0 in /docs
+- Bump vuepress-theme-cosmos from 1.0.169 to 1.0.172 in /docs (#5286)
+- Bump github.com/golang/protobuf from 1.4.2 to 1.4.3 (#5506)
+- Bump github.com/prometheus/client_golang from 1.7.1 to 1.8.0 (#5515)
+- Bump github.com/golang/protobuf from 1.4.2 to 1.4.3 (#5506)
+- Bump github.com/prometheus/client_golang from 1.7.1 to 1.8.0 (#5515)
+- Bump vuepress-theme-cosmos from 1.0.176 to 1.0.177 in /docs (#5746)
+- Bump vuepress-theme-cosmos from 1.0.177 to 1.0.178 in /docs (#5754)
+- Bump github.com/prometheus/client_golang from 1.8.0 to 1.9.0 (#5807)
+- Bump github.com/cosmos/iavl from 0.15.2 to 0.15.3 (#5814)
+- Bump github.com/stretchr/testify from 1.6.1 to 1.7.0 (#5897)
+- Bump vuepress-theme-cosmos from 1.0.179 to 1.0.180 in /docs (#5915)
+- Bump github.com/stretchr/testify from 1.6.1 to 1.7.0 (#5897)
+- Bump vuepress-theme-cosmos from 1.0.179 to 1.0.180 in /docs (#5915)
+- Bump watchpack from 2.1.0 to 2.1.1 in /docs (#6063)
+- Bump github.com/tendermint/tm-db from 0.6.3 to 0.6.4 (#6073)
+- Bump github.com/tendermint/tm-db from 0.6.3 to 0.6.4 (#6073)
+- Bump watchpack from 2.1.0 to 2.1.1 in /docs (#6063)
+- Update 0.34.3 changelog with details on security vuln (bp #6108) (#6110)
+- Bump vuepress-theme-cosmos from 1.0.180 to 1.0.181 in /docs (#6266)
+- Bump github.com/minio/highwayhash from 1.0.1 to 1.0.2 (#6280)
+- Bump github.com/confio/ics23/go from 0.6.3 to 0.6.6 (#6374)
+- Bump github.com/grpc-ecosystem/go-grpc-middleware from 1.2.2 to 1.3.0 (#6387)
+- Bump github.com/lib/pq from 1.10.1 to 1.10.2 (#6505)
+
+### Testing
+
+- Add consensus_params to testnet config generation (#3781)
+- Branch for fix of ci (#4266)
+- Bind test servers to 127.0.0.1 (#4322)
+- Simplified txsearch cancellation test (#4500)
+- Fix p2p test build breakage caused by Debian testing
+- Revert Go 1.13→1.14 bump
+- Use random socket names to avoid collisions (#4885)
+- Mitigate test data race (#4886)
+- Use github.sha in binary cache key (#5062)
+- Deflake TestAddAndRemoveListenerConcurrency and TestSyncer_SyncAny (#5101)
+- Protobuf vectors for reactors (#5221)
+- Add end-to-end testing framework (#5435)
+- Add basic end-to-end test cases (#5450)
+- Add GitHub action for end-to-end tests (#5452)
+- Remove P2P tests (#5453)
+- Add E2E test for node peering (#5465)
+- Add random testnet generator (#5479)
+- Clean up E2E test volumes using a container (#5509)
+- Tweak E2E tests for nightly runs (#5512)
+- Enable ABCI gRPC client in E2E testnets (#5521)
+- Enable blockchain v2 in E2E testnet generator (#5533)
+- Enable restart/kill perturbations in E2E tests (#5537)
+- Add end-to-end testing framework (#5435)
+- Add basic end-to-end test cases (#5450)
+- Add GitHub action for end-to-end tests (#5452)
+- Remove P2P tests (#5453)
+- Add E2E test for node peering (#5465)
+- Add random testnet generator (#5479)
+- Clean up E2E test volumes using a container (#5509)
+- Tweak E2E tests for nightly runs (#5512)
+- Enable ABCI gRPC client in E2E testnets (#5521)
+- Enable blockchain v2 in E2E testnet generator (#5533)
+- Enable restart/kill perturbations in E2E tests (#5537)
+- Run remaining E2E testnets on run-multiple.sh failure (#5557)
+- Tag E2E Docker resources and autoremove them (#5558)
+- Add evidence e2e tests (#5488)
+- Run remaining E2E testnets on run-multiple.sh failure (#5557)
+- Tag E2E Docker resources and autoremove them (#5558)
+- Add evidence e2e tests (#5488)
+- Fix handling of start height in generated E2E testnets (#5563)
+- Disable E2E misbehaviors due to bugs (#5569)
+- Fix handling of start height in generated E2E testnets (#5563)
+- Disable E2E misbehaviors due to bugs (#5569)
+- Fix various E2E test issues (#5576)
+- Fix various E2E test issues (#5576)
+- Fix secp failures (#5649)
+- Fix secp failures (#5649)
+- Switched node keys back to edwards (#4)
+- Enable v1 and v2 blockchains (#5702)
+- Fix TestByzantinePrevoteEquivocation flake (#5710)
+- Fix TestByzantinePrevoteEquivocation flake (#5710)
+- Fix integration tests and rename binary
+- Disable abci/grpc and blockchain/v2 due to flake (#5854)
+- Add conceptual overview (#5857)
+- Improve WaitGroup handling in Byzantine tests (#5861)
+- Improve WaitGroup handling in Byzantine tests (#5861)
+- Tolerate up to 2/3 missed signatures for a validator (#5878)
+- Disable abci/grpc and blockchain/v2 due to flake (#5854)
+- Fix TestPEXReactorRunning data race (#5955)
+- Move fuzz tests into this repo (#5918)
+- Fix `make test` (#5966)
+- Close transports to avoid goroutine leak failures (#5982)
+- Don't use foo-bar.net in TestHTTPClientMakeHTTPDialer (#5997)
+- Fix TestSwitchAcceptRoutine flake by ignoring error type (#6000)
+- Disable TestPEXReactorSeedModeFlushStop due to flake (#5996)
+- Fix test data race in p2p.MemoryTransport with logger (#5995)
+- Fix TestSwitchAcceptRoutine by ignoring spurious error (#6001)
+- Fix TestRouter to take into account PeerManager reconnects (#6002)
+- Fix flaky router broadcast test (#6006)
+- Enable pprof server to help debugging failures (#6003)
+- Increase sign/propose tolerances (#6033)
+- Increase validator tolerances (#6037)
+- Don't use foo-bar.net in TestHTTPClientMakeHTTPDialer (#5997) (#6047)
+- Enable pprof server to help debugging failures (#6003)
+- Increase sign/propose tolerances (#6033)
+- Increase validator tolerances (#6037)
+- Move fuzz tests into this repo (#5918)
+- Fix `make test` (#5966)
+- Fix TestByzantinePrevoteEquivocation (#6132)
+- Fix PEX reactor test (#6188)
+- Fix rpc, secret_connection and pex tests (#6190)
+- Refactor mempool reactor to use new p2ptest infrastructure (#6250)
+- Clean up databases in tests (#6304)
+- Improve cleanup for data and disk use (#6311)
+- Produce structured reporting from benchmarks (#6343)
+- Create common functions for easily producing tm data structures (#6435)
+- HeaderHash test vector (#6531)
+- Add evidence hash testvectors (#6536)
+
+### UPGRADING
+
+- Polish upgrading instructions for 0.34 (#5398)
+
+### UPGRADING.md
+
+- Write about the LastResultsHash change (#5000)
+
+### UX
+
+- Version configuration (#5740)
+
+### Vagrantfile
+
+- Update Go version
+
+### WIP
+
+- Add implementation of mock/fake http-server
+- Rename package name from fakeserver to mockcoreserver
+- Change the method names of call structure, Fix adding headers
+- Add mock of JRPCServer implementation on top of HTTServer mock
+
+### [Docs]
+
+- Minor doc touchups (#4171)
+
+### Abci
+
+- Refactor tagging events using list of lists (#3643)
+- Refactor ABCI CheckTx and DeliverTx signatures (#3735)
+- Refactor CheckTx to notify of recheck (#3744)
+- Minor cleanups in the socket client (#3758)
+- Fix documentation regarding CheckTx type update (#3789)
+- Remove TotalTxs and NumTxs from Header (#3783)
+- Fix broken spec link (#4366)
+- Fix protobuf lint issues
+- Regenerate proto files
+- Remove protoreplace script
+- Remove python examples
+- Proto files follow same path  (#5039)
+- Fix abci evidence types (#5174)
+- Add ResponseInitChain.app_hash, check and record it (#5227)
+- Update evidence (#5324)
+- Fix socket client error for state sync responses (#5395)
+- Remove setOption (#5447)
+- Modify Client interface and socket client (#5673)
+- Use protoio for length delimitation (#5818)
+- Fix ReCheckTx for Socket Client (bp #6124) (#6125)
+- Change client to use multi-reader mutexes (#6306)
+
+### Abci/client
+
+- Fix DATA RACE in gRPC client (#3798)
+
+### Abci/example/kvstore
+
+- Decrease val power by 1 upon equivocation (#5056)
+
+### Abci/examples
+
+- Switch from hex to base64 pubkey in kvstore (#3641)
+
+### Abci/grpc
+
+- Return async responses in order (#5520)
+- Return async responses in order (#5520) (#5531)
+- Fix ordering of sync/async callback combinations (#5556)
+- Fix ordering of sync/async callback combinations (#5556)
+- Fix invalid mutex handling in StopForError() (#5849)
+- Fix invalid mutex handling in StopForError() (#5849)
+
+### Abci/kvstore
+
+- Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (#4233)
+
+### Abci/server
+
+- Recover from app panics in socket server (#3809)
+- Print panic & stack trace to STDERR if logger is not set
+
+### Abci/types
+
+- Update comment (#3612)
+- Add comment for TotalVotingPower (#5081)
+
+### Adr
+
+- Peer Behaviour (#3539)
+- PeerBehaviour updates (#3558)
+- [43] blockchain riri-org (#3753)
+- ADR-052: Tendermint Mode (#4302)
+- ADR-051: Double Signing Risk Reduction (#4262)
+- Light client implementation (#4397)
+- Crypto encoding for proto (#4481)
+- Add API stability ADR (#5341)
+- Privval gRPC (#5712)
+- Batch verification (#6008)
+- ADR 065: Custom Event Indexing (#6307)
+
+### Adr#50
+
+- Improve trusted peering (#4072)
+
+### Adr-047
+
+- Evidence handling (#4429)
+
+### Adr-053
+
+- Update after state sync merge (#4768)
+
+### All
+
+- Name reactors when they are initialized (#4608)
+
+### Autofile
+
+- Resolve relative paths (#4390)
+
+### Backports
+
+- Mergify (#6107)
+
+### Behaviour
+
+- Return correct reason in MessageOutOfOrder (#3772)
+- Add simple doc.go (#5055)
+
+### Block
+
+- Use commit sig size instead of vote size (#5490)
+- Fix max commit sig size (#5567)
+- Fix max commit sig size (#5567)
+
+### Blockchain
+
+- Update the maxHeight when a peer is removed (#3350)
+- Comment out logger in test code that causes a race condition (#3500)
+- Dismiss request channel delay (#3459)
+- Reorg reactor (#3561)
+- Add v2 reactor (#4361)
+- Enable v2 to be set (#4597)
+- Proto migration  (#4969)
+- Test vectors for proto encoding (#5073)
+- Fix fast sync halt with initial height > 1 (#5249)
+- Verify +2/3 (#5278)
+- Remove duplication of validate basic (#5418)
+
+### Blockchain/v0
+
+- Relax termination conditions and increase sync timeout (#5741)
+- Stop tickers on poolRoutine exit (#5860)
+- Stop tickers on poolRoutine exit (#5860)
+
+### Blockchain/v1
+
+- Add noBlockResponse handling  (#5401)
+- Add noBlockResponse handling  (#5401)
+- Handle peers without blocks (#5701)
+- Fix deadlock (#5711)
+- Remove in favor of v2 (#5728)
+- Omit incoming message bytes from log
+
+### Blockchain/v2
+
+- Allow setting nil switch, for CustomReactors()
+- Don't broadcast base if height is 0
+- Fix excessive CPU usage due to spinning on closed channels (#4761)
+- Respect fast_sync option (#4772)
+- Integrate with state sync
+- Correctly set block store base in status responses (#4971)
+- Fix "panic: duplicate block enqueued by processor" (#5499)
+- Fix panic: processed height X+1 but expected height X (#5530)
+- Fix "panic: duplicate block enqueued by processor" (#5499)
+- Fix panic: processed height X+1 but expected height X (#5530)
+- Make the removal of an already removed peer a noop (#5553)
+- Make the removal of an already removed peer a noop (#5553)
+- Remove peers from the processor  (#5607)
+- Remove peers from the processor  (#5607)
+- Send status request when new peer joins (#5774)
+- Fix missing mutex unlock (#5862)
+- Fix missing mutex unlock (#5862)
+- Internalize behavior package (#6094)
+
+### Blockchain[v1]
+
+- Increased timeout times for peer tests (#4871)
+
+### Blockstore
+
+- Allow initial SaveBlock() at any height
+- Fix race conditions when loading data (#5382)
+- Save only the last seen commit (#6212)
+
+### Buf
+
+- Modify buf.yml, add buf generate (#5653)
+
+### Build
+
+- Bump github.com/tendermint/tm-db from 0.1.1 to 0.2.0 (#4001)
+- Bump github.com/gogo/protobuf from 1.3.0 to 1.3.1 (#4055)
+- Bump github.com/spf13/viper from 1.4.0 to 1.5.0 (#4102)
+- Bump github.com/spf13/viper from 1.5.0 to 1.6.1 (#4224)
+- Bump github.com/pkg/errors from 0.9.0 to 0.9.1 (#4310)
+- Bump google.golang.org/grpc from 1.26.0 to 1.27.0 (#4355)
+- Bump github.com/stretchr/testify from 1.5.0 to 1.5.1 (#4441)
+- Bump github.com/spf13/cobra from 0.0.3 to 0.0.6 (#4440)
+- Bump github.com/golang/protobuf from 1.3.3 to 1.3.4 (#4485)
+- Bump github.com/prometheus/client_golang (#4525)
+- Bump github.com/Workiva/go-datastructures (#4545)
+- Bump google.golang.org/grpc from 1.27.1 to 1.28.0 (#4551)
+- Bump github.com/tendermint/tm-db from 0.4.1 to 0.5.0 (#4554)
+- Bump github.com/golang/protobuf from 1.3.4 to 1.3.5 (#4563)
+- Bump github.com/prometheus/client_golang (#4574)
+- Bump github.com/gorilla/websocket from 1.4.1 to 1.4.2 (#4584)
+- Bump github.com/spf13/cobra from 0.0.6 to 0.0.7 (#4612)
+- Bump github.com/tendermint/tm-db from 0.5.0 to 0.5.1 (#4613)
+- Bump google.golang.org/grpc from 1.28.0 to 1.28.1 (#4653)
+- Bump github.com/spf13/viper from 1.6.2 to 1.6.3 (#4664)
+- Bump @vuepress/plugin-google-analytics in /docs (#4692)
+- Bump google.golang.org/grpc from 1.28.1 to 1.29.0
+- Bump google.golang.org/grpc from 1.29.0 to 1.29.1 (#4735)
+- Manually bump github.com/prometheus/client_golang from 1.5.1 to 1.6.0 (#4758)
+- Bump github.com/golang/protobuf from 1.4.0 to 1.4.1 (#4794)
+- Bump vuepress-theme-cosmos from 1.0.163 to 1.0.164 in /docs (#4815)
+- Bump github.com/spf13/viper from 1.6.3 to 1.7.0 (#4814)
+- Bump github.com/golang/protobuf from 1.4.1 to 1.4.2 (#4849)
+- Bump vuepress-theme-cosmos from 1.0.164 to 1.0.165 in /docs
+- Bump github.com/stretchr/testify from 1.5.1 to 1.6.0
+- Bump vuepress-theme-cosmos from 1.0.165 to 1.0.166 in /docs (#4920)
+- Bump github.com/stretchr/testify from 1.6.0 to 1.6.1
+- Bump github.com/prometheus/client_golang from 1.6.0 to 1.7.0 (#5027)
+- Bump google.golang.org/grpc from 1.29.1 to 1.30.0
+- Bump github.com/prometheus/client_golang
+- Bump vuepress-theme-cosmos from 1.0.168 to 1.0.169 in /docs
+- Bump google.golang.org/grpc from 1.30.0 to 1.31.0
+- Bump github.com/spf13/viper from 1.7.0 to 1.7.1
+- Bump golangci/golangci-lint-action from v2.1.0 to v2.2.0 (#5245)
+- Bump actions/cache from v1 to v2.1.0 (#5244)
+- Bump codecov/codecov-action from v1.0.7 to v1.0.12 (#5247)
+- Bump technote-space/get-diff-action from v1 to v3 (#5246)
+- Bump gaurav-nelson/github-action-markdown-link-check from 0.6.0 to 1.0.5 (#5248)
+- Bump codecov/codecov-action from v1.0.12 to v1.0.13 (#5258)
+- Bump gaurav-nelson/github-action-markdown-link-check from 1.0.5 to 1.0.6 (#5265)
+- Bump gaurav-nelson/github-action-markdown-link-check from 1.0.6 to 1.0.7 (#5269)
+- Bump actions/cache from v2.1.0 to v2.1.1 (#5268)
+- Bump google.golang.org/grpc from 1.31.0 to 1.31.1 (#5290)
+- Bump github.com/tendermint/tm-db from 0.6.1 to 0.6.2 (#5296)
+- Bump google.golang.org/grpc from 1.31.1 to 1.32.0 (#5346)
+- Bump github.com/minio/highwayhash from 1.0.0 to 1.0.1 (#5370)
+- Bump vuepress-theme-cosmos from 1.0.172 to 1.0.173 in /docs (#5390)
+- Bump watchpack from 1.7.4 to 2.0.0 in /docs (#5470)
+- Bump actions/cache from v2.1.1 to v2.1.2 (#5487)
+- Bump golangci/golangci-lint-action from v2.2.0 to v2.2.1 (#5486)
+- Bump technote-space/get-diff-action from v3 to v4 (#5485)
+- Bump github.com/spf13/cobra from 1.0.0 to 1.1.0 (#5505)
+- Bump github.com/spf13/cobra from 1.1.0 to 1.1.1 (#5526)
+- Bump codecov/codecov-action from v1.0.13 to v1.0.14 (#5525)
+- Bump gaurav-nelson/github-action-markdown-link-check from 1.0.7 to 1.0.8 (#5543)
+- Bump google.golang.org/grpc from 1.32.0 to 1.33.1 (#5544)
+- Bump actions/cache from v2.1.1 to v2.1.2 (#5487)
+- Bump golangci/golangci-lint-action from v2.2.0 to v2.2.1 (#5486)
+- Bump technote-space/get-diff-action from v3 to v4 (#5485)
+- Bump golangci/golangci-lint-action from v2.2.1 to v2.3.0 (#5571)
+- Bump codecov/codecov-action from v1.0.13 to v1.0.14 (#5582)
+- Bump watchpack from 2.0.0 to 2.0.1 in /docs (#5605)
+- Bump actions/cache from v2.1.2 to v2.1.3 (#5633)
+- Bump google.golang.org/grpc from 1.33.1 to 1.33.2 (#5635)
+- Bump github.com/tendermint/tm-db from 0.6.2 to 0.6.3
+- Bump rtCamp/action-slack-notify from e9db0ef to 2.1.1
+- Bump github.com/spf13/cobra from 1.0.0 to 1.1.0 (#5505)
+- Bump github.com/spf13/cobra from 1.1.0 to 1.1.1 (#5526)
+- Bump google.golang.org/grpc from 1.32.0 to 1.33.1 (#5544)
+- Bump google.golang.org/grpc from 1.33.1 to 1.33.2 (#5635)
+- Bump github.com/tendermint/tm-db from 0.6.2 to 0.6.3
+- Bump codecov/codecov-action from v1.0.14 to v1.0.15 (#5676)
+- Bump github.com/cosmos/iavl from 0.15.0-rc5 to 0.15.0 (#5708)
+- Bump vuepress-theme-cosmos from 1.0.175 to 1.0.176 in /docs (#5727)
+- Refactor BLS library/bindings integration  (#9)
+- BLS scripts - Improve build.sh, Fix install.sh (#10)
+- Dashify some files (#11)
+- Fix docker image and docker.yml workflow (#12)
+- Fix coverage.yml, bump go version, install BLS, drop an invalid character (#19)
+- Fix test.yml, bump go version, install BLS, fix job names (#18)
+- Bump google.golang.org/grpc from 1.33.2 to 1.34.0 (#5737)
+- Bump gaurav-nelson/github-action-markdown-link-check (#22)
+- Bump codecov/codecov-action from v1.0.13 to v1.0.15 (#23)
+- Bump golangci/golangci-lint-action from v2.2.1 to v2.3.0 (#24)
+- Bump rtCamp/action-slack-notify from e9db0ef to 2.1.1 (#25)
+- Bump google.golang.org/grpc from 1.33.2 to 1.34.0 (#26)
+- Bump vuepress-theme-cosmos from 1.0.173 to 1.0.177 in /docs (#27)
+- Bump watchpack from 2.0.1 to 2.1.0 in /docs (#5768)
+- Bump rtCamp/action-slack-notify from ecc1353ce30ef086ce3fc3d1ea9ac2e32e150402 to 2.1.2 (#5767)
+- Bump vuepress-theme-cosmos from 1.0.178 to 1.0.179 in /docs (#5780)
+- Bump gaurav-nelson/github-action-markdown-link-check from 1.0.8 to 1.0.9 (#5779)
+- Bump gaurav-nelson/github-action-markdown-link-check (#5787)
+- Bump gaurav-nelson/github-action-markdown-link-check (#5793)
+- Bump github.com/cosmos/iavl from 0.15.0 to 0.15.2
+- Bump codecov/codecov-action from v1.0.15 to v1.1.1 (#5825)
+- Bump codecov/codecov-action from v1.1.1 to v1.2.0 (#5863)
+- Bump codecov/codecov-action from v1.2.0 to v1.2.1
+- Bump gaurav-nelson/github-action-markdown-link-check (#5884)
+- Bump google.golang.org/grpc from 1.34.0 to 1.35.0 (#5902)
+- Bump google.golang.org/grpc from 1.34.0 to 1.35.0 (#5902)
+- Bump actions/cache from v2.1.3 to v2.1.4 (#6055)
+- Bump JamesIves/github-pages-deploy-action (#6062)
+- Bump actions/cache from v2.1.3 to v2.1.4 (#6055)
+- Bump github.com/spf13/cobra from 1.1.1 to 1.1.2 (#6075)
+- Bump github.com/spf13/cobra from 1.1.2 to 1.1.3 (#6098)
+- Bump golangci/golangci-lint-action from v2.3.0 to v2.4.0 (#6111)
+- Bump golangci/golangci-lint-action from v2.4.0 to v2.5.1 (#6175)
+- Bump google.golang.org/grpc from 1.35.0 to 1.36.0 (#6180)
+- Bump JamesIves/github-pages-deploy-action from 4.0.0 to 4.1.0 (#6215)
+- Bump rtCamp/action-slack-notify from ae4223259071871559b6e9d08b24a63d71b3f0c0 to 2.1.3 (#6234)
+- Bump codecov/codecov-action from v1.2.1 to v1.2.2 (#6231)
+- Bump codecov/codecov-action from v1.2.2 to v1.3.1 (#6247)
+- Bump github.com/golang/protobuf from 1.4.3 to 1.5.1 (#6254)
+- Bump github.com/prometheus/client_golang (#6258)
+- Bump google.golang.org/grpc from 1.36.0 to 1.36.1 (#6281)
+- Bump github.com/golang/protobuf from 1.5.1 to 1.5.2 (#6299)
+- Bump github.com/Workiva/go-datastructures (#6298)
+- Bump golangci/golangci-lint-action from v2.5.1 to v2.5.2 (#6317)
+- Bump codecov/codecov-action from v1.3.1 to v1.3.2 (#6319)
+- Bump JamesIves/github-pages-deploy-action (#6316)
+- Bump docker/setup-buildx-action from v1 to v1.1.2 (#6324)
+- Bump google.golang.org/grpc from 1.36.1 to 1.37.0 (#6330)
+- Bump google.golang.org/grpc from 1.36.1 to 1.37.0 (bp #6330) (#6335)
+- Bump styfle/cancel-workflow-action from 0.8.0 to 0.9.0 (#6341)
+- Bump actions/cache from v2.1.4 to v2.1.5 (#6350)
+- Bump codecov/codecov-action from v1.3.2 to v1.4.0 (#6365)
+- Bump codecov/codecov-action from v1.4.0 to v1.4.1 (#6379)
+- Bump docker/setup-buildx-action from v1.1.2 to v1.2.0 (#6391)
+- Bump docker/setup-buildx-action from v1.2.0 to v1.3.0 (#6413)
+- Bump codecov/codecov-action from v1.4.1 to v1.5.0 (#6417)
+- Bump github.com/cosmos/iavl from 0.15.3 to 0.16.0 (#6421)
+- Bump JamesIves/github-pages-deploy-action (#6448)
+- Bump docker/build-push-action from 2 to 2.4.0 (#6454)
+- Bump actions/stale from 3 to 3.0.18 (#6455)
+- Bump actions/checkout from 2 to 2.3.4 (#6456)
+- Bump docker/login-action from 1 to 1.9.0 (#6460)
+- Bump google.golang.org/grpc from 1.37.0 to 1.37.1 (#6461)
+- Bump actions/stale from 3.0.18 to 3.0.19 (#6477)
+- Bump watchpack from 2.1.1 to 2.2.0 in /docs (#6482)
+- Bump browserslist from 4.16.4 to 4.16.6 in /docs (#6487)
+- Bump google.golang.org/grpc from 1.37.1 to 1.38.0 (#6483)
+- Bump docker/build-push-action from 2.4.0 to 2.5.0 (#6496)
+- Bump dns-packet from 1.3.1 to 1.3.4 in /docs (#6500)
+- Bump actions/cache from 2.1.5 to 2.1.6 (#6504)
+- Bump rtCamp/action-slack-notify from 2.1.3 to 2.2.0 (#6543)
+- Bump github.com/prometheus/client_golang (#6552)
+
+### Changelog
+
+- Add summary & fix link & add external contributor (#3490)
+- Add v0.31.9 and v0.31.8 updates (#4034)
+- Fix typo (#4106)
+- Explain breaking changes better
+- GotVoteFromUnwantedRoundError -> ErrGotVoteFromUnwantedRound
+- Add 0.32.9 changelog to master (#4305)
+- Add entries from secruity releases
+- Update 0.33.6 (#5075)
+- Note breaking change in the 0.33.6 release (#5077)
+- Reorgranize (#5065)
+- Move entries from pending  (#5172)
+- Bump to 0.34.0-rc2 (#5176)
+- Add v0.33.7 release (#5203)
+- Add v0.32.13 release (#5204)
+- Update for 0.34.0-rc3 (#5240)
+- Add v0.33.8 from release (#5242)
+- Minor tweaks (#5389)
+- Add missing date to v0.33.5 release, fix indentation (#5454)
+- Add missing date to v0.33.5 release, fix indentation (#5454) (#5455)
+- Prepare changelog for RC5 (#5494)
+- Squash changelog from 0.34 RCs into one (#5691)
+- Squash changelog from 0.34 RCs into one (#5687)
+- Add entry back (#5738)
+- Update changelog for v0.34.1 (#5872)
+- Update with changes released in 0.34.1 (#5875)
+- Prepare 0.34.2 release (#5894)
+- Update changelogs to reflect changes released in 0.34.2
+- Update for 0.34.3 (#5926)
+- Update changelog for v0.34.3 (#5927)
+- Update for v0.34.4 (#6096)
+- Improve with suggestions from @melekes (#6097)
+- Update to reflect v0.34.4 release (#6105)
+- Update 0.34.3 changelog with details on security vuln (#6108)
+- Update for 0.34.5 (#6129)
+- Bump to v0.34.6
+- Fix changelog pending version numbering (#6149)
+- Update with changes from 0.34.7 (and failed 0.34.5, 0.34.6) (#6150)
+- Update for 0.34.8 (#6181)
+- Update for 0.34.8 (#6183)
+- Prepare changelog for 0.34.9 release (#6333)
+- Update to reflect 0.34.9 (#6334)
+- Update for 0.34.10 (#6357)
+- Update for 0.34.10 (#6358)
+
+### Ci
+
+- Transition some ci to github actions
+- Only run when applicable (#4752)
+- Check git diff on each job (#4770)
+- Checkout code before git diff check (#4779)
+- Add paths 
+- Bump the timeout for test_coverage (#4864)
+- Migrate localnet to github actions (#4878)
+- Add timeouts (#4912)
+- Migrate test_cover (#4869)
+- Fix spacing of if statement (#5015)
+- Try to fix codecov (#5095)
+- Only run tests when go files are touched (#5097)
+- Version linter fix  (#5128)
+- Freeze golangci action version (#5196)
+- Fix net pipeline (#5272)
+- Delay codecov notification  (#5275)
+- Fix net run (#5343)
+- Docker remvoe circleci and add github action (#5420)
+- Docker remove circleci and add github action (#5551)
+- Add goreleaser (#5527)
+- Tests (#5577)
+- Add goreleaser (#5527)
+- Tests (#5577)
+- Use gh pages (#5609)
+- Remove `add-path` (#5674)
+- Remove `add-path` (#5674)
+- Remove circle (#5714)
+- Build for 32 bit, libs: fix overflow (#5700)
+- Build for 32 bit, libs: fix overflow (#5700)
+- Install BLS library in lint.yml and bump its go version (#15)
+- E2e fixes - docker image, e2e.yml BLS library, default KeyType (#21)
+- Make timeout-minutes 8 for golangci (#5821)
+- Run `goreleaser build` (#5824)
+- Add janitor (#6292)
+
+### Ci/e2e
+
+- Avoid running job when no go files are touched (#5471)
+- Avoid running job when no go files are touched (#5471)
+
+### Circleci
+
+- Run P2P IPv4 and IPv6 tests in parallel (#4459)
+- Fix reproducible builds test (#4497)
+- Remove Gitian reproducible_builds job (#5462)
+- Remove Gitian reproducible_builds job (#5462)
+
+### Cli
+
+- Add option to not clear address book with unsafe reset (#3606)
+- Add `--cs.create_empty_blocks_interval` flag (#4205)
+- Add `--db_backend` and `--db_dir` flags to tendermint node cmd (#4235)
+- Add optional `--genesis_hash` flag to check genesis hash upon startup (#4238)
+- Debug sub-command (#4227)
+- Add command to generate shell completion scripts (#4665)
+- Light home dir should default to where the full node default is (#5392)
+- Light home dir should default to where the full node default is (#5392)
+
+### Cmd
+
+- Show useful error when tm not initialised (#4512)
+- Fix debug kill and change debug dump archive filename format (#4517)
+- Add support for --key (#5612)
+- Modify `gen_node_key` to print key to STDOUT (#5772)
+- Hyphen case cli and config (#5777)
+- Hyphen-case cli  v0.34.1 (#5786)
+- Ignore missing wal in debug kill command (#6160)
+
+### Cmd/debug
+
+- Execute p.Signal only when p is not nil (#4271)
+
+### Cmd/lite
+
+- Switch to new lite2 package (#4300)
+
+### Codecov
+
+- Disable annotations (#5413)
+- Validate codecov.yml (#5699)
+
+### Common
+
+- CMap: slight optimization in Keys() and Values(). (#3567)
+
+### Config
+
+- Make possible to set absolute paths for TLS cert and key (#3765)
+- Move max_msg_bytes into mempool section (#3869)
+- Add rocksdb as a db backend option (#4239)
+- Allow fastsync.version = v2 (#4639)
+- Trust period consistency (#5297)
+- Rename prof_laddr to pprof_laddr and move it to rpc (#5315)
+- Set time_iota_ms to timeout_commit in test genesis (#5386)
+- Add state sync discovery_time setting (#5399)
+- Set statesync.rpc_servers when generating config file (#5433)
+- Set statesync.rpc_servers when generating config file (#5433) (#5438)
+- Increase MaxPacketMsgPayloadSize to 1400
+- Fix mispellings (#5914)
+- Fix mispellings (#5914)
+- Create `BootstrapPeers` p2p config parameter (#6372)
+- Add private peer id /net_info expose information in default config (#6490)
+- Seperate priv validator config into seperate section (#6462)
+
+### Config/indexer
+
+- Custom event indexing (#6411)
+
+### Consensus
+
+- Reduce "Error attempting to add vote" message severity (Er… (#3871)
+- Reduce log severity for ErrVoteNonDeterministicSignature (#4431)
+- Add comment as to why use mocks during replay (#4785)
+- Fix TestSimulateValidatorsChange
+- Fix and rename TestStateLockPOLRelock (#4796)
+- Bring back log.Error statement (#4899)
+- Increase ensureTimeout (#4891)
+- Fix startnextheightcorrectly test (#4938)
+- Attempt to repair the WAL file on data corruption (#4682)
+- Change logging and handling of height mismatch (#4954)
+- Stricter on LastCommitRound check (#4970)
+- Proto migration (#4984)
+- Do not allow signatures for a wrong block in commits
+- Msg testvectors (#5076)
+- Added byzantine test, modified previous test (#5150)
+- Only call privValidator.GetPubKey once per block (#5143)
+- Don't check InitChain app hash vs genesis app hash, replace it (#5237)
+- Double-sign risk reduction (ADR-51) (#5147)
+- Fix wrong proposer schedule for `InitChain` validators (#5329)
+- Check block parts don't exceed maximum block bytes (#5431)
+- Check block parts don't exceed maximum block bytes (#5436)
+- Open target WAL as read/write during autorepair (#5536)
+- Open target WAL as read/write during autorepair (#5536) (#5547)
+- Fix flaky tests (#5734)
+- Change log level to error when adding vote
+- Deprecate time iota ms (#5792)
+- Groom Logs (#5917)
+- P2p refactor (#5969)
+- Groom Logs (#5917)
+- Remove privValidator from log call (#6128)
+- More log grooming (#6140)
+- Log private validator address and not struct (#6144)
+- More log grooming (bp #6140) (#6143)
+- Reduce shared state in tests (#6313)
+- Add test vector for hasvote (#6469)
+
+### Consensus/types
+
+- Fix BenchmarkRoundStateDeepCopy panics (#4244)
+
+### Contributing
+
+- Add steps for adding and removing rc branches (#5223)
+- Include instructions for a release candidate (#5498)
+- Simplify our minor release process (#5749)
+
+### Cov
+
+- Ignore autogen file (#5033)
+
+### Crypto
+
+- Delete unused code (#3426)
+- Proof of Concept for iterative version of SimpleHashFromByteSlices (#2611) (#3530)
+- Add sr25519 signature scheme (#4190)
+- Fix sr25519 from raw import (#4272)
+- Remove SimpleHashFromMap() and SimpleProofsFromMap()
+- Remove key suffixes (#4941)
+- Removal of multisig (#4988)
+- Consistent api across keys (#5214)
+- API modifications (#5236)
+- Remove secp256k1 (#5280)
+- Remove proto privatekey (#5301)
+- Reword readme (#5349)
+- Add in secp256k1 support (#5500)
+- Add in secp256k1 support (#5500)
+- Adopt zip215 ed25519 verification (#5632)
+- Fix infinite recursion in Secp256k1 string formatting (#5707)
+- Fix infinite recursion in Secp256k1 string formatting (#5707) (#5709)
+- Ed25519 & sr25519 batch verification (#6120)
+- Add sr25519 as a validator key (#6376)
+
+### Crypto/amino
+
+- Add function to modify key codec (#4112)
+
+### Crypto/merkle
+
+- Remove simple prefix (#4989)
+- Pre-allocate data slice in innherHash (#6443)
+- Optimize merkle tree hashing (#6513)
+
+### Crypto|p2p|state|types
+
+- Rename Pub/PrivKey's TypeIdentifier() and Type()
+
+### Cs
+
+- Fix nondeterministic tests (#3582)
+- Exit if SwitchToConsensus fails (#3706)
+- Check for SkipTimeoutCommit or wait timeout in handleTxsAvailable (#3928)
+- Don't panic when block is not found in store (#4163)
+- Clarify where 24 comes from in maxMsgSizeBytes (wal.go)
+- Set missing_validators(_power) metrics to 0 for 1st block (#4194)
+- Check if cs.privValidator is nil (#4295)
+
+### Cs/replay
+
+- Check appHash for each block (#3579)
+- ExecCommitBlock should not read from state.lastValidators (#3067)
+
+### Db
+
+- Add support for badgerdb (#5233)
+- Migration script for key format change (#6355)
+
+### Dep
+
+- Update tm-db to 0.4.0 (#4289)
+- Bump gokit dep (#4424)
+- Maunally bump dep (#4436)
+- Bump protobuf, cobra, btcutil & std lib deps (#4676)
+- Bump ed25519consensus version (#5760)
+- Remove IAVL dependency (#6550)
+
+### Deps
+
+- Update gogo/protobuf version from v1.2.1 to v1.3.0 (#3947)
+- Bump github.com/magiconair/properties from 1.8.0 to 1.8.1 (#3937)
+- Bump github.com/rs/cors from 1.6.0 to 1.7.0 (#3939)
+- Bump github.com/fortytw2/leaktest from 1.2.0 to 1.3.0 (#3943)
+- Bump github.com/libp2p/go-buffer-pool from 0.0.1 to 0.0.2 (#3948)
+- Bump google.golang.org/grpc from 1.22.0 to 1.23.0 (#3942)
+- Bump github.com/gorilla/websocket from 1.2.0 to 1.4.1 (#3945)
+- Bump viper to 1.4.0 and logfmt to 0.4.0 (#3950)
+- Bump github.com/stretchr/testify from 1.3.0 to 1.4.0 (#3951)
+- Bump github.com/go-kit/kit from 0.6.0 to 0.9.0 (#3952)
+- Bump google.golang.org/grpc from 1.23.0 to 1.23.1 (#3982)
+- Bump google.golang.org/grpc from 1.23.1 to 1.24.0 (#4021)
+- Bump google.golang.org/grpc from 1.25.0 to 1.25.1 (#4127)
+- Bump google.golang.org/grpc from 1.25.1 to 1.26.0 (#4264)
+- Bump github.com/go-logfmt/logfmt from 0.4.0 to 0.5.0 (#4282)
+- Bump github.com/pkg/errors from 0.8.1 to 0.9.0 (#4301)
+- Bump github.com/spf13/viper from 1.6.1 to 1.6.2 (#4318)
+- Bump github.com/golang/protobuf from 1.3.2 to 1.3.3 (#4359)
+- Bump google.golang.org/grpc from 1.27.0 to 1.27.1 (#4372)
+- Bump github.com/stretchr/testify from 1.4.0 to 1.5.0 (#4435)
+- Bump github.com/tendermint/tm-db from 0.4.0 to 0.4.1 (#4476)
+- Bump github.com/Workiva/go-datastructures (#4519)
+- Bump deps that bot cant (#4555)
+- Run go mod tidy (#4587)
+- Bump tm-db to 0.6.0 (#5058)
+
+### E2e
+
+- Use ed25519 for secretConn (remote signer) (#5678)
+- Use ed25519 for secretConn (remote signer) (#5678)
+- Releases nightly (#5906)
+- Add control over the log level of nodes (#5958)
+- Releases nightly (#5906)
+- Disconnect maverick (#6099)
+- Adjust timeouts to be dynamic to size of network (#6202)
+- Add benchmarking functionality (#6210)
+- Integrate light clients (#6196)
+- Add benchmarking functionality (bp #6210) (#6216)
+- Fix light client generator (#6236)
+- Integrate light clients (bp #6196)
+- Fix perturbation of seed nodes (#6272)
+- Add evidence generation and testing (#6276)
+- Tx load to use broadcast sync instead of commit (#6347)
+- Tx load to use broadcast sync instead of commit (backport #6347) (#6352)
+- Relax timeouts (#6356)
+- Split out nightly tests (#6395)
+- Prevent non-viable testnets (#6486)
+
+### Encoding
+
+- Remove codecs (#4996)
+
+### Events
+
+- Add block_id to NewBlockEvent (#6478)
+
+### Evidence
+
+- Enforce ordering in DuplicateVoteEvidence (#4151)
+- Introduce time.Duration to evidence params (#4254)
+- Both MaxAgeDuration and MaxAgeNumBlocks need to be surpassed (#4667)
+- Handling evidence from light client(s) (#4532)
+- Remove unused param (#4726)
+- Remove pubkey from duplicate vote evidence
+- Add doc.go
+- Protect valToLastHeight w/ mtx
+- Check evidence is pending before validating evidence
+- Refactor evidence mocks throughout packages (#4787)
+- Cap evidence to an absolute number (#4780)
+- Create proof of lock change and implement it in evidence store (#4746)
+- Prevent proposer from proposing duplicate pieces of evidence (#4839)
+- Remove header from phantom evidence (#4892)
+- Retrieve header at height of evidence for validation (#4870)
+- Json tags for DuplicateVoteEvidence (#4959)
+- Migrate reactor to proto (#4949)
+- Adr56 form amnesia evidence (#4821)
+- Improve amnesia evidence handling (#5003)
+- Replace mock evidence with mocked duplicate vote evidence (#5036)
+- Fix data race in Pool.updateValToLastHeight() (#5100)
+- Check lunatic vote matches header (#5093)
+- New evidence event subscription (#5108)
+- Minor correction to potential amnesia ev validate basic (#5151)
+- Remove phantom validator evidence (#5181)
+- Don't stop evidence verification if an evidence fails (#5189)
+- Fix usage of time field in abci evidence (#5201)
+- Change evidence time to block time (#5219)
+- Remove validator index verification (#5225)
+- Modularise evidence by moving verification function into evidence package (#5234)
+- Remove ConflictingHeaders type (#5317)
+- Remove lunatic  (#5318)
+- Remove amnesia & POLC (#5319)
+- Introduction of LightClientAttackEvidence and refactor of evidence lifecycle (#5361)
+- Use bytes instead of quantity to limit size (#5449)
+- Use bytes instead of quantity to limit size (#5449)(#5476)
+- Don't gossip consensus evidence too soon (#5528)
+- Don't send committed evidence and ignore inbound evidence that is already committed (#5574)
+- Don't gossip consensus evidence too soon (#5528)
+- Don't send committed evidence and ignore inbound evidence that is already committed (#5574)
+- Structs can independently form abci evidence (#5610)
+- Structs can independently form abci evidence (#5610)
+- Omit bytes field (#5745)
+- Omit bytes field (#5745)
+- P2p refactor (#5747)
+- Buffer evidence from consensus (#5890)
+- Buffer evidence from consensus (#5890)
+- Terminate broadcastEvidenceRoutine when peer is stopped (#6068)
+- Fix bug with hashes (#6375)
+- Fix bug with hashes (backport #6375) (#6381)
+- Separate abci specific validation (#6473)
+
+### Example/kvstore
+
+- Return ABCI query height (#4509)
+
+### Format
+
+- Add format cmd & goimport repo (#4586)
+
+### Genesis
+
+- Add support for arbitrary initial height (#5191)
+
+### Github
+
+- Edit templates for use in issues and pull requests (#4483)
+- Rename e2e jobs (#5502)
+- Add nightly E2E testnet action (#5480)
+- Add nightly E2E testnet action (#5480)
+- Rename e2e jobs (#5502)
+- Only notify nightly E2E failures once (#5559)
+- Only notify nightly E2E failures once (#5559)
+- Add @tychoish to code owners (#6273)
+- Fix linter configuration errors and occluded errors (#6400)
+
+### Gitian
+
+- Update reproducible builds to build with Go 1.12.8 (#3902)
+
+### Gitignore
+
+- Add .vendor-new (#3566)
+
+### Go.mod
+
+- Upgrade iavl and deps (#5657)
+- Upgrade iavl and deps (#5657)
+
+### Goreleaser
+
+- Lowercase binary name (#5765)
+- Downcase archive and binary names (#6029)
+- Downcase archive and binary names (#6029)
+- Reintroduce arm64 build instructions
+
+### Header
+
+- Check block protocol (#5340)
+
+### Improvement
+
+- Update TxInfo (#6529)
+
+### Indexer
+
+- Allow indexing an event at runtime (#4466)
+- Remove index filtering (#5006)
+- Remove info log (#6194)
+- Remove info log (#6194)
+
+### Ints
+
+- Stricter numbers (#4939)
+
+### Json
+
+- Add Amino-compatible encoder/decoder (#4955)
+
+### Jsonrpc
+
+- Change log to debug (#5131)
+
+### Keys
+
+- Change to []bytes  (#4950)
+
+### Libs
+
+- Remove useless code in group (#3504)
+- Remove commented and unneeded code (#3757)
+- Minor cleanup (#3794)
+- Remove db from tendermint in favor of tendermint/tm-cmn (#3811)
+- Remove bech32
+- Remove kv (#4874)
+- Wrap mutexes for build flag with godeadlock (#5126)
+- Remove most of libs/rand (#6364)
+- Internalize some packages (#6366)
+
+### Libs/bits
+
+- Inline defer and change order of mutexes (#5187)
+- Validate BitArray in FromProto (#5720)
+
+### Libs/clist
+
+- Fix flaky tests (#6453)
+
+### Libs/common
+
+- Remove deprecated PanicXXX functions (#3595)
+- Remove heap.go (#3780)
+- Remove unused functions (#3784)
+- Refactor libs/common 01 (#4230)
+- Refactor libs/common 2 (#4231)
+- Refactor libs common 3 (#4232)
+- Refactor libs/common 4 (#4237)
+- Refactor libs/common 5 (#4240)
+
+### Libs/db
+
+- Bbolt (etcd's fork of bolt) (#3610)
+- Close boltDBIterator (#3627)
+- Fix boltdb batching
+- Conditional compilation (#3628)
+- Boltdb: use slice instead of sync.Map (#3633)
+- Remove deprecated `LevelDBBackend` const (#3632)
+- Fix the BoltDB Batch.Delete
+- Fix the BoltDB Get and Iterator
+
+### Libs/fail
+
+- Clean up `fail.go` (#3785)
+
+### Libs/kv
+
+- Remove unused type KI64Pair (#4542)
+
+### Libs/log
+
+- Format []byte as hexidecimal string (uppercased) (#5960)
+- Format []byte as hexidecimal string (uppercased) (#5960)
+- [JSON format] include timestamp (#6174)
+- [JSON format] include timestamp (bp #6174) (#6179)
+- Use fmt.Fprintf directly with *bytes.Buffer to avoid unnecessary allocations (#6503)
+
+### Libs/os
+
+- Add test case for TrapSignal (#5646)
+- Remove unused aliases, add test cases (#5654)
+- EnsureDir now returns IO errors and checks file type (#5852)
+- EnsureDir now returns IO errors and checks file type (#5852)
+- Avoid CopyFile truncating destination before checking if regular file (#6428)
+- Avoid CopyFile truncating destination before checking if regular file (backport: #6428) (#6436)
+
+### Libs/pubsub
+
+- Relax tx querying (#4070)
+
+### Libs/pubsub/query
+
+- Add EXISTS operator (#4077)
+
+### Libs/rand
+
+- Fix "out-of-memory" error on unexpected argument (#5215)
+
+### Light
+
+- Rename lite2 to light & remove lite (#4946)
+- Implement validate basic (#4916)
+- Migrate to proto (#4964)
+- Added more tests for pruning, initialization and bisection (#4978)
+- Fix rpc calls: /block_results & /validators (#5104)
+- Use bisection (not VerifyCommitTrusting) when verifying a head… (#5119)
+- Return if target header is invalid (#5124)
+- Update ADR 47 with light traces (#5250)
+- Implement light block (#5298)
+- Move dropout handling and invalid data to the provider (#5308)
+- Expand on errors and docs (#5443)
+- Cross-check the very first header (#5429)
+- Cross-check the very first header (#5429)
+- Model-based tests (#5461)
+- Run detector for sequentially validating light client (#5538)
+- Run detector for sequentially validating light client (#5538) (#5601)
+- Make fraction parts uint64, ensuring that it is always positive (#5655)
+- Make fraction parts uint64, ensuring that it is always positive (#5655)
+- Ensure required header fields are present for verification (#5677)
+- Minor fixes / standardising errors (#5716)
+- Fix light store deadlock (#5901)
+- Fix panic with RPC calls to commit and validator when height is nil (#6026)
+- Fix panic with RPC calls to commit and validator when height is nil (#6040)
+- Remove max retry attempts from client and add to provider (#6054)
+- Remove witnesses in order of decreasing index (#6065)
+- Create provider options struct (#6064)
+- Improve timeout functionality (#6145)
+- Improve provider handling (#6053)
+- Handle too high errors correctly (#6346)
+- Handle too high errors correctly (backport #6346) (#6351)
+- Ensure trust level is strictly less than 1 (#6447)
+- Spec alignment on verify skipping (#6474)
+
+### Light/evidence
+
+- Handle FLA backport (#6331)
+
+### Light/provider/http
+
+- Fix Validators (#6022)
+- Fix Validators (#6024)
+
+### Light/rpc
+
+- Fix ABCIQuery (#5375)
+- Fix ABCIQuery (#5375)
+
+### Lint
+
+- Golint issue fixes (#4258)
+- Add review dog (#4652)
+- Enable nolintlinter, disable on tests
+- Various fixes
+- Errcheck  (#5091)
+- Add markdown linter (#5254)
+- Add errchecks (#5316)
+- Enable errcheck (#5336)
+- Run gofmt and goimports  (#13)
+
+### Linter
+
+- (1/2) enable errcheck (#5064)
+- Fix some bls-related linter issues (#14)
+- Fix nolintlint warnings (#6257)
+
+### Linters
+
+- Enable scopelint (#3963)
+- Modify code to pass maligned and interfacer (#3959)
+- Enable stylecheck (#4153)
+
+### Linting
+
+- Remove unused variable
+
+### Lite
+
+- Follow up from #3989 (#4209)
+- Modified bisection to loop (#4400)
+- Add helper functions for initiating the light client (#4486)
+- Fix HTTP provider error handling
+
+### Lite2
+
+- Light client with weak subjectivity (#3989)
+- Move AutoClient into Client (#4326)
+- Improve auto update (#4334)
+- Add Start, TrustedValidatorSet funcs (#4337)
+- Rename alternative providers to witnesses (#4344)
+- Refactor cleanup() (#4343)
+- Batch save & delete operations in DB store (#4345)
+- Panic if witness is on another chain (#4356)
+- Make witnesses mandatory (#4358)
+- Replace primary provider with alternative when unavailable (#4354)
+- Fetch missing headers (#4362)
+- Validate TrustOptions, add NewClientFromTrustedStore (#4374)
+- Return if there are no headers in RemoveNoLongerTrustedHeaders (#4378)
+- Manage witness dropout (#4380)
+- Improve string output of all existing providers (#4387)
+- Modified sequence method to match bisection (#4403)
+- Disconnect from bad nodes (#4388)
+- Divide verify functions (#4412)
+- Return already verified headers and verify earlier headers (#4428)
+- Don't save intermediate headers (#4452)
+- Store current validator set (#4472)
+- Cross-check first header and update tests (#4471)
+- Remove expiration checks on functions that don't require them (#4477)
+- Prune-headers (#4478)
+- Return height as 2nd return param in TrustedValidatorSet (#4479)
+- Actually run example tests + clock drift (#4487)
+- Fix tendermint lite sub command (#4505)
+- Remove auto update (#4535)
+- Indicate success/failure of Update (#4536)
+- Replace primary when providing invalid header (#4523)
+- Add benchmarking tests (#4514)
+- Cache headers in bisection (#4562)
+- Use bisection for some of backward verification (#4575)
+- Make maxClockDrift an option (#4616)
+- Prevent falsely returned double voting error (#4620)
+- Default to http scheme in provider.New (#4649)
+- Verify ConsensusHash in rpc client
+- Fix pivot height during bisection (#4850)
+- Correctly return the results of the "latest" block (#4931)
+- Allow bigger requests to LC proxy (#4930)
+- Check header w/ witnesses only when doing bisection (#4929)
+- Compare header with witnesses in parallel (#4935)
+
+### Lite2/http
+
+- Fix provider test by increasing the block retention value (#4890)
+
+### Lite2/rpc
+
+- Verify block results and validators (#4703)
+
+### Localnet
+
+- Fix node starting issue with --proxy-app flag (#5803)
+- Expose 6060 (pprof) and 9090 (prometheus) on node0
+- Use 27000 port for prometheus (#5811)
+- Fix localnet by excluding self from persistent peers list (#6209)
+
+### Logger
+
+- Refactor Tendermint logger by using zerolog (#6534)
+
+### Logging
+
+- Print string instead of callback (#6177)
+- Print string instead of callback (#6178)
+- Shorten precommit log message (#6270)
+- Shorten precommit log message (#6270) (#6274)
+
+### Logs
+
+- Cleanup (#6198)
+- Cleanup (#6198)
+
+### Make
+
+- Add back tools cmd (#4281)
+- Remove sentry setup cmds (#4383)
+
+### Makefile
+
+- Minor cleanup (#3994)
+- Place phony markers after targets (#4408)
+- Add options for other DBs (#5357)
+- Remove call to tools (#6104)
+
+### Markdownlint
+
+- Ignore .github directory (#5351)
+
+### Maverick
+
+- Reduce some duplication (#6052)
+- Reduce some duplication (#6052)
+
+### Mempool
+
+- Fix broadcastTxRoutine leak (#3478)
+- Add a safety check, write tests for mempoolIDs (#3487)
+- Move interface into mempool package (#3524)
+- Remove only valid (Code==0) txs on Update (#3625)
+- Make max_msg_bytes configurable (#3826)
+- Make `max_tx_bytes` configurable instead of `max_msg_bytes` (#3877)
+- Fix memory loading error on 32-bit machines (#3969)
+- Moved TxInfo parameter into Mempool.CheckTx() (#4083)
+- Reserve IDs in InitPeer instead of AddPeer
+- Move mock into mempool directory
+- Allow ReapX and CheckTx functions to run in parallel
+- Do not launch broadcastTxRoutine if Broadcast is off
+- Make it clear overwriting of pre/postCheck filters is intent… (#5054)
+- Use oneof (#5063)
+- Add RemoveTxByKey function (#5066)
+- Return an error when WAL fails (#5292)
+- Batch txs per peer in broadcastTxRoutine (#5321)
+- Fix nil pointer dereference (#5412)
+- Fix nil pointer dereference (#5412)
+- Length prefix txs when getting them from mempool (#5483)
+- Introduce KeepInvalidTxsInCache config option (#5813)
+- Disable MaxBatchBytes (#5800)
+- Introduce KeepInvalidTxsInCache config option (#5813)
+- Disable MaxBatchBytes (#5800)
+- P2p refactor (#5919)
+- Fix reactor tests (#5967)
+- Fix TestReactorNoBroadcastToSender (#5984)
+- Fix mempool tests timeout (#5988)
+- Don't return an error on checktx with the same tx (#6199)
+- Remove vestigal mempool wal (#6396)
+- Benchmark improvements (#6418)
+- Add duplicate transaction and parallel checktx benchmarks (#6419)
+- V1 implementation (#6466)
+
+### Mempool/reactor
+
+- Fix reactor broadcast test (#5362)
+
+### Mempool/rpc
+
+- Log grooming (#6201)
+- Log grooming (bp #6201) (#6203)
+
+### Mergify
+
+- Remove unnecessary conditions (#4501)
+- Use strict merges (#4502)
+- Use PR title and body for squash merge commit (#4669)
+
+### Merkle
+
+- Return hashes for empty merkle trees (#5193)
+
+### Metrics
+
+- Only increase last_signed_height if commitSig for block (#4283)
+- Switch from gauge to histogram (#5326)
+- Change blocksize to a histogram (#6549)
+
+### Mocks
+
+- Update with 2.2.1 (#5294)
+
+### Mod
+
+- Go mod tidy
+
+### Networks/remote
+
+- Turn on GO111MODULE and use git clone instead of go get (#4203)
+
+### Node
+
+- Refactor node.NewNode (#3456)
+- Fix a bug where `nil` is recorded as node's address (#3740)
+- Run whole func in goroutine, not just logger.Error fn (#3743)
+- Allow registration of custom reactors while creating node (#3771)
+- Use GRPCMaxOpenConnections when creating the gRPC server (#4349)
+- Don't attempt fast sync when InitChain sets self as only validator (#5211)
+- Fix genesis state propagation to state sync (#5302)
+- Improve test coverage on proposal block (#5748)
+- Feature flag for legacy p2p support (#6056)
+- Implement tendermint modes (#6241)
+- Remove mode defaults. Make node mode explicit (#6282)
+- Use db provider instead of mem db (#6362)
+- Cleanup pex initialization (#6467)
+- Change package interface (#6540)
+
+### Node/state
+
+- Graceful shutdown in the consensus state (#6370)
+
+### Node/tests
+
+- Clean up use of genesis doc and surrounding tests (#6554)
+
+### Note
+
+- Add nondeterministic note to events (#6220)
+- Add nondeterministic note to events (#6220) (#6225)
+
+### Os
+
+- Simplify EnsureDir() (#5871)
+- Simplify EnsureDir() (#5871)
+
+### P2p
+
+- Refactor GetSelectionWithBias for addressbook (#3475)
+- Seed mode refactoring (#3011)
+- Do not log err if peer is private (#3474)
+- (seed mode) limit the number of attempts to connect to a peer (#3573)
+- Session should terminate on nonce wrapping (#3531) (#3609)
+- Make persistent prop independent of conn direction (#3593)
+- PeerBehaviour implementation (#3539)  (#3552)
+- Peer state init too late and pex message too soon (#3634)
+- Per channel metrics (#3666) (#3677)
+- Remove NewNetAddressStringWithOptionalID (#3711)
+- Peerbehaviour follow up (#3653) (#3663)
+- Refactor Switch#OnStop (#3729)
+- Dial addrs which came from seed instead of calling ensurePeers (#3762)
+- Extract ID validation into a separate func (#3754)
+- Fix error logging for connection stop (#3824)
+- Do not write 'Couldn't connect to any seeds' if there are no seeds (#3834)
+- Only allow ed25519 pubkeys when connecting
+- Log as debug msg when address dialing is already connected (#4082)
+- Make SecretConnection non-malleable (#3668)
+- Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` (#4176)
+- Extract maxBackoffDurationForPeer func and remove 1 test  (#4218)
+- Use curve25519.X25519() instead of ScalarMult() (#4449)
+- PEX message abuse should ban as well as disconnect (#4621)
+- Limit the number of incoming connections
+- Set RecvMessageCapacity to maxMsgSize in all reactors
+- Return err on `signChallenge` (#4795)
+- Return masked IP (not the actual IP) in addrbook#groupKey
+- TestTransportMultiplexAcceptNonBlocking and TestTransportMultiplexConnFilterTimeout (#4868)
+- Remove nil guard (#4901)
+- Expose SaveAs on NodeKey (#4981)
+- Proto leftover (#4995)
+- Remove data race bug in netaddr stringer (#5048)
+- Ensure peers can't change IP of known nodes (#5136)
+- Reduce log severity (#5338)
+- Remove p2p.FuzzedConnection and its config settings (#5598)
+- Remove unused MakePoWTarget() (#5684)
+- State sync reactor refactor (#5671)
+- Implement new Transport interface (#5791)
+- Remove `NodeInfo` interface and rename `DefaultNodeInfo` struct (#5799)
+- Do not format raw msg bytes
+- Fix data race in MakeSwitch test helper (#5810)
+- Add MemoryTransport, an in-memory transport for testing (#5827)
+- Rename ID to NodeID
+- Add NodeID.Validate(), replaces validateID()
+- Replace PeerID with NodeID
+- Rename NodeInfo.DefaultNodeID to NodeID
+- Rename PubKeyToID to NodeIDFromPubKey
+- Fix IPv6 address handling in new transport API (#5853)
+- Fix MConnection inbound traffic statistics and rate limiting (#5868)
+- Fix MConnection inbound traffic statistics and rate limiting (#5868) (#5870)
+- Add Router prototype (#5831)
+- Add prototype peer lifecycle manager (#5882)
+- Revise shim log levels (#5940)
+- Improve PeerManager prototype (#5936)
+- Make PeerManager.DialNext() and EvictNext() block (#5947)
+- Improve peerStore prototype (#5954)
+- Simplify PeerManager upgrade logic (#5962)
+- Add PeerManager.Advertise() (#5957)
+- Add prototype PEX reactor for new stack (#5971)
+- Resolve PEX addresses in PEX reactor (#5980)
+- Use stopCtx when dialing peers in Router (#5983)
+- Clean up new Transport infrastructure (#6017)
+- Tighten up and test Transport API (#6020)
+- Add tests and fix bugs for `NodeAddress` and `NodeID` (#6021)
+- Tighten up and test PeerManager (#6034)
+- Tighten up Router and add tests (#6044)
+- Enable scheme-less parsing of IPv6 strings (#6158)
+- Revised router message scheduling (#6126)
+- Metrics (#6278)
+- Simple peer scoring (#6277)
+- Rate-limit incoming connections by IP (#6286)
+- Fix "Unknown Channel" bug on CustomReactors (#6297)
+- Connect max inbound peers configuration to new router (#6296)
+- Filter peers by IP address and ID (#6300)
+- Improve router test stability (#6310)
+- Extend e2e tests for new p2p framework (#6323)
+- Make peer scoring test more resilient (#6322)
+- Fix using custom channels (#6339)
+- Minor cleanup + update router options (#6353)
+- Fix network update test (#6361)
+- Improve PEX reactor (#6305)
+- Support private peer IDs in new p2p stack (#6409)
+- Wire pex v2 reactor to router (#6407)
+- Add channel descriptors to open channel (#6440)
+- Revert change to routePeer (#6475)
+- Limit rate of dialing new peers (#6485)
+- Renames for reactors and routing layer internal moves (#6547)
+
+### P2p/conn
+
+- Add Bufferpool (#3664)
+- Simplify secret connection handshake malleability fix with merlin (#4185)
+- Add a test for MakeSecretConnection (#4829)
+- Migrate to Protobuf (#4990)
+- Check for channel id overflow before processing receive msg (#6522)
+- Check for channel id overflow before processing receive msg (backport #6522) (#6528)
+
+### P2p/pex
+
+- Consult seeds in crawlPeersRoutine (#3647)
+- Fix DATA RACE
+- Migrate to Protobuf (#4973)
+- Fix flaky tests (#5733)
+- Cleanup to pex internals and peerManager interface (#6476)
+- Reuse hash.Hasher per addrbook for speed (#6509)
+
+### P2p/test
+
+- Wait for listener to get ready (#4881)
+- Fix Switch test race condition (#4893)
+
+### Params
+
+- Remove blockTimeIota (#5987)
+
+### Pex
+
+- Dial seeds when address book needs more addresses (#3603)
+- Various follow-ups (#3605)
+- Use highwayhash for pex bucket
+- Fix send requests too often test (#6437)
+
+### Privval
+
+- Increase timeout to mitigate non-deterministic test failure (#3580)
+- Remove misplaced debug statement (#4103)
+- Add `SignerDialerEndpointRetryWaitInterval` option (#4115)
+- Return error on getpubkey (#4534)
+- Remove deprecated `OldFilePV`
+- Retry GetPubKey/SignVote/SignProposal N times before
+- Migrate to protobuf (#4985)
+- If remote signer errors, don't retry (#5140)
+- Add chainID to requests (#5239)
+- Allow passing options to NewSignerDialerEndpoint (#5434)
+- Allow passing options to NewSignerDialerEndpoint (#5434) (#5437)
+- Fix ping message encoding (#5441)
+- Fix ping message encoding (#5442)
+- Make response values non nullable (#5583)
+- Make response values non nullable (#5583)
+- Increase read/write timeout to 5s and calculate ping interval based on it (#5638)
+- Reset pingTimer to avoid sending unnecessary pings (#5642)
+- Increase read/write timeout to 5s and calculate ping interva… (#5666)
+- Reset pingTimer to avoid sending unnecessary pings (#5642) (#5668)
+- Duplicate SecretConnection from p2p package (#5672)
+- Add grpc (#5725)
+- Query validator key (#5876)
+- Return errors on loadFilePV (#6185)
+- Add ctx to privval interface (#6240)
+
+### Prometheus/metrics
+
+- Three new metrics for consensus (#4263)
+
+### Proto
+
+- Add buf and protogen script (#4369)
+- Minor linting to proto files (#4386)
+- Use docker to generate stubs (#4615)
+- Bring over proto types & msgs (#4718)
+- Regenerate proto (#4730)
+- Remove test files
+- Add proto files for ibc unblock (#4853)
+- Add more to/from (#4956)
+- Change to use gogofaster (#4957)
+- Remove amino proto tests (#4982)
+- Move keys to oneof (#4983)
+- Leftover amino (#4986)
+- Move all proto dirs to /proto (#5012)
+- Folder structure adhere to buf (#5025)
+- Increase lint level to basic and fix lint warnings (#5096)
+- Improve enums (#5099)
+- Reorganize Protobuf schemas (#5102)
+- Minor cleanups (#5105)
+- Change type + a cleanup (#5107)
+- Add a comment for Validator#Address (#5144)
+- Buf for everything (#5650)
+- Bump gogoproto (1.3.2) (#5886)
+- Bump gogoproto (1.3.2) (#5886)
+- Docker deployment (#5931)
+- Seperate native and proto types (#5994)
+- Docker deployment (#5931)
+
+### Proto/p2p
+
+- Rename PEX messages and fields (#5974)
+
+### Proto/tendermint/abci
+
+- Fix Request oneof numbers (#5116)
+
+### Proxy
+
+- Improve ABCI app connection handling (#5078)
+
+### Reactors
+
+- Omit incoming message bytes from reactor logs (#5743)
+- Omit incoming message bytes from reactor logs (#5743)
+
+### Readme
+
+- Fix link to original paper (#4391)
+- Add discord to readme (#4533)
+- Add badge for git tests (#4732)
+- Add source graph badge (#4980)
+- Remover circleci badge (#5729)
+- Add links to job post (#5785)
+- Update discord link (#5795)
+- Add security mailing list (#5916)
+- Add security mailing list (#5916)
+
+### Relase_notes
+
+- Add release notes for v0.34.0
+
+### Release
+
+- Minor release 0.33.1 (#4401)
+
+### Removal
+
+- Remove build folder (#4565)
+
+### Rfc
+
+- Add end-to-end testing RFC (#5337)
+
+### Rpc
+
+- Client disable compression (#3430)
+- Support tls rpc (#3469)
+- Fix response time grow over time (#3537)
+- Add support for batched requests/responses (#3534)
+- /dial_peers: only mark peers as persistent if flag is on (#3620)
+- Use Wrap instead of Errorf error (#3686)
+- Make max_body_bytes and max_header_bytes configurable (#3818)
+- /broadcast_evidence (#3481)
+- Return err if page is incorrect (less than 0 or greater than tot… (#3825)
+- Protect subscription access from race condition (#3910)
+- Allow using a custom http client in rpc client (#3779)
+- Remove godoc comments in favor of swagger docs (#4126)
+- /block_results fix docs + write test + restructure response (#3615)
+- Remove duplication of data in `ResultBlock ` (#3856)
+- Add pagination to /validators (#3993)
+- Update swagger docs to openapi 3.0 (#4223)
+- Added proposer in consensus_state (#4250)
+- Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a l… (#4279)
+- Add method block_by_hash (#4257)
+- Modify New* functions to return error (#4274)
+- Check nil blockmeta (#4320)
+- PR#4320 follow up (#4323)
+- Add sort_order option to tx_search (#4342)
+- Fix issue with multiple subscriptions (#4406)
+- Fix tx_search pagination with ordered results (#4437)
+- Fix txsearch tests (#4438)
+- Fix TxSearch test nits (#4446)
+- Stop txSearch result processing if context is done (#4418)
+- Keep the original subscription "id" field when new RPCs come in (#4493)
+- Remove BlockStoreRPC in favor of BlockStore (#4510)
+- Create buffered subscriptions on /subscribe (#4521)
+- Fix panic when `Subscribe` is called (#4570)
+- Add codespace to ResultBroadcastTx (#4611)
+- Handle panics during panic handling
+- Use a struct to wrap all the global objects
+- Refactor lib folder (#4836)
+- Increase waitForEventTimeout to 8 seconds (#4917)
+- Add BlockByHash to Client (#4923)
+- Replace Amino with new JSON encoder (#4968)
+- Support EXISTS operator in /tx_search query (#4979)
+- Add /check_tx endpoint (#5017)
+- Move docs from doc.go to swagger.yaml (#5044)
+- /broadcast_evidence nil evidence check (#5109)
+- Make gasWanted/Used snake_case (#5137)
+- Add private & unconditional to /dial_peer (#5293)
+- Fix openapi spec syntax error (#5358)
+- Fix test data races (#5363)
+- Revert JSON-RPC/WebSocket response batching (#5378)
+- Fix content-type header (#5661)
+- Fix content-type header
+- Standardize error codes (#6019)
+- Change default sorting to desc for `/tx_search` results (#6168)
+- Index block events to support block event queries (#6226)
+- Index block events to support block event queries (bp #6226) (#6261)
+- Remove global environment (#6426)
+- Clean up client global state in tests (#6438)
+- Add chunked rpc interface (#6445)
+- Decouple test fixtures from node implementation (#6533)
+
+### Rpc/client
+
+- Include NetworkClient interface into Client interface (#3473)
+- Add basic authentication (#4291)
+- Split out client packages (#4628)
+- Take context as first param (#5347)
+
+### Rpc/client/http
+
+- Log error (#5182)
+- Do not drop events even if the `out` channel is full (#6163)
+- Drop endpoint arg from New and add WSOptions (#6176)
+
+### Rpc/core
+
+- Do not lock ConsensusState mutex
+- Return an error if `page=0` (#4947)
+- More docs and a test for /blockchain endpoint (#5417)
+
+### Rpc/jsonrpc
+
+- Unmarshal RPCRequest correctly (#6191)
+- Unmarshal RPCRequest correctly (bp #6191) (#6193)
+
+### Rpc/jsonrpc/server
+
+- Merge WriteRPCResponseHTTP and WriteRPCResponseAr (#5141)
+- Ws server optimizations (#5312)
+- Return an error in WriteRPCResponseHTTP(Error) (#6204)
+- Return an error in WriteRPCResponseHTTP(Error) (bp #6204) (#6230)
+
+### Rpc/lib
+
+- Write a test for TLS server (#3703)
+- Fix RPC client, which was previously resolving https protocol to http (#4131)
+
+### Rpc/swagger
+
+- Add numtxs to blockmeta (#4139)
+
+### Rpc/test
+
+- Fix test race in TestAppCalls (#4894)
+- Wait for mempool CheckTx callback (#4908)
+- Wait for subscription in TestTxEventsSentWithBroadcastTxAsync (#4907)
+
+### Scripts
+
+- Remove install scripts (#4242)
+- Move build.sh into scripts
+- Make linkifier default to 'pull' rather than 'issue' (#5689)
+
+### Security
+
+- Update policy after latest security release (#6336)
+
+### State
+
+- Use last height changed if validator set is empty (#3560)
+- Add more tests for block validation (#3674)
+- Txindex/kv: fsync data to disk immediately after receiving it  (#4104)
+- Txindex/kv: return an error if there's one (#4095)
+- Export InitStateVersion
+- Proto migration (#4951)
+- Proto migration (#4972)
+- Revert event hashing (#5159)
+- Don't save genesis state in database when loaded (#5231)
+- Define interface for state store (#5348)
+- More test cases for block validation (#5415)
+- Prune states using an iterator (#5864)
+- Save in batches within the state store (#6067)
+- Cleanup block indexing logs and null (#6263)
+- Fix block event indexing reserved key check (#6314)
+- Fix block event indexing reserved key check (#6314) (#6315)
+- Keep a cache of block verification results (#6402)
+
+### State/indexer
+
+- Reconstruct indexer, move txindex into the indexer package (#6382)
+
+### State/store
+
+- Remove extra `if` statement (#3774)
+
+### Statesync
+
+- Use Protobuf instead of Amino for p2p traffic (#4943)
+- Fix valset off-by-one causing consensus failures (#5311)
+- Broadcast snapshot request to all peers on startup (#5320)
+- Fix the validator set heights (again) (#5330)
+- Check all necessary heights when adding snapshot to pool (#5516)
+- Check all necessary heights when adding snapshot to pool (#5516) (#5518)
+- Do not recover panic on peer updates (#5869)
+- Improve e2e test outcomes (#6378)
+- Improve e2e test outcomes (backport #6378) (#6380)
+- Sort snapshots by commonness (#6385)
+- Fix unreliable test (#6390)
+- Ranking test fix (#6415)
+
+### Store
+
+- Register block amino, not just crypto (#3894)
+- Proto migration (#4974)
+- Order-preserving varint key encoding (#5771)
+- Use db iterators for pruning and range-based queries (#5848)
+- Fix deadlock in pruning (#6007)
+- Use a batch instead of individual writes in SaveBlock (#6018)
+
+### Swagger
+
+- Update swagger port (#4498)
+- Remove duplicate blockID 
+- Define version (#4952)
+- Update (#5257)
+
+### Sync
+
+- Move closer to separate file (#6015)
+
+### Template
+
+- Add labels to pr template
+
+### Tm-bench
+
+- Add deprecation warning (#3992)
+
+### Tm-monitor
+
+- Update build-docker Makefile target (#3790)
+- Add Context to RPC handlers (#3792)
+
+### Toml
+
+- Make sections standout (#4993)
+
+### Tool
+
+- Add Mergify (#4490)
+
+### Tooling
+
+- Remove tools/Makefile (#6102)
+- Remove tools/Makefile (bp #6102) (#6106)
+
+### Tools
+
+- Remove need to install buf (#4605)
+- Update gogoproto get cmd (#5007)
+- Use os home dir to instead of the hardcoded PATH (#6498)
+
+### Tools.mk
+
+- Use tags instead of revisions where possible
+- Install protoc
+
+### Tools/build
+
+- Delete stale tools (#4558)
+
+### Tools/tm-bench
+
+- Remove tm-bench in favor of tm-load-test (#4169)
+
+### Tools/tm-signer-harness
+
+- Fix listener leak in newTestHarnessListener() (#5850)
+- Fix listener leak in newTestHarnessListener() (#5850)
+
+### Tx
+
+- Reduce function to one parameter (#5493)
+
+### Txindexer
+
+- Refactor Tx Search Aggregation (#3851)
+
+### Types
+
+- CommitVotes struct as last step towards #1648 (#3298)
+- Do not ignore errors returned by PublishWithEvents (#3722)
+- Move MakeVote / MakeBlock functions (#3819)
+- Add test for block commits with votes for the wrong blockID (#3936)
+- Prevent temporary power overflows on validator updates  (#4165)
+- Change number_txs to num_txs json tag in BlockMeta
+- Remove dots from errors in SignedHeader#ValidateBasic
+- Change `Commit` to consist of just signatures (#4146)
+- Prevent spurious validator power overflow warnings when changing the validator set (#4183)
+- VerifyCommitX return when +2/3 sigs are verified (#4445)
+- Implement Header#ValidateBasic (#4638)
+- Return an error if voting power overflows
+- Sort validators by voting power
+- Simplify VerifyCommitTrusting
+- Remove extra validation in VerifyCommit
+- Assert specific error in TestValSetUpdateOverflowRelated
+- Remove unnecessary sort call (#4876)
+- Create ValidateBasic() funcs for validator and validator set (#4905)
+- Remove VerifyFutureCommit (#4961)
+- Migrate params to protobuf (#4962)
+- Remove duplicated validation in VerifyCommit (#4991)
+- Add tests for blockmeta (#5013)
+- Remove pubkey options (#5016)
+- More test cases for TestValidatorSet_VerifyCommit (#5018)
+- Rename partsheader to partsetheader (#5029)
+- Fix evidence timestamp calculation (#5032)
+- Add AppVersion to ConsensusParams (#5031)
+- Reject blocks w/ ConflictingHeadersEvidence (#5041)
+- Simplify safeMul (#5061)
+- Verify commit fully
+- Validatebasic on from proto (#5152)
+- Check if nil or empty valset (#5167)
+- Comment on need for length prefixing (#5283)
+- Rename json parts to part_set_header (#5523)
+- Move `MakeBlock` to block.go (#5573)
+- Cleanup protobuf.go (#6023)
+- Refactor EventAttribute (#6408)
+- Fix verify commit light / trusting bug (#6414)
+- Revert breaking change (#6538)
+
+### Types/test
+
+- Remove slow test cases in TestValSetUpdatePriorityOrderTests (#4903)
+
+### Upgrading
+
+- Add note on rpc/client subpackages (#4636)
+- State store change (#5364)
+- Update 0.34 instructions with updates since RC4 (#5685)
+- Update 0.34 instructions with updates since RC4 (#5686)
+
+### Ux
+
+- Use docker to format proto files (#5384)
+
+### Version
+
+- Bump version numbers (#5173)
+- Add abci version to handshake (#5706)
+- Revert version through ldflag only (#6494)
+
+### Ws
+
+- Parse remote addrs with trailing dash (#6537)
+
+## [0.0.1] - 2019-03-19
+
+### .github
+
+- Split the issue template into two seperate templates (#2073)
+
+### ADR
+
+- Fix malleability problems in Secp256k1 signatures
+
+### ADR-016
+
+- Add versions to Block and State (#2644)
+- Add protocol Version to NodeInfo (#2654)
+- Update ABCI Info method for versions (#2662)
+
+### BROKEN
+
+- Attempt to replace go-wire.JSON with json.Unmarshall in rpc
+
+### Bech32
+
+- Wrap error messages
+
+### CHANGELOG
+
+- Update release date
+- Update release date
 
 ### CRandHex
 
 - Fix up doc to mention length of digits
-
-### Client
-
-- DumpConsensusState, not DialSeeds. Cleanup
 
 ### Connect2Switches
 
@@ -824,7 +3574,6 @@
 
 ### Documentation
 
-- Move FROM to golang:1.4 because 1.4.2 broke
 - Go-events -> tmlibs/events
 - Update for 0.10.0 [ci skip]"
 - Add docs from website
@@ -964,114 +3713,6 @@
 - Fix rpc Tx() method docs (#3331)
 - Fix typo (#3373)
 - Fix the reverse of meaning in spec (#3387)
-- Fix broken links (#3482) (#3488)
-- Fix broken links (#3482) (#3488)
-- Fix block.Header.Time description (#3529)
-- Abci#Commit: better explain the possible deadlock (#3536)
-- Fix typo in clist readme (#3574)
-- Update contributing.md (#3503)
-- Fix minor typo (#3681)
-- Update RPC docs for /subscribe & /unsubscribe (#3705)
-- Update /block_results RPC docs (#3708)
-- Missing 'b' in python command (#3728)
-- Fix some language issues and deprecated link (#3733)
-- (rpc/broadcast_tx_*) write expectations for a client (#3749)
-- Update JS section of abci-cli.md (#3747)
-- Update to contributing.md (#3760)
-- Add readme image (#3763)
-- Remove confusing statement from contributing.md (#3764)
-- Quick link fixes throughout docs and repo (#3776)
-- Replace priv_validator.json with priv_validator_key.json (#3786)
-- Fix consensus spec formatting (#3804)
-- "Writing a built-in Tendermint Core application in Go" guide (#3608)
-- Add guides to docs (#3830)
-- Add a footer to guides (#3835)
-- "Writing a Tendermint Core application in Kotlin (gRPC)" guide (#3838)
-- "Writing a Tendermint Core application in Java (gRPC)" guide (#3887)
-- Fix some typos and changelog entries (#3915)
-- Switch the data in `/unconfirmed_txs` and `num_unconfirmed_txs` (#3933)
-- Add dev sessions from YouTube (#3929)
-- Move dev sessions into docs (#3934)
-- Specify a fix for badger err on Windows (#3974)
-- Remove traces of develop branch (#4022)
-- Any path can be absolute or relative (#4035)
-- Add previous dev sessions (#4040)
-- Add ABCI Overview (2/2) dev session (#4044)
-- Update fork-accountability.md (#4068)
-- Add assumption to getting started with abci-cli (#4098)
-- Fix build instructions (#4123)
-- Add GA for docs.tendermint.com (#4149)
-- Replace dead original whitepaper link (#4155)
-- Update wording (#4174)
-- Mention that Evidence votes are now sorted
-- Fix broken links (#4186)
-- Fix broken links in consensus/readme.md (#4200)
-- Update ADR 43 with links to PRs (#4207)
-- Add flag documentation (#4219)
-- Fix broken rpc link (#4221)
-- Fix broken ecosystem link (#4222)
-- Add notes on architecture intro (#4175)
-- Remove "0 means latest" from swagger docs (#4236)
-- Update app-architecture.md (#4259)
-- Link fixes in readme (#4268)
-- Add link for installing Tendermint (#4307)
-- Update theme version (#4315)
-- Minor doc fixes (#4335)
-- Update links to rpc (#4348)
-- Update npm dependencies (#4364)
-- Update guides proto paths (#4365)
-- Fix incorrect link (#4377)
-- Fix spec links (#4384)
-- Update Light Client Protocol page (#4405)
-- Adr-046 add bisection algorithm details (#4496)
-- `tendermint node --help` dumps all supported flags (#4511)
-- Write about debug kill and dump (#4516)
-- Fix links (#4531)
-- Validator setup & Key info (#4604)
-- Add adr-55 for proto repo design (#4623)
-- Amend adr-54 with changes in the sdk (#4684)
-- Create adr 56: prove amnesia attack
-- Mention unbonding period in MaxAgeNumBlocks/MaxAgeDuration
-- State we don't support non constant time crypto
-- Move tcp-window.png to imgs/
-- Document open file limit in production guide (#4945)
-- Update amnesia adr (#4994)
-- Update .vuepress/config.js (#5043)
-- Add warning for chainid (#5072)
-- Added further documentation to the subscribing to events page (#5110)
-- Tweak light client documentation (#5121)
-- Modify needed proto files for guides (#5123)
-- EventAttribute#Index is not deterministic (#5132)
-- Event hashing ADR 058 (#5134)
-- Simplify choosing an ADR number (#5156)
-- Add more details on Vote struct from /consensus_state (#5164)
-- Document ConsensusParams (#5165)
-- Document canonical field (#5166)
-- Cleanup (#5252)
-- Dont display duplicate  (#5271)
-- Rename swagger to openapi (#5263)
-- Fix go tutorials (#5267)
-- Versioned (#5241)
-- Remove duplicate secure p2p (#5279)
-- Remove interview transcript (#5282)
-- Add block retention to upgrading.md (#5284)
-- Updates to various sections (#5285)
-- Add algolia docsearch configs (#5309)
-- Add doc on state sync configuration (#5304)
-- Move subscription to tendermint-core (#5323)
-- Add missing metrics (#5325)
-- Add more description to initial_height (#5350)
-- Make rfc section disppear (#5353)
-- Document max entries for `/blockchain` RPC (#5356)
-- Fix incorrect time_iota_ms configuration (#5385)
-- Specify 0.34 (#5823)
-- Package-lock.json fix (#5948)
-- Bump package-lock.json of v0.34.x (#5952)
-- Change v0.33 version (#5950)
-- Release Linux/ARM64 image (#5925)
-- Dont login when in PR (#5961)
-- Fix typo in state sync example (#5989)
-- Fix sample code #6186
 
 ### Fix
 
@@ -1089,8 +3730,6 @@
 - Add megacheck & some additional fixes
 - Remove redundant lint
 - Fix linter
-- Parse TENDERMINT_BUILD_OPTIONS (#4738)
-- Always pull image in proto-gen-docker. (#5953)
 
 ### Optimize
 
@@ -1120,9 +3759,6 @@
 
 - Add godoc instead of tedious MD regeneration
 - Document the minimum Go version
-- Specify supported versions (#4660)
-- Update chat link with Discord instead of Riot (#5071)
-- Clean up README (#5391)
 
 ### ResponseEndBlock
 
@@ -1131,89 +3767,13 @@
 ### Security
 
 - Use bytes.Equal for key comparison
-- Compile time assert to, and document sort.Interface
 - Remove RipeMd160.
 - Implement PeerTransport
-- Refactor Remote signers (#3370)
-- Cross-check new header with all witnesses (#4373)
-- Bump google.golang.org/grpc from 1.28.1 to 1.29.0
-- Bump vuepress-theme-cosmos from 1.0.165 to 1.0.166 in /docs (#4920)
-- [Security] Bump websocket-extensions from 0.1.3 to 0.1.4 in /docs (#4976)
-- Bump github.com/prometheus/client_golang from 1.6.0 to 1.7.0 (#5027)
-- [Security] Bump lodash from 4.17.15 to 4.17.19 in /docs
-- [Security] Bump prismjs from 1.20.0 to 1.21.0 in /docs
-- Bump vuepress-theme-cosmos from 1.0.169 to 1.0.172 in /docs (#5286)
-- Bump google.golang.org/grpc from 1.31.0 to 1.31.1 (#5290)
-- Bump github.com/golang/protobuf from 1.4.2 to 1.4.3 (#5506)
-- Bump github.com/spf13/cobra from 1.0.0 to 1.1.0 (#5505)
-- Bump github.com/prometheus/client_golang from 1.7.1 to 1.8.0 (#5515)
-- Bump github.com/spf13/cobra from 1.1.0 to 1.1.1 (#5526)
-- Bump google.golang.org/grpc from 1.33.1 to 1.33.2 (#5635)
-- Bump github.com/stretchr/testify from 1.6.1 to 1.7.0 (#5897)
-- Bump google.golang.org/grpc from 1.34.0 to 1.35.0 (#5902)
-- Bump vuepress-theme-cosmos from 1.0.179 to 1.0.180 in /docs (#5915)
-- Add security mailing list (#5916)
-- Bump github.com/tendermint/tm-db from 0.6.3 to 0.6.4 (#6073)
-- Bump watchpack from 2.1.0 to 2.1.1 in /docs (#6063)
-- Update 0.34.3 changelog with details on security vuln (bp #6108) (#6110)
 
 ### Testing
 
-- Broadcast_tx with tmsp; p2p
-- Add throughput benchmark using mintnet and netmon
-- Install mintnet, netmon
-- Use MACH_PREFIX
-- Cleanup
-- Dont run cloud test on push to master
-- README.md
-- Refactor bash; test fastsync (failing)
-- Name client conts so we dont need to rm them because circle
-- Test dummy using rpc query
-- Add xxd dep to dockerfile
 - More verbosity
-- Add killall to dockerfile. cleanup
-- Codecov
-- Use glide with mintnet/netmon
-- Install glide for network test
-- App persistence
-- Tmsp query result is json
-- Increase proposal timeout
-- Cleanup and fix scripts
-- Crank it to eleventy
-- More cleanup on p2p
-- RandConsensusNet takes more args
-- Crank circle timeouts
-- Automate building consensus/test_data
-- Circle artifacts
-- Dont start cs until all peers connected
-- Shorten timeouts
-- Remove codecov patch threshold
-- Kill and restart all nodes
-- Use PROXY_APP=persistent_dummy
-- Use fail-test failure indices
-- More unique container names
-- Set log_level=info
-- Always rebuild grpc_client
-- Split up test/net/test.sh
 - Unexport internal function.
-- Update docker to 1.7.4
-- Dont use log files on circle
-- Shellcheck
-- Forward CIRCLECI var through docker
-- Only use syslog on circle
-- More logging
-- Wait for tendermint proc
-- Add extra kill after fail index triggered
-- Wait for ports to be freed
-- Use --pex on restart
-- Install abci apps first
-- Fix docker and apps
-- Dial_seeds
-- Docker exec doesnt work on circle
-- Bump sleep to 5 for bound ports release
-- Better client naming
-- Use unix socket for rpc
-- Shellcheck
 - Check err on cmd.Wait
 - Test_libs all use Makefile
 - Jq .result[1] -> jq .result
@@ -1230,62 +3790,10 @@
 - Less bash
 - More smoothness
 - Test itr.Value in checkValuePanics (#2580)
-- Add consensus_params to testnet config generation (#3781)
-- Branch for fix of ci (#4266)
-- Bind test servers to 127.0.0.1 (#4322)
-- Simplified txsearch cancellation test (#4500)
-- Fix p2p test build breakage caused by Debian testing
-- Revert Go 1.13→1.14 bump
-- Use random socket names to avoid collisions (#4885)
-- Mitigate test data race (#4886)
-- Use github.sha in binary cache key (#5062)
-- Deflake TestAddAndRemoveListenerConcurrency and TestSyncer_SyncAny (#5101)
-- Protobuf vectors for reactors (#5221)
-- Add end-to-end testing framework (#5435)
-- Add basic end-to-end test cases (#5450)
-- Add GitHub action for end-to-end tests (#5452)
-- Remove P2P tests (#5453)
-- Add E2E test for node peering (#5465)
-- Add random testnet generator (#5479)
-- Clean up E2E test volumes using a container (#5509)
-- Tweak E2E tests for nightly runs (#5512)
-- Enable ABCI gRPC client in E2E testnets (#5521)
-- Enable blockchain v2 in E2E testnet generator (#5533)
-- Enable restart/kill perturbations in E2E tests (#5537)
-- Run remaining E2E testnets on run-multiple.sh failure (#5557)
-- Tag E2E Docker resources and autoremove them (#5558)
-- Add evidence e2e tests (#5488)
-- Fix handling of start height in generated E2E testnets (#5563)
-- Disable E2E misbehaviors due to bugs (#5569)
-- Fix various E2E test issues (#5576)
-- Fix secp failures (#5649)
-- Switched node keys back to edwards (#4)
-- Fix TestByzantinePrevoteEquivocation flake (#5710)
-- Fix integration tests and rename binary
-- Improve WaitGroup handling in Byzantine tests (#5861)
-- Disable abci/grpc and blockchain/v2 due to flake (#5854)
-- Don't use foo-bar.net in TestHTTPClientMakeHTTPDialer (#5997) (#6047)
-- Enable pprof server to help debugging failures (#6003)
-- Increase sign/propose tolerances (#6033)
-- Increase validator tolerances (#6037)
-- Move fuzz tests into this repo (#5918)
-- Fix `make test` (#5966)
-
-### UPGRADING
-
-- Polish upgrading instructions for 0.34 (#5398)
-
-### UPGRADING.md
-
-- Write about the LastResultsHash change (#5000)
 
 ### Update
 
 - JTMSP -> jABCI
-
-### Vagrantfile
-
-- Update Go version
 
 ### ValidatorSet#GetByAddress
 
@@ -1300,14 +3808,6 @@
 - Begin parallel refactoring with go-wire Write methods and MConnection
 - Fix rpc/core
 - More empty struct examples
-- Add implementation of mock/fake http-server
-- Rename package name from fakeserver to mockcoreserver
-- Change the method names of call structure, Fix adding headers
-- Add mock of JRPCServer implementation on top of HTTServer mock
-
-### [Docs]
-
-- Minor doc touchups (#4171)
 
 ### [docs
 
@@ -1328,60 +3828,11 @@
 - Move round back from votes to commit
 - Codespace (#2557)
 - LocalClient improvements & bugfixes & pubsub Unsubscribe issues (#2748)
-- Refactor tagging events using list of lists (#3643)
-- Refactor ABCI CheckTx and DeliverTx signatures (#3735)
-- Refactor CheckTx to notify of recheck (#3744)
-- Minor cleanups in the socket client (#3758)
-- Fix documentation regarding CheckTx type update (#3789)
-- Remove TotalTxs and NumTxs from Header (#3783)
-- Fix broken spec link (#4366)
-- Fix protobuf lint issues
-- Regenerate proto files
-- Remove protoreplace script
-- Remove python examples
-- Proto files follow same path  (#5039)
-- Fix abci evidence types (#5174)
-- Add ResponseInitChain.app_hash, check and record it (#5227)
-- Update evidence (#5324)
-- Fix socket client error for state sync responses (#5395)
-- Fix ReCheckTx for Socket Client (bp #6124) (#6125)
 
 ### Abci-cli
 
 - Print OK if code is 0
 - Prefix flag variables with flag
-
-### Abci/client
-
-- Fix DATA RACE in gRPC client (#3798)
-
-### Abci/example/kvstore
-
-- Decrease val power by 1 upon equivocation (#5056)
-
-### Abci/examples
-
-- Switch from hex to base64 pubkey in kvstore (#3641)
-
-### Abci/grpc
-
-- Return async responses in order (#5520) (#5531)
-- Fix ordering of sync/async callback combinations (#5556)
-- Fix invalid mutex handling in StopForError() (#5849)
-
-### Abci/kvstore
-
-- Return `LastBlockHeight` and `LastBlockAppHash` in `Info` (#4233)
-
-### Abci/server
-
-- Recover from app panics in socket server (#3809)
-- Print panic & stack trace to STDERR if logger is not set
-
-### Abci/types
-
-- Update comment (#3612)
-- Add comment for TotalVotingPower (#5081)
 
 ### Absent_validators
 
@@ -1406,18 +3857,6 @@
 - Protocol versioning
 - Chain-versions
 - Style fixes (#3206)
-- Peer Behaviour (#3539)
-- PeerBehaviour updates (#3558)
-- [43] blockchain riri-org (#3753)
-- ADR-052: Tendermint Mode (#4302)
-- ADR-051: Double Signing Risk Reduction (#4262)
-- Light client implementation (#4397)
-- Crypto encoding for proto (#4481)
-- Add API stability ADR (#5341)
-
-### Adr#50
-
-- Improve trusted peering (#4072)
 
 ### Adr-009
 
@@ -1440,20 +3879,11 @@
 
 - Update CheckBlock
 
-### Adr-047
-
-- Evidence handling (#4429)
-
-### Adr-053
-
-- Update after state sync merge (#4768)
-
 ### All
 
 - No more anonymous imports
 - Fix vet issues with build tags, formatting
 - Gofmt (#1743)
-- Name reactors when they are initialized (#4608)
 
 ### Ansible
 
@@ -1471,38 +3901,17 @@
 ### Autofile
 
 - Ensure file is open in Sync
-- Resolve relative paths (#4390)
 
 ### Batch
 
 - Progress
 
-### Behaviour
-
-- Return correct reason in MessageOutOfOrder (#3772)
-- Add simple doc.go (#5055)
-
-### Binary
-
-- Prevent runaway alloc
-
 ### Bit_array
 
 - Simplify subtraction
 
-### Block
-
-- Fix max commit sig size (#5567)
-
-### Block/state
-
-- Add CallTx type
-- Gas price for block and tx
-
 ### Blockchain
 
-- Use ApplyBlock
-- Thread safe store.Height()
 - Explain isCaughtUp logic
 - Fixing reactor tests
 - Add comment in AddPeer. closes #666
@@ -1517,16 +3926,6 @@
 - Update for new state
 - Test wip for hard to test functionality [ci skip]
 - Fix register concrete name. (#2213)
-- Update the maxHeight when a peer is removed (#3350)
-- Comment out logger in test code that causes a race condition (#3500)
-- Dismiss request channel delay (#3459)
-- Reorg reactor (#3561)
-- Add v2 reactor (#4361)
-- Enable v2 to be set (#4597)
-- Proto migration  (#4969)
-- Test vectors for proto encoding (#5073)
-- Fix fast sync halt with initial height > 1 (#5249)
-- Verify +2/3 (#5278)
 
 ### Blockchain/pool
 
@@ -1540,190 +3939,23 @@
 
 - Comment about panics
 
-### Blockchain/v0
-
-- Stop tickers on poolRoutine exit (#5860)
-
-### Blockchain/v1
-
-- Add noBlockResponse handling  (#5401)
-- Omit incoming message bytes from log
-
-### Blockchain/v2
-
-- Allow setting nil switch, for CustomReactors()
-- Don't broadcast base if height is 0
-- Fix excessive CPU usage due to spinning on closed channels (#4761)
-- Respect fast_sync option (#4772)
-- Integrate with state sync
-- Correctly set block store base in status responses (#4971)
-- Fix "panic: duplicate block enqueued by processor" (#5499)
-- Fix panic: processed height X+1 but expected height X (#5530)
-- Make the removal of an already removed peer a noop (#5553)
-- Remove peers from the processor  (#5607)
-- Fix missing mutex unlock (#5862)
-
-### Blockchain[v1]
-
-- Increased timeout times for peer tests (#4871)
-
-### Blockpool
-
-- Fix removePeer bug
-
-### Blockstore
-
-- Allow initial SaveBlock() at any height
-- Fix race conditions when loading data (#5382)
-
-### Build
-
-- Bump github.com/tendermint/tm-db from 0.1.1 to 0.2.0 (#4001)
-- Bump github.com/gogo/protobuf from 1.3.0 to 1.3.1 (#4055)
-- Bump github.com/spf13/viper from 1.4.0 to 1.5.0 (#4102)
-- Bump github.com/spf13/viper from 1.5.0 to 1.6.1 (#4224)
-- Bump github.com/pkg/errors from 0.9.0 to 0.9.1 (#4310)
-- Bump google.golang.org/grpc from 1.26.0 to 1.27.0 (#4355)
-- Bump github.com/stretchr/testify from 1.5.0 to 1.5.1 (#4441)
-- Bump github.com/spf13/cobra from 0.0.3 to 0.0.6 (#4440)
-- Bump github.com/golang/protobuf from 1.3.3 to 1.3.4 (#4485)
-- Bump github.com/prometheus/client_golang (#4525)
-- Bump github.com/Workiva/go-datastructures (#4545)
-- Bump google.golang.org/grpc from 1.27.1 to 1.28.0 (#4551)
-- Bump github.com/tendermint/tm-db from 0.4.1 to 0.5.0 (#4554)
-- Bump github.com/golang/protobuf from 1.3.4 to 1.3.5 (#4563)
-- Bump github.com/prometheus/client_golang (#4574)
-- Bump github.com/gorilla/websocket from 1.4.1 to 1.4.2 (#4584)
-- Bump github.com/spf13/cobra from 0.0.6 to 0.0.7 (#4612)
-- Bump github.com/tendermint/tm-db from 0.5.0 to 0.5.1 (#4613)
-- Bump google.golang.org/grpc from 1.28.0 to 1.28.1 (#4653)
-- Bump github.com/spf13/viper from 1.6.2 to 1.6.3 (#4664)
-- Bump @vuepress/plugin-google-analytics in /docs (#4692)
-- Bump google.golang.org/grpc from 1.29.0 to 1.29.1 (#4735)
-- Manually bump github.com/prometheus/client_golang from 1.5.1 to 1.6.0 (#4758)
-- Bump github.com/golang/protobuf from 1.4.0 to 1.4.1 (#4794)
-- Bump vuepress-theme-cosmos from 1.0.163 to 1.0.164 in /docs (#4815)
-- Bump github.com/spf13/viper from 1.6.3 to 1.7.0 (#4814)
-- Bump github.com/golang/protobuf from 1.4.1 to 1.4.2 (#4849)
-- Bump vuepress-theme-cosmos from 1.0.164 to 1.0.165 in /docs
-- Bump github.com/stretchr/testify from 1.5.1 to 1.6.0
-- Bump github.com/stretchr/testify from 1.6.0 to 1.6.1
-- Bump google.golang.org/grpc from 1.29.1 to 1.30.0
-- Bump github.com/prometheus/client_golang
-- Bump vuepress-theme-cosmos from 1.0.168 to 1.0.169 in /docs
-- Bump google.golang.org/grpc from 1.30.0 to 1.31.0
-- Bump github.com/spf13/viper from 1.7.0 to 1.7.1
-- Bump golangci/golangci-lint-action from v2.1.0 to v2.2.0 (#5245)
-- Bump actions/cache from v1 to v2.1.0 (#5244)
-- Bump codecov/codecov-action from v1.0.7 to v1.0.12 (#5247)
-- Bump technote-space/get-diff-action from v1 to v3 (#5246)
-- Bump gaurav-nelson/github-action-markdown-link-check from 0.6.0 to 1.0.5 (#5248)
-- Bump codecov/codecov-action from v1.0.12 to v1.0.13 (#5258)
-- Bump gaurav-nelson/github-action-markdown-link-check from 1.0.5 to 1.0.6 (#5265)
-- Bump gaurav-nelson/github-action-markdown-link-check from 1.0.6 to 1.0.7 (#5269)
-- Bump actions/cache from v2.1.0 to v2.1.1 (#5268)
-- Bump github.com/tendermint/tm-db from 0.6.1 to 0.6.2 (#5296)
-- Bump google.golang.org/grpc from 1.31.1 to 1.32.0 (#5346)
-- Bump github.com/minio/highwayhash from 1.0.0 to 1.0.1 (#5370)
-- Bump vuepress-theme-cosmos from 1.0.172 to 1.0.173 in /docs (#5390)
-- Bump actions/cache from v2.1.1 to v2.1.2 (#5487)
-- Bump golangci/golangci-lint-action from v2.2.0 to v2.2.1 (#5486)
-- Bump technote-space/get-diff-action from v3 to v4 (#5485)
-- Bump google.golang.org/grpc from 1.32.0 to 1.33.1 (#5544)
-- Bump github.com/tendermint/tm-db from 0.6.2 to 0.6.3
-- Refactor BLS library/bindings integration  (#9)
-- BLS scripts - Improve build.sh, Fix install.sh (#10)
-- Dashify some files (#11)
-- Fix docker image and docker.yml workflow (#12)
-- Fix coverage.yml, bump go version, install BLS, drop an invalid character (#19)
-- Fix test.yml, bump go version, install BLS, fix job names (#18)
-- Bump gaurav-nelson/github-action-markdown-link-check (#22)
-- Bump codecov/codecov-action from v1.0.13 to v1.0.15 (#23)
-- Bump golangci/golangci-lint-action from v2.2.1 to v2.3.0 (#24)
-- Bump rtCamp/action-slack-notify from e9db0ef to 2.1.1 (#25)
-- Bump google.golang.org/grpc from 1.33.2 to 1.34.0 (#26)
-- Bump vuepress-theme-cosmos from 1.0.173 to 1.0.177 in /docs (#27)
-- Bump actions/cache from v2.1.3 to v2.1.4 (#6055)
-- Bump google.golang.org/grpc from 1.36.1 to 1.37.0 (bp #6330) (#6335)
-
 ### Certifiers
 
 - Test uses WaitForHeight
 
 ### Changelog
 
-- Add prehistory
 - Add genesis amount->power
 - More review fixes/release/v0.31.0 (#3427)
-- Add summary & fix link & add external contributor (#3490)
-- Add v0.31.9 and v0.31.8 updates (#4034)
-- Fix typo (#4106)
-- Explain breaking changes better
-- GotVoteFromUnwantedRoundError -> ErrGotVoteFromUnwantedRound
-- Add 0.32.9 changelog to master (#4305)
-- Add entries from secruity releases
-- Update 0.33.6 (#5075)
-- Note breaking change in the 0.33.6 release (#5077)
-- Reorgranize (#5065)
-- Move entries from pending  (#5172)
-- Bump to 0.34.0-rc2 (#5176)
-- Add v0.33.7 release (#5203)
-- Add v0.32.13 release (#5204)
-- Update for 0.34.0-rc3 (#5240)
-- Add v0.33.8 from release (#5242)
-- Minor tweaks (#5389)
-- Add missing date to v0.33.5 release, fix indentation (#5454) (#5455)
-- Prepare changelog for RC5 (#5494)
-- Squash changelog from 0.34 RCs into one (#5687)
-- Update changelog for v0.34.1 (#5872)
-- Prepare 0.34.2 release (#5894)
-- Update for 0.34.3 (#5926)
-- Update for v0.34.4 (#6096)
-- Improve with suggestions from @melekes (#6097)
-- Update for 0.34.5 (#6129)
-- Bump to v0.34.6
-- Fix changelog pending version numbering (#6149)
-- Update for 0.34.8 (#6181)
-- Prepare changelog for 0.34.9 release (#6333)
-- Update for 0.34.10 (#6357)
 
 ### Ci
 
 - Setup abci in dependency step
 - Move over abci-cli tests
 - Reduce log output in test_cover (#2105)
-- Transition some ci to github actions
-- Only run when applicable (#4752)
-- Check git diff on each job (#4770)
-- Checkout code before git diff check (#4779)
-- Add paths
-- Bump the timeout for test_coverage (#4864)
-- Migrate localnet to github actions (#4878)
-- Add timeouts (#4912)
-- Migrate test_cover (#4869)
-- Fix spacing of if statement (#5015)
-- Try to fix codecov (#5095)
-- Only run tests when go files are touched (#5097)
-- Version linter fix  (#5128)
-- Freeze golangci action version (#5196)
-- Fix net pipeline (#5272)
-- Delay codecov notification  (#5275)
-- Fix net run (#5343)
-- Docker remove circleci and add github action (#5551)
-- Add goreleaser (#5527)
-- Tests (#5577)
-- Remove `add-path` (#5674)
-- Build for 32 bit, libs: fix overflow (#5700)
-- Install BLS library in lint.yml and bump its go version (#15)
-- E2e fixes - docker image, e2e.yml BLS library, default KeyType (#21)
-
-### Ci/e2e
-
-- Avoid running job when no go files are touched (#5471)
 
 ### Circle
 
-- Docker 1.10.0
 - Add metalinter to test
 - Fix config.yml
 - Add GOCACHE=off and -v to tests
@@ -1734,9 +3966,6 @@
 - Add a job to automatically update docs (#3005)
 - Update go version (#3051)
 - Removed complexity from docs deployment job  (#3396)
-- Run P2P IPv4 and IPv6 tests in parallel (#4459)
-- Fix reproducible builds test (#4497)
-- Remove Gitian reproducible_builds job (#5462)
 
 ### Cleanup
 
@@ -1744,21 +3973,12 @@
 
 ### Cli
 
-- Testnet cmd inits files for testnet
-- ResetAll doesnt depend on cobra
 - Support --root and --home
 - More descriptive naming
 - Viper.Set(HomeFlag, rootDir)
 - Clean up error handling
 - Use cobra's new ExactArgs() feature
 - WriteDemoConfig -> WriteConfigVals
-- Add option to not clear address book with unsafe reset (#3606)
-- Add `--cs.create_empty_blocks_interval` flag (#4205)
-- Add `--db_backend` and `--db_dir` flags to tendermint node cmd (#4235)
-- Add optional `--genesis_hash` flag to check genesis hash upon startup (#4238)
-- Debug sub-command (#4227)
-- Add command to generate shell completion scripts (#4665)
-- Light home dir should default to where the full node default is (#5392)
 
 ### Client
 
@@ -1785,22 +4005,11 @@
 - Don't load config for version command. closes #620
 - Dont wait for genesis. closes #562
 - Make sure to have 'testnet' create the data directory for nonvals (#3409)
-- Show useful error when tm not initialised (#4512)
-- Fix debug kill and change debug dump archive filename format (#4517)
-- Hyphen-case cli  v0.34.1 (#5786)
 
 ### Cmd/abci-cli
 
 - Use a single connection per session
 - Implement batch
-
-### Cmd/debug
-
-- Execute p.Signal only when p is not nil (#4271)
-
-### Cmd/lite
-
-- Switch to new lite2 package (#4300)
 
 ### Cmd/tendermint
 
@@ -1844,7 +4053,6 @@
 - Remove {Left, Right}PadString (#168)
 - NewBitArray never crashes on negatives (#170)
 - Delete unused functions (#2452)
-- CMap: slight optimization in Keys() and Values(). (#3567)
 
 ### Common/BitArray
 
@@ -1860,14 +4068,7 @@
 
 ### Config
 
-- Hardcode default genesis.json
-- Block size, consensus timeouts, recheck tx
-- Cswal_light, mempool_broadcast, mempool_reap
 - Toggle authenticated encryption
-- Disable_data_hash (for testing)
-- All urls use tcp:// or unix:// prefix
-- Filter_peers defaults to false
-- Reduce timeouts during test
 - Pex_reactor -> pex
 - Write all default options to config file
 - Lil fixes
@@ -1879,57 +4080,9 @@
 - Reduce default mempool size (#2300)
 - Add ValidateBasic (#2485)
 - Refactor ValidateBasic (#2503)
-- Make possible to set absolute paths for TLS cert and key (#3765)
-- Move max_msg_bytes into mempool section (#3869)
-- Add rocksdb as a db backend option (#4239)
-- Allow fastsync.version = v2 (#4639)
-- Trust period consistency (#5297)
-- Rename prof_laddr to pprof_laddr and move it to rpc (#5315)
-- Set time_iota_ms to timeout_commit in test genesis (#5386)
-- Add state sync discovery_time setting (#5399)
-- Set statesync.rpc_servers when generating config file (#5433) (#5438)
-- Fix mispellings (#5914)
 
 ### Consensus
 
-- Broadcast evidence tx on ErrVoteConflictingSignature
-- Check both vote orderings for dupeout txs
-- Fix negative timeout; log levels
-- Msg saving and replay
-- Replay console
-- Use replay log to avoid sign regression
-- Don't wait for wal if conS not running
-- Dont allow peer round states to decrease
-- Cswal doesnt write any consensus msgs in light mode
-- Fix more races in tests
-- Fix race from OnStop accessing cs.Height
-- T.Fatal -> panic
-- Hvs.Reset(height, valSet)
-- Increase mempool_test timeout
-- Don't print shared vars in cs.String()
-- Add note about replay test
-- No sign err in replay; fix a race
-- Hvs.StringIndented needed a lock. addresses #284
-- Test reactor
-- Fix panic on POLRound=-1
-- Ensure dir for cswal on reactor tests
-- Lock before loading commit
-- Track index of privVal
-- Test validator set change
-- Wal.Flush() and cleanup replay tests
-- TimeoutTicker, skip TimeoutCommit on HasAll
-- Mv timeoutRoutine into TimeoutTicker
-- No internal vars in reactor.String()
-- Sync wal.writeHeight
-- Remove crankTimeoutPropose from tests
-- Be more explicit when we need to write height after handshake
-- Let time.Timer handle non-positive durations
-- Check HasAll when TwoThirdsMajority
-- Nice error msg if ApplyBlock fails
-- Handshake replay test using wal
-- More handshake replay tests
-- Some more informative logging
-- Timeout on replayLastBlock
 - Comment about test_data [ci skip]
 - Fix tests
 - Improve logging for conflicting votes
@@ -1972,46 +4125,10 @@
 - Add ADR for first stage consensus refactor (#2462)
 - Wait for proposal or timeout before prevote (#2540)
 - Flush wal on stop (#3297)
-- Reduce "Error attempting to add vote" message severity (Er… (#3871)
-- Reduce log severity for ErrVoteNonDeterministicSignature (#4431)
-- Add comment as to why use mocks during replay (#4785)
-- Fix TestSimulateValidatorsChange
-- Fix and rename TestStateLockPOLRelock (#4796)
-- Bring back log.Error statement (#4899)
-- Increase ensureTimeout (#4891)
-- Fix startnextheightcorrectly test (#4938)
-- Attempt to repair the WAL file on data corruption (#4682)
-- Change logging and handling of height mismatch (#4954)
-- Stricter on LastCommitRound check (#4970)
-- Proto migration (#4984)
-- Do not allow signatures for a wrong block in commits
-- Msg testvectors (#5076)
-- Added byzantine test, modified previous test (#5150)
-- Only call privValidator.GetPubKey once per block (#5143)
-- Don't check InitChain app hash vs genesis app hash, replace it (#5237)
-- Double-sign risk reduction (ADR-51) (#5147)
-- Fix wrong proposer schedule for `InitChain` validators (#5329)
-- Check block parts don't exceed maximum block bytes (#5436)
-- Open target WAL as read/write during autorepair (#5536) (#5547)
-- Groom Logs (#5917)
-- Remove privValidator from log call (#6128)
-- More log grooming (bp #6140) (#6143)
 
 ### Consensus/WAL
 
 - Benchmark WALDecode across data sizes
-
-### Consensus/replay
-
-- Remove timeout
-
-### Consensus/types
-
-- Fix BenchmarkRoundStateDeepCopy panics (#4244)
-
-### Consensus/wal
-
-- #HEIGHT -> #ENDHEIGHT
 
 ### Console
 
@@ -2021,7 +4138,6 @@
 ### Contributing
 
 - Use full version from site
-- Add steps for adding and removing rc branches (#5223)
 
 ### Core
 
@@ -2030,10 +4146,6 @@
 ### Counter
 
 - Fix tx buffer overflow
-
-### Cov
-
-- Ignore autogen file (#5033)
 
 ### Crypto
 
@@ -2053,25 +4165,10 @@
 - Add a way to go from pubkey to route (#2574)
 - Use stdlib crypto/rand. ref #2099 (#2669)
 - Revert to mainline Go crypto lib (#3027)
-- Delete unused code (#3426)
-- Proof of Concept for iterative version of SimpleHashFromByteSlices (#2611) (#3530)
-- Add sr25519 signature scheme (#4190)
-- Fix sr25519 from raw import (#4272)
-- Remove SimpleHashFromMap() and SimpleProofsFromMap()
-- Remove key suffixes (#4941)
-- Removal of multisig (#4988)
-- Consistent api across keys (#5214)
-- API modifications (#5236)
-- Remove secp256k1 (#5280)
-- Remove proto privatekey (#5301)
-- Reword readme (#5349)
-- Add in secp256k1 support (#5500)
-- Fix infinite recursion in Secp256k1 string formatting (#5707) (#5709)
 
 ### Crypto/amino
 
 - Address anton's comment on PubkeyAminoRoute (#2592)
-- Add function to modify key codec (#4112)
 
 ### Crypto/ed25519
 
@@ -2085,7 +4182,6 @@
 ### Crypto/merkle
 
 - Remove byter in favor of plain byte slices (#2595)
-- Remove simple prefix (#4989)
 
 ### Crypto/random
 
@@ -2096,10 +4192,6 @@
 - Add godocs, remove indirection in privkeys (#2017)
 - Fix signature malleability, adopt more efficient en… (#2239)
 
-### Crypto|p2p|state|types
-
-- Rename Pub/PrivKey's TypeIdentifier() and Type()
-
 ### Cs
 
 - Prettify logging of ignored votes (#3086)
@@ -2107,34 +4199,13 @@
 - Sync WAL more frequently (#3300)
 - Update wal comments (#3334)
 - Comment out log.Error to avoid TestReactorValidatorSetChanges timing out (#3401)
-- Fix nondeterministic tests (#3582)
-- Exit if SwitchToConsensus fails (#3706)
-- Check for SkipTimeoutCommit or wait timeout in handleTxsAvailable (#3928)
-- Don't panic when block is not found in store (#4163)
-- Clarify where 24 comes from in maxMsgSizeBytes (wal.go)
-- Set missing_validators(_power) metrics to 0 for 1st block (#4194)
-- Check if cs.privValidator is nil (#4295)
-
-### Cs/replay
-
-- Check appHash for each block (#3579)
-- ExecCommitBlock should not read from state.lastValidators (#3067)
 
 ### Cs/wal
 
 - Refuse to encode msg that is bigger than maxMsgSizeBytes (#3303)
 
-### Cswal
-
-- Write #HEIGHT:1 for empty wal
-
-### Daemon
-
-- Refactor out of cmd into own package
-
 ### Db
 
-- Add Close() to db interface. closes #31
 - Fix memdb iterator
 - Fix MemDB.Close
 - Sort keys for memdb iterator
@@ -2148,45 +4219,15 @@
 - Fsdb iterator
 - Fix c and go iterators
 - Simplify exists check, fix IsKeyInDomain signature, Iterator Close
-- Add support for badgerdb (#5233)
 
 ### Dep
 
 - Pin all deps to version or commit
 - Revert updates
-- Update tm-db to 0.4.0 (#4289)
-- Bump gokit dep (#4424)
-- Maunally bump dep (#4436)
-- Bump protobuf, cobra, btcutil & std lib deps (#4676)
 
 ### Deps
 
 - Update gogo/protobuf from 1.1.1 to 1.2.1 and golang/protobuf from 1.1.0 to 1.3.0 (#3357)
-- Update gogo/protobuf version from v1.2.1 to v1.3.0 (#3947)
-- Bump github.com/magiconair/properties from 1.8.0 to 1.8.1 (#3937)
-- Bump github.com/rs/cors from 1.6.0 to 1.7.0 (#3939)
-- Bump github.com/fortytw2/leaktest from 1.2.0 to 1.3.0 (#3943)
-- Bump github.com/libp2p/go-buffer-pool from 0.0.1 to 0.0.2 (#3948)
-- Bump google.golang.org/grpc from 1.22.0 to 1.23.0 (#3942)
-- Bump github.com/gorilla/websocket from 1.2.0 to 1.4.1 (#3945)
-- Bump viper to 1.4.0 and logfmt to 0.4.0 (#3950)
-- Bump github.com/stretchr/testify from 1.3.0 to 1.4.0 (#3951)
-- Bump github.com/go-kit/kit from 0.6.0 to 0.9.0 (#3952)
-- Bump google.golang.org/grpc from 1.23.0 to 1.23.1 (#3982)
-- Bump google.golang.org/grpc from 1.23.1 to 1.24.0 (#4021)
-- Bump google.golang.org/grpc from 1.25.0 to 1.25.1 (#4127)
-- Bump google.golang.org/grpc from 1.25.1 to 1.26.0 (#4264)
-- Bump github.com/go-logfmt/logfmt from 0.4.0 to 0.5.0 (#4282)
-- Bump github.com/pkg/errors from 0.8.1 to 0.9.0 (#4301)
-- Bump github.com/spf13/viper from 1.6.1 to 1.6.2 (#4318)
-- Bump github.com/golang/protobuf from 1.3.2 to 1.3.3 (#4359)
-- Bump google.golang.org/grpc from 1.27.0 to 1.27.1 (#4372)
-- Bump github.com/stretchr/testify from 1.4.0 to 1.5.0 (#4435)
-- Bump github.com/tendermint/tm-db from 0.4.0 to 0.4.1 (#4476)
-- Bump github.com/Workiva/go-datastructures (#4519)
-- Bump deps that bot cant (#4555)
-- Run go mod tidy (#4587)
-- Bump tm-db to 0.6.0 (#5058)
 
 ### Dist
 
@@ -2203,15 +4244,6 @@
 - Verify pubkey is go-crypto encoded in DeliverTx. closes #51
 - Include app.key tag
 
-### E2e
-
-- Use ed25519 for secretConn (remote signer) (#5678)
-- Releases nightly (#5906)
-- Add benchmarking functionality (bp #6210) (#6216)
-- Integrate light clients (bp #6196)
-- Tx load to use broadcast sync instead of commit (backport #6347) (#6352)
-- Relax timeouts (#6356)
-
 ### Ebuchman
 
 - Added some demos on how to parse unknown types
@@ -2220,17 +4252,9 @@
 
 - Use golang/x/crypto fork (#2558)
 
-### Encoding
-
-- Remove codecs (#4996)
-
 ### Errcheck
 
 - PR comment fixes
-
-### Events
-
-- Integrate event switch into services via Eventable interface
 
 ### Evidence
 
@@ -2242,48 +4266,6 @@
 - Dont send evidence to unsynced peers
 - Check peerstate exists; dont send old evidence
 - Give each peer a go-routine
-- Enforce ordering in DuplicateVoteEvidence (#4151)
-- Introduce time.Duration to evidence params (#4254)
-- Both MaxAgeDuration and MaxAgeNumBlocks need to be surpassed (#4667)
-- Handling evidence from light client(s) (#4532)
-- Remove unused param (#4726)
-- Remove pubkey from duplicate vote evidence
-- Add doc.go
-- Protect valToLastHeight w/ mtx
-- Check evidence is pending before validating evidence
-- Refactor evidence mocks throughout packages (#4787)
-- Cap evidence to an absolute number (#4780)
-- Create proof of lock change and implement it in evidence store (#4746)
-- Prevent proposer from proposing duplicate pieces of evidence (#4839)
-- Remove header from phantom evidence (#4892)
-- Retrieve header at height of evidence for validation (#4870)
-- Json tags for DuplicateVoteEvidence (#4959)
-- Migrate reactor to proto (#4949)
-- Adr56 form amnesia evidence (#4821)
-- Improve amnesia evidence handling (#5003)
-- Replace mock evidence with mocked duplicate vote evidence (#5036)
-- Fix data race in Pool.updateValToLastHeight() (#5100)
-- Check lunatic vote matches header (#5093)
-- New evidence event subscription (#5108)
-- Minor correction to potential amnesia ev validate basic (#5151)
-- Remove phantom validator evidence (#5181)
-- Don't stop evidence verification if an evidence fails (#5189)
-- Fix usage of time field in abci evidence (#5201)
-- Change evidence time to block time (#5219)
-- Remove validator index verification (#5225)
-- Modularise evidence by moving verification function into evidence package (#5234)
-- Remove ConflictingHeaders type (#5317)
-- Remove lunatic  (#5318)
-- Remove amnesia & POLC (#5319)
-- Introduction of LightClientAttackEvidence and refactor of evidence lifecycle (#5361)
-- Use bytes instead of quantity to limit size (#5449)(#5476)
-- Don't gossip consensus evidence too soon (#5528)
-- Don't send committed evidence and ignore inbound evidence that is already committed (#5574)
-- Structs can independently form abci evidence (#5610)
-- Omit bytes field (#5745)
-- Buffer evidence from consensus (#5890)
-- Terminate broadcastEvidenceRoutine when peer is stopped (#6068)
-- Fix bug with hashes (backport #6375) (#6381)
 
 ### Example
 
@@ -2293,57 +4275,20 @@
 
 - Remove iavl dep - just use raw db
 
-### Example/kvstore
-
-- Return ABCI query height (#4509)
-
 ### Fmt
 
 - Run 'make fmt'
 
-### Format
-
-- Add format cmd & goimport repo (#4586)
-
-### Genesis
-
-- Add support for arbitrary initial height (#5191)
-
 ### Github
 
 - Update PR template to indicate changing pending changelog. (#2059)
-- Edit templates for use in issues and pull requests (#4483)
-- Add nightly E2E testnet action (#5480)
-- Rename e2e jobs (#5502)
-- Only notify nightly E2E failures once (#5559)
-
-### Gitian
-
-- Update reproducible builds to build with Go 1.12.8 (#3902)
-
-### Gitignore
-
-- Add .vendor-new (#3566)
 
 ### Glide
 
 - Update go-common
-- Update lock and add util scripts
-- Update go-common
-- Update go-wire
-- Use versions where applicable
 - Update for autofile fix
 - More external deps locked to versions
 - Update grpc version
-
-### Go.mod
-
-- Upgrade iavl and deps (#5657)
-
-### Goreleaser
-
-- Downcase archive and binary names (#6029)
-- Reintroduce arm64 build instructions
 
 ### Grpcdb
 
@@ -2355,10 +4300,6 @@
 - Optimize ReverseBytes + add tests
 - Comments and some cleanup
 
-### Header
-
-- Check block protocol (#5340)
-
 ### Http
 
 - Http-utils added after extraction
@@ -2367,32 +4308,13 @@
 
 - //github.com/tendermint/tendermint/pull/1128#discussion_r162799294
 
-### Indexer
-
-- Allow indexing an event at runtime (#4466)
-- Remove index filtering (#5006)
-- Remove info log (#6194)
-
-### Ints
-
-- Stricter numbers (#4939)
-
-### Json
-
-- Add Amino-compatible encoder/decoder (#4955)
-
 ### Json2wal
 
 - Increase reader's buffer size (#3147)
 
-### Jsonrpc
-
-- Change log to debug (#5131)
-
 ### Keys
 
 - Transactions.go -> types.go
-- Change to []bytes  (#4950)
 
 ### Keys/keybase.go
 
@@ -2409,13 +4331,6 @@
 - Refactor & document events code (#2576)
 - Let prefixIterator implements Iterator correctly (#2581)
 - Test deadlock from listener removal inside callback (#2588)
-- Remove useless code in group (#3504)
-- Remove commented and unneeded code (#3757)
-- Minor cleanup (#3794)
-- Remove db from tendermint in favor of tendermint/tm-cmn (#3811)
-- Remove bech32
-- Remove kv (#4874)
-- Wrap mutexes for build flag with godeadlock (#5126)
 
 ### Libs/autofile
 
@@ -2424,10 +4339,6 @@
 ### Libs/autofile/group_test
 
 - Remove unnecessary logging (#2100)
-
-### Libs/bits
-
-- Inline defer and change order of mutexes (#5187)
 
 ### Libs/cmn
 
@@ -2440,14 +4351,6 @@
 ### Libs/common
 
 - Refactor tempfile code into its own file
-- Remove deprecated PanicXXX functions (#3595)
-- Remove heap.go (#3780)
-- Remove unused functions (#3784)
-- Refactor libs/common 01 (#4230)
-- Refactor libs/common 2 (#4231)
-- Refactor libs common 3 (#4232)
-- Refactor libs/common 4 (#4237)
-- Refactor libs/common 5 (#4240)
 
 ### Libs/common/rand
 
@@ -2458,75 +4361,6 @@
 - Add cleveldb.Stats() (#3379)
 - Close batch (#3397)
 - Close batch (#3397)
-- Bbolt (etcd's fork of bolt) (#3610)
-- Close boltDBIterator (#3627)
-- Fix boltdb batching
-- Conditional compilation (#3628)
-- Boltdb: use slice instead of sync.Map (#3633)
-- Remove deprecated `LevelDBBackend` const (#3632)
-- Fix the BoltDB Batch.Delete
-- Fix the BoltDB Get and Iterator
-
-### Libs/fail
-
-- Clean up `fail.go` (#3785)
-
-### Libs/kv
-
-- Remove unused type KI64Pair (#4542)
-
-### Libs/log
-
-- Format []byte as hexidecimal string (uppercased) (#5960)
-- [JSON format] include timestamp (bp #6174) (#6179)
-
-### Libs/os
-
-- EnsureDir now returns IO errors and checks file type (#5852)
-- Avoid CopyFile truncating destination before checking if regular file (backport: #6428) (#6436)
-
-### Libs/pubsub
-
-- Relax tx querying (#4070)
-
-### Libs/pubsub/query
-
-- Add EXISTS operator (#4077)
-
-### Libs/rand
-
-- Fix "out-of-memory" error on unexpected argument (#5215)
-
-### Light
-
-- Rename lite2 to light & remove lite (#4946)
-- Implement validate basic (#4916)
-- Migrate to proto (#4964)
-- Added more tests for pruning, initialization and bisection (#4978)
-- Fix rpc calls: /block_results & /validators (#5104)
-- Use bisection (not VerifyCommitTrusting) when verifying a head… (#5119)
-- Return if target header is invalid (#5124)
-- Update ADR 47 with light traces (#5250)
-- Implement light block (#5298)
-- Move dropout handling and invalid data to the provider (#5308)
-- Cross-check the very first header (#5429)
-- Run detector for sequentially validating light client (#5538) (#5601)
-- Make fraction parts uint64, ensuring that it is always positive (#5655)
-- Fix panic with RPC calls to commit and validator when height is nil (#6040)
-- Remove witnesses in order of decreasing index (#6065)
-- Handle too high errors correctly (backport #6346) (#6351)
-
-### Light/evidence
-
-- Handle FLA backport (#6331)
-
-### Light/provider/http
-
-- Fix Validators (#6024)
-
-### Light/rpc
-
-- Fix ABCIQuery (#5375)
 
 ### Lint
 
@@ -2535,15 +4369,6 @@
 - S/+=1/++, remove else clauses
 - Couple more fixes
 - Apply deadcode/unused
-- Golint issue fixes (#4258)
-- Add review dog (#4652)
-- Enable nolintlinter, disable on tests
-- Various fixes
-- Errcheck  (#5091)
-- Add markdown linter (#5254)
-- Add errchecks (#5316)
-- Enable errcheck (#5336)
-- Run gofmt and goimports  (#13)
 
 ### Linter
 
@@ -2553,14 +4378,6 @@
 - Address deadcode, implement incremental lint testing
 - Sort through each kind and address small fixes
 - Enable in CI & make deterministic
-- (1/2) enable errcheck (#5064)
-- Fix some bls-related linter issues (#14)
-
-### Linters
-
-- Enable scopelint (#3963)
-- Modify code to pass maligned and interfacer (#3959)
-- Enable stylecheck (#4153)
 
 ### Linting
 
@@ -2578,7 +4395,6 @@
 - Apply errcheck part2
 - Moar fixes
 - Few more fixes
-- Remove unused variable
 
 ### Lite
 
@@ -2587,68 +4403,11 @@
 - TestCacheGetsBestHeight with GetByHeight and GetByHeightBinarySearch
 - Comment out iavl code - TODO #1183
 - Add synchronization in lite verify (#2396)
-- Follow up from #3989 (#4209)
-- Modified bisection to loop (#4400)
-- Add helper functions for initiating the light client (#4486)
-- Fix HTTP provider error handling
 
 ### Lite/proxy
 
 - Validation* tests and hardening for nil dereferences
 - Consolidate some common test headers into a variable
-
-### Lite2
-
-- Light client with weak subjectivity (#3989)
-- Move AutoClient into Client (#4326)
-- Improve auto update (#4334)
-- Add Start, TrustedValidatorSet funcs (#4337)
-- Rename alternative providers to witnesses (#4344)
-- Refactor cleanup() (#4343)
-- Batch save & delete operations in DB store (#4345)
-- Panic if witness is on another chain (#4356)
-- Make witnesses mandatory (#4358)
-- Replace primary provider with alternative when unavailable (#4354)
-- Fetch missing headers (#4362)
-- Validate TrustOptions, add NewClientFromTrustedStore (#4374)
-- Return if there are no headers in RemoveNoLongerTrustedHeaders (#4378)
-- Manage witness dropout (#4380)
-- Improve string output of all existing providers (#4387)
-- Modified sequence method to match bisection (#4403)
-- Disconnect from bad nodes (#4388)
-- Divide verify functions (#4412)
-- Return already verified headers and verify earlier headers (#4428)
-- Don't save intermediate headers (#4452)
-- Store current validator set (#4472)
-- Cross-check first header and update tests (#4471)
-- Remove expiration checks on functions that don't require them (#4477)
-- Prune-headers (#4478)
-- Return height as 2nd return param in TrustedValidatorSet (#4479)
-- Actually run example tests + clock drift (#4487)
-- Fix tendermint lite sub command (#4505)
-- Remove auto update (#4535)
-- Indicate success/failure of Update (#4536)
-- Replace primary when providing invalid header (#4523)
-- Add benchmarking tests (#4514)
-- Cache headers in bisection (#4562)
-- Use bisection for some of backward verification (#4575)
-- Make maxClockDrift an option (#4616)
-- Prevent falsely returned double voting error (#4620)
-- Default to http scheme in provider.New (#4649)
-- Verify ConsensusHash in rpc client
-- Fix pivot height during bisection (#4850)
-- Correctly return the results of the "latest" block (#4931)
-- Allow bigger requests to LC proxy (#4930)
-- Check header w/ witnesses only when doing bisection (#4929)
-- Compare header with witnesses in parallel (#4935)
-
-### Lite2/http
-
-- Fix provider test by increasing the block retention value (#4890)
-
-### Lite2/rpc
-
-- Verify block results and validators (#4703)
 
 ### Localnet
 
@@ -2656,24 +4415,11 @@
 
 ### Log
 
-- Move some Info to Debug
 - Tm -> TM
-
-### Logging
-
-- Print string instead of callback (#6178)
-- Shorten precommit log message (#6270) (#6274)
-
-### Logs
-
-- Cleanup (#6198)
 
 ### Make
 
-- Dont use -v on go test
 - Update protoc_abci use of awk
-- Add back tools cmd (#4281)
-- Remove sentry setup cmds (#4383)
 
 ### Makefile
 
@@ -2682,24 +4428,9 @@
 - Add `make check_dep` and remove `make ensure_deps` (#2055)
 - Lint flags
 - Fix build-docker-localnode target (#3122)
-- Minor cleanup (#3994)
-- Place phony markers after targets (#4408)
-- Add options for other DBs (#5357)
-- Remove call to tools (#6104)
-
-### Markdownlint
-
-- Ignore .github directory (#5351)
-
-### Maverick
-
-- Reduce some duplication (#6052)
 
 ### Mempool
 
-- Add GetState()
-- Remove bad txs from cacheMap
-- Don't remove committed txs from cache
 - Comments
 - Reactor test
 - Implement Mempool.CloseWAL
@@ -2722,40 +4453,6 @@
 - Move tx to back, not front (#3036)
 - Enforce maxMsgSize limit in CheckTx (#3168)
 - Correct args order in the log msg (#3221)
-- Fix broadcastTxRoutine leak (#3478)
-- Add a safety check, write tests for mempoolIDs (#3487)
-- Move interface into mempool package (#3524)
-- Remove only valid (Code==0) txs on Update (#3625)
-- Make max_msg_bytes configurable (#3826)
-- Make `max_tx_bytes` configurable instead of `max_msg_bytes` (#3877)
-- Fix memory loading error on 32-bit machines (#3969)
-- Moved TxInfo parameter into Mempool.CheckTx() (#4083)
-- Reserve IDs in InitPeer instead of AddPeer
-- Move mock into mempool directory
-- Allow ReapX and CheckTx functions to run in parallel
-- Do not launch broadcastTxRoutine if Broadcast is off
-- Make it clear overwriting of pre/postCheck filters is intent… (#5054)
-- Use oneof (#5063)
-- Add RemoveTxByKey function (#5066)
-- Return an error when WAL fails (#5292)
-- Batch txs per peer in broadcastTxRoutine (#5321)
-- Fix nil pointer dereference (#5412)
-- Introduce KeepInvalidTxsInCache config option (#5813)
-- Disable MaxBatchBytes (#5800)
-
-### Mempool/reactor
-
-- Fix reactor broadcast test (#5362)
-
-### Mempool/rpc
-
-- Log grooming (bp #6201) (#6203)
-
-### Mergify
-
-- Remove unnecessary conditions (#4501)
-- Use strict merges (#4502)
-- Use PR title and body for squash merge commit (#4669)
 
 ### Merkle
 
@@ -2763,7 +4460,6 @@
 - Remove go-wire dep by copying EncodeByteSlice
 - Remove unused funcs. unexport simplemap. improv docs
 - Use amino for byteslice encoding
-- Return hashes for empty merkle trees (#5193)
 
 ### Metalinter
 
@@ -2772,16 +4468,6 @@
 ### Metrics
 
 - Add additional metrics to p2p and consensus (#2425)
-- Only increase last_signed_height if commitSig for block (#4283)
-- Switch from gauge to histogram (#5326)
-
-### Mocks
-
-- Update with 2.2.1 (#5294)
-
-### Mod
-
-- Go mod tidy
 
 ### Nano
 
@@ -2790,10 +4476,6 @@
 ### Networks
 
 - Update readmes
-
-### Networks/remote
-
-- Turn on GO111MODULE and use git clone instead of go get (#4203)
 
 ### Node
 
@@ -2804,28 +4486,9 @@
 - Remove commented out trustMetric
 - Respond always to OS interrupts (#2479)
 - Refactor privValidator ext client code & tests (#2895)
-- Refactor node.NewNode (#3456)
-- Fix a bug where `nil` is recorded as node's address (#3740)
-- Run whole func in goroutine, not just logger.Error fn (#3743)
-- Allow registration of custom reactors while creating node (#3771)
-- Use GRPCMaxOpenConnections when creating the gRPC server (#4349)
-- Don't attempt fast sync when InitChain sets self as only validator (#5211)
-- Fix genesis state propagation to state sync (#5302)
-
-### Note
-
-- Add nondeterministic note to events (#6220) (#6225)
-
-### Os
-
-- Simplify EnsureDir() (#5871)
 
 ### P2p
 
-- Push handshake containing chainId for early disconnect. Closes #12
-- Fix switch_test to account for handshake
-- Broadcast spawns goroutine to Send on each peer and times out after 10 seconds. Closes #7
-- Fix switch test for Broadcast returning success channel
 - Use cmn instead of .
 - Fix race by peer.Start() before peers.Add()
 - Fix test
@@ -2901,43 +4564,6 @@
 - Check secret conn id matches dialed id (#3321)
 - Fix comment in secret connection (#3348)
 - Do not panic when filter times out (#3384)
-- Refactor GetSelectionWithBias for addressbook (#3475)
-- Seed mode refactoring (#3011)
-- Do not log err if peer is private (#3474)
-- (seed mode) limit the number of attempts to connect to a peer (#3573)
-- Session should terminate on nonce wrapping (#3531) (#3609)
-- Make persistent prop independent of conn direction (#3593)
-- PeerBehaviour implementation (#3539)  (#3552)
-- Peer state init too late and pex message too soon (#3634)
-- Per channel metrics (#3666) (#3677)
-- Remove NewNetAddressStringWithOptionalID (#3711)
-- Peerbehaviour follow up (#3653) (#3663)
-- Refactor Switch#OnStop (#3729)
-- Dial addrs which came from seed instead of calling ensurePeers (#3762)
-- Extract ID validation into a separate func (#3754)
-- Fix error logging for connection stop (#3824)
-- Do not write 'Couldn't connect to any seeds' if there are no seeds (#3834)
-- Only allow ed25519 pubkeys when connecting
-- Log as debug msg when address dialing is already connected (#4082)
-- Make SecretConnection non-malleable (#3668)
-- Add `unconditional_peer_ids` and `persistent_peers_max_dial_period` (#4176)
-- Extract maxBackoffDurationForPeer func and remove 1 test  (#4218)
-- Use curve25519.X25519() instead of ScalarMult() (#4449)
-- PEX message abuse should ban as well as disconnect (#4621)
-- Limit the number of incoming connections
-- Set RecvMessageCapacity to maxMsgSize in all reactors
-- Return err on `signChallenge` (#4795)
-- Return masked IP (not the actual IP) in addrbook#groupKey
-- TestTransportMultiplexAcceptNonBlocking and TestTransportMultiplexConnFilterTimeout (#4868)
-- Remove nil guard (#4901)
-- Expose SaveAs on NodeKey (#4981)
-- Proto leftover (#4995)
-- Remove data race bug in netaddr stringer (#5048)
-- Ensure peers can't change IP of known nodes (#5136)
-- Reduce log severity (#5338)
-- Fix MConnection inbound traffic statistics and rate limiting (#5868) (#5870)
-- Fix "Unknown Channel" bug on CustomReactors (#6297)
-- Fix using custom channels (#6339)
 
 ### P2p/addrbook
 
@@ -2954,11 +4580,6 @@
 - Better handling for some stop conditions
 - FlushStop. Use in pex. Closes #2092 (#2802)
 - Don't hold stopMtx while waiting (#3254)
-- Add Bufferpool (#3664)
-- Simplify secret connection handshake malleability fix with merlin (#4185)
-- Add a test for MakeSecretConnection (#4829)
-- Migrate to Protobuf (#4990)
-- Check for channel id overflow before processing receive msg (backport #6522) (#6528)
 
 ### P2p/connetion
 
@@ -2972,18 +4593,10 @@
 - Some addrbook fixes
 - Allow configured seed nodes to not be resolvable over DNS (#2129)
 - Fix mismatch between dialseeds and checkseeds. (#2151)
-- Consult seeds in crawlPeersRoutine (#3647)
-- Fix DATA RACE
-- Migrate to Protobuf (#4973)
 
 ### P2p/secret_connection
 
 - Switch salsa usage to hkdf + chacha
-
-### P2p/test
-
-- Wait for listener to get ready (#4881)
-- Fix Switch test race condition (#4893)
 
 ### P2p/trust
 
@@ -2995,12 +4608,6 @@
 ### P2p/trustmetric
 
 - Non-deterministic test
-
-### Pex
-
-- Dial seeds when address book needs more addresses (#3603)
-- Various follow-ups (#3605)
-- Use highwayhash for pex bucket
 
 ### Premerge2
 
@@ -3021,53 +4628,6 @@
 - Add IPCPV and fix SocketPV (#2568)
 - Fixes from review (#3126)
 - Improve Remote Signer implementation (#3351)
-- Increase timeout to mitigate non-deterministic test failure (#3580)
-- Remove misplaced debug statement (#4103)
-- Add `SignerDialerEndpointRetryWaitInterval` option (#4115)
-- Return error on getpubkey (#4534)
-- Remove deprecated `OldFilePV`
-- Retry GetPubKey/SignVote/SignProposal N times before
-- Migrate to protobuf (#4985)
-- If remote signer errors, don't retry (#5140)
-- Add chainID to requests (#5239)
-- Allow passing options to NewSignerDialerEndpoint (#5434) (#5437)
-- Fix ping message encoding (#5442)
-- Make response values non nullable (#5583)
-- Increase read/write timeout to 5s and calculate ping interva… (#5666)
-- Reset pingTimer to avoid sending unnecessary pings (#5642) (#5668)
-
-### Prometheus/metrics
-
-- Three new metrics for consensus (#4263)
-
-### Proto
-
-- Add buf and protogen script (#4369)
-- Minor linting to proto files (#4386)
-- Use docker to generate stubs (#4615)
-- Bring over proto types & msgs (#4718)
-- Regenerate proto (#4730)
-- Remove test files
-- Add proto files for ibc unblock (#4853)
-- Add more to/from (#4956)
-- Change to use gogofaster (#4957)
-- Remove amino proto tests (#4982)
-- Move keys to oneof (#4983)
-- Leftover amino (#4986)
-- Move all proto dirs to /proto (#5012)
-- Folder structure adhere to buf (#5025)
-- Increase lint level to basic and fix lint warnings (#5096)
-- Improve enums (#5099)
-- Reorganize Protobuf schemas (#5102)
-- Minor cleanups (#5105)
-- Change type + a cleanup (#5107)
-- Add a comment for Validator#Address (#5144)
-- Bump gogoproto (1.3.2) (#5886)
-- Docker deployment (#5931)
-
-### Proto/tendermint/abci
-
-- Fix Request oneof numbers (#5116)
 
 ### Protoc
 
@@ -3075,107 +4635,29 @@
 
 ### Proxy
 
-- Typed app conns
-- NewAppConns takes a NewTMSPClient func
-- Wrap NewTMSPClient in ClientCreator
-- Nil -> nilapp
 - Remove Handshaker from proxy pkg (#2437)
-- Improve ABCI app connection handling (#5078)
 
 ### Pubsub
 
 - Comments
 - Fixes after Ethan's review (#3212)
 
-### Reactors
-
-- Omit incoming message bytes from reactor logs (#5743)
-
 ### Readme
 
 - Js-tmsp -> js-abci
 - Update install instruction (#100)
 - Re-organize & update docs links
-- Fix link to original paper (#4391)
-- Add discord to readme (#4533)
-- Add badge for git tests (#4732)
-- Add source graph badge (#4980)
-
-### Relase_notes
-
-- Add release notes for v0.34.0
-
-### Release
-
-- Minor release 0.33.1 (#4401)
 
 ### Remotedb
 
 - A client package implementing the db.DB interface
 
-### Removal
-
-- Remove build folder (#4565)
-
 ### Repeat_timer
 
 - Drain channel in Stop; done -> wg
 
-### Replay
-
-- Larger read buffer
-- More tests
-- Ensure cs.height and wal.height match
-
-### Rfc
-
-- Add end-to-end testing RFC (#5337)
-
 ### Rpc
 
-- Add status and net info
-- Return tx hash, creates contract, contract addr in broadcast (required some helper functions). Closes #30
-- Give each call a dedicated Response struct, add basic test
-- Separate out golang API into rpc/core
-- Generalized rpc using reflection on funcs and params
-- Fixes for better type handlings, explicit error field in response, more tests
-- Cleanup, more tests, working http and jsonrpc
-- Fix tests to count mempool; copy responses to avoid data races
-- Return (*Response, error) for all functions
-- GetStorage and Call methods. Tests.
-- Decrement mempool count after block mined
-- GetStorage and Call methods. Tests.
-- Decrement mempool count after block mined
-- Auto generated client methods using rpc-gen
-- Myriad little fixes
-- Cleanup, use client for tests, rpc-gen fixes
-- Websockets
-- Tests cleanup, use client lib for JSONRPC testing too
-- Test CallCode and Call
-- Fix memcount error in tests
-- Use gorilla websockets
-- First successful websocket event subscription
-- Websocket events testing
-- Use NewBlock event in rpc tests
-- Cleanup tests and test contract calls
-- Genesis route
-- Remove unecessary response wrappers
-- Add app_hash to /status
-- TMResult and TMEventData
-- Test cleanup
-- Unsafe_set_config
-- Num_unconfirmed_txs (avoid sending txs back)
-- Start/stop cpu profiler
-- Unsafe_write_heap_profile
-- Broadcast tests. closes #219
-- Unsafe_flush_mempool. closes #190
-- Use interfaces for pipe
-- Remove restriction on DialSeeds
-- /commit
-- Fix SeenCommit condition
-- Dial_seeds msg. addresses #403
-- Better arg validation for /tx
-- /tx allows height+hash
 - Use HTTP error codes
 - Repsonse types use data.Bytes
 - Response types use Result instead of pb Response
@@ -3212,88 +4694,14 @@
 - Add /consensus_params endpoint  (#2415)
 - Fix tx.height range queries (#2899)
 - Include peer's remote IP in `/net_info` (#3052)
-- Client disable compression (#3430)
-- Support tls rpc (#3469)
-- Fix response time grow over time (#3537)
-- Add support for batched requests/responses (#3534)
-- /dial_peers: only mark peers as persistent if flag is on (#3620)
-- Use Wrap instead of Errorf error (#3686)
-- Make max_body_bytes and max_header_bytes configurable (#3818)
-- /broadcast_evidence (#3481)
-- Return err if page is incorrect (less than 0 or greater than tot… (#3825)
-- Protect subscription access from race condition (#3910)
-- Allow using a custom http client in rpc client (#3779)
-- Remove godoc comments in favor of swagger docs (#4126)
-- /block_results fix docs + write test + restructure response (#3615)
-- Remove duplication of data in `ResultBlock ` (#3856)
-- Add pagination to /validators (#3993)
-- Update swagger docs to openapi 3.0 (#4223)
-- Added proposer in consensus_state (#4250)
-- Pass `outCapacity` to `eventBus#Subscribe` when subscribing using a l… (#4279)
-- Add method block_by_hash (#4257)
-- Modify New* functions to return error (#4274)
-- Check nil blockmeta (#4320)
-- PR#4320 follow up (#4323)
-- Add sort_order option to tx_search (#4342)
-- Fix issue with multiple subscriptions (#4406)
-- Fix tx_search pagination with ordered results (#4437)
-- Fix txsearch tests (#4438)
-- Fix TxSearch test nits (#4446)
-- Stop txSearch result processing if context is done (#4418)
-- Keep the original subscription "id" field when new RPCs come in (#4493)
-- Remove BlockStoreRPC in favor of BlockStore (#4510)
-- Create buffered subscriptions on /subscribe (#4521)
-- Fix panic when `Subscribe` is called (#4570)
-- Add codespace to ResultBroadcastTx (#4611)
-- Handle panics during panic handling
-- Use a struct to wrap all the global objects
-- Refactor lib folder (#4836)
-- Increase waitForEventTimeout to 8 seconds (#4917)
-- Add BlockByHash to Client (#4923)
-- Replace Amino with new JSON encoder (#4968)
-- Support EXISTS operator in /tx_search query (#4979)
-- Add /check_tx endpoint (#5017)
-- Move docs from doc.go to swagger.yaml (#5044)
-- /broadcast_evidence nil evidence check (#5109)
-- Make gasWanted/Used snake_case (#5137)
-- Add private & unconditional to /dial_peer (#5293)
-- Fix openapi spec syntax error (#5358)
-- Fix test data races (#5363)
-- Revert JSON-RPC/WebSocket response batching (#5378)
-- Fix content-type header
-- Index block events to support block event queries (bp #6226) (#6261)
 
 ### Rpc/client
 
 - Use compile time assertions instead of methods
-- Include NetworkClient interface into Client interface (#3473)
-- Add basic authentication (#4291)
-- Split out client packages (#4628)
-- Take context as first param (#5347)
-
-### Rpc/client/http
-
-- Log error (#5182)
 
 ### Rpc/core
 
 - Ints are strings in responses, closes #1896
-- Do not lock ConsensusState mutex
-- Return an error if `page=0` (#4947)
-
-### Rpc/core/types
-
-- UintX -> int
-
-### Rpc/jsonrpc
-
-- Unmarshal RPCRequest correctly (bp #6191) (#6193)
-
-### Rpc/jsonrpc/server
-
-- Merge WriteRPCResponseHTTP and WriteRPCResponseAr (#5141)
-- Ws server optimizations (#5312)
-- Return an error in WriteRPCResponseHTTP(Error) (bp #6204) (#6230)
 
 ### Rpc/lib
 
@@ -3301,8 +4709,6 @@
 - Test tcp and unix
 - Set logger on ws conn
 - Remove dead files, closes #710
-- Write a test for TLS server (#3703)
-- Fix RPC client, which was previously resolving https protocol to http (#4131)
 
 ### Rpc/lib/client
 
@@ -3329,22 +4735,6 @@
 
 - Change RemoteIP type from net.IP to String (#3309)
 
-### Rpc/swagger
-
-- Add numtxs to blockmeta (#4139)
-
-### Rpc/test
-
-- /tx
-- Restore txindexer after setting null
-- Fix test race in TestAppCalls (#4894)
-- Wait for mempool CheckTx callback (#4908)
-- Wait for subscription in TestTxEventsSentWithBroadcastTxAsync (#4907)
-
-### Rpc/tests
-
-- Panic dont t.Fatal. use random txs for broadcast
-
 ### Rpc/wsevents
 
 - Small cleanup
@@ -3356,7 +4746,6 @@
 ### Scripts
 
 - Quickest/easiest fresh install
-- Remove install scripts (#4242)
 
 ### Scripts/txs
 
@@ -3381,8 +4770,6 @@
 
 ### Shame
 
-- Forgot a file
-- Version bump 0.7.4
 - Forgot to add new code pkg
 
 ### SocketClient
@@ -3407,16 +4794,6 @@
 
 ### State
 
-- ExecTx bug fixes for create contract
-- Fix debug logs
-- Fix CreateAddress to use Address not Word
-- Fixes for creating a contract and msging it in the same block
-- Fix GetStorage on blockcache with unknown account
-- FireEvents flag on ExecTx and fixes for GetAccount
-- ApplyBlock
-- AppHashIsStale -> IntermediateState
-- Remove StateIntermediate
-- ABCIResponses, s.Save() in ApplyBlock
 - Comments; use wire.BinaryBytes
 - Persist validators
 - Minor comment fixes
@@ -3433,46 +4810,6 @@
 - Err if 0 power validator is added to the validator set
 - Format panics
 - Require block.Time of the fist block to be genesis time (#2594)
-- Use last height changed if validator set is empty (#3560)
-- Add more tests for block validation (#3674)
-- Txindex/kv: fsync data to disk immediately after receiving it  (#4104)
-- Txindex/kv: return an error if there's one (#4095)
-- Export InitStateVersion
-- Proto migration (#4951)
-- Proto migration (#4972)
-- Revert event hashing (#5159)
-- Don't save genesis state in database when loaded (#5231)
-- Define interface for state store (#5348)
-- Fix block event indexing reserved key check (#6314) (#6315)
-
-### State/store
-
-- Remove extra `if` statement (#3774)
-
-### Statesync
-
-- Use Protobuf instead of Amino for p2p traffic (#4943)
-- Fix valset off-by-one causing consensus failures (#5311)
-- Broadcast snapshot request to all peers on startup (#5320)
-- Fix the validator set heights (again) (#5330)
-- Check all necessary heights when adding snapshot to pool (#5516) (#5518)
-- Improve e2e test outcomes (backport #6378) (#6380)
-
-### Store
-
-- Register block amino, not just crypto (#3894)
-- Proto migration (#4974)
-
-### Swagger
-
-- Update swagger port (#4498)
-- Remove duplicate blockID
-- Define version (#4952)
-- Update (#5257)
-
-### Template
-
-- Add labels to pr template
 
 ### Throttle_timer
 
@@ -3482,13 +4819,10 @@
 
 - Improve code shape
 - Update dependencies, add total metrics
-- Add deprecation warning (#3992)
 
 ### Tm-monitor
 
 - Update health after we added / removed node (#2694)
-- Update build-docker Makefile target (#3790)
-- Add Context to RPC handlers (#3792)
 
 ### Tmbench
 
@@ -3502,42 +4836,15 @@
 
 - Add Sum function
 
-### Tmsp
-
-- ResponseInfo and ResponseEndBlock
-
 ### Tmtime
 
 - Canonical, some comments (#2312)
-
-### Toml
-
-- Make sections standout (#4993)
-
-### Tool
-
-- Add Mergify (#4490)
-
-### Tooling
-
-- Remove tools/Makefile (bp #6102) (#6106)
 
 ### Tools
 
 - Remove redundant grep -v vendors/ (#1996)
 - Clean up Makefile and remove LICENSE file (#2042)
 - Refactor tm-bench (#2570)
-- Remove need to install buf (#4605)
-- Update gogoproto get cmd (#5007)
-
-### Tools.mk
-
-- Use tags instead of revisions where possible
-- Install protoc
-
-### Tools/build
-
-- Delete stale tools (#4558)
 
 ### Tools/tm-bench
 
@@ -3545,11 +4852,6 @@
 - Remove testing flags from help (#1949)
 - Don't count the first block if its empty (#1948)
 - Bounds check for txSize and improving test cases (#2410)
-- Remove tm-bench in favor of tm-load-test (#4169)
-
-### Tools/tm-signer-harness
-
-- Fix listener leak in newTestHarnessListener() (#5850)
 
 ### Tools/tmbench
 
@@ -3557,22 +4859,10 @@
 - Improve accuracy with large tx sizes.
 - Move statistics to a seperate file
 
-### Txindexer
-
-- Refactor Tx Search Aggregation (#3851)
-
 ### Types
 
-- PrivVal.LastSignature. closes #247
 - Pretty print validators
 - Update LastBlockInfo and ConfigInfo
-- Copy vote set bit array
-- Copy commit bit array
-- Benchmark WriteSignBytes
-- Canonical_json.go
-- SignatureEd25519 -> Signature
-- Use mtx on PartSet.String()
-- ValSet LastProposer->Proposer and Proposer()->GetProposer()
 - []byte -> data.Bytes
 - Result and Validator use data.Bytes
 - Methods convert pb types to use data.Bytes
@@ -3621,6 +4911,7 @@
 - TestValidatorSetVerifyCommit
 - Uncomment some tests
 - Hash invoked for nil Data and Header should not panic
+- Compile time assert to, and document sort.Interface
 - Revert CheckTx/DeliverTx changes. make them the same
 - Fix genesis.AppStateJSON
 - Lock block on MakePartSet
@@ -3639,39 +4930,6 @@
 - Followup after validator set changes (#3301)
 - Remove check for priority order of existing validators (#3407)
 - Refactor PB2TM.ConsensusParams to take BlockTimeIota as an arg (#3442)
-- CommitVotes struct as last step towards #1648 (#3298)
-- Do not ignore errors returned by PublishWithEvents (#3722)
-- Move MakeVote / MakeBlock functions (#3819)
-- Add test for block commits with votes for the wrong blockID (#3936)
-- Prevent temporary power overflows on validator updates  (#4165)
-- Change number_txs to num_txs json tag in BlockMeta
-- Remove dots from errors in SignedHeader#ValidateBasic
-- Change `Commit` to consist of just signatures (#4146)
-- Prevent spurious validator power overflow warnings when changing the validator set (#4183)
-- VerifyCommitX return when +2/3 sigs are verified (#4445)
-- Implement Header#ValidateBasic (#4638)
-- Return an error if voting power overflows
-- Sort validators by voting power
-- Simplify VerifyCommitTrusting
-- Remove extra validation in VerifyCommit
-- Assert specific error in TestValSetUpdateOverflowRelated
-- Remove unnecessary sort call (#4876)
-- Create ValidateBasic() funcs for validator and validator set (#4905)
-- Remove VerifyFutureCommit (#4961)
-- Migrate params to protobuf (#4962)
-- Remove duplicated validation in VerifyCommit (#4991)
-- Add tests for blockmeta (#5013)
-- Remove pubkey options (#5016)
-- More test cases for TestValidatorSet_VerifyCommit (#5018)
-- Rename partsheader to partsetheader (#5029)
-- Fix evidence timestamp calculation (#5032)
-- Add AppVersion to ConsensusParams (#5031)
-- Reject blocks w/ ConflictingHeadersEvidence (#5041)
-- Simplify safeMul (#5061)
-- Verify commit fully
-- Validatebasic on from proto (#5152)
-- Check if nil or empty valset (#5167)
-- Comment on need for length prefixing (#5283)
 
 ### Types/heartbeat
 
@@ -3685,10 +4943,6 @@
 
 - Fixes for latest p2p and cmn
 
-### Types/test
-
-- Remove slow test cases in TestValSetUpdatePriorityOrderTests (#4903)
-
 ### Types/time
 
 - Add note about stripping monotonic part
@@ -3697,40 +4951,14 @@
 
 - Move funcs around
 
-### Upgrading
-
-- Add note on rpc/client subpackages (#4636)
-- State store change (#5364)
-- Update 0.34 instructions with updates since RC4 (#5686)
-
 ### Upnp
 
 - Keep a link
 
-### Ux
-
-- Use docker to format proto files (#5384)
-
 ### Version
 
-- Bump 0.7.3
 - Add and bump abci version
 - Types
-- Bump version numbers (#5173)
-
-### Vm
-
-- Check errors early to avoid infinite loop
-- Fix Pad functions, state: add debug log for create new account
-- Fix endianess by flipping on subslic
-- Flip sha3 result
-- Fix errors not being returned
-- Eventable and flip fix on CALL address
-- Catch stack underflow on Peek()
-
-### Wal
-
-- Gr.Close()
 
 ### Wip
 
@@ -3754,4 +4982,3 @@
 
 - Call onDisconnect
 
-<!-- generated by git-cliff -->

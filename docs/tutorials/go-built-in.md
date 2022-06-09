@@ -45,7 +45,7 @@ Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.17.5 darwin/amd64
+go version go1.18.1 darwin/amd64
 ```
 
 Note that the exact patch number may differ as Go releases come out.

@@ -59,6 +59,7 @@ func (env *Environment) BroadcastTxSync(ctx context.Context, req *coretypes.Requ
 			Log:          r.Log,
 			Codespace:    r.Codespace,
 			MempoolError: r.MempoolError,
+			Info:         r.Info,
 			Hash:         req.Tx.Hash(),
 		}, nil
 	}

@@ -268,7 +268,9 @@ type ResultBroadcastTx struct {
 	Log          string         `json:"log"`
 	Codespace    string         `json:"codespace"`
 	MempoolError string         `json:"mempool_error"`
-	Hash         bytes.HexBytes `json:"hash"`
+	Info         string         `json:"info"`
+
+	Hash bytes.HexBytes `json:"hash"`
 }
 
 // CheckTx and DeliverTx results

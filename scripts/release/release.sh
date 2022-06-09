@@ -55,17 +55,9 @@ $0  --release=0.8.0-dev.3
 EOF
 }
 
-function detectVersion {
-    # @see https://tldp.org/LDP/abs/html/string-manipulation.html for bash syntax hints
-    CURRENT_VERSION="${LATEST_TAG#[vV]}" # 0.34.12-dev.589-g8acb1d0c8
-}
-
 function configureDefaults {
     debug Configuring default values
     REPO_DIR="$(realpath "$(dirname "${0}")/../..")"
-    CACHE_DIR="/tmp/tenderdash-changelog-cache"
-    mkdir -p "$CACHE_DIR"
-    LATEST_TAG="$(git describe --tags --abbrev=0)" # v0.34.12-dev.589-g8acb1d0c8
 }
 
 function parseArgs {
@@ -134,8 +126,6 @@ function configureFinal() {
 
     debug "Repository: ${REPO_DIR}"
     debug "Release type: ${RELEASE_TYPE}"
-    debug "Latest tag: ${LATEST_TAG}"
-    debug "Previous version: ${CURRENT_VERSION}"
     debug "New version: ${NEW_PACKAGE_VERSION}"
     debug "Source branch: ${SOURCE_BRANCH}"
     debug "Target branch: ${TARGET_BRANCH}"
@@ -166,22 +156,24 @@ function validate {
 function generateChangelog {
     debug Generating CHANGELOG
 
-    echo 2>"${REPO_DIR}/build/CHANGELOG_CURRENT.md"
+    CLIFF_CONFIG="${REPO_DIR}/scripts/release/cliff.toml"
+    if [[ "${RELEASE_TYPE}" = "prerelease" ]]; then
+        CLIFF_CONFIG="${REPO_DIR}/scripts/release/cliff-pre.toml"
+    fi
 
-    docker run -ti -u "$(id -u)" \
-        -v "${REPO_DIR}/.git":/app/:ro -v "${REPO_DIR}/scripts/release/cliff.toml":/cliff.toml:ro \
+    echo 2>"${REPO_DIR}/CHANGELOG.md"
+
+    docker run --rm -ti -u "$(id -u)" \
+        -v "${REPO_DIR}/.git":/app/:ro \
+        -v "${CLIFF_CONFIG}":/cliff.toml:ro \
         -v "${REPO_DIR}/CHANGELOG.md":/CHANGELOG.md \
-        -v "${REPO_DIR}/build/CHANGELOG_CURRENT.md":/CHANGELOG_CURRENT.md \
         orhunp/git-cliff:latest \
         --config /cliff.toml \
         --strip all \
         --tag "$NEW_PACKAGE_VERSION" \
-        --output /CHANGELOG_CURRENT.md \
+        --output /CHANGELOG.md \
         --unreleased \
-        "${LATEST_TAG}..HEAD"
-
-    cat "${REPO_DIR}/build/CHANGELOG_CURRENT.md" "${REPO_DIR}/CHANGELOG.md" >"${REPO_DIR}/build/CHANGELOG_NEW.md"
-    mv -f "${REPO_DIR}/build/CHANGELOG_NEW.md" "${REPO_DIR}/CHANGELOG.md"
+        "v0.7.0..HEAD"
 }
 
 function updateVersionGo {
@@ -269,7 +261,6 @@ function cleanup() {
 
 configureDefaults
 parseArgs "$@"
-detectVersion
 configureFinal
 
 if [ -n "$CLEANUP" ]; then
