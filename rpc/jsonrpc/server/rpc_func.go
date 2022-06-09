@@ -15,11 +15,11 @@ import (
 func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger log.Logger) {
 	// HTTP endpoints
 	for funcName, rpcFunc := range funcMap {
-		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, logger))
+		mux.HandleFunc("/"+funcName, ensureBodyClose(makeHTTPHandler(rpcFunc, logger)))
 	}
 
 	// JSONRPC endpoints
-	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
+	mux.HandleFunc("/", ensureBodyClose(handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger))))
 }
 
 // Function introspection
