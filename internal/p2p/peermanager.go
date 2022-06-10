@@ -1362,7 +1362,8 @@ func (p *peerInfo) Copy() peerInfo {
 }
 
 // LastDialed returns when the peer was last dialed, and if that dial
-// attempt was successful.
+// attempt was successful. If the peer was never dialed the time stamp
+// is zero time.
 func (p *peerInfo) LastDialed() (time.Time, bool) {
 	var (
 		last    time.Time
