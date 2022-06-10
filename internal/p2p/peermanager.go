@@ -1291,7 +1291,6 @@ type peerInfo struct {
 
 	// These fields are ephemeral, i.e. not persisted to the database.
 	Persistent bool
-	Seed       bool
 	Height     int64
 	FixedScore PeerScore // mainly for tests
 
