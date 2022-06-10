@@ -409,6 +409,10 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 		return false, nil
 	}
 
+	// set the peer's mutable score to something non-zero so that
+	// peer's we've never
+	peer.MutableScore = 256
+
 	// else add the new address
 	peer.AddressInfo[address] = &peerAddressInfo{Address: address}
 	if err := m.store.Set(peer); err != nil {
@@ -839,7 +843,6 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		}
 
 		for nodeAddr, addressInfo := range peer.AddressInfo {
-
 			if len(addresses) >= int(limit) {
 				return addresses
 			}
