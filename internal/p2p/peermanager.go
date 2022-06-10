@@ -1268,7 +1268,6 @@ type peerInfo struct {
 
 	MutableScore int64 // updated by router
 	Inactive     bool
-	DialFailures int64
 }
 
 // peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,
@@ -1352,6 +1351,8 @@ func (p *peerInfo) LastDialed() (time.Time, bool) {
 			success = false
 		}
 	}
+
+	// if we never modified last, then
 	if last.Add(1).IsZero() {
 		last = last.Add(1)
 	}
