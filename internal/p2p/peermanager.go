@@ -39,7 +39,7 @@ const (
 )
 
 // PeerScore is a numeric score assigned to a peer (higher is better).
-type PeerScore int
+type PeerScore int16
 
 const (
 	PeerScorePersistent       PeerScore = math.MaxInt16 // persistent peers
@@ -932,8 +932,16 @@ func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 
 	switch pu.Status {
 	case PeerStatusBad:
+		if m.store.peers[pu.NodeID].MutableScore == math.MinInt16 {
+			// TODO: should we inactivate the peer at this
+			// point?
+			return
+		}
 		m.store.peers[pu.NodeID].MutableScore--
 	case PeerStatusGood:
+		if m.store.peers[pu.NodeID].MutableScore == math.MaxInt16 {
+			return
+		}
 		m.store.peers[pu.NodeID].MutableScore++
 	}
 }
