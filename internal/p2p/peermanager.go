@@ -857,6 +857,9 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		if peer.ID == peerID {
 			continue
 		}
+		if peer.Inactive {
+			continue
+		}
 
 		for nodeAddr, addressInfo := range peer.AddressInfo {
 
