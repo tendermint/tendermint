@@ -205,3 +205,93 @@ To create a minor release:
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
    - Remove all `R:minor` labels from the pull requests that were included in the release.
    - Do not merge the backport branch into master.
+
+
+## Release Checklist
+
+The following set of steps are performed on all releases that increment
+the _minor_ version. These steps ensure that Tendermint is well tested, stable,
+and suitable for adoption by the various diverse projects that rely on Tendermint.
+
+### Feature Freeze
+
+Ahead of any minor version release of Tendermint, the software enters a two week
+'Feature Freeze'. A feature freeze means that _no_ new features or functionality
+are added to the code base. The Tendermint team instead directs all attention to
+ensuring that the existing code is stable and reliable. Broken tests are fixed,
+flakey-tests are remedied, end-to-end test failures are thoroughly diagnosed and
+all efforts of the team are aimed at improving the quality of the code. During
+this period, the upgrade harness tests are run repeatedly and a variety of
+in-house testnets are run to ensure Tendermint functions at the scale it will
+be used by application developers and node operators.
+
+### Nightly End-To-End Tests
+
+The Tendermint team maintains a set of end-to-end tests that run each night
+on the latest commit of the project. During the feature freeze, these tests are
+run nightly and must pass consistently for a release of Tendermint to be
+considered stable.
+
+### Upgrade Harness
+
+The Tendermint team is in the process of creating an upgrade harness. This
+harness will test the process of stopping an instance of Tendermint running one
+version of the software and starting up the same application running the next
+version of Tendermint. This harness will be paired with the ability to crash the
+Tendermint process at a series of pre-defined places in the execution to allow
+the team to ensure that Tendermint successfully upgrades in many
+different start-stop combinations.
+
+### Large Scale Testnets
+
+The Tendermint end-to-end tests run Tendermint networks with a small set of nodes
+numbering in the low dozens at most. Real world deployments of Tendermint often
+have over a hundred nodes just in the validator set, with many others acting as full
+nodes and sentry nodes.
+
+Each test network is run on a set of Digital Ocean virtual machines (VMs). Each
+VM is equipped with 4 Gigabytes of RAM, 2 CPU cores, and 80 Gigabytes of NVMe
+SSD storage. The network runs a very simple key-value store application. During
+each test net, the following metrics are monitored and collected on each node:
+* Tendermint Rounds per height
+* Peers connected
+* Memory resident set size
+* CPU utilization
+* Blocks produced per minute
+* Seconds for each step of consensus (Propose, Prevote, Precommit, Commit)
+* Latency to receive each block proposal
+
+VMs with low-end specifications are used on purpose. Many issues of resource
+contention that real-world deployments of Tendermint will see would not surface
+in our test application otherwise. To remedy this, we use produce
+a resource-constrained environment for testing Tendermint by running it on
+machines with small numbers of CPU cores and limited memory.
+
+#### 200 Node Testnet
+
+To test the stability and performance of Tendermint in a real world scenario,
+a 200 node test network is run. The network comprises 5 seed nodes, 100
+validators and 95 non-validating full nodes. All nodes begin by dialing
+a subset of the seed nodes to discover peers. The network is run for several
+days, with metrics being collected continuously.
+ 
+#### Rotating Node Testnet
+
+Real-world deployments of Tendermint frequently see new nodes arrive and old
+nodes exit the network. The rotating node testnet ensures that Tendermint is
+able to handle this reliably. In this test, a network with 10 validators and
+3 seed nodes is started. A rolling set of 25 full nodes are started and each
+connects to the network by dialing one of the seed nodes. Once the node is able
+to blocksync to the head of the chain and begins producing blocks using
+Tendermint consensus it is stopped. Once stopped, a new node is started and
+takes its place. This network is run for several days.
+
+#### Absent Stake Testnet
+
+Tendermint networks often run with _some_ portion of the voting power offline.
+The absent stake testnet ensures that large networks are able to handle this
+reliably. A set of 150 validator nodes and three seed nodes is started.
+The set of 150 validators is configured to only possess a cumulative stake of 67%
+of the total stake. The remaining 33% of the stake is configure to belong to a
+validator that is never actually run in the test network. The network is run
+for multiple days, ensuring that it is able to produce blocks without issue.
