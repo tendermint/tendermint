@@ -17,17 +17,20 @@ func TestNet_Peers(t *testing.T) {
 		netInfo, err := client.NetInfo(ctx)
 		require.NoError(t, err)
 
-		require.Equal(t, len(node.Testnet.Nodes)-1, netInfo.NPeers,
-			"node is not fully meshed with peers")
-
+		expectedPeers := len(node.Testnet.Nodes) - 1
 		seen := map[string]bool{}
 		for _, n := range node.Testnet.Nodes {
 			// we never save light client addresses as they use RPC
 			if n.Mode == e2e.ModeLight {
+				expectedPeers--
 				continue
 			}
 			seen[n.Name] = (n.Name == node.Name) // we've clearly seen ourself
 		}
+
+		require.Equal(t, expectedPeers, netInfo.NPeers,
+			"node is not fully meshed with peers")
+
 		for _, peerInfo := range netInfo.Peers {
 			id := peerInfo.ID
 			peer := node.Testnet.LookupNode(string(id))
