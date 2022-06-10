@@ -44,6 +44,7 @@ type PeerScore int
 const (
 	PeerScorePersistent       PeerScore = math.MaxInt16 // persistent peers
 	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
+	DefaultMutablePeerScore   int64     = 256
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -434,7 +435,7 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 
 	// set the peer's mutable score to something non-zero so that
 	// peer's we've never
-	peer.MutableScore = 256
+	peer.MutableScore = DefaultMutablePeerScore
 
 	// else add the new address
 	peer.AddressInfo[address] = &peerAddressInfo{Address: address}
