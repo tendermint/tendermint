@@ -1017,15 +1017,15 @@ type badApp struct {
 	onlyLastHashIsWrong bool
 }
 
-func (app *badApp) Commit(context.Context) (*abci.ResponseCommit, error) {
+func (app *badApp) FinalizeBlock(_ context.Context, _ *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.height++
 	if app.onlyLastHashIsWrong {
 		if app.height == app.numBlocks {
-			return &abci.ResponseCommit{Data: tmrand.Bytes(8)}, nil
+			return &abci.ResponseFinalizeBlock{AppHash: tmrand.Bytes(8)}, nil
 		}
-		return &abci.ResponseCommit{Data: []byte{app.height}}, nil
+		return &abci.ResponseFinalizeBlock{AppHash: []byte{app.height}}, nil
 	} else if app.allHashesAreWrong {
-		return &abci.ResponseCommit{Data: tmrand.Bytes(8)}, nil
+		return &abci.ResponseFinalizeBlock{AppHash: tmrand.Bytes(8)}, nil
 	}
 
 	panic("either allHashesAreWrong or onlyLastHashIsWrong must be set")
