@@ -42,7 +42,7 @@ const (
 type PeerScore int
 
 const (
-	PeerScorePersistent       PeerScore = math.MaxInt // persistent peers
+	PeerScorePersistent       PeerScore = math.MaxInt16 // persistent peers
 	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
 )
 
