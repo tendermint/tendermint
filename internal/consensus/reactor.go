@@ -638,7 +638,7 @@ func (r *Reactor) pickSendVote(ctx context.Context, ps *PeerState, votes types.V
 		"ps", psJSON,
 		"peer", ps.peerID,
 		"vote", vote,
-		"peer_proTxHash", ps.ProTxHash.ShortString(),
+		"peer_proTxHash", ps.GetProTxHash().ShortString(),
 		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
 		"height", vote.Height,
 		"round", vote.Round,
@@ -902,7 +902,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, stateCh *p2p.Channel, p
 		}
 
 		// If peer is not a validator, we do nothing
-		if !r.isValidator(ps.ProTxHash) {
+		if !r.isValidator(ps.GetProTxHash()) {
 			time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 			continue
 		}
