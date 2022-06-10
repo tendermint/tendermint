@@ -319,9 +319,6 @@ pex = {{ .P2P.PexReactor }}
 # Warning: IPs will be exposed at /net_info, for more information https://github.com/tendermint/tendermint/issues/3055
 private-peer-ids = "{{ .P2P.PrivatePeerIDs }}"
 
-# Toggle to disable guard against peers connecting from the same ip.
-allow-duplicate-ip = {{ .P2P.AllowDuplicateIP }}
-
 # Peer connection configuration.
 handshake-timeout = "{{ .P2P.HandshakeTimeout }}"
 dial-timeout = "{{ .P2P.DialTimeout }}"
