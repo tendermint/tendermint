@@ -30,6 +30,9 @@ jobs:
             go.mod
             go.sum
 
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
       - uses: ./.github/actions/bls
         name: Install BLS library
         if: "env.GIT_DIFF != ''"
