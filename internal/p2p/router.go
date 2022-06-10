@@ -847,10 +847,10 @@ func (r *Router) handshakePeer(
 
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
 		if err := r.peerManager.Inactivate(peerInfo.NodeID); err != nil {
-			return peerInfo, fmt.Errorf("problem inactivating peer %q: %w", peerInfo.ID(), err)
+			return peerInfo, peerKey, fmt.Errorf("problem inactivating peer %q: %w", peerInfo.ID(), err)
 		}
 
-		return peerInfo, ErrRejected{
+		return peerInfo, peerKey, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
 			isIncompatible: true,

@@ -504,11 +504,11 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 0,
-			b.NodeID: 1,
-			c.NodeID: 2,
-			d.NodeID: 3,
-			e.NodeID: 0,
+			a.NodeID: p2p.PeerScore(0 + p2p.DefaultMutablePeerScore),
+			b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(2 + p2p.DefaultMutablePeerScore),
+			d.NodeID: p2p.PeerScore(3 + p2p.DefaultMutablePeerScore),
+			e.NodeID: p2p.PeerScore(0 + p2p.DefaultMutablePeerScore),
 		},
 		PersistentPeers:     []types.NodeID{c.NodeID, d.NodeID},
 		MaxConnected:        2,
@@ -585,7 +585,10 @@ func TestPeerManager_TryDialNext_UpgradeReservesPeer(t *testing.T) {
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("c", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
 	})
@@ -742,7 +745,10 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("c", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
 	})
@@ -858,7 +864,10 @@ func TestPeerManager_Dialed_MaxConnectedUpgrade(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{c.NodeID: 1, d.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			c.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			d.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+		},
 	})
 	require.NoError(t, err)
 
@@ -908,7 +917,10 @@ func TestPeerManager_Dialed_Upgrade(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+		},
 	})
 	require.NoError(t, err)
 
@@ -952,10 +964,10 @@ func TestPeerManager_Dialed_UpgradeEvenLower(t *testing.T) {
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 3,
-			b.NodeID: 2,
-			c.NodeID: 10,
-			d.NodeID: 1,
+			a.NodeID: p2p.PeerScore(3 + p2p.DefaultMutablePeerScore),
+			b.NodeID: p2p.PeerScore(2 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(10 + p2p.DefaultMutablePeerScore),
+			d.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
 		},
 	})
 	require.NoError(t, err)
@@ -1005,9 +1017,9 @@ func TestPeerManager_Dialed_UpgradeNoEvict(t *testing.T) {
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 1,
-			b.NodeID: 2,
-			c.NodeID: 3,
+			a.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			b.NodeID: p2p.PeerScore(2 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(3 + p2p.DefaultMutablePeerScore),
 		},
 	})
 	require.NoError(t, err)
@@ -1126,8 +1138,8 @@ func TestPeerManager_Accepted_MaxConnectedUpgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			c.NodeID: 1,
-			d.NodeID: 2,
+			c.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			d.NodeID: p2p.PeerScore(2 + p2p.DefaultMutablePeerScore),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
@@ -1171,8 +1183,8 @@ func TestPeerManager_Accepted_Upgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			b.NodeID: 1,
-			c.NodeID: 1,
+			b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
@@ -1214,8 +1226,8 @@ func TestPeerManager_Accepted_UpgradeDialing(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			b.NodeID: 1,
-			c.NodeID: 1,
+			b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+			c.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
@@ -1376,7 +1388,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore)},
 	})
 	require.NoError(t, err)
 
@@ -1414,7 +1426,9 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1 + p2p.DefaultMutablePeerScore),
+		},
 	})
 	require.NoError(t, err)
 
