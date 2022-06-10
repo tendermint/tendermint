@@ -1381,12 +1381,17 @@ func (p *peerInfo) LastDialed() (time.Time, bool) {
 				success = true
 			}
 		}
-		if addr.LastDialFailure.Before(addr.LastDialSuccess) {
-			if last.Before(addr.LastDialFailure) {
-				continue
+		if addr.LastDialSuccess.After(addr.LastDialFailure) {
+			if last.Before(addr.LastDialSuccess) {
+				last = addr.LastDialSuccess
+				success = true
 			}
-			last = addr.LastDialFailure
-			success = false
+		}
+		if addr.LastDialFailure.After(addr.LastDialSuccess) {
+			if last.Before(addr.LastDialFailure) {
+				last = addr.LastDialFailure
+				success = false
+			}
 		}
 	}
 

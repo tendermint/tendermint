@@ -80,3 +80,173 @@ func TestPeerScoring(t *testing.T) {
 			"startAt=%d score=%d", start, peerManager.Scores()[id])
 	})
 }
+
+func makeMockPeerStore(t *testing.T, peers ...peerInfo) *peerStore {
+	t.Helper()
+	s, err := newPeerStore(dbm.NewMemDB())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for idx := range peers {
+		if err := s.Set(peers[idx]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return s
+}
+
+func TestPeerRanking(t *testing.T) {
+	t.Run("InactiveSecond", func(t *testing.T) {
+		store := makeMockPeerStore(t,
+			peerInfo{
+				ID:       "second",
+				Inactive: true,
+			},
+			peerInfo{
+				ID:       "first",
+				Inactive: false,
+			})
+
+		ranked := store.Ranked()
+		if len(ranked) != 2 {
+			t.Fatal("missing peer in ranked output")
+		}
+		if ranked[0].ID != "first" {
+			t.Error("inactive peer is first")
+		}
+		if ranked[1].ID != "second" {
+			t.Error("active peer is second")
+		}
+	})
+	t.Run("ScoreOrder", func(t *testing.T) {
+		for _, test := range []struct {
+			Name   string
+			First  int64
+			Second int64
+		}{
+			{
+				Name:   "Mirror",
+				First:  100,
+				Second: -100,
+			},
+			{
+				Name:   "VeryLow",
+				First:  0,
+				Second: -100,
+			},
+			{
+				Name:   "High",
+				First:  300,
+				Second: 256,
+			},
+		} {
+			t.Run(test.Name, func(t *testing.T) {
+				store := makeMockPeerStore(t,
+					peerInfo{
+						ID:           "second",
+						MutableScore: test.Second,
+					},
+					peerInfo{
+						ID:           "first",
+						MutableScore: test.First,
+					})
+
+				ranked := store.Ranked()
+				if len(ranked) != 2 {
+					t.Fatal("missing peer in ranked output")
+				}
+				if ranked[0].ID != "first" {
+					t.Error("higher peer is first")
+				}
+				if ranked[1].ID != "second" {
+					t.Error("higher peer is second")
+				}
+			})
+		}
+	})
+}
+
+func TestLastDialed(t *testing.T) {
+	t.Run("Zero", func(t *testing.T) {
+		p := &peerInfo{}
+		ts, ok := p.LastDialed()
+		if !ts.IsZero() {
+			t.Error("timestamp should be zero:", ts)
+		}
+		if ok {
+			t.Error("peer reported success, despite none")
+		}
+	})
+	t.Run("NeverDialed", func(t *testing.T) {
+		p := &peerInfo{
+			AddressInfo: map[NodeAddress]*peerAddressInfo{
+				{NodeID: "kip"}:    {},
+				{NodeID: "merlin"}: {},
+			},
+		}
+		ts, ok := p.LastDialed()
+		if !ts.IsZero() {
+			t.Error("timestamp should be zero:", ts)
+		}
+		if ok {
+			t.Error("peer reported success, despite none")
+		}
+	})
+	t.Run("Ordered", func(t *testing.T) {
+		base := time.Now()
+		for _, test := range []struct {
+			Name            string
+			SuccessTime     time.Time
+			FailTime        time.Time
+			ExpectedSuccess bool
+		}{
+			{
+				Name:            "Success",
+				SuccessTime:     base.Add(time.Hour),
+				FailTime:        base,
+				ExpectedSuccess: true,
+			},
+			{
+				Name:            "Equal",
+				SuccessTime:     base,
+				FailTime:        base,
+				ExpectedSuccess: true,
+			},
+			{
+				Name:            "Failure",
+				SuccessTime:     base,
+				FailTime:        base.Add(time.Hour),
+				ExpectedSuccess: false,
+			},
+		} {
+			t.Run(test.Name, func(t *testing.T) {
+				p := &peerInfo{
+					AddressInfo: map[NodeAddress]*peerAddressInfo{
+						{NodeID: "kip"}:    {LastDialSuccess: test.SuccessTime},
+						{NodeID: "merlin"}: {LastDialFailure: test.FailTime},
+					},
+				}
+				ts, ok := p.LastDialed()
+				if test.ExpectedSuccess && !ts.Equal(test.SuccessTime) {
+					if !ts.Equal(test.FailTime) {
+						t.Fatal("got unexpected timestamp:", ts)
+					}
+
+					t.Error("last dialed time reported incorrect value:", ts)
+				}
+				if !test.ExpectedSuccess && !ts.Equal(test.FailTime) {
+					if !ts.Equal(test.SuccessTime) {
+						t.Fatal("got unexpected timestamp:", ts)
+					}
+
+					t.Error("last dialed time reported incorrect value:", ts)
+				}
+				if test.ExpectedSuccess != ok {
+					t.Error("test reported incorrect outcome for last dialed type")
+				}
+			})
+		}
+
+	})
+
+}
