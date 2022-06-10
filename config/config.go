@@ -612,15 +612,6 @@ type P2PConfig struct { //nolint: maligned
 	// Address to advertise to peers for them to dial
 	ExternalAddress string `mapstructure:"external-address"`
 
-	// Comma separated list of seed nodes to connect to
-	// We only use these if we can’t connect to peers in the addrbook
-	//
-	// Deprecated: This value is not used by the new PEX reactor. Use
-	// BootstrapPeers instead.
-	//
-	// TODO(#5670): Remove once the p2p refactor is complete.
-	Seeds string `mapstructure:"seeds"`
-
 	// Comma separated list of peers to be added to the peer store
 	// on startup. Either BootstrapPeers or PersistentPeers are
 	// needed for peer discovery
@@ -647,9 +638,6 @@ type P2PConfig struct { //nolint: maligned
 	// other peers)
 	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
 
-	// Toggle to disable guard against peers connecting from the same ip.
-	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
-
 	// Time to wait before flushing messages out on the connection
 	FlushThrottleTimeout time.Duration `mapstructure:"flush-throttle-timeout"`
 
@@ -665,10 +653,6 @@ type P2PConfig struct { //nolint: maligned
 	// Peer connection configuration.
 	HandshakeTimeout time.Duration `mapstructure:"handshake-timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial-timeout"`
-
-	// Testing params.
-	// Force dial to fail
-	TestDialFail bool `mapstructure:"test-dial-fail"`
 
 	// Makes it possible to configure which queue backend the p2p
 	// layer uses. Options are: "fifo" and "priority",
@@ -694,10 +678,8 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                5120000, // 5 mB/s
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
-		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
-		TestDialFail:            false,
 		QueueType:               "priority",
 	}
 }
@@ -724,7 +706,6 @@ func (cfg *P2PConfig) ValidateBasic() error {
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36656"
-	cfg.AllowDuplicateIP = true
 	cfg.FlushThrottleTimeout = 10 * time.Millisecond
 	return cfg
 }
