@@ -411,7 +411,7 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	}
 
 	// set the peer's mutable score to something non-zero so that
-	// peer's we've never
+	// peer's we've never seen aren't very low at start.
 	peer.MutableScore = DefaultMutablePeerScore
 
 	// else add the new address
