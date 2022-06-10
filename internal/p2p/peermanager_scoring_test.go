@@ -34,7 +34,7 @@ func TestPeerScoring(t *testing.T) {
 
 	t.Run("Synchronous", func(t *testing.T) {
 		// update the manager and make sure it's correct
-		require.EqualValues(t, 0, peerManager.Scores()[id])
+		require.EqualValues(t, DefaultMutablePeerScore, peerManager.Scores()[id])
 
 		// add a bunch of good status updates and watch things increase.
 		for i := 1; i < 10; i++ {
@@ -42,7 +42,7 @@ func TestPeerScoring(t *testing.T) {
 				NodeID: id,
 				Status: PeerStatusGood,
 			})
-			require.EqualValues(t, i, peerManager.Scores()[id])
+			require.EqualValues(t, int(DefaultMutablePeerScore)+i, peerManager.Scores()[id])
 		}
 
 		// watch the corresponding decreases respond to update

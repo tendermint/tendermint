@@ -472,8 +472,7 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 	// We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
 	// MaxConnectedUpgrade allows us to probe additional peers that have a
 	// higher score than any other peers, and if successful evict it.
-	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >=
-		int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
+	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return NodeAddress{}, nil
 	}
 
@@ -811,8 +810,10 @@ func (m *PeerManager) Inactivate(peerID types.NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer := m.store.peers[peerID]
-	peer.Inactive = true
+	peer, ok := m.store.peers[peerID]
+	if !ok {
+		return nil
+	}
 
 	return m.store.Set(*peer)
 }
@@ -1352,7 +1353,8 @@ func (p *peerInfo) LastDialed() (time.Time, bool) {
 		}
 	}
 
-	// if we never modified last, then
+	// if we never modified last, then we should return it to the
+	// zero value
 	if last.Add(1).IsZero() {
 		last = last.Add(1)
 	}
