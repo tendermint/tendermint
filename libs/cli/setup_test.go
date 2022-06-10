@@ -1,8 +1,12 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +18,9 @@ import (
 )
 
 func TestSetupEnv(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cases := []struct {
 		args     []string
 		env      map[string]string
@@ -44,31 +51,37 @@ func TestSetupEnv(t *testing.T) {
 		}
 		demo.Flags().String("foobar", "", "Some test value from config")
 		cmd := PrepareBaseCmd(demo, "DEMO", "/qwerty/asdfgh") // some missing dir..
-		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		err := RunWithArgs(cmd, args, tc.env)
-		require.Nil(t, err, i)
+		err := RunWithArgs(ctx, cmd, args, tc.env)
+		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, foo, i)
 	}
 }
 
-func tempDir() string {
-	cdir, err := ioutil.TempDir("", "test-cli")
-	if err != nil {
-		panic(err)
+// writeConfigVals writes a toml file with the given values.
+// It returns an error if writing was impossible.
+func writeConfigVals(dir string, vals map[string]string) error {
+	lines := make([]string, 0, len(vals))
+	for k, v := range vals {
+		lines = append(lines, fmt.Sprintf("%s = %q", k, v))
 	}
-	return cdir
+	data := strings.Join(lines, "\n")
+	cfile := filepath.Join(dir, "config.toml")
+	return os.WriteFile(cfile, []byte(data), 0600)
 }
 
 func TestSetupConfig(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1 := "fubble"
-	conf1 := tempDir()
-	err := WriteConfigVals(conf1, map[string]string{"boo": cval1})
-	require.Nil(t, err)
+	conf1 := t.TempDir()
+	err := writeConfigVals(conf1, map[string]string{"boo": cval1})
+	require.NoError(t, err)
 
 	cases := []struct {
 		args        []string
@@ -104,12 +117,11 @@ func TestSetupConfig(t *testing.T) {
 		boo.Flags().String("boo", "", "Some test value from config")
 		boo.Flags().String("two-words", "", "Check out env handling -")
 		cmd := PrepareBaseCmd(boo, "RD", "/qwerty/asdfgh") // some missing dir...
-		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		err := RunWithArgs(cmd, args, tc.env)
-		require.Nil(t, err, i)
+		err := RunWithArgs(ctx, cmd, args, tc.env)
+		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, foo, i)
 		assert.Equal(t, tc.expectedTwo, two, i)
 	}
@@ -122,16 +134,19 @@ type DemoConfig struct {
 }
 
 func TestSetupUnmarshal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1, cval2 := "someone", "else"
-	conf1 := tempDir()
-	err := WriteConfigVals(conf1, map[string]string{"name": cval1})
-	require.Nil(t, err)
+	conf1 := t.TempDir()
+	err := writeConfigVals(conf1, map[string]string{"name": cval1})
+	require.NoError(t, err)
 	// even with some ignored fields, should be no problem
-	conf2 := tempDir()
-	err = WriteConfigVals(conf2, map[string]string{"name": cval2, "foo": "bar"})
-	require.Nil(t, err)
+	conf2 := t.TempDir()
+	err = writeConfigVals(conf2, map[string]string{"name": cval2, "foo": "bar"})
+	require.NoError(t, err)
 
 	// unused is not declared on a flag and remains from base
 	base := DemoConfig{
@@ -183,17 +198,19 @@ func TestSetupUnmarshal(t *testing.T) {
 		// from the default config here
 		marsh.Flags().Int("age", base.Age, "Some test value from config")
 		cmd := PrepareBaseCmd(marsh, "MR", "/qwerty/asdfgh") // some missing dir...
-		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		err := RunWithArgs(cmd, args, tc.env)
-		require.Nil(t, err, i)
+		err := RunWithArgs(ctx, cmd, args, tc.env)
+		require.NoError(t, err, i)
 		assert.Equal(t, tc.expected, cfg, i)
 	}
 }
 
 func TestSetupTrace(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	cases := []struct {
 		args     []string
 		env      map[string]string
@@ -216,22 +233,61 @@ func TestSetupTrace(t *testing.T) {
 			},
 		}
 		cmd := PrepareBaseCmd(trace, "DBG", "/qwerty/asdfgh") // some missing dir..
-		cmd.Exit = func(int) {}
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		stdout, stderr, err := RunCaptureWithArgs(cmd, args, tc.env)
-		require.NotNil(t, err, i)
+		stdout, stderr, err := runCaptureWithArgs(ctx, cmd, args, tc.env)
+		require.Error(t, err, i)
 		require.Equal(t, "", stdout, i)
 		require.NotEqual(t, "", stderr, i)
 		msg := strings.Split(stderr, "\n")
 		desired := fmt.Sprintf("ERROR: %s", tc.expected)
-		assert.Equal(t, desired, msg[0], i)
-		t.Log(msg)
+		assert.Equal(t, desired, msg[0], i, msg)
 		if tc.long && assert.True(t, len(msg) > 2, i) {
 			// the next line starts the stack trace...
 			assert.Contains(t, stderr, "TestSetupTrace", i)
 			assert.Contains(t, stderr, "setup_test.go", i)
 		}
 	}
+}
+
+// runCaptureWithArgs executes the given command with the specified command
+// line args and environmental variables set. It returns string fields
+// representing output written to stdout and stderr, additionally any error
+// from cmd.Execute() is also returned
+func runCaptureWithArgs(ctx context.Context, cmd *cobra.Command, args []string, env map[string]string) (stdout, stderr string, err error) {
+	oldout, olderr := os.Stdout, os.Stderr // keep backup of the real stdout
+	rOut, wOut, _ := os.Pipe()
+	rErr, wErr, _ := os.Pipe()
+	os.Stdout, os.Stderr = wOut, wErr
+	defer func() {
+		os.Stdout, os.Stderr = oldout, olderr // restoring the real stdout
+	}()
+
+	// copy the output in a separate goroutine so printing can't block indefinitely
+	copyStd := func(reader *os.File) *(chan string) {
+		stdC := make(chan string)
+		go func() {
+			var buf bytes.Buffer
+			// io.Copy will end when we call reader.Close() below
+			io.Copy(&buf, reader) //nolint:errcheck //ignore error
+			select {
+			case <-cmd.Context().Done():
+			case stdC <- buf.String():
+			}
+		}()
+		return &stdC
+	}
+	outC := copyStd(rOut)
+	errC := copyStd(rErr)
+
+	// now run the command
+	err = RunWithArgs(ctx, cmd, args, env)
+
+	// and grab the stdout to return
+	wOut.Close()
+	wErr.Close()
+	stdout = <-*outC
+	stderr = <-*errC
+	return stdout, stderr, err
 }

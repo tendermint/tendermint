@@ -6,15 +6,13 @@ import (
 	"errors"
 	"fmt"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/dash/llmq"
 )
 
-var ctx = context.Background()
-
-func InitChain(client abcicli.Client) error {
+func InitChain(ctx context.Context, client abciclient.Client) error {
 	const total = 10
 	ld, err := llmq.Generate(crypto.RandProTxHashes(total))
 	if err != nil {
@@ -24,7 +22,7 @@ func InitChain(client abcicli.Client) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.InitChainSync(context.Background(), types.RequestInitChain{
+	_, err = client.InitChain(ctx, &types.RequestInitChain{
 		ValidatorSet: validatorSet,
 	})
 	if err != nil {
@@ -35,8 +33,8 @@ func InitChain(client abcicli.Client) error {
 	return nil
 }
 
-func Commit(client abcicli.Client, hashExp []byte) error {
-	res, err := client.CommitSync(ctx)
+func Commit(ctx context.Context, client abciclient.Client, hashExp []byte) error {
+	res, err := client.Commit(ctx)
 	data := res.Data
 	if err != nil {
 		fmt.Println("Failed test: Commit")
@@ -52,27 +50,29 @@ func Commit(client abcicli.Client, hashExp []byte) error {
 	return nil
 }
 
-func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
-	res, _ := client.DeliverTxSync(ctx, types.RequestDeliverTx{Tx: txBytes})
-	code, data, log := res.Code, res.Data, res.Log
-	if code != codeExp {
-		fmt.Println("Failed test: DeliverTx")
-		fmt.Printf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v\n",
-			code, codeExp, log)
-		return errors.New("deliverTx error")
+func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]byte, codeExp []uint32, dataExp []byte) error {
+	res, _ := client.FinalizeBlock(ctx, &types.RequestFinalizeBlock{Txs: txBytes})
+	for i, tx := range res.TxResults {
+		code, data, log := tx.Code, tx.Data, tx.Log
+		if code != codeExp[i] {
+			fmt.Println("Failed test: FinalizeBlock")
+			fmt.Printf("FinalizeBlock response code was unexpected. Got %v expected %v. Log: %v\n",
+				code, codeExp, log)
+			return errors.New("FinalizeBlock error")
+		}
+		if !bytes.Equal(data, dataExp) {
+			fmt.Println("Failed test:  FinalizeBlock")
+			fmt.Printf("FinalizeBlock response data was unexpected. Got %X expected %X\n",
+				data, dataExp)
+			return errors.New("FinalizeBlock  error")
+		}
 	}
-	if !bytes.Equal(data, dataExp) {
-		fmt.Println("Failed test: DeliverTx")
-		fmt.Printf("DeliverTx response data was unexpected. Got %X expected %X\n",
-			data, dataExp)
-		return errors.New("deliverTx error")
-	}
-	fmt.Println("Passed test: DeliverTx")
+	fmt.Println("Passed test: FinalizeBlock")
 	return nil
 }
 
-func CheckTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
-	res, _ := client.CheckTxSync(ctx, types.RequestCheckTx{Tx: txBytes})
+func CheckTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
+	res, _ := client.CheckTx(ctx, &types.RequestCheckTx{Tx: txBytes})
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: CheckTx")

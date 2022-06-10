@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	stdlog "log"
 	"math/rand"
 	"os"
 	"strconv"
@@ -16,10 +17,16 @@ import (
 
 const randomSeed = 2308084734268
 
-var logger = log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-
 func main() {
-	NewCLI().Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	if err != nil {
+		stdlog.Fatal(err)
+	}
+
+	NewCLI(logger).Run(ctx, logger)
 }
 
 // CLI is the Cobra-based command-line interface.
@@ -30,7 +37,7 @@ type CLI struct {
 }
 
 // NewCLI sets up the CLI.
-func NewCLI() *CLI {
+func NewCLI(logger log.Logger) *CLI {
 	cli := &CLI{}
 	cli.root = &cobra.Command{
 		Use:           "runner",
@@ -51,7 +58,7 @@ func NewCLI() *CLI {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			if err = Cleanup(cli.testnet); err != nil {
+			if err = Cleanup(logger, cli.testnet); err != nil {
 				return err
 			}
 			defer func() {
@@ -60,11 +67,11 @@ func NewCLI() *CLI {
 				} else if err != nil {
 					logger.Info("Preserving testnet that encountered error",
 						"err", err)
-				} else if err := Cleanup(cli.testnet); err != nil {
-					logger.Error("Error cleaning up testnet contents", "err", err)
+				} else if err := Cleanup(logger, cli.testnet); err != nil {
+					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
-			if err = Setup(cli.testnet); err != nil {
+			if err = Setup(logger, cli.testnet); err != nil {
 				return err
 			}
 
@@ -77,31 +84,31 @@ func NewCLI() *CLI {
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				chLoadResult <- Load(lctx, r, cli.testnet)
+				chLoadResult <- Load(lctx, logger, r, cli.testnet)
 			}()
 			startAt := time.Now()
-			if err = Start(ctx, cli.testnet); err != nil {
+			if err = Start(ctx, logger, cli.testnet); err != nil {
 				return err
 			}
 
-			if err = Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
+			if err = Wait(ctx, logger, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			if cli.testnet.HasPerturbations() {
-				if err = Perturb(ctx, cli.testnet); err != nil {
+				if err = Perturb(ctx, logger, cli.testnet); err != nil {
 					return err
 				}
-				if err = Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
+				if err = Wait(ctx, logger, cli.testnet, 5); err != nil { // allow some txs to go through
 					return err
 				}
 			}
 
 			if cli.testnet.Evidence > 0 {
-				if err = InjectEvidence(ctx, r, cli.testnet, cli.testnet.Evidence); err != nil {
+				if err = InjectEvidence(ctx, logger, r, cli.testnet, cli.testnet.Evidence); err != nil {
 					return err
 				}
-				if err = Wait(ctx, cli.testnet, 5); err != nil { // ensure chain progress
+				if err = Wait(ctx, logger, cli.testnet, 5); err != nil { // ensure chain progress
 					return err
 				}
 			}
@@ -124,7 +131,7 @@ func NewCLI() *CLI {
 			if err = <-chLoadResult; err != nil {
 				return fmt.Errorf("transaction load failed: %w", err)
 			}
-			if err = Wait(ctx, cli.testnet, 5); err != nil { // wait for network to settle before tests
+			if err = Wait(ctx, logger, cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
 			if err := Test(cli.testnet); err != nil {
@@ -149,7 +156,7 @@ func NewCLI() *CLI {
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Setup(cli.testnet)
+			return Setup(logger, cli.testnet)
 		},
 	})
 
@@ -159,12 +166,12 @@ func NewCLI() *CLI {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := os.Stat(cli.testnet.Dir)
 			if os.IsNotExist(err) {
-				err = Setup(cli.testnet)
+				err = Setup(logger, cli.testnet)
 			}
 			if err != nil {
 				return err
 			}
-			return Start(cmd.Context(), cli.testnet)
+			return Start(cmd.Context(), logger, cli.testnet)
 		},
 	})
 
@@ -172,7 +179,7 @@ func NewCLI() *CLI {
 		Use:   "perturb",
 		Short: "Perturbs the Docker testnet, e.g. by restarting or disconnecting nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Perturb(cmd.Context(), cli.testnet)
+			return Perturb(cmd.Context(), logger, cli.testnet)
 		},
 	})
 
@@ -180,7 +187,7 @@ func NewCLI() *CLI {
 		Use:   "wait",
 		Short: "Waits for a few blocks to be produced and all nodes to catch up",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Wait(cmd.Context(), cli.testnet, 5)
+			return Wait(cmd.Context(), logger, cli.testnet, 5)
 		},
 	})
 
@@ -217,6 +224,7 @@ func NewCLI() *CLI {
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			return Load(
 				cmd.Context(),
+				logger,
 				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
 				cli.testnet,
 			)
@@ -239,6 +247,7 @@ func NewCLI() *CLI {
 
 			return InjectEvidence(
 				cmd.Context(),
+				logger,
 				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
 				cli.testnet,
 				amount,
@@ -258,7 +267,7 @@ func NewCLI() *CLI {
 		Use:   "cleanup",
 		Short: "Removes the testnet directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Cleanup(cli.testnet)
+			return Cleanup(logger, cli.testnet)
 		},
 	})
 
@@ -297,16 +306,16 @@ over a 100 block sampling period.
 Does not run any perbutations.
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := Cleanup(cli.testnet); err != nil {
+			if err := Cleanup(logger, cli.testnet); err != nil {
 				return err
 			}
 			defer func() {
-				if err := Cleanup(cli.testnet); err != nil {
-					logger.Error("Error cleaning up testnet contents", "err", err)
+				if err := Cleanup(logger, cli.testnet); err != nil {
+					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
 
-			if err := Setup(cli.testnet); err != nil {
+			if err := Setup(logger, cli.testnet); err != nil {
 				return err
 			}
 
@@ -319,20 +328,19 @@ Does not run any perbutations.
 			lctx, loadCancel := context.WithCancel(ctx)
 			defer loadCancel()
 			go func() {
-				err := Load(lctx, r, cli.testnet)
-				chLoadResult <- err
+				chLoadResult <- Load(lctx, logger, r, cli.testnet)
 			}()
 
-			if err := Start(ctx, cli.testnet); err != nil {
+			if err := Start(ctx, logger, cli.testnet); err != nil {
 				return err
 			}
 
-			if err := Wait(ctx, cli.testnet, 5); err != nil { // allow some txs to go through
+			if err := Wait(ctx, logger, cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
 
 			// we benchmark performance over the next 100 blocks
-			if err := Benchmark(ctx, cli.testnet, 100); err != nil {
+			if err := Benchmark(ctx, logger, cli.testnet, 100); err != nil {
 				return err
 			}
 
@@ -349,8 +357,8 @@ Does not run any perbutations.
 }
 
 // Run runs the CLI.
-func (cli *CLI) Run() {
-	if err := cli.root.Execute(); err != nil {
+func (cli *CLI) Run(ctx context.Context, logger log.Logger) {
+	if err := cli.root.ExecuteContext(ctx); err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}

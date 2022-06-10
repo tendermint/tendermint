@@ -2,8 +2,6 @@ package types
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -11,45 +9,40 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
-var cfg *config.Config // NOTE: must be reset for each _test.go file
-
-func TestMain(m *testing.M) {
-	var err error
-	cfg, err = config.ResetTestRoot("consensus_height_vote_set_test")
-	if err != nil {
-		panic(err)
-	}
-	code := m.Run()
-	os.RemoveAll(cfg.RootDir)
-	os.Exit(code)
-}
-
 func TestPeerCatchupRounds(t *testing.T) {
+	cfg, err := config.ResetTestRoot(t.TempDir(), "consensus_height_vote_set_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	valSet, privVals := types.RandValidatorSet(10)
 
 	stateID := types.StateID{}
 
-	hvs := NewHeightVoteSet(cfg.ChainID(), 1, stateID, valSet)
+	chainID := cfg.ChainID()
+	hvs := NewHeightVoteSet(chainID, 1, stateID, valSet)
 
-	vote999_0 := makeVoteHR(t, 1, 0, 999, privVals, valSet.QuorumType, valSet.QuorumHash, stateID)
+	vote999_0 := makeVoteHR(ctx, t, 1, 0, 999, privVals, chainID, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err := hvs.AddVote(vote999_0, "peer1")
 	if !added || err != nil {
 		t.Error("Expected to successfully add vote from peer", added, err)
 	}
 
-	vote1000_0 := makeVoteHR(t, 1, 0, 1000, privVals, valSet.QuorumType, valSet.QuorumHash, stateID)
+	vote1000_0 := makeVoteHR(ctx, t, 1, 0, 1000, privVals, chainID, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err = hvs.AddVote(vote1000_0, "peer1")
 	if !added || err != nil {
 		t.Error("Expected to successfully add vote from peer", added, err)
 	}
 
-	vote1001_0 := makeVoteHR(t, 1, 0, 1001, privVals, valSet.QuorumType, valSet.QuorumHash, stateID)
+	vote1001_0 := makeVoteHR(ctx, t, 1, 0, 1001, privVals, chainID, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err = hvs.AddVote(vote1001_0, "peer1")
 	if err != ErrGotVoteFromUnwantedRound {
 		t.Errorf("expected GotVoteFromUnwantedRoundError, but got %v", err)
@@ -65,13 +58,22 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 }
 
-func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []types.PrivValidator,
-	quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, stateID types.StateID) *types.Vote {
+func makeVoteHR(
+	ctx context.Context,
+	t *testing.T,
+	height int64,
+	valIndex, round int32,
+	privVals []types.PrivValidator,
+	chainID string,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash,
+	stateID types.StateID,
+) *types.Vote {
 	privVal := privVals[valIndex]
-	proTxHash, err := privVal.GetProTxHash(context.Background())
+	proTxHash, err := privVal.GetProTxHash(ctx)
 	require.NoError(t, err)
 
-	randBytes1 := tmrand.Bytes(tmhash.Size)
+	randBytes := tmrand.Bytes(crypto.HashSize)
 
 	vote := &types.Vote{
 		ValidatorProTxHash: proTxHash,
@@ -79,18 +81,16 @@ func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []ty
 		Height:             height,
 		Round:              round,
 		Type:               tmproto.PrecommitType,
-		BlockID:            types.BlockID{Hash: randBytes1, PartSetHeader: types.PartSetHeader{}},
+		BlockID:            types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}},
 	}
-	chainID := cfg.ChainID()
 
 	v := vote.ToProto()
-	err = privVal.SignVote(context.Background(), chainID, quorumType, quorumHash, v, stateID, nil)
-	if err != nil {
-		panic(fmt.Sprintf("Error signing vote: %v", err))
-	}
+	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, v, stateID, nil)
+	require.NoError(t, err, "Error signing vote")
 
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote
 }

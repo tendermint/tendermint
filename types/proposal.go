@@ -1,10 +1,12 @@
 package types
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
+	"math/bits"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -29,27 +31,30 @@ var (
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound.
 // If POLRound >= 0, then BlockID corresponds to the block that is locked in POLRound.
 type Proposal struct {
-	Type                  tmproto.SignedMsgType
-	Height                int64     `json:"height"`
-	CoreChainLockedHeight uint32    `json:"core_height"`
-	Round                 int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
-	POLRound              int32     `json:"pol_round"` // -1 if null.
-	BlockID               BlockID   `json:"block_id"`
-	Timestamp             time.Time `json:"timestamp"`
-	Signature             []byte    `json:"signature"`
+	Type      tmproto.SignedMsgType
+	Height    int64     `json:"height,string"`
+	Round     int32     `json:"round"`     // there can not be greater than 2_147_483_647 rounds
+	POLRound  int32     `json:"pol_round"` // -1 if null.
+	BlockID   BlockID   `json:"block_id"`
+	Timestamp time.Time `json:"timestamp"`
+	Signature []byte    `json:"signature"`
+
+	// dash fields
+	CoreChainLockedHeight uint32 `json:"core_height"`
 }
 
 // NewProposal returns a new Proposal.
 // If there is no POLRound, polRound should be -1.
-func NewProposal(height int64, coreChainLockedHeight uint32, round int32, polRound int32, blockID BlockID) *Proposal {
+func NewProposal(height int64, coreChainLockedHeight uint32, round int32, polRound int32, blockID BlockID, ts time.Time) *Proposal {
 	return &Proposal{
-		Type:                  tmproto.ProposalType,
-		Height:                height,
+		Type:      tmproto.ProposalType,
+		Height:    height,
+		Round:     round,
+		BlockID:   blockID,
+		POLRound:  polRound,
+		Timestamp: tmtime.Canonical(ts),
+
 		CoreChainLockedHeight: coreChainLockedHeight,
-		Round:                 round,
-		BlockID:               blockID,
-		POLRound:              polRound,
-		Timestamp:             tmtime.Now(),
 	}
 }
 
@@ -71,7 +76,7 @@ func (p *Proposal) ValidateBasic() error {
 		return errors.New("negative POLRound (exception: -1)")
 	}
 	if err := p.BlockID.ValidateBasic(); err != nil {
-		return fmt.Errorf("wrong BlockID: %v", err)
+		return fmt.Errorf("wrong BlockID: %w", err)
 	}
 	// ValidateBasic above would pass even if the BlockID was empty:
 	if !p.BlockID.IsComplete() {
@@ -88,6 +93,43 @@ func (p *Proposal) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", SignatureSize)
 	}
 	return nil
+}
+
+// IsTimely validates that the block timestamp is 'timely' according to the proposer-based timestamp algorithm.
+// To evaluate if a block is timely, its timestamp is compared to the local time of the validator along with the
+// configured Precision and MsgDelay parameters.
+// Specifically, a proposed block timestamp is considered timely if it is satisfies the following inequalities:
+//
+// localtime >= proposedBlockTime - Precision
+// localtime <= proposedBlockTime + MsgDelay + Precision
+//
+// For more information on the meaning of 'timely', see the proposer-based timestamp specification:
+// https://github.com/tendermint/tendermint/tree/master/spec/consensus/proposer-based-timestamp
+func (p *Proposal) IsTimely(recvTime time.Time, sp SynchronyParams, round int32) bool {
+	// The message delay values are scaled as rounds progress.
+	// Every 10 rounds, the message delay is doubled to allow consensus to
+	// proceed in the case that the chosen value was too small for the given network conditions.
+	// For more information and discussion on this mechanism, see the relevant github issue:
+	// https://github.com/tendermint/spec/issues/371
+	maxShift := bits.LeadingZeros64(uint64(sp.MessageDelay)) - 1
+	nShift := int((round / 10))
+
+	if nShift > maxShift {
+		// if the number of 'doublings' would would overflow the size of the int, use the
+		// maximum instead.
+		nShift = maxShift
+	}
+	msgDelay := sp.MessageDelay * time.Duration(1<<nShift)
+
+	// lhs is `proposedBlockTime - Precision` in the first inequality
+	lhs := p.Timestamp.Add(-sp.Precision)
+	// rhs is `proposedBlockTime + MsgDelay + Precision` in the second inequality
+	rhs := p.Timestamp.Add(msgDelay).Add(sp.Precision)
+
+	if recvTime.Before(lhs) || recvTime.After(rhs) {
+		return false
+	}
+	return true
 }
 
 // String returns a string representation of the Proposal.
@@ -149,7 +191,7 @@ func ProposalBlockSignID(
 	chainID string, p *tmproto.Proposal, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash,
 ) []byte {
 	signBytes := ProposalBlockSignBytes(chainID, p)
-	proposalMessageHash := crypto.Sha256(signBytes)
+	proposalMessageHash := sha256.Sum256(signBytes)
 
 	proposalRequestID := ProposalRequestIDProto(p)
 
@@ -157,7 +199,7 @@ func ProposalBlockSignID(
 		quorumType,
 		tmbytes.Reverse(quorumHash),
 		tmbytes.Reverse(proposalRequestID),
-		tmbytes.Reverse(proposalMessageHash),
+		tmbytes.Reverse(proposalMessageHash[:]),
 	)
 
 	return signID
@@ -173,7 +215,8 @@ func ProposalRequestID(p *Proposal) []byte {
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }
 
 func ProposalRequestIDProto(p *tmproto.Proposal) []byte {
@@ -186,7 +229,8 @@ func ProposalRequestIDProto(p *tmproto.Proposal) []byte {
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 	requestIDMessage = append(requestIDMessage, roundByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }
 
 // ToProto converts Proposal to protobuf

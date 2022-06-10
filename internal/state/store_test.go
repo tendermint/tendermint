@@ -1,11 +1,11 @@
 package state_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -29,11 +29,10 @@ func TestStoreBootstrap(t *testing.T) {
 	vals, _ := types.RandValidatorSet(3)
 
 	bootstrapState := makeRandomStateFromValidatorSet(vals, 100, 100)
-	err := stateStore.Bootstrap(bootstrapState)
-	require.NoError(t, err)
+	require.NoError(t, stateStore.Bootstrap(bootstrapState))
 
 	// bootstrap should also save the previous validator
-	_, err = stateStore.LoadValidators(99)
+	_, err := stateStore.LoadValidators(99)
 	require.NoError(t, err)
 
 	_, err = stateStore.LoadValidators(100)
@@ -54,10 +53,8 @@ func TestStoreLoadValidators(t *testing.T) {
 
 	// 1) LoadValidators loads validators using a height where they were last changed
 	// Note that only the next validators at height h + 1 are saved
-	err := stateStore.Save(makeRandomStateFromValidatorSet(vals, 1, 1))
-	require.NoError(t, err)
-	err = stateStore.Save(makeRandomStateFromValidatorSet(vals.CopyIncrementProposerPriority(1), 2, 1))
-	require.NoError(t, err)
+	require.NoError(t, stateStore.Save(makeRandomStateFromValidatorSet(vals, 1, 1)))
+	require.NoError(t, stateStore.Save(makeRandomStateFromValidatorSet(vals.CopyIncrementProposerPriority(1), 2, 1)))
 	loadedVals, err := stateStore.LoadValidators(3)
 	require.NoError(t, err)
 	require.Equal(t, vals.CopyIncrementProposerPriority(3), loadedVals)
@@ -94,7 +91,7 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	cfg, err := config.ResetTestRoot("state_")
+	cfg, err := config.ResetTestRoot(b.TempDir(), "state_")
 	require.NoError(b, err)
 
 	defer os.RemoveAll(cfg.RootDir)
@@ -134,9 +131,12 @@ func BenchmarkLoadValidators(b *testing.B) {
 }
 
 func TestStoreLoadConsensusParams(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
+	err := stateStore.Save(makeRandomStateFromConsensusParams(ctx, t, types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
 	params, err := stateStore.LoadConsensusParams(1)
 	require.NoError(t, err)
@@ -146,7 +146,7 @@ func TestStoreLoadConsensusParams(t *testing.T) {
 	// it should save a pointer to the params at height 1
 	differentParams := types.DefaultConsensusParams()
 	differentParams.Block.MaxBytes = 20000
-	err = stateStore.Save(makeRandomStateFromConsensusParams(differentParams, 10, 1))
+	err = stateStore.Save(makeRandomStateFromConsensusParams(ctx, t, differentParams, 10, 1))
 	require.NoError(t, err)
 	res, err := stateStore.LoadConsensusParams(10)
 	require.NoError(t, err)
@@ -223,10 +223,12 @@ func TestPruneStates(t *testing.T) {
 				require.NoError(t, err)
 
 				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
-					DeliverTxs: []*abci.ResponseDeliverTx{
-						{Data: []byte{1}},
-						{Data: []byte{2}},
-						{Data: []byte{3}},
+					FinalizeBlock: &abci.ResponseFinalizeBlock{
+						TxResults: []*abci.ExecTxResult{
+							{Data: []byte{1}},
+							{Data: []byte{2}},
+							{Data: []byte{3}},
+						},
 					},
 				})
 				require.NoError(t, err)
@@ -281,26 +283,4 @@ func TestPruneStates(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestABCIResponsesResultsHash(t *testing.T) {
-	responses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		DeliverTxs: []*abci.ResponseDeliverTx{
-			{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
-		},
-		EndBlock: &abci.ResponseEndBlock{},
-	}
-
-	root := sm.ABCIResponsesResultsHash(responses)
-
-	// root should be Merkle tree root of DeliverTxs responses
-	results := types.NewResults(responses.DeliverTxs)
-	assert.Equal(t, root, results.Hash())
-
-	// test we can prove first DeliverTx
-	proof := results.ProveResult(0)
-	bz, err := results[0].Marshal()
-	require.NoError(t, err)
-	assert.NoError(t, proof.Verify(root, bz))
 }

@@ -70,6 +70,12 @@ type ValidatorSet struct {
 	totalVotingPower int64
 }
 
+type ValidatorSetUpdate struct {
+	Validators         []*Validator
+	ThresholdPublicKey crypto.PubKey
+	QuorumHash         crypto.QuorumHash
+}
+
 // NewValidatorSet initializes a ValidatorSet by copying over the values from
 // `valz`, a list of Validators. If valz is nil or empty, the new ValidatorSet
 // will have an empty list of Validators.
@@ -358,7 +364,7 @@ func (vals *ValidatorSet) shiftByAvgProposerPriority() {
 
 // Makes a copy of the validator list.
 func validatorListCopy(valsList []*Validator) []*Validator {
-	if valsList == nil {
+	if len(valsList) == 0 {
 		return nil
 	}
 	valsCopy := make([]*Validator, len(valsList))
@@ -370,6 +376,9 @@ func validatorListCopy(valsList []*Validator) []*Validator {
 
 // Copy each validator into a new ValidatorSet.
 func (vals *ValidatorSet) Copy() *ValidatorSet {
+	if vals == nil {
+		return nil
+	}
 	return &ValidatorSet{
 		Validators:         validatorListCopy(vals.Validators),
 		Proposer:           vals.Proposer,
@@ -384,6 +393,9 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 // HasProTxHash returns true if proTxHash given is in the validator set, false -
 // otherwise.
 func (vals *ValidatorSet) HasProTxHash(proTxHash crypto.ProTxHash) bool {
+	if len(proTxHash) == 0 {
+		return false
+	}
 	for _, val := range vals.Validators {
 		if bytes.Equal(val.ProTxHash, proTxHash) {
 			return true

@@ -3,6 +3,9 @@ package types
 import (
 	"errors"
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
 
 	"github.com/tendermint/tendermint/crypto"
 
@@ -23,9 +26,9 @@ func MaxNodeInfoSize() int {
 
 // ProtocolVersion contains the protocol versions for the software.
 type ProtocolVersion struct {
-	P2P   uint64 `json:"p2p"`
-	Block uint64 `json:"block"`
-	App   uint64 `json:"app"`
+	P2P   uint64 `json:"p2p,string"`
+	Block uint64 `json:"block,string"`
+	App   uint64 `json:"app,string"`
 }
 
 //-------------------------------------------------------------
@@ -83,22 +86,15 @@ func (info NodeInfo) GetProTxHash() crypto.ProTxHash {
 // url-encoding), and we just need to be careful with how we handle that in our
 // clients. (e.g. off by default).
 func (info NodeInfo) Validate() error {
-
-	// ID is already validated.
-
-	// Validate ListenAddr.
-	_, err := NewNetAddressString(info.ID().AddressString(info.ListenAddr))
-	if err != nil {
+	if _, err := ParseAddressString(info.ID().AddressString(info.ListenAddr)); err != nil {
 		return err
 	}
 
-	// Network is validated in CompatibleWith.
-
 	// Validate Version
-	if len(info.Version) > 0 &&
-		(!tmstrings.IsASCIIText(info.Version) || tmstrings.ASCIITrim(info.Version) == "") {
-
-		return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got %v", info.Version)
+	if len(info.Version) > 0 {
+		if ver, err := tmstrings.ASCIITrim(info.Version); err != nil || ver == "" {
+			return fmt.Errorf("info.Version must be valid ASCII text without tabs, but got, %q [%s]", info.Version, ver)
+		}
 	}
 
 	// Validate Channels - ensure max and check for duplicates.
@@ -114,8 +110,7 @@ func (info NodeInfo) Validate() error {
 		channels[ch] = struct{}{}
 	}
 
-	// Validate Moniker.
-	if !tmstrings.IsASCIIText(info.Moniker) || tmstrings.ASCIITrim(info.Moniker) == "" {
+	if m, err := tmstrings.ASCIITrim(info.Moniker); err != nil || m == "" {
 		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v", info.Moniker)
 	}
 
@@ -129,8 +124,10 @@ func (info NodeInfo) Validate() error {
 	}
 	// XXX: Should we be more strict about address formats?
 	rpcAddr := other.RPCAddress
-	if len(rpcAddr) > 0 && (!tmstrings.IsASCIIText(rpcAddr) || tmstrings.ASCIITrim(rpcAddr) == "") {
-		return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
+	if len(rpcAddr) > 0 {
+		if a, err := tmstrings.ASCIITrim(rpcAddr); err != nil || a == "" {
+			return fmt.Errorf("info.Other.RPCAddress=%v must be valid ASCII text without tabs", rpcAddr)
+		}
 	}
 
 	return nil
@@ -170,15 +167,6 @@ OUTER_LOOP:
 		return fmt.Errorf("peer has no common channels. Our channels: %v ; Peer channels: %v", info.Channels, other.Channels)
 	}
 	return nil
-}
-
-// NetAddress returns a NetAddress derived from the NodeInfo -
-// it includes the authenticated peer ID and the self-reported
-// ListenAddr. Note that the ListenAddr is not authenticated and
-// may not match that address actually dialed if its an outbound peer.
-func (info NodeInfo) NetAddress() (*NetAddress, error) {
-	idAddr := info.ID().AddressString(info.ListenAddr)
-	return NewNetAddressString(idAddr)
 }
 
 // AddChannel is used by the router when a channel is opened to add it to the node info
@@ -254,4 +242,62 @@ func NodeInfoFromProto(pb *tmp2p.NodeInfo) (NodeInfo, error) {
 		ProTxHash: pb.ProTxHash,
 	}
 	return dni, nil
+}
+
+// ParseAddressString reads an address string, and returns the NetAddress struct
+// with ip address, port and nodeID information, returning an error for any validation
+// errors.
+func ParseAddressString(addr string) (*NetAddress, error) {
+	addrWithoutProtocol := removeProtocolIfDefined(addr)
+	spl := strings.Split(addrWithoutProtocol, "@")
+	if len(spl) != 2 {
+		return nil, errors.New("invalid address")
+	}
+
+	id, err := NewNodeID(spl[0])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := id.Validate(); err != nil {
+		return nil, err
+	}
+
+	addrWithoutProtocol = spl[1]
+
+	// get host and port
+	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
+	if err != nil {
+		return nil, err
+	}
+	if len(host) == 0 {
+		return nil, err
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil {
+		ips, err := net.LookupIP(host)
+		if err != nil {
+			return nil, err
+		}
+		ip = ips[0]
+	}
+
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		return nil, err
+	}
+
+	na := NewNetAddressIPPort(ip, uint16(port))
+	na.ID = id
+
+	return na, nil
+}
+
+func removeProtocolIfDefined(addr string) string {
+	if strings.Contains(addr, "://") {
+		return strings.Split(addr, "://")[1]
+	}
+	return addr
+
 }

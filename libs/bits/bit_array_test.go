@@ -3,7 +3,6 @@ package bits
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math"
 	"testing"
 
@@ -14,25 +13,25 @@ import (
 	tmprotobits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 )
 
-func randBitArray(bits int) (*BitArray, []byte) {
+func randBitArray(bits int) *BitArray {
 	src := tmrand.Bytes((bits + 7) / 8)
 	bA := NewBitArray(bits)
 	for i := 0; i < len(src); i++ {
 		for j := 0; j < 8; j++ {
 			if i*8+j >= bits {
-				return bA, src
+				return bA
 			}
 			setBit := src[i]&(1<<uint(j)) > 0
 			bA.SetIndex(i*8+j, setBit)
 		}
 	}
-	return bA, src
+	return bA
 }
 
 func TestAnd(t *testing.T) {
 
-	bA1, _ := randBitArray(51)
-	bA2, _ := randBitArray(31)
+	bA1 := randBitArray(51)
+	bA2 := randBitArray(31)
 	bA3 := bA1.And(bA2)
 
 	var bNil *BitArray
@@ -55,9 +54,8 @@ func TestAnd(t *testing.T) {
 }
 
 func TestOr(t *testing.T) {
-
-	bA1, _ := randBitArray(51)
-	bA2, _ := randBitArray(31)
+	bA1 := randBitArray(51)
+	bA2 := randBitArray(31)
 	bA3 := bA1.Or(bA2)
 
 	bNil := (*BitArray)(nil)
@@ -99,11 +97,11 @@ func TestSub(t *testing.T) {
 	for _, tc := range testCases {
 		var bA *BitArray
 		err := json.Unmarshal([]byte(tc.initBA), &bA)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		var o *BitArray
 		err = json.Unmarshal([]byte(tc.subtractingBA), &o)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		got, _ := json.Marshal(bA.Sub(o))
 		require.Equal(
@@ -149,9 +147,8 @@ func TestBytes(t *testing.T) {
 	bA := NewBitArray(4)
 	bA.SetIndex(0, true)
 	check := func(bA *BitArray, bz []byte) {
-		if !bytes.Equal(bA.Bytes(), bz) {
-			panic(fmt.Sprintf("Expected %X but got %X", bz, bA.Bytes()))
-		}
+		require.True(t, bytes.Equal(bA.Bytes(), bz),
+			"Expected %X but got %X", bz, bA.Bytes())
 	}
 	check(bA, []byte{0x01})
 	bA.SetIndex(3, true)
@@ -172,6 +169,8 @@ func TestBytes(t *testing.T) {
 	check(bA, []byte{0x80, 0x01})
 	bA.SetIndex(9, true)
 	check(bA, []byte{0x80, 0x03})
+
+	require.False(t, bA.SetIndex(-1, true))
 }
 
 func TestEmptyFull(t *testing.T) {
@@ -191,10 +190,7 @@ func TestEmptyFull(t *testing.T) {
 }
 
 func TestUpdateNeverPanics(t *testing.T) {
-	newRandBitArray := func(n int) *BitArray {
-		ba, _ := randBitArray(n)
-		return ba
-	}
+	newRandBitArray := func(n int) *BitArray { return randBitArray(n) }
 	pairs := []struct {
 		a, b *BitArray
 	}{

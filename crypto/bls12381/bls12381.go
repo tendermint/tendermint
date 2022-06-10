@@ -2,6 +2,8 @@ package bls12381
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
@@ -9,11 +11,10 @@ import (
 	"io"
 
 	bls "github.com/dashpay/bls-signatures/go-bindings"
+	"github.com/tendermint/tendermint/internal/jsontypes"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 //-------------------------------------
@@ -48,12 +49,15 @@ var (
 )
 
 func init() {
-	tmjson.RegisterType(PubKey{}, PubKeyName)
-	tmjson.RegisterType(PrivKey{}, PrivKeyName)
+	jsontypes.MustRegister(PubKey{})
+	jsontypes.MustRegister(PrivKey{})
 }
 
 // PrivKey implements crypto.PrivKey.
 type PrivKey []byte
+
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PrivKey) TypeTag() string { return PrivKeyName }
 
 // Bytes returns the privkey byte format.
 func (privKey PrivKey) Bytes() []byte {
@@ -145,7 +149,7 @@ func (privKey PrivKey) TypeValue() crypto.KeyType {
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
 func GenPrivKey() PrivKey {
-	return genPrivKey(crypto.CReader())
+	return genPrivKey(rand.Reader)
 }
 
 // genPrivKey generates a new bls12381 private key using the provided reader.
@@ -168,8 +172,8 @@ func genPrivKey(rand io.Reader) PrivKey {
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
 func GenPrivKeyFromSecret(secret []byte) PrivKey {
-	seed := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
-	privKey, err := bls.PrivateKeyFromSeed(seed)
+	seed := sha256.Sum256(secret) // Not Ripemd160 because we want 32 bytes.
+	privKey, err := bls.PrivateKeyFromSeed(seed[:])
 	if err != nil {
 		panic(err)
 	}
@@ -205,7 +209,7 @@ func RecoverThresholdPublicKeyFromPublicKeys(publicKeys []crypto.PubKey, blsIds 
 	}
 
 	for i, blsID := range blsIds {
-		if len(blsID) != tmhash.Size {
+		if len(blsID) != crypto.HashSize {
 			return nil, fmt.Errorf("blsID incorrect size in public key recovery, expected 32 bytes (got %d)", len(blsID))
 		}
 		var hash bls.Hash
@@ -241,7 +245,7 @@ func RecoverThresholdSignatureFromShares(sigSharesData [][]byte, blsIds [][]byte
 	}
 
 	for i, blsID := range blsIds {
-		if len(blsID) != tmhash.Size {
+		if len(blsID) != crypto.HashSize {
 			return nil, fmt.Errorf("blsID incorrect size in signature recovery, expected 32 bytes (got %d)", len(blsID))
 		}
 		var hash bls.Hash
@@ -263,12 +267,15 @@ var _ crypto.PubKey = PubKey{}
 // PubKey PubKeyBLS12381 implements crypto.PubKey for the bls12381 signature scheme.
 type PubKey []byte
 
+// TypeTag satisfies the jsontypes.Tagged interface.
+func (PubKey) TypeTag() string { return PubKeyName }
+
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKey) Address() crypto.Address {
 	if len(pubKey) != PubKeySize {
 		panic("pubkey is incorrect size")
 	}
-	return tmhash.SumTruncated(pubKey)
+	return crypto.AddressHash(pubKey)
 }
 
 // Bytes returns the PubKey byte format.

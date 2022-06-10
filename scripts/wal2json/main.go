@@ -8,12 +8,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/tendermint/tendermint/internal/consensus"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 
 	f, err := os.Open(os.Args[1])
 	if err != nil {
-		panic(fmt.Errorf("failed to open WAL file: %v", err))
+		panic(fmt.Errorf("failed to open WAL file: %w", err))
 	}
 	defer f.Close()
 
@@ -34,12 +34,12 @@ func main() {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			panic(fmt.Errorf("failed to decode msg: %v", err))
+			panic(fmt.Errorf("failed to decode msg: %w", err))
 		}
 
-		json, err := tmjson.Marshal(msg)
+		json, err := json.Marshal(msg)
 		if err != nil {
-			panic(fmt.Errorf("failed to marshal msg: %v", err))
+			panic(fmt.Errorf("failed to marshal msg: %w", err))
 		}
 
 		_, err = os.Stdout.Write(json)

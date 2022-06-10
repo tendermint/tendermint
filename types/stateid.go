@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -65,10 +66,6 @@ func (stateID StateID) ValidateBasic() error {
 	return nil
 }
 
-func (stateID StateID) Signable() Signable {
-	return stateID
-}
-
 // SignBytes returns bytes that should be signed
 // TODO why we don't simply use stateID.Marshal() ?
 func (stateID StateID) SignBytes(chainID string) []byte {
@@ -91,7 +88,7 @@ func (stateID StateID) SignID(chainID string, quorumType btcjson.LLMQType, quoru
 		return nil
 	}
 
-	stateMessageHash := crypto.Sha256(stateSignBytes)
+	stateMessageHash := sha256.Sum256(stateSignBytes)
 
 	stateRequestID := stateID.SignRequestID()
 
@@ -99,7 +96,7 @@ func (stateID StateID) SignID(chainID string, quorumType btcjson.LLMQType, quoru
 		quorumType,
 		tmbytes.Reverse(quorumHash),
 		tmbytes.Reverse(stateRequestID),
-		tmbytes.Reverse(stateMessageHash),
+		tmbytes.Reverse(stateMessageHash[:]),
 	)
 
 	return stateSignID
@@ -114,7 +111,8 @@ func (stateID StateID) SignRequestID() []byte {
 
 	requestIDMessage = append(requestIDMessage, heightByteArray...)
 
-	return crypto.Sha256(requestIDMessage)
+	hash := sha256.Sum256(requestIDMessage)
+	return hash[:]
 }
 
 // String returns a human readable string representation of the StateID.

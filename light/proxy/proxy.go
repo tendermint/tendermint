@@ -6,8 +6,9 @@ import (
 	"net"
 	"net/http"
 
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
+	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/light"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
@@ -40,7 +41,7 @@ func NewProxy(
 	return &Proxy{
 		Addr:   listenAddr,
 		Config: config,
-		Client: lrpc.NewClient(rpcClient, lightClient, opts...),
+		Client: lrpc.NewClient(logger, rpcClient, lightClient, opts...),
 		Logger: logger,
 	}, nil
 }
@@ -49,14 +50,15 @@ func NewProxy(
 // routes to proxy via Client, and starts up an HTTP server on the TCP network
 // address p.Addr.
 // See http#Server#ListenAndServe.
-func (p *Proxy) ListenAndServe() error {
-	listener, mux, err := p.listen()
+func (p *Proxy) ListenAndServe(ctx context.Context) error {
+	listener, mux, err := p.listen(ctx)
 	if err != nil {
 		return err
 	}
 	p.Listener = listener
 
 	return rpcserver.Serve(
+		ctx,
 		listener,
 		mux,
 		p.Logger,
@@ -67,14 +69,15 @@ func (p *Proxy) ListenAndServe() error {
 // ListenAndServeTLS acts identically to ListenAndServe, except that it expects
 // HTTPS connections.
 // See http#Server#ListenAndServeTLS.
-func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
-	listener, mux, err := p.listen()
+func (p *Proxy) ListenAndServeTLS(ctx context.Context, certFile, keyFile string) error {
+	listener, mux, err := p.listen(ctx)
 	if err != nil {
 		return err
 	}
 	p.Listener = listener
 
 	return rpcserver.ServeTLS(
+		ctx,
 		listener,
 		mux,
 		certFile,
@@ -84,16 +87,16 @@ func (p *Proxy) ListenAndServeTLS(certFile, keyFile string) error {
 	)
 }
 
-func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
+func (p *Proxy) listen(ctx context.Context) (net.Listener, *http.ServeMux, error) {
 	mux := http.NewServeMux()
 
 	// 1) Register regular routes.
-	r := RPCRoutes(p.Client)
+	r := rpccore.NewRoutesMap(proxyService{Client: p.Client}, nil)
 	rpcserver.RegisterRPCFuncs(mux, r, p.Logger)
 
 	// 2) Allow websocket connections.
 	wmLogger := p.Logger.With("protocol", "websocket")
-	wm := rpcserver.NewWebsocketManager(r,
+	wm := rpcserver.NewWebsocketManager(wmLogger, r,
 		rpcserver.OnDisconnect(func(remoteAddr string) {
 			err := p.Client.UnsubscribeAll(context.Background(), remoteAddr)
 			if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
@@ -102,12 +105,12 @@ func (p *Proxy) listen() (net.Listener, *http.ServeMux, error) {
 		}),
 		rpcserver.ReadLimit(p.Config.MaxBodyBytes),
 	)
-	wm.SetLogger(wmLogger)
+
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
 	// 3) Start a client.
 	if !p.Client.IsRunning() {
-		if err := p.Client.Start(); err != nil {
+		if err := p.Client.Start(ctx); err != nil {
 			return nil, mux, fmt.Errorf("can't start client: %w", err)
 		}
 	}

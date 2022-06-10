@@ -11,7 +11,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/evidence/mocks"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -28,6 +28,11 @@ type voteData struct {
 }
 
 func TestVerifyDuplicateVoteEvidence(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logger := log.NewTestingLogger(t)
+
 	quorumType := crypto.SmallQuorumType()
 	quorumHash := crypto.RandQuorumHash()
 	val := types.NewMockPVForQuorum(quorumHash)
@@ -44,13 +49,13 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	stateID := types.RandStateID()
 
-	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID)
+	vote1 := makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID)
 	v1 := vote1.ToProto()
-	err := val.SignVote(context.Background(), chainID, quorumType, quorumHash, v1, stateID, nil)
+	err := val.SignVote(ctx, chainID, quorumType, quorumHash, v1, stateID, nil)
 	require.NoError(t, err)
-	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID)
+	badVote := makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID)
 	bv := badVote.ToProto()
-	err = val2.SignVote(context.Background(), chainID, crypto.SmallQuorumType(), quorumHash, bv, stateID, nil)
+	err = val2.SignVote(ctx, chainID, crypto.SmallQuorumType(), quorumHash, bv, stateID, nil)
 	require.NoError(t, err)
 
 	vote1.BlockSignature = v1.BlockSignature
@@ -59,15 +64,17 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	badVote.StateSignature = bv.StateSignature
 
 	cases := []voteData{
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), true}, // different block ids
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID3, quorumType, quorumHash, stateID), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID4, quorumType, quorumHash, stateID), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID), false},     // wrong block id
-		{vote1, makeVote(t, val, "mychain2", 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), false}, // wrong chain id
-		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2, quorumType, quorumHash, stateID), false},    // wrong height
-		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2, quorumType, quorumHash, stateID), false},    // wrong round
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2, quorumType, quorumHash, stateID), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), false},   // wrong validator
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), true}, // different block ids
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID3, quorumType, quorumHash, stateID), true},
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID4, quorumType, quorumHash, stateID), true},
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID, quorumType, quorumHash, stateID), false},     // wrong block id
+		{vote1, makeVote(ctx, t, val, "mychain2", 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), false}, // wrong chain id
+		{vote1, makeVote(ctx, t, val, chainID, 0, 11, 2, 1, blockID2, quorumType, quorumHash, stateID), false},    // wrong height
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 3, 1, blockID2, quorumType, quorumHash, stateID), false},    // wrong round
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 2, blockID2, quorumType, quorumHash, stateID), false},    // wrong step
+		{vote1, makeVote(ctx, t, val2, chainID, 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), false},   // wrong validator
+		// a different vote time doesn't matter
+		{vote1, makeVote(ctx, t, val, chainID, 0, 10, 2, 1, blockID2, quorumType, quorumHash, stateID), true},
 		{vote1, badVote, false}, // signed by wrong key
 	}
 
@@ -88,15 +95,15 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	}
 
 	// create good evidence and correct validator power
-	goodEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, crypto.SmallQuorumType(), quorumHash)
+	goodEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 10, defaultEvidenceTime, val, chainID, crypto.SmallQuorumType(), quorumHash)
 	require.NoError(t, err)
 	goodEv.ValidatorPower = types.DefaultDashVotingPower
 	goodEv.TotalVotingPower = types.DefaultDashVotingPower
-	badEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID, crypto.SmallQuorumType(), quorumHash)
+	badEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 10, defaultEvidenceTime, val, chainID, crypto.SmallQuorumType(), quorumHash)
 	require.NoError(t, err)
 	badEv.ValidatorPower = types.DefaultDashVotingPower + 1
 	badEv.TotalVotingPower = types.DefaultDashVotingPower
-	badTimeEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, crypto.SmallQuorumType(), quorumHash)
+	badTimeEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 10, defaultEvidenceTime.Add(1*time.Minute), val, chainID, crypto.SmallQuorumType(), quorumHash)
 	require.NoError(t, err)
 	badTimeEv.ValidatorPower = types.DefaultDashVotingPower
 	badTimeEv.TotalVotingPower = types.DefaultDashVotingPower
@@ -112,28 +119,32 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	blockStore := &mocks.BlockStore{}
 	blockStore.On("LoadBlockMeta", int64(10)).Return(&types.BlockMeta{Header: types.Header{Time: defaultEvidenceTime}})
 
-	pool, err := evidence.NewPool(log.TestingLogger(), dbm.NewMemDB(), stateStore, blockStore)
-	require.NoError(t, err)
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
+	pool := evidence.NewPool(logger, dbm.NewMemDB(), stateStore, blockStore, evidence.NopMetrics(), eventBus)
+	startPool(t, pool, stateStore)
 
 	evList := types.EvidenceList{goodEv}
-	err = pool.CheckEvidence(evList)
+	err = pool.CheckEvidence(ctx, evList)
 	assert.NoError(t, err)
 
 	// evidence with a different validator power should fail
 	evList = types.EvidenceList{badEv}
-	err = pool.CheckEvidence(evList)
+	err = pool.CheckEvidence(ctx, evList)
 	assert.Error(t, err)
 
 	// evidence with a different timestamp should fail
 	evList = types.EvidenceList{badTimeEv}
-	err = pool.CheckEvidence(evList)
+	err = pool.CheckEvidence(ctx, evList)
 	assert.Error(t, err)
 }
 
 func makeVote(
+	ctx context.Context,
 	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
 	round int32, step int, blockID types.BlockID, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash, stateID types.StateID) *types.Vote {
-	proTxHash, err := val.GetProTxHash(context.Background())
+	proTxHash, err := val.GetProTxHash(ctx)
 	require.NoError(t, err)
 	v := &types.Vote{
 		ValidatorProTxHash: proTxHash,
@@ -145,18 +156,16 @@ func makeVote(
 	}
 
 	vpb := v.ToProto()
-	err = val.SignVote(context.Background(), chainID, quorumType, quorumHash, vpb, stateID, nil)
-	if err != nil {
-		panic(err)
-	}
+	err = val.SignVote(ctx, chainID, quorumType, quorumHash, vpb, stateID, nil)
+	require.NoError(t, err)
 	v.BlockSignature = vpb.BlockSignature
 	return v
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
-		h   = make([]byte, tmhash.Size)
-		psH = make([]byte, tmhash.Size)
+		h   = make([]byte, crypto.HashSize)
+		psH = make([]byte, crypto.HashSize)
 	)
 	copy(h, hash)
 	copy(psH, partSetHash)

@@ -2,12 +2,13 @@ package types
 
 import (
 	"bytes"
-	mrand "math/rand"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/tendermint/abci/types"
 	ctest "github.com/tendermint/tendermint/internal/libs/test"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -19,11 +20,6 @@ func makeTxs(cnt, size int) Txs {
 		txs[i] = tmrand.Bytes(size)
 	}
 	return txs
-}
-
-func randInt(low, high int) int {
-	off := mrand.Int() % (high - low)
-	return low + off
 }
 
 func TestTxIndex(t *testing.T) {
@@ -50,6 +46,179 @@ func TestTxIndexByHash(t *testing.T) {
 		assert.Equal(t, -1, txs.IndexByHash(nil))
 		assert.Equal(t, -1, txs.IndexByHash(Tx("foodnwkf").Hash()))
 	}
+}
+
+func TestValidateTxRecordSet(t *testing.T) {
+	t.Run("should error on total transaction size exceeding max data size", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{6, 7, 8, 9, 10}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(9, []Tx{})
+		require.Error(t, err)
+	})
+	t.Run("should not error on removed transaction size exceeding max data size", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{6, 7, 8, 9}),
+			},
+			{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     Tx([]byte{10}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(9, []Tx{[]byte{10}})
+		require.NoError(t, err)
+	})
+	t.Run("should error on duplicate transactions with the same action", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{100}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{200}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{})
+		require.Error(t, err)
+	})
+	t.Run("should error on duplicate transactions with mixed actions", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{100}),
+			},
+			{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{200}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{})
+		require.Error(t, err)
+	})
+	t.Run("should error on new transactions marked UNMODIFIED", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_UNMODIFIED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{})
+		require.Error(t, err)
+	})
+	t.Run("should error on new transactions marked REMOVED", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{})
+		require.Error(t, err)
+	})
+	t.Run("should error on existing transaction marked as ADDED", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{5, 4, 3, 2, 1}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{6}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{{0}, {1, 2, 3, 4, 5}})
+		require.Error(t, err)
+	})
+	t.Run("should error if any transaction marked as UNKNOWN", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_UNKNOWN,
+				Tx:     Tx([]byte{1, 2, 3, 4, 5}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{})
+		require.Error(t, err)
+	})
+	t.Run("TxRecordSet preserves order", func(t *testing.T) {
+		trs := []*abci.TxRecord{
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{100}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{99}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{55}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{12}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{66}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{9}),
+			},
+			{
+				Action: abci.TxRecord_ADDED,
+				Tx:     Tx([]byte{17}),
+			},
+		}
+		txrSet := NewTxRecordSet(trs)
+		err := txrSet.Validate(100, []Tx{})
+		require.NoError(t, err)
+		for i, tx := range txrSet.IncludedTxs() {
+			require.Equal(t, Tx(trs[i].Tx), tx)
+		}
+	})
 }
 
 func TestValidTxProof(t *testing.T) {
@@ -92,7 +261,7 @@ func TestValidTxProof(t *testing.T) {
 			require.NoError(t, err)
 
 			p2, err = TxProofFromProto(pb2)
-			if assert.Nil(t, err, "%d: %d: %+v", h, i, err) {
+			if assert.NoError(t, err, "%d: %d: %+v", h, i, err) {
 				assert.Nil(t, p2.Validate(root), "%d: %d", h, i)
 			}
 		}
@@ -149,4 +318,8 @@ func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 			}
 		}
 	}
+}
+
+func randInt(low, high int) int {
+	return rand.Intn(high-low) + low
 }

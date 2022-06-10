@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,26 +14,22 @@ func ensureFiles(t *testing.T, rootDir string, files ...string) {
 	for _, f := range files {
 		p := rootify(rootDir, f)
 		_, err := os.Stat(p)
-		assert.Nil(t, err, p)
+		assert.NoError(t, err, p)
 	}
 }
 
 func TestEnsureRoot(t *testing.T) {
-	require := require.New(t)
-
 	// setup temp dir for test
-	tmpDir, err := ioutil.TempDir("", "config-test")
-	require.NoError(err)
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	// create root dir
 	EnsureRoot(tmpDir)
 
-	require.NoError(WriteConfigFile(tmpDir, DefaultConfig()))
+	require.NoError(t, WriteConfigFile(tmpDir, DefaultConfig()))
 
 	// make sure config is set properly
-	data, err := ioutil.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
-	require.NoError(err)
+	data, err := os.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
+	require.NoError(t, err)
 
 	checkConfig(t, string(data))
 
@@ -42,19 +37,17 @@ func TestEnsureRoot(t *testing.T) {
 }
 
 func TestEnsureTestRoot(t *testing.T) {
-	require := require.New(t)
-
 	testName := "ensureTestRoot"
 
 	// create root dir
-	cfg, err := ResetTestRoot(testName)
-	require.NoError(err)
+	cfg, err := ResetTestRoot(t.TempDir(), testName)
+	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 	rootDir := cfg.RootDir
 
 	// make sure config is set properly
-	data, err := ioutil.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
-	require.Nil(err)
+	data, err := os.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
+	require.NoError(t, err)
 
 	checkConfig(t, string(data))
 
@@ -71,7 +64,6 @@ func checkConfig(t *testing.T, configFile string) {
 		"moniker",
 		"seeds",
 		"proxy-app",
-		"blocksync",
 		"create-empty-blocks",
 		"peer",
 		"timeout",

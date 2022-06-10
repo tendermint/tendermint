@@ -4,21 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
 	"testing"
 
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/internal/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
 
 func BenchmarkTxSearch(b *testing.B) {
-	dbDir, err := ioutil.TempDir("", "benchmark_tx_search_test")
-	if err != nil {
-		b.Errorf("failed to create temporary directory: %s", err)
-	}
+	dbDir := b.TempDir()
 
 	db, err := dbm.NewGoLevelDB("benchmark_tx_search_test", dbDir)
 	if err != nil {
@@ -47,7 +43,7 @@ func BenchmarkTxSearch(b *testing.B) {
 			Height: int64(i),
 			Index:  0,
 			Tx:     types.Tx(string(txBz)),
-			Result: abci.ResponseDeliverTx{
+			Result: abci.ExecTxResult{
 				Data:   []byte{0},
 				Code:   abci.CodeTypeOK,
 				Log:    "",

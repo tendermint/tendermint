@@ -2,7 +2,6 @@ package selectpeers
 
 import (
 	"bytes"
-	"crypto/sha256"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -45,6 +44,5 @@ func calculateDIP6SortKey(proTxHash, quorumHash tmbytes.HexBytes) []byte {
 	keyBytes := make([]byte, 0, len(proTxHash)+len(quorumHash))
 	keyBytes = append(keyBytes, proTxHash...)
 	keyBytes = append(keyBytes, quorumHash...)
-	keySHA := sha256.Sum256(keyBytes)
-	return keySHA[:]
+	return crypto.Checksum(keyBytes)
 }

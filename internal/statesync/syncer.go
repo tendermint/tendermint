@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -54,52 +54,21 @@ var (
 type syncer struct {
 	logger        log.Logger
 	stateProvider StateProvider
-	conn          proxy.AppConnSnapshot
-	connQuery     proxy.AppConnQuery
+	conn          abciclient.Client
 	snapshots     *snapshotPool
-	snapshotCh    chan<- p2p.Envelope
-	chunkCh       chan<- p2p.Envelope
+	snapshotCh    *p2p.Channel
+	chunkCh       *p2p.Channel
 	tempDir       string
 	fetchers      int32
 	retryTimeout  time.Duration
 
-	mtx     tmsync.RWMutex
+	mtx     sync.RWMutex
 	chunks  *chunkQueue
 	metrics *Metrics
 
 	avgChunkTime             int64
 	lastSyncedSnapshotHeight int64
 	processingSnapshot       *snapshot
-	closeCh                  <-chan struct{}
-}
-
-// newSyncer creates a new syncer.
-func newSyncer(
-	cfg config.StateSyncConfig,
-	logger log.Logger,
-	conn proxy.AppConnSnapshot,
-	connQuery proxy.AppConnQuery,
-	stateProvider StateProvider,
-	snapshotCh chan<- p2p.Envelope,
-	chunkCh chan<- p2p.Envelope,
-	closeCh <-chan struct{},
-	tempDir string,
-	metrics *Metrics,
-) *syncer {
-	return &syncer{
-		logger:        logger,
-		stateProvider: stateProvider,
-		conn:          conn,
-		connQuery:     connQuery,
-		snapshots:     newSnapshotPool(),
-		snapshotCh:    snapshotCh,
-		chunkCh:       chunkCh,
-		tempDir:       tempDir,
-		fetchers:      cfg.Fetchers,
-		retryTimeout:  cfg.ChunkRequestTimeout,
-		metrics:       metrics,
-		closeCh:       closeCh,
-	}
 }
 
 // AddChunk adds a chunk to the chunk queue, if any. It returns false if the chunk has already
@@ -141,29 +110,13 @@ func (s *syncer) AddSnapshot(peerID types.NodeID, snapshot *snapshot) (bool, err
 
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a
 // single request to discover snapshots, later we may want to do retries and stuff.
-func (s *syncer) AddPeer(peerID types.NodeID) (err error) {
-	defer func() {
-		// TODO: remove panic recover once AddPeer can no longer accientally send on
-		// closed channel.
-		// This recover was added to protect against the p2p message being sent
-		// to the snapshot channel after the snapshot channel was closed.
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic sending peer snapshot request: %v", r)
-		}
-	}()
-
+func (s *syncer) AddPeer(ctx context.Context, peerID types.NodeID) error {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peerID)
 
-	msg := p2p.Envelope{
+	return s.snapshotCh.Send(ctx, p2p.Envelope{
 		To:      peerID,
 		Message: &ssproto.SnapshotsRequest{},
-	}
-
-	select {
-	case <-s.closeCh:
-	case s.snapshotCh <- msg:
-	}
-	return err
+	})
 }
 
 // RemovePeer removes a peer from the pool.
@@ -178,14 +131,16 @@ func (s *syncer) RemovePeer(peerID types.NodeID) {
 func (s *syncer) SyncAny(
 	ctx context.Context,
 	discoveryTime time.Duration,
-	requestSnapshots func(),
+	requestSnapshots func() error,
 ) (sm.State, *types.Commit, error) {
 	if discoveryTime != 0 && discoveryTime < minimumDiscoveryTime {
 		discoveryTime = minimumDiscoveryTime
 	}
 
 	if discoveryTime > 0 {
-		requestSnapshots()
+		if err := requestSnapshots(); err != nil {
+			return sm.State{}, nil, err
+		}
 		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
 	}
@@ -365,7 +320,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 		return sm.State{}, nil, err
 	}
 
-	// Verify app hash and version
+	// Verify app and app version
 	if err := s.verifyApp(ctx, snapshot, state.Version.Consensus.App); err != nil {
 		return sm.State{}, nil, err
 	}
@@ -382,7 +337,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 func (s *syncer) offerSnapshot(ctx context.Context, snapshot *snapshot) error {
 	s.logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height,
 		"format", snapshot.Format, "hash", snapshot.Hash)
-	resp, err := s.conn.OfferSnapshotSync(ctx, abci.RequestOfferSnapshot{
+	resp, err := s.conn.OfferSnapshot(ctx, &abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
 			Format:   snapshot.Format,
@@ -424,7 +379,7 @@ func (s *syncer) applyChunks(ctx context.Context, chunks *chunkQueue, start time
 			return fmt.Errorf("failed to fetch chunk: %w", err)
 		}
 
-		resp, err := s.conn.ApplySnapshotChunkSync(ctx, abci.RequestApplySnapshotChunk{
+		resp, err := s.conn.ApplySnapshotChunk(ctx, &abci.RequestApplySnapshotChunk{
 			Index:  chunk.Index,
 			Chunk:  chunk.Chunk,
 			Sender: string(chunk.Sender),
@@ -492,8 +447,6 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 				select {
 				case <-ctx.Done():
 					return
-				case <-s.closeCh:
-					return
 				case <-time.After(2 * time.Second):
 					continue
 				}
@@ -509,7 +462,9 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 		ticker := time.NewTicker(s.retryTimeout)
 		defer ticker.Stop()
 
-		s.requestChunk(snapshot, index)
+		if err := s.requestChunk(ctx, snapshot, index); err != nil {
+			return
+		}
 
 		select {
 		case <-chunks.WaitFor(index):
@@ -520,8 +475,6 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 
 		case <-ctx.Done():
 			return
-		case <-s.closeCh:
-			return
 		}
 
 		ticker.Stop()
@@ -529,12 +482,16 @@ func (s *syncer) fetchChunks(ctx context.Context, snapshot *snapshot, chunks *ch
 }
 
 // requestChunk requests a chunk from a peer.
-func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
+//
+// returns nil if there are no peers for the given snapshot or the
+// request is successfully made and an error if the request cannot be
+// completed
+func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uint32) error {
 	peer := s.snapshots.GetPeer(snapshot)
 	if peer == "" {
 		s.logger.Error("No valid peers found for snapshot", "height", snapshot.Height,
 			"format", snapshot.Format, "hash", snapshot.Hash)
-		return
+		return nil
 	}
 
 	s.logger.Debug(
@@ -554,15 +511,15 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		},
 	}
 
-	select {
-	case s.chunkCh <- msg:
-	case <-s.closeCh:
+	if err := s.chunkCh.Send(ctx, msg); err != nil {
+		return err
 	}
+	return nil
 }
 
 // verifyApp verifies the sync, checking the app hash, last block height and app version
 func (s *syncer) verifyApp(ctx context.Context, snapshot *snapshot, appVersion uint64) error {
-	resp, err := s.connQuery.InfoSync(ctx, proxy.RequestInfo)
+	resp, err := s.conn.Info(ctx, &proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}

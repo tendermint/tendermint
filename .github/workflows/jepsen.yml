@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the Jepsen repository
-        uses: actions/checkout@v2.3.4
+        uses: actions/checkout@v3
         with:
           repository: 'tendermint/jepsen'
 
@@ -58,7 +58,7 @@ jobs:
         run: docker exec -i jepsen-control bash -c 'source /root/.bashrc; cd /jepsen/tendermint; lein run test --nemesis ${{ github.event.inputs.nemesis }} --workload ${{ github.event.inputs.workload }} --concurrency ${{ github.event.inputs.concurrency }} --tendermint-url ${{ github.event.inputs.tendermintUrl }} --merkleeyes-url ${{ github.event.inputs.merkleeyesUrl }} --time-limit ${{ github.event.inputs.timeLimit }} ${{ github.event.inputs.dupOrSuperByzValidators }}'
 
       - name: Archive results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: results
           path: tendermint/store/latest

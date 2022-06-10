@@ -6,15 +6,14 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/crypto/ed25519"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // ValidateHash returns an error if the hash is not empty, but its
-// size != tmhash.Size.
+// size != crypto.HashSize.
 func ValidateHash(h []byte) error {
-	if len(h) > 0 && len(h) != tmhash.Size {
+	if len(h) > 0 && len(h) != crypto.HashSize {
 		return fmt.Errorf("expected size to be %d bytes, got %d bytes",
-			tmhash.Size,
+			crypto.HashSize,
 			len(h),
 		)
 	}

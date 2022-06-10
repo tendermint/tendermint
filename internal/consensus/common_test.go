@@ -4,36 +4,38 @@ package consensus
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
+	"sort"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	abcicli "github.com/tendermint/tendermint/abci/client"
+	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/dash/llmq"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	mempoolv0 "github.com/tendermint/tendermint/internal/mempool/v0"
+	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/mempool"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -51,37 +53,22 @@ type cleanupFunc func()
 func configSetup(t *testing.T) *config.Config {
 	t.Helper()
 
-	cfg, err := ResetConfig("consensus_reactor_test")
+	cfg, err := ResetConfig(t.TempDir(), "consensus_reactor_test")
 	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
-
-	consensusReplayConfig, err := ResetConfig("consensus_replay_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(consensusReplayConfig.RootDir) })
-
-	configStateTest, err := ResetConfig("consensus_state_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(configStateTest.RootDir) })
-
-	configMempoolTest, err := ResetConfig("consensus_mempool_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(configMempoolTest.RootDir) })
-
-	configByzantineTest, err := ResetConfig("consensus_byzantine_test")
-	require.NoError(t, err)
-	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
+	t.Cleanup(func() { _ = os.RemoveAll(cfg.RootDir) })
+	walDir := filepath.Dir(cfg.Consensus.WalFile())
+	ensureDir(t, walDir, 0700)
 
 	return cfg
 }
 
-func ensureDir(dir string, mode os.FileMode) {
-	if err := tmos.EnsureDir(dir, mode); err != nil {
-		panic(err)
-	}
+func ensureDir(t *testing.T, dir string, mode os.FileMode) {
+	t.Helper()
+	require.NoError(t, tmos.EnsureDir(dir, mode))
 }
 
-func ResetConfig(name string) (*config.Config, error) {
-	return config.ResetTestRoot(name)
+func ResetConfig(dir, name string) (*config.Config, error) {
+	return config.ResetTestRoot(dir, name)
 }
 
 //-------------------------------------------------------------------------------
@@ -91,6 +78,7 @@ type validatorStub struct {
 	Index  int32 // Validator index. NOTE: we don't assume validator set changes.
 	Height int64
 	Round  int32
+	clock  tmtime.Source
 	types.PrivValidator
 	VotingPower int64
 	lastVote    *types.Vote
@@ -103,31 +91,34 @@ func newValidatorStub(privValidator types.PrivValidator, valIndex int32, initial
 		Index:         valIndex,
 		PrivValidator: privValidator,
 		VotingPower:   testMinPower,
+		clock:         tmtime.DefaultSource{},
 		Height:        initialHeight,
 	}
 }
 
 func (vs *validatorStub) signVote(
-	cfg *config.Config,
+	ctx context.Context,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
+	chainID string,
+	blockID types.BlockID,
 	lastAppHash []byte,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	header types.PartSetHeader) (*types.Vote, error) {
+	voteExtension []byte) (*types.Vote, error) {
 
-	proTxHash, err := vs.PrivValidator.GetProTxHash(context.Background())
+	proTxHash, err := vs.PrivValidator.GetProTxHash(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("can't get proTxHash: %w", err)
 	}
 
 	vote := &types.Vote{
-		ValidatorIndex:     vs.Index,
-		ValidatorProTxHash: proTxHash,
+		Type:               voteType,
 		Height:             vs.Height,
 		Round:              vs.Round,
-		Type:               voteType,
-		BlockID:            types.BlockID{Hash: hash, PartSetHeader: header},
+		BlockID:            blockID,
+		ValidatorProTxHash: proTxHash,
+		ValidatorIndex:     vs.Index,
+		Extension:          voteExtension,
 	}
 
 	stateID := types.StateID{
@@ -136,29 +127,42 @@ func (vs *validatorStub) signVote(
 	}
 	v := vote.ToProto()
 
-	if err := vs.PrivValidator.SignVote(context.Background(), cfg.ChainID(), quorumType, quorumHash, v, stateID, nil); err != nil {
+	if err := vs.PrivValidator.SignVote(ctx, chainID, quorumType, quorumHash, v, stateID, nil); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
-	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
 		v.BlockSignature = vs.lastVote.BlockSignature
 		v.StateSignature = vs.lastVote.StateSignature
+		v.ExtensionSignature = vs.lastVote.ExtensionSignature
 	}
 
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
+	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote, err
 }
 
-// SignDigest vote for type/hash/header
-func signVote(vs *validatorStub, cfg *config.Config, voteType tmproto.SignedMsgType, hash []byte, lastAppHash []byte, quorumType btcjson.LLMQType,
-	quorumHash crypto.QuorumHash, header types.PartSetHeader) *types.Vote {
-	v, err := vs.signVote(cfg, voteType, hash, lastAppHash, quorumType, quorumHash, header)
-	if err != nil {
-		panic(fmt.Errorf("failed to sign vote: %v", err))
+// Sign vote for type/hash/header
+func signVote(
+	ctx context.Context,
+	t *testing.T,
+	vs *validatorStub,
+	voteType tmproto.SignedMsgType,
+	chainID string,
+	blockID types.BlockID,
+	lastAppHash []byte,
+	quorumType btcjson.LLMQType,
+	quorumHash crypto.QuorumHash) *types.Vote {
+
+	var ext []byte
+	if voteType == tmproto.PrecommitType {
+		ext = []byte("extension")
 	}
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, ext)
+	require.NoError(t, err, "failed to sign vote")
 
 	vs.lastVote = v
 
@@ -166,17 +170,19 @@ func signVote(vs *validatorStub, cfg *config.Config, voteType tmproto.SignedMsgT
 }
 
 func signVotes(
-	cfg *config.Config,
+	ctx context.Context,
+	t *testing.T,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
+	chainID string,
+	blockID types.BlockID,
 	lastAppHash []byte,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	header types.PartSetHeader,
-	vss ...*validatorStub) []*types.Vote {
+	vss ...*validatorStub,
+) []*types.Vote {
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
-		votes[i] = signVote(vs, cfg, voteType, hash, lastAppHash, quorumType, quorumHash, header)
+		votes[i] = signVote(ctx, t, vs, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash)
 	}
 	return votes
 }
@@ -193,53 +199,52 @@ func incrementRound(vss ...*validatorStub) {
 	}
 }
 
-type ValidatorStubsByPower []*validatorStub
+func sortVValidatorStubsByPower(ctx context.Context, t *testing.T, vss []*validatorStub) []*validatorStub {
+	t.Helper()
+	sort.Slice(vss, func(i, j int) bool {
+		vssi, err := vss[i].GetProTxHash(ctx)
+		require.NoError(t, err)
 
-func (vss ValidatorStubsByPower) Len() int {
-	return len(vss)
-}
+		vssj, err := vss[j].GetProTxHash(ctx)
+		require.NoError(t, err)
 
-func (vss ValidatorStubsByPower) Less(i, j int) bool {
-	vssi, err := vss[i].GetProTxHash(context.Background())
-	if err != nil {
-		panic(err)
+		if vss[i].VotingPower == vss[j].VotingPower {
+			return bytes.Compare(vssi.Bytes(), vssj.Bytes()) == -1
+		}
+		return vss[i].VotingPower > vss[j].VotingPower
+	})
+
+	for idx, vs := range vss {
+		vs.Index = int32(idx)
 	}
-	vssj, err := vss[j].GetProTxHash(context.Background())
-	if err != nil {
-		panic(err)
-	}
 
-	if vss[i].VotingPower == vss[j].VotingPower {
-		return bytes.Compare(vssi.Bytes(), vssj.Bytes()) == -1
-	}
-	return vss[i].VotingPower > vss[j].VotingPower
-}
-
-func (vss ValidatorStubsByPower) Swap(i, j int) {
-	it := vss[i]
-	vss[i] = vss[j]
-	vss[i].Index = int32(i)
-	vss[j] = it
-	vss[j].Index = int32(j)
+	return vss
 }
 
 //-------------------------------------------------------------------------------
 // Functions for transitioning the consensus state
 
-func startTestRound(cs *State, height int64, round int32) {
-	cs.enterNewRound(height, round)
-	cs.startRoutines(0)
+func startTestRound(ctx context.Context, cs *State, height int64, round int32) {
+	cs.enterNewRound(ctx, height, round)
+	cs.startRoutines(ctx, 0)
 }
 
 // Create proposal block from cs1 but sign it with vs.
 func decideProposal(
+	ctx context.Context,
+	t *testing.T,
 	cs1 *State,
 	vs *validatorStub,
 	height int64,
 	round int32,
 ) (proposal *types.Proposal, block *types.Block) {
+	t.Helper()
+
 	cs1.mtx.Lock()
-	block, blockParts := cs1.createProposalBlock()
+	block, err := cs1.createProposalBlock(ctx)
+	require.NoError(t, err)
+	blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(t, err)
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
 
@@ -247,26 +252,23 @@ func decideProposal(
 	quorumType := validatorsAtProposalHeight.QuorumType
 	quorumHash := validatorsAtProposalHeight.QuorumHash
 	cs1.mtx.Unlock()
-	if block == nil {
-		panic("Failed to createProposalBlock. Did you forget to add commit for previous block?")
-	}
+
+	require.NotNil(t, block, "Failed to createProposalBlock. Did you forget to add commit for previous block?")
 
 	// Make proposal
 	polRound, propBlockID := validRound, types.BlockID{Hash: block.Hash(), PartSetHeader: blockParts.Header()}
-	proposal = types.NewProposal(height, 1, round, polRound, propBlockID)
+	proposal = types.NewProposal(height, 1, round, polRound, propBlockID, block.Header.Time)
 	p := proposal.ToProto()
 
-	proTxHash, _ := vs.GetProTxHash(context.Background())
-	pubKey, _ := vs.GetPubKey(context.Background(), validatorsAtProposalHeight.QuorumHash)
+	proTxHash, _ := vs.GetProTxHash(ctx)
+	pubKey, _ := vs.GetPubKey(ctx, validatorsAtProposalHeight.QuorumHash)
 
-	signID, err := vs.SignProposal(context.Background(), chainID, quorumType, quorumHash, p)
+	signID, err := vs.SignProposal(ctx, chainID, quorumType, quorumHash, p)
+	require.NoError(t, err)
 
-	if err != nil {
-		panic(err)
-	}
-	cs1.Logger.Debug("signed proposal common test", "height", proposal.Height, "round", proposal.Round,
-		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.Bytes(), "quorum type",
-		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID)
+	cs1.logger.Debug("signed proposal common test", "height", proposal.Height, "round", proposal.Round,
+		"proposerProTxHash", proTxHash.ShortString(), "public key", pubKey.HexString(), "quorum type",
+		validatorsAtProposalHeight.QuorumType, "quorum hash", validatorsAtProposalHeight.QuorumHash, "signID", signID.String())
 
 	proposal.Signature = p.Signature
 
@@ -280,48 +282,55 @@ func addVotes(to *State, votes ...*types.Vote) {
 }
 
 func signAddVotes(
-	cfg *config.Config,
+	ctx context.Context,
+	t *testing.T,
 	to *State,
 	voteType tmproto.SignedMsgType,
-	hash []byte,
-	header types.PartSetHeader,
+	chainID string,
+	blockID types.BlockID,
 	vss ...*validatorStub,
 ) {
-	votes := signVotes(cfg, voteType, hash, to.state.AppHash, to.Validators.QuorumType, to.Validators.QuorumHash, header, vss...)
-	addVotes(to, votes...)
+	addVotes(to, signVotes(ctx, t, voteType, chainID, blockID, to.state.AppHash, to.Validators.QuorumType, to.Validators.QuorumHash, vss...)...)
 }
 
-func validatePrevote(t *testing.T, cs *State, round int32, privVal *validatorStub, blockHash []byte) {
+func validatePrevote(
+	ctx context.Context,
+	t *testing.T,
+	cs *State,
+	round int32,
+	privVal *validatorStub,
+	blockHash []byte,
+) {
+	t.Helper()
+
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
+
 	prevotes := cs.Votes.Prevotes(round)
-	proTxHash, err := privVal.GetProTxHash(context.Background())
+	proTxHash, err := privVal.GetProTxHash(ctx)
 	require.NoError(t, err)
 	var vote *types.Vote
 	if vote = prevotes.GetByProTxHash(proTxHash); vote == nil {
 		panic("Failed to find prevote from validator")
 	}
 	if blockHash == nil {
-		if vote.BlockID.Hash != nil {
-			panic(fmt.Sprintf("Expected prevote to be for nil, got %X", vote.BlockID.Hash))
-		}
+		require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
 	} else {
-		if !bytes.Equal(vote.BlockID.Hash, blockHash) {
-			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash, vote.BlockID.Hash))
-		}
+		require.True(t, bytes.Equal(vote.BlockID.Hash, blockHash), "Expected prevote to be for %X, got %X", blockHash, vote.BlockID.Hash)
 	}
 }
 
-func validateLastCommit(t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
+func validateLastCommit(ctx context.Context, t *testing.T, cs *State, privVal *validatorStub, blockHash []byte) {
+	t.Helper()
+
 	commit := cs.LastCommit
 	err := commit.ValidateBasic()
-	if err != nil {
-		panic(fmt.Sprintf("Expected commit to be valid %v, %v", commit, err))
-	}
-	if !bytes.Equal(commit.BlockID.Hash, blockHash) {
-		panic(fmt.Sprintf("Expected commit to be for %X, got %X", blockHash, commit.BlockID.Hash))
-	}
+	require.NoError(t, err, "Expected commit to be valid %v, %v", commit, err)
+	require.True(t, bytes.Equal(commit.BlockID.Hash, blockHash), "Expected commit to be for %X, got %X", blockHash, commit.BlockID.Hash)
 }
 
 func validatePrecommit(
+	ctx context.Context,
 	t *testing.T,
 	cs *State,
 	thisRound,
@@ -330,73 +339,84 @@ func validatePrecommit(
 	votedBlockHash,
 	lockedBlockHash []byte,
 ) {
+	t.Helper()
+
 	precommits := cs.Votes.Precommits(thisRound)
-	proTxHash, err := privVal.GetProTxHash(context.Background())
+	proTxHash, err := privVal.GetProTxHash(ctx)
 	require.NoError(t, err)
-	var vote *types.Vote
-	if vote = precommits.GetByProTxHash(proTxHash); vote == nil {
-		panic("Failed to find precommit from validator")
-	}
+	vote := precommits.GetByProTxHash(proTxHash)
+	require.NotNil(t, vote, "Failed to find precommit from validator")
 
 	if votedBlockHash == nil {
-		if vote.BlockID.Hash != nil {
-			panic("Expected precommit to be for nil")
-		}
+		require.Nil(t, vote.BlockID.Hash, "Expected precommit to be for nil")
 	} else {
-		if !bytes.Equal(vote.BlockID.Hash, votedBlockHash) {
-			panic("Expected precommit to be for proposal block")
-		}
+		require.True(t, bytes.Equal(vote.BlockID.Hash, votedBlockHash), "Expected precommit to be for proposal block")
 	}
 
+	rs := cs.GetRoundState()
 	if lockedBlockHash == nil {
-		if cs.LockedRound != lockRound || cs.LockedBlock != nil {
-			panic(fmt.Sprintf(
-				"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
-				lockRound,
-				cs.LockedRound,
-				cs.LockedBlock))
-		}
+		require.False(t, rs.LockedRound != lockRound || rs.LockedBlock != nil,
+			"Expected to be locked on nil at round %d. Got locked at round %d with block %v",
+			lockRound,
+			rs.LockedRound,
+			rs.LockedBlock)
 	} else {
-		if cs.LockedRound != lockRound || !bytes.Equal(cs.LockedBlock.Hash(), lockedBlockHash) {
-			panic(fmt.Sprintf(
-				"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
-				lockRound,
-				cs.LockedRound,
-				cs.LockedBlock.Hash(),
-				lockedBlockHash))
+		require.False(t, rs.LockedRound != lockRound || !bytes.Equal(rs.LockedBlock.Hash(), lockedBlockHash),
+			"Expected block to be locked on round %d, got %d. Got locked block %X, expected %X",
+			lockRound,
+			rs.LockedRound,
+			rs.LockedBlock.Hash(),
+			lockedBlockHash)
+	}
+}
+
+func subscribeToVoter(ctx context.Context, t *testing.T, cs *State, proTxHash []byte) <-chan tmpubsub.Message {
+	t.Helper()
+
+	ch := make(chan tmpubsub.Message, 1)
+	if err := cs.eventBus.Observe(ctx, func(msg tmpubsub.Message) error {
+		vote := msg.Data().(types.EventDataVote)
+		// we only fire for our own votes
+		if bytes.Equal(proTxHash, vote.Vote.ValidatorProTxHash) {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case ch <- msg:
+			}
 		}
+		return nil
+	}, types.EventQueryVote); err != nil {
+		t.Fatalf("Failed to observe query %v: %v", types.EventQueryVote, err)
 	}
+	return ch
 }
 
-func validatePrevoteAndPrecommit(
-	t *testing.T,
-	cs *State,
-	thisRound,
-	lockRound int32,
-	privVal *validatorStub,
-	votedBlockHash,
-	lockedBlockHash []byte,
-) {
-	// verify the prevote
-	validatePrevote(t, cs, thisRound, privVal, votedBlockHash)
-	// verify precommit
-	cs.mtx.Lock()
-	validatePrecommit(t, cs, thisRound, lockRound, privVal, votedBlockHash, lockedBlockHash)
-	cs.mtx.Unlock()
-}
-
-func subscribeToVoter(cs *State, proTxHash []byte) <-chan tmpubsub.Message {
-	votesSub, err := cs.eventBus.SubscribeUnbuffered(context.Background(), testSubscriber, types.EventQueryVote)
+func subscribeToVoterBuffered(ctx context.Context, t *testing.T, cs *State, proTxHash []byte) <-chan tmpubsub.Message {
+	t.Helper()
+	votesSub, err := cs.eventBus.SubscribeWithArgs(ctx, tmpubsub.SubscribeArgs{
+		ClientID: testSubscriber,
+		Query:    types.EventQueryVote,
+		Limit:    10})
 	if err != nil {
-		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
+		t.Fatalf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote)
 	}
-	ch := make(chan tmpubsub.Message)
+	ch := make(chan tmpubsub.Message, 10)
 	go func() {
-		for msg := range votesSub.Out() {
+		for {
+			msg, err := votesSub.Next(ctx)
+			if err != nil {
+				if !errors.Is(err, tmpubsub.ErrTerminated) && !errors.Is(err, context.Canceled) {
+					t.Errorf("error terminating pubsub %s", err)
+				}
+				return
+			}
 			vote := msg.Data().(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(proTxHash, vote.Vote.ValidatorProTxHash) {
-				ch <- msg
+				select {
+				case <-ctx.Done():
+				case ch <- msg:
+				}
 			}
 		}
 	}()
@@ -406,41 +426,59 @@ func subscribeToVoter(cs *State, proTxHash []byte) <-chan tmpubsub.Message {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newState(state sm.State, pv types.PrivValidator, app abci.Application) (*State, error) {
-	cfg, err := config.ResetTestRoot("consensus_state_test")
-	if err != nil {
-		return nil, err
-	}
-	return newStateWithConfig(cfg, state, pv, app), nil
+func newState(
+	ctx context.Context,
+	t *testing.T,
+	logger log.Logger,
+	state sm.State,
+	pv types.PrivValidator,
+	app abci.Application,
+) *State {
+	t.Helper()
+
+	cfg, err := config.ResetTestRoot(t.TempDir(), "consensus_state_test")
+	require.NoError(t, err)
+
+	return newStateWithConfig(ctx, t, logger, cfg, state, pv, app)
 }
 
 func newStateWithConfig(
+	ctx context.Context,
+	t *testing.T,
+	logger log.Logger,
 	thisConfig *config.Config,
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
 ) *State {
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	return newStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockStore)
+	t.Helper()
+	return newStateWithConfigAndBlockStore(ctx, t, logger, thisConfig, state, pv, app, store.NewBlockStore(dbm.NewMemDB()))
 }
 
 func newStateWithConfigAndBlockStore(
+	ctx context.Context,
+	t *testing.T,
+	logger log.Logger,
 	thisConfig *config.Config,
 	state sm.State,
 	pv types.PrivValidator,
 	app abci.Application,
 	blockStore *store.BlockStore,
 ) *State {
+	t.Helper()
 
-	// one for mempool, one for consensus, one for signature validation
-	mtx := new(tmsync.Mutex)
-	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
-	proxyAppConnQry := abcicli.NewLocalClient(mtx, app)
+	// one for mempool, one for consensus
+	proxyAppConnMem := abciclient.NewLocalClient(logger, app)
+	proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
 	// Make Mempool
-	mempool := mempoolv0.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+
+	mempool := mempool.NewTxMempool(
+		logger.With("module", "mempool"),
+		thisConfig.Mempool,
+		proxyAppConnMem,
+	)
+
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
@@ -450,275 +488,293 @@ func newStateWithConfigAndBlockStore(
 	// Make State
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
-		panic(err)
-	}
+	require.NoError(t, stateStore.Save(state))
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, proxyAppConnQry, mempool, evpool, blockStore, nil)
+	eventBus := eventbus.NewDefault(logger.With("module", "events"))
+	require.NoError(t, eventBus.Start(ctx))
 
-	logger := log.TestingLogger().With("module", "consensus")
-	cs := NewStateWithLogger(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool, logger, 0)
-	cs.SetLogger(logger)
-	cs.SetPrivValidator(pv)
-
-	eventBus := types.NewEventBus()
-	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-	err := eventBus.Start()
+	blockExec := sm.NewBlockExecutor(stateStore, logger, proxyAppConnCon, mempool, evpool, blockStore, eventBus, sm.NopMetrics())
+	cs, err := NewState(logger.With("module", "consensus"),
+		thisConfig.Consensus,
+		stateStore,
+		blockExec,
+		blockStore,
+		mempool,
+		evpool,
+		eventBus,
+	)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	cs.SetEventBus(eventBus)
+
+	cs.SetPrivValidator(ctx, pv)
+
 	return cs
 }
 
-func loadPrivValidator(cfg *config.Config) *privval.FilePV {
+func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
+	t.Helper()
 	privValidatorKeyFile := cfg.PrivValidator.KeyFile()
-	ensureDir(filepath.Dir(privValidatorKeyFile), 0700)
+	ensureDir(t, filepath.Dir(privValidatorKeyFile), 0700)
 	privValidatorStateFile := cfg.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
-	if err != nil {
-		panic(err)
-	}
-	privValidator.Reset()
+	require.NoError(t, err)
+	require.NoError(t, privValidator.Reset())
 	return privValidator
 }
 
-func randState(cfg *config.Config, nValidators int) (*State, []*validatorStub, error) {
+type makeStateArgs struct {
+	config      *config.Config
+	logger      log.Logger
+	validators  int
+	application abci.Application
+}
+
+func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
+	t.Helper()
 	// Get State
-	state, privVals := randGenesisState(cfg, nValidators, false, 10)
-
-	vss := make([]*validatorStub, nValidators)
-
-	cs, err := newState(state, privVals[0], kvstore.NewApplication())
-	if err != nil {
-		return nil, nil, err
+	validators := 4
+	if args.validators != 0 {
+		validators = args.validators
+	}
+	var app abci.Application
+	app = kvstore.NewApplication()
+	if args.application != nil {
+		app = args.application
+	}
+	if args.config == nil {
+		args.config = configSetup(t)
+	}
+	if args.logger == nil {
+		args.logger = log.NewNopLogger()
 	}
 
-	for i := 0; i < nValidators; i++ {
+	consensusParams := factory.ConsensusParams()
+	// vote timeout increased because of bls12381 signing/verifying operations are longer performed than ed25519
+	// and 10ms (previous value) is not enough
+	consensusParams.Timeout.Vote = 50 * time.Millisecond
+	consensusParams.Timeout.VoteDelta = 5 * time.Millisecond
+
+	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
+		Params:     consensusParams,
+		Validators: validators,
+	})
+
+	vss := make([]*validatorStub, validators)
+
+	cs := newState(ctx, t, args.logger, state, privVals[0], app)
+
+	for i := 0; i < validators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i), cs.state.InitialHeight)
 	}
 
-	return cs, vss, nil
+	return cs, vss
 }
 
 //-------------------------------------------------------------------------------
 
-func ensureNoNewEvent(ch <-chan tmpubsub.Message, timeout time.Duration,
+func ensureNoMessageBeforeTimeout(t *testing.T, ch <-chan tmpubsub.Message, timeout time.Duration,
 	errorMessage string) {
+	t.Helper()
 	select {
 	case <-time.After(timeout):
 		break
 	case <-ch:
-		panic(errorMessage)
+		t.Fatal(errorMessage)
 	}
 }
 
-func ensureNoNewEventOnChannel(ch <-chan tmpubsub.Message) {
-	ensureNoNewEvent(
+func ensureNoNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
+	t.Helper()
+	ensureNoMessageBeforeTimeout(
+		t,
 		ch,
 		ensureTimeout,
 		"We should be stuck waiting, not receiving new event on the channel")
 }
 
-func ensureNoNewRoundStep(stepCh <-chan tmpubsub.Message) {
-	ensureNoNewEvent(
+func ensureNoNewRoundStep(t *testing.T, stepCh <-chan tmpubsub.Message) {
+	t.Helper()
+	ensureNoMessageBeforeTimeout(
+		t,
 		stepCh,
 		ensureTimeout,
 		"We should be stuck waiting, not receiving NewRoundStep event")
 }
 
-func ensureNoNewUnlock(unlockCh <-chan tmpubsub.Message) {
-	ensureNoNewEvent(
-		unlockCh,
-		ensureTimeout,
-		"We should be stuck waiting, not receiving Unlock event")
-}
-
-func ensureNoNewTimeout(stepCh <-chan tmpubsub.Message, timeout int64) {
+func ensureNoNewTimeout(t *testing.T, stepCh <-chan tmpubsub.Message, timeout int64) {
+	t.Helper()
 	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
-	ensureNoNewEvent(
+	ensureNoMessageBeforeTimeout(
+		t,
 		stepCh,
 		timeoutDuration,
 		"We should be stuck waiting, not receiving NewTimeout event")
 }
 
-func ensureNewEvent(ch <-chan tmpubsub.Message, height int64, round int32, timeout time.Duration, errorMessage string) {
-	select {
-	case <-time.After(timeout):
-		panic(errorMessage)
-	case msg := <-ch:
-		roundStateEvent, ok := msg.Data().(types.EventDataRoundState)
-		if !ok {
-			panic(fmt.Sprintf("expected a EventDataRoundState, got %T. Wrong subscription channel?",
-				msg.Data()))
-		}
-		if roundStateEvent.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, roundStateEvent.Height))
-		}
-		if roundStateEvent.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, roundStateEvent.Round))
-		}
-		// TODO: We could check also for a step at this point!
-	}
+func ensureNewEvent(t *testing.T, ch <-chan tmpubsub.Message, height int64, round int32, timeout time.Duration) {
+	t.Helper()
+	msg := ensureMessageBeforeTimeout(t, ch, ensureTimeout)
+	roundStateEvent, ok := msg.Data().(types.EventDataRoundState)
+	require.True(t, ok,
+		"expected a EventDataRoundState, got %T. Wrong subscription channel?",
+		msg.Data())
+
+	require.Equal(t, height, roundStateEvent.Height)
+	require.Equal(t, round, roundStateEvent.Round)
+	// TODO: We could check also for a step at this point!
 }
 
-func ensureNewRound(roundCh <-chan tmpubsub.Message, height int64, round int32) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for NewRound event")
-	case msg := <-roundCh:
-		newRoundEvent, ok := msg.Data().(types.EventDataNewRound)
-		if !ok {
-			panic(fmt.Sprintf("expected a EventDataNewRound, got %T. Wrong subscription channel?",
-				msg.Data()))
-		}
-		if newRoundEvent.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, newRoundEvent.Height))
-		}
-		if newRoundEvent.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, newRoundEvent.Round))
-		}
-	}
+func ensureNewRound(t *testing.T, roundCh <-chan tmpubsub.Message, height int64, round int32) {
+	t.Helper()
+	msg := ensureMessageBeforeTimeout(t, roundCh, ensureTimeout)
+	newRoundEvent, ok := msg.Data().(types.EventDataNewRound)
+	require.True(t, ok, "expected a EventDataNewRound, got %T. Wrong subscription channel?",
+		msg.Data())
+
+	require.Equal(t, height, newRoundEvent.Height)
+	require.Equal(t, round, newRoundEvent.Round)
 }
 
-func ensureNewTimeout(timeoutCh <-chan tmpubsub.Message, height int64, round int32, timeout int64) {
+func ensureNewTimeout(t *testing.T, timeoutCh <-chan tmpubsub.Message, height int64, round int32, timeout int64) {
+	t.Helper()
 	timeoutDuration := time.Duration(timeout*10) * time.Nanosecond
-	ensureNewEvent(timeoutCh, height, round, timeoutDuration,
-		"Timeout expired while waiting for NewTimeout event")
+	ensureNewEvent(t, timeoutCh, height, round, timeoutDuration)
 }
 
-func ensureNewProposal(proposalCh <-chan tmpubsub.Message, height int64, round int32) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for NewProposal event")
-	case msg := <-proposalCh:
-		proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
-		if !ok {
-			panic(fmt.Sprintf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
-				msg.Data()))
-		}
-		if proposalEvent.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, proposalEvent.Height))
-		}
-		if proposalEvent.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, proposalEvent.Round))
-		}
+func ensureNewProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32) types.BlockID {
+	t.Helper()
+	msg := ensureMessageBeforeTimeout(t, proposalCh, ensureTimeout)
+	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
+	require.True(t, ok, "expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
+		msg.Data())
+	require.Equal(t, height, proposalEvent.Height)
+	require.Equal(t, round, proposalEvent.Round)
+	return proposalEvent.BlockID
+}
+
+func ensureNewValidBlock(t *testing.T, validBlockCh <-chan tmpubsub.Message, height int64, round int32) {
+	t.Helper()
+	ensureNewEvent(t, validBlockCh, height, round, ensureTimeout)
+}
+
+func ensureNewBlock(t *testing.T, blockCh <-chan tmpubsub.Message, height int64) {
+	t.Helper()
+	msg := ensureMessageBeforeTimeout(t, blockCh, ensureTimeout)
+	blockEvent, ok := msg.Data().(types.EventDataNewBlock)
+	require.True(t, ok, "expected a EventDataNewBlock, got %T. Wrong subscription channel?",
+		msg.Data())
+	require.Equal(t, height, blockEvent.Block.Height)
+}
+
+func ensureNewBlockHeader(t *testing.T, blockCh <-chan tmpubsub.Message, height int64, blockHash tmbytes.HexBytes) {
+	t.Helper()
+	msg := ensureMessageBeforeTimeout(t, blockCh, ensureTimeout)
+	blockHeaderEvent, ok := msg.Data().(types.EventDataNewBlockHeader)
+	require.True(t, ok, "expected a EventDataNewBlockHeader, got %T. Wrong subscription channel?",
+		msg.Data())
+
+	require.Equal(t, height, blockHeaderEvent.Header.Height)
+	require.True(t, bytes.Equal(blockHeaderEvent.Header.Hash(), blockHash))
+}
+
+func ensureLock(t *testing.T, lockCh <-chan tmpubsub.Message, height int64, round int32) {
+	t.Helper()
+	ensureNewEvent(t, lockCh, height, round, ensureTimeout)
+}
+
+func ensureRelock(t *testing.T, relockCh <-chan tmpubsub.Message, height int64, round int32) {
+	t.Helper()
+	ensureNewEvent(t, relockCh, height, round, ensureTimeout)
+}
+
+func ensureProposal(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
+	ensureProposalWithTimeout(t, proposalCh, height, round, &propID, ensureTimeout)
+}
+
+func ensureProposalWithTimeout(t *testing.T, proposalCh <-chan tmpubsub.Message, height int64, round int32, propID *types.BlockID, timeout time.Duration) {
+	t.Helper()
+	msg := ensureMessageBeforeTimeout(t, proposalCh, timeout)
+	proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
+	require.True(t, ok, "expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
+		msg.Data())
+	require.Equal(t, height, proposalEvent.Height)
+	require.Equal(t, round, proposalEvent.Round)
+	if propID != nil {
+		require.True(t, proposalEvent.BlockID.Equals(*propID),
+			"Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID)
 	}
 }
 
-func ensureNewValidBlock(validBlockCh <-chan tmpubsub.Message, height int64, round int32) {
-	ensureNewEvent(validBlockCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewValidBlock event")
+func ensurePrecommit(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32) {
+	t.Helper()
+	ensureVote(t, voteCh, height, round, tmproto.PrecommitType)
 }
 
-func ensureNewBlock(blockCh <-chan tmpubsub.Message, height int64) {
+func ensurePrevote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32) {
+	t.Helper()
+	ensureVote(t, voteCh, height, round, tmproto.PrevoteType)
+}
+
+func ensurePrevoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrevoteType)
+}
+
+func ensurePrecommitMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrecommitType)
+}
+
+func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte, voteType tmproto.SignedMsgType) {
+	t.Helper()
 	select {
 	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for NewBlock event")
-	case msg := <-blockCh:
-		blockEvent, ok := msg.Data().(types.EventDataNewBlock)
-		if !ok {
-			panic(fmt.Sprintf("expected a EventDataNewBlock, got %T. Wrong subscription channel?",
-				msg.Data()))
-		}
-		if blockEvent.Block.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, blockEvent.Block.Height))
-		}
-	}
-}
-
-func ensureNewBlockHeader(blockCh <-chan tmpubsub.Message, height int64, blockHash tmbytes.HexBytes) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for NewBlockHeader event")
-	case msg := <-blockCh:
-		blockHeaderEvent, ok := msg.Data().(types.EventDataNewBlockHeader)
-		if !ok {
-			panic(fmt.Sprintf("expected a EventDataNewBlockHeader, got %T. Wrong subscription channel?",
-				msg.Data()))
-		}
-		if blockHeaderEvent.Header.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, blockHeaderEvent.Header.Height))
-		}
-		if !bytes.Equal(blockHeaderEvent.Header.Hash(), blockHash) {
-			panic(fmt.Sprintf("expected header %X, got %X", blockHash, blockHeaderEvent.Header.Hash()))
-		}
-	}
-}
-
-func ensureNewUnlock(unlockCh <-chan tmpubsub.Message, height int64, round int32) {
-	ensureNewEvent(unlockCh, height, round, ensureTimeout,
-		"Timeout expired while waiting for NewUnlock event")
-}
-
-func ensureProposal(proposalCh <-chan tmpubsub.Message, height int64, round int32, propID types.BlockID) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for NewProposal event")
-	case msg := <-proposalCh:
-		proposalEvent, ok := msg.Data().(types.EventDataCompleteProposal)
-		if !ok {
-			panic(fmt.Sprintf("expected a EventDataCompleteProposal, got %T. Wrong subscription channel?",
-				msg.Data()))
-		}
-		if proposalEvent.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, proposalEvent.Height))
-		}
-		if proposalEvent.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, proposalEvent.Round))
-		}
-		if !proposalEvent.BlockID.Equals(propID) {
-			panic(fmt.Sprintf("Proposed block does not match expected block (%v != %v)", proposalEvent.BlockID, propID))
-		}
-	}
-}
-
-func ensurePrecommit(voteCh <-chan tmpubsub.Message, height int64, round int32) {
-	ensureVote(voteCh, height, round, tmproto.PrecommitType)
-}
-
-func ensurePrevote(voteCh <-chan tmpubsub.Message, height int64, round int32) {
-	ensureVote(voteCh, height, round, tmproto.PrevoteType)
-}
-
-func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
-	voteType tmproto.SignedMsgType) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for NewVote event")
+		t.Fatal("Timeout expired while waiting for NewVote event")
 	case msg := <-voteCh:
 		voteEvent, ok := msg.Data().(types.EventDataVote)
-		if !ok {
-			panic(fmt.Sprintf("expected a EventDataVote, got %T. Wrong subscription channel?",
-				msg.Data()))
-		}
+		require.True(t, ok, "expected a EventDataVote, got %T. Wrong subscription channel?",
+			msg.Data())
+
 		vote := voteEvent.Vote
-		if vote.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, vote.Height))
-		}
-		if vote.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, vote.Round))
-		}
-		if vote.Type != voteType {
-			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
+		assert.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		assert.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		assert.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
+		if hash == nil {
+			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
+		} else {
+			require.True(t, bytes.Equal(vote.BlockID.Hash, hash), "Expected prevote to be for %X, got %X", hash, vote.BlockID.Hash)
 		}
 	}
 }
 
-func ensurePrecommitTimeout(ch <-chan tmpubsub.Message) {
-	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for the Precommit to Timeout")
-	case <-ch:
-	}
+func ensureVote(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, voteType tmproto.SignedMsgType) {
+	t.Helper()
+	msg := ensureMessageBeforeTimeout(t, voteCh, ensureTimeout)
+	voteEvent, ok := msg.Data().(types.EventDataVote)
+	require.True(t, ok, "expected a EventDataVote, got %T. Wrong subscription channel?",
+		msg.Data())
+
+	vote := voteEvent.Vote
+	require.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+	require.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+	require.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
 }
 
-func ensureNewEventOnChannel(ch <-chan tmpubsub.Message) {
+func ensureNewEventOnChannel(t *testing.T, ch <-chan tmpubsub.Message) {
+	t.Helper()
+	ensureMessageBeforeTimeout(t, ch, ensureTimeout)
+}
+
+func ensureMessageBeforeTimeout(t *testing.T, ch <-chan tmpubsub.Message, to time.Duration) tmpubsub.Message {
+	t.Helper()
 	select {
-	case <-time.After(ensureTimeout):
-		panic("Timeout expired while waiting for new activity on the channel")
-	case <-ch:
+	case <-time.After(to):
+		t.Fatalf("Timeout expired while waiting for message")
+	case msg := <-ch:
+		return msg
 	}
+	panic("unreachable")
 }
 
 //-------------------------------------------------------------------------------
@@ -727,20 +783,22 @@ func ensureNewEventOnChannel(ch <-chan tmpubsub.Message) {
 // consensusLogger is a TestingLogger which uses a different
 // color for each validator ("validator" key must exist).
 func consensusLogger() log.Logger {
-	return log.TestingLogger().With("module", "consensus")
+	return log.NewNopLogger().With("module", "consensus")
 }
 
-func randConsensusState(
+func makeConsensusState(
+	ctx context.Context,
 	t *testing.T,
 	cfg *config.Config,
 	nValidators int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
-	appFunc func() abci.Application,
 	configOpts ...func(*config.Config),
 ) ([]*State, cleanupFunc) {
+	t.Helper()
+	tempDir := t.TempDir()
 
-	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1)
+	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1, factory.ConsensusParams())
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 
@@ -751,7 +809,7 @@ func randConsensusState(
 		blockStore := store.NewBlockStore(dbm.NewMemDB()) // each state needs its own db
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
-		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		thisConfig, err := ResetConfig(tempDir, fmt.Sprintf("%s_%d", testName, i))
 		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -760,20 +818,19 @@ func randConsensusState(
 			opt(thisConfig)
 		}
 
-		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		walDir := filepath.Dir(thisConfig.Consensus.WalFile())
+		ensureDir(t, walDir, 0700)
 
-		app := appFunc()
-
-		if appCloser, ok := app.(io.Closer); ok {
-			closeFuncs = append(closeFuncs, appCloser.Close)
-		}
+		app := kvstore.NewApplication()
+		closeFuncs = append(closeFuncs, app.Close)
 
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{ValidatorSet: &vals})
+		require.NoError(t, err)
 
-		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, blockStore)
+		l := logger.With("validator", i, "module", "consensus")
+		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
 		css[i].SetTimeoutTicker(tickerFunc())
-		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
 
 	return css, func() {
@@ -788,28 +845,34 @@ func randConsensusState(
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
+	ctx context.Context,
+	t *testing.T,
 	cfg *config.Config,
-	nValidators,
+	nValidators int,
 	nPeers int,
 	testName string,
 	tickerFunc func() TimeoutTicker,
-	appFunc func(string) abci.Application,
+	appFunc func(log.Logger, string) abci.Application,
 ) ([]*State, *types.GenesisDoc, *config.Config, cleanupFunc) {
-	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1)
+	t.Helper()
+
+	consParams := factory.ConsensusParams()
+	consParams.Timeout.Propose = 1 * time.Second
+
+	genDoc, privVals := factory.RandGenesisDoc(cfg, nValidators, 1, consParams)
 	css := make([]*State, nPeers)
+	t.Helper()
 	logger := consensusLogger()
 	var peer0Config *config.Config
 	closeFuncs := make([]func() error, 0, nValidators)
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		state, _ := sm.MakeGenesisState(genDoc)
-		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
-		if err != nil {
-			panic(err)
-		}
+		thisConfig, err := ResetConfig(t.TempDir(), fmt.Sprintf("%s_%d", testName, i))
+		require.NoError(t, err)
 
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
-		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		ensureDir(t, filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		if i == 0 {
 			peer0Config = thisConfig
 		}
@@ -817,36 +880,40 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
-			if err != nil {
-				panic(err)
-			}
-			tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
-			if err != nil {
-				panic(err)
-			}
+			tempKeyFile, err := os.CreateTemp(t.TempDir(), "priv_validator_key_")
+			require.NoError(t, err)
+
+			tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
+			require.NoError(t, err)
+
 			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
+			require.NoError(t, err)
 
 			// These validator might not have the public keys, for testing purposes let's assume they don't
 			state.Validators.HasPublicKeys = false
 			state.NextValidators.HasPublicKeys = false
 		}
 
-		app := appFunc(path.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
+		app := appFunc(logger, filepath.Join(cfg.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		if appCloser, ok := app.(io.Closer); ok {
 			closeFuncs = append(closeFuncs, appCloser.Close)
 		}
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
-			// simulate handshake, receive app version. If don't do this, replay test will fail
+		switch app.(type) {
+		// simulate handshake, receive app version. If don't do this, replay test will fail
+		case *kvstore.PersistentKVStoreApplication:
+			state.Version.Consensus.App = kvstore.ProtocolVersion
+		case *kvstore.Application:
 			state.Version.Consensus.App = kvstore.ProtocolVersion
 		}
-		app.InitChain(abci.RequestInitChain{ValidatorSet: &vals})
+		_, err = app.InitChain(ctx, &abci.RequestInitChain{ValidatorSet: &vals})
+		require.NoError(t, err)
 		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
 
-		proTxHash, _ := privVal.GetProTxHash(context.Background())
-		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
-		css[i].SetLogger(logger.With("validator", i, "node_proTxHash", proTxHash.ShortString(), "module", "consensus"))
+		proTxHash, _ := privVal.GetProTxHash(ctx)
+		css[i] = newStateWithConfig(ctx, t,
+			logger.With("validator", i, "node_proTxHash", proTxHash.ShortString(), "module", "consensus"),
+			thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 	return css, genDoc, peer0Config, func() {
@@ -859,22 +926,45 @@ func randConsensusNetWithPeers(
 	}
 }
 
-//-------------------------------------------------------------------------------
-// genesis
+type genesisStateArgs struct {
+	Validators int
+	Power      int64
+	Params     *types.ConsensusParams
+	Time       time.Time
+}
 
-func randGenesisState(cfg *config.Config, numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
-	genDoc, privValidators := factory.RandGenesisDoc(cfg, numValidators, 1)
-	s0, _ := sm.MakeGenesisState(genDoc)
-	return s0, privValidators
+func makeGenesisState(ctx context.Context, t *testing.T, cfg *config.Config, args genesisStateArgs) (sm.State, []types.PrivValidator) {
+	t.Helper()
+	if args.Power == 0 {
+		args.Power = 1
+	}
+	if args.Validators == 0 {
+		args.Power = 4
+	}
+	if args.Params == nil {
+		args.Params = types.DefaultConsensusParams()
+	}
+	if args.Time.IsZero() {
+		args.Time = time.Now()
+	}
+	genDoc, privVals := factory.RandGenesisDoc(cfg, args.Validators, 1, args.Params)
+	genDoc.GenesisTime = args.Time
+	s0, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
+	return s0, privVals
 }
 
 func newMockTickerFunc(onlyOnce bool) func() TimeoutTicker {
 	return func() TimeoutTicker {
 		return &mockTicker{
-			c:        make(chan timeoutInfo, 10),
+			c:        make(chan timeoutInfo, 100),
 			onlyOnce: onlyOnce,
 		}
 	}
+}
+
+func newTickerFunc() func() TimeoutTicker {
+	return func() TimeoutTicker { return NewTimeoutTicker(log.NewNopLogger()) }
 }
 
 // mock ticker only fires on RoundStepNewHeight
@@ -887,13 +977,9 @@ type mockTicker struct {
 	fired    bool
 }
 
-func (m *mockTicker) Start() error {
-	return nil
-}
-
-func (m *mockTicker) Stop() error {
-	return nil
-}
+func (m *mockTicker) Start(context.Context) error { return nil }
+func (m *mockTicker) Stop()                       {}
+func (m *mockTicker) IsRunning() bool             { return false }
 
 func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 	m.mtx.Lock()
@@ -911,14 +997,8 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 	return m.c
 }
 
-func (*mockTicker) SetLogger(log.Logger) {}
-
-func newKVStore() abci.Application {
+func newEpehemeralKVStore(_ log.Logger, _ string) abci.Application {
 	return kvstore.NewApplication()
-}
-
-func newPersistentKVStoreWithPath(dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(dbDir)
 }
 
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
@@ -931,7 +1011,8 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 		v1.Height == v2.GetHeight() &&
 		v1.Round == v2.Round &&
 		bytes.Equal(v1.ValidatorProTxHash.Bytes(), v2.GetValidatorProTxHash()) &&
-		v1.ValidatorIndex == v2.GetValidatorIndex()
+		v1.ValidatorIndex == v2.GetValidatorIndex() &&
+		bytes.Equal(v1.Extension, v2.Extension)
 }
 
 type stateQuorumManager struct {

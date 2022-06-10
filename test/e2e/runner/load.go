@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -15,7 +16,7 @@ import (
 
 // Load generates transactions against the network until the given context is
 // canceled.
-func Load(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet) error {
+func Load(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Testnet) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.

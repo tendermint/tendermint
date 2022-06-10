@@ -11,10 +11,13 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/tendermint/tendermint/libs"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	service "github.com/tendermint/tendermint/libs/service"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -33,6 +36,7 @@ type LightClient interface {
 	Update(ctx context.Context, now time.Time) (*types.LightBlock, error)
 	VerifyLightBlockAtHeight(ctx context.Context, height int64, now time.Time) (*types.LightBlock, error)
 	TrustedLightBlock(height int64) (*types.LightBlock, error)
+	Status(ctx context.Context) *types.LightClientInfo
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -49,6 +53,8 @@ type Client struct {
 	// proof runtime used to verify values returned by ABCIQuery
 	prt       *merkle.ProofRuntime
 	keyPathFn KeyPathFunc
+
+	closers []func()
 }
 
 var _ rpcclient.Client = (*Client)(nil)
@@ -87,36 +93,48 @@ func DefaultMerkleKeyPathFn() KeyPathFunc {
 }
 
 // NewClient returns a new client.
-func NewClient(next rpcclient.Client, lc LightClient, opts ...Option) *Client {
+func NewClient(logger log.Logger, next rpcclient.Client, lc LightClient, opts ...Option) *Client {
 	c := &Client{
 		next: next,
 		lc:   lc,
 		prt:  merkle.DefaultProofRuntime(),
 	}
-	c.BaseService = *service.NewBaseService(nil, "Client", c)
+	c.BaseService = *service.NewBaseService(logger, "Client", c)
 	for _, o := range opts {
 		o(c)
 	}
 	return c
 }
 
-func (c *Client) OnStart() error {
-	if !c.next.IsRunning() {
-		return c.next.Start()
+func (c *Client) OnStart(ctx context.Context) error {
+	nctx, ncancel := context.WithCancel(ctx)
+	if err := c.next.Start(nctx); err != nil {
+		ncancel()
+		return err
 	}
+	c.closers = append(c.closers, ncancel)
+
 	return nil
 }
 
 func (c *Client) OnStop() {
-	if c.next.IsRunning() {
-		if err := c.next.Stop(); err != nil {
-			c.Logger.Error("Error stopping on next", "err", err)
-		}
+	for _, closer := range c.closers {
+		closer()
 	}
 }
 
+// Returns the status of the light client. Previously this was querying the primary connected to the client
+// As a consequence of this change, running /status on the light client will return nil for SyncInfo, NodeInfo
+// and ValdiatorInfo.
 func (c *Client) Status(ctx context.Context) (*coretypes.ResultStatus, error) {
-	return c.next.Status(ctx)
+	lightClientInfo := c.lc.Status(ctx)
+
+	return &coretypes.ResultStatus{
+		NodeInfo:        types.NodeInfo{},
+		SyncInfo:        coretypes.SyncInfo{},
+		ValidatorInfo:   coretypes.ValidatorInfo{},
+		LightClientInfo: *lightClientInfo,
+	}, nil
 }
 
 func (c *Client) ABCIInfo(ctx context.Context) (*coretypes.ResultABCIInfo, error) {
@@ -215,8 +233,8 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.R
 	return c.next.BroadcastTxSync(ctx, tx)
 }
 
-func (c *Client) UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error) {
-	return c.next.UnconfirmedTxs(ctx, limit)
+func (c *Client) UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
+	return c.next.UnconfirmedTxs(ctx, page, perPage)
 }
 
 func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {
@@ -270,6 +288,10 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*coretypes
 	}
 
 	return res, nil
+}
+
+func (c *Client) Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error) {
+	return c.next.Events(ctx, req)
 }
 
 func (c *Client) Health(ctx context.Context) (*coretypes.ResultHealth, error) {
@@ -426,32 +448,25 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*coretypes.Re
 		return nil, err
 	}
 
-	// proto-encode BeginBlock events
-	bbeBytes, err := proto.Marshal(&abci.ResponseBeginBlock{
-		Events: res.BeginBlockEvents,
+	// proto-encode FinalizeBlock events
+	bbeBytes, err := proto.Marshal(&abci.ResponseFinalizeBlock{
+		Events: res.FinalizeBlockEvents,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Build a Merkle tree of proto-encoded DeliverTx results and get a hash.
-	results := types.NewResults(res.TxsResults)
-
-	// proto-encode EndBlock events.
-	ebeBytes, err := proto.Marshal(&abci.ResponseEndBlock{
-		Events: res.EndBlockEvents,
-	})
+	// Build a Merkle tree out of the slice.
+	rs, err := abci.MarshalTxResults(res.TxsResults)
 	if err != nil {
 		return nil, err
 	}
-
-	// Build a Merkle tree out of the above 3 binary slices.
-	rH := merkle.HashFromByteSlices([][]byte{bbeBytes, results.Hash(), ebeBytes})
+	mh := merkle.HashFromByteSlices(append([][]byte{bbeBytes}, rs...))
 
 	// Verify block results.
-	if !bytes.Equal(rH, trustedBlock.LastResultsHash) {
+	if !bytes.Equal(mh, trustedBlock.LastResultsHash) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
-			rH, trustedBlock.LastResultsHash)
+			mh, trustedBlock.LastResultsHash)
 	}
 
 	return res, nil
@@ -570,13 +585,13 @@ func (c *Client) Validators(
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+	v := l.ValidatorSet.Validators[skipCount : skipCount+tmmath.MinInt(int(perPage), totalCount-skipCount)]
 	var (
 		thresholdPublicKey crypto.PubKey
 		quorumHash         crypto.QuorumHash
 		quorumType         btcjson.LLMQType
 	)
-	if *requestQuorumInfo {
+	if libs.BoolValue(requestQuorumInfo) {
 		thresholdPublicKey = l.ValidatorSet.ThresholdPublicKey
 		quorumHash = l.ValidatorSet.QuorumHash
 		quorumType = l.ValidatorSet.QuorumType
@@ -600,15 +615,15 @@ func (c *Client) BroadcastEvidence(ctx context.Context, ev types.Evidence) (*cor
 
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string,
 	outCapacity ...int) (out <-chan coretypes.ResultEvent, err error) {
-	return c.next.Subscribe(ctx, subscriber, query, outCapacity...)
+	return c.next.Subscribe(ctx, subscriber, query, outCapacity...) //nolint:staticcheck
 }
 
 func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
-	return c.next.Unsubscribe(ctx, subscriber, query)
+	return c.next.Unsubscribe(ctx, subscriber, query) //nolint:staticcheck
 }
 
 func (c *Client) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	return c.next.UnsubscribeAll(ctx, subscriber)
+	return c.next.UnsubscribeAll(ctx, subscriber) //nolint:staticcheck
 }
 
 func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *int64) (*types.LightBlock, error) {
@@ -634,8 +649,12 @@ func (c *Client) RegisterOpDecoder(typ string, dec merkle.OpDecoder) {
 // SubscribeWS subscribes for events using the given query and remote address as
 // a subscriber, but does not verify responses (UNSAFE)!
 // TODO: verify data
-func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultSubscribe, error) {
-	out, err := c.next.Subscribe(context.Background(), ctx.RemoteAddr(), query)
+func (c *Client) SubscribeWS(ctx context.Context, query string) (*coretypes.ResultSubscribe, error) {
+	bctx, bcancel := context.WithCancel(context.Background())
+	c.closers = append(c.closers, bcancel)
+
+	callInfo := rpctypes.GetCallInfo(ctx)
+	out, err := c.next.Subscribe(bctx, callInfo.RemoteAddr(), query) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -646,12 +665,8 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 			case resultEvent := <-out:
 				// We should have a switch here that performs a validation
 				// depending on the event's type.
-				ctx.WSConn.TryWriteRPCResponse(
-					rpctypes.NewRPCSuccessResponse(
-						rpctypes.JSONRPCStringID(fmt.Sprintf("%v#event", ctx.JSONReq.ID)),
-						resultEvent,
-					))
-			case <-c.Quit():
+				callInfo.WSConn.TryWriteRPCResponse(bctx, callInfo.RPCRequest.MakeResponse(resultEvent))
+			case <-bctx.Done():
 				return
 			}
 		}
@@ -662,8 +677,8 @@ func (c *Client) SubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.Re
 
 // UnsubscribeWS calls original client's Unsubscribe using remote address as a
 // subscriber.
-func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.Unsubscribe(context.Background(), ctx.RemoteAddr(), query)
+func (c *Client) UnsubscribeWS(ctx context.Context, query string) (*coretypes.ResultUnsubscribe, error) {
+	err := c.next.Unsubscribe(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr(), query) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -672,8 +687,8 @@ func (c *Client) UnsubscribeWS(ctx *rpctypes.Context, query string) (*coretypes.
 
 // UnsubscribeAllWS calls original client's UnsubscribeAll using remote address
 // as a subscriber.
-func (c *Client) UnsubscribeAllWS(ctx *rpctypes.Context) (*coretypes.ResultUnsubscribe, error) {
-	err := c.next.UnsubscribeAll(context.Background(), ctx.RemoteAddr())
+func (c *Client) UnsubscribeAllWS(ctx context.Context) (*coretypes.ResultUnsubscribe, error) {
+	err := c.next.UnsubscribeAll(context.Background(), rpctypes.GetCallInfo(ctx).RemoteAddr()) //nolint:staticcheck
 	if err != nil {
 		return nil, err
 	}
@@ -687,16 +702,13 @@ const (
 	maxPerPage     = 100
 )
 
-func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
-	if perPage < 1 {
-		panic(fmt.Errorf("%w (%d)", coretypes.ErrZeroOrNegativePerPage, perPage))
-	}
+func validatePage(pagePtr *int, perPage uint, totalCount int) (int, error) {
 
 	if pagePtr == nil { // no page parameter
 		return 1, nil
 	}
 
-	pages := ((totalCount - 1) / perPage) + 1
+	pages := ((totalCount - 1) / int(perPage)) + 1
 	if pages == 0 {
 		pages = 1 // one page (even if it's empty)
 	}
@@ -708,7 +720,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	return page, nil
 }
 
-func validatePerPage(perPagePtr *int) int {
+func validatePerPage(perPagePtr *int) uint {
 	if perPagePtr == nil { // no per_page parameter
 		return defaultPerPage
 	}
@@ -719,11 +731,11 @@ func validatePerPage(perPagePtr *int) int {
 	} else if perPage > maxPerPage {
 		return maxPerPage
 	}
-	return perPage
+	return uint(perPage)
 }
 
-func validateSkipCount(page, perPage int) int {
-	skipCount := (page - 1) * perPage
+func validateSkipCount(page int, perPage uint) int {
+	skipCount := (page - 1) * int(perPage)
 	if skipCount < 0 {
 		return 0
 	}

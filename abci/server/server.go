@@ -12,17 +12,18 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-func NewServer(protoAddr, transport string, app types.Application) (service.Service, error) {
+func NewServer(logger log.Logger, protoAddr, transport string, app types.Application) (service.Service, error) {
 	var s service.Service
 	var err error
 	switch transport {
 	case "socket":
-		s = NewSocketServer(protoAddr, app)
+		s = NewSocketServer(logger, protoAddr, app)
 	case "grpc":
-		s = NewGRPCServer(protoAddr, types.NewGRPCApplication(app))
+		s = NewGRPCServer(logger, protoAddr, app)
 	default:
 		err = fmt.Errorf("unknown server type %s", transport)
 	}

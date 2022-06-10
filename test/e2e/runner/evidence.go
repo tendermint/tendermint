@@ -2,17 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test/factory"
-	tmjson "github.com/tendermint/tendermint/libs/json"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
@@ -21,19 +21,15 @@ import (
 // InjectEvidence takes a running testnet and generates an amount of valid
 // evidence and broadcasts it to a random node through the rpc endpoint `/broadcast_evidence`.
 // Evidence is random and can be a mixture of DuplicateVoteEvidence.
-func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amount int) error {
+func InjectEvidence(ctx context.Context, logger log.Logger, r *rand.Rand, testnet *e2e.Testnet, amount int) error {
 	// select a random node
 	var targetNode *e2e.Node
 
 	for _, idx := range r.Perm(len(testnet.Nodes)) {
-		targetNode = testnet.Nodes[idx]
-
-		if targetNode.Mode == e2e.ModeSeed || targetNode.Mode == e2e.ModeLight {
-			targetNode = nil
-			continue
+		if !testnet.Nodes[idx].Stateless() {
+			targetNode = testnet.Nodes[idx]
+			break
 		}
-
-		break
 	}
 
 	if targetNode == nil {
@@ -48,16 +44,15 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	}
 
 	// request the latest block and validator set from the node
-	blockRes, err := client.Block(context.Background(), nil)
+	blockRes, err := client.Block(ctx, nil)
 	if err != nil {
 		return err
 	}
-	evidenceHeight := blockRes.Block.Height
-	waitHeight := blockRes.Block.Height + 3
+	evidenceHeight := blockRes.Block.Height - 3
 
 	nValidators := 100
 	requestQuorumInfo := true
-	valRes, err := client.Validators(context.Background(), &evidenceHeight, nil, &nValidators, &requestQuorumInfo)
+	valRes, err := client.Validators(ctx, &evidenceHeight, nil, &nValidators, &requestQuorumInfo)
 	if err != nil {
 		return err
 	}
@@ -81,42 +76,42 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 		return err
 	}
 
-	wctx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-
-	// wait for the node to reach the height above the forged height so that
-	// it is able to validate the evidence
-	_, err = waitForNode(wctx, targetNode, waitHeight)
+	// request the latest block and validator set from the node
+	blockRes, err = client.Block(ctx, &evidenceHeight)
 	if err != nil {
 		return err
 	}
 
 	var ev types.Evidence
 	for i := 1; i <= amount; i++ {
-		ev, err = generateDuplicateVoteEvidence(
+		ev, err = generateDuplicateVoteEvidence(ctx,
 			privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 		)
 		if err != nil {
 			return err
 		}
 
-		_, err := client.BroadcastEvidence(context.Background(), ev)
+		_, err := client.BroadcastEvidence(ctx, ev)
 		if err != nil {
 			return err
 		}
 	}
 
-	wctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	logger.Info("Finished sending evidence",
+		"node", testnet.Name,
+		"amount", amount,
+		"height", evidenceHeight,
+	)
+
+	wctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	// wait for the node to reach the height above the forged height so that
-	// it is able to validate the evidence
-	_, err = waitForNode(wctx, targetNode, blockRes.Block.Height+2)
+	// wait for the node to make progress after submitting
+	// evidence (3 (forged height) + 1 (progress))
+	_, err = waitForNode(wctx, logger, targetNode, evidenceHeight+4)
 	if err != nil {
 		return err
 	}
-
-	logger.Info(fmt.Sprintf("Finished sending evidence (height %d)", blockRes.Block.Height+2))
 
 	return nil
 }
@@ -153,6 +148,7 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet, thresholdPublicKey crypto.Pub
 // generateDuplicateVoteEvidence picks a random validator from the val set and
 // returns duplicate vote evidence against the validator
 func generateDuplicateVoteEvidence(
+	ctx context.Context,
 	privVals []*types.MockPV,
 	height int64,
 	vals *types.ValidatorSet,
@@ -164,11 +160,11 @@ func generateDuplicateVoteEvidence(
 		return nil, err
 	}
 	stateID := types.RandStateID()
-	voteA, err := factory.MakeVote(privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
+	voteA, err := factory.MakeVote(ctx, privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
 	if err != nil {
 		return nil, err
 	}
-	voteB, err := factory.MakeVote(privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
+	voteB, err := factory.MakeVote(ctx, privVal, vals, chainID, valIdx, height, 0, 2, makeRandomBlockID(), stateID)
 	if err != nil {
 		return nil, err
 	}
@@ -194,12 +190,12 @@ func getRandomValidatorIndex(privVals []*types.MockPV, vals *types.ValidatorSet)
 }
 
 func readPrivKey(keyFilePath string, quorumHash crypto.QuorumHash) (crypto.PrivKey, error) {
-	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
+	keyJSONBytes, err := os.ReadFile(keyFilePath)
 	if err != nil {
 		return nil, err
 	}
 	pvKey := privval.FilePVKey{}
-	err = tmjson.Unmarshal(keyJSONBytes, &pvKey)
+	err = json.Unmarshal(keyJSONBytes, &pvKey)
 	if err != nil {
 		return nil, fmt.Errorf("error reading PrivValidator key from %v: %w", keyFilePath, err)
 	}
@@ -207,13 +203,13 @@ func readPrivKey(keyFilePath string, quorumHash crypto.QuorumHash) (crypto.PrivK
 }
 
 func makeRandomBlockID() types.BlockID {
-	return makeBlockID(crypto.CRandBytes(tmhash.Size), 100, crypto.CRandBytes(tmhash.Size))
+	return makeBlockID(crypto.CRandBytes(crypto.HashSize), 100, crypto.CRandBytes(crypto.HashSize))
 }
 
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
 	var (
-		h   = make([]byte, tmhash.Size)
-		psH = make([]byte, tmhash.Size)
+		h   = make([]byte, crypto.HashSize)
+		psH = make([]byte, crypto.HashSize)
 	)
 	copy(h, hash)
 	copy(psH, partSetHash)

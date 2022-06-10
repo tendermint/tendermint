@@ -2,6 +2,170 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+## v0.36
+
+### ABCI Changes
+
+#### ABCI++
+
+Coming soon...
+
+#### ABCI Mutex
+
+In previous versions of ABCI, Tendermint was prevented from making
+concurrent calls to ABCI implementations by virtue of mutexes in the
+implementation of Tendermint's ABCI infrastructure. These mutexes have
+been removed from the current implementation and applications will now
+be responsible for managing their own concurrency control.
+
+To replicate the prior semantics, ensure that ABCI applications have a
+single mutex that protects all ABCI method calls from concurrent
+access. You can relax these requirements if your application can
+provide safe concurrent access via other means. This safety is an
+application concern so be very sure to test the application thoroughly
+using realistic workloads and the race detector to ensure your
+applications remains correct.
+
+### Config Changes
+
+- We have added a new, experimental tool to help operators migrate
+  configuration files created by previous versions of Tendermint.
+  To try this tool, run:
+
+  ```shell
+  # Install the tool.
+  go install github.com/tendermint/tendermint/scripts/confix@latest
+
+  # Run the tool with the old configuration file as input.
+  # Replace the -config argument with your path.
+  confix -config ~/.tendermint/config/config.toml -out updated.toml
+  ```
+
+  This tool should be able to update configurations from v0.34 and v0.35.  We
+  plan to extend it to handle older configuration files in the future. For now,
+  it will report an error (without making any changes) if it does not recognize
+  the version that created the file.
+
+- The default configuration for a newly-created node now disables indexing for
+  ABCI event metadata. Existing node configurations that already have indexing
+  turned on are not affected. Operators who wish to enable indexing for a new
+  node, however, must now edit the `config.toml` explicitly.
+
+### RPC Changes
+
+Tendermint v0.36 adds a new RPC event subscription API. The existing event
+subscription API based on websockets is now deprecated. It will continue to
+work throughout the v0.36 release, but the `subscribe`, `unsubscribe`, and
+`unsubscribe_all` methods, along with websocket support, will be removed in
+Tendermint v0.37.  Callers currently using these features should migrate as
+soon as is practical to the new API.
+
+To enable the new API, node operators set a new `event-log-window-size`
+parameter in the `[rpc]` section of the `config.toml` file. This defines a
+duration of time during which the node will log all events published to the
+event bus for use by RPC consumers.
+
+Consumers use the new `events` JSON-RPC method to poll for events matching
+their query in the log. Unlike the streaming API, events are not discarded if
+the caller is slow, loses its connection, or crashes. As long as the client
+recovers before its events expire from the log window, it will be able to
+replay and catch up after recovering. Also unlike the streaming API, the client
+can tell if it has truly missed events because they have expired from the log.
+
+The `events` method is a normal JSON-RPC method, and does not require any
+non-standard response processing (in contrast with the old `subscribe`).
+Clients can modify their query at any time, and no longer need to coordinate
+subscribe and unsubscribe calls to handle multiple queries.
+
+The Go client implementations in the Tendermint Core repository have all been
+updated to add a new `Events` method, including the light client proxy.
+
+A new `rpc/client/eventstream` package has also been added to make it easier
+for users to update existing use of the streaming API to use the polling API
+The `eventstream` package handles polling and delivers matching events to a
+callback.
+
+For more detailed information, see [ADR 075](https://tinyurl.com/adr075) which
+defines and describes the new API in detail.
+
+### Timeout Parameter Changes
+
+Tendermint v0.36 updates how the Tendermint consensus timing parameters are
+configured. These parameters, `timeout-propose`, `timeout-propose-delta`,
+`timeout-prevote`, `timeout-prevote-delta`, `timeout-precommit`,
+`timeout-precommit-delta`, `timeout-commit`, and `skip-timeout-commit`, were
+previously configured in `config.toml`. These timing parameters have moved and
+are no longer configured in the `config.toml` file. These parameters have been
+migrated into the `ConsensusParameters`. Nodes with these parameters set in the
+local configuration file will see a warning logged on startup indicating that
+these parameters are no longer used.
+
+These parameters have also been pared-down. There are no longer separate
+parameters for both the `prevote` and `precommit` phases of Tendermint. The
+separate `timeout-prevote` and `timeout-precommit` parameters have been merged
+into a single `timeout-vote` parameter that configures both of these similar
+phases of the consensus protocol.
+
+A set of reasonable defaults have been put in place for these new parameters
+that will take effect when the node starts up in version v0.36. New chains
+created using v0.36 and beyond will be able to configure these parameters in the
+chain's `genesis.json` file. Chains that upgrade to v0.36 from a previous
+compatible version of Tendermint will begin running with the default values.
+Upgrading applications that wish to use different values from the defaults for
+these parameters may do so by setting the `ConsensusParams.Timeout` field of the
+`FinalizeBlock` `ABCI` response.
+
+As a safety measure in case of unusual timing issues during the upgrade to
+v0.36, an operator may override the consensus timeout values for a single node.
+Note, however, that these overrides will be removed in Tendermint v0.37. See
+[configuration](https://github.com/tendermint/tendermint/blob/master/docs/nodes/configuration.md)
+for more information about these overrides.
+
+For more discussion of this, see [ADR 074](https://tinyurl.com/adr074), which
+lays out the reasoning for the changes as well as [RFC
+009](https://tinyurl.com/rfc009) for a discussion of the complexities of
+upgrading consensus parameters.
+
+### CLI Changes
+
+The functionality around resetting a node has been extended to make it safer. The
+`unsafe-reset-all` command has been replaced by a `reset` command with four
+subcommands: `blockchain`, `peers`, `unsafe-signer` and `unsafe-all`.
+
+- `tendermint reset blockchain`: Clears a node of all blocks, consensus state, evidence,
+  and indexed transactions. NOTE: This command does not reset application state.
+  If you need to rollback the last application state (to recover from application
+  nondeterminism), see instead the `tendermint rollback` command.
+- `tendermint reset peers`: Clears the peer store, which persists information on peers used
+  by the networking layer. This can be used to get rid of stale addresses or to switch
+  to a predefined set of static peers.
+- `tendermint reset unsafe-signer`: Resets the watermark level of the PrivVal File signer
+  allowing it to sign votes from the genesis height. This should only be used in testing as
+  it can lead to the node double signing.
+- `tendermint reset unsafe-all`: A summation of the other three commands. This will delete
+  the entire `data` directory which may include application data as well.
+
+### Go API Changes
+
+#### `crypto` Package Cleanup
+
+The `github.com/tendermint/tendermint/crypto/tmhash` package was removed
+to improve clarity. Users are encouraged to use the standard library
+`crypto/sha256` package directly. However, as a convenience, some constants
+and one function have moved to the Tendermint `crypto` package:
+
+- The `crypto.Checksum` function returns the sha256 checksum of a
+  byteslice. This is a wrapper around `sha256.Sum265` from the
+  standard libary, but provided as a function to ease type
+  requirements (the library function returns a `[32]byte` rather than
+  a `[]byte`).
+- `tmhash.TruncatedSize` is now `crypto.AddressSize` which was
+  previously an alias for the same value.
+- `tmhash.Size` and `tmhash.BlockSize` are now `crypto.HashSize` and
+  `crypto.HashSize`.
+- `tmhash.SumTruncated` is now available via `crypto.AddressHash` or by
+  `crypto.Checksum(<...>)[:crypto.AddressSize]`
+
 ## v0.35
 
 ### ABCI Changes
@@ -116,11 +280,13 @@ the full RPC interface provided as direct function calls. Import the
 the node service as in the following:
 
 ```go
-    node := node.NewDefault() //construct the node object
-    // start and set up the node service
+logger := log.NewNopLogger()
 
-    client := local.New(node.(local.NodeService))
-    // use client object to interact with the node
+// Construct and start up a node with default settings.
+node := node.NewDefault(logger)
+
+// Construct a local (in-memory) RPC client to the node.
+client := local.New(logger, node.(local.NodeService))
 ```
 
 ### gRPC Support
@@ -217,7 +383,7 @@ Note also that Tendermint 0.34 also requires Go 1.16 or higher.
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
   new nodes are able to join a network in a matter of seconds.
-  Read [the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
+  Read [the spec](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md)
   if you want to learn more about State Sync, or if you'd like your application to use it.
   (If you don't want to support State Sync in your application, you can just implement these new
   ABCI methods as no-ops, leaving them empty.)
@@ -342,7 +508,6 @@ The `bech32` package has moved to the Cosmos SDK:
 ### CLI
 
 The `tendermint lite` command has been renamed to `tendermint light` and has a slightly different API.
-See [the docs](https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html#http-proxy) for details.
 
 ### Light Client
 
@@ -617,7 +782,7 @@ the compilation tag:
 
 Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
 use `make build_c` / `make install_c` (full instructions can be found at
-<https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support>)
+<https://docs.tendermint.com/v0.35/introduction/install.html)
 
 ## v0.31.0
 

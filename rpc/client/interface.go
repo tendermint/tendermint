@@ -32,26 +32,21 @@ import (
 
 // Client describes the interface of Tendermint RPC client implementations.
 type Client interface {
-	// These methods define the operational structure of the client.
-
-	// Start the client. Start must report an error if the client is running.
-	Start() error
-
-	// Stop the client. Stop must report an error if the client is not running.
-	Stop() error
-
-	// IsRunning reports whether the client is running.
-	IsRunning() bool
+	// Start the client, which will run until the context terminates.
+	// An error from Start indicates the client could not start.
+	Start(context.Context) error
 
 	// These embedded interfaces define the callable methods of the service.
+
 	ABCIClient
 	EventsClient
+	EvidenceClient
 	HistoryClient
+	MempoolClient
 	NetworkClient
 	SignClient
 	StatusClient
-	EvidenceClient
-	MempoolClient
+	SubscriptionClient
 }
 
 // ABCIClient groups together the functionality that principally affects the
@@ -81,8 +76,7 @@ type SignClient interface {
 	Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error)
 	HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*coretypes.ResultHeader, error)
 	Commit(ctx context.Context, height *int64) (*coretypes.ResultCommit, error)
-	Validators(ctx context.Context, height *int64, page, perPage *int,
-		requestQuorumInfo *bool) (*coretypes.ResultValidators, error)
+	Validators(ctx context.Context, height *int64, page, perPage *int, requestQuorumInfo *bool) (*coretypes.ResultValidators, error)
 	Tx(ctx context.Context, hash bytes.HexBytes, prove bool) (*coretypes.ResultTx, error)
 
 	// TxSearch defines a method to search for a paginated set of transactions by
@@ -96,7 +90,7 @@ type SignClient interface {
 	) (*coretypes.ResultTxSearch, error)
 
 	// BlockSearch defines a method to search for a paginated set of blocks by
-	// BeginBlock and EndBlock event search criteria.
+	// FinalizeBlock event search criteria.
 	BlockSearch(
 		ctx context.Context,
 		query string,
@@ -127,26 +121,47 @@ type NetworkClient interface {
 	Health(context.Context) (*coretypes.ResultHealth, error)
 }
 
-// EventsClient is reactive, you can subscribe to any message, given the proper
-// string. see tendermint/types/events.go
+// EventsClient exposes the methods to retrieve events from the consensus engine.
 type EventsClient interface {
-	// Subscribe subscribes given subscriber to query. Returns a channel with
-	// cap=1 onto which events are published. An error is returned if it fails to
-	// subscribe. outCapacity can be used optionally to set capacity for the
-	// channel. Channel is never closed to prevent accidental reads.
+	// Events fetches a batch of events from the server matching the given query
+	// and time range.
+	Events(ctx context.Context, req *coretypes.RequestEvents) (*coretypes.ResultEvents, error)
+}
+
+// TODO(creachadair): This interface should be removed once the streaming event
+// interface is removed in Tendermint v0.37.
+type SubscriptionClient interface {
+	// Subscribe issues a subscription request for the given subscriber ID and
+	// query. This method does not block: If subscription fails, it reports an
+	// error, and if subscription succeeds it returns a channel that delivers
+	// matching events until the subscription is stopped. The channel is never
+	// closed; the client is responsible for knowing when no further data will
+	// be sent.
 	//
-	// ctx cannot be used to unsubscribe. To unsubscribe, use either Unsubscribe
-	// or UnsubscribeAll.
+	// The context only governs the initial subscription, it does not control
+	// the lifetime of the channel. To cancel a subscription call Unsubscribe or
+	// UnsubscribeAll.
+	//
+	// Deprecated: This method will be removed in Tendermint v0.37, use Events
+	// instead.
 	Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan coretypes.ResultEvent, err error)
+
 	// Unsubscribe unsubscribes given subscriber from query.
+	//
+	// Deprecated: This method will be removed in Tendermint v0.37, use Events
+	// instead.
 	Unsubscribe(ctx context.Context, subscriber, query string) error
+
 	// UnsubscribeAll unsubscribes given subscriber from all the queries.
+	//
+	// Deprecated: This method will be removed in Tendermint v0.37, use Events
+	// instead.
 	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
 
 // MempoolClient shows us data about current mempool state.
 type MempoolClient interface {
-	UnconfirmedTxs(ctx context.Context, limit *int) (*coretypes.ResultUnconfirmedTxs, error)
+	UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error)
 	NumUnconfirmedTxs(context.Context) (*coretypes.ResultUnconfirmedTxs, error)
 	CheckTx(context.Context, types.Tx) (*coretypes.ResultCheckTx, error)
 	RemoveTx(context.Context, types.TxKey) error

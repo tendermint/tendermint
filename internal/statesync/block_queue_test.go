@@ -1,6 +1,7 @@
 package statesync
 
 import (
+	"context"
 	"math/rand"
 	"sync"
 	"testing"
@@ -22,6 +23,9 @@ var (
 )
 
 func TestBlockQueueBasic(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
@@ -35,7 +39,7 @@ func TestBlockQueueBasic(t *testing.T) {
 			for {
 				select {
 				case height := <-queue.nextHeight():
-					queue.add(mockLBResp(t, peerID, height, endTime))
+					queue.add(mockLBResp(ctx, t, peerID, height, endTime))
 				case <-queue.done():
 					wg.Done()
 					return
@@ -58,7 +62,7 @@ loop:
 			// assert that the queue serializes the blocks
 			require.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
-			queue.success(resp.block.Height)
+			queue.success()
 		}
 
 	}
@@ -69,6 +73,9 @@ loop:
 
 // Test with spurious failures and retries
 func TestBlockQueueWithFailures(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	peerID, err := types.NewNodeID("0011223344556677889900112233445566778899")
 	require.NoError(t, err)
 
@@ -85,7 +92,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 					if rand.Intn(failureRate) == 0 {
 						queue.retry(height)
 					} else {
-						queue.add(mockLBResp(t, peerID, height, endTime))
+						queue.add(mockLBResp(ctx, t, peerID, height, endTime))
 					}
 				case <-queue.done():
 					wg.Done()
@@ -105,7 +112,7 @@ func TestBlockQueueWithFailures(t *testing.T) {
 				queue.retry(resp.block.Height)
 			} else {
 				trackingHeight--
-				queue.success(resp.block.Height)
+				queue.success()
 			}
 
 		case <-queue.done():
@@ -125,6 +132,9 @@ func TestBlockQueueBlocks(t *testing.T) {
 	expectedHeight := startHeight
 	retryHeight := stopHeight + 2
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 loop:
 	for {
 		select {
@@ -132,7 +142,7 @@ loop:
 			require.Equal(t, height, expectedHeight)
 			require.GreaterOrEqual(t, height, stopHeight)
 			expectedHeight--
-			queue.add(mockLBResp(t, peerID, height, endTime))
+			queue.add(mockLBResp(ctx, t, peerID, height, endTime))
 		case <-time.After(1 * time.Second):
 			if expectedHeight >= stopHeight {
 				t.Fatalf("expected next height %d", expectedHeight)
@@ -171,12 +181,15 @@ func TestBlockQueueAcceptsNoMoreBlocks(t *testing.T) {
 	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	defer queue.close()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 loop:
 	for {
 		select {
 		case height := <-queue.nextHeight():
 			require.GreaterOrEqual(t, height, stopHeight)
-			queue.add(mockLBResp(t, peerID, height, endTime))
+			queue.add(mockLBResp(ctx, t, peerID, height, endTime))
 		case <-time.After(1 * time.Second):
 			break loop
 		}
@@ -184,7 +197,7 @@ loop:
 
 	require.Len(t, queue.pending, int(startHeight-stopHeight)+1)
 
-	queue.add(mockLBResp(t, peerID, stopHeight-1, endTime))
+	queue.add(mockLBResp(ctx, t, peerID, stopHeight-1, endTime))
 	require.Len(t, queue.pending, int(startHeight-stopHeight)+1)
 }
 
@@ -197,6 +210,9 @@ func TestBlockQueueStopTime(t *testing.T) {
 	queue := newBlockQueue(startHeight, stopHeight, 1, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	baseTime := stopTime.Add(-50 * time.Second)
 
 	// asynchronously fetch blocks and add it to the queue
@@ -207,7 +223,7 @@ func TestBlockQueueStopTime(t *testing.T) {
 				select {
 				case height := <-queue.nextHeight():
 					blockTime := baseTime.Add(time.Duration(height) * time.Second)
-					queue.add(mockLBResp(t, peerID, height, blockTime))
+					queue.add(mockLBResp(ctx, t, peerID, height, blockTime))
 				case <-queue.done():
 					wg.Done()
 					return
@@ -223,7 +239,7 @@ func TestBlockQueueStopTime(t *testing.T) {
 			// assert that the queue serializes the blocks
 			assert.Equal(t, resp.block.Height, trackingHeight)
 			trackingHeight--
-			queue.success(resp.block.Height)
+			queue.success()
 
 		case <-queue.done():
 			wg.Wait()
@@ -241,6 +257,9 @@ func TestBlockQueueInitialHeight(t *testing.T) {
 	queue := newBlockQueue(startHeight, stopHeight, initialHeight, stopTime, 1)
 	wg := &sync.WaitGroup{}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// asynchronously fetch blocks and add it to the queue
 	for i := 0; i <= numWorkers; i++ {
 		wg.Add(1)
@@ -249,7 +268,7 @@ func TestBlockQueueInitialHeight(t *testing.T) {
 				select {
 				case height := <-queue.nextHeight():
 					require.GreaterOrEqual(t, height, initialHeight)
-					queue.add(mockLBResp(t, peerID, height, endTime))
+					queue.add(mockLBResp(ctx, t, peerID, height, endTime))
 				case <-queue.done():
 					wg.Done()
 					return
@@ -268,14 +287,15 @@ loop:
 
 		case resp := <-queue.verifyNext():
 			require.GreaterOrEqual(t, resp.block.Height, initialHeight)
-			queue.success(resp.block.Height)
+			queue.success()
 		}
 	}
 }
 
-func mockLBResp(t *testing.T, peer types.NodeID, height int64, time time.Time) lightBlockResponse {
+func mockLBResp(ctx context.Context, t *testing.T, peer types.NodeID, height int64, time time.Time) lightBlockResponse {
+	t.Helper()
 	vals, pv := types.RandValidatorSet(3)
-	_, _, lb := mockLB(t, height, time, factory.MakeBlockID(), vals, pv)
+	_, _, lb := mockLB(ctx, t, height, time, factory.MakeBlockID(), vals, pv)
 	return lightBlockResponse{
 		block: lb,
 		peer:  peer,

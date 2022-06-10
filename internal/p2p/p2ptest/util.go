@@ -2,6 +2,7 @@ package p2ptest
 
 import (
 	gogotypes "github.com/gogo/protobuf/types"
+
 	"github.com/tendermint/tendermint/types"
 )
 

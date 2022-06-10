@@ -42,7 +42,8 @@ const (
 type PeerScore uint8
 
 const (
-	PeerScorePersistent PeerScore = math.MaxUint8 // persistent peers
+	PeerScorePersistent       PeerScore = math.MaxUint8 // persistent peers
+	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -54,9 +55,9 @@ type PeerUpdate struct {
 	ProTxHash types.ProTxHash
 }
 
-// SetProTxHash copies `protxhash` into `PeerUpdate.ProTxHash`
-func (pu *PeerUpdate) SetProTxHash(protxhash types.ProTxHash) {
-	pu.ProTxHash = protxhash.Copy()
+// SetProTxHash copies `proTxHash` into `PeerUpdate.ProTxHash`
+func (pu *PeerUpdate) SetProTxHash(proTxHash types.ProTxHash) {
+	pu.ProTxHash = proTxHash.Copy()
 }
 
 // PeerUpdates is a peer update subscription with notifications about peer
@@ -64,8 +65,6 @@ func (pu *PeerUpdate) SetProTxHash(protxhash types.ProTxHash) {
 type PeerUpdates struct {
 	routerUpdatesCh  chan PeerUpdate
 	reactorUpdatesCh chan PeerUpdate
-	closeCh          chan struct{}
-	closeOnce        sync.Once
 }
 
 // NewPeerUpdates creates a new PeerUpdates subscription. It is primarily for
@@ -75,7 +74,6 @@ func NewPeerUpdates(updatesCh chan PeerUpdate, buf int) *PeerUpdates {
 	return &PeerUpdates{
 		reactorUpdatesCh: updatesCh,
 		routerUpdatesCh:  make(chan PeerUpdate, buf),
-		closeCh:          make(chan struct{}),
 	}
 }
 
@@ -86,26 +84,11 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate {
 
 // SendUpdate pushes information about a peer into the routing layer,
 // presumably from a peer.
-func (pu *PeerUpdates) SendUpdate(update PeerUpdate) {
+func (pu *PeerUpdates) SendUpdate(ctx context.Context, update PeerUpdate) {
 	select {
-	case <-pu.closeCh:
+	case <-ctx.Done():
 	case pu.routerUpdatesCh <- update:
 	}
-}
-
-// Close closes the peer updates subscription.
-func (pu *PeerUpdates) Close() {
-	pu.closeOnce.Do(func() {
-		// NOTE: We don't close updatesCh since multiple goroutines may be
-		// sending on it. The PeerManager senders will select on closeCh as well
-		// to avoid blocking on a closed subscription.
-		close(pu.closeCh)
-	})
-}
-
-// Done returns a channel that is closed when the subscription is closed.
-func (pu *PeerUpdates) Done() <-chan struct{} {
-	return pu.closeCh
 }
 
 // PeerManagerOptions specifies options for a PeerManager.
@@ -192,8 +175,7 @@ func (o *PeerManagerOptions) Validate() error {
 
 	if o.MaxPeers > 0 {
 		if o.MaxConnected == 0 || o.MaxConnected+o.MaxConnectedUpgrade > o.MaxPeers {
-			return fmt.Errorf(
-				"MaxConnected %v and MaxConnectedUpgrade %v can't exceed MaxPeers %v",
+			return fmt.Errorf("MaxConnected %v and MaxConnectedUpgrade %v can't exceed MaxPeers %v",
 				o.MaxConnected, o.MaxConnectedUpgrade, o.MaxPeers)
 		}
 	}
@@ -213,8 +195,7 @@ func (o *PeerManagerOptions) Validate() error {
 			return errors.New("can't set MaxRetryTimePersistent without MinRetryTime")
 		}
 		if o.MinRetryTime > o.MaxRetryTimePersistent {
-			return fmt.Errorf(
-				"MinRetryTime %v is greater than MaxRetryTimePersistent %v",
+			return fmt.Errorf("MinRetryTime %v is greater than MaxRetryTimePersistent %v",
 				o.MinRetryTime, o.MaxRetryTimePersistent)
 		}
 	}
@@ -290,8 +271,6 @@ type PeerManager struct {
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
-	closeCh    chan struct{} // signal channel for Close()
-	closeOnce  sync.Once
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -326,7 +305,6 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
 		evictWaker: tmsync.NewWaker(),
-		closeCh:    make(chan struct{}),
 
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
@@ -527,7 +505,7 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 // for dialing again when appropriate (possibly after a retry timeout).
 //
 // FIXME: This should probably delete or mark bad addresses/peers after some time.
-func (m *PeerManager) DialFailed(address NodeAddress) error {
+func (m *PeerManager) DialFailed(ctx context.Context, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -566,7 +544,7 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 			select {
 			case <-timer.C:
 				m.dialWaker.Wake()
-			case <-m.closeCh:
+			case <-ctx.Done():
 			}
 		}()
 	} else {
@@ -718,7 +696,7 @@ func (m *PeerManager) Accepted(peerID types.NodeID, peerOpts ...func(*peerInfo))
 // channels set here are passed in the peer update broadcast to
 // reactors, which can then mediate their own behavior based on the
 // capability of the peers.
-func (m *PeerManager) Ready(peerID types.NodeID, channels ChannelIDSet) {
+func (m *PeerManager) Ready(ctx context.Context, peerID types.NodeID, channels ChannelIDSet) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -733,7 +711,7 @@ func (m *PeerManager) Ready(peerID types.NodeID, channels ChannelIDSet) {
 		if ok && len(peer.ProTxHash) > 0 {
 			pu.SetProTxHash(peer.ProTxHash)
 		}
-		m.broadcast(pu)
+		m.broadcast(ctx, pu)
 	}
 }
 
@@ -791,7 +769,7 @@ func (m *PeerManager) TryEvictNext() (types.NodeID, error) {
 
 // Disconnected unmarks a peer as connected, allowing it to be dialed or
 // accepted again as appropriate.
-func (m *PeerManager) Disconnected(peerID types.NodeID) {
+func (m *PeerManager) Disconnected(ctx context.Context, peerID types.NodeID) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -812,7 +790,7 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 		if ok && len(peer.ProTxHash) > 0 {
 			pu.SetProTxHash(peer.ProTxHash)
 		}
-		m.broadcast(pu)
+		m.broadcast(ctx, pu)
 	}
 
 	m.dialWaker.Wake()
@@ -873,10 +851,15 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	return addresses
 }
 
+// PeerEventSubscriber describes the type of the subscription method, to assist
+// in isolating reactors specific construction and lifecycle from the
+// peer manager.
+type PeerEventSubscriber func(context.Context) *PeerUpdates
+
 // Subscribe subscribes to peer updates. The caller must consume the peer
 // updates in a timely fashion and close the subscription when done, otherwise
 // the PeerManager will halt.
-func (m *PeerManager) Subscribe() *PeerUpdates {
+func (m *PeerManager) Subscribe(ctx context.Context) *PeerUpdates {
 	// FIXME: We use a size 1 buffer here. When we broadcast a peer update
 	// we have to loop over all of the subscriptions, and we want to avoid
 	// having to block and wait for a context switch before continuing on
@@ -884,7 +867,7 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 	// compounding. Limiting it to 1 means that the subscribers are still
 	// reasonably in sync. However, this should probably be benchmarked.
 	peerUpdates := NewPeerUpdates(make(chan PeerUpdate, 1), 1)
-	m.Register(peerUpdates)
+	m.Register(ctx, peerUpdates)
 	return peerUpdates
 }
 
@@ -896,38 +879,37 @@ func (m *PeerManager) Subscribe() *PeerUpdates {
 // The caller must consume the peer updates from this PeerUpdates
 // instance in a timely fashion and close the subscription when done,
 // otherwise the PeerManager will halt.
-func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
+func (m *PeerManager) Register(ctx context.Context, peerUpdates *PeerUpdates) {
 	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	m.subscriptions[peerUpdates] = peerUpdates
-	m.mtx.Unlock()
 
 	go func() {
 		for {
 			select {
-			case <-peerUpdates.closeCh:
-				return
-			case <-m.closeCh:
+			case <-ctx.Done():
 				return
 			case pu := <-peerUpdates.routerUpdatesCh:
-				m.processPeerEvent(pu)
+				m.processPeerEvent(ctx, pu)
 			}
 		}
 	}()
 
 	go func() {
-		select {
-		case <-peerUpdates.Done():
-			m.mtx.Lock()
-			delete(m.subscriptions, peerUpdates)
-			m.mtx.Unlock()
-		case <-m.closeCh:
-		}
+		<-ctx.Done()
+		m.mtx.Lock()
+		defer m.mtx.Unlock()
+		delete(m.subscriptions, peerUpdates)
 	}()
 }
 
-func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
+func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
+
+	if ctx.Err() != nil {
+		return
+	}
 
 	if _, ok := m.store.peers[pu.NodeID]; !ok {
 		m.store.peers[pu.NodeID] = &peerInfo{}
@@ -948,27 +930,17 @@ func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
 //
 // FIXME: Consider using an internal channel to buffer updates while also
 // maintaining order if this is a problem.
-func (m *PeerManager) broadcast(peerUpdate PeerUpdate) {
+func (m *PeerManager) broadcast(ctx context.Context, peerUpdate PeerUpdate) {
 	for _, sub := range m.subscriptions {
-		// We have to check closeCh separately first, otherwise there's a 50%
-		// chance the second select will send on a closed subscription.
-		select {
-		case <-sub.closeCh:
-			continue
-		default:
+		if ctx.Err() != nil {
+			return
 		}
 		select {
+		case <-ctx.Done():
+			return
 		case sub.reactorUpdatesCh <- peerUpdate:
-		case <-sub.closeCh:
 		}
 	}
-}
-
-// Close closes the peer manager, releasing resources (i.e. goroutines).
-func (m *PeerManager) Close() {
-	m.closeOnce.Do(func() {
-		close(m.closeCh)
-	})
 }
 
 // Addresses returns all known addresses for a peer, primarily for testing.
@@ -1351,6 +1323,9 @@ func (p *peerInfo) Score() PeerScore {
 	}
 
 	score := p.MutableScore
+	if score > int64(MaxPeerScoreNotPersistent) {
+		score = int64(MaxPeerScoreNotPersistent)
+	}
 
 	for _, addr := range p.AddressInfo {
 		// DialFailures is reset when dials succeed, so this
@@ -1360,10 +1335,6 @@ func (p *peerInfo) Score() PeerScore {
 
 	if score <= 0 {
 		return 0
-	}
-
-	if score >= math.MaxUint8 {
-		return PeerScore(math.MaxUint8)
 	}
 
 	return PeerScore(score)

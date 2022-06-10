@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -97,7 +97,7 @@ type State struct {
 	LastHeightValidatorsChanged int64
 
 	// Consensus parameters used for validating blocks.
-	// Changes returned by EndBlock and updated after Commit.
+	// Changes returned by FinalizeBlock and updated after Commit.
 	ConsensusParams                  types.ConsensusParams
 	LastHeightConsensusParamsChanged int64
 
@@ -139,23 +139,30 @@ func (state State) Copy() State {
 }
 
 // Equals returns true if the States are identical.
-func (state State) Equals(state2 State) bool {
-	sbz, s2bz := state.Bytes(), state2.Bytes()
-	return bytes.Equal(sbz, s2bz)
+func (state State) Equals(state2 State) (bool, error) {
+	sbz, err := state.Bytes()
+	if err != nil {
+		return false, err
+	}
+	s2bz, err := state2.Bytes()
+	if err != nil {
+		return false, err
+	}
+	return bytes.Equal(sbz, s2bz), nil
 }
 
-// Bytes serializes the State using protobuf.
-// It panics if either casting to protobuf or serialization fails.
-func (state State) Bytes() []byte {
+// Bytes serializes the State using protobuf, propagating marshaling
+// errors
+func (state State) Bytes() ([]byte, error) {
 	sm, err := state.ToProto()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	bz, err := proto.Marshal(sm)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return bz
+	return bz, nil
 }
 
 // IsEmpty returns true if the State is equal to the empty State.
@@ -301,7 +308,7 @@ func (state State) MakeBlock(
 	evidence []types.Evidence,
 	proposerProTxHash types.ProTxHash,
 	proposedAppVersion uint64,
-) (*types.Block, *types.PartSet) {
+) *types.Block {
 
 	var coreChainLockHeight uint32
 	if coreChainLock == nil {
@@ -313,30 +320,16 @@ func (state State) MakeBlock(
 	// Build base block with block data.
 	block := types.MakeBlock(height, coreChainLockHeight, coreChainLock, txs, commit, evidence, proposedAppVersion)
 
-	// Set time.
-	var timestamp time.Time
-	if height == state.InitialHeight {
-		timestamp = state.LastBlockTime // genesis time
-	} else {
-		currentTime := tmtime.Now()
-		if currentTime.Before(state.LastBlockTime) {
-			// this is weird, propose last block time
-			timestamp = state.LastBlockTime
-		} else {
-			timestamp = currentTime
-		}
-	}
-
 	// Fill rest of header with state data.
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
-		timestamp, state.LastBlockID,
+		tmtime.Now(), state.LastBlockID,
 		state.Validators.Hash(), state.NextValidators.Hash(),
 		state.ConsensusParams.HashConsensusParams(), state.AppHash, state.LastResultsHash,
 		proposerProTxHash,
 	)
 
-	return block, block.MakePartSet(types.BlockPartSizeBytes)
+	return block
 }
 
 func (state State) ValidatorsAtHeight(height int64) *types.ValidatorSet {
@@ -367,13 +360,13 @@ func MakeGenesisStateFromFile(genDocFile string) (State, error) {
 
 // MakeGenesisDocFromFile reads and unmarshals genesis doc from the given file.
 func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
-	genDocJSON, err := ioutil.ReadFile(genDocFile)
+	genDocJSON, err := os.ReadFile(genDocFile)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't read GenesisDoc file: %v", err)
+		return nil, fmt.Errorf("couldn't read GenesisDoc file: %w", err)
 	}
 	genDoc, err := types.GenesisDocFromJSON(genDocJSON)
 	if err != nil {
-		return nil, fmt.Errorf("error reading GenesisDoc: %v", err)
+		return nil, fmt.Errorf("error reading GenesisDoc: %w", err)
 	}
 	return genDoc, nil
 }

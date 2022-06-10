@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -21,7 +22,7 @@ import (
 //
 // Metrics are based of the `benchmarkLength`, the amount of consecutive blocks
 // sampled from in the testnet
-func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64) error {
+func Benchmark(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, benchmarkLength int64) error {
 	block, err := getLatestBlock(ctx, testnet)
 	if err != nil {
 		return err
@@ -43,7 +44,7 @@ func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64)
 	logger.Info("Ending benchmark period", "height", block.Height)
 
 	// fetch a sample of blocks
-	blocks, err := fetchBlockChainSample(testnet, benchmarkLength)
+	blocks, err := fetchBlockChainSample(ctx, testnet, benchmarkLength)
 	if err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func (t *testnetStats) String() string {
 
 // fetchBlockChainSample waits for `benchmarkLength` amount of blocks to pass, fetching
 // all of the headers for these blocks from an archive node and returning it.
-func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*types.BlockMeta, error) {
+func fetchBlockChainSample(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64) ([]*types.BlockMeta, error) {
 	var blocks []*types.BlockMeta
 
 	// Find the first archive node
@@ -139,7 +140,6 @@ func fetchBlockChainSample(testnet *e2e.Testnet, benchmarkLength int64) ([]*type
 	}
 
 	// find the latest height
-	ctx := context.Background()
 	s, err := c.Status(ctx)
 	if err != nil {
 		return nil, err

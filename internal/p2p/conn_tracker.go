@@ -26,6 +26,7 @@ func newConnTracker(max uint, window time.Duration) connectionTracker {
 		cache:       make(map[string]uint),
 		lastConnect: make(map[string]time.Time),
 		max:         max,
+		window:      window,
 	}
 }
 
@@ -43,7 +44,7 @@ func (rat *connTrackerImpl) AddConn(addr net.IP) error {
 	if num := rat.cache[address]; num >= rat.max {
 		return fmt.Errorf("%q has %d connections [max=%d]", address, num, rat.max)
 	} else if num == 0 {
-		// if there is already at least connection, check to
+		// if there is already at least one connection, check to
 		// see if it was established before within the window,
 		// and error if so.
 		if last := rat.lastConnect[address]; time.Since(last) < rat.window {

@@ -104,7 +104,8 @@ func NewWithClientAndOptions(chainID string, client rpcclient.RemoteClient, opti
 	}
 }
 
-func (p *http) String() string {
+// Identifies the provider with an IP in string format
+func (p *http) ID() string {
 	return fmt.Sprintf("http{%s}", p.client.Remote())
 }
 
@@ -224,7 +225,7 @@ func (p *http) validatorSet(ctx context.Context, height *int64) (*types.Validato
 
 				// If we don't know the error then by default we return an unreliable provider error and
 				// terminate the connection with the peer.
-				return nil, provider.ErrUnreliableProvider{Reason: e.Error()}
+				return nil, provider.ErrUnreliableProvider{Reason: e}
 			}
 
 			// update the total and increment the page index so we can fetch the
@@ -284,7 +285,7 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 
 			// If we don't know the error then by default we return an unreliable provider error and
 			// terminate the connection with the peer.
-			return nil, provider.ErrUnreliableProvider{Reason: e.Error()}
+			return nil, provider.ErrUnreliableProvider{Reason: e}
 		}
 	}
 	return nil, p.noResponse()
@@ -294,7 +295,7 @@ func (p *http) noResponse() error {
 	p.noResponseCount++
 	if p.noResponseCount > p.noResponseThreshold {
 		return provider.ErrUnreliableProvider{
-			Reason: fmt.Sprintf("failed to respond after %d attempts", p.noResponseCount),
+			Reason: fmt.Errorf("failed to respond after %d attempts", p.noResponseCount),
 		}
 	}
 	return provider.ErrNoResponse
@@ -304,7 +305,7 @@ func (p *http) noBlock(e error) error {
 	p.noBlockCount++
 	if p.noBlockCount > p.noBlockThreshold {
 		return provider.ErrUnreliableProvider{
-			Reason: fmt.Sprintf("failed to provide a block after %d attempts", p.noBlockCount),
+			Reason: fmt.Errorf("failed to provide a block after %d attempts", p.noBlockCount),
 		}
 	}
 	return e
