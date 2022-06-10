@@ -854,6 +854,10 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		addresses[i], addresses[j] = addresses[j], addresses[i]
 	})
 
+	if len(addresses) <= int(limit) {
+		return addresses
+	}
+
 	return addresses[:limit-1]
 }
 
