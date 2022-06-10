@@ -1364,7 +1364,7 @@ func (p *peerInfo) LastDialed() (time.Time, bool) {
 	// if we never modified last, then we should return it to the
 	// zero value
 	if last.Add(1).IsZero() {
-		last = last.Add(1)
+		return time.Time{}, success
 	}
 
 	return last, success
