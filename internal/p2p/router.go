@@ -444,8 +444,8 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
 		const (
-			maxDialerInterval = 3000
-			minDialerInterval = 250
+			maxDialerInterval = 500
+			minDialerInterval = 100
 		)
 
 		// nolint:gosec // G404: Use of weak random number generator
@@ -695,6 +695,7 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 			return conn, nil
 		}
 	}
+
 	return nil, errors.New("all endpoints failed")
 }
 
@@ -722,7 +723,7 @@ func (r *Router) handshakePeer(
 	}
 
 	if peerInfo.Network != nodeInfo.Network {
-		if err := r.peerManager.store.Delete(peerInfo.NodeID); err != nil {
+		if err := r.peerManager.Inactivate(peerInfo.NodeID); err != nil {
 			return peerInfo, fmt.Errorf("problem removing peer from store from incorrect network [%s]: %w", peerInfo.Network, err)
 		}
 

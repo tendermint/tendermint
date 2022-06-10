@@ -39,10 +39,10 @@ const (
 )
 
 // PeerScore is a numeric score assigned to a peer (higher is better).
-type PeerScore uint8
+type PeerScore int
 
 const (
-	PeerScorePersistent       PeerScore = math.MaxUint8 // persistent peers
+	PeerScorePersistent       PeerScore = math.MaxInt // persistent peers
 	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
 )
 
@@ -405,6 +405,9 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	if ok {
 		return false, nil
 	}
+	if peer.Inactive {
+		return false, nil
+	}
 
 	// else add the new address
 	peer.AddressInfo[address] = &peerAddressInfo{Address: address}
@@ -578,8 +581,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 		return fmt.Errorf("peer %v is already connected", address.NodeID)
 	}
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
-		if upgradeFromPeer == "" || len(m.connected) >=
-			int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
+		if upgradeFromPeer == "" || len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 			return fmt.Errorf("already connected to maximum number of peers")
 		}
 	}
@@ -589,6 +591,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 		return fmt.Errorf("peer %q was removed while dialing", address.NodeID)
 	}
 	now := time.Now().UTC()
+	peer.Inactive = false
 	peer.LastConnected = now
 	if addressInfo, ok := peer.AddressInfo[address]; ok {
 		addressInfo.DialFailures = 0
@@ -644,8 +647,7 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 	if m.connected[peerID] {
 		return fmt.Errorf("peer %q is already connected", peerID)
 	}
-	if m.options.MaxConnected > 0 &&
-		len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
+	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return fmt.Errorf("already connected to maximum number of peers")
 	}
 
@@ -670,6 +672,7 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 		}
 	}
 
+	peer.Inactive = false
 	peer.LastConnected = time.Now().UTC()
 	if err := m.store.Set(peer); err != nil {
 		return err
@@ -799,15 +802,27 @@ func (m *PeerManager) Errored(peerID types.NodeID, err error) {
 	m.evictWaker.Wake()
 }
 
+func (m *PeerManager) Inactivate(peerID types.NodeID) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	peer := m.store.peers[peerID]
+	peer.Inactive = true
+
+	return m.store.Set(*peer)
+}
+
 // Advertise returns a list of peer addresses to advertise to a peer.
 //
-// FIXME: This is fairly naïve and only returns the addresses of the
-// highest-ranked peers.
+// It finds twice as many peers as the limit specifies, shuffles this
+// list, and then returns the limit. The goal of this is to gossip the
+// "best" peers but also ensure that more fresh peers also have a
+// chance.
 func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	addresses := make([]NodeAddress, 0, limit)
+	addresses := make([]NodeAddress, 0, 2*limit)
 
 	// advertise ourselves, to let everyone know how to dial us back
 	// and enable mutual address discovery
@@ -821,6 +836,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		}
 
 		for nodeAddr, addressInfo := range peer.AddressInfo {
+
 			if len(addresses) >= int(limit) {
 				return addresses
 			}
@@ -831,8 +847,11 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 			}
 		}
 	}
+	rand.Shuffle(len(addresses), func(i, j int) {
+		addresses[i], addresses[j] = addresses[j], addresses[i]
+	})
 
-	return addresses
+	return addresses[:limit-1]
 }
 
 // PeerEventSubscriber describes the type of the subscription method, to assist
@@ -1175,9 +1194,47 @@ func (s *peerStore) Ranked() []*peerInfo {
 		s.ranked = append(s.ranked, peer)
 	}
 	sort.Slice(s.ranked, func(i, j int) bool {
-		// FIXME: If necessary, consider precomputing scores before sorting,
-		// to reduce the number of Score() calls.
-		return s.ranked[i].Score() > s.ranked[j].Score()
+		// sort inactive peers after active peers
+		if s.ranked[i].Inactive && !s.ranked[j].Inactive {
+			return false
+		} else if !s.ranked[i].Inactive && s.ranked[j].Inactive {
+			return true
+		}
+
+		iLastDialed, iLastDialSuccess := s.ranked[i].LastDialed()
+		jLastDialed, jLastDialSuccess := s.ranked[j].LastDialed()
+
+		// sort peers who our most recent dialing attempt was
+		// successful ahead of peers with recent dialing
+		// failures
+		switch {
+		case iLastDialSuccess && jLastDialSuccess:
+			// if both peers were (are?) successfully
+			// connected, convey their score, but give the
+			// one we dialed successfully most recently a bonus
+
+			iScore := s.ranked[i].Score()
+			jScore := s.ranked[j].Score()
+			if jLastDialed.Before(iLastDialed) {
+				jScore++
+			} else {
+				iScore++
+			}
+
+			return iScore > jScore
+		case iLastDialSuccess:
+			return true
+		case jLastDialSuccess:
+			return false
+		default:
+			// if both peers were not successful in their
+			// most recent dialing attempt, fall back to
+			// peer score.
+
+			// FIXME: If necessary, consider precomputing scores before sorting,
+			// to reduce the number of Score() calls.
+			return s.ranked[i].Score() > s.ranked[j].Score()
+		}
 	})
 	return s.ranked
 }
@@ -1200,6 +1257,8 @@ type peerInfo struct {
 	FixedScore PeerScore // mainly for tests
 
 	MutableScore int64 // updated by router
+	Inactive     bool
+	DialFailures int64
 }
 
 // peerInfoFromProto converts a Protobuf PeerInfo message to a peerInfo,
@@ -1208,6 +1267,7 @@ func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 	p := &peerInfo{
 		ID:          types.NodeID(msg.ID),
 		AddressInfo: map[NodeAddress]*peerAddressInfo{},
+		Inactive:    msg.Inactive,
 	}
 	if msg.LastConnected != nil {
 		p.LastConnected = *msg.LastConnected
@@ -1231,6 +1291,7 @@ func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
 	msg := &p2pproto.PeerInfo{
 		ID:            string(p.ID),
 		LastConnected: &p.LastConnected,
+		Inactive:      p.Inactive,
 	}
 	for _, addressInfo := range p.AddressInfo {
 		msg.AddressInfo = append(msg.AddressInfo, addressInfo.ToProto())
@@ -1254,6 +1315,40 @@ func (p *peerInfo) Copy() peerInfo {
 	return c
 }
 
+// LastDialed returns when the peer was last dialed, and if that dial
+// attempt was successful.
+func (p *peerInfo) LastDialed() (time.Time, bool) {
+	var (
+		last    time.Time
+		success bool
+	)
+	last = last.Add(-1) // so it's after the epoch
+
+	for _, addr := range p.AddressInfo {
+		if addr.LastDialFailure.Equal(addr.LastDialSuccess) {
+			if addr.LastDialFailure.IsZero() {
+				continue
+			}
+			if last.Before(addr.LastDialSuccess) {
+				last = addr.LastDialSuccess
+				success = true
+			}
+		}
+		if addr.LastDialFailure.Before(addr.LastDialSuccess) {
+			if last.Before(addr.LastDialFailure) {
+				continue
+			}
+			last = addr.LastDialFailure
+			success = false
+		}
+	}
+	if last.Add(1).IsZero() {
+		last = last.Add(1)
+	}
+
+	return last, success
+}
+
 // Score calculates a score for the peer. Higher-scored peers will be
 // preferred over lower scores.
 func (p *peerInfo) Score() PeerScore {
@@ -1273,10 +1368,6 @@ func (p *peerInfo) Score() PeerScore {
 		// DialFailures is reset when dials succeed, so this
 		// is either the number of dial failures or 0.
 		score -= int64(addr.DialFailures)
-	}
-
-	if score <= 0 {
-		return 0
 	}
 
 	return PeerScore(score)
