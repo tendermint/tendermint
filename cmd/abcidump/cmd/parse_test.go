@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -72,6 +73,8 @@ WTJaREk9
 
 	for i, tc := range testCases {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			var err error
+
 			parseCmd := &ParseCmd{}
 			cmd := parseCmd.Command()
 			cmd.SetArgs(tc.args)
@@ -81,9 +84,10 @@ WTJaREk9
 
 			errBuf := &bytes.Buffer{}
 			cmd.SetErr(errBuf)
-			logger = log.TestingLoggerWithOutput(errBuf)
+			logger, err = log.NewLogger(log.LogLevelDebug, errBuf)
+			require.NoError(t, err)
 
-			err := cmd.Execute()
+			err = cmd.Execute()
 			assert.NoError(t, err)
 			assert.Equal(t, 0, errBuf.Len(), errBuf.String())
 

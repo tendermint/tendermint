@@ -5,11 +5,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestCborBase64(t *testing.T) {
+	var err error
+
 	base := "omdtZXNzYWdleB1DaGFpbkxvY2sgdmVyaWZpY2F0aW9uIGZhaWxlZGRkYXRho2ZoZWlnaHQaJGELXWlibG9" +
 		"ja0hhc2h4QDI1MTc3MzgwZDcyMjdjODcyNWFmNDJlMTlkMWFjNDdhYWViMjZkOTM2YjQwMzQ1MDAwMDAxNTI3ZTBmN" +
 		"jQ5NzVpc2lnbmF0dXJleMA5YTZmNmUxMWUyMDAwMDAwMTNkZmFiNDZjMmEzMWE2ZGRlZGRiYmNjNzQ3OTMzMzBlODI" +
@@ -24,9 +27,10 @@ func TestCborBase64(t *testing.T) {
 
 	errBuf := &bytes.Buffer{}
 	cmd.SetErr(errBuf)
-	logger = log.TestingLoggerWithOutput(errBuf)
+	logger, err = log.NewLogger(log.LogLevelDebug, errBuf)
+	require.NoError(t, err)
 
-	err := cmd.Execute()
+	err = cmd.Execute()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, errBuf.Len(), errBuf.String())
 

@@ -47,6 +47,10 @@ func NewDefaultLogger(format, level string) (Logger, error) {
 		return nil, fmt.Errorf("unsupported log format: %s", format)
 	}
 
+	return NewLogger(level, logWriter)
+}
+
+func NewLogger(level string, logWriter io.Writer) (Logger, error) {
 	logLevel, err := zerolog.ParseLevel(level)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse log level (%s): %w", level, err)
