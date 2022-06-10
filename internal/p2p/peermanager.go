@@ -44,7 +44,7 @@ type PeerScore int16
 const (
 	PeerScorePersistent       PeerScore = math.MaxInt16 // persistent peers
 	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
-	DefaultMutablePeerScore   int64     = 256
+	DefaultMutablePeerScore             = 256
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
