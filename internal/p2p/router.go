@@ -837,14 +837,6 @@ func (r *Router) handshakePeer(
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
 
-	if peerInfo.Network != r.nodeInfo.Network {
-		if err := r.peerManager.Inactivate(peerInfo.NodeID); err != nil {
-			return peerInfo, peerKey, fmt.Errorf("problem removing peer from store from incorrect network [%s]: %w", peerInfo.Network, err)
-		}
-
-		return peerInfo, peerKey, fmt.Errorf("connected to peer from wrong network, %q, removed from peer store", peerInfo.Network)
-	}
-
 	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
 			peerInfo.NodeID, types.NodeIDFromPubKey(peerKey))
@@ -855,7 +847,11 @@ func (r *Router) handshakePeer(
 	}
 
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
-		return peerInfo, peerKey, ErrRejected{
+		if err := r.peerManager.Inactivate(peerInfo.NodeID); err != nil {
+			return peerInfo, fmt.Errorf("problem inactivating peer %q: %w", peerInfo.ID(), err)
+		}
+
+		return peerInfo, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
 			isIncompatible: true,
