@@ -656,7 +656,7 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 	res, err := client.PrepareProposal(cmd.Context(), &types.RequestPrepareProposal{
 		Txs: txsBytesArray,
 		// kvstore has to have this parameter in order not to reject a tx as the default value is 0
-		MaxTxBytes: 12000,
+		MaxTxBytes: 65536,
 	})
 	if err != nil {
 		return err
