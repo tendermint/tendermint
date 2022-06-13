@@ -90,7 +90,7 @@ Has the same feature set as V0.37 but with a focus towards testing, protocol cor
 
 ## Post 1.0 Work
 
-- Improved block propagation with erasure coding and/or compact blocks. [More](https://github.com/tendermint/spec/issues/347)
+- Improved block propagation with erasure coding and/or compact blocks. [More](https://github.com/tendermint/tendermint/issues/7932)
 - Consensus engine refactor
 - Fork accountability protocol
 - Bidirectional ABCI

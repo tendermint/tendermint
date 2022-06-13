@@ -322,14 +322,6 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		}
 	}
 
-	cfg.P2P.Seeds = "" //nolint: staticcheck
-	for _, seed := range node.Seeds {
-		if len(cfg.P2P.Seeds) > 0 { //nolint: staticcheck
-			cfg.P2P.Seeds += "," //nolint: staticcheck
-		}
-		cfg.P2P.Seeds += seed.AddressP2P(true) //nolint: staticcheck
-	}
-
 	cfg.P2P.PersistentPeers = ""
 	for _, peer := range node.PersistentPeers {
 		if len(cfg.P2P.PersistentPeers) > 0 {
@@ -362,6 +354,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"vote_extension_delay_ms":   node.Testnet.VoteExtensionDelayMS,
 		"finalize_block_delay_ms":   node.Testnet.FinalizeBlockDelayMS,
 	}
+
 	switch node.Testnet.ABCIProtocol {
 	case e2e.ProtocolUNIX:
 		cfg["listen"] = AppAddressUNIX
