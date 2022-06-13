@@ -177,10 +177,7 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
 }
 
 var (
-	jsonpbMarshaller = jsonpb.Marshaler{
-		EnumsAsInts:  true,
-		EmitDefaults: true,
-	}
+	jsonpbMarshaller = jsonpb.Marshaler{}
 )
 
 func (es *EventSink) IndexTxEvents(txrs []*abci.TxResult) error {
