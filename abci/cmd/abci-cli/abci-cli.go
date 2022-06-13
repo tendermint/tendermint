@@ -172,7 +172,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "finalize_block", "check_tx", "commit", "query", "prepare_proposal"},
+	ValidArgs: []string{"echo", "info", "query", "check_tx", "prepare_proposal", "finalize_block", "commit"},
 	RunE:      cmdConsole,
 }
 
@@ -230,7 +230,7 @@ var prepareProposalCmd = &cobra.Command{
 	Use:   "prepare_proposal",
 	Short: "prepare proposal",
 	Long:  "prepare proposal",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MinimumNArgs(1),
 	RunE:  cmdPrepareProposal,
 }
 
@@ -648,7 +648,6 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 	for i, arg := range args {
 		txBytes, err := stringOrHexToBytes(arg)
 		if err != nil {
-
 			return err
 		}
 		txsBytesArray[i] = txBytes
@@ -656,32 +655,34 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 
 	res, err := client.PrepareProposal(cmd.Context(), &types.RequestPrepareProposal{
 		Txs: txsBytesArray,
-		// kvstore has to have this parameter in order not to reject a tx as the default value if 0
-		MaxTxBytes: 120,
+		// kvstore has to have this parameter in order not to reject a tx as the default value is 0
+		MaxTxBytes: 12000,
 	})
 	if err != nil {
 		return err
 	}
-
+	resps := make([]response, 0, len(res.TxResults)+1)
 	for _, tx := range res.TxRecords {
 		existingTx := inTxArray(txsBytesArray, tx.Tx)
 		if tx.Action == types.TxRecord_UNKNOWN ||
 			(existingTx && tx.Action == types.TxRecord_ADDED) ||
 			(!existingTx && (tx.Action == types.TxRecord_UNMODIFIED || tx.Action == types.TxRecord_REMOVED)) {
-			printResponse(cmd, args, response{
+			resps = append(resps, response{
 				Code: codeBad,
 				Log:  "Failed. Tx: " + string(tx.GetTx()) + " action: " + tx.Action.String(),
 			})
-
 		} else {
-			printResponse(cmd, args, response{
+			resps = append(resps, response{
 				Code: code.CodeTypeOK,
 				Log:  "Succeeded. Tx: " + string(tx.Tx) + " action: " + tx.Action.String(),
 			})
 		}
-
 	}
+	resps = append(resps, response{
+		Data: res.AppHash,
+	})
 
+	printResponse(cmd, args, resps...)
 	return nil
 }
 

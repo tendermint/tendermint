@@ -3,7 +3,9 @@ info
 finalize_block "abc"
 commit
 info
+prepare_proposal "abc"
 query "abc"
 finalize_block "def=xyz" "ghi=123"
 commit
 query "def"
+prepare_proposal "preparedef"

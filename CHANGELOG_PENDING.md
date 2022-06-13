@@ -31,7 +31,8 @@ Special thanks to external contributors on this release:
   - [abci] \#7984 Remove the locks preventing concurrent use of ABCI applications by Tendermint. (@tychoish)
   - [abci] \#8605 Remove info, log, events, gasUsed and mempoolError fields from ResponseCheckTx as they are not used by Tendermint. (@jmalicevic)
   - [abci] \#8664 Move `app_hash` parameter from `Commit` to `FinalizeBlock`. (@sergio-mena)
-
+  - [abci] \#8656 Added cli command for `PrepareProposal`. (@jmalicevic)
+  
 - P2P Protocol
 
   - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
