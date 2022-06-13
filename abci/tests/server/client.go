@@ -70,6 +70,19 @@ func FinalizeBlock(ctx context.Context, client abciclient.Client, txBytes [][]by
 	return nil
 }
 
+func PrepareProposal(ctx context.Context, client abciclient.Client, txBytes [][]byte, codeExp []types.TxRecord_TxAction, dataExp []byte) error {
+	res, _ := client.PrepareProposal(ctx, &types.RequestPrepareProposal{Txs: txBytes})
+	for i, tx := range res.TxRecords {
+		if tx.Action != codeExp[i] {
+			fmt.Println("Failed test: PrepareProposal")
+			fmt.Printf("PrepareProposal response code was unexpected. Got %v expected %v.",
+				tx.Action, codeExp)
+			return errors.New("PrepareProposal error")
+		}
+	}
+	fmt.Println("Passed test: PrepareProposal")
+	return nil
+}
 func CheckTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
 	res, _ := client.CheckTx(ctx, &types.RequestCheckTx{Tx: txBytes})
 	code, data := res.Code, res.Data
