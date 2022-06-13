@@ -31,7 +31,7 @@ func TestPeerScoring(t *testing.T) {
 
 	t.Run("Synchronous", func(t *testing.T) {
 		// update the manager and make sure it's correct
-		require.EqualValues(t, 0, peerManager.Scores()[id])
+		require.Zero(t, peerManager.Scores()[id])
 
 		// add a bunch of good status updates and watch things increase.
 		for i := 1; i < 10; i++ {

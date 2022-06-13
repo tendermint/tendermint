@@ -44,7 +44,6 @@ type PeerScore int16
 const (
 	PeerScorePersistent       PeerScore = math.MaxInt16 // persistent peers
 	MaxPeerScoreNotPersistent PeerScore = PeerScorePersistent - 1
-	DefaultMutablePeerScore             = 256
 )
 
 // PeerUpdate is a peer update event sent via PeerUpdates.
@@ -432,10 +431,6 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	if peer.Inactive {
 		return false, nil
 	}
-
-	// set the peer's mutable score to something non-zero so that
-	// peer's we've never seen aren't very low at start.
-	peer.MutableScore = DefaultMutablePeerScore
 
 	// else add the new address
 	peer.AddressInfo[address] = &peerAddressInfo{Address: address}
@@ -1060,6 +1055,8 @@ func (m *PeerManager) findUpgradeCandidate(id types.NodeID, score PeerScore) typ
 	for i := len(ranked) - 1; i >= 0; i-- {
 		candidate := ranked[i]
 		switch {
+		case candidate.ID == id:
+			continue
 		case candidate.Score() >= score:
 			return "" // no further peers can be scored lower, due to sorting
 		case !m.connected[candidate.ID]:
