@@ -14,6 +14,7 @@
 
 > finalize_block "abc"
 -> code: OK
+-> code: OK
 -> data.hex: 0x0200000000000000
 
 > commit 
@@ -34,6 +35,7 @@
 -> value.hex: 616263
 
 > finalize_block "def=xyz" "ghi=123"
+-> code: OK
 -> code: OK
 -> code: OK
 -> data.hex: 0x0600000000000000
