@@ -829,7 +829,11 @@ func (m *PeerManager) Inactivate(peerID types.NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	peer := m.store.peers[peerID]
+	peer, ok := m.store.peers[peerID]
+	if !ok {
+		return nil
+	}
+
 	peer.Inactive = true
 
 	return m.store.Set(*peer)
