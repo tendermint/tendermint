@@ -22,9 +22,6 @@ const (
 	// FuzzModeDelay is a mode in which we randomly sleep
 	FuzzModeDelay
 
-	// DefaultLogLevel defines a default log level as INFO.
-	DefaultLogLevel = "info"
-
 	ModeFull      = "full"
 	ModeValidator = "validator"
 	ModeSeed      = "seed"
@@ -236,7 +233,7 @@ func DefaultBaseConfig() BaseConfig {
 		Moniker:     defaultMoniker,
 		ProxyApp:    "tcp://127.0.0.1:26658",
 		ABCI:        "socket",
-		LogLevel:    DefaultLogLevel,
+		LogLevel:    DefaultPackageLogLevels(),
 		LogFormat:   log.LogFormatPlain,
 		FilterPeers: false,
 		DBBackend:   "goleveldb",
@@ -306,6 +303,17 @@ func (cfg BaseConfig) LoadOrGenNodeKeyID() (types.NodeID, error) {
 // DBDir returns the full path to the database directory
 func (cfg BaseConfig) DBDir() string {
 	return rootify(cfg.DBPath, cfg.RootDir)
+}
+
+// DefaultLogLevel returns a default log level of "error"
+func DefaultLogLevel() string {
+	return "error"
+}
+
+// DefaultPackageLogLevels returns a default log level setting so all packages
+// log at "error", while the `state` and `main` packages log at "info"
+func DefaultPackageLogLevels() string {
+	return fmt.Sprintf("main:info,state:info,*:%s", DefaultLogLevel())
 }
 
 // ValidateBasic performs basic validation (checking param bounds, etc.) and

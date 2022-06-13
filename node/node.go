@@ -348,7 +348,7 @@ func makeNode(
 	}
 
 	if cfg.P2P.PexReactor {
-		node.services = append(node.services, pex.NewReactor(logger, peerManager, node.router.OpenChannel, peerManager.Subscribe))
+		node.services = append(node.services, pex.NewReactor(logger.With("module", "p2p"), peerManager, node.router.OpenChannel, peerManager.Subscribe))
 	}
 
 	// Set up state sync reactor, and schedule a sync if requested.

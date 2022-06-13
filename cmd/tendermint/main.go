@@ -20,7 +20,7 @@ func main() {
 		panic(err)
 	}
 
-	logger, err := log.NewDefaultLogger(conf.LogFormat, conf.LogLevel)
+	logger, err := log.NewDefaultLogger(conf.LogFormat, "info") // todo incorrect
 	if err != nil {
 		panic(err)
 	}
