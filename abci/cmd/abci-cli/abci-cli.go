@@ -348,8 +348,8 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 			func() error {
 				return servertest.PrepareProposal(ctx, client, [][]byte{
 					{0x01},
-				}, []uint32{
-					code.CodeTypeOK,
+				}, []types.TxRecord_TxAction{
+					types.TxRecord_UNMODIFIED,
 				}, nil)
 			},
 		})
