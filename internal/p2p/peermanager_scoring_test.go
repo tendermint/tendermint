@@ -218,6 +218,9 @@ func TestLastDialed(t *testing.T) {
 			ExpectedSuccess bool
 		}{
 			{
+				Name: "Zero",
+			},
+			{
 				Name:            "Success",
 				SuccessTime:     base.Add(time.Hour),
 				FailTime:        base,
