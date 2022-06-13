@@ -1376,22 +1376,19 @@ func (p *peerInfo) LastDialed() (time.Time, bool) {
 			if addr.LastDialFailure.IsZero() {
 				continue
 			}
-			if last.Before(addr.LastDialSuccess) {
-				last = addr.LastDialSuccess
-				success = true
+			if last.After(addr.LastDialSuccess) {
+				continue
 			}
+			success = true
+			last = addr.LastDialSuccess
 		}
-		if addr.LastDialSuccess.After(addr.LastDialFailure) {
-			if last.Before(addr.LastDialSuccess) {
-				last = addr.LastDialSuccess
-				success = true
-			}
+		if addr.LastDialFailure.After(last) {
+			success = false
+			last = addr.LastDialFailure
 		}
-		if addr.LastDialFailure.After(addr.LastDialSuccess) {
-			if last.Before(addr.LastDialFailure) {
-				last = addr.LastDialFailure
-				success = false
-			}
+		if addr.LastDialSuccess.After(last) || last.Equal(addr.LastDialSuccess) {
+			success = true
+			last = addr.LastDialSuccess
 		}
 	}
 
