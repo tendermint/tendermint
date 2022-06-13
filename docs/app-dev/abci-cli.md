@@ -169,11 +169,12 @@ Try running these commands:
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
-> commit
--> code: OK
--> data.hex: 0x0000000000000000
-
 > finalize_block "abc"
+-> code: OK
+-> code: OK
+-> data.hex: 0x0200000000000000
+
+> commit
 -> code: OK
 
 > info
@@ -181,34 +182,36 @@ Try running these commands:
 -> data: {"size":1}
 -> data.hex: 0x7B2273697A65223A317D
 
-> commit
--> code: OK
--> data.hex: 0x0200000000000000
-
 > query "abc"
 -> code: OK
 -> log: exists
--> height: 2
+-> height: 1
+-> key: abc
+-> key.hex: 616263
 -> value: abc
 -> value.hex: 616263
 
-> finalize_block "def=xyz"
+> finalize_block "def=xyz" "ghi=123"
 -> code: OK
+-> code: OK
+-> code: OK
+-> data.hex: 0x0600000000000000
 
 > commit
 -> code: OK
--> data.hex: 0x0400000000000000
 
 > query "def"
 -> code: OK
 -> log: exists
--> height: 3
+-> height: 2
+-> key: def
+-> key.hex: 646566
 -> value: xyz
 -> value.hex: 78797A
 ```
 
-Note that if we do `finalize_block "abc"` it will store `(abc, abc)`, but if
-we do `finalize_block "abc=efg"` it will store `(abc, efg)`.
+Note that if we do `finalize_block "abc" ...` it will store `(abc, abc)`, but if
+we do `finalize_block "abc=efg" ...` it will store `(abc, efg)`.
 
 Similarly, you could put the commands in a file and run
 `abci-cli --verbose batch < myfile`.

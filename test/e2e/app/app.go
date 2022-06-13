@@ -210,6 +210,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinali
 	return &abci.ResponseFinalizeBlock{
 		TxResults:        txs,
 		ValidatorUpdates: valUpdates,
+		AppHash:          app.state.Finalize(),
 		Events: []abci.Event{
 			{
 				Type: "val_updates",
@@ -233,7 +234,7 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	height, hash, err := app.state.Commit()
+	height, err := app.state.Commit()
 	if err != nil {
 		panic(err)
 	}
@@ -253,7 +254,6 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 		retainHeight = int64(height - app.cfg.RetainBlocks + 1)
 	}
 	return &abci.ResponseCommit{
-		Data:         hash,
 		RetainHeight: retainHeight,
 	}, nil
 }
