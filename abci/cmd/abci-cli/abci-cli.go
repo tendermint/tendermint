@@ -374,7 +374,6 @@ LOOP:
 
 		cmdArgs := persistentArgs(line)
 		if err := muxOnCommands(cmd, cmdArgs); err != nil {
-			fmt.Println(err.Error())
 			return err
 		}
 		fmt.Println()
@@ -678,9 +677,6 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 			})
 		}
 	}
-	resps = append(resps, response{
-		Data: res.AppHash,
-	})
 
 	printResponse(cmd, args, resps...)
 	return nil
@@ -730,7 +726,6 @@ func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
 			fmt.Printf("-> code: OK\n")
 		} else {
 			fmt.Printf("-> code: %d\n", rsp.Code)
-
 		}
 
 		if len(rsp.Data) != 0 {

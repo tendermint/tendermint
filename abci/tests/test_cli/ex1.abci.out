@@ -8,6 +8,10 @@
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
+> prepare_proposal "abc"
+-> code: OK
+-> log: Succeeded. Tx: abc action: UNMODIFIED
+
 > finalize_block "abc"
 -> code: OK
 
@@ -19,10 +23,6 @@
 -> code: OK
 -> data: {"size":1}
 -> data.hex: 0x7B2273697A65223A317D
-
-> prepare_proposal "abc"
--> code: OK
--> log: Succeeded. Tx: abc action: UNMODIFIED
 
 > query "abc"
 -> code: OK
