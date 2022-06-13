@@ -8,6 +8,10 @@
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
+> prepare_proposal "abc"
+-> code: OK
+-> log: Succeeded. Tx: abc action: UNMODIFIED
+
 > commit 
 -> code: OK
 -> data.hex: 0x0000000000000000
@@ -48,4 +52,10 @@
 -> key.hex: 646566
 -> value: xyz
 -> value.hex: 78797A
+
+> prepare_proposal "preparedef"
+-> code: OK
+-> log: Succeeded. Tx: def action: ADDED
+-> code: OK
+-> log: Succeeded. Tx: preparedef action: REMOVED
 

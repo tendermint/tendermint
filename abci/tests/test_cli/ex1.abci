@@ -1,5 +1,6 @@
 echo hello
 info
+prepare_proposal "abc"
 commit
 deliver_tx "abc"
 info
@@ -8,3 +9,4 @@ query "abc"
 deliver_tx "def=xyz"
 commit
 query "def"
+prepare_proposal "preparedef"

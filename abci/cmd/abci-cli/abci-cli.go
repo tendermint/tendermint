@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -143,6 +144,7 @@ func addCommands() {
 	RootCmd.AddCommand(commitCmd)
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(testCmd)
+	RootCmd.AddCommand(prepareProposalCmd)
 	addQueryFlags()
 	RootCmd.AddCommand(queryCmd)
 
@@ -184,7 +186,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "prepare_proposal", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
@@ -236,6 +238,14 @@ var versionCmd = &cobra.Command{
 		fmt.Println(version.Version)
 		return nil
 	},
+}
+
+var prepareProposalCmd = &cobra.Command{
+	Use:   "prepare_proposal",
+	Short: "prepare proposal",
+	Long:  "prepare proposal",
+	Args:  cobra.MinimumNArgs(1),
+	RunE:  cmdPrepareProposal,
 }
 
 var queryCmd = &cobra.Command{
@@ -309,6 +319,13 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 				return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
 			},
 			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
+			func() error {
+				return servertest.PrepareProposal(client, [][]byte{
+					{0x01},
+				}, []types.TxRecord_TxAction{
+					types.TxRecord_UNMODIFIED,
+				}, nil)
+			},
 		})
 }
 
@@ -409,6 +426,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdInfo(cmd, actualArgs)
 	case "query":
 		return cmdQuery(cmd, actualArgs)
+	case "prepare_proposal":
+		return cmdPrepareProposal(cmd, actualArgs)
 	default:
 		return cmdUnimplemented(cmd, pArgs)
 	}
@@ -573,6 +592,64 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func inTxArray(txByteArray [][]byte, tx []byte) bool {
+	for _, txTmp := range txByteArray {
+		if bytes.Equal(txTmp, tx) {
+			return true
+		}
+
+	}
+	return false
+}
+func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Info: "Must provide at least one transaction",
+			Log:  "Must provide at least one transaction",
+		})
+		return nil
+	}
+	txsBytesArray := make([][]byte, len(args))
+
+	for i, arg := range args {
+		txBytes, err := stringOrHexToBytes(arg)
+		if err != nil {
+			return err
+		}
+		txsBytesArray[i] = txBytes
+	}
+
+	res, err := client.PrepareProposalSync(types.RequestPrepareProposal{
+		Txs: txsBytesArray,
+		// kvstore has to have this parameter in order not to reject a tx as the default value is 0
+		MaxTxBytes: 65536,
+	})
+	if err != nil {
+		return err
+	}
+	resps := make([]response, 0, len(res.TxRecords)+1)
+	for _, tx := range res.TxRecords {
+		existingTx := inTxArray(txsBytesArray, tx.Tx)
+		if tx.Action == types.TxRecord_UNKNOWN ||
+			(existingTx && tx.Action == types.TxRecord_ADDED) ||
+			(!existingTx && (tx.Action == types.TxRecord_UNMODIFIED || tx.Action == types.TxRecord_REMOVED)) {
+			resps = append(resps, response{
+				Code: codeBad,
+				Log:  "Failed. Tx: " + string(tx.GetTx()) + " action: " + tx.Action.String(),
+			})
+		} else {
+			resps = append(resps, response{
+				Code: code.CodeTypeOK,
+				Log:  "Succeeded. Tx: " + string(tx.Tx) + " action: " + tx.Action.String(),
+			})
+		}
+	}
+
+	printResponse(cmd, args, resps...)
+	return nil
+}
+
 func cmdKVStore(cmd *cobra.Command, args []string) error {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
@@ -609,44 +686,46 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 
 //--------------------------------------------------------------------------------
 
-func printResponse(cmd *cobra.Command, args []string, rsp response) {
+func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
 
 	if flagVerbose {
 		fmt.Println(">", cmd.Use, strings.Join(args, " "))
 	}
 
-	// Always print the status code.
-	if rsp.Code == types.CodeTypeOK {
-		fmt.Printf("-> code: OK\n")
-	} else {
-		fmt.Printf("-> code: %d\n", rsp.Code)
+	for _, rsp := range rsps {
+		// Always print the status code.
+		if rsp.Code == types.CodeTypeOK {
+			fmt.Printf("-> code: OK\n")
+		} else {
+			fmt.Printf("-> code: %d\n", rsp.Code)
 
-	}
+		}
 
-	if len(rsp.Data) != 0 {
-		// Do no print this line when using the commit command
-		// because the string comes out as gibberish
-		if cmd.Use != "commit" {
-			fmt.Printf("-> data: %s\n", rsp.Data)
+		if len(rsp.Data) != 0 {
+			// Do no print this line when using the commit command
+			// because the string comes out as gibberish
+			if cmd.Use != "commit" {
+				fmt.Printf("-> data: %s\n", rsp.Data)
+			}
+			fmt.Printf("-> data.hex: 0x%X\n", rsp.Data)
 		}
-		fmt.Printf("-> data.hex: 0x%X\n", rsp.Data)
-	}
-	if rsp.Log != "" {
-		fmt.Printf("-> log: %s\n", rsp.Log)
-	}
+		if rsp.Log != "" {
+			fmt.Printf("-> log: %s\n", rsp.Log)
+		}
 
-	if rsp.Query != nil {
-		fmt.Printf("-> height: %d\n", rsp.Query.Height)
-		if rsp.Query.Key != nil {
-			fmt.Printf("-> key: %s\n", rsp.Query.Key)
-			fmt.Printf("-> key.hex: %X\n", rsp.Query.Key)
-		}
-		if rsp.Query.Value != nil {
-			fmt.Printf("-> value: %s\n", rsp.Query.Value)
-			fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
-		}
-		if rsp.Query.ProofOps != nil {
-			fmt.Printf("-> proof: %#v\n", rsp.Query.ProofOps)
+		if rsp.Query != nil {
+			fmt.Printf("-> height: %d\n", rsp.Query.Height)
+			if rsp.Query.Key != nil {
+				fmt.Printf("-> key: %s\n", rsp.Query.Key)
+				fmt.Printf("-> key.hex: %X\n", rsp.Query.Key)
+			}
+			if rsp.Query.Value != nil {
+				fmt.Printf("-> value: %s\n", rsp.Query.Value)
+				fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
+			}
+			if rsp.Query.ProofOps != nil {
+				fmt.Printf("-> proof: %#v\n", rsp.Query.ProofOps)
+			}
 		}
 	}
 }
