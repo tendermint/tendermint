@@ -31,6 +31,8 @@ jobs:
       - uses: ./.github/actions/bls
         name: Install BLS library
         if: "env.GIT_DIFF != ''"
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
       - name: Run Go Tests
         run: |
           make test-group-${{ matrix.part }} NUM_SPLIT=6

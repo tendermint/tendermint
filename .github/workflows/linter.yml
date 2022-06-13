@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
       - name: Lint Code Base
         uses: docker://github/super-linter:v4
         env:

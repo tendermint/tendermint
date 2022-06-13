@@ -162,6 +162,19 @@ install_abci:
 	@go install -mod=readonly ./abci/cmd/...
 .PHONY: install_abci
 
+
+##################################################################################
+###                              Build ABCI Dump                               ###
+##################################################################################
+
+build_abcidump:
+	@go build -o build/abcidump ./cmd/abcidump
+.PHONY: build_abcidump
+
+install_abcidump:
+	@go install ./cmd/abcidump
+.PHONY: install_abcidump
+
 ###############################################################################
 ###				Privval Server                              ###
 ###############################################################################

@@ -13,12 +13,15 @@ require (
 	github.com/dashevo/dashd-go/btcec/v2 v2.0.6 // indirect
 	github.com/dashpay/bls-signatures/go-bindings v0.0.0-20201127091120-745324b80143
 	github.com/fortytw2/leaktest v1.3.0
+	github.com/fxamacker/cbor/v2 v2.4.0
+	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-kit/kit v0.12.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/golangci/golangci-lint v1.46.2
 	github.com/google/btree v1.0.1 // indirect
+	github.com/google/gopacket v1.1.19
 	github.com/google/orderedcode v0.0.1
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
@@ -66,7 +69,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/didip/tollbooth/v6 v6.0.1 // indirect
 	github.com/didip/tollbooth_chi v0.0.0-20200524181329-8b84cd7183d9 // indirect
-	github.com/go-chi/chi v4.1.1+incompatible // indirect
 	github.com/go-chi/render v1.0.1 // indirect
 	github.com/go-pkgz/expirable-cache v0.0.3 // indirect
 	github.com/go-pkgz/rest v1.5.0 // indirect
@@ -224,6 +226,7 @@ require (
 	github.com/ultraware/funlen v0.0.3 // indirect
 	github.com/ultraware/whitespace v0.0.5 // indirect
 	github.com/uudashr/gocognit v1.0.5 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yagipy/maintidx v1.0.0 // indirect
 	github.com/yeya24/promlinter v0.2.0 // indirect
 	gitlab.com/bosi/decorder v0.2.1 // indirect
