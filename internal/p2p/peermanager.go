@@ -810,6 +810,8 @@ func (m *PeerManager) Inactivate(peerID types.NodeID) error {
 		return nil
 	}
 
+	peer.Inactive = true
+
 	return m.store.Set(*peer)
 }
 
