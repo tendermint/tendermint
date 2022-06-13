@@ -14,10 +14,10 @@
 
 > finalize_block "abc"
 -> code: OK
+-> data.hex: 0x0200000000000000
 
 > commit 
 -> code: OK
--> data.hex: 0x0200000000000000
 
 > info 
 -> code: OK
@@ -35,12 +35,11 @@
 
 > finalize_block "def=xyz" "ghi=123"
 -> code: OK
-> finalize_block "def=xyz" "ghi=123"
 -> code: OK
+-> data.hex: 0x0600000000000000
 
 > commit 
 -> code: OK
--> data.hex: 0x0600000000000000
 
 > query "def"
 -> code: OK
@@ -54,7 +53,6 @@
 > prepare_proposal "preparedef"
 -> code: OK
 -> log: Succeeded. Tx: def action: ADDED
-> prepare_proposal "preparedef"
 -> code: OK
 -> log: Succeeded. Tx: preparedef action: REMOVED
 
