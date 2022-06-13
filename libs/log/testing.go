@@ -1,6 +1,7 @@
 package log
 
 import (
+	"io"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -48,4 +49,10 @@ type testingWriter struct {
 func (tw testingWriter) Write(in []byte) (int, error) {
 	tw.t.Log(string(in))
 	return len(in), nil
+}
+
+func NewWriterLogger(writer io.Writer) Logger {
+	return defaultLogger{
+		Logger: zerolog.New(writer).With().Logger(),
+	}
 }
