@@ -221,11 +221,20 @@ func makeNode(cfg *config.Config,
 		}
 	}
 
+<<<<<<< HEAD
 	// Determine whether we should attempt state sync.
 	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
+=======
+	peerManager, peerCloser, err := createPeerManager(logger, cfg, dbProvider, nodeKey.ID)
+	closers = append(closers, peerCloser)
+	if err != nil {
+		return nil, combineCloseError(
+			fmt.Errorf("failed to create peer manager: %w", err),
+			makeCloser(closers))
+>>>>>>> 7971f4a2f (p2p: self-add node should not error (#8753))
 	}
 
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,

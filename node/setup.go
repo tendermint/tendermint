@@ -453,6 +453,7 @@ func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport 
 }
 
 func createPeerManager(
+	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	p2pLogger log.Logger,
@@ -495,6 +496,7 @@ func createPeerManager(
 	const maxUpgradeConns = 4
 
 	options := p2p.PeerManagerOptions{
+		Logger:                 logger.With("module", "peermanager"),
 		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    maxUpgradeConns,

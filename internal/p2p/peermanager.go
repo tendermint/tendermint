@@ -15,6 +15,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -162,6 +163,8 @@ type PeerManagerOptions struct {
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[types.NodeID]bool
+
+	Logger log.Logger
 }
 
 // Validate validates the options.
@@ -283,8 +286,12 @@ type PeerManager struct {
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
+<<<<<<< HEAD
 	closeCh    chan struct{} // signal channel for Close()
 	closeOnce  sync.Once
+=======
+	logger     log.Logger
+>>>>>>> 7971f4a2f (p2p: self-add node should not error (#8753))
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -319,7 +326,11 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
 		evictWaker: tmsync.NewWaker(),
+<<<<<<< HEAD
 		closeCh:    make(chan struct{}),
+=======
+		logger:     log.NewNopLogger(),
+>>>>>>> 7971f4a2f (p2p: self-add node should not error (#8753))
 
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
@@ -330,6 +341,11 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		evicting:      map[types.NodeID]bool{},
 		subscriptions: map[*PeerUpdates]*PeerUpdates{},
 	}
+
+	if options.Logger != nil {
+		peerManager.logger = options.Logger
+	}
+
 	if err = peerManager.configurePeers(); err != nil {
 		return nil, err
 	}
@@ -412,7 +428,7 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 		return false, err
 	}
 	if address.NodeID == m.selfID {
-		return false, fmt.Errorf("can't add self (%v) to peer store", m.selfID)
+		return false, nil
 	}
 
 	m.mtx.Lock()

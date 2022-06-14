@@ -270,8 +270,9 @@ func TestPeerManager_Add(t *testing.T) {
 	require.Error(t, err)
 
 	// Adding self should error
-	_, err = peerManager.Add(p2p.NodeAddress{Protocol: "memory", NodeID: selfID})
-	require.Error(t, err)
+	ok, err := peerManager.Add(p2p.NodeAddress{Protocol: "memory", NodeID: selfID})
+	require.False(t, ok)
+	require.NoError(t, err)
 }
 
 func TestPeerManager_DialNext(t *testing.T) {
@@ -812,13 +813,14 @@ func TestPeerManager_Dialed_Connected(t *testing.T) {
 	require.Error(t, peerManager.Dialed(b))
 }
 
-func TestPeerManager_Dialed_Self(t *testing.T) {
+func TestPeerManager_Adding_Self(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	// Dialing self should error.
-	_, err = peerManager.Add(p2p.NodeAddress{Protocol: "memory", NodeID: selfID})
-	require.Error(t, err)
+	// Ingesting self should not error.
+	ok, err := peerManager.Add(p2p.NodeAddress{Protocol: "memory", NodeID: selfID})
+	require.False(t, ok)
+	require.NoError(t, err)
 }
 
 func TestPeerManager_Dialed_MaxConnected(t *testing.T) {
