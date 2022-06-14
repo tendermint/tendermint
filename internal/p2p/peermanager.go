@@ -905,7 +905,7 @@ OUTER:
 		return addresses
 	}
 
-	return addresses[:limit-1]
+	return addresses[:limit]
 }
 
 // Subscribe subscribes to peer updates. The caller must consume the peer
