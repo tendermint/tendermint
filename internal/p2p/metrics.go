@@ -28,6 +28,9 @@ var (
 type Metrics struct {
 	// Number of peers.
 	Peers metrics.Gauge
+
+	PeersStored      metrics.Gauge
+	PeersInactivated metrics.Gauge
 	// Number of bytes per channel received from a given peer.
 	PeerReceiveBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`
 	// Number of bytes per channel sent to a given peer.

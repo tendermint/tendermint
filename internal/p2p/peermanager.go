@@ -145,6 +145,9 @@ type PeerManagerOptions struct {
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[types.NodeID]bool
+
+	// Peer Metrics
+	Metrics *Metrics
 }
 
 // Validate validates the options.
@@ -377,6 +380,7 @@ func (m *PeerManager) prunePeers() error {
 			if err := m.store.Delete(peerID); err != nil {
 				return err
 			}
+			m.options.Metrics.PeersStored.Add(-1)
 		}
 	}
 	return nil
@@ -414,6 +418,8 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 	if err := m.store.Set(peer); err != nil {
 		return false, err
 	}
+
+	m.options.Metrics.PeersStored.Add(1)
 	if err := m.prunePeers(); err != nil {
 		return true, err
 	}
@@ -590,7 +596,11 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 		return fmt.Errorf("peer %q was removed while dialing", address.NodeID)
 	}
 	now := time.Now().UTC()
+	if peer.Inactive {
+		m.options.Metrics.PeersInactivated.Add(-1)
+	}
 	peer.Inactive = false
+
 	peer.LastConnected = now
 	if addressInfo, ok := peer.AddressInfo[address]; ok {
 		addressInfo.DialFailures = 0
@@ -811,7 +821,7 @@ func (m *PeerManager) Inactivate(peerID types.NodeID) error {
 	}
 
 	peer.Inactive = true
-
+	m.options.Metrics.PeersInactivated.Add(1)
 	return m.store.Set(*peer)
 }
 
