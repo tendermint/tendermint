@@ -15,7 +15,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/libs/log"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -146,8 +145,6 @@ type PeerManagerOptions struct {
 	// persistentPeers provides fast PersistentPeers lookups. It is built
 	// by optimize().
 	persistentPeers map[types.NodeID]bool
-
-	Logger log.Logger
 }
 
 // Validate validates the options.
@@ -267,7 +264,6 @@ type PeerManager struct {
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
-	logger     log.Logger
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -302,7 +298,6 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
 		evictWaker: tmsync.NewWaker(),
-		logger:     log.NewNopLogger(),
 
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
@@ -313,11 +308,6 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		evicting:      map[types.NodeID]bool{},
 		subscriptions: map[*PeerUpdates]*PeerUpdates{},
 	}
-
-	if options.Logger != nil {
-		peerManager.logger = options.Logger
-	}
-
 	if err = peerManager.configurePeers(); err != nil {
 		return nil, err
 	}
@@ -400,7 +390,7 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 		return false, err
 	}
 	if address.NodeID == m.selfID {
-		return false, nil
+		return false, fmt.Errorf("can't add self (%v) to peer store", m.selfID)
 	}
 
 	m.mtx.Lock()
