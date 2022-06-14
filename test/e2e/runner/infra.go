@@ -9,9 +9,9 @@ import (
 // TestnetInfra provides an API for interacting with the infrastructure for an
 // entire testnet.
 type TestnetInfra interface {
-	// GenerateConfig generates any necessary configuration for the
+	// Setup generates any necessary configuration for the
 	// infrastructure provider during testnet setup.
-	GenerateConfig() error
+	Setup(ctx context.Context) error
 
 	// Stop attempts to stop the entire testnet.
 	Stop(ctx context.Context) error

@@ -31,7 +31,7 @@ func NewDockerInfra(logger log.Logger, testnet *e2e.Testnet) *DockerInfra {
 	}
 }
 
-func (i *DockerInfra) GenerateConfig() error {
+func (i *DockerInfra) Setup(ctx context.Context) error {
 	compose, err := makeDockerCompose(i.testnet)
 	if err != nil {
 		return err

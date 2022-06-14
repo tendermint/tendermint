@@ -83,7 +83,7 @@ func NewCLI(logger log.Logger) *CLI {
 					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
-			if err = Setup(logger, cli.testnet, cli.infra); err != nil {
+			if err = Setup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 
@@ -170,7 +170,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Setup(logger, cli.testnet, cli.infra)
+			return Setup(cmd.Context(), logger, cli.testnet, cli.infra)
 		},
 	})
 
@@ -180,7 +180,7 @@ func NewCLI(logger log.Logger) *CLI {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := os.Stat(cli.testnet.Dir)
 			if os.IsNotExist(err) {
-				err = Setup(logger, cli.testnet, cli.infra)
+				err = Setup(cmd.Context(), logger, cli.testnet, cli.infra)
 			}
 			if err != nil {
 				return err
@@ -332,7 +332,7 @@ Does not run any perbutations.
 				}
 			}()
 
-			if err := Setup(logger, cli.testnet, cli.infra); err != nil {
+			if err := Setup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 
