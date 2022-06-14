@@ -182,9 +182,9 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	for _, tx := range msg.Txs {
 		err = memR.mempool.CheckTx(tx, nil, txInfo)
 		if err == ErrTxInCache {
-			memR.Logger.Debug("Tx already exists in cache", "tx", types.Tx(tx).String())
+			memR.Logger.Debug("Tx already exists in cache", "tx", tx.String())
 		} else if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", types.Tx(tx).String(), "err", err)
+			memR.Logger.Info("Could not check tx", "tx", tx.String(), "err", err)
 		}
 	}
 	// broadcasting happens from go routines per peer
