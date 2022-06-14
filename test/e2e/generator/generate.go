@@ -154,9 +154,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 4
 	case "large":
 		// FIXME Networks are kept small since large ones use too much CPU.
-		// nolint: staticcheck
-		// SA4030: (*math/rand.Rand).Intn(n) generates a random value 0 <= x < n; that is, the generated values don't include n; r.Intn(1) therefore always returns 0
-		numSeeds = r.Intn(1)
+		numSeeds = r.Intn(1) // nolint: staticcheck
 		numLightClients = r.Intn(2)
 		numValidators = 4 + r.Intn(4)
 		numFulls = r.Intn(4)
