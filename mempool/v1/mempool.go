@@ -11,12 +11,12 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/libs/clist"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
-	"github.com/tendermint/tendermint/internal/mempool"
-	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
+	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -229,7 +229,6 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} {
 // - The applications' CheckTx implementation may panic.
 // - The caller is not to explicitly require any locks for executing CheckTx.
 func (txmp *TxMempool) CheckTx(
-	ctx context.Context,
 	tx types.Tx,
 	cb func(*abci.Response),
 	txInfo mempool.TxInfo,
@@ -240,7 +239,7 @@ func (txmp *TxMempool) CheckTx(
 
 	txSize := len(tx)
 	if txSize > txmp.config.MaxTxBytes {
-		return types.ErrTxTooLarge{
+		return mempool.ErrTxTooLarge{
 			Max:    txmp.config.MaxTxBytes,
 			Actual: txSize,
 		}
@@ -248,7 +247,7 @@ func (txmp *TxMempool) CheckTx(
 
 	if txmp.preCheck != nil {
 		if err := txmp.preCheck(tx); err != nil {
-			return types.ErrPreCheck{
+			return mempool.ErrPreCheck{
 				Reason: err,
 			}
 		}
@@ -265,14 +264,10 @@ func (txmp *TxMempool) CheckTx(
 	// check if we've seen this transaction and error if we have.
 	if !txmp.cache.Push(tx) {
 		txmp.txStore.GetOrSetPeerByTxHash(txHash, txInfo.SenderID)
-		return types.ErrTxInCache
+		return mempool.ErrTxInCache
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
+	reqRes, err := txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		txmp.cache.Remove(tx)
 		return err
@@ -765,7 +760,7 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	)
 
 	if numTxs >= txmp.config.Size || int64(wtx.Size())+sizeBytes > txmp.config.MaxTxsBytes {
-		return types.ErrMempoolIsFull{
+		return mempool.ErrMempoolIsFull{
 			NumTxs:      numTxs,
 			MaxTxs:      txmp.config.Size,
 			TxsBytes:    sizeBytes,

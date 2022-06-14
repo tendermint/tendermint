@@ -634,8 +634,8 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	cfg, err := config.ResetTestRoot("mempool_test")
-	require.NoError(t, err)
+
+	cfg := config.ResetTestRoot("mempool_test")
 
 	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
 	defer cleanup()
