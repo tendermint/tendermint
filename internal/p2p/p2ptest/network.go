@@ -243,6 +243,7 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 		RetryTimeJitter: time.Millisecond,
 		MaxPeers:        opts.MaxPeers,
 		MaxConnected:    opts.MaxConnected,
+		Metrics:         p2p.NopMetrics(),
 	})
 	require.NoError(t, err)
 
