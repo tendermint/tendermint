@@ -1851,10 +1851,18 @@ func TestPeerManager_Advertise(t *testing.T) {
 	// Asking for 0 addresses should return, well, 0.
 	require.Empty(t, peerManager.Advertise(aID, 0))
 
-	// Asking for 2 addresses should get the highest-rated ones, i.e. a.
-	require.ElementsMatch(t, []p2p.NodeAddress{
-		aTCP, aMem,
-	}, peerManager.Advertise(dID, 2))
+	// Asking for 2 addresses should get two addresses
+	// the content of the list when there are two
+	addrs := peerManager.Advertise(dID, 2)
+	require.Len(t, addrs, 2)
+	for _, addr := range addrs {
+		if dID == addr.NodeID {
+			t.Fatal("never advertise self")
+		}
+		if cID == addr.NodeID {
+			t.Fatal("should not have returned the lowest ranked peer")
+		}
+	}
 }
 
 func TestPeerManager_Advertise_Self(t *testing.T) {

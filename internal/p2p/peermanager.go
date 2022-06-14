@@ -890,7 +890,7 @@ OUTER:
 		return addresses
 	}
 
-	return addresses[:limit-1]
+	return addresses[:limit]
 }
 
 // PeerEventSubscriber describes the type of the subscription method, to assist
