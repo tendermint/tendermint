@@ -439,7 +439,7 @@ func (r *Reactor) requestRoutine(ctx context.Context, blockSyncCh *p2p.Channel) 
 	}
 }
 
-func (r *Reactor) propagateErrorAndRedo(height int64, err error, blockSyncCh *p2p.Channel, ctx context.Context) error {
+func (r *Reactor) propagateErrorAndRedo(ctx context.Context, height int64, err error, blockSyncCh *p2p.Channel) error {
 	peerID := r.pool.RedoRequest(height)
 	return blockSyncCh.SendError(ctx, p2p.PeerError{
 		NodeID: peerID,
@@ -595,7 +595,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						"initial hash ", r.initialState.Validators.Hash(),
 						"new hash ", newBlock.ValidatorsHash,
 					)
-					if serr := r.propagateErrorAndRedo(state.LastBlockHeight+1, errors.New("invalid validator hashes"), blockSyncCh, ctx); serr != nil {
+					if serr := r.propagateErrorAndRedo(ctx, state.LastBlockHeight+1, errors.New("invalid validator hashes"), blockSyncCh); serr != nil {
 						return
 					}
 					continue
@@ -615,7 +615,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						if seenCommit.Height != newBlock.Height {
 							r.logger.Error("The block height should be equal to the height of the canonical commit - we are blocksyncing after state sync")
 
-							if serr := r.propagateErrorAndRedo(seenCommit.Height, types.ErrInvalidCommitHeight{}, blockSyncCh, ctx); serr != nil {
+							if serr := r.propagateErrorAndRedo(ctx, seenCommit.Height, types.ErrInvalidCommitHeight{}, blockSyncCh); serr != nil {
 								return
 							}
 							continue
@@ -628,7 +628,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 							!bytes.Equal(state.LastBlockID.PartSetHeader.Hash, newBlockPartSetHeader.Hash) {
 
 							r.logger.Error("New block at height ", newBlock.Height, " does not have matching hashes with the verified header stored in the store ")
-							if serr := r.propagateErrorAndRedo(r.pool.height, ErrValidationFailed{}, blockSyncCh, ctx); serr != nil {
+							if serr := r.propagateErrorAndRedo(ctx, r.pool.height, ErrValidationFailed{}, blockSyncCh); serr != nil {
 								return
 							}
 							continue
@@ -669,7 +669,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 						"height", newBlock.Height,
 					)
 				}
-				if serr := r.propagateErrorAndRedo(r.lastTrustedBlock.block.Height+1, err, blockSyncCh, ctx); serr != nil {
+				if serr := r.propagateErrorAndRedo(ctx, r.lastTrustedBlock.block.Height+1, err, blockSyncCh); serr != nil {
 					return // Should this be return? If we disconnected from this peer from some other module or if it was faulty before
 					// the fact that we cannot send it an error might not be the reason to stop blocksyncing
 				}
@@ -684,7 +684,7 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 					"new hash ", newBlock.ValidatorsHash,
 					err.Error(),
 				)
-				if serr := r.propagateErrorAndRedo(r.lastTrustedBlock.block.Height+1, ErrValidationFailed{}, blockSyncCh, ctx); serr != nil {
+				if serr := r.propagateErrorAndRedo(ctx, r.lastTrustedBlock.block.Height+1, ErrValidationFailed{}, blockSyncCh); serr != nil {
 					return
 				}
 				continue
