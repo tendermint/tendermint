@@ -413,110 +413,41 @@ func TestRouter_AcceptPeers(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
-func TestRouter_AcceptPeers_Error(t *testing.T) {
-	t.Cleanup(leaktest.Check(t))
-
-	// Set up a mock transport that returns an error, which should prevent
-	// the router from calling Accept again.
-	mockTransport := &mocks.Transport{}
-	mockTransport.On("String").Maybe().Return("mock")
-	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
-	mockTransport.On("Accept").Once().Return(nil, errors.New("boom"))
-	mockTransport.On("Close").Return(nil)
-
-	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
-	require.NoError(t, err)
-	defer peerManager.Close()
-
-	router, err := p2p.NewRouter(
-		log.TestingLogger(),
-		p2p.NopMetrics(),
-		selfInfo,
-		selfKey,
-		peerManager,
-		[]p2p.Transport{mockTransport},
-		p2p.RouterOptions{},
-	)
-	require.NoError(t, err)
-
-	require.NoError(t, router.Start())
-	time.Sleep(time.Second)
-	require.NoError(t, router.Stop())
-=======
 func TestRouter_AcceptPeers_Errors(t *testing.T) {
-
-	for _, err := range []error{io.EOF, context.Canceled, context.DeadlineExceeded} {
+	for _, err := range []error{io.EOF} {
 		t.Run(err.Error(), func(t *testing.T) {
 			t.Cleanup(leaktest.Check(t))
->>>>>>> 979a6a1b1 (p2p: accept should not abort on first error (#8759))
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
 			// Set up a mock transport that returns io.EOF once, which should prevent
 			// the router from calling Accept again.
 			mockTransport := &mocks.Transport{}
 			mockTransport.On("String").Maybe().Return("mock")
-			mockTransport.On("Accept", mock.Anything).Once().Return(nil, io.EOF)
+			mockTransport.On("Accept", mock.Anything).Once().Return(nil, err)
+			mockTransport.On("Listen", mock.Anything).Return(nil).Maybe()
 			mockTransport.On("Close").Return(nil)
-			mockTransport.On("Listen", mock.Anything).Return(nil)
-
-<<<<<<< HEAD
-	// Set up a mock transport that returns io.EOF once, which should prevent
-	// the router from calling Accept again.
-	mockTransport := &mocks.Transport{}
-	mockTransport.On("String").Maybe().Return("mock")
-	mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
-	mockTransport.On("Accept").Once().Return(nil, io.EOF)
-	mockTransport.On("Close").Return(nil)
-
-	// Set up and start the router.
-	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
-	require.NoError(t, err)
-	defer peerManager.Close()
-
-	router, err := p2p.NewRouter(
-		log.TestingLogger(),
-		p2p.NopMetrics(),
-		selfInfo,
-		selfKey,
-		peerManager,
-		[]p2p.Transport{mockTransport},
-		p2p.RouterOptions{},
-	)
-	require.NoError(t, err)
-
-	require.NoError(t, router.Start())
-	time.Sleep(time.Second)
-	require.NoError(t, router.Stop())
-=======
+			mockTransport.On("Protocols").Return([]p2p.Protocol{"mock"})
 			// Set up and start the router.
 			peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 			require.NoError(t, err)
 
 			router, err := p2p.NewRouter(
-				log.NewNopLogger(),
+				log.TestingLogger(),
 				p2p.NopMetrics(),
+				selfInfo,
 				selfKey,
 				peerManager,
-				func() *types.NodeInfo { return &selfInfo },
-				mockTransport,
-				nil,
+				[]p2p.Transport{mockTransport},
 				p2p.RouterOptions{},
 			)
 			require.NoError(t, err)
 
-			require.NoError(t, router.Start(ctx))
+			require.NoError(t, router.Start())
 			time.Sleep(time.Second)
 			router.Stop()
 
 			mockTransport.AssertExpectations(t)
 
 		})
->>>>>>> 979a6a1b1 (p2p: accept should not abort on first error (#8759))
-
 	}
 }
 
