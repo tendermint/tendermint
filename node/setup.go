@@ -456,8 +456,8 @@ func createPeerManager(
 	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
-	p2pLogger log.Logger,
 	nodeID types.NodeID,
+	metrics *p2p.Metrics,
 ) (*p2p.PeerManager, closer, error) {
 
 	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))

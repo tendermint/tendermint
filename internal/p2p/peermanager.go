@@ -286,12 +286,9 @@ type PeerManager struct {
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
-<<<<<<< HEAD
 	closeCh    chan struct{} // signal channel for Close()
 	closeOnce  sync.Once
-=======
 	logger     log.Logger
->>>>>>> 7971f4a2f (p2p: self-add node should not error (#8753))
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -326,11 +323,8 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
 		dialWaker:  tmsync.NewWaker(),
 		evictWaker: tmsync.NewWaker(),
-<<<<<<< HEAD
 		closeCh:    make(chan struct{}),
-=======
 		logger:     log.NewNopLogger(),
->>>>>>> 7971f4a2f (p2p: self-add node should not error (#8753))
 
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
