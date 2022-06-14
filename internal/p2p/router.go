@@ -575,19 +575,8 @@ func (r *Router) acceptPeers(transport Transport) {
 	r.logger.Debug("starting accept routine", "transport", transport)
 	ctx := r.stopCtx()
 	for {
-<<<<<<< HEAD
 		conn, err := transport.Accept()
-		switch err {
-		case nil:
-		case io.EOF:
-			r.logger.Debug("stopping accept routine", "transport", transport)
-=======
-		conn, err := transport.Accept(ctx)
 		switch {
-		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-			r.logger.Debug("stopping accept routine", "transport", transport, "err", "context canceled")
->>>>>>> 979a6a1b1 (p2p: accept should not abort on first error (#8759))
-			return
 		case errors.Is(err, io.EOF):
 			r.logger.Debug("stopping accept routine", "transport", transport, "err", "EOF")
 			return
