@@ -1,4 +1,4 @@
-package main
+package infra
 
 import (
 	"context"
@@ -6,9 +6,8 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-// Infra provides an API for interacting with the infrastructure that makes up
-// a testnet.
-type Infra interface {
+// Provider offers an API for manipulating testnet infrastructure.
+type Provider interface {
 	//
 	// Overarching testnet infrastructure management.
 	//

@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -38,7 +39,7 @@ const (
 )
 
 // Setup sets up the testnet configuration.
-func Setup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra Infra) error {
+func Setup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provider infra.Provider) error {
 	logger.Info(fmt.Sprintf("Generating testnet files in %q", testnet.Dir))
 
 	err := os.MkdirAll(testnet.Dir, os.ModePerm)
@@ -123,7 +124,7 @@ func Setup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra I
 		}
 	}
 
-	if err := infra.Setup(ctx); err != nil {
+	if err := provider.Setup(ctx); err != nil {
 		return err
 	}
 

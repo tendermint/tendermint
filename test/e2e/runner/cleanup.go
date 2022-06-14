@@ -8,15 +8,16 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 )
 
 // Cleanup destroys all infrastructure and removes all generated testnet files.
-func Cleanup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra Infra) error {
+func Cleanup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provider infra.Provider) error {
 	if testnet.Dir == "" {
 		return errors.New("no testnet directory set")
 	}
 
-	if err := infra.Cleanup(ctx); err != nil {
+	if err := provider.Cleanup(ctx); err != nil {
 		return err
 	}
 
