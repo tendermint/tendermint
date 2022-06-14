@@ -28,8 +28,11 @@ var (
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Number of peers connected.
-	Peers            metrics.Gauge
-	PeersStored      metrics.Gauge
+	PeersConnected metrics.Gauge
+
+	// Nomber of peers in the peer store database.
+	PeersStored metrics.Gauge
+	// Number of inactive peers stored.
 	PeersInactivated metrics.Gauge
 
 	// Number of bytes received from a given peer.
@@ -72,11 +75,11 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		labels = append(labels, labelsAndValues[i])
 	}
 	return &Metrics{
-		Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		PeersConnected: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers",
-			Help:      "Number of peers.",
+			Help:      "Number of peers connected.",
 		}, labels).With(labelsAndValues...),
 		PeersStored: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -154,7 +157,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Peers:                  discard.NewGauge(),
+		PeersConnected:         discard.NewGauge(),
 		PeersStored:            discard.NewGauge(),
 		PeersInactivated:       discard.NewGauge(),
 		PeerReceiveBytesTotal:  discard.NewCounter(),
