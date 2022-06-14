@@ -474,10 +474,10 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 				matching = matching && rts.reactors[rts.nodes[idx]].GetRemainingSyncTime() > time.Nanosecond &&
 					rts.reactors[rts.nodes[idx]].pool.getLastSyncRate() > 0.0001
 
-				if !matching {
-					height, _, _ := rts.reactors[rts.nodes[idx]].pool.GetStatus()
-					t.Logf("%d %d %s %f", height, idx, rts.reactors[rts.nodes[idx]].GetRemainingSyncTime(), rts.reactors[rts.nodes[idx]].pool.getLastSyncRate())
-				}
+				// if !matching {
+				// 	height, _, _ := rts.reactors[rts.nodes[idx]].pool.GetStatus()
+				// //	t.Logf("%d %d %s %f", height, idx, rts.reactors[rts.nodes[idx]].GetRemainingSyncTime(), rts.reactors[rts.nodes[idx]].pool.getLastSyncRate())
+				// }
 			}
 			return matching
 		},
