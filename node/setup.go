@@ -199,6 +199,7 @@ func createEvidenceReactor(
 }
 
 func createPeerManager(
+	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	nodeID types.NodeID,
@@ -226,6 +227,7 @@ func createPeerManager(
 	maxUpgradeConns := uint16(4)
 
 	options := p2p.PeerManagerOptions{
+		Logger:                 logger.With("module", "peermanager"),
 		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
 		MaxConnectedUpgrade:    maxUpgradeConns,
