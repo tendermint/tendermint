@@ -13,7 +13,7 @@ Here we cover the following components of ABCI applications:
   and the differences between `CheckTx` and `DeliverTx`.
 - [Transaction Results](#transaction-results) - rules around transaction
   results and validity
-- [Validator Set Updates](#validator-updates) - how validator sets are
+- [Validator Set Updates](#updating-the-validator-set) - how validator sets are
   changed during `InitChain` and `EndBlock`
 - [Query](#query) - standards for using the `Query` method and proofs about the
   application state
@@ -204,9 +204,6 @@ not broadcasted to other peers and not included in a proposal block.
 `Data` contains the result of the CheckTx transaction execution, if any. It is
 semantically meaningless to Tendermint.
 
-`Events` include any events for the execution, though since the transaction has not
-been committed yet, they are effectively ignored by Tendermint.
-
 ### DeliverTx
 
 DeliverTx is the workhorse of the blockchain. Tendermint sends the
@@ -315,6 +312,18 @@ txs included in a proposed block.
 Must have `MaxGas >= -1`.
 If `MaxGas == -1`, no limit is enforced.
 
+### BlockParams.RecheckTx
+
+This indicates whether all nodes in the network should perform a `CheckTx` on all
+transactions remaining in the mempool directly *after* the execution of every block,
+i.e. whenever a new application state is created. This is often useful for garbage
+collection.
+
+The change will come into effect immediately after `FinalizeBlock` has been
+called.
+
+This was previously a local mempool config parameter.
+
 ### EvidenceParams.MaxAgeDuration
 
 This is the maximum age of evidence in time units.
@@ -355,7 +364,7 @@ are expected to have clocks that differ by at most `Precision`.
 
 ### SynchronyParams.MessageDelay
 
-`SynchronyParams.MessageDelay` is a parameter of the Proposer-Based Timestamps 
+`SynchronyParams.MessageDelay` is a parameter of the Proposer-Based Timestamps
 algorithm that configures the acceptable upper-bound for transmitting a `Proposal`
 message from the proposer to all of the validators on the network.
 

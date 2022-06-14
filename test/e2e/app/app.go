@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -80,6 +81,14 @@ type Config struct {
 	//
 	// height <-> pubkey <-> voting power
 	ValidatorUpdates map[string]map[string]uint8 `toml:"validator_update"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelayMS uint64 `toml:"prepare_proposal_delay_ms"`
+	ProcessProposalDelayMS uint64 `toml:"process_proposal_delay_ms"`
+	CheckTxDelayMS         uint64 `toml:"check_tx_delay_ms"`
+	VoteExtensionDelayMS   uint64 `toml:"vote_extension_delay_ms"`
+	FinalizeBlockDelayMS   uint64 `toml:"finalize_block_delay_ms"`
 }
 
 func DefaultConfig(dir string) *Config {
@@ -162,9 +171,13 @@ func (app *Application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*a
 	if err != nil {
 		return &abci.ResponseCheckTx{
 			Code: code.CodeTypeEncodingError,
-			Log:  err.Error(),
 		}, nil
 	}
+
+	if app.cfg.CheckTxDelayMS != 0 {
+		time.Sleep(time.Duration(app.cfg.CheckTxDelayMS) * time.Millisecond)
+	}
+
 	return &abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}, nil
 }
 
@@ -190,9 +203,14 @@ func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinali
 		panic(err)
 	}
 
+	if app.cfg.FinalizeBlockDelayMS != 0 {
+		time.Sleep(time.Duration(app.cfg.FinalizeBlockDelayMS) * time.Millisecond)
+	}
+
 	return &abci.ResponseFinalizeBlock{
 		TxResults:        txs,
 		ValidatorUpdates: valUpdates,
+		AppHash:          app.state.Finalize(),
 		Events: []abci.Event{
 			{
 				Type: "val_updates",
@@ -216,7 +234,7 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	height, hash, err := app.state.Commit()
+	height, err := app.state.Commit()
 	if err != nil {
 		panic(err)
 	}
@@ -236,7 +254,6 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 		retainHeight = int64(height - app.cfg.RetainBlocks + 1)
 	}
 	return &abci.ResponseCommit{
-		Data:         hash,
 		RetainHeight: retainHeight,
 	}, nil
 }
@@ -395,6 +412,11 @@ func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrep
 			Tx:     tx,
 		})
 	}
+
+	if app.cfg.PrepareProposalDelayMS != 0 {
+		time.Sleep(time.Duration(app.cfg.PrepareProposalDelayMS) * time.Millisecond)
+	}
+
 	return &abci.ResponsePrepareProposal{TxRecords: trs}, nil
 }
 
@@ -416,6 +438,11 @@ func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProc
 			}
 		}
 	}
+
+	if app.cfg.ProcessProposalDelayMS != 0 {
+		time.Sleep(time.Duration(app.cfg.ProcessProposalDelayMS) * time.Millisecond)
+	}
+
 	return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil
 }
 
@@ -443,6 +470,11 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 	// nolint:gosec // G404: Use of weak random number generator
 	num := rand.Int63n(voteExtensionMaxVal)
 	extLen := binary.PutVarint(ext, num)
+
+	if app.cfg.VoteExtensionDelayMS != 0 {
+		time.Sleep(time.Duration(app.cfg.VoteExtensionDelayMS) * time.Millisecond)
+	}
+
 	app.logger.Info("generated vote extension", "num", num, "ext", fmt.Sprintf("%x", ext[:extLen]), "state.Height", app.state.Height)
 	return &abci.ResponseExtendVote{
 		VoteExtension: ext[:extLen],
@@ -477,6 +509,11 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 			Status: abci.ResponseVerifyVoteExtension_REJECT,
 		}, nil
 	}
+
+	if app.cfg.VoteExtensionDelayMS != 0 {
+		time.Sleep(time.Duration(app.cfg.VoteExtensionDelayMS) * time.Millisecond)
+	}
+
 	app.logger.Info("verified vote extension value", "req", req, "num", num)
 	return &abci.ResponseVerifyVoteExtension{
 		Status: abci.ResponseVerifyVoteExtension_ACCEPT,

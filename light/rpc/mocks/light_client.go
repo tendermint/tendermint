@@ -7,8 +7,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	testing "testing"
-
 	time "time"
 
 	types "github.com/tendermint/tendermint/types"
@@ -118,8 +116,13 @@ func (_m *LightClient) VerifyLightBlockAtHeight(ctx context.Context, height int6
 	return r0, r1
 }
 
-// NewLightClient creates a new instance of LightClient. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewLightClient(t testing.TB) *LightClient {
+type NewLightClientT interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewLightClient creates a new instance of LightClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewLightClient(t NewLightClientT) *LightClient {
 	mock := &LightClient{}
 	mock.Mock.Test(t)
 

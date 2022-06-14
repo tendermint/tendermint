@@ -9,12 +9,14 @@
 -M consensus.timeout-prevote-delta
 -M consensus.timeout-propose
 -M consensus.timeout-propose-delta
+-M mempool.recheck
 -M mempool.version
 -M p2p.addr-book-file
 -M p2p.addr-book-strict
 -M p2p.max-num-inbound-peers
 -M p2p.max-num-outbound-peers
 -M p2p.persistent-peers-max-dial-period
+-M p2p.seeds
 -M p2p.unconditional-peer-ids
 -M p2p.use-legacy
 +M rpc.event-log-max-items

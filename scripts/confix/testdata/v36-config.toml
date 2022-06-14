@@ -157,7 +157,7 @@ experimental-disable-websocket = false
 # the latest (up to EventLogMaxItems) will be available for subscribers to
 # fetch via the /events method.  If 0 (the default) the event log and the
 # /events RPC method are disabled.
-event-log-window-size = "0s"
+event-log-window-size = "30s"
 
 # The maxiumum number of events that may be retained by the event log.  If
 # this value is 0, no upper limit is set. Otherwise, items in excess of
@@ -221,13 +221,6 @@ laddr = "tcp://0.0.0.0:26656"
 # example: 159.89.10.97:26656
 external-address = ""
 
-# Comma separated list of seed nodes to connect to
-# We only use these if we can’t connect to peers in the addrbook
-# NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-seeds = ""
-
 # Comma separated list of peers to be added to the peer store
 # on startup. Either BootstrapPeers or PersistentPeers are
 # needed for peer discovery
@@ -281,7 +274,11 @@ recv-rate = 5120000
 #######################################################
 [mempool]
 
-recheck = true
+# recheck has been moved from a config option to a global
+# consensus param in v0.36
+# See https://github.com/tendermint/tendermint/issues/8244 for more information.
+
+# Set true to broadcast transactions in the mempool to other nodes
 broadcast = true
 
 # Maximum number of transactions in the mempool

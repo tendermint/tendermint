@@ -77,9 +77,6 @@ $(BUILDDIR)/:
 ###############################################################################
 
 check-proto-deps:
-ifeq (,$(shell which buf))
-	$(error "buf is required for Protobuf building, linting and breakage checking. See https://docs.buf.build/installation for installation instructions.")
-endif
 ifeq (,$(shell which protoc-gen-gogofaster))
 	$(error "gogofaster plugin for protoc is required. Run 'go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest' to install")
 endif
@@ -93,7 +90,7 @@ endif
 
 proto-gen: check-proto-deps
 	@echo "Generating Protobuf files"
-	@buf generate
+	@go run github.com/bufbuild/buf/cmd/buf generate
 	@mv ./proto/tendermint/abci/types.pb.go ./abci/types/
 .PHONY: proto-gen
 
@@ -101,7 +98,7 @@ proto-gen: check-proto-deps
 # execution only.
 proto-lint: check-proto-deps
 	@echo "Linting Protobuf files"
-	@buf lint
+	@go run github.com/bufbuild/buf/cmd/buf lint
 .PHONY: proto-lint
 
 proto-format: check-proto-format-deps
@@ -114,7 +111,7 @@ proto-check-breaking: check-proto-deps
 	@echo "Note: This is only useful if your changes have not yet been committed."
 	@echo "      Otherwise read up on buf's \"breaking\" command usage:"
 	@echo "      https://docs.buf.build/breaking/usage"
-	@buf breaking --against ".git"
+	@go run github.com/bufbuild/buf/cmd/buf breaking --against ".git"
 .PHONY: proto-check-breaking
 
 ###############################################################################

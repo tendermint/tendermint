@@ -278,6 +278,7 @@ func makeReactor(
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
+		mock.Anything,
 		mock.Anything).Return(nil)
 
 	eventbus := eventbus.NewDefault(logger)

@@ -199,6 +199,7 @@ func createEvidenceReactor(
 }
 
 func createPeerManager(
+	logger log.Logger,
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	nodeID types.NodeID,
@@ -223,11 +224,14 @@ func createPeerManager(
 		maxConns = 64
 	}
 
+	maxUpgradeConns := uint16(4)
+
 	options := p2p.PeerManagerOptions{
+		Logger:                 logger.With("module", "peermanager"),
 		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
-		MaxConnectedUpgrade:    4,
-		MaxPeers:               1000,
+		MaxConnectedUpgrade:    maxUpgradeConns,
+		MaxPeers:               maxUpgradeConns + 2*maxConns,
 		MinRetryTime:           250 * time.Millisecond,
 		MaxRetryTime:           30 * time.Minute,
 		MaxRetryTimePersistent: 5 * time.Minute,

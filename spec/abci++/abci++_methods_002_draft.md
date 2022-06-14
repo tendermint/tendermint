@@ -136,11 +136,7 @@ title: Methods
     |------------|-------------------------------------------------------------|-----------------------------------------------------------------------|--------------|
     | code       | uint32                                                      | Response code.                                                        | 1            |
     | data       | bytes                                                       | Result bytes, if any.                                                 | 2            |
-    | log        | string                                                      | The output of the application's logger. **May be non-deterministic.** | 3            |
-    | info       | string                                                      | Additional information. **May be non-deterministic.**                 | 4            |
     | gas_wanted | int64                                                       | Amount of gas requested for transaction.                              | 5            |
-    | gas_used   | int64                                                       | Amount of gas consumed by transaction.                                | 6            |
-    | events     | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (eg. by account).   | 7            |
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
     | sender     | string                                                      | The transaction's sender (e.g. the signer)                            | 9            |
     | priority   | int64                                                       | The transaction's priority (for mempool ordering)                     | 10           |

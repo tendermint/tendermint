@@ -90,7 +90,7 @@ func TestTxPriorityQueue_GetEvictableTxs(t *testing.T) {
 		expectedLen                      int
 	}{
 		{
-			name:        "larest priority; single tx",
+			name:        "largest priority; single tx",
 			priority:    int64(max + 1),
 			txSize:      5,
 			totalSize:   totalSize,
@@ -98,7 +98,7 @@ func TestTxPriorityQueue_GetEvictableTxs(t *testing.T) {
 			expectedLen: 1,
 		},
 		{
-			name:        "larest priority; multi tx",
+			name:        "largest priority; multi tx",
 			priority:    int64(max + 1),
 			txSize:      17,
 			totalSize:   totalSize,
@@ -106,7 +106,7 @@ func TestTxPriorityQueue_GetEvictableTxs(t *testing.T) {
 			expectedLen: 4,
 		},
 		{
-			name:        "larest priority; out of capacity",
+			name:        "largest priority; out of capacity",
 			priority:    int64(max + 1),
 			txSize:      totalSize + 1,
 			totalSize:   totalSize,

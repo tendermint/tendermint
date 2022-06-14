@@ -62,6 +62,8 @@ type ABCIClient interface {
 		opts ABCIQueryOptions) (*coretypes.ResultABCIQuery, error)
 
 	// Writing to abci app
+	BroadcastTx(context.Context, types.Tx) (*coretypes.ResultBroadcastTx, error)
+	// These methods are deprecated:
 	BroadcastTxCommit(context.Context, types.Tx) (*coretypes.ResultBroadcastTxCommit, error)
 	BroadcastTxAsync(context.Context, types.Tx) (*coretypes.ResultBroadcastTx, error)
 	BroadcastTxSync(context.Context, types.Tx) (*coretypes.ResultBroadcastTx, error)
