@@ -489,7 +489,7 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 		}, nil
 	}
 
-	var nums []int64
+	nums := make([]int64, 0, len(req.VoteExtensions.Default)+len(req.VoteExtensions.ThresholdRecover))
 	for ext := range req.VoteExtensions.Iter() {
 		num, err := parseVoteExtension(ext)
 		if err != nil {
