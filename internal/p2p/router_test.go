@@ -478,6 +478,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 
 	mockTransport.AssertExpectations(t)
 }
+
 func TestRouter_AcceptPeers_ErrorCanceled(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
