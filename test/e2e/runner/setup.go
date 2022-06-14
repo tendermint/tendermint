@@ -38,7 +38,7 @@ const (
 )
 
 // Setup sets up the testnet configuration.
-func Setup(logger log.Logger, testnet *e2e.Testnet, infraAPI InfraAPI) error {
+func Setup(logger log.Logger, testnet *e2e.Testnet, infra Infra) error {
 	logger.Info(fmt.Sprintf("Generating testnet files in %q", testnet.Dir))
 
 	err := os.MkdirAll(testnet.Dir, os.ModePerm)
@@ -121,7 +121,7 @@ func Setup(logger log.Logger, testnet *e2e.Testnet, infraAPI InfraAPI) error {
 		}
 	}
 
-	if err := infraAPI.GenerateConfig(); err != nil {
+	if err := infra.GenerateConfig(); err != nil {
 		return err
 	}
 

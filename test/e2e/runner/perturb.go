@@ -11,7 +11,7 @@ import (
 )
 
 // Perturbs a running testnet.
-func Perturb(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infraAPI InfraAPI) error {
+func Perturb(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra Infra) error {
 	timer := time.NewTimer(0) // first tick fires immediately; reset below
 	defer timer.Stop()
 
@@ -21,7 +21,7 @@ func Perturb(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra
 			case <-ctx.Done():
 				return ctx.Err()
 			case <-timer.C:
-				_, err := PerturbNode(ctx, logger, node, perturbation, infraAPI)
+				_, err := PerturbNode(ctx, logger, node, perturbation, infra)
 				if err != nil {
 					return err
 				}
@@ -36,45 +36,45 @@ func Perturb(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra
 
 // PerturbNode perturbs a node with a given perturbation, returning its status
 // after recovering.
-func PerturbNode(ctx context.Context, logger log.Logger, node *e2e.Node, perturbation e2e.Perturbation, infraAPI InfraAPI) (*rpctypes.ResultStatus, error) {
+func PerturbNode(ctx context.Context, logger log.Logger, node *e2e.Node, perturbation e2e.Perturbation, infra Infra) (*rpctypes.ResultStatus, error) {
 	switch perturbation {
 	case e2e.PerturbationDisconnect:
 		logger.Info(fmt.Sprintf("Disconnecting node %v...", node.Name))
-		if err := infraAPI.DisconnectNode(ctx, node); err != nil {
+		if err := infra.DisconnectNode(ctx, node); err != nil {
 			return nil, err
 		}
 		time.Sleep(10 * time.Second)
-		if err := infraAPI.ConnectNode(ctx, node); err != nil {
+		if err := infra.ConnectNode(ctx, node); err != nil {
 			return nil, err
 		}
 
 	case e2e.PerturbationKill:
 		logger.Info(fmt.Sprintf("Killing node %v...", node.Name))
-		if err := infraAPI.KillNode(ctx, node); err != nil {
+		if err := infra.KillNode(ctx, node); err != nil {
 			return nil, err
 		}
 		time.Sleep(10 * time.Second)
-		if err := infraAPI.StartNode(ctx, node); err != nil {
+		if err := infra.StartNode(ctx, node); err != nil {
 			return nil, err
 		}
 
 	case e2e.PerturbationPause:
 		logger.Info(fmt.Sprintf("Pausing node %v...", node.Name))
-		if err := infraAPI.PauseNode(ctx, node); err != nil {
+		if err := infra.PauseNode(ctx, node); err != nil {
 			return nil, err
 		}
 		time.Sleep(10 * time.Second)
-		if err := infraAPI.UnpauseNode(ctx, node); err != nil {
+		if err := infra.UnpauseNode(ctx, node); err != nil {
 			return nil, err
 		}
 
 	case e2e.PerturbationRestart:
 		logger.Info(fmt.Sprintf("Restarting node %v...", node.Name))
-		if err := infraAPI.TerminateNode(ctx, node); err != nil {
+		if err := infra.TerminateNode(ctx, node); err != nil {
 			return nil, err
 		}
 		time.Sleep(10 * time.Second)
-		if err := infraAPI.StartNode(ctx, node); err != nil {
+		if err := infra.StartNode(ctx, node); err != nil {
 			return nil, err
 		}
 

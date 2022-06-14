@@ -33,7 +33,7 @@ func main() {
 type CLI struct {
 	root     *cobra.Command
 	testnet  *e2e.Testnet
-	infraAPI InfraAPI
+	infra    Infra
 	preserve bool
 }
 
@@ -60,7 +60,7 @@ func NewCLI(logger log.Logger) *CLI {
 			}
 			switch infraProviderID {
 			case "docker":
-				cli.infraAPI = NewDockerInfraAPI(logger, testnet)
+				cli.infra = NewDockerInfra(logger, testnet)
 				logger.Info("Using Docker-based infrastructure provider")
 			default:
 				return fmt.Errorf("unrecognized infrastructure provider ID: %s", infraProviderID)
@@ -70,7 +70,7 @@ func NewCLI(logger log.Logger) *CLI {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			if err = Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
+			if err = Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 			defer func() {
@@ -79,11 +79,11 @@ func NewCLI(logger log.Logger) *CLI {
 				} else if err != nil {
 					logger.Info("Preserving testnet that encountered error",
 						"err", err)
-				} else if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
+				} else if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
 					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
-			if err = Setup(logger, cli.testnet, cli.infraAPI); err != nil {
+			if err = Setup(logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 
@@ -99,7 +99,7 @@ func NewCLI(logger log.Logger) *CLI {
 				chLoadResult <- Load(lctx, logger, r, cli.testnet)
 			}()
 			startAt := time.Now()
-			if err = Start(ctx, logger, cli.testnet, cli.infraAPI); err != nil {
+			if err = Start(ctx, logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 
@@ -108,7 +108,7 @@ func NewCLI(logger log.Logger) *CLI {
 			}
 
 			if cli.testnet.HasPerturbations() {
-				if err = Perturb(ctx, logger, cli.testnet, cli.infraAPI); err != nil {
+				if err = Perturb(ctx, logger, cli.testnet, cli.infra); err != nil {
 					return err
 				}
 				if err = Wait(ctx, logger, cli.testnet, 5); err != nil { // allow some txs to go through
@@ -170,7 +170,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Setup(logger, cli.testnet, cli.infraAPI)
+			return Setup(logger, cli.testnet, cli.infra)
 		},
 	})
 
@@ -180,12 +180,12 @@ func NewCLI(logger log.Logger) *CLI {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := os.Stat(cli.testnet.Dir)
 			if os.IsNotExist(err) {
-				err = Setup(logger, cli.testnet, cli.infraAPI)
+				err = Setup(logger, cli.testnet, cli.infra)
 			}
 			if err != nil {
 				return err
 			}
-			return Start(cmd.Context(), logger, cli.testnet, cli.infraAPI)
+			return Start(cmd.Context(), logger, cli.testnet, cli.infra)
 		},
 	})
 
@@ -193,7 +193,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "perturb",
 		Short: "Perturbs the Docker testnet, e.g. by restarting or disconnecting nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Perturb(cmd.Context(), logger, cli.testnet, cli.infraAPI)
+			return Perturb(cmd.Context(), logger, cli.testnet, cli.infra)
 		},
 	})
 
@@ -210,7 +210,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Short: "Stops the Docker testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Stopping testnet")
-			return cli.infraAPI.Stop(cmd.Context())
+			return cli.infra.Stop(cmd.Context())
 		},
 	})
 
@@ -219,7 +219,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Short: "Pauses the Docker testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Pausing testnet")
-			return cli.infraAPI.Pause(cmd.Context())
+			return cli.infra.Pause(cmd.Context())
 		},
 	})
 
@@ -228,7 +228,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Short: "Resumes the Docker testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Resuming testnet")
-			return cli.infraAPI.Unpause(cmd.Context())
+			return cli.infra.Unpause(cmd.Context())
 		},
 	})
 
@@ -281,7 +281,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "cleanup",
 		Short: "Removes the testnet directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI)
+			return Cleanup(cmd.Context(), logger, cli.testnet, cli.infra)
 		},
 	})
 
@@ -292,9 +292,9 @@ func NewCLI(logger log.Logger) *CLI {
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return cli.infraAPI.ShowNodeLogs(cmd.Context(), args[0])
+				return cli.infra.ShowNodeLogs(cmd.Context(), args[0])
 			}
-			return cli.infraAPI.ShowLogs(cmd.Context())
+			return cli.infra.ShowLogs(cmd.Context())
 		},
 	})
 
@@ -304,9 +304,9 @@ func NewCLI(logger log.Logger) *CLI {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
-				return cli.infraAPI.TailNodeLogs(cmd.Context(), args[0])
+				return cli.infra.TailNodeLogs(cmd.Context(), args[0])
 			}
-			return cli.infraAPI.TailLogs(cmd.Context())
+			return cli.infra.TailLogs(cmd.Context())
 		},
 	})
 
@@ -323,16 +323,16 @@ over a 100 block sampling period.
 Does not run any perbutations.
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
+			if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 			defer func() {
-				if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
+				if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
 					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
 
-			if err := Setup(logger, cli.testnet, cli.infraAPI); err != nil {
+			if err := Setup(logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 
@@ -348,7 +348,7 @@ Does not run any perbutations.
 				chLoadResult <- Load(lctx, logger, r, cli.testnet)
 			}()
 
-			if err := Start(ctx, logger, cli.testnet, cli.infraAPI); err != nil {
+			if err := Start(ctx, logger, cli.testnet, cli.infra); err != nil {
 				return err
 			}
 

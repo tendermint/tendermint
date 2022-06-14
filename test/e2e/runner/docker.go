@@ -13,122 +13,122 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-// DockerInfraAPI provides an API for provisioning and manipulating
-// infrastructure for Docker-based testnets.
-type DockerInfraAPI struct {
+// DockerInfra provides an API for provisioning and manipulating infrastructure
+// for Docker-based testnets.
+type DockerInfra struct {
 	logger  log.Logger
 	testnet *e2e.Testnet
 }
 
-var _ InfraAPI = &DockerInfraAPI{}
+var _ Infra = &DockerInfra{}
 
-// NewDockerInfraAPI constructs an infrastructure provider that allows for
+// NewDockerInfra constructs an infrastructure provider that allows for
 // Docker-based testnet infrastructure.
-func NewDockerInfraAPI(logger log.Logger, testnet *e2e.Testnet) *DockerInfraAPI {
-	return &DockerInfraAPI{
+func NewDockerInfra(logger log.Logger, testnet *e2e.Testnet) *DockerInfra {
+	return &DockerInfra{
 		logger:  logger,
 		testnet: testnet,
 	}
 }
 
-func (api *DockerInfraAPI) GenerateConfig() error {
-	compose, err := makeDockerCompose(api.testnet)
+func (i *DockerInfra) GenerateConfig() error {
+	compose, err := makeDockerCompose(i.testnet)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(api.testnet.Dir, "docker-compose.yml"), compose, 0644)
+	err = os.WriteFile(filepath.Join(i.testnet.Dir, "docker-compose.yml"), compose, 0644)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) ProvisionNode(ctx context.Context, node *e2e.Node) error {
-	if err := execCompose(ctx, api.testnet.Dir, "up", "-d", node.Name); err != nil {
+func (i *DockerInfra) ProvisionNode(ctx context.Context, node *e2e.Node) error {
+	if err := execCompose(ctx, i.testnet.Dir, "up", "-d", node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) DisconnectNode(ctx context.Context, node *e2e.Node) error {
-	if err := execDocker(ctx, "network", "disconnect", api.testnet.Name+"_"+api.testnet.Name, node.Name); err != nil {
+func (i *DockerInfra) DisconnectNode(ctx context.Context, node *e2e.Node) error {
+	if err := execDocker(ctx, "network", "disconnect", i.testnet.Name+"_"+i.testnet.Name, node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) ConnectNode(ctx context.Context, node *e2e.Node) error {
-	if err := execDocker(ctx, "network", "connect", api.testnet.Name+"_"+api.testnet.Name, node.Name); err != nil {
+func (i *DockerInfra) ConnectNode(ctx context.Context, node *e2e.Node) error {
+	if err := execDocker(ctx, "network", "connect", i.testnet.Name+"_"+i.testnet.Name, node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) KillNode(ctx context.Context, node *e2e.Node) error {
-	if err := execCompose(ctx, api.testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
+func (i *DockerInfra) KillNode(ctx context.Context, node *e2e.Node) error {
+	if err := execCompose(ctx, i.testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) StartNode(ctx context.Context, node *e2e.Node) error {
-	if err := execCompose(ctx, api.testnet.Dir, "start", node.Name); err != nil {
+func (i *DockerInfra) StartNode(ctx context.Context, node *e2e.Node) error {
+	if err := execCompose(ctx, i.testnet.Dir, "start", node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) PauseNode(ctx context.Context, node *e2e.Node) error {
-	if err := execCompose(ctx, api.testnet.Dir, "pause", node.Name); err != nil {
+func (i *DockerInfra) PauseNode(ctx context.Context, node *e2e.Node) error {
+	if err := execCompose(ctx, i.testnet.Dir, "pause", node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) UnpauseNode(ctx context.Context, node *e2e.Node) error {
-	if err := execCompose(ctx, api.testnet.Dir, "unpause", node.Name); err != nil {
+func (i *DockerInfra) UnpauseNode(ctx context.Context, node *e2e.Node) error {
+	if err := execCompose(ctx, i.testnet.Dir, "unpause", node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) TerminateNode(ctx context.Context, node *e2e.Node) error {
-	if err := execCompose(ctx, api.testnet.Dir, "kill", "-s", "SIGTERM", node.Name); err != nil {
+func (i *DockerInfra) TerminateNode(ctx context.Context, node *e2e.Node) error {
+	if err := execCompose(ctx, i.testnet.Dir, "kill", "-s", "SIGTERM", node.Name); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (api *DockerInfraAPI) Stop(ctx context.Context) error {
-	return execCompose(ctx, api.testnet.Dir, "down")
+func (i *DockerInfra) Stop(ctx context.Context) error {
+	return execCompose(ctx, i.testnet.Dir, "down")
 }
 
-func (api *DockerInfraAPI) Pause(ctx context.Context) error {
-	return execCompose(ctx, api.testnet.Dir, "pause")
+func (i *DockerInfra) Pause(ctx context.Context) error {
+	return execCompose(ctx, i.testnet.Dir, "pause")
 }
 
-func (api *DockerInfraAPI) Unpause(ctx context.Context) error {
-	return execCompose(ctx, api.testnet.Dir, "unpause")
+func (i *DockerInfra) Unpause(ctx context.Context) error {
+	return execCompose(ctx, i.testnet.Dir, "unpause")
 }
 
-func (api *DockerInfraAPI) ShowLogs(ctx context.Context) error {
-	return execComposeVerbose(ctx, api.testnet.Dir, "logs", "--no-color")
+func (i *DockerInfra) ShowLogs(ctx context.Context) error {
+	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--no-color")
 }
 
-func (api *DockerInfraAPI) ShowNodeLogs(ctx context.Context, nodeID string) error {
-	return execComposeVerbose(ctx, api.testnet.Dir, "logs", "--no-color", nodeID)
+func (i *DockerInfra) ShowNodeLogs(ctx context.Context, nodeID string) error {
+	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--no-color", nodeID)
 }
 
-func (api *DockerInfraAPI) TailLogs(ctx context.Context) error {
-	return execComposeVerbose(ctx, api.testnet.Dir, "logs", "--follow")
+func (i *DockerInfra) TailLogs(ctx context.Context) error {
+	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--follow")
 }
 
-func (api *DockerInfraAPI) TailNodeLogs(ctx context.Context, nodeID string) error {
-	return execComposeVerbose(ctx, api.testnet.Dir, "logs", "--follow", nodeID)
+func (i *DockerInfra) TailNodeLogs(ctx context.Context, nodeID string) error {
+	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--follow", nodeID)
 }
 
-func (api *DockerInfraAPI) Cleanup(ctx context.Context) error {
-	api.logger.Info("Removing Docker containers and networks")
+func (i *DockerInfra) Cleanup(ctx context.Context) error {
+	i.logger.Info("Removing Docker containers and networks")
 
 	// GNU xargs requires the -r flag to not run when input is empty, macOS
 	// does this by default. Ugly, but works.
@@ -149,7 +149,7 @@ func (api *DockerInfraAPI) Cleanup(ctx context.Context) error {
 	// On Linux, some local files in the volume will be owned by root since Tendermint
 	// runs as root inside the container, so we need to clean them up from within a
 	// container running as root too.
-	absDir, err := filepath.Abs(api.testnet.Dir)
+	absDir, err := filepath.Abs(i.testnet.Dir)
 	if err != nil {
 		return err
 	}

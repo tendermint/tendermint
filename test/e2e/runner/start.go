@@ -10,7 +10,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infraAPI InfraAPI) error {
+func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra Infra) error {
 	if len(testnet.Nodes) == 0 {
 		return fmt.Errorf("no nodes in testnet")
 	}
@@ -44,7 +44,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infraAP
 	for len(nodeQueue) > 0 && nodeQueue[0].StartAt == 0 {
 		node := nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
-		if err := infraAPI.ProvisionNode(ctx, node); err != nil {
+		if err := infra.ProvisionNode(ctx, node); err != nil {
 			return err
 		}
 
@@ -106,7 +106,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infraAP
 			}
 		}
 
-		if err := infraAPI.ProvisionNode(ctx, node); err != nil {
+		if err := infra.ProvisionNode(ctx, node); err != nil {
 			return err
 		}
 

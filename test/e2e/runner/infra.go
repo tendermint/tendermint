@@ -6,9 +6,9 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-// TestnetInfraAPI provides an API for interacting with the infrastructure for
-// an entire testnet.
-type TestnetInfraAPI interface {
+// TestnetInfra provides an API for interacting with the infrastructure for an
+// entire testnet.
+type TestnetInfra interface {
 	// GenerateConfig generates any necessary configuration for the
 	// infrastructure provider during testnet setup.
 	GenerateConfig() error
@@ -33,9 +33,9 @@ type TestnetInfraAPI interface {
 	Cleanup(ctx context.Context) error
 }
 
-// NodeInfraAPI provides an API for interacting with specific nodes'
+// NodeInfra provides an API for interacting with specific nodes'
 // infrastructure.
-type NodeInfraAPI interface {
+type NodeInfra interface {
 	// ProvisionNode attempts to provision infrastructure for the given node
 	// and starts it.
 	ProvisionNode(ctx context.Context, node *e2e.Node) error
@@ -74,9 +74,9 @@ type NodeInfraAPI interface {
 	TailNodeLogs(ctx context.Context, nodeID string) error
 }
 
-// InfraAPI provides an API for interacting with testnet- and node-level
+// Infra provides an API for interacting with testnet- and node-level
 // infrastructure.
-type InfraAPI interface {
-	TestnetInfraAPI
-	NodeInfraAPI
+type Infra interface {
+	TestnetInfra
+	NodeInfra
 }
