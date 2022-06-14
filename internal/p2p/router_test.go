@@ -452,7 +452,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 	// the router from calling Accept again.
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Maybe().Return("mock")
-	mockTransport.On("Accept", mock.Anything).Once().Return(nil, errors.New("boom"))
+	mockTransport.On("Accept", mock.Anything).Return(nil, io.EOF)
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Listen", mock.Anything).Return(nil)
 
