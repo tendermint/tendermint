@@ -210,7 +210,7 @@ func (vote *Vote) String() string {
 		blockHashString = nilVoteStr
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d %s %s %X %X @ %s}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d %s %s %X %d @ %s}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
@@ -218,7 +218,7 @@ func (vote *Vote) String() string {
 		typeString,
 		blockHashString,
 		tmbytes.Fingerprint(vote.Signature),
-		tmbytes.Fingerprint(vote.Extension),
+		len(vote.Extension),
 		CanonicalTime(vote.Timestamp),
 	)
 }

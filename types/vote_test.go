@@ -19,13 +19,19 @@ import (
 
 const (
 	//nolint: lll
-	preCommitTestStr = `Vote{56789:6AF1F4111082 12345/02 Precommit 8B01023386C3 000000000000 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	preCommitTestStr = `Vote{56789:6AF1F4111082 12345/02 Precommit 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
 	//nolint: lll
-	preVoteTestStr = `Vote{56789:6AF1F4111082 12345/02 Prevote 8B01023386C3 000000000000 000000000000 @ 2017-12-25T03:00:01.234Z}`
+	preVoteTestStr = `Vote{56789:6AF1F4111082 12345/02 Prevote 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
 )
 
-// nolint: lll
-var nilVoteTestStr = fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/02 Precommit %s 000000000000 000000000000 @ 2017-12-25T03:00:01.234Z}`, nilVoteStr)
+var (
+	// nolint: lll
+	nilVoteTestStr                = fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/02 Precommit %s 000000000000 0 @ 2017-12-25T03:00:01.234Z}`, nilVoteStr)
+	formatNonEmptyVoteExtensionFn = func(voteExtensionLength int) string {
+		// nolint: lll
+		return fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/02 Precommit 8B01023386C3 000000000000 %d @ 2017-12-25T03:00:01.234Z}`, voteExtensionLength)
+	}
+)
 
 func examplePrevote(t *testing.T) *Vote {
 	t.Helper()
@@ -354,6 +360,14 @@ func TestVoteString(t *testing.T) {
 				return v
 			}(),
 			expectedResult: nilVoteTestStr,
+		},
+		"non-empty vote extension": {
+			vote: func() *Vote {
+				v := examplePrecommit(t)
+				v.Extension = []byte{1, 2}
+				return v
+			}(),
+			expectedResult: formatNonEmptyVoteExtensionFn(2),
 		},
 	}
 
