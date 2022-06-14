@@ -140,7 +140,6 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
 	_ = cli.root.MarkPersistentFlagRequired("file")
 	cli.root.PersistentFlags().IntP("seed-delta", "s", 0, "Interger to be added to the initial hard-coded seed")
-	cli.root.PersistentFlags().IntP("seed-delta", "s", 0, "Interger to be added to the initial hard-coded seed")
 
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
