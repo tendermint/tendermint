@@ -19,17 +19,17 @@ import (
 
 const (
 	//nolint: lll
-	preCommitTestStr = `Vote{56789:6AF1F4111082 12345/02 Precommit 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
+	preCommitTestStr = `Vote{56789:6AF1F4111082 12345/2 Precommit 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
 	//nolint: lll
-	preVoteTestStr = `Vote{56789:6AF1F4111082 12345/02 Prevote 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
+	preVoteTestStr = `Vote{56789:6AF1F4111082 12345/2 Prevote 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
 )
 
 var (
 	// nolint: lll
-	nilVoteTestStr                = fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/02 Precommit %s 000000000000 0 @ 2017-12-25T03:00:01.234Z}`, nilVoteStr)
+	nilVoteTestStr                = fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/2 Precommit %s 000000000000 0 @ 2017-12-25T03:00:01.234Z}`, nilVoteStr)
 	formatNonEmptyVoteExtensionFn = func(voteExtensionLength int) string {
 		// nolint: lll
-		return fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/02 Precommit 8B01023386C3 000000000000 %d @ 2017-12-25T03:00:01.234Z}`, voteExtensionLength)
+		return fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/2 Precommit 8B01023386C3 000000000000 %d @ 2017-12-25T03:00:01.234Z}`, voteExtensionLength)
 	}
 )
 
