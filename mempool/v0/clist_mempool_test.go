@@ -33,15 +33,15 @@ import (
 // test.
 type cleanupFunc func()
 
-func newMempoolWithApp(cc abciclient.Creator) (*CListMempool, cleanupFunc, error) {
+func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc, error) {
 	conf := config.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfig(cc, conf)
 	return mp, cu, nil
 }
 
-func newMempoolWithAppAndConfig(cc abciclient.Creator, cfg *config.Config) (*CListMempool, cleanupFunc) {
-	appConnMem, _ := cc()
+func newMempoolWithAppAndConfig(cc proxy.ClientCreator, cfg *config.Config) (*CListMempool, cleanupFunc) {
+	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
 	if err != nil {
@@ -661,22 +661,17 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 }
 
 // caller must close server
-func newRemoteApp(
-	t *testing.T,
-	addr string,
-	app abci.Application,
-) (
-	clientCreator abciclient.Creator,
-	server service.Service,
-) {
-	clientCreator = abciclient.NewRemoteCreator(addr, "socket", true)
+func newRemoteApp(t *testing.T, addr string, app abci.Application) (abciclient.Client, service.Service) {
+	clientCreator, err := abciclient.NewClient(addr, "socket", true)
+	require.NoError(t, err)
 
 	// Start server
-	server = abciserver.NewSocketServer(addr, app)
+	server := abciserver.NewSocketServer(addr, app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if err := server.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
+
 	return clientCreator, server
 }
 

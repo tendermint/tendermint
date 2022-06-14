@@ -78,9 +78,8 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 
 	app := &application{kvstore.NewApplication()}
 	cc := abciclient.NewLocalCreator(app)
+	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 
-	cfg, err := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
-	require.NoError(t, err)
 	cfg.Mempool.CacheSize = cacheSize
 
 	appConnMem, err := cc()
