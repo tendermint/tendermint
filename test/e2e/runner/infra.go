@@ -6,77 +6,79 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-// TestnetInfra provides an API for interacting with the infrastructure for an
-// entire testnet.
-type TestnetInfra interface {
-	// Setup generates any necessary configuration for the
-	// infrastructure provider during testnet setup.
+// Infra provides an API for interacting with the infrastructure that makes up
+// a testnet.
+type Infra interface {
+	//
+	// Overarching testnet infrastructure management.
+	//
+
+	// Setup generates any necessary configuration for the infrastructure
+	// provider during testnet setup.
 	Setup(ctx context.Context) error
 
-	// Stop attempts to stop the entire testnet.
+	// Stop will stop all running processes throughout the testnet without
+	// destroying any infrastructure.
 	Stop(ctx context.Context) error
 
-	// Pause attempts to pause the entire testnet.
+	// Pause will pause all processes in the testnet.
 	Pause(ctx context.Context) error
 
-	// Unpause attempts to resume a paused testnet.
+	// Unpause will resume a paused testnet.
 	Unpause(ctx context.Context) error
 
-	// ShowLogs will print all logs for the whole testnet to stdout.
+	// ShowLogs prints all logs for the whole testnet to stdout.
 	ShowLogs(ctx context.Context) error
 
-	// TailLogs tails the logs for all nodes in the testnet.
+	// TailLogs tails the logs for all nodes in the testnet, if this is
+	// supported by the infrastructure provider.
 	TailLogs(ctx context.Context) error
 
-	// Cleanup stops and destroys all running infrastructure and deletes any
-	// generated files.
+	// Cleanup stops and destroys all running testnet infrastructure and
+	// deletes any generated files.
 	Cleanup(ctx context.Context) error
-}
 
-// NodeInfra provides an API for interacting with specific nodes'
-// infrastructure.
-type NodeInfra interface {
-	// ProvisionNode attempts to provision infrastructure for the given node
-	// and starts it.
-	ProvisionNode(ctx context.Context, node *e2e.Node) error
+	//
+	// Node management, including node infrastructure.
+	//
 
-	// DisconnectNode attempts to ensure that the given node is disconnected
-	// from the network.
-	DisconnectNode(ctx context.Context, node *e2e.Node) error
-
-	// ConnectNode attempts to ensure that the given node is connected to the
-	// network.
-	ConnectNode(ctx context.Context, node *e2e.Node) error
-
-	// KillNode attempts to ensure that the given node's process is killed
-	// immediately using SIGKILL.
-	KillNode(ctx context.Context, node *e2e.Node) error
-
-	// StartNode attempts to start a node's process. Assumes that the node's
-	// infrastructure has previously been provisioned using ProvisionNode.
+	// StartNode provisions infrastructure for the given node and starts it.
 	StartNode(ctx context.Context, node *e2e.Node) error
 
-	// PauseNode attempts to pause a node's process.
-	PauseNode(ctx context.Context, node *e2e.Node) error
+	// DisconnectNode modifies the specified node's network configuration such
+	// that it becomes bidirectionally disconnected from the network (it cannot
+	// see other nodes, and other nodes cannot see it).
+	DisconnectNode(ctx context.Context, node *e2e.Node) error
 
-	// UnpauseNode attempts to resume a paused node's process.
-	UnpauseNode(ctx context.Context, node *e2e.Node) error
+	// ConnectNode modifies the specified node's network configuration such
+	// that it can become bidirectionally connected.
+	ConnectNode(ctx context.Context, node *e2e.Node) error
 
-	// TerminateNode attempts to ensure that the given node's process is
-	// terminated using SIGTERM.
-	TerminateNode(ctx context.Context, node *e2e.Node) error
-
-	// ShowNodeLogs will print all logs for the node with the give ID to
-	// stdout.
+	// ShowNodeLogs prints all logs for the node with the give ID to stdout.
 	ShowNodeLogs(ctx context.Context, nodeID string) error
 
-	// TailNodeLogs tails the logs for a single node.
+	// TailNodeLogs tails the logs for a single node, if this is supported by
+	// the infrastructure provider.
 	TailNodeLogs(ctx context.Context, nodeID string) error
-}
 
-// Infra provides an API for interacting with testnet- and node-level
-// infrastructure.
-type Infra interface {
-	TestnetInfra
-	NodeInfra
+	//
+	// Node process management.
+	//
+
+	// KillNodeProcess sends SIGKILL to a node's process.
+	KillNodeProcess(ctx context.Context, node *e2e.Node) error
+
+	// StartNodeProcess will start a stopped node's process. Assumes that the
+	// node's infrastructure has previously been provisioned using
+	// ProvisionNode.
+	StartNodeProcess(ctx context.Context, node *e2e.Node) error
+
+	// PauseNodeProcess sends a signal to the node's process to pause it.
+	PauseNodeProcess(ctx context.Context, node *e2e.Node) error
+
+	// UnpauseNodeProcess resumes a paused node's process.
+	UnpauseNodeProcess(ctx context.Context, node *e2e.Node) error
+
+	// TerminateNodeProcess sends SIGTERM to a node's process.
+	TerminateNodeProcess(ctx context.Context, node *e2e.Node) error
 }

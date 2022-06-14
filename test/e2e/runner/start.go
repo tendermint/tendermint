@@ -44,7 +44,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra I
 	for len(nodeQueue) > 0 && nodeQueue[0].StartAt == 0 {
 		node := nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
-		if err := infra.ProvisionNode(ctx, node); err != nil {
+		if err := infra.StartNode(ctx, node); err != nil {
 			return err
 		}
 
@@ -106,7 +106,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra I
 			}
 		}
 
-		if err := infra.ProvisionNode(ctx, node); err != nil {
+		if err := infra.StartNode(ctx, node); err != nil {
 			return err
 		}
 

@@ -43,7 +43,7 @@ func (i *DockerInfra) Setup(ctx context.Context) error {
 	return nil
 }
 
-func (i *DockerInfra) ProvisionNode(ctx context.Context, node *e2e.Node) error {
+func (i *DockerInfra) StartNode(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, i.testnet.Dir, "up", "-d", node.Name)
 }
 
@@ -55,23 +55,23 @@ func (i *DockerInfra) ConnectNode(ctx context.Context, node *e2e.Node) error {
 	return execDocker(ctx, "network", "connect", i.testnet.Name+"_"+i.testnet.Name, node.Name)
 }
 
-func (i *DockerInfra) KillNode(ctx context.Context, node *e2e.Node) error {
+func (i *DockerInfra) KillNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, i.testnet.Dir, "kill", "-s", "SIGKILL", node.Name)
 }
 
-func (i *DockerInfra) StartNode(ctx context.Context, node *e2e.Node) error {
+func (i *DockerInfra) StartNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, i.testnet.Dir, "start", node.Name)
 }
 
-func (i *DockerInfra) PauseNode(ctx context.Context, node *e2e.Node) error {
+func (i *DockerInfra) PauseNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, i.testnet.Dir, "pause", node.Name)
 }
 
-func (i *DockerInfra) UnpauseNode(ctx context.Context, node *e2e.Node) error {
+func (i *DockerInfra) UnpauseNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, i.testnet.Dir, "unpause", node.Name)
 }
 
-func (i *DockerInfra) TerminateNode(ctx context.Context, node *e2e.Node) error {
+func (i *DockerInfra) TerminateNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, i.testnet.Dir, "kill", "-s", "SIGTERM", node.Name)
 }
 
