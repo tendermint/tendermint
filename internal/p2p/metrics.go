@@ -27,9 +27,11 @@ var (
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Number of peers connected.
-	Peers metrics.Gauge
+	PeersConnected metrics.Gauge
 
-	PeersStored      metrics.Gauge
+	// Nomber of peers in the peer store database.
+	PeersStored metrics.Gauge
+	// Number of inactive peers stored.
 	PeersInactivated metrics.Gauge
 	// Number of bytes per channel received from a given peer.
 	PeerReceiveBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`

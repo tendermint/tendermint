@@ -14,11 +14,23 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		labels = append(labels, labelsAndValues[i])
 	}
 	return &Metrics{
-		Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		PeersConnected: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "peers",
-			Help:      "Number of peers.",
+			Name:      "peers_connected",
+			Help:      "Number of peers connected.",
+		}, labels).With(labelsAndValues...),
+		PeersStored: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_stored",
+			Help:      "Nomber of peers in the peer store database.",
+		}, labels).With(labelsAndValues...),
+		PeersInactivated: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_inactivated",
+			Help:      "Number of inactive peers stored.",
 		}, labels).With(labelsAndValues...),
 		PeerReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
@@ -73,7 +85,9 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Peers:                  discard.NewGauge(),
+		PeersConnected:         discard.NewGauge(),
+		PeersStored:            discard.NewGauge(),
+		PeersInactivated:       discard.NewGauge(),
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
 		PeerPendingSendBytes:   discard.NewGauge(),

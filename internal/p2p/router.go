@@ -754,7 +754,7 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connection, channels ChannelIDSet) {
-	r.metrics.Peers.Add(1)
+	r.metrics.PeersConnected.Add(1)
 	r.peerManager.Ready(ctx, peerID, channels)
 
 	sendQueue := r.getOrMakeQueue(peerID, channels)
@@ -767,7 +767,7 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 		sendQueue.close()
 
 		r.peerManager.Disconnected(ctx, peerID)
-		r.metrics.Peers.Add(-1)
+		r.metrics.PeersConnected.Add(-1)
 	}()
 
 	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
