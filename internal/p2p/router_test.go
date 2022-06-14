@@ -443,7 +443,7 @@ func TestRouter_AcceptPeers_Errors(t *testing.T) {
 
 			require.NoError(t, router.Start())
 			time.Sleep(time.Second)
-			router.Stop()
+			require.NoError(t, router.Stop())
 
 			mockTransport.AssertExpectations(t)
 
