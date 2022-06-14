@@ -264,6 +264,7 @@ func (o *PeerManagerOptions) optimize() {
 type PeerManager struct {
 	selfID     types.NodeID
 	options    PeerManagerOptions
+	metrics    *Metrics
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
@@ -296,12 +297,12 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 	}
 
 	peerManager := &PeerManager{
-		selfID:     selfID,
-		options:    options,
-		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
-		dialWaker:  tmsync.NewWaker(),
-		evictWaker: tmsync.NewWaker(),
-
+		selfID:        selfID,
+		options:       options,
+		rand:          rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
+		dialWaker:     tmsync.NewWaker(),
+		evictWaker:    tmsync.NewWaker(),
+		metrics:       NopMetrics(),
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
 		upgrading:     map[types.NodeID]types.NodeID{},
@@ -311,6 +312,11 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 		evicting:      map[types.NodeID]bool{},
 		subscriptions: map[*PeerUpdates]*PeerUpdates{},
 	}
+
+	if options.Metrics != nil {
+		peerManager.metrics = options.Metrics
+	}
+
 	if err = peerManager.configurePeers(); err != nil {
 		return nil, err
 	}
@@ -380,7 +386,7 @@ func (m *PeerManager) prunePeers() error {
 			if err := m.store.Delete(peerID); err != nil {
 				return err
 			}
-			m.options.Metrics.PeersStored.Add(-1)
+			m.metrics.PeersStored.Add(-1)
 		}
 	}
 	return nil
@@ -419,7 +425,7 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 		return false, err
 	}
 
-	m.options.Metrics.PeersStored.Add(1)
+	m.metrics.PeersStored.Add(1)
 	if err := m.prunePeers(); err != nil {
 		return true, err
 	}
@@ -597,7 +603,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 	}
 	now := time.Now().UTC()
 	if peer.Inactive {
-		m.options.Metrics.PeersInactivated.Add(-1)
+		m.metrics.PeersInactivated.Add(-1)
 	}
 	peer.Inactive = false
 
@@ -821,7 +827,7 @@ func (m *PeerManager) Inactivate(peerID types.NodeID) error {
 	}
 
 	peer.Inactive = true
-	m.options.Metrics.PeersInactivated.Add(1)
+	m.metrics.PeersInactivated.Add(1)
 	return m.store.Set(*peer)
 }
 
