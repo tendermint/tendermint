@@ -442,17 +442,17 @@ func TestRouter_AcceptPeers(t *testing.T) {
 	}
 }
 
-func TestRouter_AcceptPeers_Error(t *testing.T) {
+func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Set up a mock transport that returns an error, which should prevent
+	// Set up a mock transport that returns io.EOF once, which should prevent
 	// the router from calling Accept again.
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Maybe().Return("mock")
-	mockTransport.On("Accept", mock.Anything).Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(nil, io.EOF)
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Listen", mock.Anything).Return(nil)
 
@@ -478,8 +478,7 @@ func TestRouter_AcceptPeers_Error(t *testing.T) {
 
 	mockTransport.AssertExpectations(t)
 }
-
-func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
+func TestRouter_AcceptPeers_ErrorCanceled(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -489,7 +488,7 @@ func TestRouter_AcceptPeers_ErrorEOF(t *testing.T) {
 	// the router from calling Accept again.
 	mockTransport := &mocks.Transport{}
 	mockTransport.On("String").Maybe().Return("mock")
-	mockTransport.On("Accept", mock.Anything).Once().Return(nil, io.EOF)
+	mockTransport.On("Accept", mock.Anything).Once().Return(nil, context.Canceled)
 	mockTransport.On("Close").Return(nil)
 	mockTransport.On("Listen", mock.Anything).Return(nil)
 
