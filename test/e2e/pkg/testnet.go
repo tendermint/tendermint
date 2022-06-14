@@ -107,7 +107,7 @@ type Node struct {
 // The testnet generation must be deterministic, since it is generated
 // separately by the runner and the test cases. For this reason, testnets use a
 // random seed to generate e.g. keys.
-func LoadTestnet(file string) (*Testnet, error) {
+func LoadTestnet(file string, seed int64) (*Testnet, error) {
 	manifest, err := LoadManifest(file)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 	}
 
 	ipGen := newIPGenerator(ipNet)
-	keyGen := newKeyGenerator(randomSeed)
+	keyGen := newKeyGenerator(seed)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	testnet := &Testnet{

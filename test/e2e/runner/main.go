@@ -43,7 +43,9 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			testnet, err := e2e.LoadTestnet(file)
+			cli.seedDelta, err = cmd.Flags().GetInt("seed-delta")
+			seed := randomSeed + cli.seedDelta // nolint: gosec
+			testnet, err := e2e.LoadTestnet(file, int64(seed))
 			if err != nil {
 				return err
 			}
