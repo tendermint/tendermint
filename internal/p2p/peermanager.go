@@ -15,6 +15,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -148,6 +149,8 @@ type PeerManagerOptions struct {
 
 	// Peer Metrics
 	Metrics *Metrics
+	// Logger
+	Logger log.Logger
 }
 
 // Validate validates the options.
@@ -268,6 +271,7 @@ type PeerManager struct {
 	rand       *rand.Rand
 	dialWaker  *tmsync.Waker // wakes up DialNext() on relevant peer changes
 	evictWaker *tmsync.Waker // wakes up EvictNext() on relevant peer changes
+	logger     log.Logger
 
 	mtx           sync.Mutex
 	store         *peerStore
@@ -297,12 +301,14 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 	}
 
 	peerManager := &PeerManager{
-		selfID:        selfID,
-		options:       options,
-		rand:          rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
-		dialWaker:     tmsync.NewWaker(),
-		evictWaker:    tmsync.NewWaker(),
-		metrics:       NopMetrics(),
+		selfID:     selfID,
+		options:    options,
+		rand:       rand.New(rand.NewSource(time.Now().UnixNano())), // nolint:gosec
+		dialWaker:  tmsync.NewWaker(),
+		evictWaker: tmsync.NewWaker(),
+		metrics:    NopMetrics(),
+		logger:     log.NewNopLogger(),
+
 		store:         store,
 		dialing:       map[types.NodeID]bool{},
 		upgrading:     map[types.NodeID]types.NodeID{},
@@ -315,6 +321,9 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 
 	if options.Metrics != nil {
 		peerManager.metrics = options.Metrics
+	}
+	if options.Logger != nil {
+		peerManager.logger = options.Logger
 	}
 
 	if err = peerManager.configurePeers(); err != nil {
@@ -400,7 +409,7 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 		return false, err
 	}
 	if address.NodeID == m.selfID {
-		return false, fmt.Errorf("can't add self (%v) to peer store", m.selfID)
+		return false, nil
 	}
 
 	m.mtx.Lock()
