@@ -69,9 +69,9 @@ type VoteSet struct {
 	peerMaj23s    map[string]BlockID     // Maj23 for each peer
 
 	// dash fields
-	thresholdBlockSig    []byte   // If a 2/3 majority is seen, recover the block sig
-	thresholdStateSig    []byte   // If a 2/3 majority is seen, recover the state sig
-	thresholdVoteExtSigs [][]byte // If a 2/3 majority is seen, recover the vote extension sigs
+	thresholdBlockSig    []byte                   // If a 2/3 majority is seen, recover the block sig
+	thresholdStateSig    []byte                   // If a 2/3 majority is seen, recover the state sig
+	thresholdVoteExtSigs []ThresholdExtensionSign // If a 2/3 majority is seen, recover the vote extension sigs
 }
 
 // NewVoteSet constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -352,9 +352,10 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 		vote := blockVotes.votes[0]
 		voteSet.thresholdBlockSig = vote.BlockSignature
 		voteSet.thresholdStateSig = vote.StateSignature
-		for _, ext := range vote.VoteExtensions {
-			voteSet.thresholdVoteExtSigs = append(voteSet.thresholdVoteExtSigs, ext.Signature)
-		}
+		voteSet.thresholdVoteExtSigs = MakeThresholdVoteExtensions(
+			vote.VoteExtensions[ThresholdRecoverExtensionType],
+			vote.GetVoteExtensionsSigns(ThresholdRecoverExtensionType),
+		)
 		return nil
 	}
 	err := voteSet.recoverThresholdSigns(blockVotes)
@@ -373,27 +374,23 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 				voteSet.thresholdStateSig, len(blockVotes.votes))
 		}
 	}
-	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, quorumSigns.VoteExts)
+	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, quorumSigns.Extensions)
 }
 
-func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, signItems []SignItem) error {
+func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, signItems map[VoteExtensionType][]SignItem) error {
 	if len(votes) == 0 || len(voteSet.thresholdVoteExtSigs) == 0 {
 		return nil
 	}
-	vote, err := GetFirstVote(votes)
-	if err != nil {
-		return err
-	}
-	signItems = GetRecoverableSingItems(vote.VoteExtensions, signItems)
-	if len(signItems) != len(voteSet.thresholdVoteExtSigs) {
+	deterministic := signItems[ThresholdRecoverExtensionType]
+	if len(deterministic) != len(voteSet.thresholdVoteExtSigs) {
 		return fmt.Errorf("count of threshold signatures (%d) at voteSet doesn't match with the count of a recoverable at a vote (%d) | %X",
-			len(voteSet.thresholdVoteExtSigs), len(signItems), voteSet.thresholdStateSig)
+			len(voteSet.thresholdVoteExtSigs), len(deterministic), voteSet.thresholdStateSig)
 	}
-	for i, thresholdVoteExtSig := range voteSet.thresholdVoteExtSigs {
-		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signItems[i].ID, thresholdVoteExtSig)
+	for i, ext := range voteSet.thresholdVoteExtSigs {
+		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(deterministic[i].ID, ext.ThresholdSignature)
 		if !verified {
 			return fmt.Errorf("recovered incorrect vote-extension threshold signature %X voteSetCount %d",
-				thresholdVoteExtSig, len(votes))
+				ext, len(votes))
 		}
 	}
 	return nil
@@ -414,7 +411,7 @@ func (voteSet *VoteSet) recoverThresholdSigns(blockVotes *blockVotes) error {
 	}
 	voteSet.thresholdBlockSig = thresholdSigns.BlockSign
 	voteSet.thresholdStateSig = thresholdSigns.StateSign
-	voteSet.thresholdVoteExtSigs = thresholdSigns.VoteExtSigns
+	voteSet.thresholdVoteExtSigs = thresholdSigns.ExtensionSigns
 	return nil
 }
 
@@ -575,6 +572,39 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 		return *voteSet.maj23, true
 	}
 	return BlockID{}, false
+}
+
+// GetVoteExtensions returns the first not nil vote from a list, otherwise error
+func (voteSet *VoteSet) GetVoteExtensions() (VoteExtensions, error) {
+	if len(voteSet.votes) == 0 {
+		return VoteExtensions{}, nil
+	}
+	var ret *Vote
+	for _, vote := range voteSet.votes {
+		if vote == nil {
+			continue
+		}
+		if vote != nil && ret == nil {
+			ret = vote
+			continue
+		}
+		exts1 := ret.VoteExtensions[ThresholdRecoverExtensionType]
+		exts2 := vote.VoteExtensions[ThresholdRecoverExtensionType]
+		if len(exts1) != len(exts2) {
+			return nil, fmt.Errorf("the number elemnts don't match")
+		}
+		for i, ext1 := range ret.VoteExtensions[ThresholdRecoverExtensionType] {
+			ext2 := vote.VoteExtensions[ThresholdRecoverExtensionType][i]
+			if !bytes.Equal(ext1.Extension, ext2.Extension) {
+				return nil, fmt.Errorf("vote extension (number=%d) between votes is not equal %X != %X",
+					i, ext1.Extension, ext2.Extension)
+			}
+		}
+	}
+	if ret != nil {
+		return ret.VoteExtensions, nil
+	}
+	return VoteExtensions{}, nil
 }
 
 //--------------------------------------------------------------------------------
@@ -751,29 +781,49 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
 
-	commit := NewCommit(
+	return NewCommit(
 		voteSet.GetHeight(),
 		voteSet.GetRound(),
 		*voteSet.maj23,
 		voteSet.stateID,
-		&QuorumVoteSigns{
-			ThresholdVoteSigns: ThresholdVoteSigns{
-				BlockSign:    voteSet.thresholdBlockSig,
-				StateSign:    voteSet.thresholdStateSig,
-				VoteExtSigns: voteSet.thresholdVoteExtSigs,
-			},
-			QuorumHash: voteSet.valSet.QuorumHash,
-		},
+		voteSet.makeQuorumVoteSigns(),
 	)
+}
 
-	vote, err := GetFirstVote(voteSet.votes)
-	if err == nil {
-		for _, ext := range vote.VoteExtensions {
-			commit.VoteExtensions = append(commit.VoteExtensions, ext.Clone())
+// ThresholdExtensionSign is used for keeping extension and recovered threshold signature
+type ThresholdExtensionSign struct {
+	Extension          []byte
+	ThresholdSignature []byte
+}
+
+// MakeThresholdExtensionSigns creates and returns the list of ThresholdExtensionSign for given VoteExtensions container
+func MakeThresholdExtensionSigns(voteExtensions VoteExtensions) []ThresholdExtensionSign {
+	if voteExtensions == nil {
+		return nil
+	}
+	extensions := voteExtensions[ThresholdRecoverExtensionType]
+	if len(extensions) == 0 {
+		return nil
+	}
+	thresholdSigns := make([]ThresholdExtensionSign, len(extensions))
+	for i, ext := range extensions {
+		thresholdSigns[i] = ThresholdExtensionSign{
+			Extension:          ext.Extension,
+			ThresholdSignature: ext.Signature,
 		}
 	}
+	return thresholdSigns
+}
 
-	return commit
+func (voteSet *VoteSet) makeQuorumVoteSigns() *QuorumVoteSigns {
+	return &QuorumVoteSigns{
+		ThresholdVoteSigns: ThresholdVoteSigns{
+			BlockSign:      voteSet.thresholdBlockSig,
+			StateSign:      voteSet.thresholdStateSig,
+			ExtensionSigns: voteSet.thresholdVoteExtSigs,
+		},
+		QuorumHash: voteSet.valSet.QuorumHash,
+	}
 }
 
 //--------------------------------------------------------------------------------

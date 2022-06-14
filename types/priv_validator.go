@@ -282,7 +282,7 @@ func (pv *MockPV) SignVote(
 	}
 
 	if vote.Type != tmproto.PrecommitType {
-		if len(vote.VoteExtensions) > 0 {
+		if !vote.VoteExtensions.IsEmpty() {
 			return errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
 		}
 		return nil
@@ -293,14 +293,33 @@ func (pv *MockPV) SignVote(
 	if err != nil {
 		return err
 	}
-	for i, extSign := range extSigns {
-		sign, err := privKey.SignDigest(extSign.ID)
+	for et, signs := range extSigns {
+		e, err := getVoteExtensionsFromProto(et, vote.VoteExtensions)
 		if err != nil {
 			return err
 		}
-		vote.VoteExtensions[i].Signature = sign
+		for i, sign := range signs {
+			sign, err := privKey.SignDigest(sign.ID)
+			if err != nil {
+				return err
+			}
+			e[i].Signature = sign
+		}
 	}
 	return nil
+}
+
+func getVoteExtensionsFromProto(t VoteExtensionType, pv *tmproto.VoteExtensions) ([]*tmproto.VoteExtension, error) {
+	if pv == nil {
+		return nil, errors.New("error")
+	}
+	switch t {
+	case DefaultExtensionType:
+		return pv.Default, nil
+	case ThresholdRecoverExtensionType:
+		return pv.ThresholdRecover, nil
+	}
+	return nil, errors.New("error")
 }
 
 // SignProposal Implements PrivValidator.

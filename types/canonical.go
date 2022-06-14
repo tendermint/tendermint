@@ -69,7 +69,6 @@ func CanonicalizeVote(chainID string, vote *tmproto.Vote) tmproto.CanonicalVote 
 func CanonicalizeVoteExtension(chainID string, ext *tmproto.VoteExtension, height int64, round int32) tmproto.CanonicalVoteExtension {
 	return tmproto.CanonicalVoteExtension{
 		Extension: ext.Extension,
-		Type:      ext.Type,
 		Height:    height,
 		Round:     int64(round),
 		ChainId:   chainID,

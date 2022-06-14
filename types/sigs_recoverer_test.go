@@ -32,19 +32,13 @@ func TestSigsRecoverer(t *testing.T) {
 					ValidatorProTxHash: crypto.RandProTxHash(),
 					Type:               types.PrecommitType,
 					BlockID:            blockID,
-					VoteExtensions: mockVoteExtensions(t,
-						types.VoteExtensionType_DEFAULT, "default",
-						types.VoteExtensionType_THRESHOLD_RECOVER, "threshold",
-					),
+					VoteExtensions:     mockVoteExtensions(t, DefaultExtensionType, "default", ThresholdRecoverExtensionType, "threshold"),
 				},
 				{
 					ValidatorProTxHash: crypto.RandProTxHash(),
 					Type:               types.PrecommitType,
 					BlockID:            blockID,
-					VoteExtensions: mockVoteExtensions(t,
-						types.VoteExtensionType_DEFAULT, "default",
-						types.VoteExtensionType_THRESHOLD_RECOVER, "threshold",
-					),
+					VoteExtensions:     mockVoteExtensions(t, DefaultExtensionType, "default", ThresholdRecoverExtensionType, "threshold"),
 				},
 			},
 		},
@@ -61,11 +55,7 @@ func TestSigsRecoverer(t *testing.T) {
 				pvs[i] = NewMockPV(GenKeysForQuorumHash(quorumHash), UseProTxHash(vote.ValidatorProTxHash))
 				err := pvs[i].SignVote(ctx, chainID, quorumType, quorumHash, protoVote, stateID, nil)
 				require.NoError(t, err)
-				vote.BlockSignature = protoVote.BlockSignature
-				vote.StateSignature = protoVote.StateSignature
-				for i, ext := range protoVote.VoteExtensions {
-					vote.VoteExtensions[i].Signature = ext.Signature
-				}
+				vote.PopulateSignsFromProto(protoVote)
 				pubKey, err := pvs[i].GetPubKey(ctx, quorumHash)
 				require.NoError(t, err)
 				pubKeys = append(pubKeys, pubKey)
@@ -85,11 +75,9 @@ func TestSigsRecoverer(t *testing.T) {
 			verified = thresholdPubKey.VerifySignatureDigest(quorumSigns.State.ID, thresholdSigns.StateSign)
 			require.True(t, verified)
 
-			vote, err := GetFirstVote(tc.votes)
-			require.NoError(t, err)
-			signItems := GetRecoverableSingItems(vote.VoteExtensions, quorumSigns.VoteExts)
-			for i, sign := range thresholdSigns.VoteExtSigns {
-				verified = thresholdPubKey.VerifySignatureDigest(signItems[i].ID, sign)
+			signItems := quorumSigns.Extensions[ThresholdRecoverExtensionType]
+			for i, ext := range thresholdSigns.ExtensionSigns {
+				verified = thresholdPubKey.VerifySignatureDigest(signItems[i].ID, ext.ThresholdSignature)
 				require.True(t, verified)
 			}
 		})
@@ -121,19 +109,12 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 			Round:              0,
 			Type:               types.PrecommitType,
 			BlockID:            blockID,
-			VoteExtensions: mockVoteExtensions(t,
-				types.VoteExtensionType_DEFAULT, "default",
-				types.VoteExtensionType_THRESHOLD_RECOVER, "threshold",
-			),
+			VoteExtensions:     mockVoteExtensions(t, DefaultExtensionType, "default", ThresholdRecoverExtensionType, "threshold"),
 		}
 		vpb := votes[i].ToProto()
 		err = pvs[i].SignVote(ctx, chainID, quorumType, quorumHash, vpb, stateID, nil)
 		require.NoError(t, err)
-		votes[i].BlockSignature = vpb.BlockSignature
-		votes[i].StateSignature = vpb.StateSignature
-		for j, ext := range vpb.VoteExtensions {
-			votes[i].VoteExtensions[j].Signature = ext.Signature
-		}
+		votes[i].PopulateSignsFromProto(vpb)
 	}
 	voteSet := NewVoteSet(chainID, height, 0, types.PrecommitType, vals, stateID)
 	for _, vote := range votes {
@@ -143,15 +124,17 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 	}
 }
 
-func mockVoteExtensions(t *testing.T, pairs ...interface{}) []VoteExtension {
+func mockVoteExtensions(t *testing.T, pairs ...interface{}) VoteExtensions {
 	if len(pairs)%2 != 0 {
 		t.Fatalf("the pairs lentght must be even")
 	}
-	exts := make([]VoteExtension, len(pairs)/2)
+	ve := make(VoteExtensions)
 	for i := 0; i < len(pairs); i += 2 {
-		ext := VoteExtension{
-			Type: pairs[i].(types.VoteExtensionType),
+		et, ok := pairs[i].(VoteExtensionType)
+		if !ok {
+			t.Fatalf("given unsupported type %T", pairs[i])
 		}
+		ext := VoteExtension{}
 		switch v := pairs[i+1].(type) {
 		case string:
 			ext.Extension = []byte(v)
@@ -160,7 +143,7 @@ func mockVoteExtensions(t *testing.T, pairs ...interface{}) []VoteExtension {
 		default:
 			t.Fatalf("given unsupported type %T", pairs[i+1])
 		}
-		exts[i/2] = ext
+		ve[et] = append(ve[et], ext)
 	}
-	return exts
+	return ve
 }

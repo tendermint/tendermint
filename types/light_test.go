@@ -66,8 +66,6 @@ func TestLightBlockProtobuf(t *testing.T) {
 	defer cancel()
 	header := MakeRandHeader()
 	commit := randCommit(ctx, t, RandStateID())
-	// set nit due to vote-extensions are not presented in protobuf
-	commit.VoteExtensions = nil
 	vals, _ := RandValidatorSet(5)
 	header.Height = commit.Height
 	header.LastBlockID = commit.BlockID

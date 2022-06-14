@@ -48,7 +48,7 @@ func makeTestCommit(state sm.State, height int64, timestamp time.Time) *types.Co
 
 	goodVote.BlockSignature = g.BlockSignature
 	goodVote.StateSignature = g.StateSignature
-	goodVote.VoteExtensions = types.ProtoToVoteExtensions(g.VoteExtensions)
+	goodVote.VoteExtensions = types.VoteExtensionsFromProto(g.VoteExtensions)
 	thresholdSigns, _ := types.NewSignsRecoverer([]*types.Vote{goodVote}).Recover()
 
 	return types.NewCommit(height, 0,

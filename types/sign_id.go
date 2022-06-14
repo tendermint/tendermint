@@ -15,9 +15,9 @@ var (
 
 // QuorumSigns holds data which is necessary for signing and verification block, state, and each vote-extension in a list
 type QuorumSigns struct {
-	Block    SignItem
-	State    SignItem
-	VoteExts []SignItem
+	Block      SignItem
+	State      SignItem
+	Extensions map[VoteExtensionType][]SignItem
 }
 
 // SignItem represents quorum sing data, like a request id, message bytes, sha256 hash of message and signID
@@ -53,7 +53,7 @@ func MakeQuorumSigns(
 		State: MakeStateSignItem(chainID, stateID, quorumType, quorumHash),
 	}
 	var err error
-	quorumSign.VoteExts, err = MakeVoteExtensionSignItems(chainID, protoVote, quorumType, quorumHash)
+	quorumSign.Extensions, err = MakeVoteExtensionSignItems(chainID, protoVote, quorumType, quorumHash)
 	if err != nil {
 		return QuorumSigns{}, err
 	}
@@ -75,32 +75,27 @@ func MakeStateSignItem(chainID string, stateID StateID, quorumType btcjson.LLMQT
 }
 
 // MakeVoteExtensionSignItems  creates a list SignItem structs for a vote extensions
-func MakeVoteExtensionSignItems(chainID string, protoVote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) ([]SignItem, error) {
+func MakeVoteExtensionSignItems(chainID string, protoVote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) (map[VoteExtensionType][]SignItem, error) {
 	// We only sign vote extensions for precommits
 	if protoVote.Type != types.PrecommitType {
-		if len(protoVote.VoteExtensions) > 0 {
+		if !protoVote.VoteExtensions.IsEmpty() {
 			return nil, errUnexpectedVoteType
 		}
 		return nil, nil
 	}
-	items := make([]SignItem, len(protoVote.VoteExtensions))
+	items := make(map[VoteExtensionType][]SignItem)
 	reqID := VoteExtensionRequestID(protoVote)
-	for i, ext := range protoVote.VoteExtensions {
-		raw := VoteExtensionSignBytes(chainID, protoVote.Height, protoVote.Round, ext)
-		items[i] = newSignItem(quorumType, quorumHash, reqID, raw)
-	}
-	return items, nil
-}
-
-// GetRecoverableSingItems returns a list of SignItems only for recoverable vote extensions
-func GetRecoverableSingItems(exts []VoteExtension, signItems []SignItem) []SignItem {
-	var res []SignItem
-	for i, ext := range exts {
-		if ext.IsRecoverable() {
-			res = append(res, signItems[i])
+	protoMap := ProtoVoteExtensionsToMap(protoVote.VoteExtensions)
+	for t, exts := range protoMap {
+		if items[t] == nil && len(exts) > 0 {
+			items[t] = make([]SignItem, len(exts))
+		}
+		for i, ext := range exts {
+			raw := VoteExtensionSignBytes(chainID, protoVote.Height, protoVote.Round, ext)
+			items[t][i] = newSignItem(quorumType, quorumHash, reqID, raw)
 		}
 	}
-	return res
+	return items, nil
 }
 
 func newSignItem(quorumType btcjson.LLMQType, quorumHash, reqID, raw []byte) SignItem {

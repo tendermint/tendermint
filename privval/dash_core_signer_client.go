@@ -342,18 +342,19 @@ func (sc *DashCoreSignerClient) signVoteExtensions(
 	quorumSigns types.QuorumSigns,
 ) error {
 	if protoVote.Type != tmproto.PrecommitType {
-		if len(protoVote.VoteExtensions) > 0 {
+		if !protoVote.VoteExtensions.IsEmpty() {
 			return errors.New("unexpected vote extension - extensions are only allowed in precommits")
 		}
 		return nil
 	}
-	for i := range protoVote.VoteExtensions {
-		voteExt := quorumSigns.VoteExts[i]
-		resp, err := sc.quorumSign(quorumType, quorumHash, voteExt)
-		if err != nil {
-			return err
+	for et, extensions := range types.ProtoVoteExtensionsToMap(protoVote.VoteExtensions) {
+		for i, ext := range extensions {
+			resp, err := sc.quorumSign(quorumType, quorumHash, quorumSigns.Extensions[et][i])
+			if err != nil {
+				return err
+			}
+			ext.Signature = resp.sign
 		}
-		protoVote.VoteExtensions[i].Signature = resp.sign
 	}
 	return nil
 }

@@ -335,8 +335,8 @@ func TestValidateBlockCommit(t *testing.T) {
 
 		goodVote.BlockSignature, badVote.BlockSignature = g.BlockSignature, b.BlockSignature
 		goodVote.StateSignature, badVote.StateSignature = g.StateSignature, b.StateSignature
-		goodVote.VoteExtensions = types.ProtoToVoteExtensions(g.VoteExtensions)
-		badVote.VoteExtensions = types.ProtoToVoteExtensions(b.VoteExtensions)
+		goodVote.VoteExtensions = types.VoteExtensionsFromProto(g.VoteExtensions)
+		badVote.VoteExtensions = types.VoteExtensionsFromProto(b.VoteExtensions)
 
 		thresholdSigns, err := types.NewSignsRecoverer([]*types.Vote{badVote}).Recover()
 		require.NoError(t, err)

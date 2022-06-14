@@ -104,7 +104,7 @@ func (vs *validatorStub) signVote(
 	lastAppHash []byte,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	exts []types.VoteExtension) (*types.Vote, error) {
+	exts types.VoteExtensions) (*types.Vote, error) {
 
 	proTxHash, err := vs.PrivValidator.GetProTxHash(ctx)
 	if err != nil {
@@ -133,19 +133,10 @@ func (vs *validatorStub) signVote(
 
 	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
-		v.BlockSignature = vs.lastVote.BlockSignature
-		v.StateSignature = vs.lastVote.StateSignature
-		for i, ext := range vs.lastVote.VoteExtensions {
-			v.VoteExtensions[i].Signature = ext.Signature
-		}
+		vs.lastVote.PopulateSignsToProto(v)
 	}
 
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
-	for i, ext := range v.VoteExtensions {
-		vote.VoteExtensions[i].Signature = ext.Signature
-	}
-
+	vote.PopulateSignsFromProto(v)
 	return vote, err
 }
 
@@ -161,12 +152,9 @@ func signVote(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash) *types.Vote {
 
-	var exts []types.VoteExtension
+	exts := make(types.VoteExtensions)
 	if voteType == tmproto.PrecommitType {
-		exts = []types.VoteExtension{{
-			Type:      tmproto.VoteExtensionType_DEFAULT,
-			Extension: []byte("extension"),
-		}}
+		exts.Add(types.DefaultExtensionType, []byte("extension"))
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, exts)
 	require.NoError(t, err, "failed to sign vote")
@@ -1012,13 +1000,8 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 	if v1 == nil || v2 == nil {
 		return false
 	}
-	if len(v1.VoteExtensions) != len(v2.VoteExtensions) {
+	if v1.VoteExtensions.IsSameWithProto(v2.VoteExtensions) {
 		return false
-	}
-	for i, ext := range v1.VoteExtensions {
-		if !bytes.Equal(ext.Extension, v2.VoteExtensions[i].Extension) {
-			return false
-		}
 	}
 	return v1.Type == v2.Type &&
 		bytes.Equal(v1.BlockID.Hash, v2.BlockID.GetHash()) &&

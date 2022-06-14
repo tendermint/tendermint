@@ -366,7 +366,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) ([]*abci.ExtendVoteExtension, error) {
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) (*abci.ExtendVoteExtension, error) {
 	resp, err := blockExec.appClient.ExtendVote(ctx, &abci.RequestExtendVote{
 		Hash:   vote.BlockID.Hash,
 		Height: vote.Height,
@@ -374,13 +374,16 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 	if err != nil {
 		panic(fmt.Errorf("ExtendVote call failed: %w", err))
 	}
+	if resp.VoteExtensions == nil {
+		return &abci.ExtendVoteExtension{}, nil
+	}
 	return resp.VoteExtensions, nil
 }
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
-	extensions := make([][]byte, len(vote.VoteExtensions))
-	for i, ext := range vote.VoteExtensions {
-		extensions[i] = ext.Extension
+	var extensions *abci.ExtendVoteExtension
+	if vote.VoteExtensions != nil {
+		extensions = vote.VoteExtensions.ToExtendProto()
 	}
 
 	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, &abci.RequestVerifyVoteExtension{
@@ -462,7 +465,7 @@ func (blockExec *BlockExecutor) Commit(
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
 	if block.Height == initialHeight {
-		// there is no last commmit for the initial height.
+		// there is no last commit for the initial height.
 		// return an empty value.
 		return abci.CommitInfo{}
 	}
@@ -471,7 +474,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 		QuorumHash:              block.LastCommit.QuorumHash,
 		BlockSignature:          block.LastCommit.ThresholdBlockSignature,
 		StateSignature:          block.LastCommit.ThresholdStateSignature,
-		VoteExtensionSignatures: block.LastCommit.ThresholdVoteExtensionSignatures,
+		ThresholdVoteExtensions: types.ThresholdExtensionSignToProto(block.LastCommit.ThresholdVoteExtensions),
 	}
 }
 

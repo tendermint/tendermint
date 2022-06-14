@@ -352,7 +352,7 @@ func (app *Application) ApplySnapshotChunk(_ context.Context, req *abci.RequestA
 // total number of transaction bytes to exceed `req.MaxTxBytes`, we will not
 // append our special vote extension transaction.
 func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
-	extCount := len(req.LocalLastCommit.VoteExtensionSignatures)
+	extCount := len(req.LocalLastCommit.ThresholdVoteExtensions)
 	// We only generate our special transaction if we have vote extensions
 	if extCount > 0 {
 		var totalBytes int64
@@ -457,14 +457,12 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 	extLen := binary.PutVarint(ext, num)
 	app.logger.Info("generated vote extension", "num", num, "ext", fmt.Sprintf("%x", ext[:extLen]), "state.Height", app.state.Height)
 	return &abci.ResponseExtendVote{
-		VoteExtensions: []*abci.ExtendVoteExtension{
-			{
-				Type:      types1.VoteExtensionType_DEFAULT,
-				Extension: ext[:extLen],
+		VoteExtensions: &abci.ExtendVoteExtension{
+			Default: [][]byte{
+				ext[:extLen],
 			},
-			{
-				Type:      types1.VoteExtensionType_THRESHOLD_RECOVER,
-				Extension: []byte(fmt.Sprintf("threshold-%d", app.state.Height)),
+			ThresholdRecover: [][]byte{
+				[]byte(fmt.Sprintf("threshold-%d", app.state.Height)),
 			},
 		},
 	}, nil
@@ -475,7 +473,7 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 // vote extension is a well-formed integer value.
 func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
 	// We allow vote extensions to be optional
-	if len(req.VoteExtensions) == 0 {
+	if req.VoteExtensions.IsEmpty() {
 		return &abci.ResponseVerifyVoteExtension{
 			Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 		}, nil
@@ -491,16 +489,16 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 		}, nil
 	}
 
-	nums := make([]int64, len(req.VoteExtensions))
-	for i, extension := range req.VoteExtensions {
-		num, err := parseVoteExtension(extension)
+	var nums []int64
+	for ext := range req.VoteExtensions.Iter() {
+		num, err := parseVoteExtension(ext)
 		if err != nil {
 			app.logger.Error("failed to verify vote extension", "req", req, "err", err)
 			return &abci.ResponseVerifyVoteExtension{
 				Status: abci.ResponseVerifyVoteExtension_REJECT,
 			}, nil
 		}
-		nums[i] = num
+		nums = append(nums, num)
 	}
 
 	app.logger.Info("verified vote extension value", "req", req, "nums", nums)

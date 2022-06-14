@@ -75,37 +75,35 @@ func TestMakeVoteExtensionSignsData(t *testing.T) {
 	testCases := []struct {
 		vote       Vote
 		quorumHash []byte
-		want       []SignItem
+		want       map[VoteExtensionType][]SignItem
 	}{
 		{
 			vote: Vote{
 				Type:               types.PrecommitType,
 				Height:             1001,
 				ValidatorProTxHash: mustHexDecode("9CC13F685BC3EA0FCA99B87F42ABCC934C6305AA47F62A32266A2B9D55306B7B"),
-				VoteExtensions: []VoteExtension{
-					{
-						Type:      types.VoteExtensionType_DEFAULT,
-						Extension: []byte("default"),
-					},
-					{
-						Type:      types.VoteExtensionType_THRESHOLD_RECOVER,
-						Extension: []byte("threshold"),
-					},
+				VoteExtensions: VoteExtensions{
+					DefaultExtensionType:          []VoteExtension{{Extension: []byte("default")}},
+					ThresholdRecoverExtensionType: []VoteExtension{{Extension: []byte("threshold")}},
 				},
 			},
 			quorumHash: mustHexDecode("6A12D9CF7091D69072E254B297AEF15997093E480FDE295E09A7DE73B31CEEDD"),
-			want: []SignItem{
-				{
-					ReqID: mustHexDecode("FB95F2CA6530F02AC623589D7938643FF22AE79A75DD79AEA1C8871162DE675E"),
-					ID:    mustHexDecode("533524404D3A905F5AC9A30FCEB5A922EAD96F30DA02F979EE41C4342F540467"),
-					Hash:  mustHexDecode("61519D79DE4C4D5AC5DD210C1BCE81AA24F76DD5581A24970E60112890C68FB7"),
-					Raw:   mustHexDecode("210A0764656661756C7411E903000000000000220D646173682D706C6174666F726D"),
+			want: map[VoteExtensionType][]SignItem{
+				DefaultExtensionType: {
+					{
+						ReqID: mustHexDecode("FB95F2CA6530F02AC623589D7938643FF22AE79A75DD79AEA1C8871162DE675E"),
+						ID:    mustHexDecode("533524404D3A905F5AC9A30FCEB5A922EAD96F30DA02F979EE41C4342F540467"),
+						Hash:  mustHexDecode("61519D79DE4C4D5AC5DD210C1BCE81AA24F76DD5581A24970E60112890C68FB7"),
+						Raw:   mustHexDecode("210A0764656661756C7411E903000000000000220D646173682D706C6174666F726D"),
+					},
 				},
-				{
-					ReqID: mustHexDecode("FB95F2CA6530F02AC623589D7938643FF22AE79A75DD79AEA1C8871162DE675E"),
-					ID:    mustHexDecode("D3B7D53A0F9CA8072D47D6C18E782EE3155EF8DCDDB010087030B6CBC63978BC"),
-					Hash:  mustHexDecode("46C72C423B74034E1AF574A99091B017C0698FEAA55C8B188BFD512FCADD3143"),
-					Raw:   mustHexDecode("250A097468726573686F6C6411E903000000000000220D646173682D706C6174666F726D2801"),
+				ThresholdRecoverExtensionType: {
+					{
+						ReqID: mustHexDecode("FB95F2CA6530F02AC623589D7938643FF22AE79A75DD79AEA1C8871162DE675E"),
+						ID:    mustHexDecode("5937BFC5BDAEBDA245AD5D8527F29B8F21158C793D407EA7CA94739E1F87A941"),
+						Hash:  mustHexDecode("B614BB07BCE43F905B0513B54CD2603D79299EE38E01E74F4693FD7FB9875AF4"),
+						Raw:   mustHexDecode("230A097468726573686F6C6411E903000000000000220D646173682D706C6174666F726D"),
+					},
 				},
 			},
 		},
@@ -114,8 +112,8 @@ func TestMakeVoteExtensionSignsData(t *testing.T) {
 		t.Run(fmt.Sprintf("test-case #%d", i), func(t *testing.T) {
 			signItems, err := MakeVoteExtensionSignItems(chainID, tc.vote.ToProto(), btcjson.LLMQType_5_60, tc.quorumHash)
 			require.NoError(t, err)
-			for j, signItem := range signItems {
-				require.Equal(t, tc.want[j], signItem)
+			for et, signs := range signItems {
+				require.Equal(t, tc.want[et], signs)
 			}
 		})
 	}

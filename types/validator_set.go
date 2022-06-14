@@ -938,7 +938,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	canonVote := commit.GetCanonicalVoteWithExtensions()
+	canonVote := commit.GetCanonicalVote()
 	quorumSigns, err := MakeQuorumSigns(chainID, vals.QuorumType, vals.QuorumHash, canonVote.ToProto(), stateID)
 	if err != nil {
 		return err
@@ -955,20 +955,20 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			quorumSigns.State.Raw, commit, vals.QuorumHash)
 	}
 
-	return vals.verifyThresholdVoteExtensions(commit, canonVote, quorumSigns)
+	return vals.verifyThresholdVoteExtensions(commit, quorumSigns)
 }
 
-func (vals *ValidatorSet) verifyThresholdVoteExtensions(commit *Commit, canonVote *Vote, quorumSigns QuorumSigns) error {
-	signItems := GetRecoverableSingItems(canonVote.VoteExtensions, quorumSigns.VoteExts)
+func (vals *ValidatorSet) verifyThresholdVoteExtensions(commit *Commit, quorumSigns QuorumSigns) error {
+	signItems := quorumSigns.Extensions[ThresholdRecoverExtensionType]
 	if len(signItems) == 0 {
 		return nil
 	}
-	if len(signItems) != len(commit.ThresholdVoteExtensionSignatures) {
+	if len(signItems) != len(commit.ThresholdVoteExtensions) {
 		return fmt.Errorf("count of threshold vote extension signatures (%d) doesn't match with recoverable vote extensions (%d)",
-			len(commit.ThresholdVoteExtensionSignatures), len(signItems))
+			len(commit.ThresholdVoteExtensions), len(signItems))
 	}
-	for i, thresholdSign := range commit.ThresholdVoteExtensionSignatures {
-		if !vals.ThresholdPublicKey.VerifySignatureDigest(signItems[i].ID, thresholdSign) {
+	for i, thresholdExt := range commit.ThresholdVoteExtensions {
+		if !vals.ThresholdPublicKey.VerifySignatureDigest(signItems[i].ID, thresholdExt.ThresholdSignature) {
 			return fmt.Errorf("incorrect threshold vote-extension signature bytes: %X commit: %v valQuorumHash %X",
 				signItems[i].Raw, commit, vals.QuorumHash)
 		}

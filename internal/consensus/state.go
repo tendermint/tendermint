@@ -2982,15 +2982,7 @@ func (cs *State) signVote(
 		if err != nil {
 			return nil, err
 		}
-		for _, ext := range exts {
-			vote.VoteExtensions = append(
-				vote.VoteExtensions,
-				types.VoteExtension{
-					Type:      ext.Type,
-					Extension: ext.Extension,
-				},
-			)
-		}
+		vote.VoteExtensions = types.NewVoteExtensionsFromABCIExtended(exts)
 	default:
 		timeout = time.Second
 	}
@@ -3002,11 +2994,7 @@ func (cs *State) signVote(
 
 	err := cs.privValidator.SignVote(ctxto, cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash,
 		v, stateID, cs.logger)
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
-	for i, ext := range v.VoteExtensions {
-		vote.VoteExtensions[i].Signature = ext.Signature
-	}
+	vote.PopulateSignsFromProto(v)
 
 	return vote, err
 }

@@ -40,15 +40,9 @@ func makeCommit(
 			Round:              round,
 			Type:               tmproto.PrecommitType,
 			BlockID:            blockID,
-			VoteExtensions: []VoteExtension{
-				{
-					Type:      tmproto.VoteExtensionType_DEFAULT,
-					Extension: []byte("default"),
-				},
-				{
-					Type:      tmproto.VoteExtensionType_THRESHOLD_RECOVER,
-					Extension: []byte("threshold"),
-				},
+			VoteExtensions: VoteExtensions{
+				DefaultExtensionType:          []VoteExtension{{Extension: []byte("default")}},
+				ThresholdRecoverExtensionType: []VoteExtension{{Extension: []byte("threshold")}},
 			},
 		}
 
@@ -74,22 +68,6 @@ func signAddVoteForStateID(ctx context.Context, privVal PrivValidator, vote *Vot
 	if err != nil {
 		return false, err
 	}
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
-	for i, ext := range v.VoteExtensions {
-		vote.VoteExtensions[i].Signature = ext.Signature
-	}
+	vote.PopulateSignsFromProto(v)
 	return voteSet.AddVote(vote)
-}
-
-// VoteExtSigns2BytesSlices returns a list of vote-extensions signatures
-func VoteExtSigns2BytesSlices(exts []VoteExtension, onlyRecoverable bool) [][]byte {
-	sigs := make([][]byte, 0, len(exts))
-	for _, ext := range exts {
-		if onlyRecoverable && !ext.IsRecoverable() {
-			continue
-		}
-		sigs = append(sigs, ext.Signature)
-	}
-	return sigs
 }

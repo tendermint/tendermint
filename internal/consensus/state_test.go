@@ -2109,11 +2109,8 @@ func TestExtendVoteCalled(t *testing.T) {
 	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{
-		VoteExtensions: []*abci.ExtendVoteExtension{
-			{
-				Type:      tmproto.VoteExtensionType_DEFAULT,
-				Extension: []byte("extension"),
-			},
+		VoteExtensions: &abci.ExtendVoteExtension{
+			Default: [][]byte{[]byte("extension")},
 		},
 	}, nil)
 	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
@@ -2156,7 +2153,9 @@ func TestExtendVoteCalled(t *testing.T) {
 		Hash:               blockID.Hash,
 		ValidatorProTxHash: proTxHash,
 		Height:             height,
-		VoteExtensions:     [][]byte{[]byte("extension")},
+		VoteExtensions: &abci.ExtendVoteExtension{
+			Default: [][]byte{[]byte("extension")},
+		},
 	})
 	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), blockID, vss[1:]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -2171,7 +2170,9 @@ func TestExtendVoteCalled(t *testing.T) {
 			Hash:               blockID.Hash,
 			ValidatorProTxHash: proTxHash,
 			Height:             height,
-			VoteExtensions:     [][]byte{[]byte("extension")},
+			VoteExtensions: &abci.ExtendVoteExtension{
+				Default: [][]byte{[]byte("extension")},
+			},
 		})
 	}
 
@@ -2188,11 +2189,8 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{
-		VoteExtensions: []*abci.ExtendVoteExtension{
-			{
-				Type:      tmproto.VoteExtensionType_DEFAULT,
-				Extension: []byte("extension"),
-			},
+		VoteExtensions: &abci.ExtendVoteExtension{
+			Default: [][]byte{[]byte("extension")},
 		},
 	}, nil)
 	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
@@ -2231,7 +2229,9 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 		Hash:               blockID.Hash,
 		ValidatorProTxHash: proTxHash,
 		Height:             height,
-		VoteExtensions:     [][]byte{[]byte("extension")},
+		VoteExtensions: &abci.ExtendVoteExtension{
+			Default: [][]byte{[]byte("extension")},
+		},
 	})
 
 	m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
@@ -2247,7 +2247,9 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 		Hash:               blockID.Hash,
 		ValidatorProTxHash: proTxHash,
 		Height:             height,
-		VoteExtensions:     [][]byte{[]byte("extension")},
+		VoteExtensions: &abci.ExtendVoteExtension{
+			Default: [][]byte{[]byte("extension")},
+		},
 	})
 
 }
@@ -2264,37 +2266,14 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 
 	config := configSetup(t)
 
-	// create a list of vote extensions, one for each validator.
-	voteExtensions := [][]types.VoteExtension{
-		{
-			{Type: tmproto.VoteExtensionType_DEFAULT, Extension: []byte("extension")},
-			{Type: tmproto.VoteExtensionType_THRESHOLD_RECOVER, Extension: []byte("extension threshold")},
-		},
-		{
-			{Type: tmproto.VoteExtensionType_DEFAULT, Extension: []byte("extension")},
-			{Type: tmproto.VoteExtensionType_THRESHOLD_RECOVER, Extension: []byte("extension threshold")},
-		},
-		{
-			{Type: tmproto.VoteExtensionType_DEFAULT, Extension: []byte("extension")},
-			{Type: tmproto.VoteExtensionType_THRESHOLD_RECOVER, Extension: []byte("extension threshold")},
-		},
-		{
-			{Type: tmproto.VoteExtensionType_DEFAULT, Extension: []byte("extension")},
-			{Type: tmproto.VoteExtensionType_THRESHOLD_RECOVER, Extension: []byte("extension threshold")},
-		},
-	}
-
-	// m := abcimocks.NewApplication(t)
 	m := &abcimocks.Application{}
 	m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{
-		VoteExtensions: []*abci.ExtendVoteExtension{
-			{
-				Type:      voteExtensions[0][0].Type,
-				Extension: voteExtensions[0][0].Extension,
+		VoteExtensions: &abci.ExtendVoteExtension{
+			Default: [][]byte{
+				[]byte("extension"),
 			},
-			{
-				Type:      voteExtensions[0][1].Type,
-				Extension: voteExtensions[0][1].Extension,
+			ThresholdRecover: [][]byte{
+				[]byte("deterministic"),
 			},
 		},
 	}, nil)
@@ -2312,7 +2291,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil)
 
-	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
+	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m}) // , logger: log.NewTestingLogger(t)
 	height, round := cs1.Height, cs1.Round
 
 	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
@@ -2333,8 +2312,16 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	signAddVotes(ctx, t, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vss[1:]...)
 
 	// create a precommit for each validator with the associated vote extension.
-	for i, vs := range vss[1:] {
-		signAddPrecommitWithExtension(ctx, t, cs1, config.ChainID(), blockID, voteExtensions[i+1], vs)
+	for _, vs := range vss[1:] {
+		voteExtensions := types.VoteExtensions{
+			types.DefaultExtensionType: []types.VoteExtension{
+				{Extension: []byte("extension")},
+			},
+			types.ThresholdRecoverExtensionType: []types.VoteExtension{
+				{Extension: []byte("deterministic")},
+			},
+		}
+		signAddPrecommitWithExtension(ctx, t, cs1, config.ChainID(), blockID, voteExtensions, vs)
 	}
 
 	ensurePrevote(t, voteCh, height, round)
@@ -2357,7 +2344,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 
 	// ensure that the proposer received the list of vote extensions from the
 	// previous height.
-	require.Len(t, rpp.LocalLastCommit.VoteExtensionSignatures, 1)
+	require.Len(t, rpp.LocalLastCommit.ThresholdVoteExtensions, 1)
 }
 
 // 4 vals, 3 Nil Precommits at P0
@@ -3075,7 +3062,7 @@ func signAddPrecommitWithExtension(ctx context.Context,
 	cs *State,
 	chainID string,
 	blockID types.BlockID,
-	extensions []types.VoteExtension,
+	extensions types.VoteExtensions,
 	stub *validatorStub) {
 	_, valSet := cs.GetValidatorSet()
 	v, err := stub.signVote(ctx, tmproto.PrecommitType, chainID, blockID, cs.state.AppHash, valSet.QuorumType,

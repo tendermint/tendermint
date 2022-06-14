@@ -144,7 +144,7 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	require.NoError(t, err)
 	commit.ThresholdBlockSignature = thresholdSigns.BlockSign
 	commit.ThresholdStateSignature = thresholdSigns.StateSign
-	commit.ThresholdVoteExtensionSignatures = thresholdSigns.VoteExtSigns
+	commit.ThresholdVoteExtensions = thresholdSigns.ExtensionSigns
 	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 	require.NoError(t, err)
 }

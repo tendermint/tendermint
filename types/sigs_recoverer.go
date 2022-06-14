@@ -9,9 +9,11 @@ import (
 // SigsRecoverer is used to recover threshold block, state, and vote-extension signatures
 // it's possible to avoid recovering state and vote-extension for specific case
 type SigsRecoverer struct {
-	blockSigs   [][]byte
-	stateSigs   [][]byte
-	blsIDs      [][]byte
+	blockSigs [][]byte
+	stateSigs [][]byte
+	blsIDs    [][]byte
+
+	voteExts    [][]byte
 	voteExtSigs [][][]byte
 
 	shouldRecoveryStateSig   bool
@@ -67,18 +69,14 @@ func (v *SigsRecoverer) addVoteSigs(vote *Vote) {
 	v.addVoteExtensions(vote.VoteExtensions)
 }
 
-func (v *SigsRecoverer) addVoteExtensions(voteExtensions []VoteExtension) {
-	m := 0
-	for j, ext := range voteExtensions {
-		if !ext.IsRecoverable() {
-			m++
-			continue
-		}
-		k := j - m
-		if k >= len(v.voteExtSigs) {
+func (v *SigsRecoverer) addVoteExtensions(voteExtensions VoteExtensions) {
+	extensions := voteExtensions[ThresholdRecoverExtensionType]
+	for i, ext := range extensions {
+		if len(extensions) > len(v.voteExtSigs) {
+			v.voteExts = append(v.voteExts, ext.Extension)
 			v.voteExtSigs = append(v.voteExtSigs, nil)
 		}
-		v.voteExtSigs[k] = append(v.voteExtSigs[k], ext.Signature)
+		v.voteExtSigs[i] = append(v.voteExtSigs[i], ext.Signature)
 	}
 }
 
@@ -113,10 +111,11 @@ func (v *SigsRecoverer) recoverVoteExtensionSigs(thresholdSigns *ThresholdVoteSi
 		return nil
 	}
 	var err error
-	thresholdSigns.VoteExtSigns = make([][]byte, len(v.voteExtSigs))
+	thresholdSigns.ExtensionSigns = make([]ThresholdExtensionSign, len(v.voteExtSigs))
 	for i, sigs := range v.voteExtSigs {
 		if len(sigs) > 0 {
-			thresholdSigns.VoteExtSigns[i], err = bls12381.RecoverThresholdSignatureFromShares(sigs, v.blsIDs)
+			thresholdSigns.ExtensionSigns[i].Extension = v.voteExts[i]
+			thresholdSigns.ExtensionSigns[i].ThresholdSignature, err = bls12381.RecoverThresholdSignatureFromShares(sigs, v.blsIDs)
 			if err != nil {
 				return fmt.Errorf("error recovering threshold vote-extensin sig: %w", err)
 			}

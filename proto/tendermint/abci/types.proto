@@ -162,7 +162,7 @@ message RequestVerifyVoteExtension {
   bytes validator_pro_tx_hash = 2;
   int64 height                = 3;
 
-  repeated bytes vote_extensions = 4;
+  ExtendVoteExtension vote_extensions = 4;
 }
 
 message RequestFinalizeBlock {
@@ -359,12 +359,12 @@ message ResponseProcessProposal {
 }
 
 message ExtendVoteExtension {
-  tendermint.types.VoteExtensionType type = 1;
-  bytes extension        = 2;
+  repeated bytes threshold_recover = 1;
+  repeated bytes default           = 2;
 }
 
 message ResponseExtendVote {
-  repeated ExtendVoteExtension vote_extensions = 1;
+  ExtendVoteExtension vote_extensions = 1;
 }
 
 message ResponseVerifyVoteExtension {
@@ -398,7 +398,7 @@ message CommitInfo {
   bytes block_signature = 4;
   bytes state_signature = 5;
 
-  repeated bytes vote_extension_signatures = 6;
+  repeated tendermint.types.ThresholdVoteExtension threshold_vote_extensions = 6;
 }
 
 // ExtendedCommitInfo is similar to CommitInfo except that it is only used in
@@ -413,7 +413,7 @@ message ExtendedCommitInfo {
   bytes block_signature = 4;
   bytes state_signature = 5;
 
-  repeated bytes vote_extension_signatures = 6;
+  repeated tendermint.types.ThresholdVoteExtension threshold_vote_extensions = 6;
 }
 
 // Event allows application developers to attach additional information to
