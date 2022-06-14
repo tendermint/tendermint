@@ -861,6 +861,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		addresses = append(addresses, m.options.SelfAddress)
 	}
 
+OUTER:
 	for _, peer := range m.store.Ranked() {
 		if peer.ID == peerID {
 			continue
@@ -870,8 +871,8 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		}
 
 		for nodeAddr, addressInfo := range peer.AddressInfo {
-			if len(addresses) >= int(limit) {
-				return addresses
+			if len(addresses) >= int(limit)*2 {
+				break OUTER
 			}
 
 			// only add non-private NodeIDs
@@ -880,6 +881,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 			}
 		}
 	}
+
 	rand.Shuffle(len(addresses), func(i, j int) {
 		addresses[i], addresses[j] = addresses[j], addresses[i]
 	})
