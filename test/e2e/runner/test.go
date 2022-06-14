@@ -15,5 +15,5 @@ func Test(ctx context.Context, testnet *e2e.Testnet) error {
 		return err
 	}
 
-	return exec.ExecVerbose(ctx, "./build/tests", "-test.count=1", "-test.v")
+	return exec.CommandVerbose(ctx, "./build/tests", "-test.count=1", "-test.v")
 }

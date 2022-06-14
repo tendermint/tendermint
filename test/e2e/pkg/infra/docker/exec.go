@@ -9,19 +9,19 @@ import (
 
 // execCompose runs a Docker Compose command for a testnet.
 func execCompose(ctx context.Context, dir string, args ...string) error {
-	return exec.Exec(ctx, append(
+	return exec.Command(ctx, append(
 		[]string{"docker-compose", "--ansi=never", "-f", filepath.Join(dir, "docker-compose.yml")},
 		args...)...)
 }
 
 // execComposeVerbose runs a Docker Compose command for a testnet and displays its output.
 func execComposeVerbose(ctx context.Context, dir string, args ...string) error {
-	return exec.ExecVerbose(ctx, append(
+	return exec.CommandVerbose(ctx, append(
 		[]string{"docker-compose", "--ansi=never", "-f", filepath.Join(dir, "docker-compose.yml")},
 		args...)...)
 }
 
 // execDocker runs a Docker command.
 func execDocker(ctx context.Context, args ...string) error {
-	return exec.Exec(ctx, append([]string{"docker"}, args...)...)
+	return exec.Command(ctx, append([]string{"docker"}, args...)...)
 }

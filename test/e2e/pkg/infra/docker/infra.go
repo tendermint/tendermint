@@ -111,13 +111,13 @@ func (ti *TestnetInfra) Cleanup(ctx context.Context) error {
 	// does this by default. Ugly, but works.
 	xargsR := `$(if [[ $OSTYPE == "linux-gnu"* ]]; then echo -n "-r"; fi)`
 
-	err := exec.Exec(ctx, "bash", "-c", fmt.Sprintf(
+	err := exec.Command(ctx, "bash", "-c", fmt.Sprintf(
 		"docker container ls -qa --filter label=e2e | xargs %v docker container rm -f", xargsR))
 	if err != nil {
 		return err
 	}
 
-	err = exec.Exec(ctx, "bash", "-c", fmt.Sprintf(
+	err = exec.Command(ctx, "bash", "-c", fmt.Sprintf(
 		"docker network ls -q --filter label=e2e | xargs %v docker network rm", xargsR))
 	if err != nil {
 		return err
