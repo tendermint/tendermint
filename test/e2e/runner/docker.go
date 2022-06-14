@@ -92,16 +92,16 @@ func (i *DockerInfra) ShowLogs(ctx context.Context) error {
 	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--no-color")
 }
 
-func (i *DockerInfra) ShowNodeLogs(ctx context.Context, nodeID string) error {
-	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--no-color", nodeID)
+func (i *DockerInfra) ShowNodeLogs(ctx context.Context, node *e2e.Node) error {
+	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--no-color", node.Name)
 }
 
 func (i *DockerInfra) TailLogs(ctx context.Context) error {
 	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--follow")
 }
 
-func (i *DockerInfra) TailNodeLogs(ctx context.Context, nodeID string) error {
-	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--follow", nodeID)
+func (i *DockerInfra) TailNodeLogs(ctx context.Context, node *e2e.Node) error {
+	return execComposeVerbose(ctx, i.testnet.Dir, "logs", "--follow", node.Name)
 }
 
 func (i *DockerInfra) Cleanup(ctx context.Context) error {

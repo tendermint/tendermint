@@ -55,11 +55,11 @@ type Infra interface {
 	ConnectNode(ctx context.Context, node *e2e.Node) error
 
 	// ShowNodeLogs prints all logs for the node with the give ID to stdout.
-	ShowNodeLogs(ctx context.Context, nodeID string) error
+	ShowNodeLogs(ctx context.Context, node *e2e.Node) error
 
 	// TailNodeLogs tails the logs for a single node, if this is supported by
 	// the infrastructure provider.
-	TailNodeLogs(ctx context.Context, nodeID string) error
+	TailNodeLogs(ctx context.Context, node *e2e.Node) error
 
 	//
 	// Node process management.

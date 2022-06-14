@@ -292,7 +292,11 @@ func NewCLI(logger log.Logger) *CLI {
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return cli.infra.ShowNodeLogs(cmd.Context(), args[0])
+				node := cli.testnet.LookupNode(args[0])
+				if node == nil {
+					return fmt.Errorf("no such node: %s", args[0])
+				}
+				return cli.infra.ShowNodeLogs(cmd.Context(), node)
 			}
 			return cli.infra.ShowLogs(cmd.Context())
 		},
@@ -304,7 +308,11 @@ func NewCLI(logger log.Logger) *CLI {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
-				return cli.infra.TailNodeLogs(cmd.Context(), args[0])
+				node := cli.testnet.LookupNode(args[0])
+				if node == nil {
+					return fmt.Errorf("no such node: %s", args[0])
+				}
+				return cli.infra.TailNodeLogs(cmd.Context(), node)
 			}
 			return cli.infra.TailLogs(cmd.Context())
 		},
