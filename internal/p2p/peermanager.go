@@ -687,6 +687,9 @@ func (m *PeerManager) Accepted(peerID types.NodeID) error {
 		}
 	}
 
+	if peer.Inactive {
+		m.metrics.PeersInactivated.Add(-1)
+	}
 	peer.Inactive = false
 	peer.LastConnected = time.Now().UTC()
 	if err := m.store.Set(peer); err != nil {

@@ -26,7 +26,7 @@ var (
 
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
-	// Number of peers.
+	// Number of peers connected.
 	Peers metrics.Gauge
 
 	PeersStored      metrics.Gauge
