@@ -265,7 +265,7 @@ func makeNode(cfg *config.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID)
+	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID, nodeMetrics.p2p)
 	closers = append(closers, peerCloser)
 	if err != nil {
 		return nil, combineCloseError(

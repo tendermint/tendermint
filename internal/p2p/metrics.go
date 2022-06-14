@@ -28,7 +28,10 @@ var (
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Number of peers.
-	Peers metrics.Gauge
+	Peers            metrics.Gauge
+	PeersStored      metrics.Gauge
+	PeersInactivated metrics.Gauge
+
 	// Number of bytes received from a given peer.
 	PeerReceiveBytesTotal metrics.Counter
 	// Number of bytes sent to a given peer.
@@ -75,7 +78,18 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peers",
 			Help:      "Number of peers.",
 		}, labels).With(labelsAndValues...),
-
+		PeersStored: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_stored",
+			Help:      "Number of peers in the peer Store",
+		}, labels).With(labelsAndValues...),
+		PeersInactivated: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_inactivated",
+			Help:      "Number of peers inactivated",
+		}, labels).With(labelsAndValues...),
 		PeerReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,

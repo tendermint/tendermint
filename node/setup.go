@@ -457,6 +457,7 @@ func createPeerManager(
 	dbProvider config.DBProvider,
 	p2pLogger log.Logger,
 	nodeID types.NodeID,
+	metrics *p2p.Metrics,
 ) (*p2p.PeerManager, closer, error) {
 
 	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))
@@ -504,6 +505,7 @@ func createPeerManager(
 		MaxRetryTimePersistent: 5 * time.Minute,
 		RetryTimeJitter:        5 * time.Second,
 		PrivatePeers:           privatePeerIDs,
+		Metrics:                metrics,
 	}
 
 	peers := []p2p.NodeAddress{}
