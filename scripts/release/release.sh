@@ -232,8 +232,8 @@ function createRelease() {
 
     gh release create \
         --draft \
-        --notes-file "${REPO_DIR}/build/CHANGELOG_CURRENT.md" \
         --title "v${NEW_PACKAGE_VERSION}" \
+        --generate-notes \
         $gh_args \
         "v${NEW_PACKAGE_VERSION}"
 }
@@ -242,6 +242,9 @@ function deleteRelease() {
     if [[ "$(gh release view --json isDraft --jq .isDraft "v${NEW_PACKAGE_VERSION}")" == "true" ]]; then
         gh release delete "v${NEW_PACKAGE_VERSION}"
     fi
+
+    git tag --delete "v${NEW_PACKAGE_VERSION}" || true
+    git push --delete origin "v${NEW_PACKAGE_VERSION}" || true
 }
 
 function getReleaseUrl() {
