@@ -2,7 +2,6 @@ package v1
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -177,7 +176,7 @@ func (txmp *TxMempool) SizeBytes() int64 {
 //
 // NOTE: The caller must obtain a write-lock via Lock() prior to execution.
 func (txmp *TxMempool) FlushAppConn() error {
-	return txmp.proxyAppConn.FlushSync(context.Background())
+	return txmp.proxyAppConn.FlushSync()
 }
 
 // WaitForNextTx returns a blocking channel that will be closed when the next
@@ -267,12 +266,7 @@ func (txmp *TxMempool) CheckTx(
 		return mempool.ErrTxInCache
 	}
 
-	reqRes, err := txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
-	if err != nil {
-		txmp.cache.Remove(tx)
-		return err
-	}
-
+	reqRes := txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
 	reqRes.SetCallback(func(res *abci.Response) {
 		if txmp.recheckCursor != nil {
 			panic("recheck cursor is non-nil in CheckTx callback")
@@ -521,7 +515,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 			"rejected bad transaction",
 			"priority", wtx.priority,
 			"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
-			"peer_id", txInfo.SenderNodeID,
+			"peer_id", txInfo.SenderP2PID,
 			"code", checkTxRes.CheckTx.Code,
 			"post_check_err", err,
 		)
@@ -726,7 +720,6 @@ func (txmp *TxMempool) updateReCheckTxs() {
 
 	txmp.recheckCursor = txmp.gossipIndex.Front()
 	txmp.recheckEnd = txmp.gossipIndex.Back()
-	ctx := context.Background()
 
 	for e := txmp.gossipIndex.Front(); e != nil; e = e.Next() {
 		wtx := e.Value.(*WrappedTx)
@@ -734,20 +727,15 @@ func (txmp *TxMempool) updateReCheckTxs() {
 		// Only execute CheckTx if the transaction is not marked as removed which
 		// could happen if the transaction was evicted.
 		if !txmp.txStore.IsTxRemoved(wtx.hash) {
-			_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
+			txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
 				Tx:   wtx.tx,
 				Type: abci.CheckTxType_Recheck,
 			})
-			if err != nil {
-				// no need in retrying since the tx will be rechecked after the next block
-				txmp.logger.Error("failed to execute CheckTx during rechecking", "err", err)
-			}
+
 		}
 	}
 
-	if _, err := txmp.proxyAppConn.FlushAsync(ctx); err != nil {
-		txmp.logger.Error("failed to flush transactions during rechecking", "err", err)
-	}
+	txmp.proxyAppConn.FlushAsync()
 }
 
 // canAddTx returns an error if we cannot insert the provided *WrappedTx into
