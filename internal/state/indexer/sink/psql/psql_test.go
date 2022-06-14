@@ -1,6 +1,7 @@
 package psql
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"flag"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	"github.com/adlio/schema"
-	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
@@ -151,6 +152,8 @@ func TestType(t *testing.T) {
 	assert.Equal(t, indexer.PSQL, psqlSink.Type())
 }
 
+var jsonpbUnmarshaller = jsonpb.Unmarshaler{}
+
 func TestIndexing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -278,13 +281,14 @@ func loadTxResult(hash []byte) (*abci.TxResult, error) {
 	hashString := fmt.Sprintf("%X", hash)
 	var resultData []byte
 	if err := testDB().QueryRow(`
-SELECT tx_result FROM `+tableTxResults+` WHERE tx_hash = $1;
-`, hashString).Scan(&resultData); err != nil {
+	SELECT tx_result FROM `+tableTxResults+` WHERE tx_hash = $1;
+	`, hashString).Scan(&resultData); err != nil {
 		return nil, fmt.Errorf("lookup transaction for hash %q failed: %v", hashString, err)
 	}
 
+	reader := bytes.NewBuffer(resultData)
 	txr := new(abci.TxResult)
-	if err := proto.Unmarshal(resultData, txr); err != nil {
+	if err := jsonpbUnmarshaller.Unmarshal(reader, txr); err != nil {
 		return nil, fmt.Errorf("unmarshaling txr: %w", err)
 	}
 

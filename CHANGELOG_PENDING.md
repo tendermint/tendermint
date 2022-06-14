@@ -32,7 +32,8 @@ Special thanks to external contributors on this release:
   - [abci] \#8605 Remove info, log, events, gasUsed and mempoolError fields from ResponseCheckTx as they are not used by Tendermint. (@jmalicevic)
   - [abci] \#8664 Move `app_hash` parameter from `Commit` to `FinalizeBlock`. (@sergio-mena)
   - [abci] \#8656 Added cli command for `PrepareProposal`. (@jmalicevic)
-  
+  - [sink/psql] \#8637 tx_results emitted from psql sink are now json encoded, previously they were protobuf encoded
+
 - P2P Protocol
 
   - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
