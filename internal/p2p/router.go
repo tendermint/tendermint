@@ -576,14 +576,17 @@ func (r *Router) acceptPeers(transport Transport) {
 	ctx := r.stopCtx()
 	for {
 		conn, err := transport.Accept()
-		switch err {
-		case nil:
-		case io.EOF:
-			r.logger.Debug("stopping accept routine", "transport", transport)
+		switch {
+		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+			r.logger.Debug("stopping accept routine", "transport", transport, "err", "context canceled")
 			return
-		default:
+		case errors.Is(err, io.EOF):
+			r.logger.Debug("stopping accept routine", "transport", transport, "err", "EOF")
+			return
+		case err != nil:
+			// in this case we got an error from the net.Listener.
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
-			return
+			continue
 		}
 
 		incomingIP := conn.RemoteEndpoint().IP
@@ -595,7 +598,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				"close_err", closeErr,
 			)
 
-			return
+			continue
 		}
 
 		// Spawn a goroutine for the handshake, to avoid head-of-line blocking.
