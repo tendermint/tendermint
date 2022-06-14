@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 )
 
-func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provider infra.Provider) error {
+func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infra.TestnetInfra) error {
 	if len(testnet.Nodes) == 0 {
 		return fmt.Errorf("no nodes in testnet")
 	}
@@ -45,7 +45,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provide
 	for len(nodeQueue) > 0 && nodeQueue[0].StartAt == 0 {
 		node := nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
-		if err := provider.StartNode(ctx, node); err != nil {
+		if err := ti.StartNode(ctx, node); err != nil {
 			return err
 		}
 
@@ -107,7 +107,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provide
 			}
 		}
 
-		if err := provider.StartNode(ctx, node); err != nil {
+		if err := ti.StartNode(ctx, node); err != nil {
 			return err
 		}
 

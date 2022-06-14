@@ -6,8 +6,9 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-// Provider offers an API for manipulating testnet infrastructure.
-type Provider interface {
+// TestnetInfra provides an API for manipulating the infrastructure of a
+// specific testnet.
+type TestnetInfra interface {
 	//
 	// Overarching testnet infrastructure management.
 	//

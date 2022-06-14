@@ -12,12 +12,12 @@ import (
 )
 
 // Cleanup destroys all infrastructure and removes all generated testnet files.
-func Cleanup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provider infra.Provider) error {
+func Cleanup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infra.TestnetInfra) error {
 	if testnet.Dir == "" {
 		return errors.New("no testnet directory set")
 	}
 
-	if err := provider.Cleanup(ctx); err != nil {
+	if err := ti.Cleanup(ctx); err != nil {
 		return err
 	}
 

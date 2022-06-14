@@ -39,7 +39,7 @@ const (
 )
 
 // Setup sets up the testnet configuration.
-func Setup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provider infra.Provider) error {
+func Setup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infra.TestnetInfra) error {
 	logger.Info(fmt.Sprintf("Generating testnet files in %q", testnet.Dir))
 
 	err := os.MkdirAll(testnet.Dir, os.ModePerm)
@@ -124,7 +124,7 @@ func Setup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, provide
 		}
 	}
 
-	if err := provider.Setup(ctx); err != nil {
+	if err := ti.Setup(ctx); err != nil {
 		return err
 	}
 
