@@ -561,7 +561,7 @@ func makeSeedNode(cfg *config.Config,
 	p2pLogger := logger.With("module", "p2p")
 	transport := createTransport(p2pLogger, cfg)
 
-	peerManager, closer, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID)
+	peerManager, closer, err := createPeerManager(cfg, dbProvider, p2pLogger, nodeKey.ID, p2pMetrics)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create peer manager: %w", err),
