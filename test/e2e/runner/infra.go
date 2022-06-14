@@ -23,14 +23,14 @@ type TestnetInfraAPI interface {
 	Unpause(ctx context.Context) error
 
 	// ShowLogs will print all logs for the whole testnet to stdout.
-	ShowLogs() error
+	ShowLogs(ctx context.Context) error
 
 	// TailLogs tails the logs for all nodes in the testnet.
-	TailLogs() error
+	TailLogs(ctx context.Context) error
 
 	// Cleanup stops and destroys all running infrastructure and deletes any
 	// generated files.
-	Cleanup() error
+	Cleanup(ctx context.Context) error
 }
 
 // NodeInfraAPI provides an API for interacting with specific nodes'
@@ -68,10 +68,10 @@ type NodeInfraAPI interface {
 
 	// ShowNodeLogs will print all logs for the node with the give ID to
 	// stdout.
-	ShowNodeLogs(nodeID string) error
+	ShowNodeLogs(ctx context.Context, nodeID string) error
 
 	// TailNodeLogs tails the logs for a single node.
-	TailNodeLogs(nodeID string) error
+	TailNodeLogs(ctx context.Context, nodeID string) error
 }
 
 // InfraAPI provides an API for interacting with testnet- and node-level

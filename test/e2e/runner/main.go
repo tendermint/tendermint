@@ -70,7 +70,7 @@ func NewCLI(logger log.Logger) *CLI {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			if err = Cleanup(logger, cli.testnet, cli.infraAPI); err != nil {
+			if err = Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
 				return err
 			}
 			defer func() {
@@ -79,7 +79,7 @@ func NewCLI(logger log.Logger) *CLI {
 				} else if err != nil {
 					logger.Info("Preserving testnet that encountered error",
 						"err", err)
-				} else if err := Cleanup(logger, cli.testnet, cli.infraAPI); err != nil {
+				} else if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
 					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
@@ -146,7 +146,7 @@ func NewCLI(logger log.Logger) *CLI {
 			if err = Wait(ctx, logger, cli.testnet, 5); err != nil { // wait for network to settle before tests
 				return err
 			}
-			if err := Test(cli.testnet); err != nil {
+			if err := Test(ctx, cli.testnet); err != nil {
 				return err
 			}
 			return nil
@@ -273,7 +273,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "test",
 		Short: "Runs test cases against a running testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Test(cli.testnet)
+			return Test(cmd.Context(), cli.testnet)
 		},
 	})
 
@@ -281,7 +281,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "cleanup",
 		Short: "Removes the testnet directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Cleanup(logger, cli.testnet, cli.infraAPI)
+			return Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI)
 		},
 	})
 
@@ -292,9 +292,9 @@ func NewCLI(logger log.Logger) *CLI {
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
-				return cli.infraAPI.ShowNodeLogs(args[0])
+				return cli.infraAPI.ShowNodeLogs(cmd.Context(), args[0])
 			}
-			return cli.infraAPI.ShowLogs()
+			return cli.infraAPI.ShowLogs(cmd.Context())
 		},
 	})
 
@@ -304,9 +304,9 @@ func NewCLI(logger log.Logger) *CLI {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
-				return cli.infraAPI.TailNodeLogs(args[0])
+				return cli.infraAPI.TailNodeLogs(cmd.Context(), args[0])
 			}
-			return cli.infraAPI.TailLogs()
+			return cli.infraAPI.TailLogs(cmd.Context())
 		},
 	})
 
@@ -323,11 +323,11 @@ over a 100 block sampling period.
 Does not run any perbutations.
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := Cleanup(logger, cli.testnet, cli.infraAPI); err != nil {
+			if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
 				return err
 			}
 			defer func() {
-				if err := Cleanup(logger, cli.testnet, cli.infraAPI); err != nil {
+				if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infraAPI); err != nil {
 					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
