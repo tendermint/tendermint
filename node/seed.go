@@ -67,7 +67,7 @@ func makeSeedNode(
 	// Setup Transport and Switch.
 	p2pMetrics := p2p.PrometheusMetrics(cfg.Instrumentation.Namespace, "chain_id", genDoc.ChainID)
 
-	peerManager, closer, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
+	peerManager, closer, err := createPeerManager(logger, cfg, dbProvider, nodeKey.ID)
 	if err != nil {
 		return nil, combineCloseError(
 			fmt.Errorf("failed to create peer manager: %w", err),

@@ -203,7 +203,7 @@ func makeNode(
 		}
 	}
 
-	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
+	peerManager, peerCloser, err := createPeerManager(logger, cfg, dbProvider, nodeKey.ID)
 	closers = append(closers, peerCloser)
 	if err != nil {
 		return nil, combineCloseError(
