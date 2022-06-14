@@ -1,4 +1,10 @@
-## [0.8.0-dev.5] - 2022-06-13
+## [0.8.0-dev.5] - 2022-06-14
+
+### Bug Fixes
+
+- Specify alpine 3.15 in Dockerfile
+
+## [0.8.0-dev.5] - 2022-06-14
 
 ### Bug Fixes
 
@@ -25,6 +31,7 @@
 - Cleanup during self-review
 - Remove duplicate test
 - Update go.mod
+- Update changelog and version to 0.8.0-dev.5
 
 ### Refactor
 
