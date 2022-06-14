@@ -243,7 +243,8 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	// Make Mempool
 	memplMetrics := mempl.PrometheusMetrics("node_test_1")
-	mempool := mempl.NewCListMempool(
+	mempool := mempl.NewTxMempool(
+		logger,
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
@@ -251,7 +252,6 @@ func TestCreateProposalBlock(t *testing.T) {
 		mempl.WithPreCheck(sm.TxPreCheck(state)),
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mempool.SetLogger(logger)
 
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
@@ -335,7 +335,8 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	// Make Mempool
 	memplMetrics := mempl.PrometheusMetrics("node_test_2")
-	mempool := mempl.NewCListMempool(
+	mempool := mempl.NewTxMempool(
+		logger,
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
@@ -343,7 +344,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		mempl.WithPreCheck(sm.TxPreCheck(state)),
 		mempl.WithPostCheck(sm.TxPostCheck(state)),
 	)
-	mempool.SetLogger(logger)
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))

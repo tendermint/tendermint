@@ -3,6 +3,7 @@ package checktx
 import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 )
@@ -21,7 +22,7 @@ func init() {
 	cfg := config.DefaultMempoolConfig()
 	cfg.Broadcast = false
 
-	mempool = mempl.NewCListMempool(cfg, appConnMem, 0)
+	mempool = mempl.NewTxMempool(log.NewNopLogger(), cfg, appConnMem, 0)
 }
 
 func Fuzz(data []byte) int {
