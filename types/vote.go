@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	absentVoteStr string = "absent"
+	absentVoteStr string = "Vote{absent}"
 	nilVoteStr    string = "nil"
 
 	// The maximum supported number of bytes in a vote extension.
