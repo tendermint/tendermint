@@ -12,9 +12,10 @@ type Mempool struct{}
 
 var _ mempl.Mempool = Mempool{}
 
-func (Mempool) Lock()     {}
-func (Mempool) Unlock()   {}
-func (Mempool) Size() int { return 0 }
+func (Mempool) Lock()            {}
+func (Mempool) Unlock()          {}
+func (Mempool) Size() int        { return 0 }
+func (Mempool) SizeBytes() int64 { return 0 }
 func (Mempool) CheckTx(_ types.Tx, _ func(*abci.Response), _ mempl.TxInfo) error {
 	return nil
 }
