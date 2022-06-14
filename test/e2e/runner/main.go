@@ -53,12 +53,14 @@ func NewCLI(logger log.Logger) *CLI {
 				// If flag is absent, no error is returned, but the default value (empty string)
 				return err
 			}
+			cli.seedDelta, err = cmd.Flags().GetInt("seed-delta")
+			seed := randomSeed + cli.seedDelta // nolint: gosec
 			if len(ips) == 0 {
 				file, err := cmd.Flags().GetString("file")
 				if err != nil {
 					return err
 				}
-				testnet, err := e2e.LoadTestnet(file)
+				testnet, err := e2e.LoadTestnet(file, int64(seed))
 				if err != nil {
 					return err
 				}
@@ -66,7 +68,6 @@ func NewCLI(logger log.Logger) *CLI {
 				return nil
 			}
 			cli.ips = strings.Split(ips, ",")
-			cli.seedDelta, err = cmd.Flags().GetInt("seed-delta")
 			if err != nil {
 				// If flag is absent, no error is returned, but the default value (empty string)
 				return err
