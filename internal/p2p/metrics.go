@@ -155,6 +155,8 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 func NopMetrics() *Metrics {
 	return &Metrics{
 		Peers:                  discard.NewGauge(),
+		PeersStored:            discard.NewGauge(),
+		PeersInactivated:       discard.NewGauge(),
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
 		PeerPendingSendBytes:   discard.NewGauge(),
