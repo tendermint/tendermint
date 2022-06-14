@@ -400,7 +400,7 @@ func (m *PeerManager) Add(address NodeAddress) (bool, error) {
 		return false, err
 	}
 	if address.NodeID == m.selfID {
-		m.logger.Error("not adding peer with self ID",
+		m.logger.Info("not adding peer with self ID",
 			"peer", address.NodeID,
 			"self", m.selfID,
 			"address", address.String(),
