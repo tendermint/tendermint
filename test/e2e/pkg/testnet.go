@@ -1,4 +1,3 @@
-//nolint: gosec
 package e2e
 
 import (
@@ -481,6 +480,8 @@ type keyGenerator struct {
 }
 
 func newKeyGenerator(seed int64) *keyGenerator {
+	// nolint: gosec
+	// G404: Use of weak random number generator (math/rand instead of crypto/rand)
 	return &keyGenerator{
 		random: rand.New(rand.NewSource(seed)),
 	}

@@ -1,4 +1,3 @@
-// nolint: gosec
 package main
 
 import (
@@ -83,6 +82,8 @@ func Setup(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, infra I
 		if err != nil {
 			return err
 		}
+		// nolint: gosec
+		// G306: Expect WriteFile permissions to be 0600 or less
 		err = os.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
 		if err != nil {
 			return err
@@ -355,5 +356,7 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 	}
 	bz = regexp.MustCompile(`(?m)^trust-height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-height = %v`, height)))
 	bz = regexp.MustCompile(`(?m)^trust-hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust-hash = "%X"`, hash)))
+	// nolint: gosec
+	// G306: Expect WriteFile permissions to be 0600 or less
 	return os.WriteFile(cfgPath, bz, 0644)
 }
