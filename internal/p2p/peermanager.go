@@ -435,6 +435,8 @@ func (m *PeerManager) getConnectedInfo() connectedInfo {
 			out.incoming++
 		case peerConnectionOutgoing:
 			out.outgoing++
+		case peerConnectionInvalid:
+			continue
 		}
 	}
 	return out
