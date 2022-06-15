@@ -28,7 +28,7 @@ func NewEventSink(connStr, chainID string) (*EventSink, error) {
 
 	c, err := pubsub.NewClient(ctx, "project-id")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Google Cloud Pubsub client: %w", err)
+		return nil, fmt.Errorf("failed to create a Google Cloud Pubsub client: %w", err)
 	}
 
 	return &EventSink{
