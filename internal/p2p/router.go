@@ -444,8 +444,8 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
 		const (
-			maxDialerInterval = 500
-			minDialerInterval = 100
+			maxDialerInterval = 500  // ms
+			minDialerInterval = 100  // ms
 		)
 
 		// nolint:gosec // G404: Use of weak random number generator

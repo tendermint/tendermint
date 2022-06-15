@@ -28,7 +28,6 @@ var (
 type Metrics struct {
 	// Number of peers connected.
 	PeersConnected metrics.Gauge
-
 	// Nomber of peers in the peer store database.
 	PeersStored metrics.Gauge
 	// Number of inactive peers stored.
