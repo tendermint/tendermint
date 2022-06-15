@@ -1055,14 +1055,20 @@ type TxIndexConfig struct {
 	//
 	// Options:
 	//   1) "null"
-	//   2) "kv" (default) - the simplest possible indexer,
+	//   2) "kv" (default) - The simplest possible indexer,
 	//      backed by key-value storage (defaults to levelDB; see DBBackend).
-	//   3) "psql" - the indexer services backed by PostgreSQL.
+	//   3) "psql" - The indexer services backed by PostgreSQL.
+	//   4) "pubsub" - The indexer services backed by Google Cloud PubSub.
 	Indexer string `mapstructure:"indexer"`
 
 	// The PostgreSQL connection configuration, the connection format:
 	// postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
 	PsqlConn string `mapstructure:"psql-conn"`
+
+	// PubsubProjectID defines the Google Cloud Pubsub project ID. Note, operators
+	// must ensure the GOOGLE_APPLICATION_CREDENTIALS environment variable is set
+	// to the location of their creds file.
+	PubsubProjectID string `mapstructure:"pubsub-project-id"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.

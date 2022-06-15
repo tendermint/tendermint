@@ -471,15 +471,21 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #
 # Options:
 #   1) "null"
-#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+#   2) "kv" (default) - The simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 # 		- When "kv" is chosen "tx.height" and "tx.hash" will always be indexed.
-#   3) "psql" - the indexer services backed by PostgreSQL.
+#   3) "psql" - The indexer services backed by PostgreSQL.
+#   4) "pubsub" - The indexer services backed by Google Cloud Pubsub.
 # When "kv" or "psql" is chosen "tx.height" and "tx.hash" will always be indexed.
 indexer = "{{ .TxIndex.Indexer }}"
 
 # The PostgreSQL connection configuration, the connection format:
 #   postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
 psql-conn = "{{ .TxIndex.PsqlConn }}"
+
+# The Google Cloud Pubsub project ID. Note, operators must ensure the
+# GOOGLE_APPLICATION_CREDENTIALS environment variable is set to the location of
+# their creds file.
+pubsub-project-id = "{{ .TxIndex.PubsubProjectID }}"
 
 #######################################################
 ###       Instrumentation Configuration Options     ###
