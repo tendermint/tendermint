@@ -353,8 +353,8 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 		voteSet.thresholdBlockSig = vote.BlockSignature
 		voteSet.thresholdStateSig = vote.StateSignature
 		voteSet.thresholdVoteExtSigs = MakeThresholdVoteExtensions(
-			vote.VoteExtensions[ThresholdRecoverExtensionType],
-			vote.GetVoteExtensionsSigns(ThresholdRecoverExtensionType),
+			vote.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER],
+			vote.GetVoteExtensionsSigns(tmproto.VoteExtensionType_THRESHOLD_RECOVER),
 		)
 		return nil
 	}
@@ -377,11 +377,11 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, quorumSigns.Extensions)
 }
 
-func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, signItems map[VoteExtensionType][]SignItem) error {
+func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, signItems map[tmproto.VoteExtensionType][]SignItem) error {
 	if len(votes) == 0 || len(voteSet.thresholdVoteExtSigs) == 0 {
 		return nil
 	}
-	deterministic := signItems[ThresholdRecoverExtensionType]
+	deterministic := signItems[tmproto.VoteExtensionType_THRESHOLD_RECOVER]
 	if len(deterministic) != len(voteSet.thresholdVoteExtSigs) {
 		return fmt.Errorf("count of threshold signatures (%d) at voteSet doesn't match with the count of a recoverable at a vote (%d) | %X",
 			len(voteSet.thresholdVoteExtSigs), len(deterministic), voteSet.thresholdStateSig)
@@ -588,13 +588,13 @@ func (voteSet *VoteSet) GetVoteExtensions() (VoteExtensions, error) {
 			ret = vote
 			continue
 		}
-		exts1 := ret.VoteExtensions[ThresholdRecoverExtensionType]
-		exts2 := vote.VoteExtensions[ThresholdRecoverExtensionType]
+		exts1 := ret.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER]
+		exts2 := vote.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER]
 		if len(exts1) != len(exts2) {
 			return nil, fmt.Errorf("the number elemnts don't match")
 		}
-		for i, ext1 := range ret.VoteExtensions[ThresholdRecoverExtensionType] {
-			ext2 := vote.VoteExtensions[ThresholdRecoverExtensionType][i]
+		for i, ext1 := range ret.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER] {
+			ext2 := vote.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER][i]
 			if !bytes.Equal(ext1.Extension, ext2.Extension) {
 				return nil, fmt.Errorf("vote extension (number=%d) between votes is not equal %X != %X",
 					i, ext1.Extension, ext2.Extension)
@@ -801,7 +801,7 @@ func MakeThresholdExtensionSigns(voteExtensions VoteExtensions) []ThresholdExten
 	if voteExtensions == nil {
 		return nil
 	}
-	extensions := voteExtensions[ThresholdRecoverExtensionType]
+	extensions := voteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER]
 	if len(extensions) == 0 {
 		return nil
 	}

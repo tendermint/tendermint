@@ -457,12 +457,14 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 	extLen := binary.PutVarint(ext, num)
 	app.logger.Info("generated vote extension", "num", num, "ext", fmt.Sprintf("%x", ext[:extLen]), "state.Height", app.state.Height)
 	return &abci.ResponseExtendVote{
-		VoteExtensions: &abci.ExtendVoteExtension{
-			Default: [][]byte{
-				ext[:extLen],
+		VoteExtensions: []*abci.ExtendVoteExtension{
+			{
+				Type:      types1.VoteExtensionType_DEFAULT,
+				Extension: ext[:extLen],
 			},
-			ThresholdRecover: [][]byte{
-				[]byte(fmt.Sprintf("threshold-%d", app.state.Height)),
+			{
+				Type:      types1.VoteExtensionType_THRESHOLD_RECOVER,
+				Extension: []byte(fmt.Sprintf("threshold-%d", app.state.Height)),
 			},
 		},
 	}, nil
@@ -473,7 +475,7 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 // vote extension is a well-formed integer value.
 func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
 	// We allow vote extensions to be optional
-	if req.VoteExtensions.IsEmpty() {
+	if len(req.VoteExtensions) == 0 {
 		return &abci.ResponseVerifyVoteExtension{
 			Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 		}, nil
@@ -489,9 +491,9 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 		}, nil
 	}
 
-	nums := make([]int64, 0, len(req.VoteExtensions.Default)+len(req.VoteExtensions.ThresholdRecover))
-	for ext := range req.VoteExtensions.Iter() {
-		num, err := parseVoteExtension(ext)
+	nums := make([]int64, 0, len(req.VoteExtensions))
+	for _, ext := range req.VoteExtensions {
+		num, err := parseVoteExtension(ext.Extension)
 		if err != nil {
 			app.logger.Error("failed to verify vote extension", "req", req, "err", err)
 			return &abci.ResponseVerifyVoteExtension{

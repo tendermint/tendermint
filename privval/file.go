@@ -692,7 +692,7 @@ func (pv *FilePV) signVote(
 	// application may have created a different extension. We therefore always
 	// re-sign the vote extensions of precommits. For prevotes, the extension
 	// signature will always be empty.
-	extSigns := make(map[types.VoteExtensionType][]tmbytes.HexBytes)
+	extSigns := make(map[tmproto.VoteExtensionType][]tmbytes.HexBytes)
 	if vote.Type == tmproto.PrecommitType {
 		for et, signItems := range quorumSigns.Extensions {
 			for _, signItem := range signItems {
@@ -703,7 +703,7 @@ func (pv *FilePV) signVote(
 				extSigns[et] = append(extSigns[et], extSig)
 			}
 		}
-	} else if !vote.VoteExtensions.IsEmpty() {
+	} else if len(vote.VoteExtensions) > 0 {
 		return errors.New("unexpected vote extension - extensions are only allowed in precommits")
 	}
 
@@ -833,7 +833,7 @@ func (pv *FilePV) saveSigned(
 	return pv.LastSignState.Save()
 }
 
-func fillProtoVoteExtensionSigns(voteExtensions *tmproto.VoteExtensions, signs map[types.VoteExtensionType][]tmbytes.HexBytes) {
+func fillProtoVoteExtensionSigns(voteExtensions []*tmproto.VoteExtension, signs map[tmproto.VoteExtensionType][]tmbytes.HexBytes) {
 	for et, extensions := range types.ProtoVoteExtensionsToMap(voteExtensions) {
 		for i, ext := range extensions {
 			ext.Signature = signs[et][i]

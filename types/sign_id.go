@@ -17,7 +17,7 @@ var (
 type QuorumSigns struct {
 	Block      SignItem
 	State      SignItem
-	Extensions map[VoteExtensionType][]SignItem
+	Extensions map[types.VoteExtensionType][]SignItem
 }
 
 // SignItem represents quorum sing data, like a request id, message bytes, sha256 hash of message and signID
@@ -75,15 +75,20 @@ func MakeStateSignItem(chainID string, stateID StateID, quorumType btcjson.LLMQT
 }
 
 // MakeVoteExtensionSignItems  creates a list SignItem structs for a vote extensions
-func MakeVoteExtensionSignItems(chainID string, protoVote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) (map[VoteExtensionType][]SignItem, error) {
+func MakeVoteExtensionSignItems(
+	chainID string,
+	protoVote *types.Vote,
+	quorumType btcjson.LLMQType,
+	quorumHash []byte,
+) (map[types.VoteExtensionType][]SignItem, error) {
 	// We only sign vote extensions for precommits
 	if protoVote.Type != types.PrecommitType {
-		if !protoVote.VoteExtensions.IsEmpty() {
+		if len(protoVote.VoteExtensions) > 0 {
 			return nil, errUnexpectedVoteType
 		}
 		return nil, nil
 	}
-	items := make(map[VoteExtensionType][]SignItem)
+	items := make(map[types.VoteExtensionType][]SignItem)
 	reqID := VoteExtensionRequestID(protoVote)
 	protoMap := ProtoVoteExtensionsToMap(protoVote.VoteExtensions)
 	for t, exts := range protoMap {

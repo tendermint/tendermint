@@ -162,7 +162,7 @@ message RequestVerifyVoteExtension {
   bytes validator_pro_tx_hash = 2;
   int64 height                = 3;
 
-  ExtendVoteExtension vote_extensions = 4;
+  repeated ExtendVoteExtension vote_extensions = 4;
 }
 
 message RequestFinalizeBlock {
@@ -359,12 +359,12 @@ message ResponseProcessProposal {
 }
 
 message ExtendVoteExtension {
-  repeated bytes threshold_recover = 1;
-  repeated bytes default           = 2;
+  tendermint.types.VoteExtensionType type = 1;
+  bytes extension                         = 2;
 }
 
 message ResponseExtendVote {
-  ExtendVoteExtension vote_extensions = 1;
+  repeated ExtendVoteExtension vote_extensions = 1;
 }
 
 message ResponseVerifyVoteExtension {

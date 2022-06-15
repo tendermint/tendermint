@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	"github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 // SigsRecoverer is used to recover threshold block, state, and vote-extension signatures
@@ -70,7 +71,7 @@ func (v *SigsRecoverer) addVoteSigs(vote *Vote) {
 }
 
 func (v *SigsRecoverer) addVoteExtensions(voteExtensions VoteExtensions) {
-	extensions := voteExtensions[ThresholdRecoverExtensionType]
+	extensions := voteExtensions[types.VoteExtensionType_THRESHOLD_RECOVER]
 	for i, ext := range extensions {
 		if len(extensions) > len(v.voteExtSigs) {
 			v.voteExts = append(v.voteExts, ext.Extension)

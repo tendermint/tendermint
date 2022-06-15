@@ -342,7 +342,7 @@ func (sc *DashCoreSignerClient) signVoteExtensions(
 	quorumSigns types.QuorumSigns,
 ) error {
 	if protoVote.Type != tmproto.PrecommitType {
-		if !protoVote.VoteExtensions.IsEmpty() {
+		if len(protoVote.VoteExtensions) > 0 {
 			return errors.New("unexpected vote extension - extensions are only allowed in precommits")
 		}
 		return nil

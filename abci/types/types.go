@@ -192,30 +192,3 @@ func MarshalTxResults(r []*ExecTxResult) ([][]byte, error) {
 	}
 	return s, nil
 }
-
-// ----
-
-// IsEmpty returns true if each list of extensions are empty otherwise false
-func (m *ExtendVoteExtension) IsEmpty() bool {
-	if m == nil {
-		return true
-	}
-	return len(m.Default) == 0 && len(m.ThresholdRecover) == 0
-}
-
-// Iter iterates through every element in each list
-func (m *ExtendVoteExtension) Iter() chan []byte {
-	ch := make(chan []byte)
-	go func() {
-		for _, extensions := range [2][][]byte{m.Default, m.ThresholdRecover} {
-			for _, ext := range extensions {
-				if ext == nil {
-					continue
-				}
-				ch <- ext
-			}
-		}
-		close(ch)
-	}()
-	return ch
-}

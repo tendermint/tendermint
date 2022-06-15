@@ -117,14 +117,15 @@ message Data {
   repeated bytes txs = 1;
 }
 
-message VoteExtensions {
-  repeated VoteExtension default           = 1;
-  repeated VoteExtension threshold_recover = 2;
+enum VoteExtensionType {
+  DEFAULT           = 0;
+  THRESHOLD_RECOVER = 1;
 }
 
 message VoteExtension {
-  bytes extension = 1;
-  bytes signature = 2;
+  VoteExtensionType type = 1;
+  bytes extension        = 2;
+  bytes signature        = 3;
 }
 
 message ThresholdVoteExtension {
@@ -152,7 +153,7 @@ message Vote {
   // messages.
   // Vote extension signature by the validator if they participated in
   // consensus for the associated block. Only valid for precommit messages.
-  VoteExtensions vote_extensions  = 11;
+  repeated VoteExtension vote_extensions = 11;
 }
 
 // Commit contains the evidence that a block was committed by a set of

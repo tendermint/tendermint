@@ -154,7 +154,7 @@ func signVote(
 
 	exts := make(types.VoteExtensions)
 	if voteType == tmproto.PrecommitType {
-		exts.Add(types.DefaultExtensionType, []byte("extension"))
+		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte("extension"))
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, exts)
 	require.NoError(t, err, "failed to sign vote")

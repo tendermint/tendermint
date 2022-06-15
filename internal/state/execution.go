@@ -366,7 +366,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
-func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) (*abci.ExtendVoteExtension, error) {
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) ([]*abci.ExtendVoteExtension, error) {
 	resp, err := blockExec.appClient.ExtendVote(ctx, &abci.RequestExtendVote{
 		Hash:   vote.BlockID.Hash,
 		Height: vote.Height,
@@ -374,14 +374,11 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 	if err != nil {
 		panic(fmt.Errorf("ExtendVote call failed: %w", err))
 	}
-	if resp.VoteExtensions == nil {
-		return &abci.ExtendVoteExtension{}, nil
-	}
 	return resp.VoteExtensions, nil
 }
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
-	var extensions *abci.ExtendVoteExtension
+	var extensions []*abci.ExtendVoteExtension
 	if vote.VoteExtensions != nil {
 		extensions = vote.VoteExtensions.ToExtendProto()
 	}

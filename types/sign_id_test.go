@@ -75,7 +75,7 @@ func TestMakeVoteExtensionSignsData(t *testing.T) {
 	testCases := []struct {
 		vote       Vote
 		quorumHash []byte
-		want       map[VoteExtensionType][]SignItem
+		want       map[types.VoteExtensionType][]SignItem
 	}{
 		{
 			vote: Vote{
@@ -83,13 +83,13 @@ func TestMakeVoteExtensionSignsData(t *testing.T) {
 				Height:             1001,
 				ValidatorProTxHash: mustHexDecode("9CC13F685BC3EA0FCA99B87F42ABCC934C6305AA47F62A32266A2B9D55306B7B"),
 				VoteExtensions: VoteExtensions{
-					DefaultExtensionType:          []VoteExtension{{Extension: []byte("default")}},
-					ThresholdRecoverExtensionType: []VoteExtension{{Extension: []byte("threshold")}},
+					types.VoteExtensionType_DEFAULT:           []VoteExtension{{Extension: []byte("default")}},
+					types.VoteExtensionType_THRESHOLD_RECOVER: []VoteExtension{{Extension: []byte("threshold")}},
 				},
 			},
 			quorumHash: mustHexDecode("6A12D9CF7091D69072E254B297AEF15997093E480FDE295E09A7DE73B31CEEDD"),
-			want: map[VoteExtensionType][]SignItem{
-				DefaultExtensionType: {
+			want: map[types.VoteExtensionType][]SignItem{
+				types.VoteExtensionType_DEFAULT: {
 					{
 						ReqID: mustHexDecode("FB95F2CA6530F02AC623589D7938643FF22AE79A75DD79AEA1C8871162DE675E"),
 						ID:    mustHexDecode("533524404D3A905F5AC9A30FCEB5A922EAD96F30DA02F979EE41C4342F540467"),
@@ -97,7 +97,7 @@ func TestMakeVoteExtensionSignsData(t *testing.T) {
 						Raw:   mustHexDecode("210A0764656661756C7411E903000000000000220D646173682D706C6174666F726D"),
 					},
 				},
-				ThresholdRecoverExtensionType: {
+				types.VoteExtensionType_THRESHOLD_RECOVER: {
 					{
 						ReqID: mustHexDecode("FB95F2CA6530F02AC623589D7938643FF22AE79A75DD79AEA1C8871162DE675E"),
 						ID:    mustHexDecode("5937BFC5BDAEBDA245AD5D8527F29B8F21158C793D407EA7CA94739E1F87A941"),

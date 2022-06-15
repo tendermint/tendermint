@@ -19,22 +19,17 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
-// VoteExtensionType is a vote-extension type for a constant
-type VoteExtensionType int
-
-// The all possible options for vote-extensions
-// DefaultExtensionType should be used if you want to reproduce "tendermint" behavior
-const (
-	DefaultExtensionType VoteExtensionType = iota
-	ThresholdRecoverExtensionType
-)
-
 const (
 	nilVoteStr string = "nil-Vote"
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
 	MaxVoteBytesBLS12381 int64 = 241
 	MaxVoteBytesEd25519  int64 = 209
 )
+
+var VoteExtensionTypes = []tmproto.VoteExtensionType{
+	tmproto.VoteExtensionType_DEFAULT,
+	tmproto.VoteExtensionType_THRESHOLD_RECOVER,
+}
 
 func MaxVoteBytesForKeyType(keyType crypto.KeyType) int64 {
 	switch keyType {
@@ -114,7 +109,7 @@ func (vote *Vote) PopulateSignsToProto(pv *tmproto.Vote) {
 }
 
 // GetVoteExtensionsSigns returns the list of signatures for given vote-extension type
-func (vote *Vote) GetVoteExtensionsSigns(extType VoteExtensionType) [][]byte {
+func (vote *Vote) GetVoteExtensionsSigns(extType tmproto.VoteExtensionType) [][]byte {
 	if vote.VoteExtensions == nil {
 		return nil
 	}
@@ -126,18 +121,19 @@ func (vote *Vote) GetVoteExtensionsSigns(extType VoteExtensionType) [][]byte {
 }
 
 // VoteExtensions is a container where the key is vote-extension type and value is a list of VoteExtension
-type VoteExtensions map[VoteExtensionType][]VoteExtension
+type VoteExtensions map[tmproto.VoteExtensionType][]VoteExtension
 
 // NewVoteExtensionsFromABCIExtended returns vote-extensions container for given ExtendVoteExtension
-func NewVoteExtensionsFromABCIExtended(exts *abci.ExtendVoteExtension) VoteExtensions {
-	return VoteExtensions{
-		DefaultExtensionType:          makeVoteExtensionsFromSliceBytes(exts.Default),
-		ThresholdRecoverExtensionType: makeVoteExtensionsFromSliceBytes(exts.ThresholdRecover),
+func NewVoteExtensionsFromABCIExtended(exts []*abci.ExtendVoteExtension) VoteExtensions {
+	voteExtensions := make(VoteExtensions)
+	for _, ext := range exts {
+		voteExtensions.Add(ext.Type, ext.Extension)
 	}
+	return voteExtensions
 }
 
 // Add creates and adds VoteExtension into a container by vote-extension type
-func (e VoteExtensions) Add(t VoteExtensionType, ext []byte) {
+func (e VoteExtensions) Add(t tmproto.VoteExtensionType, ext []byte) {
 	e[t] = append(e[t], VoteExtension{Extension: ext})
 }
 
@@ -156,36 +152,41 @@ func (e VoteExtensions) Validate() error {
 
 // IsEmpty returns true if a vote-extension container is empty, otherwise false
 func (e VoteExtensions) IsEmpty() bool {
-	return len(e[ThresholdRecoverExtensionType]) == 0 && len(e[DefaultExtensionType]) == 0
+	for _, exts := range e {
+		if len(exts) > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // ToProto transforms the current state of vote-extension container into VoteExtensions's protobuf
-func (e VoteExtensions) ToProto() *tmproto.VoteExtensions {
-	return &tmproto.VoteExtensions{
-		Default:          MakeVoteExtensionsToProto(e[DefaultExtensionType]),
-		ThresholdRecover: MakeVoteExtensionsToProto(e[ThresholdRecoverExtensionType]),
+func (e VoteExtensions) ToProto() []*tmproto.VoteExtension {
+	extensions := make([]*tmproto.VoteExtension, 0) // TODO find a way how to pre allocate correctly
+	for _, t := range VoteExtensionTypes {
+		for _, ext := range e[t] {
+			extensions = append(extensions, &tmproto.VoteExtension{
+				Type:      t,
+				Extension: ext.Extension,
+				Signature: ext.Signature,
+			})
+		}
 	}
+	return extensions
 }
 
 // ToExtendProto transforms the current state of vote-extension container into ExtendVoteExtension's protobuf
-func (e VoteExtensions) ToExtendProto() *abci.ExtendVoteExtension {
-	proto := abci.ExtendVoteExtension{}
-	for et, extensions := range e {
-		if len(extensions) == 0 {
-			continue
-		}
-		protoExtensions := make([][]byte, len(extensions))
-		for i, ext := range extensions {
-			protoExtensions[i] = ext.Extension
-		}
-		switch et {
-		case DefaultExtensionType:
-			proto.Default = protoExtensions
-		case ThresholdRecoverExtensionType:
-			proto.ThresholdRecover = protoExtensions
+func (e VoteExtensions) ToExtendProto() []*abci.ExtendVoteExtension {
+	proto := make([]*abci.ExtendVoteExtension, 0) // TODO find a way how to pre allocate correctly
+	for _, et := range VoteExtensionTypes {
+		for _, ext := range e[et] {
+			proto = append(proto, &abci.ExtendVoteExtension{
+				Type:      et,
+				Extension: ext.Extension,
+			})
 		}
 	}
-	return &proto
+	return proto
 }
 
 // Fingerprint returns a fingerprint of all vote-extensions in a state of this container
@@ -203,7 +204,7 @@ func (e VoteExtensions) Fingerprint() []byte {
 
 // IsSameWithProto compares the current state of the vote-extension with the same in VoteExtensions's protobuf
 // checks only the value of extensions
-func (e VoteExtensions) IsSameWithProto(proto *tmproto.VoteExtensions) bool {
+func (e VoteExtensions) IsSameWithProto(proto []*tmproto.VoteExtension) bool {
 	protoMap := ProtoVoteExtensionsToMap(proto)
 	for t, extensions := range e {
 		if len(protoMap[t]) != len(extensions) {
@@ -221,8 +222,7 @@ func (e VoteExtensions) IsSameWithProto(proto *tmproto.VoteExtensions) bool {
 func (e VoteExtensions) iter() chan VoteExtension {
 	ch := make(chan VoteExtension)
 	go func() {
-		extensionTypes := []VoteExtensionType{DefaultExtensionType, ThresholdRecoverExtensionType}
-		for _, et := range extensionTypes {
+		for _, et := range VoteExtensionTypes {
 			for _, ext := range e[et] {
 				ch <- ext
 			}
@@ -247,75 +247,36 @@ func (v *VoteExtension) Clone() VoteExtension {
 }
 
 // VoteExtensionsFromProto creates VoteExtensions container from VoteExtensions's protobuf
-func VoteExtensionsFromProto(pve *tmproto.VoteExtensions) VoteExtensions {
+func VoteExtensionsFromProto(pve []*tmproto.VoteExtension) VoteExtensions {
 	if pve == nil {
 		return nil
 	}
 	voteExtensions := make(VoteExtensions)
-	if len(pve.Default) > 0 {
-		voteExtensions[DefaultExtensionType] = MakeVoteExtensionsFromProto(pve.Default)
-	}
-	if len(pve.ThresholdRecover) > 0 {
-		voteExtensions[ThresholdRecoverExtensionType] = MakeVoteExtensionsFromProto(pve.ThresholdRecover)
-	}
-	return voteExtensions
-}
-
-// MakeVoteExtensionsFromProto transforms the list of VoteExtension's protobuf into the list of VoteExtension
-func MakeVoteExtensionsFromProto(protoExts []*tmproto.VoteExtension) []VoteExtension {
-	if len(protoExts) == 0 {
-		return nil
-	}
-	exts := make([]VoteExtension, len(protoExts))
-	for i, pe := range protoExts {
-		exts[i].Extension = pe.Extension
-		exts[i].Signature = pe.Signature
-	}
-	return exts
-}
-
-// MakeVoteExtensionsToProto transforms the list of VoteExtension into the list of VoteExtension's protobuf
-func MakeVoteExtensionsToProto(exts []VoteExtension) []*tmproto.VoteExtension {
-	if len(exts) == 0 {
-		return nil
-	}
-	proto := make([]*tmproto.VoteExtension, len(exts))
-	for i, ext := range exts {
-		proto[i] = &tmproto.VoteExtension{
+	for _, ext := range pve {
+		voteExtensions[ext.Type] = append(voteExtensions[ext.Type], VoteExtension{
 			Extension: ext.Extension,
 			Signature: ext.Signature,
-		}
-	}
-	return proto
-}
-
-func makeVoteExtensionsFromSliceBytes(extensions [][]byte) []VoteExtension {
-	if len(extensions) == 0 {
-		return nil
-	}
-	voteExtensions := make([]VoteExtension, len(extensions))
-	for i, extension := range extensions {
-		voteExtensions[i].Extension = extension
+		})
 	}
 	return voteExtensions
 }
 
 // CopySignsFromProto copies the signatures from VoteExtensions's protobuf into the current VoteExtension state
-func (e VoteExtensions) CopySignsFromProto(src *tmproto.VoteExtensions) {
+func (e VoteExtensions) CopySignsFromProto(src []*tmproto.VoteExtension) {
 	e.copySigns(src, func(a *tmproto.VoteExtension, b *VoteExtension) {
 		b.Signature = a.Signature
 	})
 }
 
 // CopySignsToProto copies the signatures from the current VoteExtensions into VoteExtension's protobuf
-func (e VoteExtensions) CopySignsToProto(dist *tmproto.VoteExtensions) {
+func (e VoteExtensions) CopySignsToProto(dist []*tmproto.VoteExtension) {
 	e.copySigns(dist, func(a *tmproto.VoteExtension, b *VoteExtension) {
 		a.Signature = b.Signature
 	})
 }
 
 func (e VoteExtensions) copySigns(
-	proto *tmproto.VoteExtensions,
+	proto []*tmproto.VoteExtension,
 	modifier func(a *tmproto.VoteExtension, b *VoteExtension),
 ) {
 	protoMap := ProtoVoteExtensionsToMap(proto)
@@ -327,14 +288,16 @@ func (e VoteExtensions) copySigns(
 }
 
 // ProtoVoteExtensionsToMap creates a map where a key is vote-extension type and value is the list of VoteExtension's protobuf
-func ProtoVoteExtensionsToMap(proto *tmproto.VoteExtensions) map[VoteExtensionType][]*tmproto.VoteExtension {
+// TODO consider to make it as method of Vote's protobuf
+func ProtoVoteExtensionsToMap(proto []*tmproto.VoteExtension) map[tmproto.VoteExtensionType][]*tmproto.VoteExtension {
 	if proto == nil {
 		return nil
 	}
-	return map[VoteExtensionType][]*tmproto.VoteExtension{
-		DefaultExtensionType:          proto.Default,
-		ThresholdRecoverExtensionType: proto.ThresholdRecover,
+	res := make(map[tmproto.VoteExtensionType][]*tmproto.VoteExtension)
+	for _, ext := range proto {
+		res[ext.Type] = append(res[ext.Type], ext)
 	}
+	return res
 }
 
 // VoteFromProto attempts to convert the given serialization (Protobuf) type to
@@ -616,7 +579,7 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	if vote == nil {
 		return nil
 	}
-	var voteExtensions *tmproto.VoteExtensions
+	var voteExtensions []*tmproto.VoteExtension
 	if vote.VoteExtensions != nil {
 		voteExtensions = vote.VoteExtensions.ToProto()
 	}

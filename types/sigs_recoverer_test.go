@@ -32,13 +32,19 @@ func TestSigsRecoverer(t *testing.T) {
 					ValidatorProTxHash: crypto.RandProTxHash(),
 					Type:               types.PrecommitType,
 					BlockID:            blockID,
-					VoteExtensions:     mockVoteExtensions(t, DefaultExtensionType, "default", ThresholdRecoverExtensionType, "threshold"),
+					VoteExtensions: mockVoteExtensions(t,
+						types.VoteExtensionType_DEFAULT, "default",
+						types.VoteExtensionType_THRESHOLD_RECOVER, "threshold",
+					),
 				},
 				{
 					ValidatorProTxHash: crypto.RandProTxHash(),
 					Type:               types.PrecommitType,
 					BlockID:            blockID,
-					VoteExtensions:     mockVoteExtensions(t, DefaultExtensionType, "default", ThresholdRecoverExtensionType, "threshold"),
+					VoteExtensions: mockVoteExtensions(t,
+						types.VoteExtensionType_DEFAULT, "default",
+						types.VoteExtensionType_THRESHOLD_RECOVER, "threshold",
+					),
 				},
 			},
 		},
@@ -75,7 +81,7 @@ func TestSigsRecoverer(t *testing.T) {
 			verified = thresholdPubKey.VerifySignatureDigest(quorumSigns.State.ID, thresholdSigns.StateSign)
 			require.True(t, verified)
 
-			signItems := quorumSigns.Extensions[ThresholdRecoverExtensionType]
+			signItems := quorumSigns.Extensions[types.VoteExtensionType_THRESHOLD_RECOVER]
 			for i, ext := range thresholdSigns.ExtensionSigns {
 				verified = thresholdPubKey.VerifySignatureDigest(signItems[i].ID, ext.ThresholdSignature)
 				require.True(t, verified)
@@ -109,7 +115,10 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 			Round:              0,
 			Type:               types.PrecommitType,
 			BlockID:            blockID,
-			VoteExtensions:     mockVoteExtensions(t, DefaultExtensionType, "default", ThresholdRecoverExtensionType, "threshold"),
+			VoteExtensions: mockVoteExtensions(t,
+				types.VoteExtensionType_DEFAULT, "default",
+				types.VoteExtensionType_THRESHOLD_RECOVER, "threshold",
+			),
 		}
 		vpb := votes[i].ToProto()
 		err = pvs[i].SignVote(ctx, chainID, quorumType, quorumHash, vpb, stateID, nil)
@@ -130,7 +139,7 @@ func mockVoteExtensions(t *testing.T, pairs ...interface{}) VoteExtensions {
 	}
 	ve := make(VoteExtensions)
 	for i := 0; i < len(pairs); i += 2 {
-		et, ok := pairs[i].(VoteExtensionType)
+		et, ok := pairs[i].(types.VoteExtensionType)
 		if !ok {
 			t.Fatalf("given unsupported type %T", pairs[i])
 		}

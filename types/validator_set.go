@@ -959,7 +959,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 }
 
 func (vals *ValidatorSet) verifyThresholdVoteExtensions(commit *Commit, quorumSigns QuorumSigns) error {
-	signItems := quorumSigns.Extensions[ThresholdRecoverExtensionType]
+	signItems := quorumSigns.Extensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER]
 	if len(signItems) == 0 {
 		return nil
 	}

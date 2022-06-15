@@ -26,7 +26,7 @@ func examplePrecommit(t testing.TB) *Vote {
 	t.Helper()
 	vote := exampleVote(t, byte(tmproto.PrecommitType))
 	vote.VoteExtensions = VoteExtensions{
-		DefaultExtensionType: []VoteExtension{{Signature: []byte("signature")}},
+		tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Signature: []byte("signature")}},
 	}
 	return vote
 }
@@ -129,7 +129,7 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 				Height: 1,
 				Round:  1,
 				VoteExtensions: VoteExtensions{
-					DefaultExtensionType: []VoteExtension{{Extension: []byte("extension")}},
+					tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Extension: []byte("extension")}},
 				},
 			},
 			[]byte{
@@ -250,7 +250,7 @@ func TestVoteExtension(t *testing.T) {
 		{
 			name: "all fields present",
 			extensions: VoteExtensions{
-				DefaultExtensionType: []VoteExtension{{Extension: []byte("extension")}},
+				tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Extension: []byte("extension")}},
 			},
 			includeSignature: true,
 			expectError:      false,
@@ -425,7 +425,7 @@ func TestValidVotes(t *testing.T) {
 		{
 			"good precommit with vote extension",
 			examplePrecommit(t), func(v *Vote) {
-				v.VoteExtensions[DefaultExtensionType][0].Extension = []byte("extension")
+				v.VoteExtensions[tmproto.VoteExtensionType_DEFAULT][0].Extension = []byte("extension")
 			},
 		},
 	}
@@ -491,13 +491,13 @@ func TestInvalidPrevotes(t *testing.T) {
 		{
 			"vote extension present",
 			func(v *Vote) {
-				v.VoteExtensions = VoteExtensions{DefaultExtensionType: []VoteExtension{{Extension: []byte("extension")}}}
+				v.VoteExtensions = VoteExtensions{tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Extension: []byte("extension")}}}
 			},
 		},
 		{
 			"vote extension signature present",
 			func(v *Vote) {
-				v.VoteExtensions = VoteExtensions{DefaultExtensionType: []VoteExtension{{Signature: []byte("signature")}}}
+				v.VoteExtensions = VoteExtensions{tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Signature: []byte("signature")}}}
 			},
 		},
 	}
@@ -526,7 +526,7 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 		{
 			"vote extension present without signature", func(v *Vote) {
 				v.VoteExtensions = VoteExtensions{
-					DefaultExtensionType: {{Extension: []byte("extension")}},
+					tmproto.VoteExtensionType_DEFAULT: {{Extension: []byte("extension")}},
 				}
 			}},
 		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
@@ -535,7 +535,7 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 			"oversized vote extension signature",
 			func(v *Vote) {
 				v.VoteExtensions = VoteExtensions{
-					DefaultExtensionType: []VoteExtension{{Signature: make([]byte, SignatureSize+1)}},
+					tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Signature: make([]byte, SignatureSize+1)}},
 				}
 			}},
 	}
