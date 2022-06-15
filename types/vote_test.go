@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,6 +15,22 @@ import (
 	"github.com/tendermint/tendermint/internal/libs/protoio"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+)
+
+const (
+	//nolint: lll
+	preCommitTestStr = `Vote{56789:6AF1F4111082 12345/2 Precommit 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
+	//nolint: lll
+	preVoteTestStr = `Vote{56789:6AF1F4111082 12345/2 Prevote 8B01023386C3 000000000000 0 @ 2017-12-25T03:00:01.234Z}`
+)
+
+var (
+	// nolint: lll
+	nilVoteTestStr                = fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/2 Precommit %s 000000000000 0 @ 2017-12-25T03:00:01.234Z}`, nilVoteStr)
+	formatNonEmptyVoteExtensionFn = func(voteExtensionLength int) string {
+		// nolint: lll
+		return fmt.Sprintf(`Vote{56789:6AF1F4111082 12345/2 Precommit 8B01023386C3 000000000000 %d @ 2017-12-25T03:00:01.234Z}`, voteExtensionLength)
+	}
 )
 
 func examplePrevote(t *testing.T) *Vote {
@@ -321,16 +338,43 @@ func TestVoteVerify(t *testing.T) {
 }
 
 func TestVoteString(t *testing.T) {
-	str := examplePrecommit(t).String()
-	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
-	if str != expected {
-		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
+	testcases := map[string]struct {
+		vote           *Vote
+		expectedResult string
+	}{
+		"pre-commit": {
+			vote:           examplePrecommit(t),
+			expectedResult: preCommitTestStr,
+		},
+		"pre-vote": {
+			vote:           examplePrevote(t),
+			expectedResult: preVoteTestStr,
+		},
+		"absent vote": {
+			expectedResult: absentVoteStr,
+		},
+		"nil vote": {
+			vote: func() *Vote {
+				v := examplePrecommit(t)
+				v.BlockID.Hash = nil
+				return v
+			}(),
+			expectedResult: nilVoteTestStr,
+		},
+		"non-empty vote extension": {
+			vote: func() *Vote {
+				v := examplePrecommit(t)
+				v.Extension = []byte{1, 2}
+				return v
+			}(),
+			expectedResult: formatNonEmptyVoteExtensionFn(2),
+		},
 	}
 
-	str2 := examplePrevote(t).String()
-	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
-	if str2 != expected {
-		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
+	for name, tc := range testcases {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, tc.expectedResult, tc.vote.String())
+		})
 	}
 }
 
