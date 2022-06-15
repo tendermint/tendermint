@@ -1530,7 +1530,7 @@ func (cs *State) defaultDoPrevote(ctx context.Context, height int64, round int32
 	}
 
 	sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
-	if cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
+	if !cs.replayMode && cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
 		logger.Debug("prevote step: Proposal is not timely; prevoting nil",
 			"proposed",
 			tmtime.Canonical(cs.Proposal.Timestamp).Format(time.RFC3339Nano),
