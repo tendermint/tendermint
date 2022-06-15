@@ -2,9 +2,20 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.7
+
+June 16, 2022
+
+### BUG FIXES
+
+- [p2p] \#8692 pass maxConns for MaxPeers during node setup (#8684)
+- [rpc] \#8715 always close http bodies (backport #8712)
+- [p2p] \#8760 accept should not abort on first error (backport #8759)
+
 ## v0.35.6
 
 June 3, 2022
+
 ### FEATURES
 
 - [migrate] [\#8672](https://github.com/tendermint/tendermint/pull/8672) provide function for database production (backport #8614) (@tychoish)
