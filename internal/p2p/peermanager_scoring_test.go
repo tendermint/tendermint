@@ -98,14 +98,9 @@ func makeMockPeerStore(t *testing.T, peers ...peerInfo) *peerStore {
 func TestPeerRanking(t *testing.T) {
 	t.Run("InactiveSecond", func(t *testing.T) {
 		store := makeMockPeerStore(t,
-			peerInfo{
-				ID:       "second",
-				Inactive: true,
-			},
-			peerInfo{
-				ID:       "first",
-				Inactive: false,
-			})
+			peerInfo{ID: "second", Inactive: true},
+			peerInfo{ID: "first", Inactive: false},
+		)
 
 		ranked := store.Ranked()
 		if len(ranked) != 2 {
