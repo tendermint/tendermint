@@ -41,7 +41,8 @@ const (
 type peerConnectionDirection int
 
 const (
-	peerConnectionIncoming peerConnectionDirection = iota
+	peerConnectionInvalid peerConnectionDirection = iota
+	peerConnectionIncoming
 	peerConnectionOutgoing
 )
 
@@ -1365,8 +1366,6 @@ func (s *peerStore) Ranked() []*peerInfo {
 			// most recent dialing attempt, fall back to
 			// peer score.
 
-			// FIXME: If necessary, consider precomputing scores before sorting,
-			// to reduce the number of Score() calls.
 			return s.ranked[i].Score() > s.ranked[j].Score()
 		}
 	})
