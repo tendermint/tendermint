@@ -9,15 +9,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
-	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
 
-func getDumpCmd(logger log.Logger) *cobra.Command {
+func getDumpCmd(conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dump [output-directory]",
 		Short: "Continuously poll a Tendermint process and dump debugging data into a single location",
@@ -62,11 +59,6 @@ if enabled.`,
 			}
 
 			ctx := cmd.Context()
-
-			home := viper.GetString(commands.HomeFlag)
-			conf := config.DefaultConfig()
-			conf = conf.SetRoot(home)
-			config.EnsureRoot(conf.RootDir)
 
 			dumpArgs := dumpDebugDataArgs{
 				conf:     conf,

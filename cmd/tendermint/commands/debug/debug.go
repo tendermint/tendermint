@@ -3,6 +3,7 @@ package debug
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
@@ -12,7 +13,7 @@ const (
 	flagFrequency   = "frequency"
 )
 
-func GetDebugCommand(logger log.Logger) *cobra.Command {
+func GetDebugCommand(conf *config.Config, logger log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "debug",
 		Short: "A utility to kill or watch a Tendermint process while aggregating debugging data",
@@ -25,7 +26,7 @@ func GetDebugCommand(logger log.Logger) *cobra.Command {
 	)
 
 	cmd.AddCommand(getKillCmd(logger))
-	cmd.AddCommand(getDumpCmd(logger))
+	cmd.AddCommand(getDumpCmd(conf, logger))
 	return cmd
 
 }

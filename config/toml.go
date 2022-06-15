@@ -70,7 +70,7 @@ func Load(rootDir string) (*Config, error) {
 		return nil, err
 	}
 
-	config.SetRoot(config.RootDir)
+	config.SetRoot(rootDir)
 
 	if err := config.ValidateBasic(); err != nil {
 		return nil, fmt.Errorf("error in config file: %w", err)
