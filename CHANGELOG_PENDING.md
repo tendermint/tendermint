@@ -42,6 +42,7 @@ Special thanks to external contributors on this release:
   - [p2p] \#8737 Introduce "inactive" peer label to avoid re-dialing peers after failed handshakes. (@tychoish)
   - [p2p] \#8737 Increase frequency of dialing attempts to reduce latency for peer acquisition. (@tychoish)
   - [p2p] \#8737 Improvements to peer scoring and sorting to gossip a greater variety of peers during PEX. (@tychoish)
+  - [p2p] \#8737 Track incoming and outgoing peers separately to ensure more peer slots open for incoming connections. (@tychoish)
 
 - Go API
 
