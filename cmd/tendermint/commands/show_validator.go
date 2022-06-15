@@ -29,12 +29,24 @@ func MakeShowValidatorCommand(conf *config.Config, logger log.Logger) *cobra.Com
 			)
 			//TODO: remove once gRPC is the only supported protocol
 			protocol, _ := tmnet.ProtocolAndAddress(conf.PrivValidator.ListenAddr)
+
 			switch protocol {
 			case "grpc":
+				// we need to load the chain ID and it's faster to load from state then from genesis
+				_, ss, err := loadStateAndBlockStore(conf)
+				if err != nil {
+					return err
+				}
+
+				state, err := ss.Load()
+				if err != nil {
+					return err
+				}
+
 				pvsc, err := tmgrpc.DialRemoteSigner(
 					bctx,
 					conf.PrivValidator,
-					conf.ChainID(),
+					state.ChainID,
 					logger,
 					conf.Instrumentation.Prometheus,
 				)

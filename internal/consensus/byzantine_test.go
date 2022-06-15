@@ -40,15 +40,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	config := configSetup(t)
-
 	nValidators := 4
 	prevoteHeight := int64(2)
 	testName := "consensus_byzantine_test"
 	tickerFunc := newMockTickerFunc(true)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, nValidators, 30)
-	genDoc := factory.GenesisDoc(config, time.Now(), valSet.Validators, factory.ConsensusParams())
+	genDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 	states := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {

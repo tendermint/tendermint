@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -16,17 +15,12 @@ import (
 )
 
 func TestPeerCatchupRounds(t *testing.T) {
-	cfg, err := config.ResetTestRoot(t.TempDir(), "consensus_height_vote_set_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, 10, 1)
 
-	chainID := cfg.ChainID()
+	chainID := factory.DefaultTestChainID
 	hvs := NewExtendedHeightVoteSet(chainID, 1, valSet)
 
 	vote999_0 := makeVoteHR(ctx, t, 1, 0, 999, privVals, chainID)

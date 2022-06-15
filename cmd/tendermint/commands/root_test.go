@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
@@ -38,7 +37,8 @@ func clearConfig(t *testing.T, dir string) *cfg.Config {
 
 	viper.Reset()
 	conf := cfg.DefaultConfig()
-	conf.RootDir = dir
+	conf.SetRoot(dir)
+
 	return conf
 }
 
@@ -46,8 +46,6 @@ func clearConfig(t *testing.T, dir string) *cfg.Config {
 func testRootCmd(conf *cfg.Config) *cobra.Command {
 	logger := log.NewNopLogger()
 	cmd := RootCommand(conf, logger)
-	cmd.RunE = func(cmd *cobra.Command, args []string) error { return nil }
-
 	var l string
 	cmd.PersistentFlags().String("log", l, "Log")
 	return cmd
@@ -57,11 +55,11 @@ func testSetup(ctx context.Context, t *testing.T, conf *cfg.Config, args []strin
 	t.Helper()
 
 	cmd := testRootCmd(conf)
-	viper.Set(cli.HomeFlag, conf.RootDir)
+	viper.Set(HomeFlag, conf.RootDir)
 
 	// run with the args and env
 	args = append([]string{cmd.Use}, args...)
-	return cli.RunWithArgs(ctx, cmd, args, env)
+	return RunWithArgs(ctx, cmd, args, env)
 }
 
 func TestRootHome(t *testing.T) {
@@ -107,11 +105,8 @@ func TestRootFlagsEnv(t *testing.T) {
 		env      map[string]string
 		logLevel string
 	}{
-		{[]string{"--log", "debug"}, nil, defaultLogLvl},                 // wrong flag
-		{[]string{"--log-level", "debug"}, nil, "debug"},                 // right flag
-		{nil, map[string]string{"TM_LOW": "debug"}, defaultLogLvl},       // wrong env flag
-		{nil, map[string]string{"MT_LOG_LEVEL": "debug"}, defaultLogLvl}, // wrong env prefix
-		{nil, map[string]string{"TM_LOG_LEVEL": "debug"}, "debug"},       // right env
+		{[]string{"--log", "debug"}, nil, defaultLogLvl}, // wrong flag
+		{[]string{"--log-level", "debug"}, nil, "debug"}, // right flag
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -145,9 +140,8 @@ func TestRootConfig(t *testing.T) {
 		env    map[string]string
 		logLvl string
 	}{
-		{nil, nil, nonDefaultLogLvl},                             // should load config
-		{[]string{"--log-level=info"}, nil, "info"},              // flag over rides
-		{nil, map[string]string{"TM_LOG_LEVEL": "info"}, "info"}, // env over rides
+		{nil, nil, nonDefaultLogLvl},                // should load config
+		{[]string{"--log-level=info"}, nil, "info"}, // flag over rides
 	}
 
 	for i, tc := range cases {
@@ -170,7 +164,7 @@ func TestRootConfig(t *testing.T) {
 
 			// run with the args and env
 			tc.args = append([]string{cmd.Use}, tc.args...)
-			err = cli.RunWithArgs(ctx, cmd, tc.args, tc.env)
+			err = RunWithArgs(ctx, cmd, tc.args, tc.env)
 			require.NoError(t, err)
 
 			require.Equal(t, tc.logLvl, conf.LogLevel)
@@ -187,4 +181,32 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 	}
 	cfile := filepath.Join(dir, "config.toml")
 	return os.WriteFile(cfile, []byte(data), 0600)
+}
+
+// RunWithArgs executes the given command with the specified command line args
+// and environmental variables set. It returns any error returned from cmd.Execute()
+func RunWithArgs(ctx context.Context, cmd *cobra.Command, args []string, env map[string]string) error {
+	oargs := os.Args
+	oenv := map[string]string{}
+	// defer returns the environment back to normal
+	defer func() {
+		os.Args = oargs
+		for k, v := range oenv {
+			os.Setenv(k, v)
+		}
+	}()
+
+	// set the args and env how we want them
+	os.Args = args
+	for k, v := range env {
+		// backup old value if there, to restore at end
+		oenv[k] = os.Getenv(k)
+		err := os.Setenv(k, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	// and finally run the command
+	return RunWithTrace(ctx, cmd)
 }

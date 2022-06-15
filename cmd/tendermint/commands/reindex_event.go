@@ -65,7 +65,12 @@ either or both arguments.
 				return fmt.Errorf("%s: %w", reindexFailed, err)
 			}
 
-			es, err := loadEventSinks(conf)
+			state, err := ss.Load()
+			if err != nil {
+				return err
+			}
+
+			es, err := loadEventSinks(conf, state.ChainID)
 			if err != nil {
 				return fmt.Errorf("%s: %w", reindexFailed, err)
 			}
@@ -91,7 +96,7 @@ either or both arguments.
 	return cmd
 }
 
-func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
+func loadEventSinks(cfg *tmcfg.Config, chainID string) ([]indexer.EventSink, error) {
 	// Check duplicated sinks.
 	sinks := map[string]bool{}
 	for _, s := range cfg.TxIndex.Indexer {
@@ -119,7 +124,7 @@ func loadEventSinks(cfg *tmcfg.Config) ([]indexer.EventSink, error) {
 			if conn == "" {
 				return nil, errors.New("the psql connection settings cannot be empty")
 			}
-			es, err := psql.NewEventSink(conn, cfg.ChainID())
+			es, err := psql.NewEventSink(conn, chainID)
 			if err != nil {
 				return nil, err
 			}
@@ -156,7 +161,7 @@ func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, 
 	blockStore := store.NewBlockStore(blockStoreDB)
 
 	if !os.FileExists(filepath.Join(cfg.DBDir(), "state.db")) {
-		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
+		return nil, nil, fmt.Errorf("no statestore found in %v", cfg.DBDir())
 	}
 
 	// Get StateStore

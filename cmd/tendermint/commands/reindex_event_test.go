@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/state/mocks"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 
@@ -100,7 +101,7 @@ func TestLoadEventSink(t *testing.T) {
 		cfg := config.TestConfig()
 		cfg.TxIndex.Indexer = tc.sinks
 		cfg.TxIndex.PsqlConn = tc.connURL
-		_, err := loadEventSinks(cfg)
+		_, err := loadEventSinks(cfg, factory.DefaultTestChainID)
 		if tc.loadErr {
 			require.Error(t, err)
 		} else {

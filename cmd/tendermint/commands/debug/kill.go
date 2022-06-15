@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -52,7 +52,7 @@ $ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 				return fmt.Errorf("failed to create new http client: %w", err)
 			}
 
-			home := viper.GetString(cli.HomeFlag)
+			home := viper.GetString(commands.HomeFlag)
 			conf := config.DefaultConfig()
 			conf = conf.SetRoot(home)
 			config.EnsureRoot(conf.RootDir)

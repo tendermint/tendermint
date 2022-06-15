@@ -90,7 +90,6 @@ type pbtsTestConfiguration struct {
 func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfiguration) pbtsTestHarness {
 	t.Helper()
 	const validators = 4
-	cfg := configSetup(t)
 	clock := new(tmtimemocks.Source)
 
 	if tc.genesisTime.IsZero() {
@@ -110,7 +109,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 	consensusParams.Timeout.Propose = tc.timeoutPropose
 	consensusParams.Synchrony = tc.synchronyParams
 
-	state, privVals := makeGenesisState(ctx, t, cfg, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, genesisStateArgs{
 		Params:     consensusParams,
 		Time:       tc.genesisTime,
 		Validators: validators,
@@ -137,7 +136,7 @@ func newPBTSTestHarness(ctx context.Context, t *testing.T, tc pbtsTestConfigurat
 		otherValidators:       vss[1:],
 		validatorClock:        clock,
 		currentHeight:         1,
-		chainID:               cfg.ChainID(),
+		chainID:               factory.DefaultTestChainID,
 		roundCh:               subscribe(ctx, t, cs.eventBus, types.EventQueryNewRound),
 		ensureProposalCh:      subscribe(ctx, t, cs.eventBus, types.EventQueryCompleteProposal),
 		blockCh:               subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock),

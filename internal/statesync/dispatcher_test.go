@@ -114,7 +114,7 @@ func TestDispatcherTimeOutWaitingOnLightBlock(t *testing.T) {
 func TestDispatcherProviders(t *testing.T) {
 	t.Cleanup(leaktest.Check(t))
 
-	chainID := "test-chain"
+	chainID := factory.DefaultTestChainID
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

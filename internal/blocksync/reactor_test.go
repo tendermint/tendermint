@@ -2,7 +2,6 @@ package blocksync
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
@@ -253,12 +251,8 @@ func TestReactor_AbruptDisconnect(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(cfg.RootDir)
-
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	genDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(64)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
@@ -293,12 +287,8 @@ func TestReactor_SyncTime(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(cfg.RootDir)
-
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	genDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(101)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
@@ -321,12 +311,8 @@ func TestReactor_NoBlockResponse(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(cfg.RootDir)
-
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	genDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 	maxBlockHeight := int64(65)
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0})
@@ -373,13 +359,9 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	cfg, err := config.ResetTestRoot(t.TempDir(), "block_sync_reactor_test")
-	require.NoError(t, err)
-	defer os.RemoveAll(cfg.RootDir)
-
 	maxBlockHeight := int64(48)
 	valSet, privVals := factory.ValidatorSet(ctx, t, 1, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	genDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 
 	rts := setup(ctx, t, genDoc, privVals[0], []int64{maxBlockHeight, 0, 0, 0, 0})
 
@@ -414,7 +396,7 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 	// XXX: This causes a potential race condition.
 	// See: https://github.com/tendermint/tendermint/issues/6005
 	valSet, otherPrivVals := factory.ValidatorSet(ctx, t, 1, 30)
-	otherGenDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	otherGenDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 	newNode := rts.network.MakeNode(ctx, t, p2ptest.NodeOptions{
 		MaxPeers:     uint16(len(rts.nodes) + 1),
 		MaxConnected: uint16(len(rts.nodes) + 1),
@@ -445,35 +427,3 @@ func TestReactor_BadBlockStopsPeer(t *testing.T) {
 		len(rts.reactors[newNode.NodeID].pool.peers),
 	)
 }
-
-/*
-func TestReactorReceivesNoExtendedCommit(t *testing.T) {
-	blockDB := dbm.NewMemDB()
-	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
-	blockStore := store.NewBlockStore(blockDB)
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		log.NewNopLogger(),
-		rts.app[nodeID],
-		mp,
-		sm.EmptyEvidencePool{},
-		blockStore,
-		eventbus,
-		sm.NopMetrics(),
-	)
-	NewReactor(
-		log.NewNopLogger(),
-		stateStore,
-		blockExec,
-		blockStore,
-		nil,
-		chCreator,
-		func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
-		rts.blockSync,
-		consensus.NopMetrics(),
-		nil, // eventbus, can be nil
-	)
-
-}
-*/

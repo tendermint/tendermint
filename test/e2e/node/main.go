@@ -7,11 +7,9 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
@@ -293,23 +291,9 @@ func setupNode() (*config.Config, log.Logger, error) {
 		return nil, nil, errors.New("TMHOME not set")
 	}
 
-	viper.AddConfigPath(filepath.Join(home, "config"))
-	viper.SetConfigName("config")
-
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, nil, err
-	}
-
-	tmcfg = config.DefaultConfig()
-
-	if err := viper.Unmarshal(tmcfg); err != nil {
-		return nil, nil, err
-	}
-
-	tmcfg.SetRoot(home)
-
-	if err := tmcfg.ValidateBasic(); err != nil {
-		return nil, nil, fmt.Errorf("error in config file: %w", err)
+	tmcfg, err := config.Load(home)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loading node config: %w", err)
 	}
 
 	nodeLogger, err := log.NewDefaultLogger(tmcfg.LogFormat, tmcfg.LogLevel)

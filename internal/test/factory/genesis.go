@@ -3,12 +3,11 @@ package factory
 import (
 	"time"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 )
 
 func GenesisDoc(
-	config *cfg.Config,
+	chainID string,
 	time time.Time,
 	validators []*types.Validator,
 	consensusParams *types.ConsensusParams,
@@ -26,7 +25,7 @@ func GenesisDoc(
 	return &types.GenesisDoc{
 		GenesisTime:     time,
 		InitialHeight:   1,
-		ChainID:         config.ChainID(),
+		ChainID:         chainID,
 		Validators:      genesisValidators,
 		ConsensusParams: consensusParams,
 	}

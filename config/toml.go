@@ -8,6 +8,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/spf13/viper"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 )
@@ -47,6 +49,33 @@ func EnsureRoot(rootDir string) {
 // This function is called by cmd/tendermint/commands/init.go
 func WriteConfigFile(rootDir string, config *Config) error {
 	return config.WriteToTemplate(filepath.Join(rootDir, defaultConfigFilePath))
+}
+
+// Load uses viper to attempt to load the tendermint config given the root directory.
+func Load(rootDir string) (*Config, error) {
+	// name of config file (without extension)
+	viper.SetConfigName("config")
+	// search root directory
+	viper.AddConfigPath(rootDir)
+	// search root directory /config
+	viper.AddConfigPath(filepath.Join(rootDir, defaultConfigDir))
+
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+
+	var config = DefaultConfig()
+	if err := viper.Unmarshal(config); err != nil {
+		return nil, err
+	}
+
+	config.SetRoot(config.RootDir)
+
+	if err := config.ValidateBasic(); err != nil {
+		return nil, fmt.Errorf("error in config file: %w", err)
+	}
+	return config, nil
 }
 
 // WriteToTemplate writes the config to the exact file specified by
@@ -579,7 +608,7 @@ func ResetTestRootWithChainID(dir, testName string, chainID string) (*Config, er
 
 	if !tmos.FileExists(genesisFilePath) {
 		if chainID == "" {
-			chainID = "tendermint_test"
+			chainID = factory.DefaultTestChainID
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
 		if err := writeFile(genesisFilePath, []byte(testGenesis), 0644); err != nil {

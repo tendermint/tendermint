@@ -8,6 +8,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light"
 	httpp "github.com/tendermint/tendermint/light/provider/http"
@@ -39,7 +40,7 @@ func TestExampleClient(t *testing.T) {
 	defer func() { _ = closer(ctx) }()
 
 	dbDir := t.TempDir()
-	chainID := conf.ChainID()
+	chainID := factory.DefaultTestChainID
 
 	primary, err := httpp.New(chainID, conf.RPC.ListenAddress)
 	if err != nil {

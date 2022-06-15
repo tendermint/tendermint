@@ -364,7 +364,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	ensureNewProposal(t, proposalCh, height, round)
 	rs := css[0].GetRoundState()
 
-	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, factory.DefaultTestChainID,
 		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 
@@ -388,7 +388,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	proposal := types.NewProposal(vss[1].Height, round, -1, blockID, propBlock.Header.Time)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(ctx, cfg.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(ctx, factory.DefaultTestChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -399,7 +399,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, factory.DefaultTestChainID,
 		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -422,7 +422,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	proposal = types.NewProposal(vss[2].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(ctx, cfg.ChainID(), p); err != nil {
+	if err := vss[2].SignProposal(ctx, factory.DefaultTestChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -433,7 +433,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	}
 	ensureNewProposal(t, proposalCh, height, round)
 	rs = css[0].GetRoundState()
-	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, sim.Config.ChainID(),
+	signAddVotes(ctx, t, css[0], tmproto.PrecommitType, factory.DefaultTestChainID,
 		types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 		vss[1:nVals]...)
 	ensureNewRound(t, newRoundCh, height+1, 0)
@@ -485,7 +485,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
-	if err := vss[3].SignProposal(ctx, cfg.ChainID(), p); err != nil {
+	if err := vss[3].SignProposal(ctx, factory.DefaultTestChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -506,7 +506,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			continue
 		}
 		signAddVotes(ctx, t, css[0],
-			tmproto.PrecommitType, sim.Config.ChainID(),
+			tmproto.PrecommitType, factory.DefaultTestChainID,
 			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 			newVss[i])
 	}
@@ -531,7 +531,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			continue
 		}
 		signAddVotes(ctx, t, css[0],
-			tmproto.PrecommitType, sim.Config.ChainID(),
+			tmproto.PrecommitType, factory.DefaultTestChainID,
 			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 			newVss[i])
 	}
@@ -556,7 +556,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	require.NotEqual(t, -1, selfIndex)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID, propBlock.Header.Time)
 	p = proposal.ToProto()
-	if err := vss[1].SignProposal(ctx, cfg.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(ctx, factory.DefaultTestChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -572,7 +572,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			continue
 		}
 		signAddVotes(ctx, t, css[0],
-			tmproto.PrecommitType, sim.Config.ChainID(),
+			tmproto.PrecommitType, factory.DefaultTestChainID,
 			types.BlockID{Hash: rs.ProposalBlock.Hash(), PartSetHeader: rs.ProposalBlockParts.Header()},
 			newVss[i])
 	}

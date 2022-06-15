@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	DefaultTestChainID = "test-chain"
+	DefaultTestChainID = "test_chain"
 )
 
 var (

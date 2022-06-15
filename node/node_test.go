@@ -174,7 +174,7 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	signerServer := privval.NewSignerServer(
 		dialerEndpoint,
-		cfg.ChainID(),
+		factory.DefaultTestChainID,
 		types.NewMockPV(),
 	)
 
@@ -238,7 +238,7 @@ func TestNodeSetPrivValIPC(t *testing.T) {
 
 	pvsc := privval.NewSignerServer(
 		dialerEndpoint,
-		cfg.ChainID(),
+		factory.DefaultTestChainID,
 		types.NewMockPV(),
 	)
 
@@ -760,15 +760,13 @@ func loadStatefromGenesis(ctx context.Context, t *testing.T) sm.State {
 
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB)
-	cfg, err := config.ResetTestRoot(t.TempDir(), "load_state_from_genesis")
-	require.NoError(t, err)
 
 	loadedState, err := stateStore.Load()
 	require.NoError(t, err)
 	require.True(t, loadedState.IsEmpty())
 
 	valSet, _ := factory.ValidatorSet(ctx, t, 0, 10)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	genDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 
 	state, err := loadStateFromDBOrGenesisDocProvider(
 		stateStore,
