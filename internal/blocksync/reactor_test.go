@@ -455,13 +455,13 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(cfg.RootDir)
 
-	valSet, privVals := factory.ValidatorSet(ctx, t, 4, 30)
+	valSet, privVals := factory.ValidatorSet(ctx, t, 3, 30)
 	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
 	// Has to be 100 + the max starting height because we calculate the sync rate based on every 100 blocks processed
 	// Otherwise the test will time out
 	maxBlockHeight := int64(151)
 
-	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 2, 50, 0})
+	rts := setup(ctx, t, genDoc, privVals, []int64{maxBlockHeight, 2, 50})
 	require.Equal(t, maxBlockHeight, rts.reactors[rts.nodes[0]].store.Height())
 	rts.start(ctx, t)
 
@@ -469,16 +469,16 @@ func TestReactor_NonGenesisSync(t *testing.T) {
 		t,
 		func() bool {
 			matching := true
-			for idx := range rts.nodes {
+			for idx, node := range rts.nodes {
 				if idx == 0 {
 					continue
 				}
-				matching = matching && rts.reactors[rts.nodes[idx]].GetRemainingSyncTime() > time.Nanosecond &&
-					rts.reactors[rts.nodes[idx]].pool.getLastSyncRate() > 0.0001
+				matching = matching && rts.reactors[node].GetRemainingSyncTime() > time.Nanosecond &&
+					rts.reactors[node].pool.getLastSyncRate() > 0.0001
 
 				// if !matching {
-				// 	height, _, _ := rts.reactors[rts.nodes[idx]].pool.GetStatus()
-				// //	t.Logf("%d %d %s %f", height, idx, rts.reactors[rts.nodes[idx]].GetRemainingSyncTime(), rts.reactors[rts.nodes[idx]].pool.getLastSyncRate())
+				// 	height, _, _ := rts.reactors[node].pool.GetStatus()
+				// 	t.Logf("%d %d %s %f", height, idx, rts.reactors[node].GetRemainingSyncTime(), rts.reactors[node].pool.getLastSyncRate())
 				// }
 			}
 			return matching
