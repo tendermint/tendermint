@@ -35,14 +35,12 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	baseConfig := configSetup(t)
-
 	config, err := ResetConfig(t.TempDir(), "consensus_mempool_txs_available_test")
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
 		Params:     factory.ConsensusParams()})
@@ -61,7 +59,6 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
-	baseConfig := configSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -70,7 +67,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
-	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
 		Params:     factory.ConsensusParams()})
@@ -87,7 +84,6 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 }
 
 func TestMempoolProgressInHigherRound(t *testing.T) {
-	baseConfig := configSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -96,7 +92,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
 		Params:     factory.ConsensusParams()})
@@ -150,7 +146,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 
 	config := configSetup(t)
 	logger := log.NewNopLogger()
-	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
 		Params:     factory.ConsensusParams(),
@@ -188,7 +184,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	state, privVals := makeGenesisState(ctx, t, config, genesisStateArgs{
+	state, privVals := makeGenesisState(ctx, t, genesisStateArgs{
 		Validators: 1,
 		Power:      10,
 		Params:     factory.ConsensusParams()})

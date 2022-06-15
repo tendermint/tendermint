@@ -444,14 +444,12 @@ func TestReactorWithEvidence(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	cfg := configSetup(t)
-
 	n := 2
 	testName := "consensus_reactor_test"
 	tickerFunc := newMockTickerFunc(true)
 
 	valSet, privVals := factory.ValidatorSet(ctx, t, n, 30)
-	genDoc := factory.GenesisDoc(cfg, time.Now(), valSet.Validators, factory.ConsensusParams())
+	genDoc := factory.GenesisDoc(factory.DefaultTestChainID, time.Now(), valSet.Validators, factory.ConsensusParams())
 	states := make([]*State, n)
 	logger := consensusLogger()
 
@@ -493,7 +491,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % n
 
-		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 1, defaultTestTime, privVals[vIdx], cfg.ChainID())
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 1, defaultTestTime, privVals[vIdx], factory.DefaultTestChainID)
 		require.NoError(t, err)
 		evpool := &statemocks.EvidencePool{}
 		evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)

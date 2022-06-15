@@ -72,7 +72,7 @@ func Migrate(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error
 		"evidence",
 	}
 	for _, node := range testnet.Nodes {
-		 if strings.HasPrefix(testnet.Version, "v0.34") && version.TMVersion > "v0.35" {
+		if strings.HasPrefix(testnet.Version, "v0.34") && version.TMVersion > "v0.35" {
 			for _, store := range stores {
 				db, err := node.DB(store)
 				if err != nil {
@@ -90,7 +90,7 @@ func Migrate(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error
 					}
 				}
 			}
-		 }
+		}
 
 	}
 	return nil

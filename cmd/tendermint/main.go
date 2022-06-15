@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 
+	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/node"
 )
@@ -15,14 +15,23 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf, err := commands.ParseConfig(config.DefaultConfig())
+	homeDir := viper.GetString(commands.HomeFlag)
+	viper.Set(commands.HomeFlag, homeDir)
+
+	conf, err := config.Load(homeDir)
 	if err != nil {
 		panic(err)
 	}
 
+	config.EnsureRoot(conf.RootDir)
+
 	logger, err := log.NewDefaultLogger(conf.LogFormat, conf.LogLevel)
 	if err != nil {
 		panic(err)
+	}
+
+	if warning := conf.DeprecatedFieldWarning(); warning != nil {
+		logger.Info("WARNING", "deprecated field warning", warning)
 	}
 
 	rcmd := commands.RootCommand(conf, logger)
@@ -60,7 +69,7 @@ func main() {
 	// Create & start node
 	rcmd.AddCommand(commands.NewRunNodeCmd(nodeFunc, conf, logger))
 
-	if err := cli.RunWithTrace(ctx, rcmd); err != nil {
+	if err := commands.RunWithTrace(ctx, rcmd); err != nil {
 		panic(err)
 	}
 }

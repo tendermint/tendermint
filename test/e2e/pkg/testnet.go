@@ -493,7 +493,7 @@ func (n Node) DB(name string) (dbm.DB, error) {
 	return dbm.NewDB(name, dbType, filepath.Join(n.Dir(), "data"))
 }
 
-func (n Node) Dir() string { 
+func (n Node) Dir() string {
 	return filepath.Join(n.Testnet.Dir, n.Name)
 }
 

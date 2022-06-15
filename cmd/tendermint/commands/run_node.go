@@ -116,7 +116,7 @@ func NewRunNodeCmd(nodeProvider cfg.ServiceProvider, conf *cfg.Config, logger lo
 				return fmt.Errorf("failed to start node: %w", err)
 			}
 
-			logger.Info("started node", "chain", conf.ChainID())
+			logger.Info("started node")
 
 			<-ctx.Done()
 			return nil

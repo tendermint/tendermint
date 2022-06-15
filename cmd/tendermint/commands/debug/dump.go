@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 )
@@ -63,7 +63,7 @@ if enabled.`,
 
 			ctx := cmd.Context()
 
-			home := viper.GetString(cli.HomeFlag)
+			home := viper.GetString(commands.HomeFlag)
 			conf := config.DefaultConfig()
 			conf = conf.SetRoot(home)
 			config.EnsureRoot(conf.RootDir)

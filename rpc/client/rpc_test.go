@@ -22,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/mempool"
 	rpccore "github.com/tendermint/tendermint/internal/rpc/core"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/libs/service"
@@ -518,14 +519,12 @@ func TestClientMethodCalls(t *testing.T) {
 					ctx, cancel := context.WithCancel(context.Background())
 					defer cancel()
 
-					chainID := conf.ChainID()
-
 					// make sure that the node has produced enough blocks
 					waitForBlock(ctx, t, c, 2)
 					evidenceHeight := int64(1)
 					block, _ := c.Block(ctx, &evidenceHeight)
 					ts := block.Block.Time
-					correct, fakes := makeEvidences(t, pv, chainID, ts)
+					correct, fakes := makeEvidences(t, pv, factory.DefaultTestChainID, ts)
 
 					result, err := c.BroadcastEvidence(ctx, correct)
 					require.NoError(t, err, "BroadcastEvidence(%s) failed", correct)

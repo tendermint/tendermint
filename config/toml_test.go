@@ -18,9 +18,12 @@ func ensureFiles(t *testing.T, rootDir string, files ...string) {
 	}
 }
 
-func TestEnsureRoot(t *testing.T) {
+func TestWriteAndReadConfig(t *testing.T) {
 	// setup temp dir for test
 	tmpDir := t.TempDir()
+
+	_, err := Load(tmpDir)
+	require.Error(t, err)
 
 	// create root dir
 	EnsureRoot(tmpDir)
@@ -34,6 +37,11 @@ func TestEnsureRoot(t *testing.T) {
 	checkConfig(t, string(data))
 
 	ensureFiles(t, tmpDir, "data")
+
+	cfg, err := Load(tmpDir)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	require.Equal(t, tmpDir, cfg.RootDir)
 }
 
 func TestEnsureTestRoot(t *testing.T) {
