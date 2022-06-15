@@ -128,7 +128,9 @@ type PeerManagerOptions struct {
 
 	// MaxOutgoingConnections specifies how many outgoing
 	// connections. It must be lower than MaxConnected. If it is
-	// 0, then all connections can be outgoing.
+	// 0, then all connections can be outgoing. Once this limit is
+	// reached, the node will not dial peers, allowing the
+	// remaining peer connections to be used by incoming connections.
 	MaxOutgoingConnections uint16
 
 	// MaxConnectedUpgrade is the maximum number of additional connections to
@@ -590,8 +592,6 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 
 // DialFailed reports a failed dial attempt. This will make the peer available
 // for dialing again when appropriate (possibly after a retry timeout).
-//
-// FIXME: This should probably delete or mark bad addresses/peers after some time.
 func (m *PeerManager) DialFailed(address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -615,11 +615,12 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
 
+	// If a dial fails more than MaxFailedDialAttempts we should
+	// mark it inactive and not attempt to dial it again.
 	var totalDialFailures uint32
 	for _, addr := range peer.AddressInfo {
 		totalDialFailures += addr.DialFailures
 	}
-
 	if m.options.MaxFailedDialAttempts > 0 && totalDialFailures > m.options.MaxFailedDialAttempts {
 		peer.Inactive = true
 		m.metrics.PeersInactivated.Add(1)
@@ -904,6 +905,9 @@ func (m *PeerManager) Errored(peerID types.NodeID, err error) {
 	m.evictWaker.Wake()
 }
 
+// Inactivate marks a peer as inactive which means we won't attempt to
+// dial this peer again. A peer can be reactivated by successfully
+// dialing and connecting to the node.
 func (m *PeerManager) Inactivate(peerID types.NodeID) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
