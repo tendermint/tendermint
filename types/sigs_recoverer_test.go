@@ -145,7 +145,7 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 
 func mockVoteExtensions(t *testing.T, pairs ...interface{}) []VoteExtension {
 	if len(pairs)%2 != 0 {
-		t.Fatalf("the pairs lentght must be even")
+		t.Fatalf("the pairs length must be even")
 	}
 	exts := make([]VoteExtension, len(pairs)/2)
 	for i := 0; i < len(pairs); i += 2 {
