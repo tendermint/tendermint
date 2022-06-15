@@ -7,17 +7,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-
-	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/txindex"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 const credsEnvVar = "GOOGLE_APPLICATION_CREDENTIALS"
-
-var (
-	_ indexer.BlockIndexer = (*EventSink)(nil)
-	_ txindex.TxIndexer    = (*EventSink)(nil)
-)
 
 type EventSink struct {
 	client  *pubsub.Client
@@ -41,4 +35,12 @@ func NewEventSink(connStr, chainID string) (*EventSink, error) {
 		client:  c,
 		chainID: chainID,
 	}, nil
+}
+
+func (es *EventSink) IndexBlock(h types.EventDataNewBlockHeader) error {
+	panic("implement me!")
+}
+
+func (es *EventSink) IndexTxs(txrs []*abci.TxResult) error {
+	panic("implement me!")
 }
