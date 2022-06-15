@@ -22,6 +22,10 @@ type BlockIndexer struct {
 	sink *EventSink
 }
 
+func NewBlockIndexer(sink *EventSink) *BlockIndexer {
+	return &BlockIndexer{sink: sink}
+}
+
 func (bi *BlockIndexer) Has(_ int64) (bool, error) {
 	return false, errors.New("the Has method is not supported for the Pubsub indexer")
 }
@@ -38,6 +42,10 @@ func (bi *BlockIndexer) Index(block types.EventDataNewBlockHeader) error {
 // indexing by implementing the txindex.TxIndexer interface.
 type TxIndexer struct {
 	sink *EventSink
+}
+
+func NewTxIndexer(sink *EventSink) *TxIndexer {
+	return &TxIndexer{sink: sink}
 }
 
 func (ti *TxIndexer) AddBatch(batch *txindex.Batch) error {
