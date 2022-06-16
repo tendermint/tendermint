@@ -11,7 +11,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const credsEnvVar = "GOOGLE_APPLICATION_CREDENTIALS"
+const (
+	credsEnvVar = "GOOGLE_APPLICATION_CREDENTIALS"
+
+	MsgTypeBlock       = "block"
+	MsgTypeTxResult    = "tx_result"
+	MsgTypeTxEvents    = "tx_events"
+	MsgTypeBlockEvents = "block_events"
+)
 
 type EventSink struct {
 	client  *pubsub.Client
