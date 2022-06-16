@@ -1006,7 +1006,7 @@ RETRY:
 					// peers is.
 
 					// nolint:gosec // G404: Use of weak random number generator
-					if len(ranked) <= int(limit) || rand.Intn((idx+1)*2) <= idx {
+					if len(ranked) <= int(limit) || rand.Intn((idx+1)*2) <= idx+1 {
 						seenAddresses[addressInfo.Address] = struct{}{}
 						addresses = append(addresses, addressInfo.Address)
 						addedLastIteration = true
