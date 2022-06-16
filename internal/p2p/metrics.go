@@ -42,7 +42,7 @@ type Metrics struct {
 	PeerPendingSendBytes metrics.Gauge
 
 	// Number of successful connection attempts
-	PeersConnectedSuccuess metrics.Counter
+	PeersConnectedSuccess metrics.Counter
 	// Number of failed connection attempts
 	PeersConnectedFailure metrics.Counter
 
@@ -104,7 +104,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peers_inactivated",
 			Help:      "Number of peers inactivated",
 		}, labels).With(labelsAndValues...),
-		PeersConnectedSuccuess: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		PeersConnectedSuccess: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers_connected_success",
@@ -195,7 +195,7 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		PeersConnected:         discard.NewGauge(),
 		PeersStored:            discard.NewGauge(),
-		PeersConnectedSuccuess: discard.NewCounter(),
+		PeersConnectedSuccess:  discard.NewCounter(),
 		PeersConnectedFailure:  discard.NewCounter(),
 		PeersConnectedIncoming: discard.NewGauge(),
 		PeersConnectedOutgoing: discard.NewGauge(),

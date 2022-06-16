@@ -645,7 +645,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	m.metrics.PeersConnectedSuccuess.Add(1)
+	m.metrics.PeersConnectedSuccess.Add(1)
 
 	delete(m.dialing, address.NodeID)
 
