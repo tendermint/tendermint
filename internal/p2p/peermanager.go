@@ -593,8 +593,6 @@ func (m *PeerManager) DialFailed(ctx context.Context, address NodeAddress) error
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
 
-	// TODO: maybe mark peers inactive if we can't dial them
-	//
 	// // If a dial fails more than MaxFailedDialAttempts we should
 	// // mark it inactive and not attempt to dial it again.
 	// var totalDialFailures uint32
@@ -1009,10 +1007,6 @@ RETRY:
 			break RETRY
 		}
 	}
-
-	rand.Shuffle(len(addresses), func(i, j int) {
-		addresses[i], addresses[j] = addresses[j], addresses[i]
-	})
 
 	return addresses
 }
