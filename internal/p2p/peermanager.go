@@ -109,7 +109,7 @@ type PeerManagerOptions struct {
 	MaxConnected uint16
 
 	// MaxOutgoingConnections specifies how many outgoing
-	// connections. It must be lower than MaxConnected. If it is
+	// connections a node will maintain. It must be lower than MaxConnected. If it is
 	// 0, then all connections can be outgoing. Once this limit is
 	// reached, the node will not dial peers, allowing the
 	// remaining peer connections to be used by incoming connections.
