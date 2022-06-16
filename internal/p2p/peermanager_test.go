@@ -1766,6 +1766,7 @@ func TestPeerManager_Advertise(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 
+	require.Len(t, peerManager.Advertise(dID, 100), 6)
 	// d should get all addresses.
 	require.ElementsMatch(t, []p2p.NodeAddress{
 		aTCP, aMem, bTCP, bMem, cTCP, cMem,
