@@ -135,7 +135,7 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 // example: types.VoteExtensionType_DEFAULT, "defailt", types.VoteExtensionType_THRESHOLD_RECOVER, "threshold"
 func mockVoteExtensions(t *testing.T, pairs ...interface{}) VoteExtensions {
 	if len(pairs)%2 != 0 {
-		t.Fatalf("the pairs lentght must be even")
+		t.Fatalf("the pairs length must be even")
 	}
 	ve := make(VoteExtensions)
 	for i := 0; i < len(pairs); i += 2 {

@@ -104,7 +104,7 @@ func (vs *validatorStub) signVote(
 	lastAppHash []byte,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	exts types.VoteExtensions) (*types.Vote, error) {
+	voteExtensions types.VoteExtensions) (*types.Vote, error) {
 
 	proTxHash, err := vs.PrivValidator.GetProTxHash(ctx)
 	if err != nil {
@@ -118,7 +118,7 @@ func (vs *validatorStub) signVote(
 		BlockID:            blockID,
 		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     vs.Index,
-		VoteExtensions:     exts,
+		VoteExtensions:     voteExtensions,
 	}
 
 	stateID := types.StateID{

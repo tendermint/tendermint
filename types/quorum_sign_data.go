@@ -26,7 +26,7 @@ func (q QuorumSignData) Verify(pubKey crypto.PubKey, signs QuorumSigns) error {
 	return NewQuorumSingsVerifier(q).Verify(pubKey, signs)
 }
 
-// SignItem represents quorum sing data, like a request id, message bytes, sha256 hash of message and signID
+// SignItem represents quorum sign data, like a request id, message bytes, sha256 hash of message and signID
 type SignItem struct {
 	ReqID []byte
 	ID    []byte
