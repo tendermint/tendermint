@@ -41,8 +41,7 @@ const (
 type peerConnectionDirection int
 
 const (
-	peerConnectionInvalid peerConnectionDirection = iota
-	peerConnectionIncoming
+	peerConnectionIncoming peerConnectionDirection = iota + 1
 	peerConnectionOutgoing
 )
 
@@ -457,8 +456,6 @@ func (m *PeerManager) getConnectedInfo() connectionStats {
 			out.incoming++
 		case peerConnectionOutgoing:
 			out.outgoing++
-		case peerConnectionInvalid:
-			continue
 		}
 	}
 	return out
