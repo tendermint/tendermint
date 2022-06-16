@@ -1371,48 +1371,47 @@ func (s *peerStore) Ranked() []*peerInfo {
 	}
 	sort.Slice(s.ranked, func(i, j int) bool {
 		return s.ranked[i].Score() > s.ranked[j].Score()
-		// TODO: reevaluate more wholistic sorting.
-		// nolint: govet
+		// TODO: reevaluate more wholistic sorting, perhaps as follows:
 
-		// sort inactive peers after active peers
-		if s.ranked[i].Inactive && !s.ranked[j].Inactive {
-			return false
-		} else if !s.ranked[i].Inactive && s.ranked[j].Inactive {
-			return true
-		}
+		// // sort inactive peers after active peers
+		// if s.ranked[i].Inactive && !s.ranked[j].Inactive {
+		// 	return false
+		// } else if !s.ranked[i].Inactive && s.ranked[j].Inactive {
+		// 	return true
+		// }
 
-		iLastDialed, iLastDialSuccess := s.ranked[i].LastDialed()
-		jLastDialed, jLastDialSuccess := s.ranked[j].LastDialed()
+		// iLastDialed, iLastDialSuccess := s.ranked[i].LastDialed()
+		// jLastDialed, jLastDialSuccess := s.ranked[j].LastDialed()
 
-		// sort peers who our most recent dialing attempt was
-		// successful ahead of peers with recent dialing
-		// failures
-		switch {
-		case iLastDialSuccess && jLastDialSuccess:
-			// if both peers were (are?) successfully
-			// connected, convey their score, but give the
-			// one we dialed successfully most recently a bonus
+		// // sort peers who our most recent dialing attempt was
+		// // successful ahead of peers with recent dialing
+		// // failures
+		// switch {
+		// case iLastDialSuccess && jLastDialSuccess:
+		// 	// if both peers were (are?) successfully
+		// 	// connected, convey their score, but give the
+		// 	// one we dialed successfully most recently a bonus
 
-			iScore := s.ranked[i].Score()
-			jScore := s.ranked[j].Score()
-			if jLastDialed.Before(iLastDialed) {
-				jScore++
-			} else {
-				iScore++
-			}
+		// 	iScore := s.ranked[i].Score()
+		// 	jScore := s.ranked[j].Score()
+		// 	if jLastDialed.Before(iLastDialed) {
+		// 		jScore++
+		// 	} else {
+		// 		iScore++
+		// 	}
 
-			return iScore > jScore
-		case iLastDialSuccess:
-			return true
-		case jLastDialSuccess:
-			return false
-		default:
-			// if both peers were not successful in their
-			// most recent dialing attempt, fall back to
-			// peer score.
+		// 	return iScore > jScore
+		// case iLastDialSuccess:
+		// 	return true
+		// case jLastDialSuccess:
+		// 	return false
+		// default:
+		// 	// if both peers were not successful in their
+		// 	// most recent dialing attempt, fall back to
+		// 	// peer score.
 
-			return s.ranked[i].Score() > s.ranked[j].Score()
-		}
+		// 	return s.ranked[i].Score() > s.ranked[j].Score()
+		// }
 	})
 	return s.ranked
 }
