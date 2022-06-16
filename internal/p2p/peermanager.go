@@ -971,7 +971,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	// (limit), or we've added all known addresses, or we've tried
 	// at least 256 times and the last time we iterated over
 	// remaining addresses we added no new candidates.
-	for len(addresses) < int(limit) && (attempts < limit || !addedLastIteration) {
+	for len(addresses) < int(limit) && (attempts < (limit*2) || !addedLastIteration) {
 		attempts++
 		addedLastIteration = false
 
