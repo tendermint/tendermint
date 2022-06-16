@@ -989,6 +989,14 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 					}
 				} else {
 					seenAddresses[addressInfo.Address] = struct{}{}
+					// if the number of addresses
+					// is the same as the limit,
+					// we should remove private
+					// addresses from the limit so
+					// we can still return early.
+					if numAddresses == int(limit) {
+						limit--
+					}
 				}
 			}
 		}
