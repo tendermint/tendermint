@@ -575,7 +575,7 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 func (m *PeerManager) DialFailed(ctx context.Context, address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	m.metrics.PeerConnectionFailure.Add(1)
+	m.metrics.PeersConnectedFailure.Add(1)
 
 	delete(m.dialing, address.NodeID)
 	for from, to := range m.upgrading {
@@ -640,7 +640,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
-	m.metrics.PeerConnectionSuccess.Add(1)
+	m.metrics.PeersConnectedSuccess.Add(1)
 
 	delete(m.dialing, address.NodeID)
 

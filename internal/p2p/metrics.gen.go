@@ -50,16 +50,16 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peer_pending_send_bytes",
 			Help:      "Number of bytes pending being sent to a given peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
-		PeerConnectionSuccess: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		PeersConnectedSuccess: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "peer_connection_success",
+			Name:      "peers_connected_success",
 			Help:      "Number of successful connection attempts",
 		}, labels).With(labelsAndValues...),
-		PeerConnectionFailure: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		PeersConnectedFailure: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "peer_connection_failure",
+			Name:      "peers_connected_failure",
 			Help:      "Number failed connection attempts",
 		}, labels).With(labelsAndValues...),
 		PeersConnectedIncoming: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
@@ -115,8 +115,8 @@ func NopMetrics() *Metrics {
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
 		PeerPendingSendBytes:   discard.NewGauge(),
-		PeerConnectionSuccess:  discard.NewCounter(),
-		PeerConnectionFailure:  discard.NewCounter(),
+		PeersConnectedSuccess:  discard.NewCounter(),
+		PeersConnectedFailure:  discard.NewCounter(),
 		PeersConnectedIncoming: discard.NewGauge(),
 		PeersConnectedOutgoing: discard.NewGauge(),
 		RouterPeerQueueRecv:    discard.NewHistogram(),

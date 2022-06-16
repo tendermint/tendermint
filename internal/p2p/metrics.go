@@ -40,9 +40,9 @@ type Metrics struct {
 	PeerPendingSendBytes metrics.Gauge `metrics_labels:"peer_id"`
 
 	// Number of successful connection attempts
-	PeerConnectionSuccess metrics.Counter
+	PeersConnectedSuccess metrics.Counter
 	// Number failed connection attempts
-	PeerConnectionFailure metrics.Counter
+	PeersConnectedFailure metrics.Counter
 
 	// Number of peers connected as a result of dialing the
 	// peer.
