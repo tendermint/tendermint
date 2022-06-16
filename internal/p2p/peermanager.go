@@ -953,17 +953,20 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	}
 
 	var numAddresses int
-	var attempts int
-
+	var totalScore int
 	ranked := m.store.Ranked()
 	seenAddresses := map[NodeAddress]struct{}{}
+	scores := map[types.NodeID]int{}
 
 	// get the total number of possible addresses
 	for _, peer := range ranked {
 		if peer.ID == peerID {
 			continue
 		}
+		score := int(peer.Score())
 
+		totalScore += score
+		scores[peer.ID] = score
 		for addr := range peer.AddressInfo {
 			if _, ok := m.options.PrivatePeers[addr.NodeID]; !ok {
 				numAddresses++
@@ -971,63 +974,62 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		}
 	}
 
-RETRY:
-	for {
+	var attempts int
+	var addedLastIteration bool
+
+	// if there
+	if numAddresses < int(limit) {
+		limit = uint16(numAddresses)
+	}
+
+	// collect addresses until we have the number requested
+	// (limit), or we've added all known addresses, or we've tried
+	// at least 256 times and the last time we iterated over
+	// remaining addresses we added no new candidates.
+	for len(addresses) < int(limit) && (attempts < 32 || !addedLastIteration) {
 		attempts++
-		addedLastIteration := false
-	ITERATION:
+		addedLastIteration = false
+
 		for idx, peer := range ranked {
 			if peer.ID == peerID {
-				continue ITERATION
+				continue
 			}
 
 			if len(addresses) >= int(limit) {
-				break RETRY
+				break
 			}
 
-		PEER:
 			for nodeAddr, addressInfo := range peer.AddressInfo {
 				if len(addresses) >= int(limit) {
-					break RETRY
+					break
 				}
 
+				// only look at each address once, by
+				// tracking a set of addresses seen
 				if _, ok := seenAddresses[addressInfo.Address]; ok {
-					continue PEER
+					continue
 				}
 
 				// only add non-private NodeIDs
 				if _, ok := m.options.PrivatePeers[nodeAddr.NodeID]; !ok {
-					// add the peer if the total
-					// number of ranked peers is
-					// will fit within the limit,
-					// and then with decreasing
-					// liklihood if the number the
-					// lower the priority of the
-					// peers is.
+					// add the peer if the total number of ranked addresses is
+					// will fit within the limit, or otherwise adding
+					// addresses based on a coin flip.
+
+					// the coinflip is based on the score, commonly, but
+					// 10% of the time we'll randomly insert a "loosing"
+					// peer.
 
 					// nolint:gosec // G404: Use of weak random number generator
-					if numAddresses <= int(limit) || rand.Intn((idx+1)*2) <= idx+1 {
-						seenAddresses[addressInfo.Address] = struct{}{}
+					if numAddresses <= int(limit) || rand.Intn(totalScore+1) <= int(scores[peer.ID]+1) || rand.Intn((idx+1)*10) <= idx+1 {
 						addresses = append(addresses, addressInfo.Address)
 						addedLastIteration = true
+						seenAddresses[addressInfo.Address] = struct{}{}
 					}
-
 				} else {
-					// skip private peers in future iterations
 					seenAddresses[addressInfo.Address] = struct{}{}
 				}
-
 			}
-		}
-
-		// once we have the required number of peers, we
-		// should stop.
-		if len(addresses) >= int(limit) {
-			break RETRY
-		}
-		// give up eventually
-		if attempts >= 32 && !addedLastIteration {
-			break RETRY
 		}
 	}
 
