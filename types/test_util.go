@@ -68,6 +68,9 @@ func signAddVoteForStateID(ctx context.Context, privVal PrivValidator, vote *Vot
 	if err != nil {
 		return false, err
 	}
-	vote.PopulateSignsFromProto(v)
+	err = vote.PopulateSignsFromProto(v)
+	if err != nil {
+		return false, err
+	}
 	return voteSet.AddVote(vote)
 }

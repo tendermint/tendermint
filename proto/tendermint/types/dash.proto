@@ -1,0 +1,30 @@
+syntax = "proto3";
+package tendermint.types;
+
+option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
+
+import "gogoproto/gogo.proto";
+
+// CoreChainLock represents a core chain lock for synchronization between state data and core chain
+message CoreChainLock {
+  option (gogoproto.equal) = true;
+  uint32 core_block_height = 1;
+  bytes  core_block_hash   = 2;
+  bytes  signature         = 3;
+}
+
+enum VoteExtensionType {
+  DEFAULT           = 0;
+  THRESHOLD_RECOVER = 1;
+}
+
+message VoteExtension {
+  VoteExtensionType type = 1;
+  bytes extension        = 2;
+  bytes signature        = 3;
+}
+
+message ThresholdVoteExtension {
+  bytes extension           = 1;
+  bytes threshold_signature = 2;
+}

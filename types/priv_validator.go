@@ -293,9 +293,9 @@ func (pv *MockPV) SignVote(
 	if err != nil {
 		return err
 	}
-	extensionsMap := ProtoVoteExtensionsToMap(vote.VoteExtensions)
+	protoExtensionsMap := vote.VoteExtensionsToMap()
 	for et, signs := range extSigns {
-		extensions := extensionsMap[et]
+		extensions := protoExtensionsMap[et]
 		for i, sign := range signs {
 			sign, err := privKey.SignDigest(sign.ID)
 			if err != nil {

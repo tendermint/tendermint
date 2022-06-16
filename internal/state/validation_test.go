@@ -237,9 +237,9 @@ func TestValidateBlockCommit(t *testing.T) {
 				wrongHeightVote.Round,
 				state.LastBlockID,
 				stateID,
-				&types.QuorumVoteSigns{
-					ThresholdVoteSigns: *thresholdSigns,
-					QuorumHash:         state.Validators.QuorumHash,
+				&types.CommitSigns{
+					QuorumSigns: *thresholdSigns,
+					QuorumHash:  state.Validators.QuorumHash,
 				},
 			)
 			block, err := statefactory.MakeBlock(state, height, wrongHeightCommit, nextChainLock, 0)
@@ -258,7 +258,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				t,
 				strings.HasPrefix(
 					err.Error(),
-					"error validating block: incorrect threshold block signature",
+					"error validating block: invalid commit signatures for quorum",
 				),
 				"expected error on block threshold signature at height %d, but got: %v",
 				height,
@@ -340,9 +340,9 @@ func TestValidateBlockCommit(t *testing.T) {
 
 		thresholdSigns, err := types.NewSignsRecoverer([]*types.Vote{badVote}).Recover()
 		require.NoError(t, err)
-		quorumSigns := &types.QuorumVoteSigns{
-			ThresholdVoteSigns: *thresholdSigns,
-			QuorumHash:         state.Validators.QuorumHash,
+		quorumSigns := &types.CommitSigns{
+			QuorumSigns: *thresholdSigns,
+			QuorumHash:  state.Validators.QuorumHash,
 		}
 		wrongVoteMessageSignedCommit = types.NewCommit(goodVote.Height, goodVote.Round,
 			blockID, stateID, quorumSigns)

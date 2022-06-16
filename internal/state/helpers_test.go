@@ -100,9 +100,9 @@ func makeValidCommit(
 		height, 0,
 		blockID,
 		stateID,
-		&types.QuorumVoteSigns{
-			ThresholdVoteSigns: *thresholdSigns,
-			QuorumHash:         vals.QuorumHash,
+		&types.CommitSigns{
+			QuorumSigns: *thresholdSigns,
+			QuorumHash:  vals.QuorumHash,
 		},
 	), votes
 }

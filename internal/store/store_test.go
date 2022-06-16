@@ -54,9 +54,9 @@ func makeTestCommit(state sm.State, height int64, timestamp time.Time) *types.Co
 	return types.NewCommit(height, 0,
 		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}},
 		types.StateID{LastAppHash: make([]byte, 32)},
-		&types.QuorumVoteSigns{
-			ThresholdVoteSigns: *thresholdSigns,
-			QuorumHash:         crypto.RandQuorumHash(),
+		&types.CommitSigns{
+			QuorumSigns: *thresholdSigns,
+			QuorumHash:  crypto.RandQuorumHash(),
 		},
 	)
 }

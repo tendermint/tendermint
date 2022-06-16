@@ -8,6 +8,7 @@ import "google/protobuf/timestamp.proto";
 import "tendermint/crypto/proof.proto";
 import "tendermint/version/types.proto";
 import "tendermint/types/validator.proto";
+import "tendermint/types/dash.proto";
 
 // BlockIdFlag indicates which BlockID the signature is for
 enum BlockIDFlag {
@@ -101,36 +102,12 @@ message Header {
   uint64 proposed_app_version = 102;  // proposer's latest available app protocol version
 }
 
-// CoreChainLock represents a core chain lock for synchronization between state data and core chain
-message CoreChainLock {
-  option (gogoproto.equal) = true;
-  uint32 core_block_height = 1;
-  bytes  core_block_hash   = 2;
-  bytes  signature         = 3;
-}
-
 // Data contains the set of transactions included in the block
 message Data {
   // Txs that will be applied by state @ block.Height+1.
   // NOTE: not all txs here are valid.  We're just agreeing on the order first.
   // This means that block.AppHash does not include these txs.
   repeated bytes txs = 1;
-}
-
-enum VoteExtensionType {
-  DEFAULT           = 0;
-  THRESHOLD_RECOVER = 1;
-}
-
-message VoteExtension {
-  VoteExtensionType type = 1;
-  bytes extension        = 2;
-  bytes signature        = 3;
-}
-
-message ThresholdVoteExtension {
-  bytes extension           = 1;
-  bytes threshold_signature = 2;
 }
 
 // Vote represents a prevote, precommit, or commit vote from validators for

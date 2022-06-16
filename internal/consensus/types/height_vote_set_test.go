@@ -90,7 +90,7 @@ func makeVoteHR(
 
 	vote.BlockSignature = v.BlockSignature
 	vote.StateSignature = v.StateSignature
-	vote.VoteExtensions.CopySignsFromProto(v.VoteExtensions)
+	vote.VoteExtensions.CopySignsFromProto(v.VoteExtensionsToMap())
 
 	return vote
 }

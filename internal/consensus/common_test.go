@@ -133,11 +133,17 @@ func (vs *validatorStub) signVote(
 
 	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
-		vs.lastVote.PopulateSignsToProto(v)
+		err = vs.lastVote.PopulateSignsToProto(v)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	vote.PopulateSignsFromProto(v)
-	return vote, err
+	err = vote.PopulateSignsFromProto(v)
+	if err != nil {
+		return nil, err
+	}
+	return vote, nil
 }
 
 // Sign vote for type/hash/header
@@ -1000,7 +1006,7 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 	if v1 == nil || v2 == nil {
 		return false
 	}
-	if v1.VoteExtensions.IsSameWithProto(v2.VoteExtensions) {
+	if v1.VoteExtensions.IsSameWithProto(v2.VoteExtensionsToMap()) {
 		return false
 	}
 	return v1.Type == v2.Type &&

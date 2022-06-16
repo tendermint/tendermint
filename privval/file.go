@@ -719,7 +719,7 @@ func (pv *FilePV) signVote(
 		} else {
 			return errors.New("conflicting data")
 		}
-		fillProtoVoteExtensionSigns(vote.VoteExtensions, extSigns)
+		fillProtoVoteExtensionSigns(vote.VoteExtensionsToMap(), extSigns)
 		return nil
 	}
 
@@ -751,7 +751,7 @@ func (pv *FilePV) signVote(
 
 	vote.BlockSignature = sigBlock
 	vote.StateSignature = sigState
-	fillProtoVoteExtensionSigns(vote.VoteExtensions, extSigns)
+	fillProtoVoteExtensionSigns(vote.VoteExtensionsToMap(), extSigns)
 
 	return nil
 }
@@ -833,8 +833,11 @@ func (pv *FilePV) saveSigned(
 	return pv.LastSignState.Save()
 }
 
-func fillProtoVoteExtensionSigns(voteExtensions []*tmproto.VoteExtension, signs map[tmproto.VoteExtensionType][]tmbytes.HexBytes) {
-	for et, extensions := range types.ProtoVoteExtensionsToMap(voteExtensions) {
+func fillProtoVoteExtensionSigns(
+	voteExtensions map[tmproto.VoteExtensionType][]*tmproto.VoteExtension,
+	signs map[tmproto.VoteExtensionType][]tmbytes.HexBytes,
+) {
+	for et, extensions := range voteExtensions {
 		for i, ext := range extensions {
 			ext.Signature = signs[et][i]
 		}

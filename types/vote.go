@@ -3,14 +3,12 @@ package types
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/rs/zerolog"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	"github.com/tendermint/tendermint/internal/libs/protoio"
@@ -92,214 +90,6 @@ type Vote struct {
 	VoteExtensions     VoteExtensions        `json:"vote_extensions"`
 }
 
-// PopulateSignsFromProto updates the signatures of the current Vote with values are taken from the Vote's protobuf
-func (vote *Vote) PopulateSignsFromProto(pv *tmproto.Vote) {
-	vote.BlockSignature = pv.BlockSignature
-	vote.StateSignature = pv.StateSignature
-	// TODO add validation: check the length of pv and domain
-	vote.VoteExtensions.CopySignsFromProto(pv.VoteExtensions)
-}
-
-// PopulateSignsToProto updates the signatures of the given protobuf Vote entity with values are taken from the current Vote's
-func (vote *Vote) PopulateSignsToProto(pv *tmproto.Vote) {
-	pv.BlockSignature = vote.BlockSignature
-	pv.StateSignature = vote.StateSignature
-	// TODO add validation: check the length of pv and domain
-	vote.VoteExtensions.CopySignsToProto(pv.VoteExtensions)
-}
-
-// GetVoteExtensionsSigns returns the list of signatures for given vote-extension type
-func (vote *Vote) GetVoteExtensionsSigns(extType tmproto.VoteExtensionType) [][]byte {
-	if vote.VoteExtensions == nil {
-		return nil
-	}
-	sigs := make([][]byte, len(vote.VoteExtensions[extType]))
-	for i, ext := range vote.VoteExtensions[extType] {
-		sigs[i] = ext.Signature
-	}
-	return sigs
-}
-
-// VoteExtensions is a container where the key is vote-extension type and value is a list of VoteExtension
-type VoteExtensions map[tmproto.VoteExtensionType][]VoteExtension
-
-// NewVoteExtensionsFromABCIExtended returns vote-extensions container for given ExtendVoteExtension
-func NewVoteExtensionsFromABCIExtended(exts []*abci.ExtendVoteExtension) VoteExtensions {
-	voteExtensions := make(VoteExtensions)
-	for _, ext := range exts {
-		voteExtensions.Add(ext.Type, ext.Extension)
-	}
-	return voteExtensions
-}
-
-// Add creates and adds VoteExtension into a container by vote-extension type
-func (e VoteExtensions) Add(t tmproto.VoteExtensionType, ext []byte) {
-	e[t] = append(e[t], VoteExtension{Extension: ext})
-}
-
-// Validate returns error if an added vote-extension is invalid
-func (e VoteExtensions) Validate() error {
-	for ext := range e.iter() {
-		if len(ext.Extension) > 0 && len(ext.Signature) == 0 {
-			return errors.New("vote extension signature is missing")
-		}
-		if len(ext.Signature) > SignatureSize {
-			return fmt.Errorf("vote extension signature is too big (max: %d)", SignatureSize)
-		}
-	}
-	return nil
-}
-
-// IsEmpty returns true if a vote-extension container is empty, otherwise false
-func (e VoteExtensions) IsEmpty() bool {
-	for _, exts := range e {
-		if len(exts) > 0 {
-			return false
-		}
-	}
-	return true
-}
-
-// ToProto transforms the current state of vote-extension container into VoteExtensions's protobuf
-func (e VoteExtensions) ToProto() []*tmproto.VoteExtension {
-	extensions := make([]*tmproto.VoteExtension, 0) // TODO find a way how to pre allocate correctly
-	for _, t := range VoteExtensionTypes {
-		for _, ext := range e[t] {
-			extensions = append(extensions, &tmproto.VoteExtension{
-				Type:      t,
-				Extension: ext.Extension,
-				Signature: ext.Signature,
-			})
-		}
-	}
-	return extensions
-}
-
-// ToExtendProto transforms the current state of vote-extension container into ExtendVoteExtension's protobuf
-func (e VoteExtensions) ToExtendProto() []*abci.ExtendVoteExtension {
-	proto := make([]*abci.ExtendVoteExtension, 0) // TODO find a way how to pre allocate correctly
-	for _, et := range VoteExtensionTypes {
-		for _, ext := range e[et] {
-			proto = append(proto, &abci.ExtendVoteExtension{
-				Type:      et,
-				Extension: ext.Extension,
-			})
-		}
-	}
-	return proto
-}
-
-// Fingerprint returns a fingerprint of all vote-extensions in a state of this container
-func (e VoteExtensions) Fingerprint() []byte {
-	cnt := 0
-	for _, v := range e {
-		cnt += len(v)
-	}
-	l := make([][]byte, 0, cnt)
-	for ext := range e.iter() {
-		l = append(l, ext.Extension)
-	}
-	return tmbytes.Fingerprint(bytes.Join(l, nil))
-}
-
-// IsSameWithProto compares the current state of the vote-extension with the same in VoteExtensions's protobuf
-// checks only the value of extensions
-func (e VoteExtensions) IsSameWithProto(proto []*tmproto.VoteExtension) bool {
-	protoMap := ProtoVoteExtensionsToMap(proto)
-	for t, extensions := range e {
-		if len(protoMap[t]) != len(extensions) {
-			return false
-		}
-		for i, ext := range extensions {
-			if !bytes.Equal(ext.Extension, protoMap[t][i].Extension) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func (e VoteExtensions) iter() chan VoteExtension {
-	ch := make(chan VoteExtension)
-	go func() {
-		for _, et := range VoteExtensionTypes {
-			for _, ext := range e[et] {
-				ch <- ext
-			}
-		}
-		close(ch)
-	}()
-	return ch
-}
-
-// VoteExtension represents a vote extension data, with possible types: default or threshold recover
-type VoteExtension struct {
-	Extension []byte           `json:"extension"`
-	Signature tmbytes.HexBytes `json:"signature"`
-}
-
-// Clone returns a copy of current vote-extension
-func (v *VoteExtension) Clone() VoteExtension {
-	return VoteExtension{
-		Extension: v.Extension,
-		Signature: v.Signature,
-	}
-}
-
-// VoteExtensionsFromProto creates VoteExtensions container from VoteExtensions's protobuf
-func VoteExtensionsFromProto(pve []*tmproto.VoteExtension) VoteExtensions {
-	if pve == nil {
-		return nil
-	}
-	voteExtensions := make(VoteExtensions)
-	for _, ext := range pve {
-		voteExtensions[ext.Type] = append(voteExtensions[ext.Type], VoteExtension{
-			Extension: ext.Extension,
-			Signature: ext.Signature,
-		})
-	}
-	return voteExtensions
-}
-
-// CopySignsFromProto copies the signatures from VoteExtensions's protobuf into the current VoteExtension state
-func (e VoteExtensions) CopySignsFromProto(src []*tmproto.VoteExtension) {
-	e.copySigns(src, func(a *tmproto.VoteExtension, b *VoteExtension) {
-		b.Signature = a.Signature
-	})
-}
-
-// CopySignsToProto copies the signatures from the current VoteExtensions into VoteExtension's protobuf
-func (e VoteExtensions) CopySignsToProto(dist []*tmproto.VoteExtension) {
-	e.copySigns(dist, func(a *tmproto.VoteExtension, b *VoteExtension) {
-		a.Signature = b.Signature
-	})
-}
-
-func (e VoteExtensions) copySigns(
-	proto []*tmproto.VoteExtension,
-	modifier func(a *tmproto.VoteExtension, b *VoteExtension),
-) {
-	protoMap := ProtoVoteExtensionsToMap(proto)
-	for t, exts := range e {
-		for i := range exts {
-			modifier(protoMap[t][i], &exts[i])
-		}
-	}
-}
-
-// ProtoVoteExtensionsToMap creates a map where a key is vote-extension type and value is the list of VoteExtension's protobuf
-// TODO consider to make it as method of Vote's protobuf
-func ProtoVoteExtensionsToMap(proto []*tmproto.VoteExtension) map[tmproto.VoteExtensionType][]*tmproto.VoteExtension {
-	if proto == nil {
-		return nil
-	}
-	res := make(map[tmproto.VoteExtensionType][]*tmproto.VoteExtension)
-	for _, ext := range proto {
-		res[ext.Type] = append(res[ext.Type], ext)
-	}
-	return res
-}
-
 // VoteFromProto attempts to convert the given serialization (Protobuf) type to
 // our Vote domain type. No validation is performed on the resulting vote -
 // this is left up to the caller to decide whether to call ValidateBasic or
@@ -309,7 +99,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	if err != nil {
 		return nil, err
 	}
-	v := &Vote{
+	return &Vote{
 		Type:               pv.Type,
 		Height:             pv.Height,
 		Round:              pv.Round,
@@ -319,8 +109,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		BlockSignature:     pv.BlockSignature,
 		StateSignature:     pv.StateSignature,
 		VoteExtensions:     VoteExtensionsFromProto(pv.VoteExtensions),
-	}
-	return v, nil
+	}, nil
 }
 
 // VoteBlockSignBytes returns the proto-encoding of the canonicalized Vote, for
@@ -436,13 +225,9 @@ func (vote *Vote) VerifyWithExtension(
 	if vote.Type == tmproto.PrecommitType {
 		// TODO: Remove extension signature nil check to enforce vote extension
 		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		for t, signItems := range quorumSigns.Extensions {
-			for i, ext := range vote.VoteExtensions[t] {
-				if !pubKey.VerifySignatureDigest(signItems[i].ID, ext.Signature) {
-					return ErrVoteInvalidSignature
-				}
-			}
-		}
+		verifier := NewQuorumSingsVerifier(quorumSigns)
+		verifier.OnlyVoteExtensions()
+		return verifier.Verify(pubKey, vote.makeQuorumSigns())
 	}
 	return nil
 }
@@ -462,7 +247,7 @@ func (vote *Vote) Verify(
 	return vote.verifyBasic(proTxHash, pubKey, quorumSigns)
 }
 
-func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumSigns QuorumSigns) error {
+func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumSingData QuorumSignData) error {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return ErrVoteInvalidValidatorProTxHash
 	}
@@ -470,24 +255,28 @@ func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumS
 		return ErrVoteInvalidValidatorPubKeySize
 	}
 
-	if !pubKey.VerifySignatureDigest(quorumSigns.Block.ID, vote.BlockSignature) {
-		return fmt.Errorf(
-			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
-			proTxHash.ShortString(), pubKey, vote, hex.EncodeToString([]byte{}), hex.EncodeToString(vote.BlockSignature))
-	}
-
+	verifier := NewQuorumSingsVerifier(quorumSingData)
 	// we must verify the stateID but only if the blockID isn't nil
-	if vote.BlockID.Hash != nil {
-		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
-		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
-		if !pubKey.VerifySignatureDigest(quorumSigns.State.ID, vote.StateSignature) {
-			return ErrVoteInvalidStateSignature
+	if vote.BlockID.Hash == nil {
+		if vote.StateSignature != nil {
+			return ErrVoteStateSignatureShouldBeNil
 		}
-	} else if vote.StateSignature != nil {
-		return ErrVoteStateSignatureShouldBeNil
+		verifier.OnlyBlockCheck()
 	}
-
+	err := verifier.Verify(pubKey, vote.makeQuorumSigns())
+	if err != nil {
+		return fmt.Errorf("quorum verification failed for proTxHash=%s pubKey=%v vote=%v: %w",
+			proTxHash.ShortString(), pubKey, vote, err)
+	}
 	return nil
+}
+
+func (vote *Vote) makeQuorumSigns() QuorumSigns {
+	return QuorumSigns{
+		BlockSign:      vote.BlockSignature,
+		StateSign:      vote.StateSignature,
+		ExtensionSigns: MakeThresholdExtensionSigns(vote.VoteExtensions),
+	}
 }
 
 // ValidateBasic checks whether the vote is well-formed. It does not, however,
@@ -635,27 +424,4 @@ func voteHeightRoundRequestID(prefix string, height int64, round int32) []byte {
 	reqID = append(reqID, heightBytes...)
 	reqID = append(reqID, roundBytes...)
 	return crypto.Checksum(reqID)
-}
-
-func makeSignID(signBytes, reqID []byte, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	msgHash := crypto.Checksum(signBytes)
-	return crypto.SignID(
-		quorumType,
-		tmbytes.Reverse(quorumHash),
-		tmbytes.Reverse(reqID),
-		tmbytes.Reverse(msgHash),
-	)
-}
-
-// ThresholdVoteSigns holds all created signatures, block, state and for each recovered vote-extensions
-type ThresholdVoteSigns struct {
-	BlockSign      []byte
-	StateSign      []byte
-	ExtensionSigns []ThresholdExtensionSign
-}
-
-// QuorumVoteSigns is used to combine threshold signatures and quorum-hash that were used
-type QuorumVoteSigns struct {
-	ThresholdVoteSigns
-	QuorumHash []byte
 }

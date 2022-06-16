@@ -2994,9 +2994,15 @@ func (cs *State) signVote(
 
 	err := cs.privValidator.SignVote(ctxto, cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash,
 		v, stateID, cs.logger)
-	vote.PopulateSignsFromProto(v)
+	if err != nil {
+		return nil, err
+	}
+	err = vote.PopulateSignsFromProto(v)
+	if err != nil {
+		return nil, err
+	}
 
-	return vote, err
+	return vote, nil
 }
 
 // sign the vote and publish on internalMsgQueue

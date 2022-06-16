@@ -308,8 +308,8 @@ func TestVoteExtension(t *testing.T) {
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			if tc.includeSignature {
-				protoExtensions := ProtoVoteExtensionsToMap(v.VoteExtensions)
-				for et, extensions := range protoExtensions {
+				protoExtensionsMap := v.VoteExtensionsToMap()
+				for et, extensions := range protoExtensionsMap {
 					for i, ext := range extensions {
 						vote.VoteExtensions[et][i].Signature = ext.Signature
 					}
@@ -408,7 +408,8 @@ func signVote(
 
 	v := vote.ToProto()
 	require.NoError(t, pv.SignVote(ctx, chainID, quorumType, quorumHash, v, stateID, logger))
-	vote.PopulateSignsFromProto(v)
+	err := vote.PopulateSignsFromProto(v)
+	require.NoError(t, err)
 }
 
 func TestValidVotes(t *testing.T) {

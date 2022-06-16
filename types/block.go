@@ -683,18 +683,18 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quorumThresholdSigns *QuorumVoteSigns) *Commit {
+func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, commitSigns *CommitSigns) *Commit {
 	commit := &Commit{
 		Height:  height,
 		Round:   round,
 		BlockID: blockID,
 		StateID: stateID,
 	}
-	if quorumThresholdSigns != nil {
-		commit.QuorumHash = quorumThresholdSigns.QuorumHash
-		commit.ThresholdBlockSignature = quorumThresholdSigns.BlockSign
-		commit.ThresholdStateSignature = quorumThresholdSigns.StateSign
-		commit.ThresholdVoteExtensions = quorumThresholdSigns.ExtensionSigns
+	if commitSigns != nil {
+		commit.QuorumHash = commitSigns.QuorumHash
+		commit.ThresholdBlockSignature = commitSigns.BlockSign
+		commit.ThresholdStateSignature = commitSigns.StateSign
+		commit.ThresholdVoteExtensions = commitSigns.ExtensionSigns
 	}
 	return commit
 }
@@ -893,13 +893,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 
 	c.ThresholdStateSignature = commit.ThresholdStateSignature
 	c.ThresholdBlockSignature = commit.ThresholdBlockSignature
-	c.ThresholdVoteExtensions = make([]*tmproto.ThresholdVoteExtension, len(commit.ThresholdVoteExtensions))
-	for i, ext := range commit.ThresholdVoteExtensions {
-		c.ThresholdVoteExtensions[i] = &tmproto.ThresholdVoteExtension{
-			Extension:          ext.Extension,
-			ThresholdSignature: ext.ThresholdSignature,
-		}
-	}
+	c.ThresholdVoteExtensions = ThresholdExtensionSignToProto(commit.ThresholdVoteExtensions)
 	c.QuorumHash = commit.QuorumHash
 
 	return c
@@ -937,38 +931,6 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.StateID = *si
 
 	return commit, commit.ValidateBasic()
-}
-
-// ThresholdExtensionSignFromProto transforms a list of protobuf ThresholdVoteExtension
-// into the list of domain ThresholdExtensionSign
-func ThresholdExtensionSignFromProto(protoExtensions []*tmproto.ThresholdVoteExtension) []ThresholdExtensionSign {
-	if len(protoExtensions) == 0 {
-		return nil
-	}
-	extensions := make([]ThresholdExtensionSign, len(protoExtensions))
-	for i, ext := range protoExtensions {
-		extensions[i] = ThresholdExtensionSign{
-			Extension:          ext.Extension,
-			ThresholdSignature: ext.ThresholdSignature,
-		}
-	}
-	return extensions
-}
-
-// ThresholdExtensionSignToProto transforms a list of domain ThresholdExtensionSign
-// into the list of protobuf ThresholdVoteExtension
-func ThresholdExtensionSignToProto(extensions []ThresholdExtensionSign) []*tmproto.ThresholdVoteExtension {
-	if len(extensions) == 0 {
-		return nil
-	}
-	protoExtensions := make([]*tmproto.ThresholdVoteExtension, len(extensions))
-	for i, ext := range extensions {
-		protoExtensions[i] = &tmproto.ThresholdVoteExtension{
-			Extension:          ext.Extension,
-			ThresholdSignature: ext.ThresholdSignature,
-		}
-	}
-	return protoExtensions
 }
 
 //-----------------------------------------------------------------------------
@@ -1141,17 +1103,4 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()
-}
-
-// MakeThresholdVoteExtensions creates a list of ThresholdExtensionSign from the list of VoteExtension
-// and recovered threshold signatures. The lengths of vote-extensions and threshold signatures must be the same
-func MakeThresholdVoteExtensions(extensions []VoteExtension, thresholdSigs [][]byte) []ThresholdExtensionSign {
-	thresholdExtensions := make([]ThresholdExtensionSign, len(extensions))
-	for i, ext := range extensions {
-		thresholdExtensions[i] = ThresholdExtensionSign{
-			Extension:          ext.Extension,
-			ThresholdSignature: thresholdSigs[i],
-		}
-	}
-	return thresholdExtensions
 }
