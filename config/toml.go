@@ -355,6 +355,10 @@ max-num-outbound-peers = {{ .P2P.MaxNumOutboundPeers }}
 # Maximum number of connections (inbound and outbound).
 max-connections = {{ .P2P.MaxConnections }}
 
+# Maximum number of connections reserved for outgoing
+# connections. Must be less than max-connections
+max-outgoing-connections = {{ .P2P.MaxOutgoingConnections }}
+
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 
