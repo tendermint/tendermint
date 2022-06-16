@@ -900,8 +900,7 @@ func (m *PeerManager) Inactivate(peerID types.NodeID) error {
 // Advertise returns a list of peer addresses to advertise to a peer.
 //
 // It sorts all peers in the peer store, and assembles a list of peers
-// that is most likely to include the highest priority of peers and
-// then
+// that is most likely to include the highest priority of peers.
 func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
