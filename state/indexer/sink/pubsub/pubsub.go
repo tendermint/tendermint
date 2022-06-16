@@ -18,7 +18,7 @@ type EventSink struct {
 	chainID string
 }
 
-func NewEventSink(connStr, chainID string) (*EventSink, error) {
+func NewEventSink(projectID, chainID string) (*EventSink, error) {
 	if s := os.Getenv(credsEnvVar); len(s) == 0 {
 		return nil, fmt.Errorf("missing '%s' environment variable", credsEnvVar)
 	}
@@ -26,7 +26,7 @@ func NewEventSink(connStr, chainID string) (*EventSink, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	c, err := pubsub.NewClient(ctx, "project-id")
+	c, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a Google Cloud Pubsub client: %w", err)
 	}
