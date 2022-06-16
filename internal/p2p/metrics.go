@@ -42,9 +42,9 @@ type Metrics struct {
 	PeerPendingSendBytes metrics.Gauge
 
 	// Number of successful connection attempts
-	PeerConnectionSuccess metrics.Counter
+	PeersConnectedSuccuess metrics.Counter
 	// Number failed connection attempts
-	PeerConnectionFailure metrics.Counter
+	PeersConnectedFailure metrics.Counter
 
 	// Number of peers connected as a result of dialing the
 	// peer.
@@ -104,6 +104,31 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peers_inactivated",
 			Help:      "Number of peers inactivated",
 		}, labels).With(labelsAndValues...),
+		PeersConnectedSuccuess: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_success",
+			Help:      "Number of peers connected to successfully",
+		}, labels).With(labelsAndValues...),
+		PeersConnectedFailure: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_failure",
+			Help:      "Number of peers connected to successfully",
+		}, labels).With(labelsAndValues...),
+		PeersConnectedIncoming: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_incoming",
+			Help:      "Number of peers connected by peer dialing this node",
+		}, labels).With(labelsAndValues...),
+		PeersConnectedOutgoing: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_outgoing",
+			Help:      "Number of peers connected by this node dialing the peer",
+		}, labels).With(labelsAndValues...),
+
 		PeerReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -170,6 +195,10 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		PeersConnected:         discard.NewGauge(),
 		PeersStored:            discard.NewGauge(),
+		PeersConnectedSuccuess: discard.NewCounter(),
+		PeersConnectedFailure:  discard.NewCounter(),
+		PeersConnectedIncoming: discard.NewGauge(),
+		PeersConnectedOutgoing: discard.NewGauge(),
 		PeersInactivated:       discard.NewGauge(),
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
