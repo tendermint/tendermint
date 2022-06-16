@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/types"
 )
 
 // Tests that all nodes have peered with each other, regardless of discovery method.
@@ -17,27 +18,29 @@ func TestNet_Peers(t *testing.T) {
 		netInfo, err := client.NetInfo(ctx)
 		require.NoError(t, err)
 
-		expectedPeers := len(node.Testnet.Nodes) - 1
+		expectedPeers := len(node.Testnet.Nodes)
+		peers := make(map[string]*e2e.Node, 0)
 		seen := map[string]bool{}
 		for _, n := range node.Testnet.Nodes {
-			// we never save light client addresses as they use RPC
-			if n.Mode == e2e.ModeLight {
+			// we never save light client addresses as they use RPC or ourselves
+			if n.Mode == e2e.ModeLight || n.Name == node.Name {
 				expectedPeers--
 				continue
 			}
-			seen[n.Name] = (n.Name == node.Name) // we've clearly seen ourself
+			peers[string(types.NodeIDFromPubKey(n.NodeKey.PubKey()))] = n
+			seen[n.Name] = false
 		}
 
 		require.Equal(t, expectedPeers, netInfo.NPeers,
 			"node is not fully meshed with peers")
 
 		for _, peerInfo := range netInfo.Peers {
-			id := peerInfo.ID
-			peer := node.Testnet.LookupNode(string(id))
-			require.NotNil(t, peer, "unknown node %v", id)
+			id := string(peerInfo.ID)
+			peer, ok := peers[id]
+			require.True(t, ok, "unknown node %v", id)
 			require.Contains(t, peerInfo.URL, peer.IP.String(),
 				"unexpected IP address for peer %v", id)
-			seen[string(id)] = true
+			seen[peer.Name] = true
 		}
 
 		for name := range seen {
