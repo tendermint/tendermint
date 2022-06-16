@@ -60,7 +60,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers_connected_failure",
-			Help:      "Number failed connection attempts",
+			Help:      "Number of failed connection attempts",
 		}, labels).With(labelsAndValues...),
 		PeersConnectedIncoming: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
