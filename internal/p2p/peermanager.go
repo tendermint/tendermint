@@ -619,16 +619,18 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
 
-	// If a dial fails more than MaxFailedDialAttempts we should
-	// mark it inactive and not attempt to dial it again.
-	var totalDialFailures uint32
-	for _, addr := range peer.AddressInfo {
-		totalDialFailures += addr.DialFailures
-	}
-	if m.options.MaxFailedDialAttempts > 0 && totalDialFailures > m.options.MaxFailedDialAttempts {
-		peer.Inactive = true
-		m.metrics.PeersInactivated.Add(1)
-	}
+	// TODO: maybe mark peers inactive if we can't dial them
+	//
+	// // If a dial fails more than MaxFailedDialAttempts we should
+	// // mark it inactive and not attempt to dial it again.
+	// var totalDialFailures uint32
+	// for _, addr := range peer.AddressInfo {
+	// 	totalDialFailures += addr.DialFailures
+	// }
+	// if m.options.MaxFailedDialAttempts > 0 && totalDialFailures > m.options.MaxFailedDialAttempts {
+	// 	peer.Inactive = true
+	// 	m.metrics.PeersInactivated.Add(1)
+	// }
 
 	if err := m.store.Set(peer); err != nil {
 		return err
@@ -1396,6 +1398,10 @@ func (s *peerStore) Ranked() []*peerInfo {
 		s.ranked = append(s.ranked, peer)
 	}
 	sort.Slice(s.ranked, func(i, j int) bool {
+		return s.ranked[i].Score() > s.ranked[j].Score()
+		// TODO: reevaluate more wholistic sorting.
+		// nolint: govet
+
 		// sort inactive peers after active peers
 		if s.ranked[i].Inactive && !s.ranked[j].Inactive {
 			return false
