@@ -43,7 +43,7 @@ type Metrics struct {
 
 	// Number of successful connection attempts
 	PeersConnectedSuccuess metrics.Counter
-	// Number failed connection attempts
+	// Number of failed connection attempts
 	PeersConnectedFailure metrics.Counter
 
 	// Number of peers connected as a result of dialing the
