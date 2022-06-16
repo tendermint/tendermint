@@ -162,10 +162,6 @@ type PeerManagerOptions struct {
 	// retry times, to avoid thundering herds. 0 disables jitter.
 	RetryTimeJitter time.Duration
 
-	// Maximum number of times we will try to dial a peer before
-	// marking it inactive.
-	MaxFailedDialAttempts uint32
-
 	// PeerScores sets fixed scores for specific peers. It is mainly used
 	// for testing. A score of 0 is ignored.
 	PeerScores map[types.NodeID]PeerScore
@@ -615,17 +611,6 @@ func (m *PeerManager) DialFailed(address NodeAddress) error {
 
 	addressInfo.LastDialFailure = time.Now().UTC()
 	addressInfo.DialFailures++
-
-	// // If a dial fails more than MaxFailedDialAttempts we should
-	// // mark it inactive and not attempt to dial it again.
-	// var totalDialFailures uint32
-	// for _, addr := range peer.AddressInfo {
-	// 	totalDialFailures += addr.DialFailures
-	// }
-	// if m.options.MaxFailedDialAttempts > 0 && totalDialFailures > m.options.MaxFailedDialAttempts {
-	// 	peer.Inactive = true
-	// 	m.metrics.PeersInactivated.Add(1)
-	// }
 
 	if err := m.store.Set(peer); err != nil {
 		return err

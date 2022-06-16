@@ -500,7 +500,6 @@ func createPeerManager(
 		MaxConnected:           maxConns,
 		MaxOutgoingConnections: maxConns / 2,
 		MaxConnectedUpgrade:    maxUpgradeConns,
-		MaxFailedDialAttempts:  1024,
 		MaxPeers:               maxUpgradeConns + 2*maxConns,
 		MinRetryTime:           250 * time.Millisecond,
 		MaxRetryTime:           30 * time.Minute,
