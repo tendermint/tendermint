@@ -985,6 +985,7 @@ RETRY:
 					// lower the priority of the
 					// peers is.
 
+					// nolint:gosec // G404: Use of weak random number generator
 					if len(ranked) <= int(limit) || rand.Intn(idx+1*2) <= idx {
 						seenAddresses[addressInfo.Address] = struct{}{}
 						addresses = append(addresses, addressInfo.Address)
