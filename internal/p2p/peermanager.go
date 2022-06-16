@@ -1078,8 +1078,6 @@ func (m *PeerManager) processPeerEvent(ctx context.Context, pu PeerUpdate) {
 	switch pu.Status {
 	case PeerStatusBad:
 		if m.store.peers[pu.NodeID].MutableScore == math.MinInt16 {
-			// TODO: should we inactivate the peer at this
-			// point?
 			return
 		}
 		m.store.peers[pu.NodeID].MutableScore--
