@@ -574,7 +574,8 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 	return BlockID{}, false
 }
 
-// GetVoteExtensions returns the first not nil vote from a list, otherwise error
+// GetVoteExtensions returns vote extensions from the first not nil vote from a list. It also does some basic
+// consistency checks, to ensure all votes contain the same threshold-recovered vote extensions
 func (voteSet *VoteSet) GetVoteExtensions() (VoteExtensions, error) {
 	if len(voteSet.votes) == 0 {
 		return VoteExtensions{}, nil
