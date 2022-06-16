@@ -22,10 +22,11 @@ const (
 
 type EventSink struct {
 	client  *pubsub.Client
+	topic   *pubsub.Topic
 	chainID string
 }
 
-func NewEventSink(projectID, chainID string) (*EventSink, error) {
+func NewEventSink(projectID, topic, chainID string) (*EventSink, error) {
 	if s := os.Getenv(credsEnvVar); len(s) == 0 {
 		return nil, fmt.Errorf("missing '%s' environment variable", credsEnvVar)
 	}
@@ -38,8 +39,28 @@ func NewEventSink(projectID, chainID string) (*EventSink, error) {
 		return nil, fmt.Errorf("failed to create a Google Cloud Pubsub client: %w", err)
 	}
 
+	// attempt to get the topic. If that fails, we attempt to create it
+	ctx, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	t := c.Topic(topic)
+	ok, err := t.Exists(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for topic '%s': %w", topic, err)
+	}
+	if !ok {
+		ctx, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		t, err = c.CreateTopic(ctx, topic)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create topic '%s': %w", topic, err)
+		}
+	}
+
 	return &EventSink{
 		client:  c,
+		topic:   t,
 		chainID: chainID,
 	}, nil
 }

@@ -487,6 +487,9 @@ psql-conn = "{{ .TxIndex.PsqlConn }}"
 # their creds file.
 pubsub-project-id = "{{ .TxIndex.PubsubProjectID }}"
 
+# The Google Cloud Pubsub topic. If the topic does not exist, it will be created.
+pubsub-topic = "{{ .TxIndex.PubsubTopic }}"
+
 #######################################################
 ###       Instrumentation Configuration Options     ###
 #######################################################

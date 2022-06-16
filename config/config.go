@@ -1069,6 +1069,10 @@ type TxIndexConfig struct {
 	// must ensure the GOOGLE_APPLICATION_CREDENTIALS environment variable is set
 	// to the location of their creds file.
 	PubsubProjectID string `mapstructure:"pubsub-project-id"`
+
+	// PubsubTopic defines the Google Cloud Pubsub topic. If the topic does not
+	// exist, it will be created.
+	PubsubTopic string `mapstructure:"pubsub-topic"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.

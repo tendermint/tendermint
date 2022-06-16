@@ -302,8 +302,11 @@ func createAndStartIndexerService(
 		if config.TxIndex.PubsubProjectID == "" {
 			return nil, nil, nil, errors.New("no 'pubsub-project-id' is set for the 'pubsub' indexer")
 		}
+		if config.TxIndex.PubsubTopic == "" {
+			return nil, nil, nil, errors.New("no 'pubsub-topic' is set for the 'pubsub' indexer")
+		}
 
-		sink, err := pubsub.NewEventSink(config.TxIndex.PubsubProjectID, chainID)
+		sink, err := pubsub.NewEventSink(config.TxIndex.PubsubProjectID, config.TxIndex.PubsubTopic, chainID)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("creating pubsub indexer: %w", err)
 		}
