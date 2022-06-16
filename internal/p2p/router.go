@@ -443,6 +443,9 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
+		// the connTracker (on the other side) only rate
+		// limits peers for dialing more than once every 10ms,
+		// so these numbers are safe.
 		const (
 			maxDialerInterval = 500 // ms
 			minDialerInterval = 100 // ms

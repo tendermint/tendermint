@@ -39,6 +39,18 @@ type Metrics struct {
 	// Number of bytes pending being sent to a given peer.
 	PeerPendingSendBytes metrics.Gauge `metrics_labels:"peer_id"`
 
+	// Number of successful connection attempts
+	PeerConnectionSuccess metrics.Counter
+	// Number failed connection attempts
+	PeerConnectionFailure metrics.Counter
+
+	// Number of peers connected as a result of dialing the
+	// peer.
+	PeersConnectedIncoming metrics.Gauge
+	// Number of peers connected as a result of the peer dialing
+	// this node.
+	PeersConnectedOutgoing metrics.Gauge
+
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
 	//metrics:The time taken to read off of a peer's queue before sending on the connection.
