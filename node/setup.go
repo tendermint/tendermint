@@ -488,6 +488,14 @@ func createPeerManager(
 		maxConns = 64
 	}
 
+	var maxOutgoingConns uint16
+	switch {
+	case cfg.P2P.MaxOutgoingConnections > 0:
+		maxOutgoingConns = cfg.P2P.MaxOutgoingConnections
+	default:
+		maxOutgoingConns = maxConns / 2
+	}
+
 	privatePeerIDs := make(map[types.NodeID]struct{})
 	for _, id := range tmstrings.SplitAndTrimEmpty(cfg.P2P.PrivatePeerIDs, ",", " ") {
 		privatePeerIDs[types.NodeID(id)] = struct{}{}
@@ -498,9 +506,9 @@ func createPeerManager(
 	options := p2p.PeerManagerOptions{
 		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
-		MaxOutgoingConnections: maxConns / 2,
+		MaxOutgoingConnections: maxOutgoingConns,
 		MaxConnectedUpgrade:    maxUpgradeConns,
-		MaxPeers:               maxUpgradeConns + 2*maxConns,
+		MaxPeers:               maxUpgradeConns + 4*maxConns,
 		MinRetryTime:           250 * time.Millisecond,
 		MaxRetryTime:           30 * time.Minute,
 		MaxRetryTimePersistent: 5 * time.Minute,

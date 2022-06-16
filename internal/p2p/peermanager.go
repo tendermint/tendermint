@@ -1005,7 +1005,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 					// peer.
 
 					// nolint:gosec // G404: Use of weak random number generator
-					if numAddresses <= int(limit) || rand.Intn(totalScore+1) <= int(scores[peer.ID]+1) || rand.Intn((idx+1)*10) <= idx+1 {
+					if numAddresses <= int(limit) || rand.Intn(totalScore+1) <= scores[peer.ID]+1 || rand.Intn((idx+1)*10) <= idx+1 {
 						addresses = append(addresses, addressInfo.Address)
 						addedLastIteration = true
 						seenAddresses[addressInfo.Address] = struct{}{}
