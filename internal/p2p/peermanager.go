@@ -364,6 +364,7 @@ func NewPeerManager(selfID types.NodeID, peerDB dbm.DB, options PeerManagerOptio
 	if err = peerManager.prunePeers(); err != nil {
 		return nil, err
 	}
+
 	return peerManager, nil
 }
 
@@ -389,6 +390,7 @@ func (m *PeerManager) configurePeers() error {
 			}
 		}
 	}
+	m.metrics.PeersStored.Add(float64(m.store.Size()))
 	return nil
 }
 
