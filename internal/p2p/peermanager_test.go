@@ -1781,9 +1781,8 @@ func TestPeerManager_Advertise(t *testing.T) {
 	require.Empty(t, peerManager.Advertise(aID, 0))
 
 	// Asking for 2 addresses should get two addresses
-	// and ususally not the lowest ranked one
+	// and usually not the lowest ranked one
 	numLowestRanked := 0
-
 	for i := 0; i < 100; i++ {
 		addrs := peerManager.Advertise(dID, 2)
 		require.Len(t, addrs, 2)
