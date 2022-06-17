@@ -80,6 +80,7 @@ func NewEventSink(projectID, topic, chainID string) (*EventSink, error) {
 
 func (es *EventSink) IndexBlock(h types.EventDataNewBlockHeader) error {
 	buf := new(bytes.Buffer)
+	blockHeightStr := strconv.Itoa(int(h.Header.Height))
 
 	// publish BeginBlock Events
 	if err := jsonpbMarshaller.Marshal(buf, &h.ResultBeginBlock); err != nil {
@@ -93,7 +94,7 @@ func (es *EventSink) IndexBlock(h types.EventDataNewBlockHeader) error {
 			Attributes: map[string]string{
 				MsgType:            MsgTypeBeginBlock,
 				AttrKeyChainID:     es.chainID,
-				AttrKeyBlockHeight: strconv.Itoa(int(h.Header.Height)),
+				AttrKeyBlockHeight: blockHeightStr,
 			},
 		},
 	)
@@ -117,7 +118,7 @@ func (es *EventSink) IndexBlock(h types.EventDataNewBlockHeader) error {
 			Attributes: map[string]string{
 				MsgType:            MsgTypeEndBlock,
 				AttrKeyChainID:     es.chainID,
-				AttrKeyBlockHeight: strconv.Itoa(int(h.Header.Height)),
+				AttrKeyBlockHeight: blockHeightStr,
 			},
 		},
 	)
