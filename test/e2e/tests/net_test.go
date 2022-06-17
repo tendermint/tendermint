@@ -11,14 +11,7 @@ import (
 
 // Tests that all nodes have peered with each other, regardless of discovery method.
 func TestNet_Peers(t *testing.T) {
-<<<<<<< HEAD
-	// FIXME Skip test since nodes aren't always able to fully mesh
-	t.SkipNow()
-
 	testNode(t, func(t *testing.T, node e2e.Node) {
-=======
-	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
->>>>>>> 8854ce4e6 (e2e: reactivate network test (#8635))
 		client, err := node.Client()
 		require.NoError(t, err)
 		netInfo, err := client.NetInfo(ctx)
