@@ -103,9 +103,9 @@ func (es *EventSink) IndexBlock(h types.EventDataNewBlockHeader) error {
 		return fmt.Errorf("failed to publish pubsub message: %w", err)
 	}
 
-	// publish EndBlock Events
 	buf.Reset()
 
+	// publish EndBlock Events
 	if err := jsonpbMarshaller.Marshal(buf, &h.ResultEndBlock); err != nil {
 		return fmt.Errorf("failed to JSON marshal ResultBeginBlock: %w", err)
 	}
