@@ -367,6 +367,9 @@ func (m *PeerManager) configurePeers() error {
 			}
 		}
 	}
+
+	m.metrics.PeersStored.Add(float64(m.store.Size()))
+
 	return nil
 }
 
