@@ -70,9 +70,6 @@ got-vote            = %s"<VerifyVoteExtension>"
 decide              = %s"<FinalizeBlock>"
 ```
 
->**TODO** Still hesitating... introduce _n_ as total number of validators, so that we can bound the occurrences of
->`got-vote` in a round.
-
 We have kept some of the ABCI++ methods out of the grammar, in order to keep it as clear and concise as possible.
 A common reason for keeping all these methods out is that they all can be called at any point in a sequence defined
 by the grammar above. Other reasons depend on the method in question:
