@@ -37,6 +37,10 @@ Special thanks to external contributors on this release:
   - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
   - [p2p] \#7265 Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
   - [p2p] [\#7594](https://github.com/tendermint/tendermint/pull/7594) always advertise self, to enable mutual address discovery. (@altergui)
+  - [p2p] \#8737 Introduce "inactive" peer label to avoid re-dialing incompatible peers. (@tychoish)
+  - [p2p] \#8737 Increase frequency of dialing attempts to reduce latency for peer acquisition. (@tychoish)
+  - [p2p] \#8737 Improvements to peer scoring and sorting to gossip a greater variety of peers during PEX. (@tychoish)
+  - [p2p] \#8737 Track incoming and outgoing peers separately to ensure more peer slots open for incoming connections. (@tychoish)
 
 - Go API
 

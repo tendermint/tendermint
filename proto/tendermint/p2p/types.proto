@@ -32,6 +32,7 @@ message PeerInfo {
   string                    id             = 1 [(gogoproto.customname) = "ID"];
   repeated PeerAddressInfo  address_info   = 2;
   google.protobuf.Timestamp last_connected = 3 [(gogoproto.stdtime) = true];
+  bool                      inactive       = 4;
 }
 
 message PeerAddressInfo {
