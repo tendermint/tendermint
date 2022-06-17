@@ -369,7 +369,7 @@ func (params ConsensusParams) ValidateUpdate(updated *tmproto.ConsensusParams, h
 	return nil
 }
 
-// Hash returns a hash of all consensus parameters to store in the block header.
+// HashConsensusParams returns a hash of all consensus parameters to store in the block header.
 func (params ConsensusParams) HashConsensusParams() []byte {
 	cp := params.ToProto()
 
