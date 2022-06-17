@@ -46,14 +46,6 @@ type ConsensusParams struct {
 	ABCI      ABCIParams      `json:"abci"`
 }
 
-// HashedParams is a subset of ConsensusParams.
-// It is amino encoded and hashed into
-// the Header.ConsensusHash.
-type HashedParams struct {
-	BlockMaxBytes int64
-	BlockMaxGas   int64
-}
-
 // BlockParams define limits on the block size and gas plus minimum time
 // between blocks.
 type BlockParams struct {
@@ -377,18 +369,11 @@ func (params ConsensusParams) ValidateUpdate(updated *tmproto.ConsensusParams, h
 	return nil
 }
 
-// Hash returns a hash of a subset of the parameters to store in the block header.
-// Only the Block.MaxBytes and Block.MaxGas are included in the hash.
-// This allows the ConsensusParams to evolve more without breaking the block
-// protocol. No need for a Merkle tree here, just a small struct to hash.
-// TODO: We should hash the other parameters as well
+// Hash returns a hash of all consensus parameters to store in the block header.
 func (params ConsensusParams) HashConsensusParams() []byte {
-	hp := tmproto.HashedParams{
-		BlockMaxBytes: params.Block.MaxBytes,
-		BlockMaxGas:   params.Block.MaxGas,
-	}
+	cp := params.ToProto()
 
-	bz, err := hp.Marshal()
+	bz, err := cp.Marshal()
 	if err != nil {
 		panic(err)
 	}

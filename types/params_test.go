@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -186,11 +187,14 @@ type makeParamsArgs struct {
 	messageDelay        time.Duration
 	bypassCommitTimeout bool
 
-	propose      *time.Duration
-	proposeDelta *time.Duration
-	vote         *time.Duration
-	voteDelta    *time.Duration
-	commit       *time.Duration
+	propose                *time.Duration
+	proposeDelta           *time.Duration
+	vote                   *time.Duration
+	voteDelta              *time.Duration
+	commit                 *time.Duration
+	evidenceMaxAgeDuration *time.Duration
+
+	appVersion uint64
 
 	abciExtensionHeight int64
 }
@@ -214,6 +218,10 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 	if args.commit == nil {
 		args.commit = durationPtr(1)
 	}
+	if args.evidenceMaxAgeDuration == nil {
+		args.evidenceMaxAgeDuration = durationPtr(time.Duration(args.evidenceAge))
+	}
+
 	return ConsensusParams{
 		Block: BlockParams{
 			MaxBytes: args.blockBytes,
@@ -221,7 +229,7 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 		},
 		Evidence: EvidenceParams{
 			MaxAgeNumBlocks: args.evidenceAge,
-			MaxAgeDuration:  time.Duration(args.evidenceAge),
+			MaxAgeDuration:  *args.evidenceMaxAgeDuration,
 			MaxBytes:        args.maxEvidenceBytes,
 		},
 		Validator: ValidatorParams{
@@ -239,6 +247,9 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 			Commit:              *args.commit,
 			BypassCommitTimeout: args.bypassCommitTimeout,
 		},
+		Version: VersionParams{
+			AppVersion: args.appVersion,
+		},
 		ABCI: ABCIParams{
 			VoteExtensionsEnableHeight: args.abciExtensionHeight,
 			RecheckTx:                  args.recheck,
@@ -247,29 +258,430 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 }
 
 func TestConsensusParamsHash(t *testing.T) {
-	params := []ConsensusParams{
-		makeParams(makeParamsArgs{blockBytes: 4, blockGas: 2, evidenceAge: 3, maxEvidenceBytes: 1}),
-		makeParams(makeParamsArgs{blockBytes: 1, blockGas: 4, evidenceAge: 3, maxEvidenceBytes: 1}),
-		makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 4, maxEvidenceBytes: 1}),
-		makeParams(makeParamsArgs{blockBytes: 2, blockGas: 5, evidenceAge: 7, maxEvidenceBytes: 1}),
-		makeParams(makeParamsArgs{blockBytes: 1, blockGas: 7, evidenceAge: 6, maxEvidenceBytes: 1}),
-		makeParams(makeParamsArgs{blockBytes: 9, blockGas: 5, evidenceAge: 4, maxEvidenceBytes: 1}),
-		makeParams(makeParamsArgs{blockBytes: 7, blockGas: 8, evidenceAge: 9, maxEvidenceBytes: 1}),
-		makeParams(makeParamsArgs{blockBytes: 4, blockGas: 6, evidenceAge: 5, maxEvidenceBytes: 1}),
+	type consensusParamsTestcase struct {
+		name   string
+		params ConsensusParams
+		hash   []byte
 	}
 
-	hashes := make([][]byte, len(params))
-	for i := range params {
-		hashes[i] = params[i].HashConsensusParams()
+	// Take first case as a base case, tweak one parameter for subsequent cases
+	// to make sure that these all get different hashes.
+	testcases := []*consensusParamsTestcase{
+		{
+			name: "#1 Base case",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#2 Change blockBytes",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             5,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#3 Change blockGas",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               7,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#4 Change recheck",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                false,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#5 Change evidenceAge",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            6,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#6 Change maxEvidenceBytes",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       5,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#7 Change pubkeyTypes",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type2"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#8 Change precision",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 3,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#9 Change messageDelay",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 4,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#10 Change bypassCommitTimeout",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    false,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#11 Change propose",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 5),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#12 Change proposeDelta",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 6),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#13 Change vote",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 7),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#14 Change voteDelta",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 8),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#15 Change commit",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 9),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#16 Change evidenceMaxAgeDuration",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 10),
+				appVersion:             1,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#17 Change appVersion",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             2,
+				abciExtensionHeight:    2,
+			}),
+		},
+		{
+			name: "#18 Change abciExtensionHeight",
+			params: makeParams(makeParamsArgs{
+				blockBytes:             4,
+				blockGas:               6,
+				recheck:                true,
+				evidenceAge:            5,
+				maxEvidenceBytes:       4,
+				pubkeyTypes:            []string{"type"},
+				precision:              time.Second * 2,
+				messageDelay:           time.Second * 3,
+				bypassCommitTimeout:    true,
+				propose:                durationPtr(time.Second * 4),
+				proposeDelta:           durationPtr(time.Second * 5),
+				vote:                   durationPtr(time.Second * 6),
+				voteDelta:              durationPtr(time.Second * 7),
+				commit:                 durationPtr(time.Second * 8),
+				evidenceMaxAgeDuration: durationPtr(time.Second * 9),
+				appVersion:             1,
+				abciExtensionHeight:    3,
+			}),
+		},
+	}
+
+	for _, tc := range testcases {
+		tc.hash = tc.params.HashConsensusParams()
+		if tc.hash == nil {
+			t.Errorf("%s: HashConsensusParams() returned nil", tc.name)
+		}
 	}
 
 	// make sure there are no duplicates...
 	// sort, then check in order for matches
-	sort.Slice(hashes, func(i, j int) bool {
-		return bytes.Compare(hashes[i], hashes[j]) < 0
+	sort.Slice(testcases, func(i, j int) bool {
+		return bytes.Compare(testcases[i].hash, testcases[j].hash) < 0
 	})
-	for i := 0; i < len(hashes)-1; i++ {
-		assert.NotEqual(t, hashes[i], hashes[i+1])
+	for i := 0; i < len(testcases)-1; i++ {
+		caseA := testcases[i]
+		caseB := testcases[i+1]
+
+		assert.NotEqual(t, caseA.hash, caseB.hash, fmt.Sprintf("case %s hash should not be equal case %s hash", caseA.name, caseB.name))
 	}
 }
 

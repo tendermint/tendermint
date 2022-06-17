@@ -63,14 +63,6 @@ message VersionParams {
   uint64 app_version = 1;
 }
 
-// HashedParams is a subset of ConsensusParams.
-//
-// It is hashed into the Header.ConsensusHash.
-message HashedParams {
-  int64 block_max_bytes = 1;
-  int64 block_max_gas   = 2;
-}
-
 // SynchronyParams configure the bounds under which a proposed block's timestamp is considered valid.
 // These parameters are part of the proposer-based timestamps algorithm. For more information,
 // see the specification of proposer-based timestamps:
