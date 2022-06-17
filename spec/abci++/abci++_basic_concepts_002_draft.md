@@ -24,9 +24,24 @@ title: Overview and basic concepts
 
 [&uparrow; Back to Outline](#outline)
 
-With ABCI, the application can only act at one phase in consensus, immediately after a block has been finalized. This restriction on the application prevents numerous features for the application, including many scalability improvements that are now better understood than when ABCI was first written. For example, many of the scalability proposals can be boiled down to "Make the miner / block proposers / validators do work, so the network does not have to". This includes optimizations such as tx-level signature aggregation, state transition proofs, etc. Furthermore, many new security properties cannot be achieved in the current paradigm, as the application cannot enforce validators to do more than just finalize txs. This includes features such as threshold cryptography, and guaranteed IBC connection attempts.
+With ABCI, the application can only act at one phase in consensus, immediately after a block has
+been decided (finalized). This restriction on the application prevents numerous features for the
+application, including many scalability improvements that are now better understood than when ABCI
+was first written. For example, many of the scalability proposals can be boiled down to "Make the
+miner / block proposers / validators do work, so the network does not have to". This includes
+optimizations such as tx-level signature aggregation, state transition proofs, etc. Furthermore,
+many new security properties cannot be achieved in the current paradigm, as the application cannot
+enforce validators to do more than just finalize transactions. This includes features such as
+threshold cryptography, and guaranteed IBC connection attempts.
 
-ABCI++ overcomes these limitations by allowing the application to intervene at three key places of the block execution. The new interface allows block proposers to perform application-dependent work in a block through the `PrepareProposal` method; validators to perform application-dependent work in a proposed block through the `ProcessProposal` method; and applications to require their validators do more than just validate blocks, e.g., validator guaranteed IBC connection attempts, through the `ExtendVote` and `VerifyVoteExtension` methods. Furthermore, ABCI++ renames {`BeginBlock`, [`DeliverTx`], `EndBlock`} to `FinalizeBlock`, as a simplified way to deliver a decided block to the Application.
+ABCI++ overcomes these limitations by allowing the application to intervene at three key places of
+the block execution. The new interface allows block proposers to perform application-dependent work
+in a block through the `PrepareProposal` method; validators to perform application-dependent work
+in a proposed block through the `ProcessProposal` method; and applications to require their
+validators do more than just validate blocks, e.g., validator guaranteed IBC connection attempts,
+through the `ExtendVote` and `VerifyVoteExtension` methods. Furthermore, ABCI++ renames
+{`BeginBlock`, [`DeliverTx`], `EndBlock`} to `FinalizeBlock`, as a simplified, efficient way to
+deliver a decided block to the Application.
 
 ## Methods overview
 
@@ -47,8 +62,11 @@ for details on the possible call sequences of these methods.
 
 - [**InitChain:**](./abci++_methods_002_draft.md#initchain) This method initializes the blockchain. Tendermint calls it once upon genesis.
 
-- [**PrepareProposal:**](./abci++_methods_002_draft.md#prepareproposal) It allows the block proposer to perform application-dependent work in a block before using it as its proposal. This enables, for instance, batch optimizations to a block, which has been empirically demonstrated to be a key component for scaling. Method `PrepareProposal` is called every time Tendermint is about to send
-a proposal message, but no previous proposal has been locked at Tendermint level.
+- [**PrepareProposal:**](./abci++_methods_002_draft.md#prepareproposal) It allows the block
+proposer to perform application-dependent work in a block before using it as its proposal.
+This enables, for instance, batch optimizations to a block, which has been empirically demonstrated
+to be a key component for scaling. Method `PrepareProposal` is called every time Tendermint is
+about to send a proposal message, but no previous proposal has been locked at Tendermint level.
 Tendermint gathers outstanding transactions from the mempool, generates a block header, and uses
 them to create a block to propose. Then, it calls `RequestPrepareProposal`
 with the newly created proposal, called *raw proposal*. The Application can
@@ -56,16 +74,22 @@ make changes to the raw proposal, such as modifying transactions, and returns
 the (potentially) modified proposal, called *prepared proposal* in the
 `Response*` call. The logic modifying the raw proposal can be non-deterministic.
 
-- [**ProcessProposal:**](./abci++_methods_002_draft.md#processproposal) It allows a validator to perform application-dependent work in a proposed block. This enables features such as allowing validators to reject a block according to whether the state machine deems it valid, and changing the block execution pipeline. Tendermint calls it when it receives a proposal and it is not locked on a block. The Application cannot
-modify the proposal at this point but can reject it if it realizes it is invalid.
+- [**ProcessProposal:**](./abci++_methods_002_draft.md#processproposal) It allows a validator to
+perform application-dependent work in a proposed block. This enables features such as allowing
+validators to reject a block according to whether the state machine deems it valid, and changing
+the block execution pipeline. Tendermint calls it when it receives a proposal and it is not locked
+on a block. The Application cannot modify the proposal at this point but can reject it if it
+realizes it is invalid.
 If that is the case, Tendermint will prevote `nil` on the proposal, which has
 strong liveness implications for Tendermint. As a general rule, the Application
 SHOULD accept a prepared proposal passed via `ProcessProposal`, even if a part of
 the proposal is invalid (e.g., an invalid transaction); the Application can
 ignore the invalid part of the prepared proposal at block execution time.
 
-- [**ExtendVote:**](./abci++_methods_002_draft.md#extendvote) It allows applications to force their validators to do more than just validate within consensus. `ExtendVote` allows applications to include non-deterministic data, opaque to Tendermint, to precommit messages (the final round of voting).
-The data, called *vote extension*, will also be made available to the
+- [**ExtendVote:**](./abci++_methods_002_draft.md#extendvote) It allows applications to force their
+validators to do more than just validate within consensus. `ExtendVote` allows applications to
+include non-deterministic data, opaque to Tendermint, to precommit messages (the final round of
+voting). The data, called *vote extension*, will also be made available to the
 application in the next height, along with the vote it is extending, in the rounds
 where the local process is the proposer.
 If the Application does not have vote extension information to provide, it returns a 0-length byte array as its vote extension.
