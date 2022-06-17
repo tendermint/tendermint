@@ -7,7 +7,8 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/mempool"
-	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/internal/mempool/v1"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 var mp mempool.Mempool
@@ -24,7 +25,7 @@ func init() {
 	cfg := config.DefaultMempoolConfig()
 	cfg.Broadcast = false
 
-	mp = mempoolv1.NewCListMempool(cfg, appConnMem, 0)
+	mp = mempoolv1.NewTxMempool(log.NewNopLogger(), cfg, appConnMem, 0)
 }
 
 func Fuzz(data []byte) int {
