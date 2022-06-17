@@ -1781,16 +1781,23 @@ func TestPeerManager_Advertise(t *testing.T) {
 	require.Empty(t, peerManager.Advertise(aID, 0))
 
 	// Asking for 2 addresses should get two addresses
-	// the content of the list when there are two
-	addrs := peerManager.Advertise(dID, 2)
-	require.Len(t, addrs, 2)
-	for _, addr := range addrs {
-		if dID == addr.NodeID {
-			t.Fatal("never advertise self")
+	// and ususally not the lowest ranked one
+	numLowestRanked := 0
+
+	for i := 0; i < 100; i++ {
+		addrs := peerManager.Advertise(dID, 2)
+		require.Len(t, addrs, 2)
+		for _, addr := range addrs {
+			if dID == addr.NodeID {
+				t.Fatal("never advertise self")
+			}
+			if cID == addr.NodeID {
+				numLowestRanked++
+			}
 		}
-		if cID == addr.NodeID {
-			t.Fatal("should not have returned the lowest ranked peer")
-		}
+	}
+	if numLowestRanked > 20 {
+		t.Errorf("lowest ranked peer returned in results too often: %d", numLowestRanked)
 	}
 }
 
