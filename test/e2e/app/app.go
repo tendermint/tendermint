@@ -342,6 +342,9 @@ func (app *Application) ApplySnapshotChunk(_ context.Context, req *abci.RequestA
 // total number of transaction bytes to exceed `req.MaxTxBytes`, we will not
 // append our special vote extension transaction.
 func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	var sum int64
 	var extCount int
 	for _, vote := range req.LocalLastCommit.Votes {
@@ -423,6 +426,9 @@ func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrep
 // ProcessProposal implements part of the Application interface.
 // It accepts any proposal that does not contain a malformed transaction.
 func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	for _, tx := range req.Txs {
 		k, v, err := parseTx(tx)
 		if err != nil {
@@ -454,6 +460,9 @@ func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProc
 // key/value store ("extensionSum") with the sum of all of the numbers collected
 // from the vote extensions.
 func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVote) (*abci.ResponseExtendVote, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	// We ignore any requests for vote extensions that don't match our expected
 	// next height.
 	if req.Height != int64(app.state.Height)+1 {
@@ -485,6 +494,9 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 // without doing anything about them. In this case, it just makes sure that the
 // vote extension is a well-formed integer value.
 func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	// We allow vote extensions to be optional
 	if len(req.VoteExtension) == 0 {
 		return &abci.ResponseVerifyVoteExtension{
