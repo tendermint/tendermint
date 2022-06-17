@@ -23,6 +23,10 @@ const (
 
 	// DefaultLogLevel defines a default log level as INFO.
 	DefaultLogLevel = "info"
+
+	// Mempool versions. V1 is prioritized mempool, v0 is regular mempool.
+	MempoolV0 = "v0"
+	MempoolV1 = "v1"
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -676,6 +680,7 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
+	Version   string `mapstructure:"version"`
 	RootDir   string `mapstructure:"home"`
 	Recheck   bool   `mapstructure:"recheck"`
 	Broadcast bool   `mapstructure:"broadcast"`
@@ -720,6 +725,7 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
+		Version:   MempoolV0,
 		Recheck:   true,
 		Broadcast: true,
 		WalPath:   "",

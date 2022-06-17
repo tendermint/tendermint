@@ -32,6 +32,8 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
 	mempl "github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
@@ -238,7 +240,7 @@ type Node struct {
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         p2p.Reactor       // for fast-syncing
-	mempoolReactor    *mempl.Reactor    // for gossipping transactions
+	mempoolReactor    p2p.Reactor       // for gossipping transactions
 	mempool           mempl.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
@@ -378,24 +380,56 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.TxMempool) {
+	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (p2p.Reactor, mempl.Mempool) {
 
-	mempool := mempl.NewTxMempool(
-		logger.With("module", "mempool"),
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
+	switch config.Mempool.Version {
+	case cfg.MempoolV1:
+		mp := mempoolv1.NewTxMempool(
+			logger,
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv1.WithMetrics(memplMetrics),
+			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+		)
 
-	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
+		reactor := mempoolv1.NewReactor(
+			config.Mempool,
+			mp,
+		)
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
 
-	if config.Consensus.WaitForTxs() {
-		mempool.EnableTxsAvailable()
+		return reactor, mp
+
+	case cfg.MempoolV0:
+		mp := mempoolv0.NewCListMempool(
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv0.WithMetrics(memplMetrics),
+			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
+		)
+
+		mp.SetLogger(logger)
+		mp.SetLogger(logger)
+
+		reactor := mempoolv0.NewReactor(
+			config.Mempool,
+			mp,
+		)
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactor, mp
+
+	default:
+		return nil, nil
 	}
-	return mempoolReactor, mempool
 }
 
 func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
@@ -441,7 +475,7 @@ func createConsensusReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.TxMempool,
+	mempool mempl.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *consensus.Metrics,
@@ -545,7 +579,7 @@ func createSwitch(config *cfg.Config,
 	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *mempl.Reactor,
+	mempoolReactor p2p.Reactor,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *statesync.Reactor,
 	consensusReactor *cs.Reactor,
@@ -1212,7 +1246,7 @@ func (n *Node) ConsensusReactor() *cs.Reactor {
 }
 
 // MempoolReactor returns the Node's mempool reactor.
-func (n *Node) MempoolReactor() *mempl.Reactor {
+func (n *Node) MempoolReactor() p2p.Reactor {
 	return n.mempoolReactor
 }
 

@@ -41,3 +41,8 @@ func (Mempool) TxsWaitChan() <-chan struct{} { return nil }
 
 func (Mempool) InitWAL() error { return nil }
 func (Mempool) CloseWAL()      {}
+
+// RemoveTxByKey implements mempool.Mempool
+func (Mempool) RemoveTxByKey(txKey types.TxKey) error {
+	return nil
+}

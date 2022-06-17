@@ -232,11 +232,11 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	mockClient.On("FlushAsync", mock.Anything).Return(abciclient.NewReqRes(abci.ToRequestFlush()), nil)
 	mockClient.On("SetResponseCallback", mock.MatchedBy(func(cb abciclient.Callback) bool { callback = cb; return true }))
 
-	cc := func() (abciclient.Client, error) {
-		return mockClient, nil
-	}
-
-	mp, cleanup, err := newMempoolWithApp(cc)
+	// cc := func() (abciclient.Client, error) {
+	// 	return mockClient, nil
+	// }
+	app := kvstore.NewApplication()
+	mp, cleanup, err := newMempoolWithApp(proxy.NewLocalClientCreator(app))
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -625,7 +625,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
 	app := kvstore.NewApplication()
-	cc, server := newRemoteApp(t, sockPath, app)
+	_, server := newRemoteApp(t, sockPath, app)
 	t.Cleanup(func() {
 		if err := server.Stop(); err != nil {
 			t.Error(err)
@@ -634,7 +634,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 
 	cfg := config.ResetTestRoot("mempool_test")
 
-	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
+	mp, cleanup := newMempoolWithAppAndConfig(proxy.NewRemoteClientCreator(sockPath, "socket", true), cfg)
 	defer cleanup()
 
 	// generate small number of txs

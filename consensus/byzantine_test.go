@@ -21,6 +21,10 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
+
+	cfg "github.com/tendermint/tendermint/config"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -60,11 +64,28 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// one for mempool, one for consensus
 		mtx := new(tmsync.Mutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 		// Make Mempool
-		mempool := mempl.NewTxMempool(log.TestingLogger().With("module", "mempool"), thisConfig.Mempool, proxyAppConnMem, 0)
+		var mempool mempl.Mempool
+
+		switch thisConfig.Mempool.Version {
+		case cfg.MempoolV0:
+			mempool = mempoolv0.NewCListMempool(config.Mempool,
+				proxyAppConnCon,
+				state.LastBlockHeight,
+				mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+				mempoolv0.WithPostCheck(sm.TxPostCheck(state)))
+		case cfg.MempoolV1:
+			mempool = mempoolv1.NewTxMempool(logger,
+				config.Mempool,
+				proxyAppConnCon,
+				state.LastBlockHeight,
+				mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+				mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+			)
+		}
 
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
