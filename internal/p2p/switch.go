@@ -417,7 +417,7 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	// RemovePeer is finished.
 	// https://github.com/tendermint/tendermint/issues/3338
 	if sw.peers.Remove(peer) {
-		sw.metrics.PeersConnected.Add(float64(-1))
+		sw.metrics.Peers.Add(-1)
 	}
 
 	sw.conns.RemoveAddr(peer.RemoteAddr())
@@ -1035,7 +1035,7 @@ func (sw *Switch) addPeer(p Peer) error {
 	if err := sw.peers.Add(p); err != nil {
 		return err
 	}
-	sw.metrics.PeersConnected.Add(float64(1))
+	sw.metrics.Peers.Add(1)
 
 	// Start all the reactor protocols on the peer.
 	for _, reactor := range sw.reactors {

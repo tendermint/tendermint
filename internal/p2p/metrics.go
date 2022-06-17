@@ -28,7 +28,7 @@ var (
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Number of peers connected.
-	PeersConnected metrics.Gauge
+	Peers metrics.Gauge
 	// Nomber of peers in the peer store database.
 	PeersStored metrics.Gauge
 	// Number of inactive peers stored.
@@ -48,10 +48,10 @@ type Metrics struct {
 
 	// Number of peers connected as a result of dialing the
 	// peer.
-	PeersConnectedIncoming metrics.Gauge
+	PeersConnectedOutgoing metrics.Gauge
 	// Number of peers connected as a result of the peer dialing
 	// this node.
-	PeersConnectedOutgoing metrics.Gauge
+	PeersConnectedIncoming metrics.Gauge
 
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
@@ -86,7 +86,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		labels = append(labels, labelsAndValues[i])
 	}
 	return &Metrics{
-		PeersConnected: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+		Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers",
@@ -108,13 +108,13 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers_connected_success",
-			Help:      "Number of peers connected to successfully",
+			Help:      "Number of successful peer connection attempts",
 		}, labels).With(labelsAndValues...),
 		PeersConnectedFailure: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers_connected_failure",
-			Help:      "Number of peers connected to successfully",
+			Help:      "Number of unsuccessful peer connection attempts",
 		}, labels).With(labelsAndValues...),
 		PeersConnectedIncoming: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -193,7 +193,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		PeersConnected:         discard.NewGauge(),
+		Peers:                  discard.NewGauge(),
 		PeersStored:            discard.NewGauge(),
 		PeersConnectedSuccess:  discard.NewCounter(),
 		PeersConnectedFailure:  discard.NewCounter(),

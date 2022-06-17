@@ -555,8 +555,8 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
 		const (
-			maxDialerInterval = 3000
-			minDialerInterval = 250
+			maxDialerInterval = 500
+			minDialerInterval = 100
 		)
 
 		// nolint:gosec // G404: Use of weak random number generator
@@ -876,7 +876,7 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels ChannelIDSet) {
-	r.metrics.PeersConnected.Add(1)
+	r.metrics.Peers.Add(1)
 	r.peerManager.Ready(peerID, channels)
 
 	sendQueue := r.getOrMakeQueue(peerID, channels)
@@ -889,7 +889,7 @@ func (r *Router) routePeer(peerID types.NodeID, conn Connection, channels Channe
 		sendQueue.close()
 
 		r.peerManager.Disconnected(peerID)
-		r.metrics.PeersConnected.Add(-1)
+		r.metrics.Peers.Add(-1)
 	}()
 
 	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
