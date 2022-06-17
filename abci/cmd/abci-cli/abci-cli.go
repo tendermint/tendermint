@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -130,6 +131,7 @@ func addCommands(cmd *cobra.Command, logger log.Logger) {
 	cmd.AddCommand(commitCmd)
 	cmd.AddCommand(versionCmd)
 	cmd.AddCommand(testCmd)
+	cmd.AddCommand(prepareProposalCmd)
 	cmd.AddCommand(getQueryCmd())
 
 	// examples
@@ -170,7 +172,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "finalize_block", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "query", "check_tx", "prepare_proposal", "finalize_block", "commit"},
 	RunE:      cmdConsole,
 }
 
@@ -222,6 +224,14 @@ var versionCmd = &cobra.Command{
 		fmt.Println(version.ABCIVersion)
 		return nil
 	},
+}
+
+var prepareProposalCmd = &cobra.Command{
+	Use:   "prepare_proposal",
+	Short: "prepare proposal",
+	Long:  "prepare proposal",
+	Args:  cobra.MinimumNArgs(1),
+	RunE:  cmdPrepareProposal,
 }
 
 func getQueryCmd() *cobra.Command {
@@ -335,6 +345,13 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 				}, nil, []byte{0, 0, 0, 0, 0, 0, 0, 5})
 			},
 			func() error { return servertest.Commit(ctx, client) },
+			func() error {
+				return servertest.PrepareProposal(ctx, client, [][]byte{
+					{0x01},
+				}, []types.TxRecord_TxAction{
+					types.TxRecord_UNMODIFIED,
+				}, nil)
+			},
 		})
 }
 
@@ -435,6 +452,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdInfo(cmd, actualArgs)
 	case "query":
 		return cmdQuery(cmd, actualArgs)
+	case "prepare_proposal":
+		return cmdPrepareProposal(cmd, actualArgs)
 	default:
 		return cmdUnimplemented(cmd, pArgs)
 	}
@@ -605,6 +624,64 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func inTxArray(txByteArray [][]byte, tx []byte) bool {
+	for _, txTmp := range txByteArray {
+		if bytes.Equal(txTmp, tx) {
+			return true
+		}
+
+	}
+	return false
+}
+func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Info: "Must provide at least one transaction",
+			Log:  "Must provide at least one transaction",
+		})
+		return nil
+	}
+	txsBytesArray := make([][]byte, len(args))
+
+	for i, arg := range args {
+		txBytes, err := stringOrHexToBytes(arg)
+		if err != nil {
+			return err
+		}
+		txsBytesArray[i] = txBytes
+	}
+
+	res, err := client.PrepareProposal(cmd.Context(), &types.RequestPrepareProposal{
+		Txs: txsBytesArray,
+		// kvstore has to have this parameter in order not to reject a tx as the default value is 0
+		MaxTxBytes: 65536,
+	})
+	if err != nil {
+		return err
+	}
+	resps := make([]response, 0, len(res.TxResults)+1)
+	for _, tx := range res.TxRecords {
+		existingTx := inTxArray(txsBytesArray, tx.Tx)
+		if tx.Action == types.TxRecord_UNKNOWN ||
+			(existingTx && tx.Action == types.TxRecord_ADDED) ||
+			(!existingTx && (tx.Action == types.TxRecord_UNMODIFIED || tx.Action == types.TxRecord_REMOVED)) {
+			resps = append(resps, response{
+				Code: codeBad,
+				Log:  "Failed. Tx: " + string(tx.GetTx()) + " action: " + tx.Action.String(),
+			})
+		} else {
+			resps = append(resps, response{
+				Code: code.CodeTypeOK,
+				Log:  "Succeeded. Tx: " + string(tx.Tx) + " action: " + tx.Action.String(),
+			})
+		}
+	}
+
+	printResponse(cmd, args, resps...)
+	return nil
+}
+
 func makeKVStoreCmd(logger log.Logger) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		// Create the application - in memory or persisted to disk
@@ -649,7 +726,6 @@ func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
 			fmt.Printf("-> code: OK\n")
 		} else {
 			fmt.Printf("-> code: %d\n", rsp.Code)
-
 		}
 
 		if len(rsp.Data) != 0 {

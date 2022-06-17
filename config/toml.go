@@ -309,6 +309,10 @@ upnp = {{ .P2P.UPNP }}
 # Maximum number of connections (inbound and outbound).
 max-connections = {{ .P2P.MaxConnections }}
 
+# Maximum number of connections reserved for outgoing
+# connections. Must be less than max-connections
+max-outgoing-connections = {{ .P2P.MaxOutgoingConnections }}
+
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 
@@ -318,9 +322,6 @@ pex = {{ .P2P.PexReactor }}
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 # Warning: IPs will be exposed at /net_info, for more information https://github.com/tendermint/tendermint/issues/3055
 private-peer-ids = "{{ .P2P.PrivatePeerIDs }}"
-
-# Toggle to disable guard against peers connecting from the same ip.
-allow-duplicate-ip = {{ .P2P.AllowDuplicateIP }}
 
 # Peer connection configuration.
 handshake-timeout = "{{ .P2P.HandshakeTimeout }}"
