@@ -207,7 +207,7 @@ To create a minor release:
    - Do not merge the backport branch into master.
 
 
-## Release Checklist
+## Minor Release Checklist
 
 The following set of steps are performed on all releases that increment
 the _minor_ version. These steps ensure that Tendermint is well tested, stable,
