@@ -1538,6 +1538,10 @@ func (p *peerInfo) Score() PeerScore {
 		score -= int64(addr.DialFailures)
 	}
 
+	if score < math.MinInt16 {
+		score = math.MinInt16
+	}
+
 	return PeerScore(score)
 }
 
