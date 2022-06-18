@@ -1300,17 +1300,8 @@ func (p *peerInfo) Score() PeerScore {
 		score -= int64(addr.DialFailures)
 	}
 
-<<<<<<< HEAD
-	if score <= 0 {
-		return 0
-	}
-
-	if score >= math.MaxUint8 {
-		return PeerScore(math.MaxUint8)
-=======
 	if score < math.MinInt16 {
 		score = math.MinInt16
->>>>>>> 4d820ff4f (p2p: peer score should not wrap around (#8790))
 	}
 
 	return PeerScore(score)
