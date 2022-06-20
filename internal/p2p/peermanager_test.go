@@ -504,11 +504,11 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 0,
-			b.NodeID: 1,
-			c.NodeID: 2,
-			d.NodeID: 3,
-			e.NodeID: 0,
+			a.NodeID: p2p.PeerScore(0),
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(2),
+			d.NodeID: p2p.PeerScore(3),
+			e.NodeID: p2p.PeerScore(0),
 		},
 		PersistentPeers:     []types.NodeID{c.NodeID, d.NodeID},
 		MaxConnected:        2,
@@ -561,10 +561,8 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 
 	// Now, if we disconnect a, we should be allowed to dial d because we have a
 	// free upgrade slot.
+	require.Error(t, peerManager.Dialed(d))
 	peerManager.Disconnected(a.NodeID)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
-	require.Equal(t, d, dial)
 	require.NoError(t, peerManager.Dialed(d))
 
 	// However, if we disconnect b (such that only c and d are connected), we
@@ -585,7 +583,7 @@ func TestPeerManager_TryDialNext_UpgradeReservesPeer(t *testing.T) {
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("c", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: p2p.PeerScore(1), c.NodeID: 1},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
 	})
@@ -742,7 +740,10 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("c", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(2),
+		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
 	})
@@ -858,7 +859,7 @@ func TestPeerManager_Dialed_MaxConnectedUpgrade(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{c.NodeID: 1, d.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{c.NodeID: p2p.PeerScore(1), d.NodeID: 1},
 	})
 	require.NoError(t, err)
 
@@ -908,7 +909,7 @@ func TestPeerManager_Dialed_Upgrade(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: p2p.PeerScore(1), c.NodeID: 1},
 	})
 	require.NoError(t, err)
 
@@ -952,10 +953,10 @@ func TestPeerManager_Dialed_UpgradeEvenLower(t *testing.T) {
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 3,
-			b.NodeID: 2,
-			c.NodeID: 10,
-			d.NodeID: 1,
+			a.NodeID: p2p.PeerScore(3),
+			b.NodeID: p2p.PeerScore(2),
+			c.NodeID: p2p.PeerScore(10),
+			d.NodeID: p2p.PeerScore(1),
 		},
 	})
 	require.NoError(t, err)
@@ -1005,9 +1006,9 @@ func TestPeerManager_Dialed_UpgradeNoEvict(t *testing.T) {
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 1,
-			b.NodeID: 2,
-			c.NodeID: 3,
+			a.NodeID: p2p.PeerScore(1),
+			b.NodeID: p2p.PeerScore(2),
+			c.NodeID: p2p.PeerScore(3),
 		},
 	})
 	require.NoError(t, err)
@@ -1126,8 +1127,8 @@ func TestPeerManager_Accepted_MaxConnectedUpgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			c.NodeID: 1,
-			d.NodeID: 2,
+			c.NodeID: p2p.PeerScore(1),
+			d.NodeID: p2p.PeerScore(2),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
@@ -1171,8 +1172,8 @@ func TestPeerManager_Accepted_Upgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			b.NodeID: 1,
-			c.NodeID: 1,
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(1),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
@@ -1214,8 +1215,8 @@ func TestPeerManager_Accepted_UpgradeDialing(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			b.NodeID: 1,
-			c.NodeID: 1,
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(1),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
@@ -1376,7 +1377,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: p2p.PeerScore(1)},
 	})
 	require.NoError(t, err)
 
@@ -1414,7 +1415,9 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1),
+		},
 	})
 	require.NoError(t, err)
 
@@ -1763,6 +1766,7 @@ func TestPeerManager_Advertise(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 
+	require.Len(t, peerManager.Advertise(dID, 100), 6)
 	// d should get all addresses.
 	require.ElementsMatch(t, []p2p.NodeAddress{
 		aTCP, aMem, bTCP, bMem, cTCP, cMem,
@@ -1776,10 +1780,24 @@ func TestPeerManager_Advertise(t *testing.T) {
 	// Asking for 0 addresses should return, well, 0.
 	require.Empty(t, peerManager.Advertise(aID, 0))
 
-	// Asking for 2 addresses should get the highest-rated ones, i.e. a.
-	require.ElementsMatch(t, []p2p.NodeAddress{
-		aTCP, aMem,
-	}, peerManager.Advertise(dID, 2))
+	// Asking for 2 addresses should get two addresses
+	// and usually not the lowest ranked one
+	numLowestRanked := 0
+	for i := 0; i < 100; i++ {
+		addrs := peerManager.Advertise(dID, 2)
+		require.Len(t, addrs, 2)
+		for _, addr := range addrs {
+			if dID == addr.NodeID {
+				t.Fatal("never advertise self")
+			}
+			if cID == addr.NodeID {
+				numLowestRanked++
+			}
+		}
+	}
+	if numLowestRanked > 20 {
+		t.Errorf("lowest ranked peer returned in results too often: %d", numLowestRanked)
+	}
 }
 
 func TestPeerManager_Advertise_Self(t *testing.T) {
