@@ -249,11 +249,12 @@ numbering in the low dozens at most. Real world deployments of Tendermint often
 have over a hundred nodes just in the validator set, with many others acting as full
 nodes and sentry nodes.
 
-Each test network is run on a set of Digital Ocean virtual machines (VMs). Each
-VM is equipped with 4 Gigabytes of RAM, 2 CPU cores, and 80 Gigabytes of NVMe
+Large-scale test networks are run on a set of Digital Ocean virtual machines (VMs). 
+Each VM is equipped with 4 Gigabytes of RAM, 2 CPU cores, and 80 Gigabytes of NVMe
 SSD storage. The network runs a very simple key-value store application. During
 each test net, the following metrics are monitored and collected on each node:
-* Tendermint Rounds per height
+
+* Tendermint rounds per height
 * Peers connected
 * Memory resident set size
 * CPU utilization
@@ -261,11 +262,9 @@ each test net, the following metrics are monitored and collected on each node:
 * Seconds for each step of consensus (Propose, Prevote, Precommit, Commit)
 * Latency to receive each block proposal
 
-VMs with low-end specifications are used on purpose. Many issues of resource
-contention that real-world deployments of Tendermint will see would not surface
-in our test application otherwise. To remedy this, we use produce
-a resource-constrained environment for testing Tendermint by running it on
-machines with small numbers of CPU cores and limited memory.
+For these tests we intentionally target low-powered host machines (with low core
+counts and limited memory) to ensure we observe similar kinds of resource contention 
+and limitation that real-world  deployments of Tendermint experience in production. 
 
 #### 200 Node Testnet
 
