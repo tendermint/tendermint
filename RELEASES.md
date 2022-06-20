@@ -242,10 +242,11 @@ representative sample of stop conditions.
 
 ### Large Scale Testnets
 
-The Tendermint end-to-end tests run Tendermint networks with a small set of nodes
-numbering in the low dozens at most. Real world deployments of Tendermint often
-have over a hundred nodes just in the validator set, with many others acting as full
-nodes and sentry nodes.
+The Tendermint end-to-end tests run a small network (~10s of nodes) to exercise
+basic consensus interactions. Real world deployments of Tendermint often have over 
+a hundred nodes just in the validator set, with many others acting as full
+nodes and sentry nodes. To gain more assurance before a release, we will also run
+larger-scale test networks to shake out emergent behaviors at scale.
 
 Large-scale test networks are run on a set of Digital Ocean virtual machines (VMs). 
 Each VM is equipped with 4 Gigabytes of RAM, 2 CPU cores, and 80 Gigabytes of NVMe
