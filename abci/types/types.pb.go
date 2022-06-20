@@ -1447,7 +1447,7 @@ type RequestFinalizeBlock struct {
 	Txs                 [][]byte      `protobuf:"bytes,1,rep,name=txs,proto3" json:"txs,omitempty"`
 	DecidedLastCommit   CommitInfo    `protobuf:"bytes,2,opt,name=decided_last_commit,json=decidedLastCommit,proto3" json:"decided_last_commit"`
 	ByzantineValidators []Misbehavior `protobuf:"bytes,3,rep,name=byzantine_validators,json=byzantineValidators,proto3" json:"byzantine_validators"`
-	// hash is the merkle root hash of the fields of the proposed block.
+	// hash is the merkle root hash of the fields of the decided block.
 	Hash               []byte    `protobuf:"bytes,4,opt,name=hash,proto3" json:"hash,omitempty"`
 	Height             int64     `protobuf:"varint,5,opt,name=height,proto3" json:"height,omitempty"`
 	Time               time.Time `protobuf:"bytes,6,opt,name=time,proto3,stdtime" json:"time"`
@@ -2382,6 +2382,7 @@ func (m *ResponseDeliverTx) GetCodespace() string {
 
 type ResponseCommit struct {
 	// reserve 1
+	// reserve 2
 	RetainHeight int64 `protobuf:"varint,3,opt,name=retain_height,json=retainHeight,proto3" json:"retain_height,omitempty"`
 }
 
