@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"testing"
 
-	kitlog "github.com/go-kit/kit/log"
+	kitlog "github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tendermint/tendermint/libs/log"

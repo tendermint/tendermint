@@ -8,9 +8,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 )
+
+const stateFileName = "app_state.json"
+const prevStateFileName = "prev_app_state.json"
 
 // State is the application state.
 type State struct {
@@ -19,17 +23,20 @@ type State struct {
 	Values map[string]string
 	Hash   []byte
 
-	// private fields aren't marshalled to disk.
-	file            string
+	// private fields aren't marshaled to disk.
+	currentFile string
+	// app saves current and previous state for rollback functionality
+	previousFile    string
 	persistInterval uint64
 	initialHeight   uint64
 }
 
 // NewState creates a new state.
-func NewState(file string, persistInterval uint64) (*State, error) {
+func NewState(dir string, persistInterval uint64) (*State, error) {
 	state := &State{
 		Values:          make(map[string]string),
-		file:            file,
+		currentFile:     filepath.Join(dir, stateFileName),
+		previousFile:    filepath.Join(dir, prevStateFileName),
 		persistInterval: persistInterval,
 	}
 	state.Hash = hashItems(state.Values)
@@ -45,13 +52,22 @@ func NewState(file string, persistInterval uint64) (*State, error) {
 // load loads state from disk. It does not take out a lock, since it is called
 // during construction.
 func (s *State) load() error {
-	bz, err := ioutil.ReadFile(s.file)
+	bz, err := ioutil.ReadFile(s.currentFile)
 	if err != nil {
-		return fmt.Errorf("failed to read state from %q: %w", s.file, err)
+		// if the current state doesn't exist then we try recover from the previous state
+		if errors.Is(err, os.ErrNotExist) {
+			bz, err = ioutil.ReadFile(s.previousFile)
+			if err != nil {
+				return fmt.Errorf("failed to read both current and previous state (%q): %w",
+					s.previousFile, err)
+			}
+		} else {
+			return fmt.Errorf("failed to read state from %q: %w", s.currentFile, err)
+		}
 	}
 	err = json.Unmarshal(bz, s)
 	if err != nil {
-		return fmt.Errorf("invalid state data in %q: %w", s.file, err)
+		return fmt.Errorf("invalid state data in %q: %w", s.currentFile, err)
 	}
 	return nil
 }
@@ -65,12 +81,19 @@ func (s *State) save() error {
 	}
 	// We write the state to a separate file and move it to the destination, to
 	// make it atomic.
-	newFile := fmt.Sprintf("%v.new", s.file)
+	newFile := fmt.Sprintf("%v.new", s.currentFile)
 	err = ioutil.WriteFile(newFile, bz, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write state to %q: %w", s.file, err)
+		return fmt.Errorf("failed to write state to %q: %w", s.currentFile, err)
 	}
-	return os.Rename(newFile, s.file)
+	// We take the current state and move it to the previous state, replacing it
+	if _, err := os.Stat(s.currentFile); err == nil {
+		if err := os.Rename(s.currentFile, s.previousFile); err != nil {
+			return fmt.Errorf("failed to replace previous state: %w", err)
+		}
+	}
+	// Finally, we take the new state and replace the current state.
+	return os.Rename(newFile, s.currentFile)
 }
 
 // Export exports key/value pairs as JSON, used for state sync snapshots.
@@ -134,6 +157,18 @@ func (s *State) Commit() (uint64, []byte, error) {
 		}
 	}
 	return s.Height, s.Hash, nil
+}
+
+func (s *State) Rollback() error {
+	bz, err := ioutil.ReadFile(s.previousFile)
+	if err != nil {
+		return fmt.Errorf("failed to read state from %q: %w", s.previousFile, err)
+	}
+	err = json.Unmarshal(bz, s)
+	if err != nil {
+		return fmt.Errorf("invalid state data in %q: %w", s.previousFile, err)
+	}
+	return nil
 }
 
 // hashItems hashes a set of key/value items.

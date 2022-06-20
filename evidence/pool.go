@@ -256,6 +256,10 @@ func (evpool *Pool) State() sm.State {
 	return evpool.state
 }
 
+func (evpool *Pool) Close() error {
+	return evpool.evidenceStore.Close()
+}
+
 // IsExpired checks whether evidence or a polc is expired by checking whether a height and time is older
 // than set by the evidence consensus parameters
 func (evpool *Pool) isExpired(height int64, time time.Time) bool {

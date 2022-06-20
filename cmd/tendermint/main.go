@@ -22,6 +22,7 @@ func main() {
 		cmd.ReplayConsoleCmd,
 		cmd.ResetAllCmd,
 		cmd.ResetPrivValidatorCmd,
+		cmd.ResetStateCmd,
 		cmd.ShowValidatorCmd,
 		cmd.TestnetFilesCmd,
 		cmd.ShowNodeIDCmd,

@@ -23,7 +23,7 @@ type EventBusSubscriber interface {
 
 type Subscription interface {
 	Out() <-chan tmpubsub.Message
-	Cancelled() <-chan struct{}
+	Cancelled() <-chan struct{} // nolint: misspell
 	Err() error
 }
 

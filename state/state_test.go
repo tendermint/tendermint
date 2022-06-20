@@ -1075,7 +1075,7 @@ func TestStateProto(t *testing.T) {
 			assert.NoError(t, err, tt.testName)
 		}
 
-		smt, err := sm.StateFromProto(pbs)
+		smt, err := sm.FromProto(pbs)
 		if tt.expPass2 {
 			require.NoError(t, err, tt.testName)
 			require.Equal(t, tt.state, smt, tt.testName)

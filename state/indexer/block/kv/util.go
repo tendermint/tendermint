@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/google/orderedcode"
+
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
