@@ -149,7 +149,12 @@ func (q *QuorumSingsVerifier) verifyBlock(pubKey crypto.PubKey, signs QuorumSign
 		return nil
 	}
 	if !pubKey.VerifySignatureDigest(q.Block.ID, signs.BlockSign) {
-		return fmt.Errorf("threshold block signature is invalid: (%X) signID=%X", q.Block.Raw, q.Block.ID)
+		return fmt.Errorf(
+			"threshold block signature is invalid: (%X) signID=%X: %w",
+			q.Block.Raw,
+			q.Block.ID,
+			ErrVoteInvalidBlockSignature,
+		)
 	}
 	return nil
 }
@@ -159,7 +164,12 @@ func (q *QuorumSingsVerifier) verifyState(pubKey crypto.PubKey, signs QuorumSign
 		return nil
 	}
 	if !pubKey.VerifySignatureDigest(q.State.ID, signs.StateSign) {
-		return fmt.Errorf("threshold state signature is invalid: (%X) signID=%X", q.State.Raw, q.State.ID)
+		return fmt.Errorf(
+			"threshold state signature is invalid: (%X) signID=%X: %w",
+			q.State.Raw,
+			q.State.ID,
+			ErrVoteInvalidStateSignature,
+		)
 	}
 	return nil
 }
@@ -168,7 +178,6 @@ func (q *QuorumSingsVerifier) verifyState(pubKey crypto.PubKey, signs QuorumSign
 func (q *QuorumSingsVerifier) verifyVoteExtensions(
 	pubKey crypto.PubKey,
 	signs QuorumSigns,
-	//voteExtensions []ThresholdExtensionSign,
 ) error {
 	if !q.shouldVerifyBlock {
 		return nil
