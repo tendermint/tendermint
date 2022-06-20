@@ -517,6 +517,15 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeAddress, error) {
 		if err != nil || (address != NodeAddress{}) {
 			return address, err
 		}
+
+		if ctx.Err() != nil {
+			return NodeAddress{}, ctx.Err()
+		}
+
+		if !m.HasDialedMaxPeers() {
+			continue
+		}
+
 		select {
 		case <-m.dialWaker.Sleep():
 		case <-ctx.Done():
