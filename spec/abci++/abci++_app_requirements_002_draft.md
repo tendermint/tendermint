@@ -17,7 +17,7 @@ Let *v<sub>p</sub>* (resp. *v<sub>q</sub>*) be the block that *p*'s (resp. *q*'s
 on to the Application
 via `RequestPrepareProposal` as proposer of round *r<sub>p</sub>* (resp *r<sub>q</sub>*), height *h*,
 also known as the raw proposal.
-Let *v'<sub>p</sub>* (resp. *v'<sub>q</sub>*) the possibly modified block *p*'s (resp. *q*'s) Application
+Let *u<sub>p</sub>* (resp. *u<sub>q</sub>*) the possibly modified block *p*'s (resp. *q*'s) Application
 returns via `ResponsePrepareProposal` to Tendermint, also known as the prepared proposal.
 
 Process *p*'s prepared proposal can differ in two different rounds where *p* is the proposer.
@@ -62,7 +62,7 @@ transaction list returned by the application will never cause the resulting bloc
 limit.
 
 * Requirement 5 [`PrepareProposal`, `ProcessProposal`, coherence]: For any two correct processes *p* and *q*,
-  if *q*'s Tendermint calls `RequestProcessProposal` on *v'<sub>p</sub>*,
+  if *q*'s Tendermint calls `RequestProcessProposal` on *u<sub>p</sub>*,
   *q*'s Application returns Accept in `ResponseProcessProposal`.
 
 Requirement 5 makes sure that blocks proposed by correct processes *always* pass the correct receiving process's
@@ -75,14 +75,14 @@ serious consequences on Tendermint's liveness that this entails. Due to its crit
 target for extensive testing and automated verification.
 
 * Requirement 6 [`ProcessProposal`, determinism-1]: `ProcessProposal` is a (deterministic) function of the current
-  state and the block that is about to be applied. In other words, for any correct process *p*, and any arbitrary block *v'*,
-  if *p*'s Tendermint calls `RequestProcessProposal` on *v'* at height *h*,
-  then *p*'s Application's acceptance or rejection **exclusively** depends on *v'* and *s<sub>p,h-1</sub>*.
+  state and the block that is about to be applied. In other words, for any correct process *p*, and any arbitrary block *u*,
+  if *p*'s Tendermint calls `RequestProcessProposal` on *u* at height *h*,
+  then *p*'s Application's acceptance or rejection **exclusively** depends on *u* and *s<sub>p,h-1</sub>*.
 
 * Requirement 7 [`ProcessProposal`, determinism-2]: For any two correct processes *p* and *q*, and any arbitrary
-  block *v'*,
-  if *p*'s (resp. *q*'s) Tendermint calls `RequestProcessProposal` on *v'* at height *h*,
-  then *p*'s Application accepts *v'* if and only if *q*'s Application accepts *v'*.
+  block *u*,
+  if *p*'s (resp. *q*'s) Tendermint calls `RequestProcessProposal` on *u* at height *h*,
+  then *p*'s Application accepts *u* if and only if *q*'s Application accepts *u*.
   Note that this requirement follows from Requirement 6 and the Agreement property of consensus.
 
 Requirements 6 and 7 ensure that all correct processes will react in the same way to a proposed block, even
@@ -170,8 +170,8 @@ Finally, notice that neither `PrepareProposal` nor `ExtendVote` have determinism
 requirements associated.
 Indeed, `PrepareProposal` is not required to be deterministic:
 
-* *v'<sub>p</sub>* may depend on *v<sub>p</sub>* and *s<sub>p,h-1</sub>*, but may also depend on other values or operations.
-* *v<sub>p</sub> = v<sub>q</sub> &#8655; v'<sub>p</sub> = v'<sub>q</sub>*.
+* *u<sub>p</sub>* may depend on *v<sub>p</sub>* and *s<sub>p,h-1</sub>*, but may also depend on other values or operations.
+* *v<sub>p</sub> = v<sub>q</sub> &#8655; u<sub>p</sub> = u<sub>q</sub>*.
 
 Likewise, `ExtendVote` can also be non-deterministic:
 
