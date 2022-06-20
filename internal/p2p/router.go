@@ -570,6 +570,10 @@ func (r *Router) dialSleep(ctx context.Context) {
 		case <-timer.C:
 		}
 
+		if !r.peerManager.HasMaxPeerCapacity() {
+			r.peerManager.dialWaker.Wake()
+		}
+
 		return
 	}
 
