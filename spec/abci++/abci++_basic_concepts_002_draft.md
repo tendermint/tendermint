@@ -6,13 +6,13 @@ title: Overview and basic concepts
 ## Outline
 
 - [ABCI++ vs. ABCI](#abci-vs-abci)
-- [Methods overview](#methods-overview)
-    - [Consensus methods](#consensus-methods)
+- [Method overview](#method-overview)
+    - [Consensus/block execution methods](#consensusblock-execution-methods)
     - [Mempool methods](#mempool-methods)
     - [Info methods](#info-methods)
     - [State-sync methods](#state-sync-methods)
 - [Next-block execution vs. same-block execution](#next-block-execution-vs-same-block-execution)
-    - [Tendermint timeouts](#tendermint-timeouts-in-same-block-execution)
+- [Tendermint proposal timeout](#tendermint-proposal-timeout)
 - [Determinism](#determinism)
 - [Errors](#errors)
 - [Events](#events)
