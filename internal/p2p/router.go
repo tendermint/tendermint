@@ -528,7 +528,7 @@ func (r *Router) routeChannel(
 	}
 }
 
-func (r *Router) numConccurentDials() int {
+func (r *Router) numConcurrentDials() int {
 	if r.options.NumConcurrentDials == nil {
 		return runtime.NumCPU()
 	}
@@ -674,7 +674,7 @@ func (r *Router) dialPeers() {
 	// able to add peers at a reasonable pace, though the number
 	// is somewhat arbitrary. The action is further throttled by a
 	// sleep after sending to the addresses channel.
-	for i := 0; i < r.numConccurentDials(); i++ {
+	for i := 0; i < r.numConcurrentDials(); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
