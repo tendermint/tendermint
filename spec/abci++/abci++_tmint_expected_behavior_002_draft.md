@@ -15,12 +15,14 @@ synchronously and there will be no byzantine process. In these frequent, benign 
 
 * Tendermint will decide in round 0;
 * `PrepareProposal` will be called exactly once at the proposer process of round 0, height _h_;
-* `ProcessProposal` will be called exactly once at all processes except the proposer of round 0, and
+* `ProcessProposal` will be called exactly once at all processes, and
   will return _accept_ in its `Response*`;
 * `ExtendVote` will be called exactly once at all processes
-* `VerifyVoteExtension` will be called _n-1_ times at each validator process, where _n_ is the number of validators; and
-* `FinalizeBlock` will be finally called at all processes at the end of height _h_, conveying the same prepared
+* `VerifyVoteExtension` will be called _n-1_ times at each validator process, where _n_ is the
+  number of validators; and
+* `FinalizeBlock` will be called at all processes, conveying the same prepared
   block that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for height _h_.
+* `Commit` will be finally called at all processes at the end of height _h_.
 
 However, the Application logic must be ready to cope with any possible run of Tendermint for a given
 height, including bad periods (byzantine proposers, network being asynchronous).
@@ -28,7 +30,7 @@ In these cases, the sequence of calls to ABCI++ methods may not be so straighfor
 the Application should still be able to handle them, e.g., without crashing.
 The purpose of this section is to define what these sequences look like an a precise way.
 
-As mentioned in the [Basic Concepts](abci++_basic_concepts_002_draft.md) section, Tendermint
+As mentioned in the [Basic Concepts](./abci%2B%2B_basic_concepts_002_draft.md) section, Tendermint
 acts as a client of ABCI++ and the Application acts as a server. Thus, it is up to Tendermint to
 determine when and in which order the different ABCI++ methods will be called. A well-written
 Application design should consider _any_ of these possible sequences.
@@ -46,18 +48,15 @@ state-sync          = *state-sync-attempt success-sync info
 state-sync-attempt  = offer-snapshot *apply-chunk
 success-sync        = offer-snapshot 1*apply-chunk
 
-recovery            = info *consensus-replay consensus-exec
-consensus-replay    = decide
+recovery            = info consensus-exec
 
 consensus-exec      = (inf)consensus-height
-consensus-height    = *consensus-round decide
+consensus-height    = *consensus-round decide commit
 consensus-round     = proposer / non-proposer
 
-proposer            = prepare-proposal extend-proposer
-extend-proposer     = *got-vote [extend-vote] *got-vote
-
-non-proposer        = *got-vote [extend-non-proposer] *got-vote
-extend-non-proposer = process-proposal *got-vote [extend-vote]
+proposer            = *got-vote prepare-proposal *got-vote process-proposal [extend]
+extend              = *got-vote extend-vote *got-vote
+non-proposer        = *got-vote [process-proposal] [extend]
 
 init-chain          = %s"<InitChain>"
 offer-snapshot      = %s"<OfferSnapshot>"
@@ -68,9 +67,10 @@ process-proposal    = %s"<ProcessProposal>"
 extend-vote         = %s"<ExtendVote>"
 got-vote            = %s"<VerifyVoteExtension>"
 decide              = %s"<FinalizeBlock>"
+commit              = %s"<Commit>"
 ```
 
-We have kept some of the ABCI++ methods out of the grammar, in order to keep it as clear and concise as possible.
+We have kept some ABCI++ methods out of the grammar, in order to keep it as clear and concise as possible.
 A common reason for keeping all these methods out is that they all can be called at any point in a sequence defined
 by the grammar above. Other reasons depend on the method in question:
 
@@ -112,7 +112,7 @@ Let us now examine the grammar line by line, providing further details.
 
 * In _state-sync_ mode, Tendermint makes one or more attempts at synchronizing the Application's state.
   At the beginning of each attempt, it offers the Application a snapshot found at another process.
-  If the Application accepts the snapshop, at sequence of calls to `ApplySnapshotChunk` method follow
+  If the Application accepts the snapshop, a sequence of calls to `ApplySnapshotChunk` method follow
   to provide the Application with all the snapshots needed, in order to reconstruct the state locally.
   A successful attempt must provide at least one chunk via `ApplySnapshotChunk`.
   At the end of a successful attempt, Tendermint calls `Info` to make sure the recontructed state's
@@ -125,12 +125,10 @@ Let us now examine the grammar line by line, providing further details.
 >```
 
 * In recovery mode, Tendermint first calls `Info` to know from which height it needs to replay decisions
-  to the Application. To replay a decision, Tendermint simply calls `FinalizeBlock` with the decided
-  block at that height. After this, Tendermint enters nomal consensus execution.
+  to the Application. After this, Tendermint enters nomal consensus execution.
 
 >```abnf
->recovery            = info *consensus-replay consensus-exec
->consensus-replay    = decide
+>recovery            = info consensus-exec
 >```
 
 * The non-terminal `consensus-exec` is a key point in this grammar. It is an infinite sequence of
@@ -142,23 +140,24 @@ Let us now examine the grammar line by line, providing further details.
 >consensus-exec      = (inf)consensus-height
 >```
 
-* A consensus height consists of zero or more rounds before deciding via a call to `FinalizeBlock`.
-  In each round, the sequence of method calls depends on whether the local process is the proposer or not.
+* A consensus height consists of zero or more rounds before deciding via a call to `FinalizeBlock`,
+  followed by a call to `Commit`. If the height has zero rounds, this means the process is
+  replaying an already decided value (catch-up mode). In each round, the sequence of method calls
+  depends on whether the local process is the proposer or not.
 
 >```abnf
->consensus-height    = *consensus-round decide
+>consensus-height    = *consensus-round decide commit
 >consensus-round     = proposer / non-proposer
 >```
 
-* If the local process is the proposer of the current round, Tendermint starts by calling `PrepareProposal`.
-  No calls to methods related to vote extensions (`ExtendVote`, `VerifyVoteExtension`) can be called
-  in the present round before `PrepareProposal`. Once `PrepareProposal` is called, calls to
-  `ExtendVote` and `VerifyVoteExtension` can come in any order, although the former will be called
-  at most once in this round.
+* If the local process is the proposer of the current round, Tendermint starts by calling
+  `PrepareProposal`, followed by `ProcessProposal`. Then, optionally, the Application is asked
+  to extend its vote for that round. Calls to `VerifyVoteExtension` can come at any time (they
+  may belong to this round of to a future one).
 
 >```abnf
->proposer            = prepare-proposal extend-proposer
->extend-proposer     = *got-vote [extend-vote] *got-vote
+>proposer            = *got-vote prepare-proposal *got-vote process-proposal [extend]
+>extend              = *got-vote extend-vote *got-vote
 >```
 
 * If the local process is not the proposer of the current round, Tendermint will call `ProcessProposal`
@@ -167,8 +166,7 @@ Let us now examine the grammar line by line, providing further details.
   and `ExtendVote` throughout the round.
 
 >```abnf
->non-proposer        = *got-vote [extend-non-proposer] *got-vote
->extend-non-proposer = process-proposal *got-vote [extend-vote]
+>non-proposer        = *got-vote [process-proposal] [extend]
 >```
 
 * Finally, the grammar describes all its terminal symbols, which denote the different ABCI++ method calls that
@@ -184,6 +182,7 @@ Let us now examine the grammar line by line, providing further details.
 >extend-vote         = %s"<ExtendVote>"
 >got-vote            = %s"<VerifyVoteExtension>"
 >decide              = %s"<FinalizeBlock>"
+>commit              = %s"<Commit>"
 >```
 
 ## Adapting existing Applications that use ABCI
@@ -213,3 +212,7 @@ As for the new methods:
   Legacy applications looking to reuse old code that implemented `DeliverTx` should wrap the legacy
   `DeliverTx` logic in a loop that executes one transaction iteration per
   transaction in `RequestFinalizeBlock.tx`.
+
+Finally, `Commit`, which is kept in ABCI++, no longer returns the `AppHash`. It is now up to `FinalizeBlock` to
+do so. Thus, a slight refactoring of the old `Commit` implementation will be needed to move the return of
+`AppHash` to `FinalizeBlock`.
