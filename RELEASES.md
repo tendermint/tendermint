@@ -227,10 +227,13 @@ will be used by application developers and node operators.
 
 ### Nightly End-To-End Tests
 
-The Tendermint team maintains a set of end-to-end tests that run each night
-on the latest commit of the project. During the feature freeze, these tests are
-run nightly and must pass consistently for a release of Tendermint to be
-considered stable.
+The Tendermint team maintains [a set of end-to-end
+tests](https://github.com/tendermint/tendermint/blob/master/test/e2e/README.md#L1)
+that run each night on the latest commit of the project. These tests start
+a network of containerized Tendermint processes and run automated checks that
+the network functions as expected in both stable and unstable conditions.
+During the feature freeze, these tests are run nightly and must pass
+consistently for a release of Tendermint to be considered stable.
 
 ### Upgrade Harness
 
