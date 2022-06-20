@@ -1858,9 +1858,6 @@ func TestPeerManager_Advertise(t *testing.T) {
 		if dID == addr.NodeID {
 			t.Fatal("never advertise self")
 		}
-		if cID == addr.NodeID {
-			t.Fatal("should not have returned the lowest ranked peer")
-		}
 	}
 }
 
