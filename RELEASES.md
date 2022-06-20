@@ -252,10 +252,10 @@ a hundred nodes just in the validator set, with many others acting as full
 nodes and sentry nodes. To gain more assurance before a release, we will also run
 larger-scale test networks to shake out emergent behaviors at scale.
 
-Large-scale test networks are run on a set of Digital Ocean virtual machines (VMs). 
-Each VM is equipped with 4 Gigabytes of RAM, 2 CPU cores, and 80 Gigabytes of NVMe
-SSD storage. The network runs a very simple key-value store application. During
-each test net, the following metrics are monitored and collected on each node:
+Large-scale test networks are run on a set of virtual machines (VMs). Each VM
+is equipped with 4 Gigabytes of RAM and 2 CPU cores. The network runs a very
+simple key-value store application. During each test net, the following metrics
+are monitored and collected on each node:
 
 * Tendermint rounds per height
 * Peers connected
