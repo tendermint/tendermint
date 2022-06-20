@@ -234,13 +234,11 @@ considered stable.
 
 ### Upgrade Harness
 
-The Tendermint team is in the process of creating an upgrade harness. This
-harness will test the process of stopping an instance of Tendermint running one
-version of the software and starting up the same application running the next
-version of Tendermint. This harness will be paired with the ability to crash the
-Tendermint process at a series of pre-defined places in the execution to allow
-the team to ensure that Tendermint successfully upgrades in many
-different start-stop combinations.
+The Tendermint team is creating an upgrade test harness to exercise the workflow 
+of stopping an instance of Tendermint running one version of the software and starting up the same application running the next version.  To support upgrade
+testing, we will add the ability to terminate the Tendermint process at specific
+pre-defined points in its execution  so that we can verify upgrades work in a
+representative sample of stop conditions.
 
 ### Large Scale Testnets
 
