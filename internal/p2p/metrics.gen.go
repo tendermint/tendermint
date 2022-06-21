@@ -74,6 +74,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peers_connected_outgoing",
 			Help:      "Number of peers connected as a result of the peer dialing this node.",
 		}, labels).With(labelsAndValues...),
+		PeersEvicted: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_evicted",
+			Help:      "Number of peers evicted by this node.",
+		}, labels).With(labelsAndValues...),
 		RouterPeerQueueRecv: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -119,6 +125,7 @@ func NopMetrics() *Metrics {
 		PeersConnectedFailure:  discard.NewCounter(),
 		PeersConnectedIncoming: discard.NewGauge(),
 		PeersConnectedOutgoing: discard.NewGauge(),
+		PeersEvicted:           discard.NewCounter(),
 		RouterPeerQueueRecv:    discard.NewHistogram(),
 		RouterPeerQueueSend:    discard.NewHistogram(),
 		RouterChannelQueueSend: discard.NewHistogram(),
