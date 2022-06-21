@@ -248,8 +248,7 @@ message ResponseDeliverTx {
 }
 
 message ResponseCommit {
-  // reserve 1
-  // reserve 2
+  reserved 1, 2;
   int64 retain_height = 3;
 }
 
