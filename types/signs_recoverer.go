@@ -16,16 +16,24 @@ type SignsRecoverer struct {
 	voteExts             [][]byte
 	voteExtSigs          [][][]byte
 
-	shouldRecoveryStateSig   bool
-	shouldRecoverVoteExtSigs bool
+	quorumReached bool
+}
+
+// WithQuorumReached sets a flag at SignsRecoverer to recovers threshold signatures for stateID and vote-extensions
+func WithQuorumReached(quorumReached bool) func(*SignsRecoverer) {
+	return func(r *SignsRecoverer) {
+		r.quorumReached = quorumReached
+	}
 }
 
 // NewSignsRecoverer creates and returns a new instance of SignsRecoverer
 // the state fills with signatures from the votes
-func NewSignsRecoverer(votes []*Vote) *SignsRecoverer {
+func NewSignsRecoverer(votes []*Vote, opts ...func(*SignsRecoverer)) *SignsRecoverer {
 	sigs := SignsRecoverer{
-		shouldRecoveryStateSig:   true,
-		shouldRecoverVoteExtSigs: true,
+		quorumReached: true,
+	}
+	for _, opt := range opts {
+		opt(&sigs)
 	}
 	sigs.init(votes)
 	return &sigs
@@ -46,12 +54,6 @@ func (v *SignsRecoverer) Recover() (*QuorumSigns, error) {
 		}
 	}
 	return thresholdSigns, nil
-}
-
-// RecoveryOnlyBlockSig disables recovering stateID and vote-extensions signatures
-func (v *SignsRecoverer) RecoveryOnlyBlockSig() {
-	v.shouldRecoveryStateSig = false
-	v.shouldRecoverVoteExtSigs = false
 }
 
 func (v *SignsRecoverer) init(votes []*Vote) {
@@ -86,7 +88,7 @@ func (v *SignsRecoverer) addVoteExtensions(voteExtensions VoteExtensions) {
 }
 
 func (v *SignsRecoverer) recoverStateSig(thresholdSigns *QuorumSigns) error {
-	if !v.shouldRecoveryStateSig {
+	if !v.quorumReached {
 		return nil
 	}
 	var err error
@@ -107,7 +109,7 @@ func (v *SignsRecoverer) recoverBlockSig(thresholdSigns *QuorumSigns) error {
 }
 
 func (v *SignsRecoverer) recoverVoteExtensionSigs(thresholdSigns *QuorumSigns) error {
-	if !v.shouldRecoverVoteExtSigs {
+	if !v.quorumReached {
 		return nil
 	}
 	var err error

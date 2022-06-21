@@ -361,18 +361,19 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 	if err != nil {
 		return err
 	}
-	return quorumDataSigns.Verify(voteSet.valSet.ThresholdPublicKey, voteSet.makeQuorumSigns())
+	verifier := NewQuorumSingsVerifier(
+		quorumDataSigns,
+		WithVerifyReachedQuorum(voteSet.IsQuorumReached()),
+	)
+	return verifier.Verify(voteSet.valSet.ThresholdPublicKey, voteSet.makeQuorumSigns())
 }
 
 func (voteSet *VoteSet) recoverThresholdSigns(blockVotes *blockVotes) error {
 	if len(blockVotes.votes) < 2 {
 		return fmt.Errorf("attempting to recover a threshold signature with only 1 vote")
 	}
-	signsRecoverer := NewSignsRecoverer(blockVotes.votes)
-	if voteSet.maj23 == nil || voteSet.maj23.Hash == nil {
-		// if the vote is voting for nil, then we do not care to Recover the state signature
-		signsRecoverer.RecoveryOnlyBlockSig()
-	}
+	// if the vote is voting for nil, then we do not care to Recover the state signature
+	signsRecoverer := NewSignsRecoverer(blockVotes.votes, WithQuorumReached(voteSet.IsQuorumReached()))
 	thresholdSigns, err := signsRecoverer.Recover()
 	if err != nil {
 		return err
@@ -507,6 +508,11 @@ func (voteSet *VoteSet) IsCommit() bool {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return voteSet.maj23 != nil
+}
+
+// IsQuorumReached returns true if quorum was reached otherwise returns false
+func (voteSet *VoteSet) IsQuorumReached() bool {
+	return voteSet.maj23 != nil && voteSet.maj23.Hash != nil
 }
 
 // HasTwoThirdsAny returns true if we are above voting threshold, regardless of the block id voted

@@ -213,23 +213,15 @@ func (vote *Vote) VerifyWithExtension(
 	proTxHash ProTxHash,
 	stateID StateID,
 ) error {
-	quorumSigns, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	quorumSignData, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
 	if err != nil {
 		return err
 	}
-	err = vote.verifyBasic(proTxHash, pubKey, quorumSigns)
+	err = vote.verifyBasic(proTxHash, pubKey)
 	if err != nil {
 		return err
 	}
-	// We only verify vote extension signatures for precommits.
-	if vote.Type == tmproto.PrecommitType {
-		// TODO: Remove extension signature nil check to enforce vote extension
-		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		verifier := NewQuorumSingsVerifier(quorumSigns)
-		verifier.OnlyVoteExtensions()
-		return verifier.Verify(pubKey, vote.makeQuorumSigns())
-	}
-	return nil
+	return vote.verifySign(pubKey, quorumSignData, WithVerifyExtensions(vote.Type == tmproto.PrecommitType))
 }
 
 func (vote *Vote) Verify(
@@ -240,14 +232,18 @@ func (vote *Vote) Verify(
 	proTxHash crypto.ProTxHash,
 	stateID StateID,
 ) error {
-	quorumSigns, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	err := vote.verifyBasic(proTxHash, pubKey)
 	if err != nil {
 		return err
 	}
-	return vote.verifyBasic(proTxHash, pubKey, quorumSigns)
+	quorumSignData, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	if err != nil {
+		return err
+	}
+	return vote.verifySign(pubKey, quorumSignData, WithVerifyExtensions(false))
 }
 
-func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumSingData QuorumSignData) error {
+func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey) error {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return ErrVoteInvalidValidatorProTxHash
 	}
@@ -255,20 +251,23 @@ func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumS
 		return ErrVoteInvalidValidatorPubKeySize
 	}
 
-	verifier := NewQuorumSingsVerifier(quorumSingData)
 	// we must verify the stateID but only if the blockID isn't nil
-	if vote.BlockID.Hash == nil {
-		if vote.StateSignature != nil {
-			return ErrVoteStateSignatureShouldBeNil
-		}
-		verifier.OnlyBlockCheck()
-	}
-	err := verifier.Verify(pubKey, vote.makeQuorumSigns())
-	if err != nil {
-		return fmt.Errorf("quorum verification failed for proTxHash=%s pubKey=%v vote=%v: %w",
-			proTxHash.ShortString(), pubKey, vote, err)
+	if vote.BlockID.Hash == nil && vote.StateSignature != nil {
+		return ErrVoteStateSignatureShouldBeNil
 	}
 	return nil
+}
+
+func (vote *Vote) verifySign(
+	pubKey crypto.PubKey,
+	quorumSignData QuorumSignData,
+	opts ...func(verifier *QuorumSingsVerifier),
+) error {
+	verifier := NewQuorumSingsVerifier(
+		quorumSignData,
+		append(opts, WithVerifyState(vote.BlockID.Hash != nil))...,
+	)
+	return verifier.Verify(pubKey, vote.makeQuorumSigns())
 }
 
 func (vote *Vote) makeQuorumSigns() QuorumSigns {

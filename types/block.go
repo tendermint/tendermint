@@ -691,10 +691,7 @@ func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, comm
 		StateID: stateID,
 	}
 	if commitSigns != nil {
-		commit.QuorumHash = commitSigns.QuorumHash
-		commit.ThresholdBlockSignature = commitSigns.BlockSign
-		commit.ThresholdStateSignature = commitSigns.StateSign
-		commit.ThresholdVoteExtensions = commitSigns.ExtensionSigns
+		commitSigns.CopyToCommit(commit)
 	}
 	return commit
 }
