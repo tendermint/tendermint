@@ -435,7 +435,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 
 	if len(n.peerManager.Peers()) == 0 && !hasMajorityVotingPower(state, n.nodeKey.PubKey()) {
 		if n.config.P2P.PersistentPeers == "" && n.config.P2P.BootstrapPeers == "" {
-			return errors.New("no peers configured or avalible. Set 'bootstrap-peers' and/or 'persistent-peers'")
+			return errors.New("no peers configured or available. Set 'bootstrap-peers' and/or 'persistent-peers'")
 		}
 	}
 
