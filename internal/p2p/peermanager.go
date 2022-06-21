@@ -570,6 +570,9 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 			continue
 		}
 		if time.Since(peer.LastDisconnected) < m.retryDelay(rand.Uint32()%11, false) {
+			fmt.Println("continue")
+			fmt.Println(time.Since(peer.LastDisconnected))
+			fmt.Println(m.retryDelay(rand.Uint32()%11, false))
 			continue
 		}
 
