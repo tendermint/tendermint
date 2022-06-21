@@ -112,7 +112,7 @@ Let us now examine the grammar line by line, providing further details.
 
 * In _state-sync_ mode, Tendermint makes one or more attempts at synchronizing the Application's state.
   At the beginning of each attempt, it offers the Application a snapshot found at another process.
-  If the Application accepts the snapshop, a sequence of calls to `ApplySnapshotChunk` method follow
+  If the Application accepts the snapshot, a sequence of calls to `ApplySnapshotChunk` method follow
   to provide the Application with all the snapshots needed, in order to reconstruct the state locally.
   A successful attempt must provide at least one chunk via `ApplySnapshotChunk`.
   At the end of a successful attempt, Tendermint calls `Info` to make sure the recontructed state's
