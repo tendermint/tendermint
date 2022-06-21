@@ -2311,7 +2311,7 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 	m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil)
 
-	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m}) // , logger: log.NewTestingLogger(t)
+	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
 	height, round := cs1.Height, cs1.Round
 
 	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)

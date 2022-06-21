@@ -191,7 +191,6 @@ func (q *QuorumSingsVerifier) verifyState(pubKey crypto.PubKey, signs QuorumSign
 	return nil
 }
 
-// verifyVoteExtensions ...
 func (q *QuorumSingsVerifier) verifyVoteExtensions(
 	pubKey crypto.PubKey,
 	signs QuorumSigns,

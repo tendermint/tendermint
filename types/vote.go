@@ -24,6 +24,7 @@ const (
 	MaxVoteBytesEd25519  int64 = 209
 )
 
+// VoteExtensionTypes is a list of all possible vote-extension types
 var VoteExtensionTypes = []tmproto.VoteExtensionType{
 	tmproto.VoteExtensionType_DEFAULT,
 	tmproto.VoteExtensionType_THRESHOLD_RECOVER,

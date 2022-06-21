@@ -548,40 +548,6 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 	return BlockID{}, false
 }
 
-// GetVoteExtensions returns vote extensions from the first not nil vote from a list. It also does some basic
-// consistency checks, to ensure all votes contain the same threshold-recovered vote extensions
-func (voteSet *VoteSet) GetVoteExtensions() (VoteExtensions, error) {
-	if len(voteSet.votes) == 0 {
-		return VoteExtensions{}, nil
-	}
-	var ret *Vote
-	for _, vote := range voteSet.votes {
-		if vote == nil {
-			continue
-		}
-		if vote != nil && ret == nil {
-			ret = vote
-			continue
-		}
-		exts1 := ret.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER]
-		exts2 := vote.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER]
-		if len(exts1) != len(exts2) {
-			return nil, fmt.Errorf("the number elemnts don't match")
-		}
-		for i, ext1 := range ret.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER] {
-			ext2 := vote.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER][i]
-			if !bytes.Equal(ext1.Extension, ext2.Extension) {
-				return nil, fmt.Errorf("vote extension (number=%d) between votes is not equal %X != %X",
-					i, ext1.Extension, ext2.Extension)
-			}
-		}
-	}
-	if ret != nil {
-		return ret.VoteExtensions, nil
-	}
-	return VoteExtensions{}, nil
-}
-
 //--------------------------------------------------------------------------------
 // Strings and JSON
 
