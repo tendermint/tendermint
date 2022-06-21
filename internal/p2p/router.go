@@ -466,11 +466,6 @@ func (r *Router) dialSleep(ctx context.Context) {
 	}
 
 	r.options.DialSleep(ctx)
-
-	if !r.peerManager.HasDialedMaxPeers() {
-		r.peerManager.dialWaker.Wake()
-	}
-
 }
 
 // acceptPeers accepts inbound connections from peers on the given transport,
