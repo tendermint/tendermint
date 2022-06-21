@@ -219,13 +219,15 @@ that rely on Tendermint.
 
 Ahead of any minor version release of Tendermint, the software enters 'Feature
 Freeze' for at least two weeks. A feature freeze means that _no_ new features
-are added to the code base. The Tendermint team instead directs all attention
-to ensuring that the existing code is stable and reliable. Broken tests are
-fixed, flakey-tests are remedied, end-to-end test failures are thoroughly
-diagnosed and all efforts of the team are aimed at improving the quality of the
-code. During this period, the upgrade harness tests are run repeatedly and
-a variety of in-house testnets are run to ensure Tendermint functions at the
-scale it will be used by application developers and node operators.
+are added to the code being prepared for release. This period directly follows
+the creation of the [backport branch](#creating-a-backport-branch). The
+Tendermint team instead directs all attention to ensuring that the existing
+code is stable and reliable. Broken tests are fixed, flakey-tests are remedied,
+end-to-end test failures are thoroughly diagnosed and all efforts of the team
+are aimed at improving the quality of the code. During this period, the upgrade
+harness tests are run repeatedly and a variety of in-house testnets are run to
+ensure Tendermint functions at the scale it will be used by application
+developers and node operators.
 
 ### Nightly End-To-End Tests
 
