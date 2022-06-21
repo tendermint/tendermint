@@ -257,8 +257,9 @@ larger-scale test networks to shake out emergent behaviors at scale.
 
 Large-scale test networks are run on a set of virtual machines (VMs). Each VM
 is equipped with 4 Gigabytes of RAM and 2 CPU cores. The network runs a very
-simple key-value store application. During each test net, the following metrics
-are monitored and collected on each node:
+simple key-value store application. The application adds artificial delays to
+different ABCI calls to simulate a slow application. During each test net, the
+following metrics are monitored and collected on each node:
 
 * Tendermint rounds per height
 * Peers connected
