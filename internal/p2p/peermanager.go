@@ -513,9 +513,9 @@ func (m *PeerManager) HasDialedMaxPeers() bool {
 // returned peer.
 func (m *PeerManager) DialNext(ctx context.Context) (NodeAddress, error) {
 	for {
-		address, err := m.TryDialNext()
-		if err != nil || (address != NodeAddress{}) {
-			return address, err
+		address := m.TryDialNext()
+		if (address != NodeAddress{}) {
+			return address, nil
 		}
 		select {
 		case <-m.dialWaker.Sleep():
@@ -527,7 +527,7 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeAddress, error) {
 
 // TryDialNext is equivalent to DialNext(), but immediately returns an empty
 // address if no peers or connection slots are available.
-func (m *PeerManager) TryDialNext() (NodeAddress, error) {
+func (m *PeerManager) TryDialNext() NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
@@ -535,12 +535,12 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 	// MaxConnectedUpgrade allows us to probe additional peers that have a
 	// higher score than any other peers, and if successful evict it.
 	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
-		return NodeAddress{}, nil
+		return NodeAddress{}
 	}
 
 	cinfo := m.getConnectedInfo()
 	if m.options.MaxOutgoingConnections > 0 && cinfo.outgoing >= m.options.MaxOutgoingConnections {
-		return NodeAddress{}, nil
+		return NodeAddress{}
 	}
 
 	for _, peer := range m.store.Ranked() {
@@ -563,16 +563,16 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 				upgradeFromPeer := m.findUpgradeCandidate(peer.ID, peer.Score())
 				if upgradeFromPeer == "" {
-					return NodeAddress{}, nil
+					return NodeAddress{}
 				}
 				m.upgrading[upgradeFromPeer] = peer.ID
 			}
 
 			m.dialing[peer.ID] = true
-			return addressInfo.Address, nil
+			return addressInfo.Address
 		}
 	}
-	return NodeAddress{}, nil
+	return NodeAddress{}
 }
 
 // DialFailed reports a failed dial attempt. This will make the peer available
