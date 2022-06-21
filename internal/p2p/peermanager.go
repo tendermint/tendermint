@@ -569,6 +569,9 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 		if m.dialing[peer.ID] || m.isConnected(peer.ID) {
 			continue
 		}
+		if time.Since(peer.LastDisconnected) < m.retryDelay(1, false) {
+			continue
+		}
 
 		for _, addressInfo := range peer.AddressInfo {
 			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(addressInfo.DialFailures, peer.Persistent) {
@@ -876,6 +879,10 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	case peerConnectionOutgoing:
 		m.metrics.PeersConnectedOutgoing.Add(-1)
 	}
+
+	p, _ := m.store.Get(peerID)
+	p.LastDisconnected = time.Now()
+	m.store.Set(p)
 
 	ready := m.ready[peerID]
 
@@ -1447,9 +1454,10 @@ func (s *peerStore) Size() int {
 
 // peerInfo contains peer information stored in a peerStore.
 type peerInfo struct {
-	ID            types.NodeID
-	AddressInfo   map[NodeAddress]*peerAddressInfo
-	LastConnected time.Time
+	ID               types.NodeID
+	AddressInfo      map[NodeAddress]*peerAddressInfo
+	LastConnected    time.Time
+	LastDisconnected time.Time
 
 	// These fields are ephemeral, i.e. not persisted to the database.
 	Persistent bool
