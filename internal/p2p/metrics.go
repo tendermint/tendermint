@@ -51,6 +51,9 @@ type Metrics struct {
 	// this node.
 	PeersConnectedOutgoing metrics.Gauge
 
+	// Number of peers evicted by this node.
+	PeersEvicted metrics.Counter
+
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
 	//metrics:The time taken to read off of a peer's queue before sending on the connection.
