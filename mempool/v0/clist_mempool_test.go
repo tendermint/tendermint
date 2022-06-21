@@ -33,6 +33,27 @@ import (
 // test.
 type cleanupFunc func()
 
+func newMempoolWithAppMock(cc proxy.ClientCreator, client abciclient.Client) (*CListMempool, cleanupFunc, error) {
+	conf := config.ResetTestRoot("mempool_test")
+
+	mp, cu := newMempoolWithAppAndConfigMock(cc, conf, client)
+	return mp, cu, nil
+}
+
+func newMempoolWithAppAndConfigMock(cc proxy.ClientCreator, cfg *config.Config, client abciclient.Client) (*CListMempool, cleanupFunc) {
+	appConnMem := client
+	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
+	err := appConnMem.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	mp := NewCListMempool(cfg.Mempool, appConnMem, 0)
+	mp.SetLogger(log.TestingLogger())
+
+	return mp, func() { os.RemoveAll(cfg.RootDir) }
+}
+
 func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc, error) {
 	conf := config.ResetTestRoot("mempool_test")
 
@@ -197,7 +218,9 @@ func TestMempoolUpdate(t *testing.T) {
 		err := mp.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
 		err = mp.CheckTx([]byte{0x01}, nil, mempool.TxInfo{})
-		require.NoError(t, err)
+		if assert.Error(t, err) {
+			assert.Equal(t, mempool.ErrTxInCache, err)
+		}
 	}
 
 	// 2. Removes valid txs from the mempool
@@ -232,11 +255,9 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	mockClient.On("FlushAsync", mock.Anything).Return(abciclient.NewReqRes(abci.ToRequestFlush()), nil)
 	mockClient.On("SetResponseCallback", mock.MatchedBy(func(cb abciclient.Callback) bool { callback = cb; return true }))
 
-	// cc := func() (abciclient.Client, error) {
-	// 	return mockClient, nil
-	// }
 	app := kvstore.NewApplication()
-	mp, cleanup, err := newMempoolWithApp(proxy.NewLocalClientCreator(app))
+	cc := proxy.NewLocalClientCreator(app)
+	mp, cleanup, err := newMempoolWithAppMock(cc, mockClient)
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -302,11 +323,15 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 
 		// a must be added to the cache
 		err = mp.CheckTx(a, nil, mempool.TxInfo{})
-		require.NoError(t, err)
+		if assert.Error(t, err) {
+			assert.Equal(t, mempool.ErrTxInCache, err)
+		}
 
 		// b must remain in the cache
 		err = mp.CheckTx(b, nil, mempool.TxInfo{})
-		require.NoError(t, err)
+		if assert.Error(t, err) {
+			assert.Equal(t, mempool.ErrTxInCache, err)
+		}
 	}
 
 	// 2. An invalid transaction must remain in the cache
