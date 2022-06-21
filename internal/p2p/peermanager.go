@@ -569,7 +569,7 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 		if m.dialing[peer.ID] || m.isConnected(peer.ID) {
 			continue
 		}
-		if time.Since(peer.LastDisconnected) < m.retryDelay(1, false) {
+		if time.Since(peer.LastDisconnected) < m.retryDelay(rand.Uint32()%11, false) {
 			continue
 		}
 
