@@ -17,12 +17,13 @@ synchronously and there will be no byzantine process. In these frequent, benign 
 * `PrepareProposal` will be called exactly once at the proposer process of round 0, height _h_;
 * `ProcessProposal` will be called exactly once at all processes, and
   will return _accept_ in its `Response*`;
-* `ExtendVote` will be called exactly once at all processes
+* `ExtendVote` will be called exactly once at all processes;
 * `VerifyVoteExtension` will be called _n-1_ times at each validator process, where _n_ is the
-  number of validators; and
-* `FinalizeBlock` will be called at all processes, conveying the same prepared
-  block that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for height _h_.
-* `Commit` will be finally called at all processes at the end of height _h_.
+  number of validators, and will always return _accept_ in its `Response*`;
+* `FinalizeBlock` will be called exactly once at all processes, conveying the same prepared
+  block that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for
+  height _h_; and
+* `Commit` will finally be called exactly once at all processes at the end of height _h_.
 
 However, the Application logic must be ready to cope with any possible run of Tendermint for a given
 height, including bad periods (byzantine proposers, network being asynchronous).

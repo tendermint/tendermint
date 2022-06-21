@@ -475,11 +475,14 @@ proposal and will not call `RequestPrepareProposal`.
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                    | 5            |
 
 * **Usage**:
-    * Contains fields from the proposed block.
+    * Contains all information on the proposed block needed to fully execute it.
         * The Application may fully execute the block as though it was handling
          `RequestFinalizeBlock`.
-          However, any resulting state changes must be kept as _candidate state_,
+        * However, any resulting state changes must be kept as _candidate state_,
           and the Application should be ready to discard it in case another block is decided.
+    * `RequestProcessProposal` is also called at the proposer of a round. The reason for this is to
+      inform the Application of the block header's hash, which cannot be done at `PrepareProposal`
+      time.
     * The height and timestamp values match the values from the header of the proposed block.
     * If `ResponseProcessProposal.status` is `REJECT`, Tendermint assumes the proposal received
       is not valid.
@@ -594,9 +597,11 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
     | status | [VerifyStatus](#verifystatus) | `enum` signaling if the application accepts the vote extension | 1            |
 
 * **Usage**:
-    * `RequestVerifyVoteExtension.vote_extension` can be an empty byte array. The Application's interpretation of it should be
+    * `RequestVerifyVoteExtension.vote_extension` can be an empty byte array. The Application's
+      interpretation of it should be
       that the Application running at the process that sent the vote chose not to extend it.
       Tendermint will always call `RequestVerifyVoteExtension`, even for 0 length vote extensions.
+    * `RequestVerifyVoteExtension` is not called for precommit votes sent by the local process.
     * `RequestVerifyVoteExtension.hash` refers to a proposed block. There is not guarantee that
       this proposed block has previously been exposed to the Application via `ProcessProposal`.
     * If `ResponseVerifyVoteExtension.status` is `REJECT`, Tendermint will reject the whole received vote.
@@ -611,8 +616,8 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
 #### When does Tendermint call `VerifyVoteExtension`?
 
-When a validator _p_ is in Tendermint consensus round _r_, height _h_, and _p_ receives a Precommit
-message for round _r_, height _h_ from _q_:
+When a process _p_ is in Tendermint consensus round _r_, height _h_, and _p_ receives a Precommit
+message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 
 1. If the Precommit message does not contain a vote extension with a valid signature, Tendermint
    discards the Precommit message as invalid.

@@ -10,7 +10,7 @@ title: Requirements for the Application
 This section specifies what Tendermint expects from the Application. It is structured as a set
 of formal requirements that can be used for testing and verification of the Application's logic.
 
-Let *p* and *q* be two different correct processes.
+Let *p* and *q* be two correct processes.
 Let *r<sub>p</sub>* (resp. *r<sub>q</sub>*) be a round of height *h* where *p* (resp. *q*) is the
 proposer.
 Let *s<sub>p,h-1</sub>* be *p*'s Application's state committed for height *h-1*.
@@ -109,9 +109,9 @@ Let *e<sup>r</sup><sub>p</sub>* be the vote extension that the Application of a 
 Let *w<sup>r</sup><sub>p</sub>* be the proposed block that *p*'s Tendermint passes to the Application via `RequestExtendVote`
 in round *r*, height *h*.
 
-* Requirement 8 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two correct processes *p* and *q*, if *q*
-receives *e<sup>r</sup><sub>p</sub>*
-  from *p* in height *h*, *q*'s Application returns Accept in `ResponseVerifyVoteExtension`.
+* Requirement 8 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two different correct
+  processes *p* and *q*, if *q* receives *e<sup>r</sup><sub>p</sub>* from *p* in height *h*, *q*'s
+  Application returns Accept in `ResponseVerifyVoteExtension`.
 
 Requirement 8 constrains the creation and handling of vote extensions in a similar way as Requirement 5
 constrains the creation and handling of proposed blocks.
