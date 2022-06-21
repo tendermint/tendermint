@@ -215,15 +215,15 @@ and suitable for adoption by the various diverse projects that rely on Tendermin
 
 ### Feature Freeze
 
-Ahead of any minor version release of Tendermint, the software enters a two
-week 'Feature Freeze'. A feature freeze means that _no_ new features are added
-to the code base. The Tendermint team instead directs all attention to ensuring
-that the existing code is stable and reliable. Broken tests are fixed,
-flakey-tests are remedied, end-to-end test failures are thoroughly diagnosed
-and all efforts of the team are aimed at improving the quality of the code.
-During this period, the upgrade harness tests are run repeatedly and a variety
-of in-house testnets are run to ensure Tendermint functions at the scale it
-will be used by application developers and node operators.
+Ahead of any minor version release of Tendermint, the software enters 'Feature
+Freeze' for at least two weeks. A feature freeze means that _no_ new features
+are added to the code base. The Tendermint team instead directs all attention
+to ensuring that the existing code is stable and reliable. Broken tests are
+fixed, flakey-tests are remedied, end-to-end test failures are thoroughly
+diagnosed and all efforts of the team are aimed at improving the quality of the
+code. During this period, the upgrade harness tests are run repeatedly and
+a variety of in-house testnets are run to ensure Tendermint functions at the
+scale it will be used by application developers and node operators.
 
 ### Nightly End-To-End Tests
 
