@@ -1363,48 +1363,35 @@ func (s *peerStore) Ranked() []*peerInfo {
 	}
 	s.ranked = make([]*peerInfo, 0, len(s.peers))
 	for _, peer := range s.peers {
+		if peer.Inactive {
+			continue
+		}
 		s.ranked = append(s.ranked, peer)
 	}
 	sort.Slice(s.ranked, func(i, j int) bool {
-		// sort inactive peers after active peers
-		if s.ranked[i].Inactive && !s.ranked[j].Inactive {
-			return false
-		} else if !s.ranked[i].Inactive && s.ranked[j].Inactive {
-			return true
-		}
-
 		iLastDialed, iLastDialSuccess := s.ranked[i].LastDialed()
 		jLastDialed, jLastDialSuccess := s.ranked[j].LastDialed()
 
-		// sort peers who our most recent dialing attempt was
-		// successful ahead of peers with recent dialing
-		// failures
-		switch {
-		case iLastDialSuccess && jLastDialSuccess:
-			// if both peers were (are?) successfully
-			// connected, convey their score, but give the
-			// one we dialed successfully most recently a bonus
+		iScore := int64(s.ranked[i].Score())
+		jScore := int64(s.ranked[j].Score())
 
-			iScore := int64(s.ranked[i].Score())
-			jScore := int64(s.ranked[j].Score())
-			if jLastDialed.Before(iLastDialed) {
-				jScore++
-			} else {
+		// sorting should be based on score, but give each
+		// peer a boost if our last dialing attempt was
+		// successful and if they
+		if iLastDialSuccess {
+			iScore++
+			if iLastDialed.After(jLastDialed) {
 				iScore++
 			}
-
-			return iScore > jScore
-		case iLastDialSuccess:
-			return true
-		case jLastDialSuccess:
-			return false
-		default:
-			// if both peers were not successful in their
-			// most recent dialing attempt, fall back to
-			// peer score.
-
-			return s.ranked[i].Score() > s.ranked[j].Score()
 		}
+		if jLastDialSuccess {
+			jScore++
+			if jLastDialed.After(iLastDialed) {
+				jScore++
+			}
+		}
+
+		return iScore > jScore
 	})
 	return s.ranked
 }
