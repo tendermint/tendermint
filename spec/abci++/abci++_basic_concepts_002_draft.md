@@ -14,9 +14,9 @@ title: Overview and basic concepts
 - [Next-block execution vs. same-block execution](#next-block-execution-vs-same-block-execution)
 - [Tendermint proposal timeout](#tendermint-proposal-timeout)
 - [Determinism](#determinism)
-- [Errors](#errors)
 - [Events](#events)
 - [Evidence](#evidence)
+- [Errors](#errors)
 
 # Overview and basic concepts
 
@@ -252,7 +252,7 @@ that the block execution time upon `PrepareProposal` fits well in the propose
 timeout interval. Thus, the Application can adapt the value of *TimeoutPropose* at every height via
 `TimeoutParams.Propose`, contained in `ConsensusParams`.
 
-## Determinism
+## Deterministic State-Machine Replication
 
 [&uparrow; Back to Outline](#outline)
 
@@ -310,53 +310,6 @@ intended for the literal output from the Application's logger, while the
 `Info` is any additional info that should be returned. These are the only fields
 that are not included in block header computations, so we don't need agreement
 on them. All other fields in the `Response*` must be strictly deterministic.
-
-## Errors
-
-[&uparrow; Back to Outline](#outline)
-
-The `Query`, and `CheckTx` methods include a `Code` field in their `Response*`.
-Field `Code` is meant to contain an application-specific response code.
-A response code of `0` indicates no error.  Any other response code
-indicates to Tendermint that an error occurred.
-
-These methods also return a `Codespace` string to Tendermint. This field is
-used to disambiguate `Code` values returned by different domains of the
-Application. The `Codespace` is a namespace for the `Code`.
-
-Methods `Echo`, `Info`, and `InitChain` do not return errors.
-An error in any of these methods represents a critical issue that Tendermint
-has no reasonable way to handle. If there is an error in one
-of these methods, the Application must crash to ensure that the error is safely
-handled by an operator.
-
-Method `FinalizeBlock` is a special case. It contains a number of
-`Code` and `Codespace` fields as part of type `ExecTxResult`. Each of
-these codes reports errors related to the transaction it is attached to.
-However, `FinalizeBlock` does not return errors at the top level, so the
-same considerations on critical issues made for `Echo`, `Info`, and
-`InitChain` also apply here.
-
-The handling of non-zero response codes by Tendermint is described below.
-
-### `CheckTx`
-
-When Tendermint receives a `ResponseCheckTx` with a non-zero `Code`, the associated
-transaction will not be added to Tendermint's mempool or it will be removed if
-it is already included.
-
-### `ExecTxResult` (as part of `FinalizeBlock`)
-
-The `ExecTxResult` type delivers transactions from Tendermint to the Application.
-When Tendermint receives a `ResponseFinalizeBlock` containing an `ExecTxResult`
-with a non-zero `Code`, the response code is logged.
-The transaction was already included in a block, so the `Code` does not influence
-Tendermint consensus.
-
-### `Query`
-
-When Tendermint receives a `ResponseQuery` with a non-zero `Code`, this code is
-returned directly to the client that initiated the query.
 
 ## Events
 
@@ -460,3 +413,49 @@ There are two forms of evidence: Duplicate Vote and Light Client Attack. More
 information can be found in either [data structures](../core/data_structures.md)
 or [accountability](../light-client/accountability/)
 
+## Errors
+
+[&uparrow; Back to Outline](#outline)
+
+The `Query`, and `CheckTx` methods include a `Code` field in their `Response*`.
+Field `Code` is meant to contain an application-specific response code.
+A response code of `0` indicates no error.  Any other response code
+indicates to Tendermint that an error occurred.
+
+These methods also return a `Codespace` string to Tendermint. This field is
+used to disambiguate `Code` values returned by different domains of the
+Application. The `Codespace` is a namespace for the `Code`.
+
+Methods `Echo`, `Info`, and `InitChain` do not return errors.
+An error in any of these methods represents a critical issue that Tendermint
+has no reasonable way to handle. If there is an error in one
+of these methods, the Application must crash to ensure that the error is safely
+handled by an operator.
+
+Method `FinalizeBlock` is a special case. It contains a number of
+`Code` and `Codespace` fields as part of type `ExecTxResult`. Each of
+these codes reports errors related to the transaction it is attached to.
+However, `FinalizeBlock` does not return errors at the top level, so the
+same considerations on critical issues made for `Echo`, `Info`, and
+`InitChain` also apply here.
+
+The handling of non-zero response codes by Tendermint is described below.
+
+### `CheckTx`
+
+When Tendermint receives a `ResponseCheckTx` with a non-zero `Code`, the associated
+transaction will not be added to Tendermint's mempool or it will be removed if
+it is already included.
+
+### `ExecTxResult` (as part of `FinalizeBlock`)
+
+The `ExecTxResult` type delivers transactions from Tendermint to the Application.
+When Tendermint receives a `ResponseFinalizeBlock` containing an `ExecTxResult`
+with a non-zero `Code`, the response code is logged.
+The transaction was already included in a block, so the `Code` does not influence
+Tendermint consensus.
+
+### `Query`
+
+When Tendermint receives a `ResponseQuery` with a non-zero `Code`, this code is
+returned directly to the client that initiated the query.

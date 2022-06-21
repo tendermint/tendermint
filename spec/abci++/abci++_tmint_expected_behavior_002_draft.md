@@ -70,7 +70,7 @@ decide              = %s"<FinalizeBlock>"
 commit              = %s"<Commit>"
 ```
 
-We have kept some ABCI++ methods out of the grammar, in order to keep it as clear and concise as possible.
+We have kept some ABCI methods out of the grammar, in order to keep it as clear and concise as possible.
 A common reason for keeping all these methods out is that they all can be called at any point in a sequence defined
 by the grammar above. Other reasons depend on the method in question:
 
@@ -152,8 +152,9 @@ Let us now examine the grammar line by line, providing further details.
 
 * If the local process is the proposer of the current round, Tendermint starts by calling
   `PrepareProposal`, followed by `ProcessProposal`. Then, optionally, the Application is asked
-  to extend its vote for that round. Calls to `VerifyVoteExtension` can come at any time (they
-  may belong to this round of to a future one).
+  to extend its vote for that round. Calls to `VerifyVoteExtension` can come at any time: the
+  local process may be slightly late in the current round, or votes may come from a future round
+  of this height.
 
 >```abnf
 >proposer            = *got-vote prepare-proposal *got-vote process-proposal [extend]
@@ -161,9 +162,10 @@ Let us now examine the grammar line by line, providing further details.
 >```
 
 * If the local process is not the proposer of the current round, Tendermint will call `ProcessProposal`
-  at most once. At most one call to `ExtendVote` can occur only after `ProcessProposal` is called.
+  at most once. At most one call to `ExtendVote` may occur only after `ProcessProposal` is called.
   A number of calls to `VerifyVoteExtension` can occur in any order with respect to `ProcessProposal`
-  and `ExtendVote` throughout the round.
+  and `ExtendVote` throughout the round. The reasons are the same as above, namely, the process running
+  slightly late in the current round, or votes from future rounds of this height received.
 
 >```abnf
 >non-proposer        = *got-vote [process-proposal] [extend]
