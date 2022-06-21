@@ -649,9 +649,11 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 		}
 	}
 	if address.NodeID == m.selfID {
+		m.dialWaker.Wake()
 		return fmt.Errorf("rejecting connection to self (%v)", address.NodeID)
 	}
 	if m.isConnected(address.NodeID) {
+		m.dialWaker.Wake()
 		return fmt.Errorf("peer %v is already connected", address.NodeID)
 	}
 	if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
@@ -662,6 +664,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 
 	peer, ok := m.store.Get(address.NodeID)
 	if !ok {
+		m.dialWaker.Wake()
 		return fmt.Errorf("peer %q was removed while dialing", address.NodeID)
 	}
 	now := time.Now().UTC()

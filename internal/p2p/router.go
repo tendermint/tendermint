@@ -634,7 +634,6 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 
 	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
 		r.logger.Error("failed to dial peer", "op", "outgoing/dialing", "peer", address.NodeID, "err", err)
-		r.peerManager.dialWaker.Wake()
 		conn.Close()
 		return
 	}
