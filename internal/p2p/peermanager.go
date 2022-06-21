@@ -556,14 +556,8 @@ func (m *PeerManager) TryDialNext() NodeAddress {
 	// We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
 	// MaxConnectedUpgrade allows us to probe additional peers that have a
 	// higher score than any other peers, and if successful evict it.
-<<<<<<< HEAD
-	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >=
-		int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
-		return NodeAddress{}, nil
-=======
 	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
 		return NodeAddress{}
->>>>>>> cfd13825e (p2p: add eviction metrics and cleanup dialing error handling (#8819))
 	}
 
 	cinfo := m.getConnectedInfo()

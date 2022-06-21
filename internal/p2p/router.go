@@ -513,13 +513,9 @@ func (r *Router) routeChannel(
 				// (disconnect) from the peer.
 				r.peerManager.Errored(peerError.NodeID, peerError.Err)
 			} else {
-<<<<<<< HEAD
-				r.peerManager.processPeerEvent(PeerUpdate{
-=======
 				// this just decrements the peer
 				// score.
-				r.peerManager.processPeerEvent(ctx, PeerUpdate{
->>>>>>> cfd13825e (p2p: add eviction metrics and cleanup dialing error handling (#8819))
+				r.peerManager.processPeerEvent(PeerUpdate{
 					NodeID: peerError.NodeID,
 					Status: PeerStatusBad,
 				})

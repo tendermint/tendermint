@@ -752,14 +752,8 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	require.Empty(t, dial)
 
 	// Failing b's dial will now make c available for dialing.
-<<<<<<< HEAD
-	require.NoError(t, peerManager.DialFailed(b))
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
-=======
 	require.NoError(t, peerManager.DialFailed(ctx, b))
 	dial = peerManager.TryDialNext()
->>>>>>> cfd13825e (p2p: add eviction metrics and cleanup dialing error handling (#8819))
 	require.Equal(t, c, dial)
 }
 
@@ -1493,14 +1487,8 @@ func TestPeerManager_Disconnected(t *testing.T) {
 	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 
-<<<<<<< HEAD
 	peerManager.Disconnected(a.NodeID)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
-=======
-	peerManager.Disconnected(ctx, a.NodeID)
 	dial = peerManager.TryDialNext()
->>>>>>> cfd13825e (p2p: add eviction metrics and cleanup dialing error handling (#8819))
 	require.Zero(t, dial)
 }
 
