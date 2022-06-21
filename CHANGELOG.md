@@ -8,9 +8,18 @@ June 16, 2022
 
 ### BUG FIXES
 
-- [p2p] \#8692 pass maxConns for MaxPeers during node setup (#8684)
-- [rpc] \#8715 always close http bodies (backport #8712)
-- [p2p] \#8760 accept should not abort on first error (backport #8759)
+- [p2p] [\#8692](https://github.com/tendermint/tendermint/pull/8692) pass maxConns for MaxPeers during node setup (#8684)
+- [rpc] [\#8715](https://github.com/tendermint/tendermint/pull/8715) always close http bodies (backport #8712)
+- [p2p] [\#8760](https://github.com/tendermint/tendermint/pull/8760) accept should not abort on first error (backport #8759)
+
+### BREAKING CHANGES
+
+- P2P Protocol
+
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Introduce "inactive" peer label to avoid re-dialing incompatible peers. (@tychoish)
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Increase frequency of dialing attempts to reduce latency for peer acquisition. (@tychoish)
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Improvements to peer scoring and sorting to gossip a greater variety of peers during PEX. (@tychoish)
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Track incoming and outgoing peers separately to ensure more peer slots open for incoming connections. (@tychoish)
 
 ## v0.35.6
 
