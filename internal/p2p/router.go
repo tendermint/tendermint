@@ -310,11 +310,7 @@ func (r *Router) routeChannel(
 ) {
 	for {
 		select {
-		case envelope, ok := <-outCh:
-			if !ok {
-				return
-			}
-
+		case envelope := <-outCh:
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
 			// it on to Transport.SendMessage().
 			envelope.ChannelID = chID
@@ -391,20 +387,22 @@ func (r *Router) routeChannel(
 				}
 			}
 
-		case peerError, ok := <-errCh:
-			if !ok {
-				return
-			}
-
-			shouldEvict := peerError.Fatal || r.peerManager.HasMaxPeerCapacity()
+		case peerError := <-errCh:
+			maxPeerCapacity := r.peerManager.HasMaxPeerCapacity()
 			r.logger.Error("peer error",
 				"peer", peerError.NodeID,
 				"err", peerError.Err,
-				"evicting", shouldEvict,
+				"disconnecting", peerError.Fatal || maxPeerCapacity,
 			)
-			if shouldEvict {
+
+			if peerError.Fatal || maxPeerCapacity {
+				// if the error is fatal or all peer
+				// slots are in use, we can error
+				// (disconnect) from the peer.
 				r.peerManager.Errored(peerError.NodeID, peerError.Err)
 			} else {
+				// this just decrements the peer
+				// score.
 				r.peerManager.processPeerEvent(ctx, PeerUpdate{
 					NodeID: peerError.NodeID,
 					Status: PeerStatusBad,
@@ -591,9 +589,8 @@ LOOP:
 		switch {
 		case errors.Is(err, context.Canceled):
 			break LOOP
-		case err != nil:
-			r.logger.Error("failed to find next peer to dial", "err", err)
-			break LOOP
+		case address == NodeAddress{}:
+			continue LOOP
 		}
 
 		select {
@@ -603,7 +600,7 @@ LOOP:
 			// create connections too quickly.
 
 			r.dialSleep(ctx)
-			continue
+			continue LOOP
 		case <-ctx.Done():
 			close(addresses)
 			break LOOP
@@ -642,6 +639,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 
 	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
 		r.logger.Error("failed to dial peer", "op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		r.peerManager.dialWaker.Wake()
 		conn.Close()
 		return
 	}
@@ -936,6 +934,8 @@ func (r *Router) evictPeers(ctx context.Context) {
 		r.peerMtx.RLock()
 		queue, ok := r.peerQueues[peerID]
 		r.peerMtx.RUnlock()
+
+		r.metrics.PeersEvicted.Add(1)
 
 		if ok {
 			queue.close()
