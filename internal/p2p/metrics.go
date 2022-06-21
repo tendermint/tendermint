@@ -27,14 +27,31 @@ var (
 
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
-	// Number of peers.
+	// Number of peers connected.
 	Peers metrics.Gauge
+	// Nomber of peers in the peer store database.
+	PeersStored metrics.Gauge
+	// Number of inactive peers stored.
+	PeersInactivated metrics.Gauge
+
 	// Number of bytes received from a given peer.
 	PeerReceiveBytesTotal metrics.Counter
 	// Number of bytes sent to a given peer.
 	PeerSendBytesTotal metrics.Counter
 	// Pending bytes to be sent to a given peer.
 	PeerPendingSendBytes metrics.Gauge
+
+	// Number of successful connection attempts
+	PeersConnectedSuccess metrics.Counter
+	// Number of failed connection attempts
+	PeersConnectedFailure metrics.Counter
+
+	// Number of peers connected as a result of dialing the
+	// peer.
+	PeersConnectedOutgoing metrics.Gauge
+	// Number of peers connected as a result of the peer dialing
+	// this node.
+	PeersConnectedIncoming metrics.Gauge
 
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
@@ -73,7 +90,43 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peers",
-			Help:      "Number of peers.",
+			Help:      "Number of peers connected.",
+		}, labels).With(labelsAndValues...),
+		PeersStored: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_stored",
+			Help:      "Number of peers in the peer Store",
+		}, labels).With(labelsAndValues...),
+		PeersInactivated: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_inactivated",
+			Help:      "Number of peers inactivated",
+		}, labels).With(labelsAndValues...),
+		PeersConnectedSuccess: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_success",
+			Help:      "Number of successful peer connection attempts",
+		}, labels).With(labelsAndValues...),
+		PeersConnectedFailure: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_failure",
+			Help:      "Number of unsuccessful peer connection attempts",
+		}, labels).With(labelsAndValues...),
+		PeersConnectedIncoming: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_incoming",
+			Help:      "Number of peers connected by peer dialing this node",
+		}, labels).With(labelsAndValues...),
+		PeersConnectedOutgoing: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_connected_outgoing",
+			Help:      "Number of peers connected by this node dialing the peer",
 		}, labels).With(labelsAndValues...),
 
 		PeerReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
@@ -141,6 +194,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 func NopMetrics() *Metrics {
 	return &Metrics{
 		Peers:                  discard.NewGauge(),
+		PeersStored:            discard.NewGauge(),
+		PeersConnectedSuccess:  discard.NewCounter(),
+		PeersConnectedFailure:  discard.NewCounter(),
+		PeersConnectedIncoming: discard.NewGauge(),
+		PeersConnectedOutgoing: discard.NewGauge(),
+		PeersInactivated:       discard.NewGauge(),
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
 		PeerPendingSendBytes:   discard.NewGauge(),

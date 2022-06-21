@@ -14,16 +14,18 @@ var (
 	// testnetCombinations defines global testnet options, where we generate a
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
-		"topology":      {"single", "quad", "large"},
-		"p2p":           {NewP2PMode, LegacyP2PMode, HybridP2PMode},
-		"queueType":     {"priority"}, // "fifo", "wdrr"
-		"initialHeight": {0, 1000},
+		"topology":  {"single", "quad", "large"},
+		"p2p":       {NewP2PMode, LegacyP2PMode, HybridP2PMode},
+		"queueType": {"priority"}, // "fifo", "wdrr"
 		"initialState": {
 			map[string]string{},
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
+		"txSize":     {1024, 2048, 4096, 8192},
 	}
+
+	initalHeights = uniformChoice{0, 1000}
 
 	// The following specify randomly chosen values for testnet nodes.
 	nodeDatabases = weightedChoice{
@@ -63,7 +65,6 @@ var (
 		"restart":    0.1,
 	}
 	evidence = uniformChoice{0, 1, 10}
-	txSize   = uniformChoice{1024, 4096} // either 1kb or 4kb
 	ipv6     = uniformChoice{false, true}
 	keyType  = uniformChoice{types.ABCIPubKeyTypeEd25519, types.ABCIPubKeyTypeSecp256k1}
 )
@@ -99,10 +100,19 @@ func Generate(r *rand.Rand, opts Options) ([]e2e.Manifest, error) {
 			if opt["p2p"] == HybridP2PMode {
 				continue
 			}
+			if opt["txSize"].(int) != 2048 {
+				continue
+			}
 		}
 
 		if opts.MaxNetworkSize > 0 && len(manifest.Nodes) >= opts.MaxNetworkSize {
 			continue
+		}
+
+		if len(manifest.Nodes) > 4 {
+			if opt["txSize"].(int) == 8192 {
+				continue
+			}
 		}
 
 		if opt["p2p"] == HybridP2PMode {
@@ -150,7 +160,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
 		ABCIProtocol:     nodeABCIProtocols.Choose(r),
-		InitialHeight:    int64(opt["initialHeight"].(int)),
+		InitialHeight:    int64(initalHeights.Choose(r).(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
@@ -158,7 +168,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		KeyType:          keyType.Choose(r).(string),
 		Evidence:         evidence.Choose(r).(int),
 		QueueType:        opt["queueType"].(string),
-		TxSize:           txSize.Choose(r).(int),
+		TxSize:           opt["txSize"].(int),
 	}
 
 	p2pMode := opt["p2p"].(P2PMode)

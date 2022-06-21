@@ -528,7 +528,7 @@ func (r *Router) routeChannel(
 	}
 }
 
-func (r *Router) numConccurentDials() int {
+func (r *Router) numConcurrentDials() int {
 	if r.options.NumConcurrentDials == nil {
 		return runtime.NumCPU()
 	}
@@ -554,8 +554,15 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
+		const (
+			maxDialerInterval = 500
+			minDialerInterval = 100
+		)
+
 		// nolint:gosec // G404: Use of weak random number generator
-		timer := time.NewTimer(time.Duration(rand.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond)
+		dur := time.Duration(rand.Int63n(maxDialerInterval-minDialerInterval+1) + minDialerInterval)
+
+		timer := time.NewTimer(dur * time.Millisecond)
 		defer timer.Stop()
 
 		select {
@@ -567,6 +574,11 @@ func (r *Router) dialSleep(ctx context.Context) {
 	}
 
 	r.options.DialSleep(ctx)
+
+	if !r.peerManager.HasDialedMaxPeers() {
+		r.peerManager.dialWaker.Wake()
+	}
+
 }
 
 // acceptPeers accepts inbound connections from peers on the given transport,
@@ -576,14 +588,14 @@ func (r *Router) acceptPeers(transport Transport) {
 	ctx := r.stopCtx()
 	for {
 		conn, err := transport.Accept()
-		switch err {
-		case nil:
-		case io.EOF:
-			r.logger.Debug("stopping accept routine", "transport", transport)
+		switch {
+		case errors.Is(err, io.EOF):
+			r.logger.Debug("stopping accept routine", "transport", transport, "err", "EOF")
 			return
-		default:
+		case err != nil:
+			// in this case we got an error from the net.Listener.
 			r.logger.Error("failed to accept connection", "transport", transport, "err", err)
-			return
+			continue
 		}
 
 		incomingIP := conn.RemoteEndpoint().IP
@@ -595,7 +607,7 @@ func (r *Router) acceptPeers(transport Transport) {
 				"close_err", closeErr,
 			)
 
-			return
+			continue
 		}
 
 		// Spawn a goroutine for the handshake, to avoid head-of-line blocking.
@@ -667,7 +679,7 @@ func (r *Router) dialPeers() {
 	// able to add peers at a reasonable pace, though the number
 	// is somewhat arbitrary. The action is further throttled by a
 	// sleep after sending to the addresses channel.
-	for i := 0; i < r.numConccurentDials(); i++ {
+	for i := 0; i < r.numConcurrentDials(); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -718,7 +730,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	case errors.Is(err, context.Canceled):
 		return
 	case err != nil:
-		r.logger.Error("failed to dial peer", "peer", address, "err", err)
+		r.logger.Debug("failed to dial peer", "peer", address, "err", err)
 		if err = r.peerManager.DialFailed(address); err != nil {
 			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 		}
@@ -740,8 +752,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 
 	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
-		r.logger.Error("failed to dial peer",
-			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		r.logger.Error("failed to dial peer", "op", "outgoing/dialing", "peer", address.NodeID, "err", err)
 		conn.Close()
 		return
 	}
@@ -805,12 +816,13 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 		// Internet can't and needs a different public address.
 		conn, err := transport.Dial(dialCtx, endpoint)
 		if err != nil {
-			r.logger.Error("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
+			r.logger.Debug("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
 		} else {
 			r.logger.Debug("dialed peer", "peer", address.NodeID, "endpoint", endpoint)
 			return conn, nil
 		}
 	}
+
 	return nil, errors.New("all endpoints failed")
 }
 
@@ -835,6 +847,7 @@ func (r *Router) handshakePeer(
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, peerKey, fmt.Errorf("invalid handshake NodeInfo: %w", err)
 	}
+
 	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
 		return peerInfo, peerKey, fmt.Errorf("peer's public key did not match its node ID %q (expected %q)",
 			peerInfo.NodeID, types.NodeIDFromPubKey(peerKey))
@@ -843,7 +856,12 @@ func (r *Router) handshakePeer(
 		return peerInfo, peerKey, fmt.Errorf("expected to connect with peer %q, got %q",
 			expectID, peerInfo.NodeID)
 	}
+
 	if err := r.nodeInfo.CompatibleWith(peerInfo); err != nil {
+		if err := r.peerManager.Inactivate(peerInfo.NodeID); err != nil {
+			return peerInfo, peerKey, fmt.Errorf("problem inactivating peer %q: %w", peerInfo.ID(), err)
+		}
+
 		return peerInfo, peerKey, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
