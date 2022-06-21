@@ -9,12 +9,10 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
-
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-func MakeCompactDBCommand(cfg *config.Config, logger log.Logger) *cobra.Command {
+func MakeCompactDBCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "experimental-compact-goleveldb",
 		Short: "force compacts the tendermint storage engine (only GoLevelDB supported)",
@@ -27,11 +25,11 @@ the planned refactor to the storage engine.
 Currently, only GoLevelDB is supported.
 	`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if cfg.DBBackend != "goleveldb" {
+			if config.DBBackend != "goleveldb" {
 				return errors.New("compaction is currently only supported with goleveldb")
 			}
 
-			compactGoLevelDBs(cfg.RootDir, logger)
+			compactGoLevelDBs(config.RootDir, logger)
 			return nil
 		},
 	}
