@@ -296,8 +296,8 @@ takes its place. This network is run for several days.
 
 Tendermint networks often run with _some_ portion of the voting power offline.
 The absent stake testnet ensures that large networks are able to handle this
-reliably. A set of 150 validator nodes and three seed nodes is started.
-The set of 150 validators is configured to only possess a cumulative stake of 67%
-of the total stake. The remaining 33% of the stake is configure to belong to a
-validator that is never actually run in the test network. The network is run
+reliably. A set of 150 validator nodes and three seed nodes is started. The set
+of 150 validators is configured to only possess a cumulative stake of 67% of
+the total stake. The remaining 33% of the stake is configured to belong to
+a validator that is never actually run in the test network. The network is run
 for multiple days, ensuring that it is able to produce blocks without issue.
