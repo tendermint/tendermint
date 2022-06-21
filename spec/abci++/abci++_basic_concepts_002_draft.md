@@ -13,7 +13,7 @@ title: Overview and basic concepts
     - [State-sync methods](#state-sync-methods)
 - [Next-block execution vs. same-block execution](#next-block-execution-vs-same-block-execution)
 - [Tendermint proposal timeout](#tendermint-proposal-timeout)
-- [Determinism](#determinism)
+- [Deterministic State-Machine Replication](#deterministic-state-machine-replication)
 - [Events](#events)
 - [Evidence](#evidence)
 - [Errors](#errors)
