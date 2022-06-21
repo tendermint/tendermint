@@ -54,11 +54,11 @@ func newMempoolWithAppAndConfigMock(cc proxy.ClientCreator, cfg *config.Config, 
 	return mp, func() { os.RemoveAll(cfg.RootDir) }
 }
 
-func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc, error) {
+func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc) {
 	conf := config.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfig(cc, conf)
-	return mp, cu, nil
+	return mp, cu
 }
 
 func newMempoolWithAppAndConfig(cc proxy.ClientCreator, cfg *config.Config) (*CListMempool, cleanupFunc) {
@@ -119,8 +119,7 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 func TestReapMaxBytesMaxGas(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(t, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	// Ensure gas calculation behaves as expected
@@ -169,8 +168,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 func TestMempoolFilters(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(t, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	emptyTxArr := []types.Tx{[]byte{}}
 
@@ -209,8 +207,7 @@ func TestMempoolFilters(t *testing.T) {
 func TestMempoolUpdate(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(t, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	// 1. Adds valid txs to the cache
@@ -350,8 +347,7 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(t, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 	mp.EnableTxsAvailable()
 
@@ -396,13 +392,12 @@ func TestSerialReap(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(t, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
-	err = appConnCon.Start()
+	err := appConnCon.Start()
 	require.Nil(t, err)
 
 	cacheMap := make(map[string]struct{})
@@ -507,8 +502,7 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
-	mempl, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(t, err)
+	mempl, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	maxTxSize := mempl.config.MaxTxBytes
@@ -598,8 +592,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	app2 := kvstore.NewApplication()
 	cc = proxy.NewLocalClientCreator(app2)
 
-	mp, cleanup, err = newMempoolWithApp(cc)
-	require.NoError(t, err)
+	mp, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
 
 	txBytes := make([]byte, 8)

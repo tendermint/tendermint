@@ -5,7 +5,6 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
@@ -14,8 +13,7 @@ import (
 func BenchmarkReap(b *testing.B) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(b, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	mp.config.Size = 100000
@@ -37,8 +35,7 @@ func BenchmarkReap(b *testing.B) {
 func BenchmarkCheckTx(b *testing.B) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(b, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	mp.config.Size = 1000000
@@ -60,8 +57,7 @@ func BenchmarkCheckTx(b *testing.B) {
 func BenchmarkParallelCheckTx(b *testing.B) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(b, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	mp.config.Size = 100000000
@@ -86,8 +82,7 @@ func BenchmarkParallelCheckTx(b *testing.B) {
 func BenchmarkCheckDuplicateTx(b *testing.B) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mp, cleanup, err := newMempoolWithApp(cc)
-	require.NoError(b, err)
+	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	mp.config.Size = 1000000
