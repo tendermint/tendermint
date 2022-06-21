@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	nilVoteStr string = "nil-Vote"
+	absentVoteStr string = "Vote{absent}"
+	nilVoteStr    string = "nil"
 
 	// The maximum supported number of bytes in a vote extension.
 	MaxVoteExtensionSize int = 1024 * 1024
@@ -189,7 +190,7 @@ func (vote *Vote) Copy() *Vote {
 // 10. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
-		return nilVoteStr
+		return absentVoteStr
 	}
 
 	var typeString string
@@ -202,16 +203,22 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X @ %s}",
+	var blockHashString string
+	if len(vote.BlockID.Hash) > 0 {
+		blockHashString = fmt.Sprintf("%X", tmbytes.Fingerprint(vote.BlockID.Hash))
+	} else {
+		blockHashString = nilVoteStr
+	}
+
+	return fmt.Sprintf("Vote{%v:%X %v/%d %s %s %X %d @ %s}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorAddress),
 		vote.Height,
 		vote.Round,
-		vote.Type,
 		typeString,
-		tmbytes.Fingerprint(vote.BlockID.Hash),
+		blockHashString,
 		tmbytes.Fingerprint(vote.Signature),
-		tmbytes.Fingerprint(vote.Extension),
+		len(vote.Extension),
 		CanonicalTime(vote.Timestamp),
 	)
 }

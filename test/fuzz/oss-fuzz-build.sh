@@ -3,15 +3,6 @@
 # See https://github.com/google/oss-fuzz/blob/master/projects/tendermint/build.sh
 set -euo pipefail
 
-# Upgrade to Go 1.18. Remove when it's the default.
-apt-get update && apt-get install -y wget
-wget https://go.dev/dl/go1.18.2.linux-amd64.tar.gz
-
-mkdir -p temp-go
-rm -rf /root/.go/*
-tar -C temp-go/ -xzf go1.18.2.linux-amd64.tar.gz
-mv temp-go/go/* /root/.go/
-
 export FUZZ_ROOT="github.com/tendermint/tendermint"
 
 build_go_fuzzer() {
