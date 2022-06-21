@@ -466,6 +466,11 @@ func (r *Router) dialSleep(ctx context.Context) {
 	}
 
 	r.options.DialSleep(ctx)
+
+	if !r.peerManager.HasDialedMaxPeers() {
+		r.peerManager.dialWaker.Wake()
+	}
+
 }
 
 // acceptPeers accepts inbound connections from peers on the given transport,
@@ -492,7 +497,8 @@ func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
 			r.logger.Debug("rate limiting incoming peer",
 				"err", err,
 				"ip", incomingIP.String(),
-				"close_err", closeErr)
+				"close_err", closeErr,
+			)
 
 			continue
 		}
