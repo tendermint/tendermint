@@ -1,8 +1,9 @@
 # Releases
 
-Tendermint uses [semantic versioning](https://semver.org/) with each release following
-a `vX.Y.Z` format. The `master` branch is used for active development and thus it's
-advisable not to build against it.
+Tendermint uses modified [semantic versioning](https://semver.org/) with each
+release following a `vX.Y.Z` format. Tendermint is currently on major version
+0 and uses the minor version to signal breaking changes. The `master` branch is
+used for active development and thus it is not advisable to build against it.
 
 The latest changes are always initially merged into `master`.
 Releases are specified using tags and are built from long-lived "backport" branches
@@ -29,8 +30,8 @@ merging the pull request.
 
 ### Creating a backport branch
 
-If this is the first release candidate for a major release, you get to have the
-honor of creating the backport branch!
+If this is the first release candidate for a minor version release, e.g.
+v0.25.0, you get to have the honor of creating the backport branch!
 
 Note that, after creating the backport branch, you'll also need to update the
 tags on `master` so that `go mod` is able to order the branches correctly. You
@@ -77,7 +78,8 @@ the 0.35.x line.
 
 After doing these steps, go back to `master` and do the following:
 
-1. Tag `master` as the dev branch for the _next_ major release and push it up to GitHub.
+1. Tag `master` as the dev branch for the _next_ minor version release and push
+   it up to GitHub.
    For example:
    ```sh
    git tag -a v0.36.0-dev -m "Development base for Tendermint v0.36."
@@ -176,16 +178,16 @@ If there were no release candidates, begin by creating a backport branch, as des
    - Commit these changes to `master` and backport them into the backport
      branch for this release.
 
-## Minor release (point releases)
+## Patch release
 
-Minor releases are done differently from major releases: They are built off of
+Patch releases are done differently from minor releases: They are built off of
 long-lived backport branches, rather than from master.  As non-breaking changes
 land on `master`, they should also be backported into these backport branches.
 
-Minor releases don't have release candidates by default, although any tricky
+Patch releases don't have release candidates by default, although any tricky
 changes may merit a release candidate.
 
-To create a minor release:
+To create a patch release:
 
 1. Checkout the long-lived backport branch: `git checkout v0.35.x`
 2. Run integration tests (`make test_integrations`) and the nightlies.
@@ -197,21 +199,21 @@ To create a minor release:
    - Bump the TMDefaultVersion in `version.go`
    - Bump the ABCI version number, if necessary.
      (Note that ABCI follows semver, and that ABCI versions are the only versions
-     which can change during minor releases, and only field additions are valid minor changes.)
+     which can change during patch releases, and only field additions are valid patch changes.)
 4. Open a PR with these changes that will land them back on `v0.35.x`
 5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
    - `git tag -a v0.35.1 -m 'Release v0.35.1'`
    - `git push origin v0.35.1`
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
-   - Remove all `R:minor` labels from the pull requests that were included in the release.
+   - Remove all `R:patch` labels from the pull requests that were included in the release.
    - Do not merge the backport branch into master.
-
 
 ## Minor Release Checklist
 
-The following set of steps are performed on all releases that increment
-the _minor_ version. These steps ensure that Tendermint is well tested, stable,
-and suitable for adoption by the various diverse projects that rely on Tendermint.
+The following set of steps are performed on all releases that increment the
+_minor_ version, e.g. v0.25 to v0.26. These steps ensure that Tendermint is
+well tested, stable, and suitable for adoption by the various diverse projects
+that rely on Tendermint.
 
 ### Feature Freeze
 
