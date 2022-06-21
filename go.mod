@@ -42,3 +42,8 @@ require (
 	google.golang.org/grpc v1.47.0
 	gotest.tools v2.2.0+incompatible // indirect
 )
+
+require (
+	github.com/prometheus/common v0.34.0 // indirect
+	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
+)

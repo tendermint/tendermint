@@ -20,6 +20,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [cli] [\#8674] Add command to force compact goleveldb databases (@cmwaters)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
