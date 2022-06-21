@@ -6,9 +6,10 @@ require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d
 	github.com/Workiva/go-datastructures v1.0.53
-	github.com/adlio/schema v1.3.0
+	github.com/adlio/schema v1.3.3
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
+	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/facebookgo/ensure v0.0.0-20160127193407-b4ab57deab51 // indirect
 	github.com/facebookgo/stack v0.0.0-20160209184415-751773369052 // indirect
 	github.com/facebookgo/subset v0.0.0-20150612182917-8dac2c3c4870 // indirect
@@ -20,6 +21,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/websocket v1.5.0
+	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/gtank/merlin v0.1.1
 	github.com/lib/pq v1.10.6
 	github.com/libp2p/go-buffer-pool v0.0.2
@@ -36,6 +38,7 @@ require (
 	github.com/stretchr/testify v1.7.2
 	github.com/tendermint/tm-db v0.6.6
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
-	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
+	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9
 	google.golang.org/grpc v1.47.0
+	gotest.tools v2.2.0+incompatible // indirect
 )
