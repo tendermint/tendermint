@@ -261,7 +261,7 @@ func (sw *Switch) OnStop() {
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
-	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", msgBytes)
 
 	peers := sw.peers.List()
 	var wg sync.WaitGroup
