@@ -68,7 +68,7 @@ type RouterOptions struct {
 	// seconds between submitting each peer to be dialed.
 	DialSleep func(context.Context)
 
-	// NumConcrruentDials controls how many parallel go routines
+	// NumConcurrentDials controls how many parallel go routines
 	// are used to dial peers. This defaults to the value of
 	// runtime.NumCPU.
 	NumConcurrentDials func() int
