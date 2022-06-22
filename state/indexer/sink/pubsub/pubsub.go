@@ -79,6 +79,11 @@ func NewEventSink(projectID, topic, chainID string) (*EventSink, error) {
 	}, nil
 }
 
+// IndexBlock attempts to index ResultBeginBlock and ResultEndBlock block events,
+// where the data in each pubsub message includes the JSON encoding of the
+// respective type. Additional attributes are included such as the block height,
+// the chain ID and the message type. An error is returned if any encoding error
+// is detected or if any message fails to publish.
 func (es *EventSink) IndexBlock(h types.EventDataNewBlockHeader) error {
 	buf := new(bytes.Buffer)
 	blockHeightStr := strconv.Itoa(int(h.Header.Height))
