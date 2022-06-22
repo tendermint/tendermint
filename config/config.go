@@ -627,6 +627,10 @@ type P2PConfig struct { //nolint: maligned
 	// outbound).
 	MaxConnections uint16 `mapstructure:"max-connections"`
 
+	// MaxOutgoingConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxOutgoingConnections uint16 `mapstructure:"max-outgoing-connections"`
+
 	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
 	// attempts per IP address.
 	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
@@ -667,6 +671,7 @@ func DefaultP2PConfig() *P2PConfig {
 		ExternalAddress:               "",
 		UPNP:                          false,
 		MaxConnections:                64,
+		MaxOutgoingConnections:        32,
 		MaxIncomingConnectionAttempts: 100,
 		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
@@ -698,6 +703,9 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	}
 	if cfg.RecvRate < 0 {
 		return errors.New("recv-rate can't be negative")
+	}
+	if cfg.MaxOutgoingConnections > cfg.MaxConnections {
+		return errors.New("max-outgoing-connections cannot be larger than max-connections")
 	}
 	return nil
 }

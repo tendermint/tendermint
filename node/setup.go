@@ -202,6 +202,7 @@ func createPeerManager(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	nodeID types.NodeID,
+	metrics *p2p.Metrics,
 ) (*p2p.PeerManager, closer, error) {
 
 	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))
@@ -223,18 +224,28 @@ func createPeerManager(
 		maxConns = 64
 	}
 
+	var maxOutgoingConns uint16
+	switch {
+	case cfg.P2P.MaxOutgoingConnections > 0:
+		maxOutgoingConns = cfg.P2P.MaxOutgoingConnections
+	default:
+		maxOutgoingConns = maxConns / 2
+	}
+
 	maxUpgradeConns := uint16(4)
 
 	options := p2p.PeerManagerOptions{
 		SelfAddress:            selfAddr,
 		MaxConnected:           maxConns,
+		MaxOutgoingConnections: maxOutgoingConns,
 		MaxConnectedUpgrade:    maxUpgradeConns,
-		MaxPeers:               maxUpgradeConns + 2*maxConns,
+		MaxPeers:               maxUpgradeConns + 4*maxConns,
 		MinRetryTime:           250 * time.Millisecond,
 		MaxRetryTime:           30 * time.Minute,
 		MaxRetryTimePersistent: 5 * time.Minute,
 		RetryTimeJitter:        5 * time.Second,
 		PrivatePeers:           privatePeerIDs,
+		Metrics:                metrics,
 	}
 
 	peers := []p2p.NodeAddress{}
