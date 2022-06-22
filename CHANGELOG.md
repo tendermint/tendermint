@@ -8,7 +8,7 @@ June 16, 2022
 
 ### BUG FIXES
 
-- [p2p] [\#8692](https://github.com/tendermint/tendermint/pull/8692) pass maxConns for MaxPeers during node setup (#8684)
+- [p2p] [\#8692](https://github.com/tendermint/tendermint/pull/8692) scale the number of stored peers by the configured maximum connections (#8684)
 - [rpc] [\#8715](https://github.com/tendermint/tendermint/pull/8715) always close http bodies (backport #8712)
 - [p2p] [\#8760](https://github.com/tendermint/tendermint/pull/8760) accept should not abort on first error (backport #8759)
 
