@@ -752,7 +752,7 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	require.Empty(t, dial)
 
 	// Failing b's dial will now make c available for dialing.
-	require.NoError(t, peerManager.DialFailed(ctx, b))
+	require.NoError(t, peerManager.DialFailed(b))
 	dial = peerManager.TryDialNext()
 	require.Equal(t, c, dial)
 }
