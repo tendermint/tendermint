@@ -44,7 +44,7 @@ type TrustedBlockData struct {
 	commit *types.Commit
 }
 ```
-The block pool stores the last executed block(`height`), keeps track of peers connected to a node, the current height for each peer, along with the number of pending requestes for each peer and  assigns requests to peers (by creating `requesters`).
+The block pool stores the last executed block (`height`), keeps track of peers connected to a node, the current height for each peer, along with the number of pending requests for each peer and assigns requests to peers (by creating `requesters`).
 
 ```go
 type BlockPool {

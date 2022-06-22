@@ -12,11 +12,11 @@ On startup, the reactor fires up four go routines:
 3. Handle p2p channel messages
 4. Process peer updates
 
-The pool routine picks out blocks form the block pool and processes them. It also checks whether the node  should switch to consensus.
+The pool routine picks out blocks form the block pool and processes them. It also checks whether the node should switch to consensus.
 
 All messages that go through the p2p channel are processed within the `processBlockSyncCh` routine.
 
-On peer update messages the reactor adds or removes the sending peer.
+On peer update messages the reactor adds or removes the peer that has sent the update message.
 
 **Note** There is currently a check for whether we have a message from an empty peer. 
 
@@ -33,7 +33,7 @@ On peer update messages the reactor adds or removes the sending peer.
 - Channel id: 0x40
 - Size of receive buffer: 1024 messages
 - Size of send queue: 1000 messages
-- Message size: maximum size of a block + size of proto block messages  (response message prefix and key size)
+- Message size: maximum size of a block + size of proto block messages  (response message prefix and key size) + size of the Extended commit. 
 
 Messages processed via the channel: 
 | Message name | Message fields| Description |
@@ -42,7 +42,7 @@ Messages processed via the channel:
 | `BlockResponse`| `block types.Block `| Send `block` to peer that requested it |
 | `NoBlockResponse` |`height int64`|Indicates that a peer does not have a block at `height`|
 |`StatusRequest`| `{} `| Sent to a peer to request its status|
-|`StatusResponse` |    `height int64, base int64`|Send to a peer the lowest and heights height of blocks within it's store (`store.Height()`, `store.Base()`)|
+|`StatusResponse` |    `height int64, base int64`|Send to a peer the lowest and heights height of blocks within its store (`store.Height()`, `store.Base()`)|
  |`HeaderRequest` | `height: int64`| Request a header from peer for verification|
 |`HeaderResponse` |`header: Header`| Return the header for the corresponding height|
 
@@ -75,7 +75,7 @@ When a block is received by a requester, the requester does a number of checks o
 In the code there is the following ToDo listed: 
 ` // TODO: ensure that blocks come in order for each peer.` This needs further specification. 
 
-If the checks pass, the `block` field of the requester is populated with the new block and i sthus made available to the blocksync reactor.
+If the checks pass, the `block` field of the requester is populated with the new block and is thus made available to the blocksync reactor.
 
 #### `Reactor`
 
@@ -85,6 +85,6 @@ If the checks pass, the `block` field of the requester is populated with the new
 |`errorsCh`| `peerError`| size `maxPeerErrBuffer`|
 |`didProcessCh`|`struct{}`| size `1`|
 
-The channel is created within the pool routine of the reactor and is used to signal that the reactor should check the block pool for new blocks. A message is sent to the channel after a fixed timeout (`trySyncTicker`). As we need two blocks to verify one of them (this is more clearly defined in [verification](./verification.md), if we miss only on of them, we will not wait for the sync timer to time out, but rather try quickly again until we fetch both. 
+The channel is created within the pool routine of the reactor and is used to signal that the reactor should check the block pool for new blocks. A message is sent to the channel after a fixed timeout (`trySyncTicker`). As we need two blocks to verify one of them (this is more clearly defined in [verification](./verification.md), if we miss only one of them, we will not wait for the sync timer to time out, but rather try quickly again until we fetch both. 
 
 `switchToConsensusTicker`. In addition to the sync timeout, in the same routine, the reactor checks periodically whether the conditions to switch to consensus are fullfilled. 
