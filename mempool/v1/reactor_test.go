@@ -12,8 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
-	"github.com/tendermint/tendermint/config"
+
 	cfg "github.com/tendermint/tendermint/config"
+
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -127,13 +128,13 @@ func mempoolLogger() log.Logger {
 }
 
 func newMempoolWithApp(cc proxy.ClientCreator) (*TxMempool, func()) {
-	conf := config.ResetTestRoot("mempool_test")
+	conf := cfg.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfig(cc, conf)
 	return mp, cu
 }
 
-func newMempoolWithAppAndConfig(cc proxy.ClientCreator, cfg *config.Config) (*TxMempool, func()) {
+func newMempoolWithAppAndConfig(cc proxy.ClientCreator, conf *cfg.Config) (*TxMempool, func()) {
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
@@ -141,9 +142,9 @@ func newMempoolWithAppAndConfig(cc proxy.ClientCreator, cfg *config.Config) (*Tx
 		panic(err)
 	}
 
-	mp := NewTxMempool(log.TestingLogger(), cfg.Mempool, appConnMem, 0)
+	mp := NewTxMempool(log.TestingLogger(), conf.Mempool, appConnMem, 0)
 
-	return mp, func() { os.RemoveAll(cfg.RootDir) }
+	return mp, func() { os.RemoveAll(conf.RootDir) }
 }
 
 func waitForTxsOnReactors(t *testing.T, txs types.Txs, reactors []*Reactor) {

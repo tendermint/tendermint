@@ -62,10 +62,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
 
-		// one for mempool, one for consensus
 		mtx := new(tmsync.Mutex)
-
+		// one for mempool, one for consensus
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
 
 		// Make Mempool
 		var mempool mempl.Mempool
@@ -73,14 +73,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		switch thisConfig.Mempool.Version {
 		case cfg.MempoolV0:
 			mempool = mempoolv0.NewCListMempool(config.Mempool,
-				proxyAppConnCon,
+				proxyAppConnConMem,
 				state.LastBlockHeight,
 				mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
 				mempoolv0.WithPostCheck(sm.TxPostCheck(state)))
 		case cfg.MempoolV1:
 			mempool = mempoolv1.NewTxMempool(logger,
 				config.Mempool,
-				proxyAppConnCon,
+				proxyAppConnConMem,
 				state.LastBlockHeight,
 				mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
 				mempoolv1.WithPostCheck(sm.TxPostCheck(state)),

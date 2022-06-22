@@ -244,7 +244,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_1")
+	memplMetrics := mempl.NopMetrics()
 	var mempool mempl.Mempool
 
 	switch config.Mempool.Version {
@@ -347,7 +347,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	proposerAddr, _ := state.Validators.GetByIndex(0)
 
 	// Make Mempool
-	memplMetrics := mempl.PrometheusMetrics("node_test_2")
+	memplMetrics := mempl.NopMetrics()
 	var mempool mempl.Mempool
 	switch config.Mempool.Version {
 	case cfg.MempoolV0:
