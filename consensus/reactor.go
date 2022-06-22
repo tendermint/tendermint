@@ -1265,12 +1265,14 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
-	logger := ps.logger.With(
-		"peerH/R",
-		fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
-		"H/R",
-		fmt.Sprintf("%d/%d", height, round))
-	logger.Debug("setHasVote", "type", voteType, "index", index)
+	if ps.logger.IsDebugging() {
+		logger := ps.logger.With(
+			"peerH/R",
+			fmt.Sprintf("%d/%d", ps.PRS.Height, ps.PRS.Round),
+			"H/R",
+			fmt.Sprintf("%d/%d", height, round))
+		logger.Debug("setHasVote", "type", voteType, "index", index)
+	}
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, voteType)
