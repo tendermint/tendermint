@@ -40,7 +40,9 @@ func newMempoolWithAppMock(cc proxy.ClientCreator, client abciclient.Client) (*C
 	return mp, cu, nil
 }
 
-func newMempoolWithAppAndConfigMock(cc proxy.ClientCreator, cfg *config.Config, client abciclient.Client) (*CListMempool, cleanupFunc) {
+func newMempoolWithAppAndConfigMock(cc proxy.ClientCreator,
+	cfg *config.Config,
+	client abciclient.Client) (*CListMempool, cleanupFunc) {
 	appConnMem := client
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
