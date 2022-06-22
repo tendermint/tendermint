@@ -239,6 +239,7 @@ func createPeerManager(
 		MaxConnected:           maxConns,
 		MaxOutgoingConnections: maxOutgoingConns,
 		MaxConnectedUpgrade:    maxUpgradeConns,
+		DisconnectCollodown:    100 * time.Millisecond,
 		MaxPeers:               maxUpgradeConns + 4*maxConns,
 		MinRetryTime:           250 * time.Millisecond,
 		MaxRetryTime:           30 * time.Minute,
