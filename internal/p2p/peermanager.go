@@ -554,6 +554,10 @@ func (m *PeerManager) TryDialNext() NodeAddress {
 				continue
 			}
 
+			if id, ok := m.store.Resolve(addressInfo.Address); ok && (m.isConnected(id) || m.dialing[id]) {
+				continue
+			}
+
 			// We now have an eligible address to dial. If we're full but have
 			// upgrade capacity (as checked above), we find a lower-scored peer
 			// we can replace and mark it as upgrading so noone else claims it.
@@ -1235,6 +1239,7 @@ func (m *PeerManager) retryDelay(failures uint32, persistent bool) time.Duration
 type peerStore struct {
 	db     dbm.DB
 	peers  map[types.NodeID]*peerInfo
+	index  map[NodeAddress]types.NodeID
 	ranked []*peerInfo // cache for Ranked(), nil invalidates cache
 }
 
@@ -1254,6 +1259,7 @@ func newPeerStore(db dbm.DB) (*peerStore, error) {
 // loadPeers loads all peers from the database into memory.
 func (s *peerStore) loadPeers() error {
 	peers := map[types.NodeID]*peerInfo{}
+	addrs := map[NodeAddress]types.NodeID{}
 
 	start, end := keyPeerInfoRange()
 	iter, err := s.db.Iterator(start, end)
@@ -1273,11 +1279,18 @@ func (s *peerStore) loadPeers() error {
 			return fmt.Errorf("invalid peer data: %w", err)
 		}
 		peers[peer.ID] = peer
+		for addr := range peer.AddressInfo {
+			// TODO maybe check to see if we've seen this
+			// addr before for a different peer, there
+			// could be duplicates.
+			addrs[addr] = peer.ID
+		}
 	}
 	if iter.Error() != nil {
 		return iter.Error()
 	}
 	s.peers = peers
+	s.index = addrs
 	s.ranked = nil // invalidate cache if populated
 	return nil
 }
@@ -1287,6 +1300,12 @@ func (s *peerStore) loadPeers() error {
 func (s *peerStore) Get(id types.NodeID) (peerInfo, bool) {
 	peer, ok := s.peers[id]
 	return peer.Copy(), ok
+}
+
+// Resolve returns the peer ID for a given node address if known.
+func (s *peerStore) Resolve(addr NodeAddress) (types.NodeID, bool) {
+	id, ok := s.index[addr]
+	return id, ok
 }
 
 // Set stores peer data. The input data will be copied, and can safely be reused
@@ -1316,6 +1335,9 @@ func (s *peerStore) Set(peer peerInfo) error {
 		// want those pointers to remain valid with the new data, we have to
 		// update the existing pointer address.
 		*current = peer
+	}
+	for addr := range peer.AddressInfo {
+		s.index[addr] = peer.ID
 	}
 
 	return nil
