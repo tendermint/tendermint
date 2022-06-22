@@ -748,6 +748,8 @@ func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.Route
 		}
 
 	}
+	opts.HandshakeTimeout = 15 * time.Second
+	opts.DialTimeout = 5 * time.Second
 
 	return opts
 }
