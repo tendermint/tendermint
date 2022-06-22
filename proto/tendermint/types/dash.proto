@@ -23,8 +23,3 @@ message VoteExtension {
   bytes extension        = 2;
   bytes signature        = 3;
 }
-
-message ThresholdVoteExtension {
-  bytes extension           = 1;
-  bytes threshold_signature = 2;
-}

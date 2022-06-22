@@ -170,69 +170,16 @@ func (m *VoteExtension) GetSignature() []byte {
 	return nil
 }
 
-type ThresholdVoteExtension struct {
-	Extension          []byte `protobuf:"bytes,1,opt,name=extension,proto3" json:"extension,omitempty"`
-	ThresholdSignature []byte `protobuf:"bytes,2,opt,name=threshold_signature,json=thresholdSignature,proto3" json:"threshold_signature,omitempty"`
-}
-
-func (m *ThresholdVoteExtension) Reset()         { *m = ThresholdVoteExtension{} }
-func (m *ThresholdVoteExtension) String() string { return proto.CompactTextString(m) }
-func (*ThresholdVoteExtension) ProtoMessage()    {}
-func (*ThresholdVoteExtension) Descriptor() ([]byte, []int) {
-	return fileDescriptor_098b09a14a95d15e, []int{2}
-}
-func (m *ThresholdVoteExtension) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ThresholdVoteExtension) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_ThresholdVoteExtension.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *ThresholdVoteExtension) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ThresholdVoteExtension.Merge(m, src)
-}
-func (m *ThresholdVoteExtension) XXX_Size() int {
-	return m.Size()
-}
-func (m *ThresholdVoteExtension) XXX_DiscardUnknown() {
-	xxx_messageInfo_ThresholdVoteExtension.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ThresholdVoteExtension proto.InternalMessageInfo
-
-func (m *ThresholdVoteExtension) GetExtension() []byte {
-	if m != nil {
-		return m.Extension
-	}
-	return nil
-}
-
-func (m *ThresholdVoteExtension) GetThresholdSignature() []byte {
-	if m != nil {
-		return m.ThresholdSignature
-	}
-	return nil
-}
-
 func init() {
 	proto.RegisterEnum("tendermint.types.VoteExtensionType", VoteExtensionType_name, VoteExtensionType_value)
 	proto.RegisterType((*CoreChainLock)(nil), "tendermint.types.CoreChainLock")
 	proto.RegisterType((*VoteExtension)(nil), "tendermint.types.VoteExtension")
-	proto.RegisterType((*ThresholdVoteExtension)(nil), "tendermint.types.ThresholdVoteExtension")
 }
 
 func init() { proto.RegisterFile("tendermint/types/dash.proto", fileDescriptor_098b09a14a95d15e) }
 
 var fileDescriptor_098b09a14a95d15e = []byte{
-	// 364 bytes of a gzipped FileDescriptorProto
+	// 326 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x2e, 0x49, 0xcd, 0x4b,
 	0x49, 0x2d, 0xca, 0xcd, 0xcc, 0x2b, 0xd1, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x4f, 0x49, 0x2c,
 	0xce, 0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x40, 0x48, 0xea, 0x81, 0x25, 0xa5, 0x44,
@@ -246,16 +193,14 @@ var fileDescriptor_098b09a14a95d15e = []byte{
 	0x51, 0xa9, 0x85, 0x91, 0x8b, 0x37, 0x2c, 0xbf, 0x24, 0xd5, 0xb5, 0xa2, 0x24, 0x35, 0xaf, 0x38,
 	0x33, 0x3f, 0x4f, 0xc8, 0x9c, 0x8b, 0x05, 0xe4, 0x74, 0xb0, 0xe5, 0x7c, 0x46, 0xca, 0x7a, 0xe8,
 	0x5e, 0xd2, 0x43, 0x51, 0x1e, 0x52, 0x59, 0x90, 0x1a, 0x04, 0xd6, 0x00, 0xb2, 0x2e, 0x15, 0x26,
-	0x0c, 0x75, 0x10, 0x42, 0x00, 0xbf, 0x63, 0x94, 0xd2, 0xb9, 0xc4, 0x42, 0x32, 0x8a, 0x52, 0x8b,
-	0x33, 0xf2, 0x73, 0x52, 0x50, 0x9d, 0x83, 0x62, 0x2a, 0x23, 0xba, 0xa9, 0xfa, 0x5c, 0xc2, 0x25,
-	0x30, 0x7d, 0xf1, 0x08, 0xf3, 0x21, 0xb6, 0x0b, 0xc1, 0xa5, 0x82, 0x61, 0x32, 0x5a, 0xe6, 0x5c,
-	0x82, 0x18, 0xee, 0x17, 0xe2, 0xe6, 0x62, 0x77, 0x71, 0x75, 0x73, 0x0c, 0xf5, 0x09, 0x11, 0x60,
-	0x10, 0x12, 0xe5, 0x12, 0x0c, 0xf1, 0x08, 0x72, 0x0d, 0xf6, 0xf0, 0xf7, 0x71, 0x89, 0x0f, 0x72,
-	0x75, 0xf6, 0x0f, 0x73, 0x0d, 0x12, 0x60, 0x74, 0x0a, 0x3c, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23,
-	0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x27, 0x3c, 0x96, 0x63, 0xb8, 0xf0, 0x58, 0x8e, 0xe1, 0xc6,
-	0x63, 0x39, 0x86, 0x28, 0xf3, 0xf4, 0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc, 0x5c, 0x7d,
-	0xe4, 0xc4, 0x81, 0x60, 0x42, 0xe2, 0x1f, 0x3d, 0xe1, 0x24, 0xb1, 0x81, 0xc5, 0x8d, 0x01, 0x01,
-	0x00, 0x00, 0xff, 0xff, 0xf4, 0xf9, 0x73, 0xdc, 0x53, 0x02, 0x00, 0x00,
+	0x0c, 0x75, 0x10, 0x42, 0x00, 0xbf, 0x63, 0xb4, 0xcc, 0xb9, 0x04, 0x31, 0x8c, 0x15, 0xe2, 0xe6,
+	0x62, 0x77, 0x71, 0x75, 0x73, 0x0c, 0xf5, 0x09, 0x11, 0x60, 0x10, 0x12, 0xe5, 0x12, 0x0c, 0xf1,
+	0x08, 0x72, 0x0d, 0xf6, 0xf0, 0xf7, 0x71, 0x89, 0x0f, 0x72, 0x75, 0xf6, 0x0f, 0x73, 0x0d, 0x12,
+	0x60, 0x74, 0x0a, 0x3c, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39, 0xc6, 0x07, 0x8f, 0xe4, 0x18,
+	0x27, 0x3c, 0x96, 0x63, 0xb8, 0xf0, 0x58, 0x8e, 0xe1, 0xc6, 0x63, 0x39, 0x86, 0x28, 0xf3, 0xf4,
+	0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd, 0xe4, 0xfc, 0x5c, 0x7d, 0xe4, 0x38, 0x43, 0x30, 0x21, 0xd1,
+	0x82, 0x1e, 0x9f, 0x49, 0x6c, 0x60, 0x71, 0x63, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0x90, 0x0c,
+	0x0c, 0xeb, 0xea, 0x01, 0x00, 0x00,
 }
 
 func (this *CoreChainLock) Equal(that interface{}) bool {
@@ -372,43 +317,6 @@ func (m *VoteExtension) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *ThresholdVoteExtension) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *ThresholdVoteExtension) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ThresholdVoteExtension) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.ThresholdSignature) > 0 {
-		i -= len(m.ThresholdSignature)
-		copy(dAtA[i:], m.ThresholdSignature)
-		i = encodeVarintDash(dAtA, i, uint64(len(m.ThresholdSignature)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Extension) > 0 {
-		i -= len(m.Extension)
-		copy(dAtA[i:], m.Extension)
-		i = encodeVarintDash(dAtA, i, uint64(len(m.Extension)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
 func encodeVarintDash(dAtA []byte, offset int, v uint64) int {
 	offset -= sovDash(v)
 	base := offset
@@ -454,23 +362,6 @@ func (m *VoteExtension) Size() (n int) {
 		n += 1 + l + sovDash(uint64(l))
 	}
 	l = len(m.Signature)
-	if l > 0 {
-		n += 1 + l + sovDash(uint64(l))
-	}
-	return n
-}
-
-func (m *ThresholdVoteExtension) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Extension)
-	if l > 0 {
-		n += 1 + l + sovDash(uint64(l))
-	}
-	l = len(m.ThresholdSignature)
 	if l > 0 {
 		n += 1 + l + sovDash(uint64(l))
 	}
@@ -734,124 +625,6 @@ func (m *VoteExtension) Unmarshal(dAtA []byte) error {
 			m.Signature = append(m.Signature[:0], dAtA[iNdEx:postIndex]...)
 			if m.Signature == nil {
 				m.Signature = []byte{}
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipDash(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthDash
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *ThresholdVoteExtension) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowDash
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ThresholdVoteExtension: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ThresholdVoteExtension: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Extension", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDash
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthDash
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDash
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Extension = append(m.Extension[:0], dAtA[iNdEx:postIndex]...)
-			if m.Extension == nil {
-				m.Extension = []byte{}
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ThresholdSignature", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowDash
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthDash
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLengthDash
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ThresholdSignature = append(m.ThresholdSignature[:0], dAtA[iNdEx:postIndex]...)
-			if m.ThresholdSignature == nil {
-				m.ThresholdSignature = []byte{}
 			}
 			iNdEx = postIndex
 		default:

@@ -399,7 +399,7 @@ message CommitInfo {
   bytes block_signature = 4;
   bytes state_signature = 5;
 
-  repeated tendermint.types.ThresholdVoteExtension threshold_vote_extensions = 6;
+  repeated tendermint.types.VoteExtension threshold_vote_extensions = 6;
 }
 
 // ExtendedCommitInfo is similar to CommitInfo except that it is only used in
@@ -414,7 +414,7 @@ message ExtendedCommitInfo {
   bytes block_signature = 4;
   bytes state_signature = 5;
 
-  repeated tendermint.types.ThresholdVoteExtension threshold_vote_extensions = 6;
+  repeated tendermint.types.VoteExtension threshold_vote_extensions = 6;
 }
 
 // Event allows application developers to attach additional information to

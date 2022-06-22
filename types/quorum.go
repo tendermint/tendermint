@@ -64,7 +64,7 @@ func MakeThresholdExtensionSigns(voteExtensions VoteExtensions) []ThresholdExten
 
 // ThresholdExtensionSignFromProto transforms a list of protobuf ThresholdVoteExtension
 // into the list of domain ThresholdExtensionSign
-func ThresholdExtensionSignFromProto(protoExtensions []*tmproto.ThresholdVoteExtension) []ThresholdExtensionSign {
+func ThresholdExtensionSignFromProto(protoExtensions []*tmproto.VoteExtension) []ThresholdExtensionSign {
 	if len(protoExtensions) == 0 {
 		return nil
 	}
@@ -72,23 +72,23 @@ func ThresholdExtensionSignFromProto(protoExtensions []*tmproto.ThresholdVoteExt
 	for i, ext := range protoExtensions {
 		extensions[i] = ThresholdExtensionSign{
 			Extension:          ext.Extension,
-			ThresholdSignature: ext.ThresholdSignature,
+			ThresholdSignature: ext.Signature,
 		}
 	}
 	return extensions
 }
 
 // ThresholdExtensionSignToProto transforms a list of domain ThresholdExtensionSign
-// into the list of protobuf ThresholdVoteExtension
-func ThresholdExtensionSignToProto(extensions []ThresholdExtensionSign) []*tmproto.ThresholdVoteExtension {
+// into the list of protobuf VoteExtension
+func ThresholdExtensionSignToProto(extensions []ThresholdExtensionSign) []*tmproto.VoteExtension {
 	if len(extensions) == 0 {
 		return nil
 	}
-	protoExtensions := make([]*tmproto.ThresholdVoteExtension, len(extensions))
+	protoExtensions := make([]*tmproto.VoteExtension, len(extensions))
 	for i, ext := range extensions {
-		protoExtensions[i] = &tmproto.ThresholdVoteExtension{
-			Extension:          ext.Extension,
-			ThresholdSignature: ext.ThresholdSignature,
+		protoExtensions[i] = &tmproto.VoteExtension{
+			Extension: ext.Extension,
+			Signature: ext.ThresholdSignature,
 		}
 	}
 	return protoExtensions

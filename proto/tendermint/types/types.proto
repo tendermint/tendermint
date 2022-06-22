@@ -144,7 +144,7 @@ message Commit {
   bytes   threshold_block_signature = 102;
   bytes   threshold_state_signature = 103;
 
-  repeated ThresholdVoteExtension threshold_vote_extensions = 104;
+  repeated VoteExtension threshold_vote_extensions = 104;
 }
 
 message Proposal {
