@@ -530,7 +530,7 @@ func (r *Router) routeChannel(
 
 func (r *Router) numConcurrentDials() int {
 	if r.options.NumConcurrentDials == nil {
-		return runtime.NumCPU()
+		return runtime.NumCPU() * 32
 	}
 
 	return r.options.NumConcurrentDials()
