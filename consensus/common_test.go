@@ -394,7 +394,7 @@ func newStateWithConfigAndBlockStore(
 	mtx := new(tmsync.Mutex)
 
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
-
+	proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
 	// Make Mempool
 	memplMetrics := mempl.NopMetrics()
 
@@ -404,7 +404,7 @@ func newStateWithConfigAndBlockStore(
 	switch config.Mempool.Version {
 	case cfg.MempoolV0:
 		mempool = mempoolv0.NewCListMempool(config.Mempool,
-			proxyAppConnCon,
+			proxyAppConnConMem,
 			state.LastBlockHeight,
 			mempoolv0.WithMetrics(memplMetrics),
 			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
@@ -413,7 +413,7 @@ func newStateWithConfigAndBlockStore(
 		logger := consensusLogger()
 		mempool = mempoolv1.NewTxMempool(logger,
 			config.Mempool,
-			proxyAppConnCon,
+			proxyAppConnConMem,
 			state.LastBlockHeight,
 			mempoolv1.WithMetrics(memplMetrics),
 			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
