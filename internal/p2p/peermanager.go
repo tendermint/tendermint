@@ -553,7 +553,7 @@ func (m *PeerManager) TryDialNext() NodeAddress {
 			continue
 		}
 
-		if !peer.LastDisconnected.IsZero() && time.Since(peer.LastDisconnected) < 100*time.Millisecond {
+		if !peer.LastDisconnected.IsZero() && time.Since(peer.LastDisconnected) < disconnectCoolDownPeriod {
 			continue
 		}
 
