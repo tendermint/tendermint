@@ -445,8 +445,8 @@ func (r *Router) dialSleep(ctx context.Context) {
 		// limits peers for dialing more than once every 10ms,
 		// so these numbers are safe.
 		const (
-			maxDialerInterval = 500 // ms
-			minDialerInterval = 100 // ms
+			maxDialerInterval = 30 // ms
+			minDialerInterval = 10 // ms
 		)
 
 		// nolint:gosec // G404: Use of weak random number generator
