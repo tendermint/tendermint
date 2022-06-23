@@ -120,7 +120,7 @@ having persisted the data returned by `ResponseFinalizeBlock`.
 
 ### Mempool methods
 
-- [**CheckTx:**](./abci++_methods_002_draft.md#checktx) This method allows the Application to validate transactions against its current state, e.g., checking signatures and account balances. If a transaction passes the validation, then tendermint adds it to its local mempool, discarding it otherwise. Tendermint calls it when it receives a new transaction either coming from an external user or another node. Furthermore, Tendermint can be configured to call re-`CheckTx` on all
+- [**CheckTx:**](./abci++_methods_002_draft.md#checktx) This method allows the Application to validate transactions against its current state, e.g., checking signatures and account balances. If a transaction passes the validation, then Tendermint adds it to its local mempool, discarding it otherwise. Tendermint calls it when it receives a new transaction either coming from an external user or another node. Furthermore, Tendermint can be configured to call re-`CheckTx` on all
 outstanding transactions in the mempool after deciding a block (i.e., after `FinalizeBlock`).
 
 ### Info methods
