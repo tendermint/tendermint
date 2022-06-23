@@ -87,12 +87,6 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 		if b, ok := keyvals[i+1].([]byte); ok {
 			keyvals[i+1] = strings.ToUpper(hex.EncodeToString(b))
 		}
-
-		// Realize stringers
-		if s, ok := keyvals[i+1].(fmt.Stringer); ok {
-			keyvals[i+1] = s.String()
-		}
-
 	}
 
 	// Form a custom Tendermint line

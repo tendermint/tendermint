@@ -5,7 +5,6 @@ import (
 
 	tmcon "github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -301,7 +300,7 @@ func defaultReceivePrevote(cs *State, vote *types.Vote) {
 			} else {
 				cs.Logger.Info(
 					"valid block we do not know about; set ProposalBlock=nil",
-					"proposal", log.NewLazyBlockHash(cs.ProposalBlock),
+					"proposal", cs.ProposalBlock.Hash(),
 					"blockID", blockID.Hash,
 				)
 
