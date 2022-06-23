@@ -1246,7 +1246,9 @@ func createAndStartPrivValidatorGRPCClient(
 
 func getRouterConfig(conf *config.Config, proxyApp proxy.AppConns) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
-		QueueType: conf.P2P.QueueType,
+		QueueType:        conf.P2P.QueueType,
+		HandshakeTimeout: conf.P2P.HandshakeTimeout,
+		DialTimeout:      conf.P2P.DialTimeout,
 	}
 
 	if conf.P2P.MaxNumInboundPeers > 0 {

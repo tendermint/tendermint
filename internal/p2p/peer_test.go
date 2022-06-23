@@ -90,7 +90,7 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
-	peerInfo, _, err := pc.conn.Handshake(context.Background(), ourNodeInfo, pk)
+	peerInfo, _, err := pc.conn.Handshake(context.Background(), 0, ourNodeInfo, pk)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (rp *remotePeer) Dial(addr *NetAddress) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, _, err = pc.conn.Handshake(context.Background(), rp.nodeInfo(), rp.PrivKey)
+	_, _, err = pc.conn.Handshake(context.Background(), 0, rp.nodeInfo(), rp.PrivKey)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (rp *remotePeer) accept() {
 		if err != nil {
 			golog.Printf("Failed to create a peer: %+v", err)
 		}
-		_, _, err = pc.conn.Handshake(context.Background(), rp.nodeInfo(), rp.PrivKey)
+		_, _, err = pc.conn.Handshake(context.Background(), 0, rp.nodeInfo(), rp.PrivKey)
 		if err != nil {
 			golog.Printf("Failed to handshake a peer: %+v", err)
 		}
