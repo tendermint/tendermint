@@ -144,7 +144,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 	}
 
 	if discoveryTime > 0 {
-		s.logger.Info("sync any", log.LazySprintf("Discovering snapshots for %v", discoveryTime))
+		s.logger.Info("sync any", "msg", log.LazySprintf("Discovering snapshots for %v", discoveryTime))
 		time.Sleep(discoveryTime)
 	}
 
@@ -166,7 +166,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 				return sm.State{}, nil, errNoSnapshots
 			}
 			retryHook()
-			s.logger.Info("sync any", log.LazySprintf("Discovering snapshots for %v", discoveryTime))
+			s.logger.Info("sync any", "msg", log.LazySprintf("Discovering snapshots for %v", discoveryTime))
 			time.Sleep(discoveryTime)
 			continue
 		}

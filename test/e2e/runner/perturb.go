@@ -29,7 +29,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 	testnet := node.Testnet
 	switch perturbation {
 	case e2e.PerturbationDisconnect:
-		logger.Info("perturb node", log.LazySprintf("Disconnecting node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.LazySprintf("Disconnecting node %v...", node.Name))
 		if err := execDocker("network", "disconnect", testnet.Name+"_"+testnet.Name, node.Name); err != nil {
 			return nil, err
 		}
@@ -39,7 +39,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		}
 
 	case e2e.PerturbationKill:
-		logger.Info("perturb node", log.LazySprintf("Killing node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.LazySprintf("Killing node %v...", node.Name))
 		if err := execCompose(testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
 			return nil, err
 		}
@@ -48,7 +48,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		}
 
 	case e2e.PerturbationPause:
-		logger.Info("perturb node", log.LazySprintf("Pausing node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.LazySprintf("Pausing node %v...", node.Name))
 		if err := execCompose(testnet.Dir, "pause", node.Name); err != nil {
 			return nil, err
 		}
@@ -58,7 +58,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		}
 
 	case e2e.PerturbationRestart:
-		logger.Info("perturb node", log.LazySprintf("Restarting node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.LazySprintf("Restarting node %v...", node.Name))
 		if err := execCompose(testnet.Dir, "restart", node.Name); err != nil {
 			return nil, err
 		}
@@ -72,6 +72,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		return nil, err
 	}
 	logger.Info("perturb node",
+		"msg",
 		log.LazySprintf("Node %v recovered at height %v", node.Name, status.SyncInfo.LatestBlockHeight))
 	return status, nil
 }

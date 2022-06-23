@@ -740,7 +740,7 @@ func (a *addrBook) expireNew(bucketIdx int) {
 	for addrStr, ka := range a.bucketsNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
-			a.Logger.Info("expire new", log.LazySprintf("expiring bad address %v", addrStr))
+			a.Logger.Info("expire new", "msg", log.LazySprintf("expiring bad address %v", addrStr))
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}

@@ -242,7 +242,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
-		logger.Debug("enter propose", log.LazySprintf(
+		logger.Debug("enter propose", "msg", log.LazySprintf(
 			"enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
 			round,
@@ -252,6 +252,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 		return
 	}
 	logger.Info("enter propose",
+		"msg",
 		log.LazySprintf("enterPropose(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -280,7 +281,7 @@ func (cs *State) enterPropose(height int64, round int32) {
 // Otherwise vote nil.
 func (cs *State) enterPrevote(height int64, round int32) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevote <= cs.Step) {
-		cs.Logger.Debug("enter prevote", log.LazySprintf(
+		cs.Logger.Debug("enter prevote", "msg", log.LazySprintf(
 			"enterPrevote(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
 			round,
@@ -297,6 +298,7 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	}()
 
 	cs.Logger.Debug("enter prevote",
+		"msg",
 		log.LazySprintf("enterPrevote(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Sign and broadcast vote as necessary
@@ -320,17 +322,19 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrecommit <= cs.Step) {
-		logger.Debug("enter precommit", log.LazySprintf(
-			"enterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug("enter precommit",
+			"msg",
+			log.LazySprintf("enterPrecommit(%v/%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				round,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
 
 	logger.Info("enter precommit",
+		"msg",
 		log.LazySprintf("enterPrecommit(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -375,7 +379,9 @@ func (cs *State) addVote(
 			return
 		}
 
-		cs.Logger.Info("add vote", log.LazySprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
+		cs.Logger.Info("add vote",
+			"msg",
+			log.LazySprintf("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
 		_ = cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote})
 		cs.evsw.FireEvent(types.EventVote, vote)
 
@@ -1106,7 +1112,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
-		logger.Debug("enter new round", log.LazySprintf(
+		logger.Debug("enter new round", "msg", log.LazySprintf(
 			"enterNewRound(%v/%v): Invalid args. Current step: %v/%v/%v",
 			height,
 			round,
@@ -1121,6 +1127,7 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	}
 
 	logger.Info("enter new round",
+		"msg",
 		log.LazySprintf("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	// Increment validators if necessary
@@ -1221,7 +1228,9 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 			cs.sendInternalMessage(msgInfo{&tmcon.BlockPartMessage{Height: cs.Height, Round: cs.Round, Part: part}, ""})
 		}
 		cs.Logger.Info("Signed proposal", "height", height, "round", round, "proposal", proposal)
-		cs.Logger.Debug("default decide proposal", log.LazySprintf("Signed proposal block: %v", block))
+		cs.Logger.Debug("default decide proposal",
+			"msg",
+			log.LazySprintf("Signed proposal block: %v", block))
 	} else if !cs.replayMode {
 		cs.Logger.Error("enterPropose: Error signing proposal", "height", height, "round", round, "err", err)
 	}
@@ -1285,13 +1294,15 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevoteWait <= cs.Step) {
-		logger.Debug("enter prevote wait", log.LazySprintf(
-			"enterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			round,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug("enter prevote wait",
+			"msg",
+			log.LazySprintf(
+				"enterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				round,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
 	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
@@ -1299,6 +1310,7 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 	}
 
 	logger.Debug("enter prevote wait",
+		"msg",
 		log.LazySprintf("enterPrevoteWait(%v/%v); current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -1316,8 +1328,8 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
-		logger.Debug(
-			"state enter precommit wait",
+		logger.Debug("state enter precommit wait",
+			"msg",
 			log.LazySprintf(
 				"enterPrecommitWait(%v/%v): Invalid args. "+
 					"Current state is Height/Round: %v/%v/, TriggeredTimeoutPrecommit:%v",
@@ -1328,6 +1340,7 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 		panic(fmt.Sprintf("enterPrecommitWait(%v/%v), but Precommits does not have any +2/3 votes", height, round))
 	}
 	logger.Info("enter precommit wait",
+		"msg",
 		log.LazySprintf("enterPrecommitWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -1345,16 +1358,18 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commitRound", commitRound)
 
 	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
-		logger.Debug("enter commit", log.LazySprintf(
-			"enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			commitRound,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		logger.Debug("enter commit",
+			"msg",
+			log.LazySprintf("enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				commitRound,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
 	logger.Info("enter commit",
+		"msg",
 		log.LazySprintf("enterCommit(%v/%v). Current: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -1438,12 +1453,13 @@ func (cs *State) tryFinalizeCommit(height int64) {
 // Increment height and goto cstypes.RoundStepNewHeight
 func (cs *State) finalizeCommit(height int64) {
 	if cs.Height != height || cs.Step != cstypes.RoundStepCommit {
-		cs.Logger.Debug("finalize commit", log.LazySprintf(
-			"finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
-			height,
-			cs.Height,
-			cs.Round,
-			cs.Step))
+		cs.Logger.Debug("finalize commit",
+			"msg",
+			log.LazySprintf("finalizeCommit(%v): Invalid args. Current step: %v/%v/%v",
+				height,
+				cs.Height,
+				cs.Round,
+				cs.Step))
 		return
 	}
 
@@ -1469,7 +1485,7 @@ func (cs *State) finalizeCommit(height int64) {
 		"root", block.AppHash,
 		"N", len(block.Txs),
 	)
-	cs.Logger.Debug("finalize commit", log.LazySprintf("%v", block))
+	cs.Logger.Debug("finalize commit", "msg", log.LazySprintf("%v", block))
 
 	fail.Fail() // XXX
 
