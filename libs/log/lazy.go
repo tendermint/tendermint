@@ -18,11 +18,7 @@ func LazySprintf(format string, args ...interface{}) *lazySprintf { //nolint:rev
 	return &lazySprintf{format, args}
 }
 
-func (l *lazySprintf) String() string {
-	return fmt.Sprintf(l.format, l.args...)
-}
-
-func (l *lazySprintf) GoString() string {
+func (l lazySprintf) String() string {
 	return fmt.Sprintf(l.format, l.args...)
 }
 
@@ -41,10 +37,6 @@ func LazyBlockHash(block hashable) *lazyBlockHash { //nolint:revive
 	return &lazyBlockHash{block}
 }
 
-func (l *lazyBlockHash) String() string {
-	return l.block.Hash().String()
-}
-
-func (l *lazyBlockHash) GoString() string {
+func (l lazyBlockHash) String() string {
 	return l.block.Hash().String()
 }
