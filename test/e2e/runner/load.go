@@ -8,6 +8,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
@@ -35,7 +36,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	defer cancel()
 
 	// Spawn job generator and processors.
-	logger.Info(fmt.Sprintf("Starting transaction load (%v workers)...", concurrency))
+	logger.Info("load", "msg", log.NewLazySprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
 	go loadGenerate(ctx, chTx, multiplier)
@@ -58,7 +59,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 			if success == 0 {
 				return errors.New("failed to submit any transactions")
 			}
-			logger.Info(fmt.Sprintf("Ending transaction load after %v txs (%.1f tx/s)...",
+			logger.Info("load", "msg", log.NewLazySprintf("Ending transaction load after %v txs (%.1f tx/s)...",
 				success, float64(success)/time.Since(started).Seconds()))
 			return nil
 		}

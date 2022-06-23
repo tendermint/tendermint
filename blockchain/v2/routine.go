@@ -58,7 +58,7 @@ func (rt *Routine) setMetrics(metrics *Metrics) {
 }
 
 func (rt *Routine) start() {
-	rt.logger.Info(fmt.Sprintf("%s: run", rt.name))
+	rt.logger.Info("routine start", "msg", log.NewLazySprintf("%s: run", rt.name))
 	running := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
 	if !running {
 		panic(fmt.Sprintf("%s is already running", rt.name))
@@ -98,7 +98,7 @@ func (rt *Routine) start() {
 			return
 		}
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
-		rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v", rt.name, oEvent, oEvent))
+		rt.logger.Debug("routine start", "msg", log.NewLazySprintf("%s: produced %T %+v", rt.name, oEvent, oEvent))
 
 		// Skip rTrySchedule and rProcessBlock events as they clutter the history
 		// due to their frequency.
@@ -118,7 +118,7 @@ func (rt *Routine) start() {
 
 // XXX: look into returning OpError in the net package
 func (rt *Routine) send(event Event) bool {
-	rt.logger.Debug(fmt.Sprintf("%s: received %T %+v", rt.name, event, event))
+	rt.logger.Debug("routine send", "msg", log.NewLazySprintf("%s: received %T %+v", rt.name, event, event))
 	if !rt.isRunning() {
 		return false
 	}
@@ -150,7 +150,7 @@ func (rt *Routine) stop() {
 		return
 	}
 
-	rt.logger.Info(fmt.Sprintf("%s: stop", rt.name))
+	rt.logger.Info("routine stop", "msg", log.NewLazySprintf("%s: stop", rt.name))
 	rt.queue.Dispose() // this should block until all queue items are free?
 }
 
