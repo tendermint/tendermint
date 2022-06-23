@@ -136,7 +136,11 @@ func (bs *BaseService) Start() error {
 			atomic.StoreUint32(&bs.started, 0)
 			return ErrAlreadyStopped
 		}
-		bs.Logger.Info(fmt.Sprintf("Starting %v service", bs.name), "impl", bs.impl.String())
+		bs.Logger.Info("service start",
+			"msg",
+			log.NewLazySprintf("Starting %v service", bs.name),
+			"impl",
+			bs.impl.String())
 		err := bs.impl.OnStart()
 		if err != nil {
 			// revert flag
@@ -145,7 +149,11 @@ func (bs *BaseService) Start() error {
 		}
 		return nil
 	}
-	bs.Logger.Debug(fmt.Sprintf("Not starting %v service -- already started", bs.name), "impl", bs.impl)
+	bs.Logger.Debug("service start",
+		"msg",
+		log.NewLazySprintf("Not starting %v service -- already started", bs.name),
+		"impl",
+		bs.impl)
 	return ErrAlreadyStarted
 }
 
@@ -165,12 +173,20 @@ func (bs *BaseService) Stop() error {
 			atomic.StoreUint32(&bs.stopped, 0)
 			return ErrNotStarted
 		}
-		bs.Logger.Info(fmt.Sprintf("Stopping %v service", bs.name), "impl", bs.impl)
+		bs.Logger.Info("service stop",
+			"msg",
+			log.NewLazySprintf("Stopping %v service", bs.name),
+			"impl",
+			bs.impl)
 		bs.impl.OnStop()
 		close(bs.quit)
 		return nil
 	}
-	bs.Logger.Debug(fmt.Sprintf("Stopping %v service (already stopped)", bs.name), "impl", bs.impl)
+	bs.Logger.Debug("service stop",
+		"msg",
+		log.NewLazySprintf("Stopping %v service (already stopped)", bs.name),
+		"impl",
+		bs.impl)
 	return ErrAlreadyStopped
 }
 
@@ -183,7 +199,11 @@ func (bs *BaseService) OnStop() {}
 // will be returned if the service is running.
 func (bs *BaseService) Reset() error {
 	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
-		bs.Logger.Debug(fmt.Sprintf("Can't reset %v service. Not stopped", bs.name), "impl", bs.impl)
+		bs.Logger.Debug("service reset",
+			"msg",
+			log.NewLazySprintf("Can't reset %v service. Not stopped", bs.name),
+			"impl",
+			bs.impl)
 		return fmt.Errorf("can't reset running %s", bs.name)
 	}
 

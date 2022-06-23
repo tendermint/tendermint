@@ -18,19 +18,19 @@ func makeUPNPListener(intPort int, extPort int, logger log.Logger) (NAT, net.Lis
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("nat upnp could not be discovered: %v", err)
 	}
-	logger.Info(fmt.Sprintf("ourIP: %v", nat.(*upnpNAT).ourIP))
+	logger.Info("make upnp listener", "msg", log.NewLazySprintf("ourIP: %v", nat.(*upnpNAT).ourIP))
 
 	ext, err := nat.GetExternalAddress()
 	if err != nil {
 		return nat, nil, nil, fmt.Errorf("external address error: %v", err)
 	}
-	logger.Info(fmt.Sprintf("External address: %v", ext))
+	logger.Info("make upnp listener", "msg", log.NewLazySprintf("External address: %v", ext))
 
 	port, err := nat.AddPortMapping("tcp", extPort, intPort, "Tendermint UPnP Probe", 0)
 	if err != nil {
 		return nat, nil, ext, fmt.Errorf("port mapping error: %v", err)
 	}
-	logger.Info(fmt.Sprintf("Port mapping mapped: %v", port))
+	logger.Info("make upnp listener", "msg", log.NewLazySprintf("Port mapping mapped: %v", port))
 
 	// also run the listener, open for all remote addresses.
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", intPort))
@@ -45,17 +45,23 @@ func testHairpin(listener net.Listener, extAddr string, logger log.Logger) (supp
 	go func() {
 		inConn, err := listener.Accept()
 		if err != nil {
-			logger.Info(fmt.Sprintf("Listener.Accept() error: %v", err))
+			logger.Info("test hair pin", "msg", log.NewLazySprintf("Listener.Accept() error: %v", err))
 			return
 		}
-		logger.Info(fmt.Sprintf("Accepted incoming connection: %v -> %v", inConn.LocalAddr(), inConn.RemoteAddr()))
+		logger.Info("test hair pin",
+			"msg",
+			log.NewLazySprintf("Accepted incoming connection: %v -> %v", inConn.LocalAddr(), inConn.RemoteAddr()))
 		buf := make([]byte, 1024)
 		n, err := inConn.Read(buf)
 		if err != nil {
-			logger.Info(fmt.Sprintf("Incoming connection read error: %v", err))
+			logger.Info("test hair pin",
+				"msg",
+				log.NewLazySprintf("Incoming connection read error: %v", err))
 			return
 		}
-		logger.Info(fmt.Sprintf("Incoming connection read %v bytes: %X", n, buf))
+		logger.Info("test hair pin",
+			"msg",
+			log.NewLazySprintf("Incoming connection read %v bytes: %X", n, buf))
 		if string(buf) == "test data" {
 			supportsHairpin = true
 			return
@@ -65,16 +71,16 @@ func testHairpin(listener net.Listener, extAddr string, logger log.Logger) (supp
 	// Establish outgoing
 	outConn, err := net.Dial("tcp", extAddr)
 	if err != nil {
-		logger.Info(fmt.Sprintf("Outgoing connection dial error: %v", err))
+		logger.Info("test hair pin", "msg", log.NewLazySprintf("Outgoing connection dial error: %v", err))
 		return
 	}
 
 	n, err := outConn.Write([]byte("test data"))
 	if err != nil {
-		logger.Info(fmt.Sprintf("Outgoing connection write error: %v", err))
+		logger.Info("test hair pin", "msg", log.NewLazySprintf("Outgoing connection write error: %v", err))
 		return
 	}
-	logger.Info(fmt.Sprintf("Outgoing connection wrote %v bytes", n))
+	logger.Info("test hair pin", "msg", log.NewLazySprintf("Outgoing connection wrote %v bytes", n))
 
 	// Wait for data receipt
 	time.Sleep(1 * time.Second)
