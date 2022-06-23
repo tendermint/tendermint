@@ -2,6 +2,7 @@ package abcicli_test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -117,4 +118,72 @@ type slowApp struct {
 func (slowApp) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	time.Sleep(200 * time.Millisecond)
 	return types.ResponseBeginBlock{}
+}
+
+// TestCallbackInvokedWhenSetLaet ensures that the callback is invoked when
+// set after the client completes the call into the app. Currently this
+// test relies on the callback being allowed to be invoked twice if set multiple
+// times, once when set early and once when set late.
+func TestCallbackInvokedWhenSetLate(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	app := blockedABCIApplication{
+		wg: wg,
+	}
+	_, c := setupClientServer(t, app)
+	reqRes := c.CheckTxAsync(types.RequestCheckTx{})
+
+	done := make(chan struct{})
+	cb := func(_ *types.Response) {
+		close(done)
+	}
+	reqRes.SetCallback(cb)
+	app.wg.Done()
+	<-done
+
+	var called bool
+	cb = func(_ *types.Response) {
+		called = true
+	}
+	reqRes.SetCallback(cb)
+	require.True(t, called)
+}
+
+type blockedABCIApplication struct {
+	wg *sync.WaitGroup
+	types.BaseApplication
+}
+
+func (b blockedABCIApplication) CheckTx(r types.RequestCheckTx) types.ResponseCheckTx {
+	b.wg.Wait()
+	return b.BaseApplication.CheckTx(r)
+}
+
+// TestCallbackInvokedWhenSetEarly ensures that the callback is invoked when
+// set before the client completes the call into the app.
+func TestCallbackInvokedWhenSetEarly(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	app := blockedABCIApplication{
+		wg: wg,
+	}
+	_, c := setupClientServer(t, app)
+	reqRes := c.CheckTxAsync(types.RequestCheckTx{})
+
+	done := make(chan struct{})
+	cb := func(_ *types.Response) {
+		close(done)
+	}
+	reqRes.SetCallback(cb)
+	app.wg.Done()
+
+	called := func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}
+	require.Eventually(t, called, time.Second, time.Millisecond*25)
 }
