@@ -141,7 +141,7 @@ Let us now examine the grammar line by line, providing further details.
 >consensus-exec      = (inf)consensus-height
 >```
 
-* A consensus height consists of zero or more rounds before deciding via a call to `FinalizeBlock`,
+* A consensus height consists of zero or more rounds before deciding and executing via a call to `FinalizeBlock`,
   followed by a call to `Commit`. If the height has zero rounds, this means the process is
   replaying an already decided value (catch-up mode). In each round, the sequence of method calls
   depends on whether the local process is the proposer or not.
