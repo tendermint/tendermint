@@ -291,7 +291,7 @@ func NewRouter(
 
 	router := &Router{
 		logger:   logger,
-		metrics:  metrics,
+		metrics:  NopMetrics(),
 		nodeInfo: nodeInfo,
 		privKey:  privKey,
 		connTracker: newConnTracker(
@@ -311,6 +311,10 @@ func NewRouter(
 	}
 
 	router.BaseService = service.NewBaseService(logger, "router", router)
+
+	if metrics != nil {
+		router.metrics = metrics
+	}
 
 	qf, err := router.createQueueFactory()
 	if err != nil {
