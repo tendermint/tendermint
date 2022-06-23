@@ -107,7 +107,7 @@ proto-check-breaking: check-proto-deps
 .PHONY: proto-check-breaking
 
 proto-check-breaking-ci:
-	@$(DOCKER_BUF) check breaking --against-input $(HTTPS_GIT)#branch=master
+	@go run github.com/bufbuild/buf/cmd/buf breaking --against $(HTTPS_GIT)#branch=v0.34.x
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
