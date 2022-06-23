@@ -44,6 +44,7 @@ require (
 )
 
 require (
+	github.com/bufbuild/buf v1.6.0 // indirect
 	github.com/prometheus/common v0.34.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
 )
