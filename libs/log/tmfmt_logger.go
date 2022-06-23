@@ -87,6 +87,12 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 		if b, ok := keyvals[i+1].([]byte); ok {
 			keyvals[i+1] = strings.ToUpper(hex.EncodeToString(b))
 		}
+
+		// Realize stringers
+		if s, ok := keyvals[i+1].(fmt.Stringer); ok {
+			keyvals[i+1] = s.String()
+		}
+
 	}
 
 	// Form a custom Tendermint line
@@ -112,17 +118,9 @@ KeyvalueLoop:
 			}
 		}
 
-		key := keyvals[i]
-		value := keyvals[i+1]
-
-		// Attempt to evaluate pointers to Stringer interfaces before encoding
-		if v, ok := keyvals[i+1].(*fmt.Stringer); ok {
-			value = (*v).String()
-		}
-
-		err := enc.EncodeKeyval(key, value)
+		err := enc.EncodeKeyval(keyvals[i], keyvals[i+1])
 		if err == logfmt.ErrUnsupportedValueType {
-			enc.EncodeKeyval(key, fmt.Sprintf("%+v", value)) //nolint:errcheck // no need to check error again
+			enc.EncodeKeyval(keyvals[i], fmt.Sprintf("%+v", keyvals[i+1])) //nolint:errcheck // no need to check error again
 		} else if err != nil {
 			return err
 		}

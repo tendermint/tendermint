@@ -19,7 +19,7 @@ func Wait(testnet *e2e.Testnet, blocks int64) error {
 
 // WaitUntil waits until a given height has been reached.
 func WaitUntil(testnet *e2e.Testnet, height int64) error {
-	logger.Info("wait until", "msg", log.LazySprintf("Waiting for all nodes to reach height %v...", height))
+	logger.Info("wait until", "msg", log.NewLazySprintf("Waiting for all nodes to reach height %v...", height))
 	_, err := waitForAllNodes(testnet, height, waitingTime(len(testnet.Nodes)))
 	if err != nil {
 		return err

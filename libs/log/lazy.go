@@ -6,23 +6,23 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
-type lazySprintf struct {
+type LazySprintf struct {
 	format string
 	args   []interface{}
 }
 
-// LazySprintf defers fmt.Sprintf until the Stringer interface is invoked.
+// NewLazySprintf defers fmt.Sprintf until the Stringer interface is invoked.
 // This is particularly useful for avoiding calling Sprintf when debugging is not
 // active.
-func LazySprintf(format string, args ...interface{}) *lazySprintf { //nolint:revive
-	return &lazySprintf{format, args}
+func NewLazySprintf(format string, args ...interface{}) *LazySprintf {
+	return &LazySprintf{format, args}
 }
 
-func (l *lazySprintf) String() string {
+func (l *LazySprintf) String() string {
 	return fmt.Sprintf(l.format, l.args...)
 }
 
-type lazyBlockHash struct {
+type LazyBlockHash struct {
 	block hashable
 }
 
@@ -30,13 +30,13 @@ type hashable interface {
 	Hash() tmbytes.HexBytes
 }
 
-// LazyBlockHash defers block Hash until the Stringer interface is invoked.
+// NewLazyBlockHash defers block Hash until the Stringer interface is invoked.
 // This is particularly useful for avoiding calling Sprintf when debugging is not
 // active.
-func LazyBlockHash(block hashable) *lazyBlockHash { //nolint:revive
-	return &lazyBlockHash{block}
+func NewLazyBlockHash(block hashable) *LazyBlockHash {
+	return &LazyBlockHash{block}
 }
 
-func (l *lazyBlockHash) String() string {
+func (l *LazyBlockHash) String() string {
 	return l.block.Hash().String()
 }

@@ -60,7 +60,7 @@ func cleanupDir(dir string) error {
 		return err
 	}
 
-	logger.Info("cleanup dir", "msg", log.LazySprintf("Removing testnet directory %q", dir))
+	logger.Info("cleanup dir", "msg", log.NewLazySprintf("Removing testnet directory %q", dir))
 
 	// On Linux, some local files in the volume will be owned by root since Tendermint
 	// runs as root inside the container, so we need to clean them up from within a

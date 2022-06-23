@@ -138,7 +138,7 @@ func (bs *BaseService) Start() error {
 		}
 		bs.Logger.Info("service start",
 			"msg",
-			log.LazySprintf("Starting %v service", bs.name),
+			log.NewLazySprintf("Starting %v service", bs.name),
 			"impl",
 			bs.impl.String())
 		err := bs.impl.OnStart()
@@ -151,7 +151,7 @@ func (bs *BaseService) Start() error {
 	}
 	bs.Logger.Debug("service start",
 		"msg",
-		log.LazySprintf("Not starting %v service -- already started", bs.name),
+		log.NewLazySprintf("Not starting %v service -- already started", bs.name),
 		"impl",
 		bs.impl)
 	return ErrAlreadyStarted
@@ -175,7 +175,7 @@ func (bs *BaseService) Stop() error {
 		}
 		bs.Logger.Info("service stop",
 			"msg",
-			log.LazySprintf("Stopping %v service", bs.name),
+			log.NewLazySprintf("Stopping %v service", bs.name),
 			"impl",
 			bs.impl)
 		bs.impl.OnStop()
@@ -184,7 +184,7 @@ func (bs *BaseService) Stop() error {
 	}
 	bs.Logger.Debug("service stop",
 		"msg",
-		log.LazySprintf("Stopping %v service (already stopped)", bs.name),
+		log.NewLazySprintf("Stopping %v service (already stopped)", bs.name),
 		"impl",
 		bs.impl)
 	return ErrAlreadyStopped
@@ -201,7 +201,7 @@ func (bs *BaseService) Reset() error {
 	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
 		bs.Logger.Debug("service reset",
 			"msg",
-			log.LazySprintf("Can't reset %v service. Not stopped", bs.name),
+			log.NewLazySprintf("Can't reset %v service. Not stopped", bs.name),
 			"impl",
 			bs.impl)
 		return fmt.Errorf("can't reset running %s", bs.name)

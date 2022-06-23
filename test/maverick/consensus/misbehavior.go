@@ -301,7 +301,7 @@ func defaultReceivePrevote(cs *State, vote *types.Vote) {
 			} else {
 				cs.Logger.Info(
 					"valid block we do not know about; set ProposalBlock=nil",
-					"proposal", log.LazyBlockHash(cs.ProposalBlock),
+					"proposal", log.NewLazyBlockHash(cs.ProposalBlock),
 					"blockID", blockID.Hash,
 				)
 
