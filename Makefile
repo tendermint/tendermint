@@ -76,7 +76,7 @@ install:
 
 check-proto-deps:
 ifeq (,$(shell which protoc-gen-gogofaster))
-	$(error "gogofaster plugin for protoc is required. Run 'go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest' to install")
+	@go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
 endif
 .PHONY: check-proto-deps
 
