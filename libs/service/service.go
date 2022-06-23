@@ -145,9 +145,7 @@ func (bs *BaseService) Start() error {
 		}
 		return nil
 	}
-	if bs.Logger.IsDebugging() {
-		bs.Logger.Debug(fmt.Sprintf("Not starting %v service -- already started", bs.name), "impl", bs.impl)
-	}
+	bs.Logger.Debug("service start", log.LazySprintf("Not starting %v service -- already started", bs.name), "impl", bs.impl)
 	return ErrAlreadyStarted
 }
 
@@ -172,9 +170,7 @@ func (bs *BaseService) Stop() error {
 		close(bs.quit)
 		return nil
 	}
-	if bs.Logger.IsDebugging() {
-		bs.Logger.Debug(fmt.Sprintf("Stopping %v service (already stopped)", bs.name), "impl", bs.impl)
-	}
+	bs.Logger.Debug("service stop ", log.LazySprintf("Stopping %v service (already stopped)", bs.name), "impl", bs.impl)
 	return ErrAlreadyStopped
 }
 
@@ -187,9 +183,7 @@ func (bs *BaseService) OnStop() {}
 // will be returned if the service is running.
 func (bs *BaseService) Reset() error {
 	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
-		if bs.Logger.IsDebugging() {
-			bs.Logger.Debug(fmt.Sprintf("Can't reset %v service. Not stopped", bs.name), "impl", bs.impl)
-		}
+		bs.Logger.Debug("service reset", log.LazySprintf("Can't reset %v service. Not stopped", bs.name), "impl", bs.impl)
 		return fmt.Errorf("can't reset running %s", bs.name)
 	}
 

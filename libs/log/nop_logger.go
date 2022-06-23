@@ -8,7 +8,6 @@ var _ Logger = (*nopLogger)(nil)
 // NewNopLogger returns a logger that doesn't do anything.
 func NewNopLogger() Logger { return &nopLogger{} }
 
-func (nopLogger) IsDebugging() bool            { return false }
 func (nopLogger) Info(string, ...interface{})  {}
 func (nopLogger) Debug(string, ...interface{}) {}
 func (nopLogger) Error(string, ...interface{}) {}

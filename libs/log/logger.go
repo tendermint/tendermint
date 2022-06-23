@@ -8,7 +8,6 @@ import (
 
 // Logger is what any Tendermint library should take.
 type Logger interface {
-	IsDebugging() bool
 	Debug(msg string, keyvals ...interface{})
 	Info(msg string, keyvals ...interface{})
 	Error(msg string, keyvals ...interface{})

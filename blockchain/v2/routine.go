@@ -98,9 +98,7 @@ func (rt *Routine) start() {
 			return
 		}
 		rt.metrics.EventsOut.With("routine", rt.name).Add(1)
-		if rt.logger.IsDebugging() {
-			rt.logger.Debug(fmt.Sprintf("%s: produced %T %+v", rt.name, oEvent, oEvent))
-		}
+		rt.logger.Debug("routine start", log.LazySprintf("%s: produced %T %+v", rt.name, oEvent, oEvent))
 
 		// Skip rTrySchedule and rProcessBlock events as they clutter the history
 		// due to their frequency.
@@ -120,9 +118,7 @@ func (rt *Routine) start() {
 
 // XXX: look into returning OpError in the net package
 func (rt *Routine) send(event Event) bool {
-	if rt.logger.IsDebugging() {
-		rt.logger.Debug(fmt.Sprintf("%s: received %T %+v", rt.name, event, event))
-	}
+	rt.logger.Debug("routine send", log.LazySprintf("%s: received %T %+v", rt.name, event, event))
 	if !rt.isRunning() {
 		return false
 	}

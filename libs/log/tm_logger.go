@@ -59,15 +59,6 @@ func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	}
 }
 
-func (l *tmLogger) IsDebugging() bool {
-	lWithLevel := kitlevel.Debug(l.srcLogger)
-
-	if err := kitlog.With(lWithLevel, msgKey, "").Log(""); err != nil {
-		return true
-	}
-	return false
-}
-
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
