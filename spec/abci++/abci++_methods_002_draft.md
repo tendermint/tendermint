@@ -350,7 +350,7 @@ title: Methods
               removed from the mempool, then the Application should include it in `tx_records` and
               _mark_ it as `REMOVED`. In this case, Tendermint will remove `tx` from the mempool.
             * If the Application wants to add a new transaction to the proposed block, then the
-              Application includes it in `tx_records` and _marks_ it as `ADD`. In this case, Tendermint
+              Application includes it in `tx_records` and _marks_ it as `ADDED`. In this case, Tendermint
               will also add the transaction to the mempool.
         * The Application should be aware that removing and adding transactions may compromise
           _traceability_.
