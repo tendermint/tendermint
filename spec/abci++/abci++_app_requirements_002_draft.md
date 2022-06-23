@@ -683,7 +683,7 @@ configured height `H` vote extensions must be present (even if empty).
 When the configured height `H` is reached, `PrepareProposal` will not
 include vote extensions yet, but `ExtendVote` and `VerifyVoteExtension` will
 be called. Then, when reaching height `H+1`, `PrepareProposal` will
-include the vote extensions from height `H`. From this point on, vote extensions
+include the vote extensions from height `H`. For all heights after `H`, vote extensions
 are mandatory and cannot be disabled, although the application can provide 0-length
 extensions.
 
