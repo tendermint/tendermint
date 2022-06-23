@@ -328,7 +328,7 @@ func TestConnection_HandshakeCancel(t *testing.T) {
 		ab, ba := dialAccept(ctx, t, a, b)
 		timeoutCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 		cancel()
-		_, _, err := ab.Handshake(timeoutCtx, types.NodeInfo{}, ed25519.GenPrivKey())
+		_, _, err := ab.Handshake(timeoutCtx, 0, types.NodeInfo{}, ed25519.GenPrivKey())
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
 		_ = ab.Close()
@@ -338,7 +338,7 @@ func TestConnection_HandshakeCancel(t *testing.T) {
 		ab, ba = dialAccept(ctx, t, a, b)
 		timeoutCtx, cancel = context.WithTimeout(ctx, 200*time.Millisecond)
 		defer cancel()
-		_, _, err = ab.Handshake(timeoutCtx, types.NodeInfo{}, ed25519.GenPrivKey())
+		_, _, err = ab.Handshake(timeoutCtx, 0, types.NodeInfo{}, ed25519.GenPrivKey())
 		require.Error(t, err)
 		require.Equal(t, context.DeadlineExceeded, err)
 		_ = ab.Close()
@@ -353,7 +353,7 @@ func TestConnection_FlushClose(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, _ := dialAcceptHandshake(ctx, 0, t, a, b)
+		ab, _ := dialAcceptHandshake(ctx, t, a, b)
 
 		err := ab.Close()
 		require.NoError(t, err)
@@ -374,7 +374,7 @@ func TestConnection_LocalRemoteEndpoint(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, ba := dialAcceptHandshake(ctx, 0, t, a, b)
+		ab, ba := dialAcceptHandshake(ctx, t, a, b)
 
 		// Local and remote connection endpoints correspond to each other.
 		require.NotEmpty(t, ab.LocalEndpoint())
@@ -391,7 +391,7 @@ func TestConnection_SendReceive(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, ba := dialAcceptHandshake(ctx, 0, t, a, b)
+		ab, ba := dialAcceptHandshake(ctx, t, a, b)
 
 		// Can send and receive a to b.
 		err := ab.SendMessage(ctx, chID, []byte("foo"))
