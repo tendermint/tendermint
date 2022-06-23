@@ -113,6 +113,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "peers_connected_success",
 			Help:      "Number of successful peer connection attempts",
 		}, labels).With(labelsAndValues...),
+		PeersEvicted: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_evicted",
+			Help:      "Number of connected peers evicted",
+		}, labels).With(labelsAndValues...),
 		PeersConnectedFailure: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
