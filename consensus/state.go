@@ -1518,7 +1518,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 		if !cs.ProposalBlockParts.HasHeader(blockID.PartSetHeader) {
 			logger.Info(
 				"commit is for a block we do not know about; set ProposalBlock=nil",
-				"proposal", cs.ProposalBlock.Hash(),
+				"proposal", log.LazyBlockHash(cs.ProposalBlock),
 				"commit", blockID.Hash,
 			)
 
@@ -1597,7 +1597,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	logger.Info(
 		"finalizing commit of block",
-		"hash", block.Hash(),
+		"hash", log.LazyBlockHash(block),
 		"root", block.AppHash,
 		"num_txs", len(block.Txs),
 	)

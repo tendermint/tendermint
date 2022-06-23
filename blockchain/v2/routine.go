@@ -58,7 +58,7 @@ func (rt *Routine) setMetrics(metrics *Metrics) {
 }
 
 func (rt *Routine) start() {
-	rt.logger.Info(fmt.Sprintf("%s: run", rt.name))
+	rt.logger.Info("routine start", log.LazySprintf("%s: run", rt.name))
 	running := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))
 	if !running {
 		panic(fmt.Sprintf("%s is already running", rt.name))
@@ -150,7 +150,7 @@ func (rt *Routine) stop() {
 		return
 	}
 
-	rt.logger.Info(fmt.Sprintf("%s: stop", rt.name))
+	rt.logger.Info("routine stop", log.LazySprintf("%s: stop", rt.name))
 	rt.queue.Dispose() // this should block until all queue items are free?
 }
 
