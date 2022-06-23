@@ -22,6 +22,8 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
+- [cli] [\#8675] Add command to force compact goleveldb databases (@cmwaters)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
