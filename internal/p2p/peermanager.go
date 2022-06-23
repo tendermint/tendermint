@@ -1345,21 +1345,20 @@ func (s *peerStore) Set(peer peerInfo) error {
 
 // Delete deletes a peer, or does nothing if it does not exist.
 func (s *peerStore) Delete(id types.NodeID) error {
-	if _, ok := s.peers[id]; !ok {
+	peer, ok := s.peers[id]
+	if !ok {
 		return nil
 	}
+	for _, addr := range peer.AddressInfo {
+		delete(s.index, addr.Address)
+	}
+	delete(s.peers, id)
+	s.ranked = nil
+
 	if err := s.db.Delete(keyPeerInfo(id)); err != nil {
 		return err
 	}
-	delete(s.peers, id)
-	for addr, idxid := range s.index {
-		if idxid == id {
-			delete(s.index, addr)
-			break
-		}
-	}
 
-	s.ranked = nil
 	return nil
 }
 
