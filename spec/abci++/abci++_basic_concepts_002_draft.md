@@ -317,7 +317,8 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 
 Method `FinalizeBlock` includes an `events` field at the top level in its
 `Response*`, and one `events` field per transaction included in the block.
-Applications may respond to this ABCI++ method with an event for each executed transaction.
+Applications may respond to this ABCI++ method with an event list for each executed
+transaction, and a general event list for the block itself.
 Events allow applications to associate metadata with transactions and blocks.
 Events returned via `FinalizeBlock` do not impact Tendermint consensus in any way
 and instead exist to power subscriptions and queries of Tendermint state.

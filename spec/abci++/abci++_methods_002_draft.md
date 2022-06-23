@@ -345,7 +345,7 @@ title: Methods
               there are other transactions with higher priority, then it should not include it in
               `tx_records`. In this case, Tendermint will not remove `tx` from the mempool. The
               Application should be extra-careful, as abusing this feature may cause transactions
-              to stay forever in the mempool.
+              to stay much longer than needed in the mempool.
             * If the Application considers that `tx` should not be included in the proposal and
               removed from the mempool, then the Application should include it in `tx_records` and
               _mark_ it as `REMOVED`. In this case, Tendermint will remove `tx` from the mempool.

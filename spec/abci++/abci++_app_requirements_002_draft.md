@@ -683,9 +683,12 @@ configured height `H` vote extensions must be present (even if empty).
 When the configured height `H` is reached, `PrepareProposal` will not
 include vote extensions yet, but `ExtendVote` and `VerifyVoteExtension` will
 be called. Then, when reaching height `H+1`, `PrepareProposal` will
-include the vote extensions from height `H`. For all heights after `H`, vote extensions
-are mandatory and cannot be disabled, although the application can provide 0-length
-extensions.
+include the vote extensions from height `H`. For all heights after `H`
+
+* vote extensions cannot be disabled,
+* they are mandatory: all precommit messages sent MUST have an extension
+  attached. Nevetheless, the application MAY provide 0-length
+  extensions.
 
 Must always be set to a future height. Once set to a value different from
 0, its value must not be changed.

@@ -141,19 +141,19 @@ Let us now examine the grammar line by line, providing further details.
 >consensus-exec      = (inf)consensus-height
 >```
 
-* A consensus height consists of zero or more rounds before deciding and executing via a call to `FinalizeBlock`,
-  followed by a call to `Commit`. If the height has zero rounds, this means the process is
-  replaying an already decided value (catch-up mode). In each round, the sequence of method calls
-  depends on whether the local process is the proposer or not.
+* A consensus height consists of zero or more rounds before deciding and executing via a call to
+  `FinalizeBlock`, followed by a call to `Commit`. In each round, the sequence of method calls
+  depends on whether the local process is the proposer or not. Note that, if a height contains zero
+  rounds, this means the process is replaying an already decided value (catch-up mode).
 
 >```abnf
 >consensus-height    = *consensus-round decide commit
 >consensus-round     = proposer / non-proposer
 >```
 
-* If the local process is the proposer of the current round, Tendermint starts by calling
-  `PrepareProposal`, followed by `ProcessProposal`. Then, optionally, the Application is asked
-  to extend its vote for that round. Calls to `VerifyVoteExtension` can come at any time: the
+* For every round, if the local process is the proposer of the current round, Tendermint starts by
+  calling `PrepareProposal`, followed by `ProcessProposal`. Then, optionally, the Application is
+  asked to extend its vote for that round. Calls to `VerifyVoteExtension` can come at any time: the
   local process may be slightly late in the current round, or votes may come from a future round
   of this height.
 
@@ -162,11 +162,12 @@ Let us now examine the grammar line by line, providing further details.
 >extend              = *got-vote extend-vote *got-vote
 >```
 
-* If the local process is not the proposer of the current round, Tendermint will call `ProcessProposal`
-  at most once. At most one call to `ExtendVote` may occur only after `ProcessProposal` is called.
-  A number of calls to `VerifyVoteExtension` can occur in any order with respect to `ProcessProposal`
-  and `ExtendVote` throughout the round. The reasons are the same as above, namely, the process running
-  slightly late in the current round, or votes from future rounds of this height received.
+* Also for every round, if the local process is _not_ the proposer of the current round, Tendermint
+  will call `ProcessProposal` at most once. At most one call to `ExtendVote` may occur only after
+  `ProcessProposal` is called. A number of calls to `VerifyVoteExtension` can occur in any order
+  with respect to `ProcessProposal` and `ExtendVote` throughout the round. The reasons are the same
+  as above, namely, the process running slightly late in the current round, or votes from future
+  rounds of this height received.
 
 >```abnf
 >non-proposer        = *got-vote [process-proposal] [extend]
