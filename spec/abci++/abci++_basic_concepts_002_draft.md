@@ -67,7 +67,7 @@ for details on the possible call sequences of these methods.
 proposer to perform application-dependent work in a block before using it as its proposal.
 This enables, for instance, batch optimizations to a block, which has been empirically demonstrated
 to be a key component for scaling. Method `PrepareProposal` is called every time Tendermint is
-about to send a proposal message, but no previous proposal has been locked at Tendermint level.
+about to send a proposal message, but no previous proposal has been locked at the Tendermint level.
 Tendermint gathers outstanding transactions from the mempool, generates a block header, and uses
 them to create a block to propose. Then, it calls `RequestPrepareProposal`
 with the newly created proposal, called *raw proposal*. The Application can
