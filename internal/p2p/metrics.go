@@ -203,6 +203,7 @@ func NopMetrics() *Metrics {
 		PeersConnectedIncoming: discard.NewGauge(),
 		PeersConnectedOutgoing: discard.NewGauge(),
 		PeersInactivated:       discard.NewGauge(),
+		PeersEvicted:           discard.NewCounter(),
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
 		PeerPendingSendBytes:   discard.NewGauge(),
