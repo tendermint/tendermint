@@ -67,8 +67,11 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 			if cli.mustConnect {
 				return err
 			}
-			cli.logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
-				cli.addr, dialRetryIntervalSeconds), "err", err)
+
+			cli.logger.Error("abci.socketClient failed to connect, retrying after",
+				"retry_after", dialRetryIntervalSeconds,
+				"target", cli.addr,
+				"err", err)
 
 			timer.Reset(time.Second * dialRetryIntervalSeconds)
 			select {
@@ -77,7 +80,6 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 			case <-timer.C:
 				continue
 			}
-
 		}
 		cli.conn = conn
 

@@ -311,7 +311,7 @@ func (c *MConnection) Send(chID ChannelID, msgBytes []byte) bool {
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		c.logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
+		c.logger.Error("Cannot send bytes to unknown channel", "channel", chID)
 		return false
 	}
 

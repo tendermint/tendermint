@@ -1113,7 +1113,7 @@ func (r *Reactor) handleDataMessage(ctx context.Context, envelope *p2p.Envelope,
 	}
 
 	if r.WaitSync() {
-		logger.Info("ignoring message received during sync", "msg", fmt.Sprintf("%T", msgI))
+		logger.Info("ignoring message received during sync", "msg", log.NewLazySprintf("%T", msgI))
 		return nil
 	}
 
