@@ -22,6 +22,10 @@ func (l *lazySprintf) String() string {
 	return fmt.Sprintf(l.format, l.args...)
 }
 
+func (l *lazySprintf) GoString() string {
+	return fmt.Sprintf(l.format, l.args...)
+}
+
 type lazyBlockHash struct {
 	block hashable
 }
@@ -38,5 +42,9 @@ func LazyBlockHash(block hashable) *lazyBlockHash { //nolint:revive
 }
 
 func (l *lazyBlockHash) String() string {
+	return l.block.Hash().String()
+}
+
+func (l *lazyBlockHash) GoString() string {
 	return l.block.Hash().String()
 }
