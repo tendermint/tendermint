@@ -369,6 +369,12 @@ FOR_LOOP:
 			// currently necessary.
 			err := state.Validators.VerifyCommitLight(
 				chainID, firstID, first.Height, second.LastCommit)
+
+			if err == nil {
+				// validate the block before we persist it
+				err = bcR.blockExec.ValidateBlock(state, first)
+			}
+
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
 				peerID := bcR.pool.RedoRequest(first.Height)
@@ -386,29 +392,29 @@ FOR_LOOP:
 					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("blockchainReactor validation error: %v", err))
 				}
 				continue FOR_LOOP
-			} else {
-				bcR.pool.PopRequest()
-
-				// TODO: batch saves so we dont persist to disk every block
-				bcR.store.SaveBlock(first, firstParts, second.LastCommit)
-
-				// TODO: same thing for app - but we would need a way to
-				// get the hash without persisting the state
-				var err error
-				state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
-				if err != nil {
-					// TODO This is bad, are we zombie?
-					panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
-				}
-				blocksSynced++
-
-				if blocksSynced%100 == 0 {
-					lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
-					bcR.Logger.Info("Fast Sync Rate", "height", bcR.pool.height,
-						"max_peer_height", bcR.pool.MaxPeerHeight(), "blocks/s", lastRate)
-					lastHundred = time.Now()
-				}
 			}
+
+			bcR.pool.PopRequest()
+
+			// TODO: batch saves so we dont persist to disk every block
+			bcR.store.SaveBlock(first, firstParts, second.LastCommit)
+
+			// TODO: same thing for app - but we would need a way to
+			// get the hash without persisting the state
+			state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+			if err != nil {
+				// TODO This is bad, are we zombie?
+				panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+			}
+			blocksSynced++
+
+			if blocksSynced%100 == 0 {
+				lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+				bcR.Logger.Info("Fast Sync Rate", "height", bcR.pool.height,
+					"max_peer_height", bcR.pool.MaxPeerHeight(), "blocks/s", lastRate)
+				lastHundred = time.Now()
+			}
+
 			continue FOR_LOOP
 
 		case <-bcR.Quit():

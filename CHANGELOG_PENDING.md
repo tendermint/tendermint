@@ -20,6 +20,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [cli] [\#8674] Add command to force compact goleveldb databases (@cmwaters)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [blocksync] [\#8496](https://github.com/tendermint/tendermint/pull/8496) validate block against state before persisting it to disk (@cmwaters)

@@ -29,6 +29,7 @@ func main() {
 		cmd.GenNodeKeyCmd,
 		cmd.VersionCmd,
 		cmd.RollbackStateCmd,
+		cmd.CompactGoLevelDBCmd,
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
