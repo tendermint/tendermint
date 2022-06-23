@@ -50,8 +50,7 @@ same-block execution mode and *does not* provide values for
 Full execution of blocks at `PrepareProposal` time stands on Tendermint's critical path. Thus,
 Requirement 3 ensures the Application will set a value for `TimeoutPropose` such that the time it takes
 to fully execute blocks in `PrepareProposal` does not interfere with Tendermint's propose timer.
-Note that violation of Requirement 3 may just lead to further rounds, but not to Tendermint
-liveness issues.
+Note that violation of Requirement 3 may just lead to further rounds, but will not compromise liveness.
 
 * Requirement 4 [`PrepareProposal`, tx-size]: When *p*'s Application calls `ResponsePrepareProposal`, the
   total size in bytes of the transactions returned does not exceed `RequestPrepareProposal.max_tx_bytes`.
