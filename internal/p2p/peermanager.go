@@ -1352,6 +1352,13 @@ func (s *peerStore) Delete(id types.NodeID) error {
 		return err
 	}
 	delete(s.peers, id)
+	for addr, idxid := range s.index {
+		if idxid == id {
+			delete(s.index, addr)
+			break
+		}
+	}
+
 	s.ranked = nil
 	return nil
 }
