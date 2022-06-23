@@ -112,9 +112,17 @@ KeyvalueLoop:
 			}
 		}
 
-		err := enc.EncodeKeyval(keyvals[i], keyvals[i+1])
+		key := keyvals[i]
+		value := keyvals[i+1]
+
+		// Attempt to evaluate pointers to Stringer interfaces before encoding
+		if v, ok := keyvals[i+1].(*fmt.Stringer); ok {
+			value = (*v).String()
+		}
+
+		err := enc.EncodeKeyval(key, value)
 		if err == logfmt.ErrUnsupportedValueType {
-			enc.EncodeKeyval(keyvals[i], fmt.Sprintf("%+v", keyvals[i+1])) //nolint:errcheck // no need to check error again
+			enc.EncodeKeyval(key, fmt.Sprintf("%+v", value)) //nolint:errcheck // no need to check error again
 		} else if err != nil {
 			return err
 		}
