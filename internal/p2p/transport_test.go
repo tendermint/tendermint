@@ -296,7 +296,7 @@ func TestConnection_Handshake(t *testing.T) {
 		errCh := make(chan error, 1)
 		go func() {
 			// Must use assert due to goroutine.
-			peerInfo, peerKey, err := ba.Handshake(ctx, bInfo, bKey)
+			peerInfo, peerKey, err := ba.Handshake(ctx, 0, bInfo, bKey)
 			if err == nil {
 				assert.Equal(t, aInfo, peerInfo)
 				assert.Equal(t, aKey.PubKey(), peerKey)
@@ -307,7 +307,7 @@ func TestConnection_Handshake(t *testing.T) {
 			}
 		}()
 
-		peerInfo, peerKey, err := ab.Handshake(ctx, aInfo, aKey)
+		peerInfo, peerKey, err := ab.Handshake(ctx, 0, aInfo, aKey)
 		require.NoError(t, err)
 		require.Equal(t, bInfo, peerInfo)
 		require.Equal(t, bKey.PubKey(), peerKey)
@@ -353,7 +353,7 @@ func TestConnection_FlushClose(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, _ := dialAcceptHandshake(ctx, t, a, b)
+		ab, _ := dialAcceptHandshake(ctx, 0, t, a, b)
 
 		err := ab.Close()
 		require.NoError(t, err)
@@ -374,7 +374,7 @@ func TestConnection_LocalRemoteEndpoint(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, ba := dialAcceptHandshake(ctx, t, a, b)
+		ab, ba := dialAcceptHandshake(ctx, 0, t, a, b)
 
 		// Local and remote connection endpoints correspond to each other.
 		require.NotEmpty(t, ab.LocalEndpoint())
@@ -391,7 +391,7 @@ func TestConnection_SendReceive(t *testing.T) {
 	withTransports(ctx, t, func(ctx context.Context, t *testing.T, makeTransport transportFactory) {
 		a := makeTransport(t)
 		b := makeTransport(t)
-		ab, ba := dialAcceptHandshake(ctx, t, a, b)
+		ab, ba := dialAcceptHandshake(ctx, 0, t, a, b)
 
 		// Can send and receive a to b.
 		err := ab.SendMessage(ctx, chID, []byte("foo"))
@@ -642,13 +642,13 @@ func dialAcceptHandshake(ctx context.Context, t *testing.T, a, b p2p.Transport) 
 	go func() {
 		privKey := ed25519.GenPrivKey()
 		nodeInfo := types.NodeInfo{NodeID: types.NodeIDFromPubKey(privKey.PubKey())}
-		_, _, err := ba.Handshake(ctx, nodeInfo, privKey)
+		_, _, err := ba.Handshake(ctx, 0, nodeInfo, privKey)
 		errCh <- err
 	}()
 
 	privKey := ed25519.GenPrivKey()
 	nodeInfo := types.NodeInfo{NodeID: types.NodeIDFromPubKey(privKey.PubKey())}
-	_, _, err := ab.Handshake(ctx, nodeInfo, privKey)
+	_, _, err := ab.Handshake(ctx, 0, nodeInfo, privKey)
 	require.NoError(t, err)
 
 	timer := time.NewTimer(2 * time.Second)
