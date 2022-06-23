@@ -25,6 +25,7 @@ const (
 	DefaultLogLevel = "info"
 
 	// Mempool versions. V1 is prioritized mempool, v0 is regular mempool.
+	// Default is v0.
 	MempoolV0 = "v0"
 	MempoolV1 = "v1"
 )
@@ -725,7 +726,7 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Version:   MempoolV1,
+		Version:   MempoolV0,
 		Recheck:   true,
 		Broadcast: true,
 		WalPath:   "",
