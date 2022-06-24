@@ -21,6 +21,7 @@ var (
 			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
 		},
 		"validators": {"genesis", "initchain"},
+		"mempool":    {"v0", "v1", "mixed"},
 	}
 
 	// The following specify randomly chosen values for testnet nodes.
@@ -32,7 +33,6 @@ var (
 	// FIXME: v2 disabled due to flake
 	nodeFastSyncs         = uniformChoice{"v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
-	nodeMempools          = uniformChoice{"v0", "v1"}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
 	nodeRetainBlocks      = uniformChoice{0, 1, 5}
@@ -95,7 +95,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(
-			r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
+			r, e2e.ModeSeed, 0, manifest.InitialHeight, false, opt["mempool"].(string))
 	}
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
@@ -111,7 +111,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		}
 		name := fmt.Sprintf("validator%02d", i)
 		manifest.Nodes[name] = generateNode(
-			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
+			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2, opt["mempool"].(string))
 
 		if startAt == 0 {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
@@ -140,7 +140,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
-			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
+			r, e2e.ModeFull, startAt, manifest.InitialHeight, false, opt["mempool"].(string))
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
@@ -202,21 +202,29 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // generating invalid configurations. We do not set Seeds or PersistentPeers
 // here, since we need to know the overall network topology and startup
 // sequencing.
-func generateNode(
-	r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool,
-) *e2e.ManifestNode {
+func generateNode(r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool, mempoolVersion string) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
 		FastSync:         nodeFastSyncs.Choose(r).(string),
-		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
 		SnapshotInterval: uint64(nodeSnapshotIntervals.Choose(r).(int)),
 		RetainBlocks:     uint64(nodeRetainBlocks.Choose(r).(int)),
 		Perturb:          nodePerturbations.Choose(r),
+	}
+
+	switch mempoolVersion {
+	case "v0":
+		node.Mempool = "v0"
+	case "v1":
+		node.Mempool = "v1"
+	case "mixed":
+		node.Mempool = (uniformChoice{"v0", "v1"}).Choose(r).(string)
+	default:
+		panic(fmt.Sprintf("%q is not a valid mempool version", mempoolVersion))
 	}
 
 	// If this node is forced to be an archive node, retain all blocks and
