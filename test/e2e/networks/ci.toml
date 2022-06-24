@@ -68,6 +68,7 @@ start_at = 1005 # Becomes part of the validator set at 1010
 seeds = ["seed02"]
 database = "cleveldb"
 fast_sync = "v0"
+mempool_version = "v1"
 # FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
 #abci_protocol = "grpc"
 privval_protocol = "tcp"
