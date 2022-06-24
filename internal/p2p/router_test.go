@@ -1,7 +1,6 @@
 package p2p_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
