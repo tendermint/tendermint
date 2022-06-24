@@ -61,15 +61,6 @@ type RouterOptions struct {
 	// return an error to reject the peer.
 	FilterPeerByID func(context.Context, types.NodeID) error
 
-<<<<<<< HEAD
-	// DialSleep controls the amount of time that the router
-	// sleeps between dialing peers. If not set, a default value
-	// is used that sleeps for a (random) amount of time up to 3
-	// seconds between submitting each peer to be dialed.
-	DialSleep func(context.Context)
-
-=======
->>>>>>> 52b6dc19b (p2p: remove dial sleep and provide disconnect cooldown (#8839))
 	// NumConcrruentDials controls how many parallel go routines
 	// are used to dial peers. This defaults to the value of
 	// runtime.NumCPU.
