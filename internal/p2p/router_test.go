@@ -133,13 +133,6 @@ func TestRouter_Channel_Basic(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, router.NodeInfo().Channels, chDesc2.ID)
 
-	// Closing the channel, then opening it again should be fine.
-	channel.Close()
-	time.Sleep(100 * time.Millisecond) // yes yes, but Close() is async...
-
-	channel, err = router.OpenChannel(chDesc, &p2ptest.Message{}, 0)
-	require.NoError(t, err)
-
 	// We should be able to send on the channel, even though there are no peers.
 	p2ptest.RequireSend(t, channel, p2p.Envelope{
 		To:      types.NodeID(strings.Repeat("a", 40)),
