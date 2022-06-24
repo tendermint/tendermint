@@ -99,7 +99,7 @@ of `ProcessProposal`. As a general rule `ProcessProposal` SHOULD always accept t
 
 According to the Tendermint algorithm, a correct process can broadcast at most one precommit
 message in round *r*, height *h*.
-Since, as stated in the [Methods](./abci++_methods_002_draft.md#extendvote) section, `ResponseExtendVote`
+Since, as stated in the [Methods](./abci++_methods.md#extendvote) section, `ResponseExtendVote`
 is only called when Tendermint
 is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension
 in round *r*, height *h*.
@@ -367,12 +367,12 @@ For more information, see Section [State Sync](#state-sync).
 ### Transaction Results
 
 The Application is expected to return a list of
-[`ExecTxResult`](./abci%2B%2B_methods_002_draft.md#exectxresult) in
-[`ResponseFinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock). The list of transaction
+[`ExecTxResult`](./abci%2B%2B_methods.md#exectxresult) in
+[`ResponseFinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock). The list of transaction
 results must respect the same order as the list of transactions delivered via
-[`RequestFinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock).
+[`RequestFinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock).
 This section discusses the fields inside this structure, along with the fields in
-[`ResponseCheckTx`](./abci%2B%2B_methods_002_draft.md#checktx),
+[`ResponseCheckTx`](./abci%2B%2B_methods.md#checktx),
 whose semantics are similar.
 
 The `Info` and `Log` fields are
@@ -473,12 +473,12 @@ events took place during their execution.
 ### Updating the Validator Set
 
 The application may set the validator set during
-[`InitChain`](./abci%2B%2B_methods_002_draft.md#initchain), and may update it during
-[`FinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock)
+[`InitChain`](./abci%2B%2B_methods.md#initchain), and may update it during
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
 (next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods_002_draft.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods_002_draft.md#processproposal)
+[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
 (same block execution mode). In all cases, a structure of type
-[`ValidatorUpdate`](./abci%2B%2B_methods_002_draft.md#validatorupdate) is returned.
+[`ValidatorUpdate`](./abci%2B%2B_methods.md#validatorupdate) is returned.
 
 The `InitChain` method, used to initialize the Application, can return a list of validators.
 If the list is empty, Tendermint will use the validators loaded from the genesis
@@ -512,7 +512,7 @@ Applications must ensure that
   `MaxTotalVotingPower = MaxInt64 / 8`
 
 Note the updates returned after processing the block at height `H` will only take effect
-at block `H+2` (see Section [Methods](./abci%2B%2B_methods_002_draft.md)).
+at block `H+2` (see Section [Methods](./abci%2B%2B_methods.md)).
 
 ### Consensus Parameters
 
@@ -520,10 +520,10 @@ at block `H+2` (see Section [Methods](./abci%2B%2B_methods_002_draft.md)).
 They enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in
-[`InitChain`](./abci%2B%2B_methods_002_draft.md#initchain), and updated in
-[`FinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock)
+[`InitChain`](./abci%2B%2B_methods.md#initchain), and updated in
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
 (next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods_002_draft.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods_002_draft.md#processproposal)
+[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
 (same block execution model).
 These parameters are deterministically set and/or updated by the Application, so
 all full nodes have the same value at a given height.
@@ -696,11 +696,11 @@ Must always be set to a future height. Once set to a value different from
 #### Updating Consensus Parameters
 
 The application may set the `ConsensusParams` during
-[`InitChain`](./abci%2B%2B_methods_002_draft.md#initchain),
+[`InitChain`](./abci%2B%2B_methods.md#initchain),
 and update them during
-[`FinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock)
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
 (next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods_002_draft.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods_002_draft.md#processproposal)
+[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
 (same block execution mode).
 If the `ConsensusParams` is empty, it will be ignored. Each field
 that is not empty will be applied in full. For instance, if updating the
@@ -906,7 +906,7 @@ truncated block history - users are advised to consider the broader network impl
 terms of block availability and auditability. This functionality may be added in the future.
 
 For details on the specific ABCI calls and types, see the
-[methods](abci%2B%2B_methods_002_draft.md) section.
+[methods](abci%2B%2B_methods.md) section.
 
 #### Taking Snapshots
 

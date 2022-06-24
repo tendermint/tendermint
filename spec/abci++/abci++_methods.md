@@ -385,7 +385,7 @@ title: Methods
         * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
           params for block `H+1` even if the change is agreed in block `H`.
           For more information on the consensus parameters,
-          see the [consensus parameters](./abci%2B%2B_app_requirements_002_draft.md#consensus-parameters)
+          see the [consensus parameters](./abci%2B%2B_app_requirements.md#consensus-parameters)
           section.
         * It is the Application's responsibility to set the right value for _TimeoutPropose_ so that
           the (synchronous) execution of the block does not cause other processes to prevote `nil` because
@@ -498,7 +498,7 @@ proposal and will not call `RequestPrepareProposal`.
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
       `ResponseProcessProposal.status` MUST **exclusively** depend on the parameters passed in
       the call to `RequestProcessProposal`, and the last committed Application state
-      (see [Requirements](./abci++_app_requirements_002_draft.md) section).
+      (see [Requirements](./abci++_app_requirements.md) section).
     * Moreover, application implementors SHOULD always set `ResponseProcessProposal.status` to `ACCEPT`,
       unless they _really_ know what the potential liveness implications of returning `REJECT` are.
 
@@ -605,12 +605,12 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
     * `RequestVerifyVoteExtension.hash` refers to a proposed block. There is not guarantee that
       this proposed block has previously been exposed to the Application via `ProcessProposal`.
     * If `ResponseVerifyVoteExtension.status` is `REJECT`, Tendermint will reject the whole received vote.
-      See the [Requirements](./abci++_app_requirements_002_draft.md) section to understand the potential
+      See the [Requirements](./abci++_app_requirements.md) section to understand the potential
       liveness implications of this.
     * The implementation of `VerifyVoteExtension` MUST be deterministic. Moreover, the value of
       `ResponseVerifyVoteExtension.status` MUST **exclusively** depend on the parameters passed in
       the call to `RequestVerifyVoteExtension`, and the last committed Application state
-      (see [Requirements](./abci++_app_requirements_002_draft.md) section).
+      (see [Requirements](./abci++_app_requirements.md) section).
     * Moreover, application implementers SHOULD always set `ResponseVerifyVoteExtension.status` to `ACCEPT`,
       unless they _really_ know what the potential liveness implications of returning `REJECT` are.
 
@@ -651,7 +651,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
-    | events                  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
+    | events                  | repeated [Event](abci++_basic_concepts.md#events) | Type & Key-Value events for indexing                                             | 1            |
     | tx_results              | repeated [ExecTxResult](#exectxresult)                      | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
@@ -682,7 +682,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
               `FinalizeBlock` now include the altered validator set.
         * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
           params for block `H+1`. For more information on the consensus parameters,
-          see the [consensus parameters](./abci%2B%2B_app_requirements_002_draft.md#consensus-parameters)
+          see the [consensus parameters](./abci%2B%2B_app_requirements.md#consensus-parameters)
           section.
 
     * In same-block execution mode, Tendermint will log an error and ignore values for
@@ -892,7 +892,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | info       | string                                                      | Additional information. **May be non-deterministic.**                 | 4            |
     | gas_wanted | int64                                                       | Amount of gas requested for transaction.                              | 5            |
     | gas_used   | int64                                                       | Amount of gas consumed by transaction.                                | 6            |
-    | events     | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
+    | events     | repeated [Event](abci++_basic_concepts.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
 ### TxAction

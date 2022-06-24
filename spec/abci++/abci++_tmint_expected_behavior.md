@@ -31,7 +31,7 @@ In these cases, the sequence of calls to ABCI++ methods may not be so straighfor
 the Application should still be able to handle them, e.g., without crashing.
 The purpose of this section is to define what these sequences look like an a precise way.
 
-As mentioned in the [Basic Concepts](./abci%2B%2B_basic_concepts_002_draft.md) section, Tendermint
+As mentioned in the [Basic Concepts](./abci%2B%2B_basic_concepts.md) section, Tendermint
 acts as a client of ABCI++ and the Application acts as a server. Thus, it is up to Tendermint to
 determine when and in which order the different ABCI++ methods will be called. A well-written
 Application design should consider _any_ of these possible sequences.
@@ -202,9 +202,9 @@ to undergo any changes in their implementation.
 
 As for the new methods:
 
-* `PrepareProposal` must create a list of [TxRecord](./abci++_methods_002_draft.md#txrecord) each containing a
+* `PrepareProposal` must create a list of [TxRecord](./abci++_methods.md#txrecord) each containing a
   transaction passed in `RequestPrepareProposal.txs`, in the same other. The field `action` must be set to `UNMODIFIED`
-  for all [TxRecord](./abci++_methods_002_draft.md#txrecord) elements in the list.
+  for all [TxRecord](./abci++_methods.md#txrecord) elements in the list.
   The Application must check whether the size of all transactions exceeds the byte limit
   (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the end of the list
   until the total byte size is at or below the limit.
