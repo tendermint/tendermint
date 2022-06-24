@@ -69,9 +69,9 @@ type VoteSet struct {
 	peerMaj23s    map[string]BlockID     // Maj23 for each peer
 
 	// dash fields
-	thresholdBlockSig    []byte   // If a 2/3 majority is seen, recover the block sig
-	thresholdStateSig    []byte   // If a 2/3 majority is seen, recover the state sig
-	thresholdVoteExtSigs [][]byte // If a 2/3 majority is seen, recover the vote extension sigs
+	thresholdBlockSig    []byte                   // If a 2/3 majority is seen, recover the block sig
+	thresholdStateSig    []byte                   // If a 2/3 majority is seen, recover the state sig
+	thresholdVoteExtSigs []ThresholdExtensionSign // If a 2/3 majority is seen, recover the vote extension sigs
 }
 
 // NewVoteSet constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -263,7 +263,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 	vote *Vote,
 	blockKey string,
 	votingPower int64,
-	quorumSigns QuorumSigns,
+	quorumSigns QuorumSignData,
 ) (added bool, conflicting *Vote) {
 	valIndex := vote.ValidatorIndex
 
@@ -327,7 +327,6 @@ func (voteSet *VoteSet) addVerifiedVote(
 			if voteSet.signedMsgType == tmproto.PrecommitType {
 				err := voteSet.recoverThresholdSignsAndVerify(votesByBlock, quorumSigns)
 				if err != nil {
-					// TODO needs to return an error
 					panic(fmt.Errorf("failed recovering or verifying threshold signature: %v", err))
 				}
 			}
@@ -343,7 +342,7 @@ func (voteSet *VoteSet) addVerifiedVote(
 	return true, conflicting
 }
 
-func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, quorumSigns QuorumSigns) error {
+func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, quorumDataSigns QuorumSignData) error {
 	if len(blockVotes.votes) == 0 {
 		return nil
 	}
@@ -352,69 +351,36 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 		vote := blockVotes.votes[0]
 		voteSet.thresholdBlockSig = vote.BlockSignature
 		voteSet.thresholdStateSig = vote.StateSignature
-		for _, ext := range vote.VoteExtensions {
-			voteSet.thresholdVoteExtSigs = append(voteSet.thresholdVoteExtSigs, ext.Signature)
-		}
+		voteSet.thresholdVoteExtSigs = MakeThresholdVoteExtensions(
+			vote.VoteExtensions[tmproto.VoteExtensionType_THRESHOLD_RECOVER],
+			vote.GetVoteExtensionsSigns(tmproto.VoteExtensionType_THRESHOLD_RECOVER),
+		)
 		return nil
 	}
 	err := voteSet.recoverThresholdSigns(blockVotes)
 	if err != nil {
 		return err
 	}
-	verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.Block.ID, voteSet.thresholdBlockSig)
-	if !verified {
-		return fmt.Errorf("recovered incorrect threshold signature %X voteSetCount %d",
-			voteSet.thresholdBlockSig, len(blockVotes.votes))
-	}
-	if voteSet.thresholdStateSig != nil {
-		verified = voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.State.ID, voteSet.thresholdStateSig)
-		if !verified {
-			return fmt.Errorf("recovered incorrect state threshold signature %X voteSetCount %d",
-				voteSet.thresholdStateSig, len(blockVotes.votes))
-		}
-	}
-	return voteSet.verifyThresholdVoteExtSigs(blockVotes.votes, quorumSigns.VoteExts)
-}
-
-func (voteSet *VoteSet) verifyThresholdVoteExtSigs(votes []*Vote, signItems []SignItem) error {
-	if len(votes) == 0 || len(voteSet.thresholdVoteExtSigs) == 0 {
-		return nil
-	}
-	vote, err := GetFirstVote(votes)
-	if err != nil {
-		return err
-	}
-	signItems = GetRecoverableSingItems(vote.VoteExtensions, signItems)
-	if len(signItems) != len(voteSet.thresholdVoteExtSigs) {
-		return fmt.Errorf("count of threshold signatures (%d) at voteSet doesn't match with the count of a recoverable at a vote (%d) | %X",
-			len(voteSet.thresholdVoteExtSigs), len(signItems), voteSet.thresholdStateSig)
-	}
-	for i, thresholdVoteExtSig := range voteSet.thresholdVoteExtSigs {
-		verified := voteSet.valSet.ThresholdPublicKey.VerifySignatureDigest(signItems[i].ID, thresholdVoteExtSig)
-		if !verified {
-			return fmt.Errorf("recovered incorrect vote-extension threshold signature %X voteSetCount %d",
-				thresholdVoteExtSig, len(votes))
-		}
-	}
-	return nil
+	verifier := NewQuorumSingsVerifier(
+		quorumDataSigns,
+		WithVerifyReachedQuorum(voteSet.IsQuorumReached()),
+	)
+	return verifier.Verify(voteSet.valSet.ThresholdPublicKey, voteSet.makeQuorumSigns())
 }
 
 func (voteSet *VoteSet) recoverThresholdSigns(blockVotes *blockVotes) error {
 	if len(blockVotes.votes) < 2 {
 		return fmt.Errorf("attempting to recover a threshold signature with only 1 vote")
 	}
-	signsRecoverer := NewSignsRecoverer(blockVotes.votes)
-	if voteSet.maj23 == nil || voteSet.maj23.Hash == nil {
-		// if the vote is voting for nil, then we do not care to Recover the state signature
-		signsRecoverer.recoveryOnlyBlockSig()
-	}
+	// if the vote is voting for nil, then we do not care to Recover the state signature
+	signsRecoverer := NewSignsRecoverer(blockVotes.votes, WithQuorumReached(voteSet.IsQuorumReached()))
 	thresholdSigns, err := signsRecoverer.Recover()
 	if err != nil {
 		return err
 	}
 	voteSet.thresholdBlockSig = thresholdSigns.BlockSign
 	voteSet.thresholdStateSig = thresholdSigns.StateSign
-	voteSet.thresholdVoteExtSigs = thresholdSigns.VoteExtSigns
+	voteSet.thresholdVoteExtSigs = thresholdSigns.ExtensionSigns
 	return nil
 }
 
@@ -542,6 +508,11 @@ func (voteSet *VoteSet) IsCommit() bool {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	return voteSet.maj23 != nil
+}
+
+// IsQuorumReached returns true if quorum was reached otherwise returns false
+func (voteSet *VoteSet) IsQuorumReached() bool {
+	return voteSet.maj23 != nil && voteSet.maj23.Hash != nil
 }
 
 // HasTwoThirdsAny returns true if we are above voting threshold, regardless of the block id voted
@@ -751,29 +722,32 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		panic("Cannot MakeCommit() unless a thresholdStateSig has been created")
 	}
 
-	commit := NewCommit(
+	return NewCommit(
 		voteSet.GetHeight(),
 		voteSet.GetRound(),
 		*voteSet.maj23,
 		voteSet.stateID,
-		&QuorumVoteSigns{
-			ThresholdVoteSigns: ThresholdVoteSigns{
-				BlockSign:    voteSet.thresholdBlockSig,
-				StateSign:    voteSet.thresholdStateSig,
-				VoteExtSigns: voteSet.thresholdVoteExtSigs,
-			},
-			QuorumHash: voteSet.valSet.QuorumHash,
-		},
+		voteSet.makeCommitSigns(),
 	)
+}
 
-	vote, err := GetFirstVote(voteSet.votes)
-	if err == nil {
-		for _, ext := range vote.VoteExtensions {
-			commit.VoteExtensions = append(commit.VoteExtensions, ext.Clone())
-		}
+func (voteSet *VoteSet) makeCommitSigns() *CommitSigns {
+	return &CommitSigns{
+		QuorumSigns: QuorumSigns{
+			BlockSign:      voteSet.thresholdBlockSig,
+			StateSign:      voteSet.thresholdStateSig,
+			ExtensionSigns: voteSet.thresholdVoteExtSigs,
+		},
+		QuorumHash: voteSet.valSet.QuorumHash,
 	}
+}
 
-	return commit
+func (voteSet *VoteSet) makeQuorumSigns() QuorumSigns {
+	return QuorumSigns{
+		BlockSign:      voteSet.thresholdBlockSig,
+		StateSign:      voteSet.thresholdStateSig,
+		ExtensionSigns: voteSet.thresholdVoteExtSigs,
+	}
 }
 
 //--------------------------------------------------------------------------------

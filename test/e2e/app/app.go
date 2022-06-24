@@ -352,7 +352,7 @@ func (app *Application) ApplySnapshotChunk(_ context.Context, req *abci.RequestA
 // total number of transaction bytes to exceed `req.MaxTxBytes`, we will not
 // append our special vote extension transaction.
 func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
-	extCount := len(req.LocalLastCommit.VoteExtensionSignatures)
+	extCount := len(req.LocalLastCommit.ThresholdVoteExtensions)
 	// We only generate our special transaction if we have vote extensions
 	if extCount > 0 {
 		var totalBytes int64
@@ -491,16 +491,16 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 		}, nil
 	}
 
-	nums := make([]int64, len(req.VoteExtensions))
-	for i, extension := range req.VoteExtensions {
-		num, err := parseVoteExtension(extension)
+	nums := make([]int64, 0, len(req.VoteExtensions))
+	for _, ext := range req.VoteExtensions {
+		num, err := parseVoteExtension(ext.Extension)
 		if err != nil {
 			app.logger.Error("failed to verify vote extension", "req", req, "err", err)
 			return &abci.ResponseVerifyVoteExtension{
 				Status: abci.ResponseVerifyVoteExtension_REJECT,
 			}, nil
 		}
-		nums[i] = num
+		nums = append(nums, num)
 	}
 
 	app.logger.Info("verified vote extension value", "req", req, "nums", nums)

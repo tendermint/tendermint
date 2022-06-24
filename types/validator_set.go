@@ -938,40 +938,15 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	canonVote := commit.GetCanonicalVoteWithExtensions()
+	canonVote := commit.GetCanonicalVote()
 	quorumSigns, err := MakeQuorumSigns(chainID, vals.QuorumType, vals.QuorumHash, canonVote.ToProto(), stateID)
 	if err != nil {
 		return err
 	}
-
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.Block.ID, commit.ThresholdBlockSignature) {
-		return fmt.Errorf(
-			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
-			quorumSigns.Block.Raw, quorumSigns.Block.ID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
-	}
-
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(quorumSigns.State.ID, commit.ThresholdStateSignature) {
-		return fmt.Errorf("incorrect threshold state signature bytes: %X commit: %v valQuorumHash %X",
-			quorumSigns.State.Raw, commit, vals.QuorumHash)
-	}
-
-	return vals.verifyThresholdVoteExtensions(commit, canonVote, quorumSigns)
-}
-
-func (vals *ValidatorSet) verifyThresholdVoteExtensions(commit *Commit, canonVote *Vote, quorumSigns QuorumSigns) error {
-	signItems := GetRecoverableSingItems(canonVote.VoteExtensions, quorumSigns.VoteExts)
-	if len(signItems) == 0 {
-		return nil
-	}
-	if len(signItems) != len(commit.ThresholdVoteExtensionSignatures) {
-		return fmt.Errorf("count of threshold vote extension signatures (%d) doesn't match with recoverable vote extensions (%d)",
-			len(commit.ThresholdVoteExtensionSignatures), len(signItems))
-	}
-	for i, thresholdSign := range commit.ThresholdVoteExtensionSignatures {
-		if !vals.ThresholdPublicKey.VerifySignatureDigest(signItems[i].ID, thresholdSign) {
-			return fmt.Errorf("incorrect threshold vote-extension signature bytes: %X commit: %v valQuorumHash %X",
-				signItems[i].Raw, commit, vals.QuorumHash)
-		}
+	err = quorumSigns.Verify(vals.ThresholdPublicKey, NewQuorumSignsFromCommit(commit))
+	if err != nil {
+		return fmt.Errorf("invalid commit signatures for quorum(type=%v, hash=%X), thresholdPubKey=%X: %w",
+			vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey, err)
 	}
 	return nil
 }

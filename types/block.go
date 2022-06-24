@@ -673,10 +673,8 @@ type Commit struct {
 	QuorumHash              crypto.QuorumHash `json:"quorum_hash"`
 	ThresholdBlockSignature []byte            `json:"threshold_block_signature"`
 	ThresholdStateSignature []byte            `json:"threshold_state_signature"`
-	// ThresholdVoteExtensionSignatures keeps the list of recovered threshold signatures for vote-extensions
-	ThresholdVoteExtensionSignatures [][]byte `json:"threshold_vote_ext_signatures"`
-
-	VoteExtensions []VoteExtension
+	// ThresholdVoteExtensions keeps the list of recovered threshold signatures for vote-extensions
+	ThresholdVoteExtensions []ThresholdExtensionSign `json:"threshold_vote_extensions"`
 
 	// Memoized in first call to corresponding method.
 	// NOTE: can't memoize in constructor because constructor isn't used for
@@ -685,18 +683,15 @@ type Commit struct {
 }
 
 // NewCommit returns a new Commit.
-func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, quorumThresholdSigns *QuorumVoteSigns) *Commit {
+func NewCommit(height int64, round int32, blockID BlockID, stateID StateID, commitSigns *CommitSigns) *Commit {
 	commit := &Commit{
 		Height:  height,
 		Round:   round,
 		BlockID: blockID,
 		StateID: stateID,
 	}
-	if quorumThresholdSigns != nil {
-		commit.QuorumHash = quorumThresholdSigns.QuorumHash
-		commit.ThresholdBlockSignature = quorumThresholdSigns.BlockSign
-		commit.ThresholdStateSignature = quorumThresholdSigns.StateSign
-		commit.ThresholdVoteExtensionSignatures = quorumThresholdSigns.VoteExtSigns
+	if commitSigns != nil {
+		commitSigns.CopyToCommit(commit)
 	}
 	return commit
 }
@@ -709,13 +704,6 @@ func (commit *Commit) GetCanonicalVote() *Vote {
 		Round:   commit.Round,
 		BlockID: commit.BlockID,
 	}
-}
-
-// GetCanonicalVoteWithExtensions returns a canonical vote with filled vote-extensions field
-func (commit *Commit) GetCanonicalVoteWithExtensions() *Vote {
-	vote := commit.GetCanonicalVote()
-	vote.VoteExtensions = commit.VoteExtensions
-	return vote
 }
 
 // VoteBlockRequestID returns the requestId Hash of the Vote corresponding to valIdx for
@@ -902,8 +890,7 @@ func (commit *Commit) ToProto() *tmproto.Commit {
 
 	c.ThresholdStateSignature = commit.ThresholdStateSignature
 	c.ThresholdBlockSignature = commit.ThresholdBlockSignature
-	c.ThresholdVoteExtensionSignatures = commit.ThresholdVoteExtensionSignatures
-
+	c.ThresholdVoteExtensions = ThresholdExtensionSignToProto(commit.ThresholdVoteExtensions)
 	c.QuorumHash = commit.QuorumHash
 
 	return c
@@ -933,7 +920,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.QuorumHash = cp.QuorumHash
 	commit.ThresholdBlockSignature = cp.ThresholdBlockSignature
 	commit.ThresholdStateSignature = cp.ThresholdStateSignature
-	commit.ThresholdVoteExtensionSignatures = cp.ThresholdVoteExtensionSignatures
+	commit.ThresholdVoteExtensions = ThresholdExtensionSignFromProto(cp.ThresholdVoteExtensions)
 
 	commit.Height = cp.Height
 	commit.Round = cp.Round

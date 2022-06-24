@@ -902,7 +902,7 @@ func (r *Reactor) queryMaj23Routine(ctx context.Context, stateCh *p2p.Channel, p
 		}
 
 		// If peer is not a validator, we do nothing
-		if !r.isValidator(ps.ProTxHash) {
+		if !r.isValidator(ps.GetProTxHash()) {
 			time.Sleep(r.state.config.PeerQueryMaj23SleepDuration)
 			continue
 		}

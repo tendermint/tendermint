@@ -47,8 +47,8 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		vote.Round,
 		vote.BlockID,
 		stateID,
-		&QuorumVoteSigns{
-			ThresholdVoteSigns: ThresholdVoteSigns{
+		&CommitSigns{
+			QuorumSigns: QuorumSigns{
 				BlockSign: blockSig,
 				StateSign: stateSig,
 			},
@@ -75,22 +75,22 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 	}{
 		{"good", chainID, vote.BlockID, stateID, vote.Height, commit, false},
 
-		{"incorrect threshold block signature", "EpsilonEridani", vote.BlockID, stateID, vote.Height, commit, true},
+		{"threshold block signature is invalid", "EpsilonEridani", vote.BlockID, stateID, vote.Height, commit, true},
 		{"wrong block ID", chainID, makeBlockIDRandom(), stateID, vote.Height, commit, true},
 		{"wrong height", chainID, vote.BlockID, stateID, vote.Height - 1, commit, true},
 
-		{"incorrect threshold block signature", chainID, vote.BlockID, stateID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID, &QuorumVoteSigns{QuorumHash: quorumHash}), true},
+		{"threshold block signature is invalid", chainID, vote.BlockID, stateID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID, &CommitSigns{QuorumHash: quorumHash}), true},
 
-		{"incorrect threshold state signature", chainID, vote.BlockID, stateID, vote.Height,
+		{"threshold state signature is invalid", chainID, vote.BlockID, stateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID,
-				&QuorumVoteSigns{QuorumHash: quorumHash, ThresholdVoteSigns: ThresholdVoteSigns{BlockSign: vote.BlockSignature}}), true},
+				&CommitSigns{QuorumHash: quorumHash, QuorumSigns: QuorumSigns{BlockSign: vote.BlockSignature}}), true},
 
-		{"incorrect threshold block signature", chainID, vote.BlockID, stateID, vote.Height,
+		{"threshold block signature is invalid", chainID, vote.BlockID, stateID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID, stateID,
-				&QuorumVoteSigns{
-					QuorumHash:         quorumHash,
-					ThresholdVoteSigns: ThresholdVoteSigns{BlockSign: vote2.BlockSignature, StateSign: vote2.StateSignature},
+				&CommitSigns{
+					QuorumHash:  quorumHash,
+					QuorumSigns: QuorumSigns{BlockSign: vote2.BlockSignature, StateSign: vote2.StateSignature},
 				},
 			), true},
 	}
@@ -136,7 +136,7 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	commit.ThresholdStateSignature = v.StateSignature
 	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 	if assert.Error(t, err) {
-		assert.Contains(t, err.Error(), "incorrect threshold block signature")
+		assert.Contains(t, err.Error(), "threshold block signature is invalid")
 	}
 
 	recoverer := NewSignsRecoverer(voteSet.votes)
@@ -144,7 +144,7 @@ func TestValidatorSet_VerifyCommit_CheckThresholdSignatures(t *testing.T) {
 	require.NoError(t, err)
 	commit.ThresholdBlockSignature = thresholdSigns.BlockSign
 	commit.ThresholdStateSignature = thresholdSigns.StateSign
-	commit.ThresholdVoteExtensionSignatures = thresholdSigns.VoteExtSigns
+	commit.ThresholdVoteExtensions = thresholdSigns.ExtensionSigns
 	err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 	require.NoError(t, err)
 }

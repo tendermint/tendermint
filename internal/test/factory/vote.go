@@ -41,8 +41,9 @@ func MakeVote(
 
 	v.BlockSignature = vpb.BlockSignature
 	v.StateSignature = vpb.StateSignature
-	for i, ext := range vpb.VoteExtensions {
-		v.VoteExtensions[i].Signature = ext.Signature
+	err = v.VoteExtensions.CopySignsFromProto(vpb.VoteExtensionsToMap())
+	if err != nil {
+		return nil, err
 	}
 	return v, nil
 }

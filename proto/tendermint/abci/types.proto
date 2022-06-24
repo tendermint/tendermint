@@ -4,6 +4,7 @@ package tendermint.abci;
 option go_package = "github.com/tendermint/tendermint/abci/types";
 
 import "tendermint/crypto/proof.proto";
+import "tendermint/types/dash.proto";
 import "tendermint/types/types.proto";
 import "tendermint/crypto/keys.proto";
 import "tendermint/types/params.proto";
@@ -162,7 +163,7 @@ message RequestVerifyVoteExtension {
   bytes validator_pro_tx_hash = 2;
   int64 height                = 3;
 
-  repeated bytes vote_extensions = 4;
+  repeated ExtendVoteExtension vote_extensions = 4;
 }
 
 message RequestFinalizeBlock {
@@ -360,7 +361,7 @@ message ResponseProcessProposal {
 
 message ExtendVoteExtension {
   tendermint.types.VoteExtensionType type = 1;
-  bytes extension        = 2;
+  bytes extension                         = 2;
 }
 
 message ResponseExtendVote {
@@ -398,7 +399,7 @@ message CommitInfo {
   bytes block_signature = 4;
   bytes state_signature = 5;
 
-  repeated bytes vote_extension_signatures = 6;
+  repeated tendermint.types.VoteExtension threshold_vote_extensions = 6;
 }
 
 // ExtendedCommitInfo is similar to CommitInfo except that it is only used in
@@ -413,7 +414,7 @@ message ExtendedCommitInfo {
   bytes block_signature = 4;
   bytes state_signature = 5;
 
-  repeated bytes vote_extension_signatures = 6;
+  repeated tendermint.types.VoteExtension threshold_vote_extensions = 6;
 }
 
 // Event allows application developers to attach additional information to

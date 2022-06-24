@@ -292,7 +292,7 @@ func (sc *DashCoreSignerClient) SignProposal(
 	}
 	signItem := types.SignItem{
 		ReqID: types.ProposalRequestIDProto(proposalProto),
-		Hash:  crypto.Checksum(types.ProposalBlockSignBytes(chainID, proposalProto)),
+		Raw:   types.ProposalBlockSignBytes(chainID, proposalProto),
 	}
 	resp, err := sc.quorumSign(quorumType, quorumHash, signItem)
 	if err != nil {
@@ -339,7 +339,7 @@ func (sc *DashCoreSignerClient) signVoteExtensions(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
 	protoVote *tmproto.Vote,
-	quorumSigns types.QuorumSigns,
+	quorumSignData types.QuorumSignData,
 ) error {
 	if protoVote.Type != tmproto.PrecommitType {
 		if len(protoVote.VoteExtensions) > 0 {
@@ -347,13 +347,14 @@ func (sc *DashCoreSignerClient) signVoteExtensions(
 		}
 		return nil
 	}
-	for i := range protoVote.VoteExtensions {
-		voteExt := quorumSigns.VoteExts[i]
-		resp, err := sc.quorumSign(quorumType, quorumHash, voteExt)
-		if err != nil {
-			return err
+	for et, extensions := range protoVote.VoteExtensionsToMap() {
+		for i, ext := range extensions {
+			resp, err := sc.quorumSign(quorumType, quorumHash, quorumSignData.Extensions[et][i])
+			if err != nil {
+				return err
+			}
+			ext.Signature = resp.sign
 		}
-		protoVote.VoteExtensions[i].Signature = resp.sign
 	}
 	return nil
 }
@@ -363,7 +364,7 @@ func (sc *DashCoreSignerClient) quorumSign(
 	quorumHash crypto.QuorumHash,
 	signItem types.SignItem,
 ) (*quorumSignResult, error) {
-	resp, err := sc.dashCoreRPCClient.QuorumSign(quorumType, signItem.ReqID, signItem.Hash, quorumHash)
+	resp, err := sc.dashCoreRPCClient.QuorumSign(quorumType, signItem.ReqID, signItem.Hash(), quorumHash)
 	if err != nil {
 		return nil, &RemoteSignerError{Code: 500, Description: err.Error()}
 	}

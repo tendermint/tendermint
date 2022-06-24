@@ -378,9 +378,9 @@ func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote
 }
 
 func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
-	extensions := make([][]byte, len(vote.VoteExtensions))
-	for i, ext := range vote.VoteExtensions {
-		extensions[i] = ext.Extension
+	var extensions []*abci.ExtendVoteExtension
+	if vote.VoteExtensions != nil {
+		extensions = vote.VoteExtensions.ToExtendProto()
 	}
 
 	resp, err := blockExec.appClient.VerifyVoteExtension(ctx, &abci.RequestVerifyVoteExtension{
@@ -462,7 +462,7 @@ func (blockExec *BlockExecutor) Commit(
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
 	if block.Height == initialHeight {
-		// there is no last commmit for the initial height.
+		// there is no last commit for the initial height.
 		// return an empty value.
 		return abci.CommitInfo{}
 	}
@@ -471,7 +471,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 		QuorumHash:              block.LastCommit.QuorumHash,
 		BlockSignature:          block.LastCommit.ThresholdBlockSignature,
 		StateSignature:          block.LastCommit.ThresholdStateSignature,
-		VoteExtensionSignatures: block.LastCommit.ThresholdVoteExtensionSignatures,
+		ThresholdVoteExtensions: types.ThresholdExtensionSignToProto(block.LastCommit.ThresholdVoteExtensions),
 	}
 }
 

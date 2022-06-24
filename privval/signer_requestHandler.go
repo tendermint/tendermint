@@ -170,6 +170,7 @@ func handleKeyRequest(
 				Description: err.Error(),
 			},
 		))
+		return
 	}
 
 	var pk cryptoproto.PublicKey

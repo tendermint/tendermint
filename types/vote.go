@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -24,6 +23,12 @@ const (
 	MaxVoteBytesBLS12381 int64 = 241
 	MaxVoteBytesEd25519  int64 = 209
 )
+
+// VoteExtensionTypes is a list of all possible vote-extension types
+var VoteExtensionTypes = []tmproto.VoteExtensionType{
+	tmproto.VoteExtensionType_DEFAULT,
+	tmproto.VoteExtensionType_THRESHOLD_RECOVER,
+}
 
 func MaxVoteBytesForKeyType(keyType crypto.KeyType) int64 {
 	switch keyType {
@@ -83,28 +88,7 @@ type Vote struct {
 	ValidatorIndex     int32                 `json:"validator_index"`
 	BlockSignature     tmbytes.HexBytes      `json:"block_signature"`
 	StateSignature     tmbytes.HexBytes      `json:"state_signature"`
-	VoteExtensions     []VoteExtension       `json:"vote_extensions"`
-}
-
-// VoteExtension represents a vote extension data, with possible types: default or threshold recover
-type VoteExtension struct {
-	Type      tmproto.VoteExtensionType `json:"type"`
-	Extension []byte                    `json:"extension"`
-	Signature tmbytes.HexBytes          `json:"signature"`
-}
-
-// IsRecoverable returns true if a vote extension has threshold-recover type
-func (v *VoteExtension) IsRecoverable() bool {
-	return v.Type == tmproto.VoteExtensionType_THRESHOLD_RECOVER
-}
-
-// Clone returns a copy of current vote-extension
-func (v *VoteExtension) Clone() VoteExtension {
-	return VoteExtension{
-		Type:      v.Type,
-		Extension: v.Extension,
-		Signature: v.Signature,
-	}
+	VoteExtensions     VoteExtensions        `json:"vote_extensions"`
 }
 
 // VoteFromProto attempts to convert the given serialization (Protobuf) type to
@@ -116,7 +100,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	if err != nil {
 		return nil, err
 	}
-	v := &Vote{
+	return &Vote{
 		Type:               pv.Type,
 		Height:             pv.Height,
 		Round:              pv.Round,
@@ -125,18 +109,8 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		ValidatorIndex:     pv.ValidatorIndex,
 		BlockSignature:     pv.BlockSignature,
 		StateSignature:     pv.StateSignature,
-	}
-	if len(pv.VoteExtensions) > 0 {
-		v.VoteExtensions = make([]VoteExtension, len(pv.VoteExtensions))
-		for i, ext := range pv.VoteExtensions {
-			v.VoteExtensions[i] = VoteExtension{
-				Type:      ext.Type,
-				Extension: ext.Extension,
-				Signature: ext.Signature,
-			}
-		}
-	}
-	return v, nil
+		VoteExtensions:     VoteExtensionsFromProto(pv.VoteExtensions),
+	}, nil
 }
 
 // VoteBlockSignBytes returns the proto-encoding of the canonicalized Vote, for
@@ -214,7 +188,6 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	ext := bytes.Join(collectExtensions(vote.VoteExtensions, false), nil)
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X %X}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorProTxHash),
@@ -225,7 +198,7 @@ func (vote *Vote) String() string {
 		tmbytes.Fingerprint(vote.BlockID.Hash),
 		tmbytes.Fingerprint(vote.BlockSignature),
 		tmbytes.Fingerprint(vote.StateSignature),
-		tmbytes.Fingerprint(ext),
+		vote.VoteExtensions.Fingerprint(),
 	)
 }
 
@@ -241,26 +214,15 @@ func (vote *Vote) VerifyWithExtension(
 	proTxHash ProTxHash,
 	stateID StateID,
 ) error {
-	quorumSigns, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	quorumSignData, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
 	if err != nil {
 		return err
 	}
-	err = vote.verifyBasic(proTxHash, pubKey, quorumSigns)
+	err = vote.verifyBasic(proTxHash, pubKey)
 	if err != nil {
 		return err
 	}
-	// We only verify vote extension signatures for precommits.
-	if vote.Type == tmproto.PrecommitType {
-		// TODO: Remove extension signature nil check to enforce vote extension
-		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-		for i, extSignItem := range quorumSigns.VoteExts {
-			sign := vote.VoteExtensions[i].Signature
-			if sign != nil && !pubKey.VerifySignatureDigest(extSignItem.ID, sign) {
-				return ErrVoteInvalidSignature
-			}
-		}
-	}
-	return nil
+	return vote.verifySign(pubKey, quorumSignData, WithVerifyExtensions(vote.Type == tmproto.PrecommitType))
 }
 
 func (vote *Vote) Verify(
@@ -271,14 +233,18 @@ func (vote *Vote) Verify(
 	proTxHash crypto.ProTxHash,
 	stateID StateID,
 ) error {
-	quorumSigns, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	err := vote.verifyBasic(proTxHash, pubKey)
 	if err != nil {
 		return err
 	}
-	return vote.verifyBasic(proTxHash, pubKey, quorumSigns)
+	quorumSignData, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), stateID)
+	if err != nil {
+		return err
+	}
+	return vote.verifySign(pubKey, quorumSignData, WithVerifyExtensions(false))
 }
 
-func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumSigns QuorumSigns) error {
+func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey) error {
 	if !bytes.Equal(proTxHash, vote.ValidatorProTxHash) {
 		return ErrVoteInvalidValidatorProTxHash
 	}
@@ -286,24 +252,31 @@ func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey, quorumS
 		return ErrVoteInvalidValidatorPubKeySize
 	}
 
-	if !pubKey.VerifySignatureDigest(quorumSigns.Block.ID, vote.BlockSignature) {
-		return fmt.Errorf(
-			"%s proTxHash %s pubKey %v vote %v sign bytes %s block signature %s", ErrVoteInvalidBlockSignature.Error(),
-			proTxHash.ShortString(), pubKey, vote, hex.EncodeToString([]byte{}), hex.EncodeToString(vote.BlockSignature))
-	}
-
 	// we must verify the stateID but only if the blockID isn't nil
-	if vote.BlockID.Hash != nil {
-		// fmt.Printf("state vote verify sign ID %s (%d - %s  - %s  - %s)\n", hex.EncodeToString(stateSignID), quorumType,
-		//	hex.EncodeToString(quorumHash), hex.EncodeToString(stateRequestID), hex.EncodeToString(stateMessageHash))
-		if !pubKey.VerifySignatureDigest(quorumSigns.State.ID, vote.StateSignature) {
-			return ErrVoteInvalidStateSignature
-		}
-	} else if vote.StateSignature != nil {
+	if vote.BlockID.Hash == nil && vote.StateSignature != nil {
 		return ErrVoteStateSignatureShouldBeNil
 	}
-
 	return nil
+}
+
+func (vote *Vote) verifySign(
+	pubKey crypto.PubKey,
+	quorumSignData QuorumSignData,
+	opts ...func(verifier *QuorumSingsVerifier),
+) error {
+	verifier := NewQuorumSingsVerifier(
+		quorumSignData,
+		append(opts, WithVerifyState(vote.BlockID.Hash != nil))...,
+	)
+	return verifier.Verify(pubKey, vote.makeQuorumSigns())
+}
+
+func (vote *Vote) makeQuorumSigns() QuorumSigns {
+	return QuorumSigns{
+		BlockSign:      vote.BlockSignature,
+		StateSign:      vote.StateSignature,
+		ExtensionSigns: MakeThresholdExtensionSigns(vote.VoteExtensions),
+	}
 }
 
 // ValidateBasic checks whether the vote is well-formed. It does not, however,
@@ -362,7 +335,7 @@ func (vote *Vote) ValidateBasic() error {
 
 	// We should only ever see vote extensions in precommits.
 	if vote.Type != tmproto.PrecommitType {
-		if len(vote.VoteExtensions) > 0 {
+		if !vote.VoteExtensions.IsEmpty() {
 			return errors.New("unexpected vote extensions")
 		}
 	}
@@ -383,14 +356,7 @@ func (vote *Vote) ValidateWithExtension() error {
 		// TODO(thane): Remove extension length check once
 		//              https://github.com/tendermint/tendermint/issues/8272 is
 		//              resolved.
-		for _, ext := range vote.VoteExtensions {
-			if len(ext.Extension) > 0 && len(ext.Signature) == 0 {
-				return errors.New("vote extension signature is missing")
-			}
-			if len(ext.Signature) > SignatureSize {
-				return fmt.Errorf("vote extension signature is too big (max: %d)", SignatureSize)
-			}
-		}
+		return vote.VoteExtensions.Validate()
 	}
 
 	return nil
@@ -402,13 +368,9 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	if vote == nil {
 		return nil
 	}
-	exts := make([]*tmproto.VoteExtension, len(vote.VoteExtensions))
-	for i, ext := range vote.VoteExtensions {
-		exts[i] = &tmproto.VoteExtension{
-			Type:      ext.Type,
-			Extension: ext.Extension,
-			Signature: ext.Signature,
-		}
+	var voteExtensions []*tmproto.VoteExtension
+	if vote.VoteExtensions != nil {
+		voteExtensions = vote.VoteExtensions.ToProto()
 	}
 	return &tmproto.Vote{
 		Type:               vote.Type,
@@ -419,7 +381,7 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 		ValidatorIndex:     vote.ValidatorIndex,
 		BlockSignature:     vote.BlockSignature,
 		StateSignature:     vote.StateSignature,
-		VoteExtensions:     exts,
+		VoteExtensions:     voteExtensions,
 	}
 }
 
@@ -462,63 +424,4 @@ func voteHeightRoundRequestID(prefix string, height int64, round int32) []byte {
 	reqID = append(reqID, heightBytes...)
 	reqID = append(reqID, roundBytes...)
 	return crypto.Checksum(reqID)
-}
-
-func makeSignID(signBytes, reqID []byte, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	msgHash := crypto.Checksum(signBytes)
-	return crypto.SignID(
-		quorumType,
-		tmbytes.Reverse(quorumHash),
-		tmbytes.Reverse(reqID),
-		tmbytes.Reverse(msgHash),
-	)
-}
-
-// ThresholdVoteSigns holds all created signatures, block, state and for each recovered vote-extensions
-type ThresholdVoteSigns struct {
-	BlockSign    []byte
-	StateSign    []byte
-	VoteExtSigns [][]byte
-}
-
-// QuorumVoteSigns is used to combine threshold signatures and quorum-hash that were used
-type QuorumVoteSigns struct {
-	ThresholdVoteSigns
-	QuorumHash []byte
-}
-
-// ProtoToVoteExtensions converts protobuf vote-extensions into domain vote-extensions
-func ProtoToVoteExtensions(protoExts []*tmproto.VoteExtension) []VoteExtension {
-	exts := make([]VoteExtension, len(protoExts))
-	for i, ext := range protoExts {
-		exts[i] = VoteExtension{
-			Type:      ext.Type,
-			Extension: ext.Extension,
-			Signature: ext.Signature,
-		}
-	}
-	return exts
-}
-
-// GetFirstVote returns the first not nil vote from a list, otherwise error
-func GetFirstVote(votes []*Vote) (*Vote, error) {
-	for _, vote := range votes {
-		if vote != nil {
-			return vote, nil
-		}
-	}
-	return nil, errors.New("unable to get a vote, votes list is empty")
-}
-
-func collectExtensions(voteExtensions []VoteExtension, onlyRecoverable bool) [][]byte {
-	exts := make([][]byte, len(voteExtensions))
-	for i, ext := range voteExtensions {
-		if onlyRecoverable {
-			if !ext.IsRecoverable() {
-				continue
-			}
-		}
-		exts[i] = ext.Extension
-	}
-	return exts
 }

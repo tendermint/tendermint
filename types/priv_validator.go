@@ -293,12 +293,16 @@ func (pv *MockPV) SignVote(
 	if err != nil {
 		return err
 	}
-	for i, extSign := range extSigns {
-		sign, err := privKey.SignDigest(extSign.ID)
-		if err != nil {
-			return err
+	protoExtensionsMap := vote.VoteExtensionsToMap()
+	for et, signs := range extSigns {
+		extensions := protoExtensionsMap[et]
+		for i, sign := range signs {
+			sign, err := privKey.SignDigest(sign.ID)
+			if err != nil {
+				return err
+			}
+			extensions[i].Signature = sign
 		}
-		vote.VoteExtensions[i].Signature = sign
 	}
 	return nil
 }

@@ -169,11 +169,11 @@ func (rts *reactorTestSuite) addNode(
 				vote.Round,
 				lastBlockMeta.BlockID,
 				state.LastStateID,
-				&types.QuorumVoteSigns{
-					ThresholdVoteSigns: types.ThresholdVoteSigns{
-						BlockSign:    vote.BlockSignature,
-						StateSign:    vote.StateSignature,
-						VoteExtSigns: types.VoteExtSigns2BytesSlices(vote.VoteExtensions, true),
+				&types.CommitSigns{
+					QuorumSigns: types.QuorumSigns{
+						BlockSign:      vote.BlockSignature,
+						StateSign:      vote.StateSignature,
+						ExtensionSigns: types.MakeThresholdExtensionSigns(vote.VoteExtensions),
 					},
 					QuorumHash: state.Validators.QuorumHash,
 				},

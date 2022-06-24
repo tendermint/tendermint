@@ -351,11 +351,8 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrecommitType
 	stateID := types.RandStateID().WithHeight(height - 1)
-	exts := []types.VoteExtension{
-		{
-			Type:      tmproto.VoteExtensionType_DEFAULT,
-			Extension: []byte("extension"),
-		},
+	exts := types.VoteExtensions{
+		tmproto.VoteExtensionType_DEFAULT: []types.VoteExtension{{Extension: []byte("extension")}},
 	}
 	// We initially sign this vote without an extension
 	vote1 := newVote(proTxHash, 0, height, round, voteType, blockID, exts)
@@ -367,15 +364,13 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 
 	extSignItem1, err := types.MakeVoteExtensionSignItems(chainID, vpb1, quorumType, quorumHash)
 	require.NoError(t, err)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignItem1[0].ID, vpb1.VoteExtensions[0].Signature))
+	assert.True(t, pubKey.VerifySignatureDigest(extSignItem1[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb1.VoteExtensions[0].Signature))
 
 	// We duplicate this vote precisely, including its timestamp, but change
 	// its extension
 	vote2 := vote1.Copy()
-	vote2.VoteExtensions = []types.VoteExtension{
-		{Type: tmproto.VoteExtensionType_DEFAULT,
-			Extension: []byte("new extension"),
-		},
+	vote2.VoteExtensions = types.VoteExtensions{
+		tmproto.VoteExtensionType_DEFAULT: []types.VoteExtension{{Extension: []byte("new extension")}},
 	}
 	vpb2 := vote2.ToProto()
 
@@ -388,8 +383,8 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	// with the old extension.
 	extSignItem2, err := types.MakeVoteExtensionSignItems(chainID, vpb2, quorumType, quorumHash)
 	require.NoError(t, err)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignItem2[0].ID, vpb2.VoteExtensions[0].Signature))
-	assert.False(t, pubKey.VerifySignatureDigest(extSignItem1[0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.True(t, pubKey.VerifySignatureDigest(extSignItem2[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignItem1[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
 
 	vpb2.BlockSignature = nil
 	vpb2.StateSignature = nil
@@ -400,12 +395,12 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 
 	extSignItem3, err := types.MakeVoteExtensionSignItems(chainID, vpb2, quorumType, quorumHash)
 	require.NoError(t, err)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignItem3[0].ID, vpb2.VoteExtensions[0].Signature))
-	assert.False(t, pubKey.VerifySignatureDigest(extSignItem1[0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.True(t, pubKey.VerifySignatureDigest(extSignItem3[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignItem1[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
 }
 
 func newVote(proTxHash types.ProTxHash, idx int32, height int64, round int32,
-	typ tmproto.SignedMsgType, blockID types.BlockID, exts []types.VoteExtension) *types.Vote {
+	typ tmproto.SignedMsgType, blockID types.BlockID, exts types.VoteExtensions) *types.Vote {
 	return &types.Vote{
 		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     idx,

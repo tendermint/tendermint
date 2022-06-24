@@ -104,7 +104,7 @@ func (vs *validatorStub) signVote(
 	lastAppHash []byte,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	voteExtensions []types.VoteExtension) (*types.Vote, error) {
+	voteExtensions types.VoteExtensions) (*types.Vote, error) {
 
 	proTxHash, err := vs.PrivValidator.GetProTxHash(ctx)
 	if err != nil {
@@ -118,7 +118,7 @@ func (vs *validatorStub) signVote(
 		BlockID:            blockID,
 		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     vs.Index,
-		VoteExtensions:     exts,
+		VoteExtensions:     voteExtensions,
 	}
 
 	stateID := types.StateID{
@@ -133,20 +133,17 @@ func (vs *validatorStub) signVote(
 
 	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
-		v.BlockSignature = vs.lastVote.BlockSignature
-		v.StateSignature = vs.lastVote.StateSignature
-		for i, ext := range vs.lastVote.VoteExtensions {
-			v.VoteExtensions[i].Signature = ext.Signature
+		err = vs.lastVote.PopulateSignsToProto(v)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
-	for i, ext := range v.VoteExtensions {
-		vote.VoteExtensions[i].Signature = ext.Signature
+	err = vote.PopulateSignsFromProto(v)
+	if err != nil {
+		return nil, err
 	}
-
-	return vote, err
+	return vote, nil
 }
 
 // Sign vote for type/hash/header
@@ -161,12 +158,9 @@ func signVote(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash) *types.Vote {
 
-	var exts []types.VoteExtension
+	exts := make(types.VoteExtensions)
 	if voteType == tmproto.PrecommitType {
-		exts = []types.VoteExtension{{
-			Type:      tmproto.VoteExtensionType_DEFAULT,
-			Extension: []byte("extension"),
-		}}
+		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte("extension"))
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, exts)
 	require.NoError(t, err, "failed to sign vote")
@@ -1012,13 +1006,8 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 	if v1 == nil || v2 == nil {
 		return false
 	}
-	if len(v1.VoteExtensions) != len(v2.VoteExtensions) {
+	if v1.VoteExtensions.IsSameWithProto(v2.VoteExtensionsToMap()) {
 		return false
-	}
-	for i, ext := range v1.VoteExtensions {
-		if !bytes.Equal(ext.Extension, v2.VoteExtensions[i].Extension) {
-			return false
-		}
 	}
 	return v1.Type == v2.Type &&
 		bytes.Equal(v1.BlockID.Hash, v2.BlockID.GetHash()) &&
