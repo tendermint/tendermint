@@ -146,7 +146,7 @@ type PeerManagerOptions struct {
 
 	// DisconnectCooldownPeriod is the amount of time after we
 	// disconnect from a peer before we'll consider dialing a new peer
-	DisconnectCollodown time.Duration
+	DisconnectCooldownPeriod time.Duration
 
 	// PeerScores sets fixed scores for specific peers. It is mainly used
 	// for testing. A score of 0 is ignored.
@@ -553,7 +553,7 @@ func (m *PeerManager) TryDialNext() NodeAddress {
 			continue
 		}
 
-		if !peer.LastDisconnected.IsZero() && time.Since(peer.LastDisconnected) < m.options.DisconnectCollodown {
+		if !peer.LastDisconnected.IsZero() && time.Since(peer.LastDisconnected) < m.options.DisconnectCooldownPeriod {
 			continue
 		}
 

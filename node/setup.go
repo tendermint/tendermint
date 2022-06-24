@@ -235,18 +235,18 @@ func createPeerManager(
 	maxUpgradeConns := uint16(4)
 
 	options := p2p.PeerManagerOptions{
-		SelfAddress:            selfAddr,
-		MaxConnected:           maxConns,
-		MaxOutgoingConnections: maxOutgoingConns,
-		MaxConnectedUpgrade:    maxUpgradeConns,
-		DisconnectCollodown:    100 * time.Millisecond,
-		MaxPeers:               maxUpgradeConns + 4*maxConns,
-		MinRetryTime:           250 * time.Millisecond,
-		MaxRetryTime:           30 * time.Minute,
-		MaxRetryTimePersistent: 5 * time.Minute,
-		RetryTimeJitter:        5 * time.Second,
-		PrivatePeers:           privatePeerIDs,
-		Metrics:                metrics,
+		SelfAddress:              selfAddr,
+		MaxConnected:             maxConns,
+		MaxOutgoingConnections:   maxOutgoingConns,
+		MaxConnectedUpgrade:      maxUpgradeConns,
+		DisconnectCooldownPeriod: 100 * time.Millisecond,
+		MaxPeers:                 maxUpgradeConns + 4*maxConns,
+		MinRetryTime:             250 * time.Millisecond,
+		MaxRetryTime:             30 * time.Minute,
+		MaxRetryTimePersistent:   5 * time.Minute,
+		RetryTimeJitter:          5 * time.Second,
+		PrivatePeers:             privatePeerIDs,
+		Metrics:                  metrics,
 	}
 
 	peers := []p2p.NodeAddress{}
