@@ -79,7 +79,13 @@ ifeq (,$(shell which protoc-gen-gogofaster))
 endif
 .PHONY: check-proto-deps
 
-proto-gen:
+check-proto-format-deps:
+ifeq (,$(shell which clang-format))
+	$(error "clang-format is required for Protobuf formatting. See instructions for your platform on how to install it.")
+endif
+.PHONY: check-proto-format-deps
+
+proto-gen: check-proto-deps
 	@echo "Generating Protobuf files"
 	@go run github.com/bufbuild/buf/cmd/buf generate
 	@mv ./proto/tendermint/abci/types.pb.go ./abci/types/
@@ -92,9 +98,9 @@ proto-lint: check-proto-deps
 	@go run github.com/bufbuild/buf/cmd/buf lint
 .PHONY: proto-lint
 
-proto-format:
+proto-format: check-proto-format-deps
 	@echo "Formatting Protobuf files"
-	docker run -v $(shell pwd):/workspace --workdir /workspace tendermintdev/docker-build-proto find ./ -not -path "./third_party/*" -name *.proto -exec clang-format -i {} \;
+	@find . -name '*.proto' -path "./proto/*" -exec clang-format -i {} \;
 .PHONY: proto-format
 
 proto-check-breaking: check-proto-deps
