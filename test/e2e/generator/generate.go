@@ -202,7 +202,14 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // generating invalid configurations. We do not set Seeds or PersistentPeers
 // here, since we need to know the overall network topology and startup
 // sequencing.
-func generateNode(r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool, mempoolVersion string) *e2e.ManifestNode {
+func generateNode(
+	r *rand.Rand,
+	mode e2e.Mode,
+	startAt int64,
+	initialHeight int64,
+	forceArchive bool,
+	mempoolVersion string,
+) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Mode:             string(mode),
 		StartAt:          startAt,
