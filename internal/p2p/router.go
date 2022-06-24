@@ -671,14 +671,8 @@ func (r *Router) handshakePeer(
 	expectID types.NodeID,
 ) (types.NodeInfo, error) {
 
-	if r.options.HandshakeTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
-		defer cancel()
-	}
-
 	nodeInfo := r.nodeInfoProducer()
-	peerInfo, peerKey, err := conn.Handshake(ctx, *nodeInfo, r.privKey)
+	peerInfo, peerKey, err := conn.Handshake(ctx, r.options.HandshakeTimeout, *nodeInfo, r.privKey)
 	if err != nil {
 		return peerInfo, err
 	}
