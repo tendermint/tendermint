@@ -907,7 +907,7 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 			select {
 			case <-timer.C:
 				m.dialWaker.Wake()
-			case <-ctx.Done():
+			case <-m.closeCh:
 			}
 		}()
 	}

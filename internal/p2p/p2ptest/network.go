@@ -1,7 +1,6 @@
 package p2ptest
 
 import (
-	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -253,15 +252,8 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 		nodeInfo,
 		privKey,
 		peerManager,
-<<<<<<< HEAD
 		[]p2p.Transport{transport},
-		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
-=======
-		func() *types.NodeInfo { return &nodeInfo },
-		transport,
-		ep,
 		p2p.RouterOptions{},
->>>>>>> 52b6dc19b (p2p: remove dial sleep and provide disconnect cooldown (#8839))
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
