@@ -206,3 +206,18 @@ func (_m *Connection) TrySendMessage(_a0 p2p.ChannelID, _a1 []byte) (bool, error
 
 	return r0, r1
 }
+
+type NewConnectionT interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewConnection creates a new instance of Connection. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewConnection(t NewConnectionT) *Connection {
+	mock := &Connection{}
+	mock.Mock.Test(t)
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
+}
