@@ -1018,7 +1018,12 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 
 	// process all the responses as they come in
 	for i := 0; i < cap(witnessResponsesC); i++ {
-		response := <-witnessResponsesC
+		var response witnessResponse
+		select {
+		case response = <-witnessResponsesC:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 		switch response.err {
 		// success! We have found a new primary
 		case nil:
@@ -1046,10 +1051,6 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 
 			// return the light block that new primary responded with
 			return response.lb, nil
-
-		// catch canceled contexts or deadlines
-		case context.Canceled, context.DeadlineExceeded:
-			return nil, response.err
 
 		// process benign errors by logging them only
 		case provider.ErrNoResponse, provider.ErrLightBlockNotFound, provider.ErrHeightTooHigh:
