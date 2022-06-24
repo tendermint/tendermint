@@ -53,7 +53,7 @@ The diagram above shows all blocks at play when verifying block at height ` H + 
 At a high level, the verification algorithm is represented by the code below. 
 
 ~~~golang
-if !LastCommit.verify(trustedBlock) && NewBlock.validatorSet == trustedState.validatorSet {
+if !LastCommit.verify(trustedBlock) || NewBlock.validatorSet != trustedState.validatorSet {
         // NewBlock is invalid, request new
             request_newBlock_from_other_peer(height: h + 1)
 } else { 		     
