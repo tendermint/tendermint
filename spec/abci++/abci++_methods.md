@@ -307,16 +307,16 @@ title: Methods
 
 * **Request**:
 
-    | Name                    | Type                                            | Description                                                                                   | Field Number |
-    |-------------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------|--------------|
-    | max_tx_bytes            | int64                                           | Currently configured maximum size in bytes taken by the modified transactions.                | 1            |
-    | txs                     | repeated bytes                                  | Preliminary list of transactions that have been picked as part of the block to propose.       | 2            |
-    | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)       | Info about the last commit, obtained locally from Tendermint's data structures.               | 3            |
-    | byzantine_validators    | repeated [Misbehavior](#misbehavior)            | List of information about validators that acted incorrectly.                                  | 4            |
-    | height                  | int64                                           | The height of the block that will be proposed.                                                | 5            |
-    | time                    | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the block that that will be proposed.                                            | 6            |
-    | next_validators_hash    | bytes                                           | Merkle root of the next validator set.                                                        | 7            |
-    | proposer_address        | bytes                                           | [Address](../core/data_structures.md#address) of the validator that is creating the proposal. | 8            |
+    | Name                 | Type                                            | Description                                                                                   | Field Number |
+    |----------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------|--------------|
+    | max_tx_bytes         | int64                                           | Currently configured maximum size in bytes taken by the modified transactions.                | 1            |
+    | txs                  | repeated bytes                                  | Preliminary list of transactions that have been picked as part of the block to propose.       | 2            |
+    | local_last_commit    | [ExtendedCommitInfo](#extendedcommitinfo)       | Info about the last commit, obtained locally from Tendermint's data structures.               | 3            |
+    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that acted incorrectly.                                  | 4            |
+    | height               | int64                                           | The height of the block that will be proposed.                                                | 5            |
+    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the block that that will be proposed.                                            | 6            |
+    | next_validators_hash | bytes                                           | Merkle root of the next validator set.                                                        | 7            |
+    | proposer_address     | bytes                                           | [Address](../core/data_structures.md#address) of the validator that is creating the proposal. | 8            |
 
 * **Response**:
 
@@ -329,7 +329,7 @@ title: Methods
     | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
 
 * **Usage**:
-    * `RequestPrepareProposal`'s parameters `txs`, `byzantine_validators`, `height`, `time`,
+    * `RequestPrepareProposal`'s parameters `txs`, `misbehavior`, `height`, `time`,
       `next_validators_hash`, and `proposer_address` are the same as in `RequestProcessProposal`
       and `RequestFinalizeBlock`.
     * `RequestPrepareProposal.local_last_commit` contains the precommit votes used for deciding the last
@@ -457,7 +457,7 @@ proposal and will not call `RequestPrepareProposal`.
     |----------------------|-------------------------------------------------|-------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                                  | List of transactions of the proposed block.                                               | 1            |
     | proposed_last_commit | [CommitInfo](#commitinfo)                       | Info about the last commit, obtained from the information in the proposed block.          | 2            |
-    | byzantine_validators | repeated [Misbehavior](#misbehavior)            | List of information about validators that acted incorrectly.                              | 3            |
+    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that acted incorrectly.                              | 3            |
     | hash                 | bytes                                           | The block header's hash of the proposed block.                                            | 4            |
     | height               | int64                                           | The height of the proposed block.                                                         | 5            |
     | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp included in the proposed block.                                                 | 6            |
@@ -640,7 +640,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
     |----------------------|-------------------------------------------------|-------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                                  | List of transactions committed as part of the block.                                      | 1            |
     | decided_last_commit  | [CommitInfo](#commitinfo)                       | Info about the last commit, obtained from the block that was just decided.                | 2            |
-    | byzantine_validators | repeated [Misbehavior](#misbehavior)            | List of information about validators that acted incorrectly.                              | 3            |
+    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that acted incorrectly.                              | 3            |
     | hash                 | bytes                                           | The block header's hash.                                                                  | 4            |
     | height               | int64                                           | The height of the finalized block.                                                        | 5            |
     | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp included in the finalized block.                                                | 6            |
@@ -662,7 +662,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
     * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
       `EndBlock` in the previous version of ABCI.
     * The height and timestamp values match the values from the header of the proposed block.
-    * The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.byzantine_validators`
+    * The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.misbehavior`
       to determine rewards and punishments for the validators.
     * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.txs`,
       before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block

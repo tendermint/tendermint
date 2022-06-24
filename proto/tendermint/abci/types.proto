@@ -109,7 +109,7 @@ message RequestPrepareProposal {
   // sent to the app for possible modifications.
   repeated bytes            txs                  = 2;
   ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
-  repeated Misbehavior      byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Misbehavior      misbehavior          = 4 [(gogoproto.nullable) = false];
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
@@ -120,7 +120,7 @@ message RequestPrepareProposal {
 message RequestProcessProposal {
   repeated bytes       txs                  = 1;
   CommitInfo           proposed_last_commit = 2 [(gogoproto.nullable) = false];
-  repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
+  repeated Misbehavior misbehavior          = 3 [(gogoproto.nullable) = false];
   // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
@@ -147,7 +147,7 @@ message RequestVerifyVoteExtension {
 message RequestFinalizeBlock {
   repeated bytes       txs                  = 1;
   CommitInfo           decided_last_commit  = 2 [(gogoproto.nullable) = false];
-  repeated Misbehavior byzantine_validators = 3 [(gogoproto.nullable) = false];
+  repeated Misbehavior misbehavior          = 3 [(gogoproto.nullable) = false];
   // hash is the merkle root hash of the fields of the decided block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
