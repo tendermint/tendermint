@@ -162,6 +162,10 @@ type PeerManagerOptions struct {
 	// retry times, to avoid thundering herds. 0 disables jitter.
 	RetryTimeJitter time.Duration
 
+	// DisconnectCooldownPeriod is the amount of time after we
+	// disconnect from a peer before we'll consider dialing a new peer
+	DisconnectCooldownPeriod time.Duration
+
 	// PeerScores sets fixed scores for specific peers. It is mainly used
 	// for testing. A score of 0 is ignored.
 	PeerScores map[types.NodeID]PeerScore
@@ -570,6 +574,10 @@ func (m *PeerManager) TryDialNext() NodeAddress {
 			continue
 		}
 
+		if !peer.LastDisconnected.IsZero() && time.Since(peer.LastDisconnected) < m.options.DisconnectCooldownPeriod {
+			continue
+		}
+
 		for _, addressInfo := range peer.AddressInfo {
 			if time.Since(addressInfo.LastDialFailure) < m.retryDelay(addressInfo.DialFailures, peer.Persistent) {
 				continue
@@ -887,6 +895,22 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	delete(m.evict, peerID)
 	delete(m.evicting, peerID)
 	delete(m.ready, peerID)
+
+	if peer, ok := m.store.Get(peerID); ok {
+		peer.LastDisconnected = time.Now()
+		_ = m.store.Set(peer)
+		// launch a thread to ping the dialWaker when the
+		// disconnected peer can be dialed again.
+		go func() {
+			timer := time.NewTimer(m.options.DisconnectCooldownPeriod)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+				m.dialWaker.Wake()
+			case <-ctx.Done():
+			}
+		}()
+	}
 
 	if ready {
 		m.broadcast(PeerUpdate{
@@ -1474,9 +1498,10 @@ func (s *peerStore) Size() int {
 
 // peerInfo contains peer information stored in a peerStore.
 type peerInfo struct {
-	ID            types.NodeID
-	AddressInfo   map[NodeAddress]*peerAddressInfo
-	LastConnected time.Time
+	ID               types.NodeID
+	AddressInfo      map[NodeAddress]*peerAddressInfo
+	LastConnected    time.Time
+	LastDisconnected time.Time
 
 	// These fields are ephemeral, i.e. not persisted to the database.
 	Persistent bool
@@ -1516,8 +1541,8 @@ func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
 	msg := &p2pproto.PeerInfo{
 		ID:            string(p.ID),
-		LastConnected: &p.LastConnected,
 		Inactive:      p.Inactive,
+		LastConnected: &p.LastConnected,
 	}
 	for _, addressInfo := range p.AddressInfo {
 		msg.AddressInfo = append(msg.AddressInfo, addressInfo.ToProto())
@@ -1525,6 +1550,7 @@ func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
 	if msg.LastConnected.IsZero() {
 		msg.LastConnected = nil
 	}
+
 	return msg
 }
 

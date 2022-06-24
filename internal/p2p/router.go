@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"runtime"
 	"sync"
@@ -160,12 +159,15 @@ type RouterOptions struct {
 	// return an error to reject the peer.
 	FilterPeerByID func(context.Context, types.NodeID) error
 
+<<<<<<< HEAD
 	// DialSleep controls the amount of time that the router
 	// sleeps between dialing peers. If not set, a default value
 	// is used that sleeps for a (random) amount of time up to 3
 	// seconds between submitting each peer to be dialed.
 	DialSleep func(context.Context)
 
+=======
+>>>>>>> 52b6dc19b (p2p: remove dial sleep and provide disconnect cooldown (#8839))
 	// NumConcrruentDials controls how many parallel go routines
 	// are used to dial peers. This defaults to the value of
 	// runtime.NumCPU.
@@ -554,6 +556,7 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 	return r.options.FilterPeerByID(ctx, id)
 }
 
+<<<<<<< HEAD
 func (r *Router) dialSleep(ctx context.Context) {
 	if r.options.DialSleep == nil {
 		const (
@@ -578,6 +581,8 @@ func (r *Router) dialSleep(ctx context.Context) {
 	r.options.DialSleep(ctx)
 }
 
+=======
+>>>>>>> 52b6dc19b (p2p: remove dial sleep and provide disconnect cooldown (#8839))
 // acceptPeers accepts inbound connections from peers on the given transport,
 // and spawns goroutines that route messages to/from them.
 func (r *Router) acceptPeers(transport Transport) {
@@ -705,11 +710,6 @@ LOOP:
 
 		select {
 		case addresses <- address:
-			// this jitters the frequency that we call
-			// DialNext and prevents us from attempting to
-			// create connections too quickly.
-
-			r.dialSleep(ctx)
 			continue LOOP
 		case <-ctx.Done():
 			close(addresses)
