@@ -93,7 +93,7 @@ type ManifestNode struct {
 	FastSync string `toml:"fast_sync"`
 
 	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
-	// This defaults to v0. 
+	// This defaults to v0.
 	Mempool string `toml:"mempool_version"`
 
 	// StateSync enables state sync. The runner automatically configures trusted
