@@ -878,6 +878,17 @@ func (m *PeerManager) Disconnected(ctx context.Context, peerID types.NodeID) {
 	if peer, ok := m.store.Get(peerID); ok {
 		peer.LastDisconnected = time.Now()
 		_ = m.store.Set(peer)
+		// launch a thread to ping the dialWaker when the
+		// disconnected peer can be dialed again.
+		go func() {
+			timer := time.NewTimer(time.Until(time.Now().Add(m.options.DisconnectCooldownPeriod)))
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+				m.dialWaker.Wake()
+			case <-ctx.Done():
+			}
+		}()
 	}
 
 	if ready {
