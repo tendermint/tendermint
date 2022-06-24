@@ -13,7 +13,6 @@ endif
 LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
-DOCKER_BUF := docker run -v $(shell pwd):/workspace --workdir /workspace bufbuild/buf
 CGO_ENABLED ?= 0
 
 # handle nostrip
@@ -70,6 +69,15 @@ install:
 	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 .PHONY: install
 
+
+###############################################################################
+###                                Mocks                                    ###
+###############################################################################
+
+mockery: 
+	go generate -run="./scripts/mockery_generate.sh" ./...
+.PHONY: mockery 
+
 ###############################################################################
 ###                                Protobuf                                 ###
 ###############################################################################
@@ -105,7 +113,7 @@ proto-format: check-proto-format-deps
 .PHONY: proto-format
 
 proto-check-breaking-ci:
-	@go run github.com/bufbuild/buf/cmd/buf breaking --against $(HTTPS_GIT)#branch=v0.34.x
+	@go run github.com/bufbuild/buf/cmd/buf breaking --against ".git"#branch=v0.34.x
 .PHONY: proto-check-breaking-ci
 
 ###############################################################################
