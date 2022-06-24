@@ -84,7 +84,7 @@ mockery:
 
 check-proto-deps:
 ifeq (,$(shell which protoc-gen-gogofaster))
-	@go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest'
+	@go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
 endif
 .PHONY: check-proto-deps
 
