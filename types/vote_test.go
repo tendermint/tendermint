@@ -2,7 +2,6 @@ package types
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -373,9 +372,7 @@ func TestVoteVerify(t *testing.T) {
 
 	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID)
 	if assert.Error(t, err) {
-		assert.True(
-			t, strings.Contains(err.Error(), ErrVoteInvalidBlockSignature.Error()),
-		) // since block signatures are verified first
+		assert.ErrorIs(t, err, ErrVoteInvalidBlockSignature) // since block signatures are verified first
 	}
 }
 

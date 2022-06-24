@@ -35,12 +35,12 @@ func (e VoteExtensions) Add(t tmproto.VoteExtensionType, ext []byte) {
 
 // Validate returns error if an added vote-extension is invalid
 func (e VoteExtensions) Validate() error {
-	for ext := range e.iter() {
-		if len(ext.Extension) > 0 && len(ext.Signature) == 0 {
-			return errExtensionSignEmpty
-		}
-		if len(ext.Signature) > SignatureSize {
-			return errExtensionSignTooBig
+	for _, et := range VoteExtensionTypes {
+		for _, ext := range e[et] {
+			err := ext.Validate()
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -58,7 +58,7 @@ func (e VoteExtensions) IsEmpty() bool {
 
 // ToProto transforms the current state of vote-extension container into VoteExtensions's protobuf
 func (e VoteExtensions) ToProto() []*tmproto.VoteExtension {
-	extensions := make([]*tmproto.VoteExtension, 0) // TODO find a way how to pre allocate correctly
+	extensions := make([]*tmproto.VoteExtension, 0, e.totalCount())
 	for _, t := range VoteExtensionTypes {
 		for _, ext := range e[t] {
 			extensions = append(extensions, &tmproto.VoteExtension{
@@ -73,7 +73,7 @@ func (e VoteExtensions) ToProto() []*tmproto.VoteExtension {
 
 // ToExtendProto transforms the current state of vote-extension container into ExtendVoteExtension's protobuf
 func (e VoteExtensions) ToExtendProto() []*abci.ExtendVoteExtension {
-	proto := make([]*abci.ExtendVoteExtension, 0) // TODO find a way how to pre allocate correctly
+	proto := make([]*abci.ExtendVoteExtension, 0, e.totalCount())
 	for _, et := range VoteExtensionTypes {
 		for _, ext := range e[et] {
 			proto = append(proto, &abci.ExtendVoteExtension{
@@ -92,8 +92,10 @@ func (e VoteExtensions) Fingerprint() []byte {
 		cnt += len(v)
 	}
 	l := make([][]byte, 0, cnt)
-	for ext := range e.iter() {
-		l = append(l, ext.Extension)
+	for _, et := range VoteExtensionTypes {
+		for _, ext := range e[et] {
+			l = append(l, ext.Extension)
+		}
 	}
 	return tmbytes.Fingerprint(bytes.Join(l, nil))
 }
@@ -114,23 +116,29 @@ func (e VoteExtensions) IsSameWithProto(proto tmproto.VoteExtensions) bool {
 	return true
 }
 
-func (e VoteExtensions) iter() chan VoteExtension {
-	ch := make(chan VoteExtension)
-	go func() {
-		for _, et := range VoteExtensionTypes {
-			for _, ext := range e[et] {
-				ch <- ext
-			}
-		}
-		close(ch)
-	}()
-	return ch
+func (e VoteExtensions) totalCount() int {
+	cnt := 0
+	for _, exts := range e {
+		cnt += len(exts)
+	}
+	return cnt
 }
 
 // VoteExtension represents a vote extension data, with possible types: default or threshold recover
 type VoteExtension struct {
 	Extension []byte           `json:"extension"`
 	Signature tmbytes.HexBytes `json:"signature"`
+}
+
+// Validate ...
+func (v *VoteExtension) Validate() error {
+	if len(v.Extension) > 0 && len(v.Signature) == 0 {
+		return errExtensionSignEmpty
+	}
+	if len(v.Signature) > SignatureSize {
+		return errExtensionSignTooBig
+	}
+	return nil
 }
 
 // Clone returns a copy of current vote-extension
