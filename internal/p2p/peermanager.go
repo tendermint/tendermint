@@ -1496,9 +1496,6 @@ func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 	if msg.LastConnected != nil {
 		p.LastConnected = *msg.LastConnected
 	}
-	if msg.LastDisconnected != nil {
-		p.LastDisconnected = *msg.LastDisconnected
-	}
 	for _, a := range msg.AddressInfo {
 		addressInfo, err := peerAddressInfoFromProto(a)
 		if err != nil {
@@ -1516,19 +1513,15 @@ func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 // it is expected to be serialized immediately.
 func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
 	msg := &p2pproto.PeerInfo{
-		ID:               string(p.ID),
-		Inactive:         p.Inactive,
-		LastConnected:    &p.LastConnected,
-		LastDisconnected: &p.LastDisconnected,
+		ID:            string(p.ID),
+		Inactive:      p.Inactive,
+		LastConnected: &p.LastConnected,
 	}
 	for _, addressInfo := range p.AddressInfo {
 		msg.AddressInfo = append(msg.AddressInfo, addressInfo.ToProto())
 	}
 	if msg.LastConnected.IsZero() {
 		msg.LastConnected = nil
-	}
-	if msg.LastDisconnected.IsZero() {
-		msg.LastDisconnected = nil
 	}
 
 	return msg
