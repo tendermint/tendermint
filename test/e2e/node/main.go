@@ -111,7 +111,7 @@ func startApp(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	logger.Info(fmt.Sprintf("Server listening on %v (%v protocol)", cfg.Listen, cfg.Protocol))
+	logger.Info("start app", "msg", log.NewLazySprintf("Server listening on %v (%v protocol)", cfg.Listen, cfg.Protocol))
 	return nil
 }
 
@@ -261,7 +261,7 @@ func startSigner(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	logger.Info(fmt.Sprintf("Remote signer connecting to %v", cfg.PrivValServer))
+	logger.Info("start signer", "msg", log.NewLazySprintf("Remote signer connecting to %v", cfg.PrivValServer))
 	return nil
 }
 

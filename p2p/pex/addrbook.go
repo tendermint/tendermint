@@ -17,6 +17,7 @@ import (
 	"github.com/minio/highwayhash"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
@@ -739,7 +740,7 @@ func (a *addrBook) expireNew(bucketIdx int) {
 	for addrStr, ka := range a.bucketsNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
-			a.Logger.Info(fmt.Sprintf("expiring bad address %v", addrStr))
+			a.Logger.Info("expire new", "msg", log.NewLazySprintf("expiring bad address %v", addrStr))
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}
