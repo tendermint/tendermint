@@ -5,7 +5,7 @@ on:
       - 'proto/**'
   push:
     branches:
-      - master
+      - v0.34.x
     paths:
       - 'proto/**'
 
