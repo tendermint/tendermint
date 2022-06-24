@@ -68,7 +68,7 @@ type RouterOptions struct {
 	// seconds between submitting each peer to be dialed.
 	DialSleep func(context.Context)
 
-	// NumConcrruentDials controls how many parallel go routines
+	// NumConcurrentDials controls how many parallel go routines
 	// are used to dial peers. This defaults to the value of
 	// runtime.NumCPU.
 	NumConcurrentDials func() int
@@ -710,14 +710,8 @@ func (r *Router) handshakePeer(
 	expectID types.NodeID,
 ) (types.NodeInfo, error) {
 
-	if r.options.HandshakeTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
-		defer cancel()
-	}
-
 	nodeInfo := r.nodeInfoProducer()
-	peerInfo, peerKey, err := conn.Handshake(ctx, *nodeInfo, r.privKey)
+	peerInfo, peerKey, err := conn.Handshake(ctx, r.options.HandshakeTimeout, *nodeInfo, r.privKey)
 	if err != nil {
 		return peerInfo, err
 	}
