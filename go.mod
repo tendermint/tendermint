@@ -35,17 +35,18 @@ require (
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.7.4
+	github.com/stretchr/testify v1.7.5
 	github.com/tendermint/tm-db v0.6.6
-	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9
 	google.golang.org/grpc v1.47.0
 	gotest.tools v2.2.0+incompatible // indirect
 )
 
 require (
-	github.com/bufbuild/buf v1.4.0 // indirect
-	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/bufbuild/buf v1.4.0
+	github.com/golangci/golangci-lint v1.46.2
 	github.com/prometheus/common v0.34.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
+	github.com/vektra/mockery/v2 v2.13.1
 )
