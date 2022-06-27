@@ -2,6 +2,23 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.20-rc0
+
+This RC introduces the prioritized mempool. 
+
+NOTE: There's a known memory leak with the prioritized mempool that the team are currently working on resolving. We will cut v0.34.20 when this has been resolved. This release candidate is to provide the SDK with the new APIs. Read more about the issue [here](https://github.com/tendermint/tendermint/issues/8775)
+
+### FEATURES
+
+- [cli] [\#8674] Add command to force compact goleveldb databases (@cmwaters)
+- [mempool] [\#8695] Port back the priority mempool. (@alexanderbez, @jmalicevic, @cmwaters)
+
+### IMPROVEMENTS
+
+### BUG FIXES
+
+- [blocksync] [\#8496](https://github.com/tendermint/tendermint/pull/8496) validate block against state before persisting it to disk (@cmwaters)
+
 ## v0.34.19
 
 ### BUG FIXES
