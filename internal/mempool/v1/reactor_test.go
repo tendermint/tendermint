@@ -134,7 +134,9 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			primaryMempool.Lock()
 			primaryMempool.insertTx(next)
+			primaryMempool.Unlock()
 		}()
 	}
 
