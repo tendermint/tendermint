@@ -1,7 +1,6 @@
 package p2p_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -664,7 +663,6 @@ func TestRouter_DialPeers_Parallel(t *testing.T) {
 		peerManager,
 		[]p2p.Transport{mockTransport},
 		p2p.RouterOptions{
-			DialSleep: func(_ context.Context) {},
 			NumConcurrentDials: func() int {
 				ncpu := runtime.NumCPU()
 				if ncpu <= 3 {
