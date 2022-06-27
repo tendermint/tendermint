@@ -1,30 +1,18 @@
-package mempool
+package v0
 
 import (
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/types"
-)
-
-const (
-	MempoolChannel = byte(0x30)
-
-	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
-
-	// UnknownPeerID is the peer ID to use when running CheckTx when there is
-	// no peer (e.g. RPC)
-	UnknownPeerID uint16 = 0
-
-	maxActiveIDs = math.MaxUint16
 )
 
 // Reactor handles mempool tx broadcasting amongst peers.
@@ -58,8 +46,8 @@ func (ids *mempoolIDs) ReserveForPeer(peer p2p.Peer) {
 // nextPeerID returns the next unused peer ID to use.
 // This assumes that ids's mutex is already locked.
 func (ids *mempoolIDs) nextPeerID() uint16 {
-	if len(ids.activeIDs) == maxActiveIDs {
-		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", maxActiveIDs))
+	if len(ids.activeIDs) == mempool.MaxActiveIDs {
+		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", mempool.MaxActiveIDs))
 	}
 
 	_, idExists := ids.activeIDs[ids.nextID]
@@ -143,7 +131,7 @@ func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                  MempoolChannel,
+			ID:                  mempool.MempoolChannel,
 			Priority:            5,
 			RecvMessageCapacity: batchMsg.Size(),
 		},
@@ -175,18 +163,20 @@ func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	}
 	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
-	txInfo := TxInfo{SenderID: memR.ids.GetForPeer(src)}
+	txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(src)}
 	if src != nil {
 		txInfo.SenderP2PID = src.ID()
 	}
+
 	for _, tx := range msg.Txs {
 		err = memR.mempool.CheckTx(tx, nil, txInfo)
-		if err == ErrTxInCache {
-			memR.Logger.Debug("Tx already exists in cache", "tx", txID(tx))
+		if errors.Is(err, mempool.ErrTxInCache) {
+			memR.Logger.Debug("Tx already exists in cache", "tx", tx.String())
 		} else if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", txID(tx), "err", err)
+			memR.Logger.Info("Could not check tx", "tx", tx.String(), "err", err)
 		}
 	}
+
 	// broadcasting happens from go routines per peer
 }
 
@@ -229,14 +219,14 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			// different every time due to us using a map. Sometimes other reactors
 			// will be initialized before the consensus reactor. We should wait a few
 			// milliseconds and retry.
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
 
 		// Allow for a lag of 1 block.
 		memTx := next.Value.(*mempoolTx)
 		if peerState.GetHeight() < memTx.Height()-1 {
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
 
@@ -249,13 +239,15 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
 				},
 			}
+
 			bz, err := msg.Marshal()
 			if err != nil {
 				panic(err)
 			}
-			success := peer.Send(MempoolChannel, bz)
+
+			success := peer.Send(mempool.MempoolChannel, bz)
 			if !success {
-				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
 		}
@@ -271,9 +263,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		}
 	}
 }
-
-//-----------------------------------------------------------------------------
-// Messages
 
 func (memR *Reactor) decodeMsg(bz []byte) (TxsMessage, error) {
 	msg := protomem.Message{}
@@ -303,8 +292,6 @@ func (memR *Reactor) decodeMsg(bz []byte) (TxsMessage, error) {
 	}
 	return message, fmt.Errorf("msg type: %T is not supported", msg)
 }
-
-//-------------------------------------
 
 // TxsMessage is a Message containing transactions.
 type TxsMessage struct {

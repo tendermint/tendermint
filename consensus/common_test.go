@@ -31,6 +31,8 @@ import (
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -390,12 +392,34 @@ func newStateWithConfigAndBlockStore(
 
 	// one for mempool, one for consensus
 	mtx := new(tmsync.Mutex)
-	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
+	// Make Mempool
+	memplMetrics := mempl.NopMetrics()
 
 	// Make Mempool
-	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+	var mempool mempl.Mempool
+
+	switch config.Mempool.Version {
+	case cfg.MempoolV0:
+		mempool = mempoolv0.NewCListMempool(config.Mempool,
+			proxyAppConnConMem,
+			state.LastBlockHeight,
+			mempoolv0.WithMetrics(memplMetrics),
+			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv0.WithPostCheck(sm.TxPostCheck(state)))
+	case cfg.MempoolV1:
+		logger := consensusLogger()
+		mempool = mempoolv1.NewTxMempool(logger,
+			config.Mempool,
+			proxyAppConnConMem,
+			state.LastBlockHeight,
+			mempoolv1.WithMetrics(memplMetrics),
+			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+		)
+	}
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
