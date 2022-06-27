@@ -21,9 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v3.2.0
         with:
-          go-version: '1.17'
+          go-version: '1.18'
 
       - uses: actions/checkout@v3
         with:

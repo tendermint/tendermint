@@ -1,9 +1,9 @@
 # stage 1 Generate Tenderdash Binary
-FROM golang:1.17-alpine AS builder
+FROM golang:1.18-alpine3.15 AS builder
 
 RUN apk update && \
     apk upgrade && \
-    apk add bash git gmp-dev sudo cmake build-base
+    apk add bash git gmp-dev sudo cmake build-base libpcap-dev
 
 COPY . /go/src/github.com/dashevo/tenderdash
 
@@ -11,9 +11,11 @@ WORKDIR /go/src/github.com/dashevo/tenderdash
 
 RUN make install-bls
 RUN make build-linux
+RUN make build_abcidump
+
 
 # stage 2
-FROM alpine:3.9
+FROM alpine:3.15
 LABEL maintainer="developers@dash.org"
 
 # Tenderdash will be looking for the genesis file in /tenderdash/config/genesis.json
@@ -30,7 +32,7 @@ ENV TMHOME /tenderdash
 # could execute bash commands.
 RUN apk update && \
     apk upgrade && \
-    apk --no-cache add curl jq bash gmp libstdc++ && \
+    apk --no-cache add curl jq bash gmp libstdc++ libpcap && \
     addgroup tmuser && \
     adduser -S -G tmuser tmuser -h "$TMHOME"
 
@@ -45,6 +47,8 @@ EXPOSE 26656 26657 26660
 STOPSIGNAL SIGTERM
 
 COPY --from=builder /go/src/github.com/dashevo/tenderdash/build/tenderdash /usr/bin/tenderdash
+COPY --from=builder /go/src/github.com/dashevo/tenderdash/build/abcidump /usr/bin/abcidump
+
 
 # You can overwrite these before the first run to influence
 # config.json and genesis.json. Additionally, you can override

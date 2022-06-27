@@ -638,7 +638,7 @@ func (r *Reactor) pickSendVote(ctx context.Context, ps *PeerState, votes types.V
 		"ps", psJSON,
 		"peer", ps.peerID,
 		"vote", vote,
-		"peer_proTxHash", ps.ProTxHash.ShortString(),
+		"peer_proTxHash", ps.GetProTxHash().ShortString(),
 		"val_proTxHash", vote.ValidatorProTxHash.ShortString(),
 		"height", vote.Height,
 		"round", vote.Round,
