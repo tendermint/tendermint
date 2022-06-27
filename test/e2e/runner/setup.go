@@ -284,6 +284,9 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	default:
 		return nil, fmt.Errorf("unexpected mode %q", node.Mode)
 	}
+	if node.Mempool != "" {
+		cfg.Mempool.Version = node.Mempool
+	}
 
 	if node.FastSync == "" {
 		cfg.FastSyncMode = false
