@@ -21,6 +21,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### FEATURES
 
 - [cli] [\#8674] Add command to force compact goleveldb databases (@cmwaters)
+- [mempool] [\#8695] Introduction a priority mempool. (@alexanderbez, @jmalicevic, @cmwaters)
 
 ### IMPROVEMENTS
 
