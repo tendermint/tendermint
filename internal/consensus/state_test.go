@@ -382,6 +382,46 @@ func TestStateFullRoundNil(t *testing.T) {
 
 // run through propose, prevote, precommit commit with two validators
 // where the first validator has to wait for votes from the second
+func TestStateTooManyVotes(t *testing.T) {
+	config := configSetup(t)
+
+	cs1, vss, err := randState(config, 2)
+	require.NoError(t, err)
+	vs2 := vss[1]
+	height, round := cs1.Height, cs1.Round
+
+	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
+	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlock)
+
+	// start round and wait for propose and prevote
+	startTestRound(cs1, height, round)
+
+	ensurePrevote(voteCh, height, round) // prevote
+
+	// we should be stuck in limbo waiting for more prevotes
+	rs := cs1.GetRoundState()
+	propBlockHash, propPartSetHeader := rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header()
+
+	// prevote arrives from vs2:
+	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propPartSetHeader, vs2)
+	ensurePrevote(voteCh, height, round) // prevote
+
+	ensurePrecommit(voteCh, height, round) // precommit
+	// the proposed block should now be locked and our precommit added
+	validatePrecommit(t, cs1, 0, 0, vss[0], propBlockHash, propBlockHash)
+
+	// we should be stuck in limbo waiting for more precommits
+
+	// precommit arrives from vs2:
+	signAddVotes(config, cs1, tmproto.PrecommitType, propBlockHash, propPartSetHeader, vs2)
+	ensurePrecommit(voteCh, height, round)
+
+	// wait to finish commit, propose in next height
+	ensureNewBlock(newBlockCh, height)
+}
+
+// run through propose, prevote, precommit commit with two validators
+// where the first validator has to wait for votes from the second
 func TestStateFullRound2(t *testing.T) {
 	config := configSetup(t)
 
