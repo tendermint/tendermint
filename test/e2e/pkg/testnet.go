@@ -75,6 +75,7 @@ type Node struct {
 	StartAt          int64
 	FastSync         string
 	StateSync        bool
+	Mempool          string
 	Database         string
 	ABCIProtocol     Protocol
 	PrivvalProtocol  Protocol
@@ -157,6 +158,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,
+			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
 			SnapshotInterval: nodeManifest.SnapshotInterval,
@@ -309,6 +311,12 @@ func (n Node) Validate(testnet Testnet) error {
 	case "", "v0", "v1", "v2":
 	default:
 		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
+
+	}
+	switch n.Mempool {
+	case "", "v0", "v1":
+	default:
+		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
 	switch n.Database {
 	case "goleveldb", "cleveldb", "boltdb", "rocksdb", "badgerdb":
