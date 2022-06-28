@@ -126,7 +126,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		}
 		return err
 	}
-	peerNodeInfo, _, err := pc.conn.Handshake(context.Background(), sw.nodeInfo, sw.nodeKey.PrivKey)
+	peerNodeInfo, _, err := pc.conn.Handshake(context.Background(), 0, sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)

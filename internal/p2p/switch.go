@@ -865,11 +865,11 @@ func (sw *Switch) handshakePeer(
 	c Connection,
 	expectPeerID types.NodeID,
 ) (types.NodeInfo, crypto.PubKey, error) {
-	// Moved from transport and hardcoded until legacy P2P stack removal.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	peerInfo, peerKey, err := c.Handshake(ctx, sw.nodeInfo, sw.nodeKey.PrivKey)
+	// Moved timeout from transport and hardcoded until legacy P2P stack removal.
+	peerInfo, peerKey, err := c.Handshake(ctx, 5*time.Second, sw.nodeInfo, sw.nodeKey.PrivKey)
 	if err != nil {
 		return peerInfo, peerKey, ErrRejected{
 			conn:          c.(*mConnConnection).conn,
