@@ -53,6 +53,9 @@ type Metrics struct {
 	// this node.
 	PeersConnectedIncoming metrics.Gauge
 
+	// Number of peers evicted by this node.
+	PeersEvicted metrics.Counter
+
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
 	RouterPeerQueueRecv metrics.Histogram
@@ -109,6 +112,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "peers_connected_success",
 			Help:      "Number of successful peer connection attempts",
+		}, labels).With(labelsAndValues...),
+		PeersEvicted: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "peers_evicted",
+			Help:      "Number of connected peers evicted",
 		}, labels).With(labelsAndValues...),
 		PeersConnectedFailure: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
@@ -200,6 +209,7 @@ func NopMetrics() *Metrics {
 		PeersConnectedIncoming: discard.NewGauge(),
 		PeersConnectedOutgoing: discard.NewGauge(),
 		PeersInactivated:       discard.NewGauge(),
+		PeersEvicted:           discard.NewCounter(),
 		PeerReceiveBytesTotal:  discard.NewCounter(),
 		PeerSendBytesTotal:     discard.NewCounter(),
 		PeerPendingSendBytes:   discard.NewGauge(),

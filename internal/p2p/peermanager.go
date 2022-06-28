@@ -162,6 +162,10 @@ type PeerManagerOptions struct {
 	// retry times, to avoid thundering herds. 0 disables jitter.
 	RetryTimeJitter time.Duration
 
+	// DisconnectCooldownPeriod is the amount of time after we
+	// disconnect from a peer before we'll consider dialing a new peer
+	DisconnectCooldownPeriod time.Duration
+
 	// PeerScores sets fixed scores for specific peers. It is mainly used
 	// for testing. A score of 0 is ignored.
 	PeerScores map[types.NodeID]PeerScore
@@ -534,12 +538,13 @@ func (m *PeerManager) HasDialedMaxPeers() bool {
 // returned peer.
 func (m *PeerManager) DialNext(ctx context.Context) (NodeAddress, error) {
 	for {
-		address, err := m.TryDialNext()
-		if err != nil || (address != NodeAddress{}) {
-			return address, err
+		if address := m.TryDialNext(); (address != NodeAddress{}) {
+			return address, nil
 		}
+
 		select {
 		case <-m.dialWaker.Sleep():
+			continue
 		case <-ctx.Done():
 			return NodeAddress{}, ctx.Err()
 		}
@@ -548,25 +553,28 @@ func (m *PeerManager) DialNext(ctx context.Context) (NodeAddress, error) {
 
 // TryDialNext is equivalent to DialNext(), but immediately returns an empty
 // address if no peers or connection slots are available.
-func (m *PeerManager) TryDialNext() (NodeAddress, error) {
+func (m *PeerManager) TryDialNext() NodeAddress {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 
 	// We allow dialing MaxConnected+MaxConnectedUpgrade peers. Including
 	// MaxConnectedUpgrade allows us to probe additional peers that have a
 	// higher score than any other peers, and if successful evict it.
-	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >=
-		int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
-		return NodeAddress{}, nil
+	if m.options.MaxConnected > 0 && len(m.connected)+len(m.dialing) >= int(m.options.MaxConnected)+int(m.options.MaxConnectedUpgrade) {
+		return NodeAddress{}
 	}
 
 	cinfo := m.getConnectedInfo()
 	if m.options.MaxOutgoingConnections > 0 && cinfo.outgoing >= m.options.MaxOutgoingConnections {
-		return NodeAddress{}, nil
+		return NodeAddress{}
 	}
 
 	for _, peer := range m.store.Ranked() {
 		if m.dialing[peer.ID] || m.isConnected(peer.ID) {
+			continue
+		}
+
+		if !peer.LastDisconnected.IsZero() && time.Since(peer.LastDisconnected) < m.options.DisconnectCooldownPeriod {
 			continue
 		}
 
@@ -589,16 +597,16 @@ func (m *PeerManager) TryDialNext() (NodeAddress, error) {
 			if m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 				upgradeFromPeer := m.findUpgradeCandidate(peer.ID, peer.Score())
 				if upgradeFromPeer == "" {
-					return NodeAddress{}, nil
+					return NodeAddress{}
 				}
 				m.upgrading[upgradeFromPeer] = peer.ID
 			}
 
 			m.dialing[peer.ID] = true
-			return addressInfo.Address, nil
+			return addressInfo.Address
 		}
 	}
-	return NodeAddress{}, nil
+	return NodeAddress{}
 }
 
 // DialFailed reports a failed dial attempt. This will make the peer available
@@ -706,8 +714,7 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 		return err
 	}
 
-	if upgradeFromPeer != "" && m.options.MaxConnected > 0 &&
-		len(m.connected) >= int(m.options.MaxConnected) {
+	if upgradeFromPeer != "" && m.options.MaxConnected > 0 && len(m.connected) >= int(m.options.MaxConnected) {
 		// Look for an even lower-scored peer that may have appeared since we
 		// started the upgrade.
 		if p, ok := m.store.Get(upgradeFromPeer); ok {
@@ -716,11 +723,11 @@ func (m *PeerManager) Dialed(address NodeAddress) error {
 			}
 		}
 		m.evict[upgradeFromPeer] = true
+		m.evictWaker.Wake()
 	}
 
 	m.metrics.PeersConnectedOutgoing.Add(1)
 	m.connected[peer.ID] = peerConnectionOutgoing
-	m.evictWaker.Wake()
 
 	return nil
 }
@@ -888,6 +895,22 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	delete(m.evict, peerID)
 	delete(m.evicting, peerID)
 	delete(m.ready, peerID)
+
+	if peer, ok := m.store.Get(peerID); ok {
+		peer.LastDisconnected = time.Now()
+		_ = m.store.Set(peer)
+		// launch a thread to ping the dialWaker when the
+		// disconnected peer can be dialed again.
+		go func() {
+			timer := time.NewTimer(m.options.DisconnectCooldownPeriod)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+				m.dialWaker.Wake()
+			case <-m.closeCh:
+			}
+		}()
+	}
 
 	if ready {
 		m.broadcast(PeerUpdate{
@@ -1475,9 +1498,10 @@ func (s *peerStore) Size() int {
 
 // peerInfo contains peer information stored in a peerStore.
 type peerInfo struct {
-	ID            types.NodeID
-	AddressInfo   map[NodeAddress]*peerAddressInfo
-	LastConnected time.Time
+	ID               types.NodeID
+	AddressInfo      map[NodeAddress]*peerAddressInfo
+	LastConnected    time.Time
+	LastDisconnected time.Time
 
 	// These fields are ephemeral, i.e. not persisted to the database.
 	Persistent bool
@@ -1517,8 +1541,8 @@ func peerInfoFromProto(msg *p2pproto.PeerInfo) (*peerInfo, error) {
 func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
 	msg := &p2pproto.PeerInfo{
 		ID:            string(p.ID),
-		LastConnected: &p.LastConnected,
 		Inactive:      p.Inactive,
+		LastConnected: &p.LastConnected,
 	}
 	for _, addressInfo := range p.AddressInfo {
 		msg.AddressInfo = append(msg.AddressInfo, addressInfo.ToProto())
@@ -1526,6 +1550,7 @@ func (p *peerInfo) ToProto() *p2pproto.PeerInfo {
 	if msg.LastConnected.IsZero() {
 		msg.LastConnected = nil
 	}
+
 	return msg
 }
 
