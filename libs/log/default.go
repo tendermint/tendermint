@@ -92,30 +92,8 @@ func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
 }
 
 func (l defaultLogger) With(keyVals ...interface{}) Logger {
-	return &defaultLogger{
+	return defaultLogger{
 		Logger: l.Logger.With().Fields(keyVals).Logger(),
 		trace:  l.trace,
 	}
-}
-
-// OverrideWithNewLogger replaces an existing logger's internal with
-// a new logger, and makes it possible to reconfigure an existing
-// logger that has already been propagated to callers.
-func OverrideWithNewLogger(logger Logger, format, level string) error {
-	ol, ok := logger.(*defaultLogger)
-	if !ok {
-		return fmt.Errorf("logger %T cannot be overridden", logger)
-	}
-
-	newLogger, err := NewDefaultLogger(format, level, ol.trace)
-	if err != nil {
-		return err
-	}
-	nl, ok := newLogger.(*defaultLogger)
-	if !ok {
-		return fmt.Errorf("logger %T cannot be overridden by %T", logger, newLogger)
-	}
-
-	ol.Logger = nl.Logger
-	return nil
 }
