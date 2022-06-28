@@ -456,7 +456,7 @@ func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
 			closeErr := conn.Close()
 			r.logger.Debug("rate limiting incoming peer",
 				"err", err,
-				"ip", tmstrings.LazySprinter(incomingIP),
+				"ip", tmstrings.LazyStringer(incomingIP),
 				"close_err", closeErr,
 			)
 

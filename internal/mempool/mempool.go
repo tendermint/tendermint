@@ -580,7 +580,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 	txmp.insertTx(wtx)
 	txmp.logger.Debug("inserted good transaction",
 		"priority", wtx.priority,
-		"tx", tmstrings.LazySprintf()("%X", wtx.tx.Hash()),
+		"tx", tmstrings.LazySprintf("%X", wtx.tx.Hash()),
 		"height", txmp.height,
 		"num_txs", txmp.Size(),
 	)
