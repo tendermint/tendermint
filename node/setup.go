@@ -74,7 +74,7 @@ func combineCloseError(err error, cl closer) error {
 func initDBs(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
-) (*store.BlockStore, dbm.DB, closer, error) {
+) (_ *store.BlockStore, _ dbm.DB, closeFn closer, rerr error) {
 
 	blockStoreDB, err := dbProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
@@ -83,6 +83,12 @@ func initDBs(
 	closers := []closer{}
 	blockStore := store.NewBlockStore(blockStoreDB)
 	closers = append(closers, blockStoreDB.Close)
+	defer func() {
+		if rerr != nil {
+			blockStore.Close()
+			_ = closeFn()
+		}
+	}()
 
 	stateDB, err := dbProvider(&config.DBContext{ID: "state", Config: cfg})
 	if err != nil {
@@ -295,7 +301,7 @@ func createRouter(
 	peerManager *p2p.PeerManager,
 	cfg *config.Config,
 	appClient abciclient.Client,
-) (*p2p.Router, error) {
+) (_ *p2p.Router, rerr error) {
 
 	p2pLogger := logger.With("module", "p2p")
 
@@ -310,6 +316,11 @@ func createRouter(
 			MaxAcceptedConnections: uint32(cfg.P2P.MaxConnections),
 		},
 	)
+	defer func() {
+		if rerr != nil {
+			transport.Close()
+		}
+	}()
 
 	ep, err := p2p.NewEndpoint(nodeKey.ID.AddressString(cfg.P2P.ListenAddress))
 	if err != nil {
@@ -420,7 +431,7 @@ func createAndStartPrivValidatorSocketClient(
 	ctx context.Context,
 	listenAddr, chainID string,
 	logger log.Logger,
-) (types.PrivValidator, error) {
+) (_ types.PrivValidator, rerr error) {
 
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
@@ -431,6 +442,11 @@ func createAndStartPrivValidatorSocketClient(
 	if err != nil {
 		return nil, fmt.Errorf("starting validator client: %w", err)
 	}
+	defer func() {
+		if rerr != nil {
+			pvsc.Close()
+		}
+	}()
 
 	// try to get a pubkey from private validate first time
 	_, err = pvsc.GetPubKey(ctx)
@@ -453,7 +469,7 @@ func createAndStartPrivValidatorGRPCClient(
 	cfg *config.Config,
 	chainID string,
 	logger log.Logger,
-) (types.PrivValidator, error) {
+) (_ types.PrivValidator, rerr error) {
 	pvsc, err := tmgrpc.DialRemoteSigner(
 		ctx,
 		cfg.PrivValidator,
@@ -464,6 +480,11 @@ func createAndStartPrivValidatorGRPCClient(
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
+	defer func() {
+		if rerr != nil {
+			pvsc.Close()
+		}
+	}()
 
 	// try to get a pubkey from private validate first time
 	_, err = pvsc.GetPubKey(ctx)

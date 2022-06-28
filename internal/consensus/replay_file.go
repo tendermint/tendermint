@@ -299,7 +299,7 @@ func newConsensusStateForReplay(
 	cfg config.BaseConfig,
 	logger log.Logger,
 	csConfig *config.ConsensusConfig,
-) (*State, error) {
+) (_ *State, rerr error) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 	// Get BlockStore
 	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
@@ -307,6 +307,11 @@ func newConsensusStateForReplay(
 		return nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
+	defer func() {
+		if rerr != nil {
+			blockStore.Close()
+		}
+	}()
 
 	// Get State
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())

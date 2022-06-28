@@ -127,7 +127,7 @@ func makeNode(
 	genesisDocProvider genesisDocProvider,
 	dbProvider config.DBProvider,
 	logger log.Logger,
-) (service.Service, error) {
+) (_ service.Service, rerr error) {
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithCancel(ctx)
 
@@ -187,6 +187,15 @@ func makeNode(
 	if err != nil {
 		return nil, combineCloseError(err, makeCloser(closers))
 	}
+	defer func() {
+		if rerr == nil {
+			return
+		}
+
+		if closer, ok := privValidator.(interface{ Close() error }); ok {
+			closer.Close()
+		}
+	}()
 
 	var pubKey crypto.PubKey
 	if cfg.Mode == config.ModeValidator {

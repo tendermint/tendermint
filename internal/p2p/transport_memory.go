@@ -49,6 +49,7 @@ func (n *MemoryNetwork) CreateTransport(nodeID types.NodeID) *MemoryTransport {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
 	if _, ok := n.transports[nodeID]; ok {
+		t.Close()
 		panic(fmt.Sprintf("memory transport with node ID %q already exists", nodeID))
 	}
 	n.transports[nodeID] = t

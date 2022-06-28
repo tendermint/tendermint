@@ -59,12 +59,18 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexe
 }
 
 // NewFromConfig constructs an Inspector using the values defined in the passed in config.
-func NewFromConfig(logger log.Logger, cfg *config.Config) (*Inspector, error) {
+func NewFromConfig(logger log.Logger, cfg *config.Config) (_ *Inspector, rerr error) {
 	bsDB, err := config.DefaultDBProvider(&config.DBContext{ID: "blockstore", Config: cfg})
 	if err != nil {
 		return nil, err
 	}
 	bs := store.NewBlockStore(bsDB)
+	defer func() {
+		if rerr != nil {
+			bs.Close()
+		}
+	}()
+
 	sDB, err := config.DefaultDBProvider(&config.DBContext{ID: "state", Config: cfg})
 	if err != nil {
 		return nil, err
