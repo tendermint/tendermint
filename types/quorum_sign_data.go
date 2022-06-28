@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
 
@@ -36,6 +37,14 @@ type SignItem struct {
 // Hash returns a sha256 hash
 func (i *SignItem) Hash() []byte {
 	return crypto.Checksum(i.Raw)
+}
+
+// Validate validates prepared data for signing
+func (i *SignItem) Validate() error {
+	if len(i.ReqID) != crypto.DefaultHashSize {
+		return fmt.Errorf("invalid request ID size: %X", i.ReqID)
+	}
+	return nil
 }
 
 // MakeQuorumSignsWithVoteSet creates and returns QuorumSignData struct built with a vote-set and an added vote
