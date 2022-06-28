@@ -57,3 +57,18 @@ func (_m *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 
 	return r0
 }
+
+type NewBlockStoreT interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewBlockStore creates a new instance of BlockStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewBlockStore(t NewBlockStoreT) *BlockStore {
+	mock := &BlockStore{}
+	mock.Mock.Test(t)
+
+	t.Cleanup(func() { mock.AssertExpectations(t) })
+
+	return mock
+}
