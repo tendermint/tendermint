@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	"github.com/tendermint/tendermint/types"
@@ -457,11 +458,9 @@ func (txmp *TxMempool) Update(
 	// transactions are left.
 	if txmp.Size() > 0 {
 		if recheck {
-			txmp.logger.Debug(
-				"executing re-CheckTx for all remaining transactions",
+			txmp.logger.Debug("executing re-CheckTx for all remaining transactions",
 				"num_txs", txmp.Size(),
-				"height", blockHeight,
-			)
+				"height", blockHeight)
 			txmp.updateReCheckTxs(ctx)
 		} else {
 			txmp.notifyTxsAvailable()
@@ -558,11 +557,10 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 		//   reCheckTx callback is being executed for the same transaction.
 		for _, toEvict := range evictTxs {
 			txmp.removeTx(toEvict, true)
-			txmp.logger.Debug(
-				"evicted existing good transaction; mempool full",
-				"old_tx", fmt.Sprintf("%X", toEvict.tx.Hash()),
+			txmp.logger.Debug("evicted existing good transaction; mempool full",
+				"old_tx", tmstrings.LazySprintf("%X", toEvict.tx.Hash()),
 				"old_priority", toEvict.priority,
-				"new_tx", fmt.Sprintf("%X", wtx.tx.Hash()),
+				"new_tx", tmstrings.LazySprintf("%X", wtx.tx.Hash()),
 				"new_priority", wtx.priority,
 			)
 			txmp.metrics.EvictedTxs.Add(1)
@@ -580,10 +578,9 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 	txmp.metrics.Size.Set(float64(txmp.Size()))
 
 	txmp.insertTx(wtx)
-	txmp.logger.Debug(
-		"inserted good transaction",
+	txmp.logger.Debug("inserted good transaction",
 		"priority", wtx.priority,
-		"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
+		"tx", tmstrings.LazySprintf()("%X", wtx.tx.Hash()),
 		"height", txmp.height,
 		"num_txs", txmp.Size(),
 	)
@@ -647,10 +644,9 @@ func (txmp *TxMempool) defaultTxCallback(tx types.Tx, res *abci.ResponseCheckTx)
 		if res.Code == abci.CodeTypeOK && err == nil {
 			wtx.priority = res.Priority
 		} else {
-			txmp.logger.Debug(
-				"existing transaction no longer valid; failed re-CheckTx callback",
+			txmp.logger.Debug("existing transaction no longer valid; failed re-CheckTx callback",
 				"priority", wtx.priority,
-				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
+				"tx", tmstrings.LazySprintf("%X", wtx.tx.Hash()),
 				"err", err,
 				"code", res.Code,
 			)

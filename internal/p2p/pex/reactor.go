@@ -359,7 +359,8 @@ func (r *Reactor) calculateNextRequestTime(added int) time.Duration {
 	// If the peer store is nearly full, wait the maximum interval.
 	if ratio := r.peerManager.PeerRatio(); ratio >= 0.95 {
 		r.logger.Debug("Peer manager is nearly full",
-			"sleep_period", fullCapacityInterval, "ratio", ratio)
+			"sleep_period", fullCapacityInterval,
+			"ratio", ratio)
 		return fullCapacityInterval
 	}
 

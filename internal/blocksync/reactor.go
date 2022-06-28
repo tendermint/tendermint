@@ -469,12 +469,10 @@ func (r *Reactor) poolRoutine(ctx context.Context, stateSynced bool, blockSyncCh
 				lastAdvance                       = r.pool.LastAdvance()
 			)
 
-			r.logger.Debug(
-				"consensus ticker",
+			r.logger.Debug("consensus ticker",
 				"num_pending", numPending,
 				"total", lenRequesters,
-				"height", height,
-			)
+				"height", height)
 
 			switch {
 

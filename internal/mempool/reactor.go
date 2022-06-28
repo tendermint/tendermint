@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -330,9 +331,8 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, m
 				return
 			}
 
-			r.logger.Debug(
-				"gossiped tx to peer",
-				"tx", fmt.Sprintf("%X", memTx.tx.Hash()),
+			r.logger.Debug("gossiped tx to peer",
+				"tx", tmstrings.LazySprintf("%X", memTx.tx.Hash()),
 				"peer", peerID,
 			)
 		}

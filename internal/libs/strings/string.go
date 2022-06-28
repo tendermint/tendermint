@@ -3,6 +3,8 @@ package strings
 import (
 	"fmt"
 	"strings"
+
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
 type lazyStringf struct {
@@ -22,6 +24,41 @@ func (s *lazyStringf) String() string {
 
 func LazySprintf(t string, args ...interface{}) fmt.Stringer {
 	return &lazyStringf{tmpl: t, args: args}
+}
+
+type lazyStringer struct {
+	val fmt.Stringer
+	out string
+}
+
+func (l *lazyStringer) String() string {
+	if l.out == "" && l.val != nil {
+		l.out = l.val.String()
+		l.val = nil
+	}
+	return l.out
+}
+
+func LazyStringer(v fmt.Stringer) fmt.Stringer { return &lazyStringer{val: v} }
+
+type lazyBlockHash struct {
+	block interface{ Hash() tmbytes.HexBytes }
+	out   string
+}
+
+// NewLazyBlockHash defers block Hash until the Stringer interface is invoked.
+// This is particularly useful for avoiding calling Sprintf when debugging is not
+// active.
+func LazyBlockHash(block interface{ Hash() tmbytes.HexBytes }) fmt.Stringer {
+	return &lazyBlockHash{block: block}
+}
+
+func (l *lazyBlockHash) String() string {
+	if l.out == "" && l.block != nil {
+		l.out = l.block.Hash().String()
+		l.block = nil
+	}
+	return l.out
 }
 
 // SplitAndTrimEmpty slices s into all subslices separated by sep and returns a

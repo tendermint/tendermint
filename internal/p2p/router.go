@@ -13,6 +13,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/tendermint/tendermint/crypto"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -455,7 +456,7 @@ func (r *Router) acceptPeers(ctx context.Context, transport Transport) {
 			closeErr := conn.Close()
 			r.logger.Debug("rate limiting incoming peer",
 				"err", err,
-				"ip", incomingIP.String(),
+				"ip", tmstrings.LazySprinter(incomingIP),
 				"close_err", closeErr,
 			)
 
