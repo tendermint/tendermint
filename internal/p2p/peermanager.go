@@ -878,6 +878,7 @@ func (m *PeerManager) Disconnected(peerID types.NodeID) {
 	}
 
 	ready := m.ready[peerID]
+	m.store.peers[peerID].MutableScore -= 2
 
 	delete(m.connected, peerID)
 	delete(m.upgrading, peerID)
