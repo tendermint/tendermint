@@ -75,23 +75,28 @@ func MustNewDefaultLogger(format, level string, trace bool) Logger {
 }
 
 func (l defaultLogger) Info(msg string, keyVals ...interface{}) {
-	l.Logger.Info().Fields(getLogFields(keyVals...)).Msg(msg)
+	l.Logger.Info().Fields(keyVals).Msg(msg)
 }
 
 func (l defaultLogger) Error(msg string, keyVals ...interface{}) {
+<<<<<<< HEAD
 	e := l.Logger.Error()
 	if l.trace {
 		e = e.Stack()
 	}
 
 	e.Fields(getLogFields(keyVals...)).Msg(msg)
+=======
+	l.Logger.Error().Fields(keyVals).Msg(msg)
+>>>>>>> 37f9d5996 (log: do not pre-process log results (#8895))
 }
 
 func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
-	l.Logger.Debug().Fields(getLogFields(keyVals...)).Msg(msg)
+	l.Logger.Debug().Fields(keyVals).Msg(msg)
 }
 
 func (l defaultLogger) With(keyVals ...interface{}) Logger {
+<<<<<<< HEAD
 	return defaultLogger{
 		Logger: l.Logger.With().Fields(getLogFields(keyVals...)).Logger(),
 		trace:  l.trace,
@@ -109,4 +114,31 @@ func getLogFields(keyVals ...interface{}) map[string]interface{} {
 	}
 
 	return fields
+=======
+	return &defaultLogger{
+		Logger: l.Logger.With().Fields(keyVals).Logger(),
+	}
+}
+
+// OverrideWithNewLogger replaces an existing logger's internal with
+// a new logger, and makes it possible to reconfigure an existing
+// logger that has already been propagated to callers.
+func OverrideWithNewLogger(logger Logger, format, level string) error {
+	ol, ok := logger.(*defaultLogger)
+	if !ok {
+		return fmt.Errorf("logger %T cannot be overridden", logger)
+	}
+
+	newLogger, err := NewDefaultLogger(format, level)
+	if err != nil {
+		return err
+	}
+	nl, ok := newLogger.(*defaultLogger)
+	if !ok {
+		return fmt.Errorf("logger %T cannot be overridden by %T", logger, newLogger)
+	}
+
+	ol.Logger = nl.Logger
+	return nil
+>>>>>>> 37f9d5996 (log: do not pre-process log results (#8895))
 }
