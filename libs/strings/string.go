@@ -5,6 +5,25 @@ import (
 	"strings"
 )
 
+type lazyStringf struct {
+	tmpl string
+	args []interface{}
+	out  string
+}
+
+func (s *lazyStringf) String() string {
+	if s.out == "" && s.tmpl != "" {
+		s.out = fmt.Sprintf(s.tmpl, s.args)
+		s.args = nil
+		s.tmpl = ""
+	}
+	return s.out
+}
+
+func LazySprintf(t string, args ...interface{}) fmt.Stringer {
+	return &lazyStringf{tmpl: t, args: args}
+}
+
 // SplitAndTrimEmpty slices s into all subslices separated by sep and returns a
 // slice of the string s with all leading and trailing Unicode code points
 // contained in cutset removed. If sep is empty, SplitAndTrim splits after each
