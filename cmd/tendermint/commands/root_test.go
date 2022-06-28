@@ -172,6 +172,7 @@ func TestRootConfig(t *testing.T) {
 			tc.args = append([]string{cmd.Use}, tc.args...)
 			err = cli.RunWithArgs(ctx, cmd, tc.args, tc.env)
 			require.NoError(t, err)
+			fmt.Println(conf.LogLevel)
 
 			require.Equal(t, tc.logLvl, conf.LogLevel)
 		})

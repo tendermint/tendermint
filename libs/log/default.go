@@ -47,16 +47,16 @@ func NewDefaultLogger(format, level string) (Logger, error) {
 		return nil, fmt.Errorf("unsupported log format: %s", format)
 	}
 
-	logLevel, err := zerolog.ParseLevel(level)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse log level (%s): %w", level, err)
-	}
+	// logLevel, err := zerolog.ParseLevel(level)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse log level (%s): %w", level, err)
+	// }
 
 	// make the writer thread-safe
 	logWriter = newSyncWriter(logWriter)
 
 	return &defaultLogger{
-		Logger: zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger(),
+		Logger: zerolog.New(logWriter).With().Timestamp().Logger(),
 	}, nil
 }
 
