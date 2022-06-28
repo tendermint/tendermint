@@ -816,6 +816,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			cs.handleTxsAvailable()
 
 		case mi = <-cs.peerMsgQueue:
+			fmt.Println("got message")
 			if err := cs.wal.Write(mi); err != nil {
 				cs.Logger.Error("failed writing to WAL", "err", err)
 			}
@@ -915,9 +916,12 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
+		fmt.Println("adding vote")
 		added, err = cs.tryAddVote(msg.Vote, peerID)
 		if added {
+			fmt.Println("adding stats")
 			cs.statsMsgQueue <- mi
+			fmt.Println("added stats")
 		}
 
 		// if err == ErrAddingVote {

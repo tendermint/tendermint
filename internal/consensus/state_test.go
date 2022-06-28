@@ -384,10 +384,12 @@ func TestStateFullRoundNil(t *testing.T) {
 // where the first validator has to wait for votes from the second
 func TestStateTooManyVotes(t *testing.T) {
 	config := configSetup(t)
+	config.Consensus.TimeoutCommit = 25 * time.Second
 
-	cs1, vss, err := randState(config, 2)
+	cs1, vss, err := randState(config, 10000)
 	require.NoError(t, err)
-	vs2 := vss[1]
+	//	vs1, vs2, vs3 := vss[0], vss[1], vss[2]
+	vs1 := vss[0]
 	height, round := cs1.Height, cs1.Round
 
 	voteCh := subscribe(cs1.eventBus, types.EventQueryVote)
@@ -403,7 +405,7 @@ func TestStateTooManyVotes(t *testing.T) {
 	propBlockHash, propPartSetHeader := rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header()
 
 	// prevote arrives from vs2:
-	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propPartSetHeader, vs2)
+	signAddVotes(config, cs1, tmproto.PrevoteType, propBlockHash, propPartSetHeader, vss[1:]...)
 	ensurePrevote(voteCh, height, round) // prevote
 
 	ensurePrecommit(voteCh, height, round) // precommit
@@ -413,7 +415,9 @@ func TestStateTooManyVotes(t *testing.T) {
 	// we should be stuck in limbo waiting for more precommits
 
 	// precommit arrives from vs2:
-	signAddVotes(config, cs1, tmproto.PrecommitType, propBlockHash, propPartSetHeader, vs2)
+	for i := 0; i < 10000; i++ {
+		signAddVotes(config, cs1, tmproto.PrecommitType, propBlockHash, propPartSetHeader, vs1)
+	}
 	ensurePrecommit(voteCh, height, round)
 
 	// wait to finish commit, propose in next height
