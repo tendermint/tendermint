@@ -79,16 +79,12 @@ func (l defaultLogger) Info(msg string, keyVals ...interface{}) {
 }
 
 func (l defaultLogger) Error(msg string, keyVals ...interface{}) {
-<<<<<<< HEAD
 	e := l.Logger.Error()
 	if l.trace {
 		e = e.Stack()
 	}
 
-	e.Fields(getLogFields(keyVals...)).Msg(msg)
-=======
 	l.Logger.Error().Fields(keyVals).Msg(msg)
->>>>>>> 37f9d5996 (log: do not pre-process log results (#8895))
 }
 
 func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
@@ -96,27 +92,9 @@ func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
 }
 
 func (l defaultLogger) With(keyVals ...interface{}) Logger {
-<<<<<<< HEAD
-	return defaultLogger{
-		Logger: l.Logger.With().Fields(getLogFields(keyVals...)).Logger(),
-		trace:  l.trace,
-	}
-}
-
-func getLogFields(keyVals ...interface{}) map[string]interface{} {
-	if len(keyVals)%2 != 0 {
-		return nil
-	}
-
-	fields := make(map[string]interface{}, len(keyVals))
-	for i := 0; i < len(keyVals); i += 2 {
-		fields[fmt.Sprint(keyVals[i])] = keyVals[i+1]
-	}
-
-	return fields
-=======
 	return &defaultLogger{
 		Logger: l.Logger.With().Fields(keyVals).Logger(),
+		trace:  l.trace,
 	}
 }
 
@@ -129,7 +107,7 @@ func OverrideWithNewLogger(logger Logger, format, level string) error {
 		return fmt.Errorf("logger %T cannot be overridden", logger)
 	}
 
-	newLogger, err := NewDefaultLogger(format, level)
+	newLogger, err := NewDefaultLogger(format, level, ol.trace)
 	if err != nil {
 		return err
 	}
@@ -140,5 +118,4 @@ func OverrideWithNewLogger(logger Logger, format, level string) error {
 
 	ol.Logger = nl.Logger
 	return nil
->>>>>>> 37f9d5996 (log: do not pre-process log results (#8895))
 }
