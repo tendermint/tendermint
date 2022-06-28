@@ -84,7 +84,7 @@ func (l defaultLogger) Error(msg string, keyVals ...interface{}) {
 		e = e.Stack()
 	}
 
-	l.Logger.Error().Fields(keyVals).Msg(msg)
+	e.Fields(keyVals).Msg(msg)
 }
 
 func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
