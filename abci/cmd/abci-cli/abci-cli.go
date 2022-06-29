@@ -79,10 +79,11 @@ func RootCmmand(logger log.Logger) *cobra.Command {
 // Structure for data passed to print response.
 type response struct {
 	// generic abci response
-	Data []byte
-	Code uint32
-	Info string
-	Log  string
+	Data   []byte
+	Code   uint32
+	Info   string
+	Log    string
+	Status int32
 
 	Query *queryResponse
 }
@@ -132,6 +133,7 @@ func addCommands(cmd *cobra.Command, logger log.Logger) {
 	cmd.AddCommand(versionCmd)
 	cmd.AddCommand(testCmd)
 	cmd.AddCommand(prepareProposalCmd)
+	cmd.AddCommand(processProposalCmd)
 	cmd.AddCommand(getQueryCmd())
 
 	// examples
@@ -172,7 +174,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "query", "check_tx", "prepare_proposal", "finalize_block", "commit"},
+	ValidArgs: []string{"echo", "info", "query", "check_tx", "prepare_proposal", "process_proposal", "finalize_block", "commit"},
 	RunE:      cmdConsole,
 }
 
@@ -232,6 +234,14 @@ var prepareProposalCmd = &cobra.Command{
 	Long:  "prepare proposal",
 	Args:  cobra.MinimumNArgs(1),
 	RunE:  cmdPrepareProposal,
+}
+
+var processProposalCmd = &cobra.Command{
+	Use:   "process_proposal",
+	Short: "process proposal",
+	Long:  "process proposal",
+	Args:  cobra.MinimumNArgs(1),
+	RunE:  cmdProcessProposal,
 }
 
 func getQueryCmd() *cobra.Command {
@@ -352,6 +362,11 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 					types.TxRecord_UNMODIFIED,
 				}, nil)
 			},
+			func() error {
+				return servertest.ProcessProposal(ctx, client, [][]byte{
+					{0x01},
+				}, types.ResponseProcessProposal_ACCEPT)
+			},
 		})
 }
 
@@ -454,6 +469,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdQuery(cmd, actualArgs)
 	case "prepare_proposal":
 		return cmdPrepareProposal(cmd, actualArgs)
+	case "process_proposal":
+		return cmdProcessProposal(cmd, actualArgs)
 	default:
 		return cmdUnimplemented(cmd, pArgs)
 	}
@@ -633,6 +650,7 @@ func inTxArray(txByteArray [][]byte, tx []byte) bool {
 	}
 	return false
 }
+
 func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
@@ -679,6 +697,38 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 	}
 
 	printResponse(cmd, args, resps...)
+	return nil
+}
+
+func cmdProcessProposal(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Info: "Must provide at least one transaction",
+			Log:  "Must provide at least one transaction",
+		})
+		return nil
+	}
+	txsBytesArray := make([][]byte, len(args))
+
+	for i, arg := range args {
+		txBytes, err := stringOrHexToBytes(arg)
+		if err != nil {
+			return err
+		}
+		txsBytesArray[i] = txBytes
+	}
+
+	res, err := client.ProcessProposal(cmd.Context(), &types.RequestProcessProposal{
+		Txs: txsBytesArray,
+	})
+	if err != nil {
+		return err
+	}
+
+	printResponse(cmd, args, response{
+		Status: int32(res.Status),
+	})
 	return nil
 }
 
@@ -738,6 +788,9 @@ func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
 		}
 		if rsp.Log != "" {
 			fmt.Printf("-> log: %s\n", rsp.Log)
+		}
+		if cmd.Use == "process_proposal" {
+			fmt.Printf("-> status: %s\n", types.ResponseProcessProposal_ProposalStatus_name[rsp.Status])
 		}
 
 		if rsp.Query != nil {

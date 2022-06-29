@@ -83,6 +83,19 @@ func PrepareProposal(ctx context.Context, client abciclient.Client, txBytes [][]
 	fmt.Println("Passed test: PrepareProposal")
 	return nil
 }
+
+func ProcessProposal(ctx context.Context, client abciclient.Client, txBytes [][]byte, statusExp types.ResponseProcessProposal_ProposalStatus) error {
+	res, _ := client.ProcessProposal(ctx, &types.RequestProcessProposal{Txs: txBytes})
+	if res.Status != statusExp {
+		fmt.Println("Failed test: ProcessProposal")
+		fmt.Printf("ProcessProposal response status was unexpected. Got %v expected %v.",
+			res.Status, statusExp)
+		return errors.New("ProcessProposal error")
+	}
+	fmt.Println("Passed test: ProcessProposal")
+	return nil
+}
+
 func CheckTx(ctx context.Context, client abciclient.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
 	res, _ := client.CheckTx(ctx, &types.RequestCheckTx{Tx: txBytes})
 	code, data := res.Code, res.Data
