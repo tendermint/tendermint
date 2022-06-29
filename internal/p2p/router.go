@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"runtime"
 	"sync"
@@ -61,12 +60,6 @@ type RouterOptions struct {
 	// IP address to filter before the handshake. Functions should
 	// return an error to reject the peer.
 	FilterPeerByID func(context.Context, types.NodeID) error
-
-	// DialSleep controls the amount of time that the router
-	// sleeps between dialing peers. If not set, a default value
-	// is used that sleeps for a (random) amount of time up to 3
-	// seconds between submitting each peer to be dialed.
-	DialSleep func(context.Context)
 
 	// NumConcrruentDials controls how many parallel go routines
 	// are used to dial peers. This defaults to the value of
@@ -310,11 +303,7 @@ func (r *Router) routeChannel(
 ) {
 	for {
 		select {
-		case envelope, ok := <-outCh:
-			if !ok {
-				return
-			}
-
+		case envelope := <-outCh:
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
 			// it on to Transport.SendMessage().
 			envelope.ChannelID = chID
@@ -391,20 +380,22 @@ func (r *Router) routeChannel(
 				}
 			}
 
-		case peerError, ok := <-errCh:
-			if !ok {
-				return
-			}
-
-			shouldEvict := peerError.Fatal || r.peerManager.HasMaxPeerCapacity()
+		case peerError := <-errCh:
+			maxPeerCapacity := r.peerManager.HasMaxPeerCapacity()
 			r.logger.Error("peer error",
 				"peer", peerError.NodeID,
 				"err", peerError.Err,
-				"evicting", shouldEvict,
+				"disconnecting", peerError.Fatal || maxPeerCapacity,
 			)
-			if shouldEvict {
+
+			if peerError.Fatal || maxPeerCapacity {
+				// if the error is fatal or all peer
+				// slots are in use, we can error
+				// (disconnect) from the peer.
 				r.peerManager.Errored(peerError.NodeID, peerError.Err)
 			} else {
+				// this just decrements the peer
+				// score.
 				r.peerManager.processPeerEvent(ctx, PeerUpdate{
 					NodeID: peerError.NodeID,
 					Status: PeerStatusBad,
@@ -419,7 +410,7 @@ func (r *Router) routeChannel(
 
 func (r *Router) numConcurrentDials() int {
 	if r.options.NumConcurrentDials == nil {
-		return runtime.NumCPU()
+		return runtime.NumCPU() * 32
 	}
 
 	return r.options.NumConcurrentDials()
@@ -439,38 +430,6 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 	}
 
 	return r.options.FilterPeerByID(ctx, id)
-}
-
-func (r *Router) dialSleep(ctx context.Context) {
-	if r.options.DialSleep == nil {
-		// the connTracker (on the other side) only rate
-		// limits peers for dialing more than once every 10ms,
-		// so these numbers are safe.
-		const (
-			maxDialerInterval = 500 // ms
-			minDialerInterval = 100 // ms
-		)
-
-		// nolint:gosec // G404: Use of weak random number generator
-		dur := time.Duration(rand.Int63n(maxDialerInterval-minDialerInterval+1) + minDialerInterval)
-
-		timer := time.NewTimer(dur * time.Millisecond)
-		defer timer.Stop()
-
-		select {
-		case <-ctx.Done():
-		case <-timer.C:
-		}
-
-		return
-	}
-
-	r.options.DialSleep(ctx)
-
-	if !r.peerManager.HasDialedMaxPeers() {
-		r.peerManager.dialWaker.Wake()
-	}
-
 }
 
 // acceptPeers accepts inbound connections from peers on the given transport,
@@ -591,19 +550,13 @@ LOOP:
 		switch {
 		case errors.Is(err, context.Canceled):
 			break LOOP
-		case err != nil:
-			r.logger.Error("failed to find next peer to dial", "err", err)
-			break LOOP
+		case address == NodeAddress{}:
+			continue LOOP
 		}
 
 		select {
 		case addresses <- address:
-			// this jitters the frequency that we call
-			// DialNext and prevents us from attempting to
-			// create connections too quickly.
-
-			r.dialSleep(ctx)
-			continue
+			continue LOOP
 		case <-ctx.Done():
 			close(addresses)
 			break LOOP
@@ -642,6 +595,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 
 	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
 		r.logger.Error("failed to dial peer", "op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		r.peerManager.dialWaker.Wake()
 		conn.Close()
 		return
 	}
@@ -717,14 +671,8 @@ func (r *Router) handshakePeer(
 	expectID types.NodeID,
 ) (types.NodeInfo, error) {
 
-	if r.options.HandshakeTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
-		defer cancel()
-	}
-
 	nodeInfo := r.nodeInfoProducer()
-	peerInfo, peerKey, err := conn.Handshake(ctx, *nodeInfo, r.privKey)
+	peerInfo, peerKey, err := conn.Handshake(ctx, r.options.HandshakeTimeout, *nodeInfo, r.privKey)
 	if err != nil {
 		return peerInfo, err
 	}
@@ -936,6 +884,8 @@ func (r *Router) evictPeers(ctx context.Context) {
 		r.peerMtx.RLock()
 		queue, ok := r.peerQueues[peerID]
 		r.peerMtx.RUnlock()
+
+		r.metrics.PeersEvicted.Add(1)
 
 		if ok {
 			queue.close()
