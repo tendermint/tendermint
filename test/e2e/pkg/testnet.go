@@ -1,4 +1,3 @@
-//nolint: gosec
 package e2e
 
 import (
@@ -467,7 +466,7 @@ func (n Node) AddressRPC() string {
 
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort))
+	return rpchttp.New(fmt.Sprintf("http://%s", n.AddressRPC()))
 }
 
 // Stateless returns true if the node is either a seed node or a light node
@@ -481,6 +480,8 @@ type keyGenerator struct {
 }
 
 func newKeyGenerator(seed int64) *keyGenerator {
+	// nolint: gosec
+	// G404: Use of weak random number generator (math/rand instead of crypto/rand)
 	return &keyGenerator{
 		random: rand.New(rand.NewSource(seed)),
 	}
