@@ -12,25 +12,25 @@ import (
 	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 )
 
-// TestnetInfra provides an API for provisioning and manipulating
+// testnetInfra provides an API for provisioning and manipulating
 // infrastructure for a Docker-based testnet.
-type TestnetInfra struct {
+type testnetInfra struct {
 	logger  log.Logger
 	testnet *e2e.Testnet
 }
 
-var _ infra.TestnetInfra = &TestnetInfra{}
+var _ infra.TestnetInfra = &testnetInfra{}
 
 // NewTestnetInfra constructs an infrastructure provider that allows for Docker-based
 // testnet infrastructure.
-func NewTestnetInfra(logger log.Logger, testnet *e2e.Testnet) *TestnetInfra {
-	return &TestnetInfra{
+func NewTestnetInfra(logger log.Logger, testnet *e2e.Testnet) infra.TestnetInfra {
+	return &testnetInfra{
 		logger:  logger,
 		testnet: testnet,
 	}
 }
 
-func (ti *TestnetInfra) Setup(ctx context.Context) error {
+func (ti *testnetInfra) Setup(ctx context.Context) error {
 	compose, err := makeDockerCompose(ti.testnet)
 	if err != nil {
 		return err
@@ -44,67 +44,67 @@ func (ti *TestnetInfra) Setup(ctx context.Context) error {
 	return nil
 }
 
-func (ti *TestnetInfra) StartNode(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) StartNode(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, ti.testnet.Dir, "up", "-d", node.Name)
 }
 
-func (ti *TestnetInfra) DisconnectNode(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) DisconnectNode(ctx context.Context, node *e2e.Node) error {
 	return execDocker(ctx, "network", "disconnect", ti.testnet.Name+"_"+ti.testnet.Name, node.Name)
 }
 
-func (ti *TestnetInfra) ConnectNode(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) ConnectNode(ctx context.Context, node *e2e.Node) error {
 	return execDocker(ctx, "network", "connect", ti.testnet.Name+"_"+ti.testnet.Name, node.Name)
 }
 
-func (ti *TestnetInfra) KillNodeProcess(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) KillNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, ti.testnet.Dir, "kill", "-s", "SIGKILL", node.Name)
 }
 
-func (ti *TestnetInfra) StartNodeProcess(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) StartNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, ti.testnet.Dir, "start", node.Name)
 }
 
-func (ti *TestnetInfra) PauseNodeProcess(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) PauseNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, ti.testnet.Dir, "pause", node.Name)
 }
 
-func (ti *TestnetInfra) UnpauseNodeProcess(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) UnpauseNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, ti.testnet.Dir, "unpause", node.Name)
 }
 
-func (ti *TestnetInfra) TerminateNodeProcess(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) TerminateNodeProcess(ctx context.Context, node *e2e.Node) error {
 	return execCompose(ctx, ti.testnet.Dir, "kill", "-s", "SIGTERM", node.Name)
 }
 
-func (ti *TestnetInfra) Stop(ctx context.Context) error {
+func (ti *testnetInfra) Stop(ctx context.Context) error {
 	return execCompose(ctx, ti.testnet.Dir, "down")
 }
 
-func (ti *TestnetInfra) Pause(ctx context.Context) error {
+func (ti *testnetInfra) Pause(ctx context.Context) error {
 	return execCompose(ctx, ti.testnet.Dir, "pause")
 }
 
-func (ti *TestnetInfra) Unpause(ctx context.Context) error {
+func (ti *testnetInfra) Unpause(ctx context.Context) error {
 	return execCompose(ctx, ti.testnet.Dir, "unpause")
 }
 
-func (ti *TestnetInfra) ShowLogs(ctx context.Context) error {
+func (ti *testnetInfra) ShowLogs(ctx context.Context) error {
 	return execComposeVerbose(ctx, ti.testnet.Dir, "logs", "--no-color")
 }
 
-func (ti *TestnetInfra) ShowNodeLogs(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) ShowNodeLogs(ctx context.Context, node *e2e.Node) error {
 	return execComposeVerbose(ctx, ti.testnet.Dir, "logs", "--no-color", node.Name)
 }
 
-func (ti *TestnetInfra) TailLogs(ctx context.Context) error {
+func (ti *testnetInfra) TailLogs(ctx context.Context) error {
 	return execComposeVerbose(ctx, ti.testnet.Dir, "logs", "--follow")
 }
 
-func (ti *TestnetInfra) TailNodeLogs(ctx context.Context, node *e2e.Node) error {
+func (ti *testnetInfra) TailNodeLogs(ctx context.Context, node *e2e.Node) error {
 	return execComposeVerbose(ctx, ti.testnet.Dir, "logs", "--follow", node.Name)
 }
 
-func (ti *TestnetInfra) Cleanup(ctx context.Context) error {
+func (ti *testnetInfra) Cleanup(ctx context.Context) error {
 	ti.logger.Info("Removing Docker containers and networks")
 
 	// GNU xargs requires the -r flag to not run when input is empty, macOS
