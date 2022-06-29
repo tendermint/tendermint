@@ -72,7 +72,7 @@ func NewCLI(logger log.Logger) *CLI {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			if err = Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
+			if err = Cleanup(cmd.Context(), logger, cli.testnet.Dir, cli.infra); err != nil {
 				return err
 			}
 			defer func() {
@@ -81,7 +81,7 @@ func NewCLI(logger log.Logger) *CLI {
 				} else if err != nil {
 					logger.Info("Preserving testnet that encountered error",
 						"err", err)
-				} else if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
+				} else if err := Cleanup(cmd.Context(), logger, cli.testnet.Dir, cli.infra); err != nil {
 					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
@@ -283,7 +283,7 @@ func NewCLI(logger log.Logger) *CLI {
 		Use:   "cleanup",
 		Short: "Removes the testnet directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Cleanup(cmd.Context(), logger, cli.testnet, cli.infra)
+			return Cleanup(cmd.Context(), logger, cli.testnet.Dir, cli.infra)
 		},
 	})
 
@@ -333,11 +333,11 @@ over a 100 block sampling period.
 Does not run any perbutations.
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
+			if err := Cleanup(cmd.Context(), logger, cli.testnet.Dir, cli.infra); err != nil {
 				return err
 			}
 			defer func() {
-				if err := Cleanup(cmd.Context(), logger, cli.testnet, cli.infra); err != nil {
+				if err := Cleanup(cmd.Context(), logger, cli.testnet.Dir, cli.infra); err != nil {
 					logger.Error("error cleaning up testnet contents", "err", err)
 				}
 			}()
