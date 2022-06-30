@@ -338,6 +338,10 @@ func createBlockchainReactor(
 	metrics *consensus.Metrics,
 ) (*p2p.ReactorShim, service.Service, error) {
 
+	if !cfg.BlockSync.Enable {
+		logger.Error("Blocksync is disabled in the config, but this is not a supported configuration, overriding")
+	}
+
 	logger = logger.With("module", "blockchain")
 
 	switch cfg.BlockSync.Version {
