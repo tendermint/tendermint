@@ -32,11 +32,7 @@ type SignItem struct {
 	ReqID []byte
 	ID    []byte
 	Raw   []byte
-}
-
-// Hash returns a sha256 hash
-func (i *SignItem) Hash() []byte {
-	return crypto.Checksum(i.Raw)
+	Hash  []byte
 }
 
 // Validate validates prepared data for signing
@@ -83,14 +79,14 @@ func MakeQuorumSigns(
 func MakeBlockSignItem(chainID string, vote *types.Vote, quorumType btcjson.LLMQType, quorumHash []byte) SignItem {
 	reqID := voteHeightRoundRequestID("dpbvote", vote.Height, vote.Round)
 	raw := VoteBlockSignBytes(chainID, vote)
-	return newSignItem(quorumType, quorumHash, reqID, raw)
+	return NewSignItem(quorumType, quorumHash, reqID, raw)
 }
 
 // MakeStateSignItem creates SignItem struct for a state
 func MakeStateSignItem(chainID string, stateID StateID, quorumType btcjson.LLMQType, quorumHash []byte) SignItem {
 	reqID := stateID.SignRequestID()
 	raw := stateID.SignBytes(chainID)
-	return newSignItem(quorumType, quorumHash, reqID, raw)
+	return NewSignItem(quorumType, quorumHash, reqID, raw)
 }
 
 // MakeVoteExtensionSignItems  creates a list SignItem structs for a vote extensions
@@ -116,22 +112,25 @@ func MakeVoteExtensionSignItems(
 		}
 		for i, ext := range exts {
 			raw := VoteExtensionSignBytes(chainID, protoVote.Height, protoVote.Round, ext)
-			items[t][i] = newSignItem(quorumType, quorumHash, reqID, raw)
+			items[t][i] = NewSignItem(quorumType, quorumHash, reqID, raw)
 		}
 	}
 	return items, nil
 }
 
-func newSignItem(quorumType btcjson.LLMQType, quorumHash, reqID, raw []byte) SignItem {
+// NewSignItem creates a new instance of SignItem with calculating a hash for a raw and creating signID
+func NewSignItem(quorumType btcjson.LLMQType, quorumHash, reqID, raw []byte) SignItem {
+	msgHash := crypto.Checksum(raw)
 	return SignItem{
 		ReqID: reqID,
-		ID:    makeSignID(raw, reqID, quorumType, quorumHash),
+		ID:    MakeSignID(msgHash, reqID, quorumType, quorumHash),
 		Raw:   raw,
+		Hash:  msgHash,
 	}
 }
 
-func makeSignID(signBytes, reqID []byte, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
-	msgHash := crypto.Checksum(signBytes)
+// MakeSignID creates singID
+func MakeSignID(msgHash, reqID []byte, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	return crypto.SignID(
 		quorumType,
 		tmbytes.Reverse(quorumHash),

@@ -38,7 +38,7 @@ func TestMakeBlockSignID(t *testing.T) {
 		t.Run(fmt.Sprintf("test-case #%d", i), func(t *testing.T) {
 			signItem := MakeBlockSignItem(chainID, tc.vote.ToProto(), btcjson.LLMQType_5_60, tc.quorumHash)
 			require.Equal(t, tc.want, signItem)
-			require.Equal(t, tc.wantHash, signItem.Hash())
+			require.Equal(t, tc.wantHash, signItem.Hash)
 		})
 	}
 }
@@ -124,7 +124,7 @@ func TestMakeVoteExtensionSignsData(t *testing.T) {
 			require.NoError(t, err)
 			for et, signs := range signItems {
 				for i, sign := range signs {
-					require.Equal(t, tc.wantHash[et][i], sign.Hash())
+					require.Equal(t, tc.wantHash[et][i], sign.Hash)
 					require.Equal(t, tc.want[et][i], sign)
 				}
 			}
