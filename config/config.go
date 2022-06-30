@@ -778,7 +778,7 @@ func DefaultP2PConfig() *P2PConfig {
 		MaxNumInboundPeers:            40,
 		MaxNumOutboundPeers:           10,
 		MaxConnections:                64,
-		MaxOutgoingConnections:        32,
+		MaxOutgoingConnections:        12,
 		MaxIncomingConnectionAttempts: 100,
 		PersistentPeersMaxDialPeriod:  0 * time.Second,
 		FlushThrottleTimeout:          100 * time.Millisecond,
