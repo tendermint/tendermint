@@ -3,11 +3,11 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/tendermint/tendermint/crypto"
 	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 )
