@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
-	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -746,10 +745,8 @@ func makeNodeInfo(
 	switch cfg.BlockSync.Version {
 	case config.BlockSyncV0:
 		bcChannel = byte(bcv0.BlockSyncChannel)
-
 	case config.BlockSyncV2:
-		bcChannel = bcv2.BlockchainChannel
-
+		return types.NodeInfo{}, fmt.Errorf("unsupported blocksync version %s", cfg.BlockSync.Version)
 	default:
 		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", cfg.BlockSync.Version)
 	}
