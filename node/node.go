@@ -222,7 +222,7 @@ func makeNode(cfg *config.Config,
 	}
 
 	// Determine whether we should attempt state sync.
-	stateSync := cfg.StateSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	stateSync := !onlyValidatorIsUs(state, pubKey)
 	if stateSync && state.LastBlockHeight > 0 {
 		logger.Info("Found local state with non-zero height, skipping state sync")
 		stateSync = false
