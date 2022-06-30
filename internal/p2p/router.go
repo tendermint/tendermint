@@ -68,8 +68,9 @@ type RouterOptions struct {
 }
 
 const (
-	queueTypeFifo     = "fifo"
-	queueTypePriority = "priority"
+	queueTypeFifo           = "fifo"
+	queueTypePriority       = "priority"
+	queueTypeSimplePriority = "simple-priority"
 )
 
 // Validate validates router options.
@@ -77,7 +78,7 @@ func (o *RouterOptions) Validate() error {
 	switch o.QueueType {
 	case "":
 		o.QueueType = queueTypeFifo
-	case queueTypeFifo, queueTypePriority:
+	case queueTypeFifo, queueTypePriority, queueTypeSimplePriority:
 		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
@@ -227,6 +228,16 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 			return q
 		}, nil
 
+	case queueTypeSimplePriority:
+		return func(size int) queue {
+			if size%2 != 0 {
+				size++
+			}
+			q := newSimplePriorityQueue(ctx, size, r.chDescs)
+			q.run(ctx)
+			return q
+		}, nil
+
 	default:
 		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
 	}
@@ -256,7 +267,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	messageType := chDesc.MessageType
 
 	queue := r.queueFactory(chDesc.RecvBufferCapacity)
-	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
+	outCh := make(chan *Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
 	channel := NewChannel(id, queue.dequeue(), outCh, errCh)
 	channel.name = chDesc.Name
@@ -297,13 +308,16 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 func (r *Router) routeChannel(
 	ctx context.Context,
 	chID ChannelID,
-	outCh <-chan Envelope,
+	outCh <-chan *Envelope,
 	errCh <-chan PeerError,
 	wrapper Wrapper,
 ) {
 	for {
 		select {
 		case envelope := <-outCh:
+			if envelope == nil {
+				continue
+			}
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
 			// it on to Transport.SendMessage().
 			envelope.ChannelID = chID
@@ -815,7 +829,7 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 		start := time.Now().UTC()
 
 		select {
-		case queue.enqueue() <- Envelope{From: peerID, Message: msg, ChannelID: chID}:
+		case queue.enqueue() <- &Envelope{From: peerID, Message: msg, ChannelID: chID}:
 			r.metrics.PeerReceiveBytesTotal.With(
 				"chID", fmt.Sprint(chID),
 				"peer_id", string(peerID),

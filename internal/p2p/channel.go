@@ -56,8 +56,8 @@ func (pe PeerError) Unwrap() error { return pe.Err }
 // Each message is wrapped in an Envelope to specify its sender and receiver.
 type Channel struct {
 	ID    ChannelID
-	inCh  <-chan Envelope  // inbound messages (peers to reactors)
-	outCh chan<- Envelope  // outbound messages (reactors to peers)
+	inCh  <-chan *Envelope // inbound messages (peers to reactors)
+	outCh chan<- *Envelope // outbound messages (reactors to peers)
 	errCh chan<- PeerError // peer error reporting
 
 	name string
@@ -65,7 +65,7 @@ type Channel struct {
 
 // NewChannel creates a new channel. It is primarily for internal and test
 // use, reactors should use Router.OpenChannel().
-func NewChannel(id ChannelID, inCh <-chan Envelope, outCh chan<- Envelope, errCh chan<- PeerError) *Channel {
+func NewChannel(id ChannelID, inCh <-chan *Envelope, outCh chan<- *Envelope, errCh chan<- PeerError) *Channel {
 	return &Channel{
 		ID:    id,
 		inCh:  inCh,
@@ -80,7 +80,7 @@ func (ch *Channel) Send(ctx context.Context, envelope Envelope) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case ch.outCh <- envelope:
+	case ch.outCh <- &envelope:
 		return nil
 	}
 }
@@ -102,7 +102,7 @@ func (ch *Channel) String() string { return fmt.Sprintf("p2p.Channel<%d:%s>", ch
 // The iterator runs until ctx ends.
 func (ch *Channel) Receive(ctx context.Context) *ChannelIterator {
 	iter := &ChannelIterator{
-		pipe: make(chan Envelope), // unbuffered
+		pipe: make(chan *Envelope), // unbuffered
 	}
 	go func() {
 		defer close(iter.pipe)
@@ -118,11 +118,11 @@ func (ch *Channel) Receive(ctx context.Context) *ChannelIterator {
 // MergedChannelIterator makes it possible to combine multiple
 // channels into a single iterator.
 type ChannelIterator struct {
-	pipe    chan Envelope
+	pipe    chan *Envelope
 	current *Envelope
 }
 
-func iteratorWorker(ctx context.Context, ch *Channel, pipe chan Envelope) {
+func iteratorWorker(ctx context.Context, ch *Channel, pipe chan *Envelope) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -152,13 +152,13 @@ func (iter *ChannelIterator) Next(ctx context.Context) bool {
 	case <-ctx.Done():
 		iter.current = nil
 		return false
-	case envelope, ok := <-iter.pipe:
-		if !ok {
+	case envelope := <-iter.pipe:
+		if envelope == nil {
 			iter.current = nil
 			return false
 		}
 
-		iter.current = &envelope
+		iter.current = envelope
 
 		return true
 	}
@@ -177,7 +177,7 @@ func (iter *ChannelIterator) Envelope() *Envelope { return iter.current }
 // without needing to manage the concurrency separately.
 func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterator {
 	iter := &ChannelIterator{
-		pipe: make(chan Envelope), // unbuffered
+		pipe: make(chan *Envelope), // unbuffered
 	}
 	wg := new(sync.WaitGroup)
 

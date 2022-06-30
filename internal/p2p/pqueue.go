@@ -3,6 +3,7 @@ package p2p
 import (
 	"container/heap"
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -16,7 +17,7 @@ import (
 // pqEnvelope defines a wrapper around an Envelope with priority to be inserted
 // into a priority queue used for Envelope scheduling.
 type pqEnvelope struct {
-	envelope  Envelope
+	envelope  *Envelope
 	priority  uint
 	size      uint
 	timestamp time.Time
@@ -31,8 +32,16 @@ func (pq priorityQueue) get(i int) *pqEnvelope { return pq[i] }
 func (pq priorityQueue) Len() int              { return len(pq) }
 
 func (pq priorityQueue) Less(i, j int) bool {
-	// if both elements have the same priority, prioritize based on most recent
+	// if both elements have the same priority, prioritize based
+	// on most recent and largest
 	if pq[i].priority == pq[j].priority {
+		diff := pq[i].timestamp.Sub(pq[j].timestamp)
+		if diff < 0 {
+			diff *= -1
+		}
+		if diff < 10*time.Millisecond {
+			return pq[i].size > pq[j].size
+		}
 		return pq[i].timestamp.After(pq[j].timestamp)
 	}
 
@@ -48,9 +57,9 @@ func (pq priorityQueue) Swap(i, j int) {
 
 func (pq *priorityQueue) Push(x interface{}) {
 	n := len(*pq)
-	pqEnv := x.(*pqEnvelope)
+	pqEnv := x.(pqEnvelope)
 	pqEnv.index = n
-	*pq = append(*pq, pqEnv)
+	*pq = append(*pq, &pqEnv)
 }
 
 func (pq *priorityQueue) Pop() interface{} {
@@ -60,7 +69,7 @@ func (pq *priorityQueue) Pop() interface{} {
 	old[n-1] = nil
 	pqEnv.index = -1
 	*pq = old[:n-1]
-	return pqEnv
+	return *pqEnv
 }
 
 // Assert the priority queue scheduler implements the queue interface at
@@ -78,8 +87,8 @@ type pqScheduler struct {
 	capacity     uint
 	chPriorities map[ChannelID]uint
 
-	enqueueCh chan Envelope
-	dequeueCh chan Envelope
+	enqueueCh chan *Envelope
+	dequeueCh chan *Envelope
 
 	closeFn func()
 	closeCh <-chan struct{}
@@ -125,8 +134,8 @@ func newPQScheduler(
 		chPriorities: chPriorities,
 		pq:           &pq,
 		sizes:        sizes,
-		enqueueCh:    make(chan Envelope, enqueueBuf),
-		dequeueCh:    make(chan Envelope, dequeueBuf),
+		enqueueCh:    make(chan *Envelope, enqueueBuf),
+		dequeueCh:    make(chan *Envelope, dequeueBuf),
 		closeFn:      func() { once.Do(func() { close(closeCh) }) },
 		closeCh:      closeCh,
 		done:         make(chan struct{}),
@@ -135,8 +144,8 @@ func newPQScheduler(
 
 // start starts non-blocking process that starts the priority queue scheduler.
 func (s *pqScheduler) start(ctx context.Context) { go s.process(ctx) }
-func (s *pqScheduler) enqueue() chan<- Envelope  { return s.enqueueCh }
-func (s *pqScheduler) dequeue() <-chan Envelope  { return s.dequeueCh }
+func (s *pqScheduler) enqueue() chan<- *Envelope { return s.enqueueCh }
+func (s *pqScheduler) dequeue() <-chan *Envelope { return s.dequeueCh }
 func (s *pqScheduler) close()                    { s.closeFn() }
 func (s *pqScheduler) closed() <-chan struct{}   { return s.done }
 
@@ -156,7 +165,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 		select {
 		case e := <-s.enqueueCh:
 			chIDStr := strconv.Itoa(int(e.ChannelID))
-			pqEnv := &pqEnvelope{
+			pqEnv := pqEnvelope{
 				envelope:  e,
 				size:      uint(proto.Size(e.Message)),
 				priority:  s.chPriorities[e.ChannelID],
@@ -243,7 +252,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 			// dequeue
 
 			for s.pq.Len() > 0 {
-				pqEnv = heap.Pop(s.pq).(*pqEnvelope)
+				pqEnv = heap.Pop(s.pq).(pqEnvelope)
 				s.size -= pqEnv.size
 
 				// deduct the Envelope size from all the relevant cumulative sizes
@@ -271,13 +280,11 @@ func (s *pqScheduler) process(ctx context.Context) {
 	}
 }
 
-func (s *pqScheduler) push(pqEnv *pqEnvelope) {
-	chIDStr := strconv.Itoa(int(pqEnv.envelope.ChannelID))
-
+func (s *pqScheduler) push(pqEnv pqEnvelope) {
 	// enqueue the incoming Envelope
 	heap.Push(s.pq, pqEnv)
 	s.size += pqEnv.size
-	s.metrics.PeerQueueMsgSize.With("ch_id", chIDStr).Add(float64(pqEnv.size))
+	s.metrics.PeerQueueMsgSize.With("ch_id", fmt.Sprint(pqEnv.envelope.ChannelID)).Add(float64(pqEnv.size))
 
 	// Update the cumulative sizes by adding the Envelope's size to every
 	// priority less than or equal to it.
