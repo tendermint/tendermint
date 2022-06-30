@@ -339,7 +339,7 @@ func createBlockchainReactor(
 ) (*p2p.ReactorShim, service.Service, error) {
 
 	if !cfg.BlockSync.Enable {
-		logger.Error("Blocksync is disabled in the config, but this is not a supported configuration, overriding. This parameter will be completely removed in the next version.")
+		logger.Error("blocksync.enable = false, but Tendermint no longer allows blocksync to be disabled. This setting is now ignored and will be removed in the next version.")
 	}
 
 	logger = logger.With("module", "blockchain")
