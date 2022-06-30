@@ -700,10 +700,8 @@ func (n *nodeImpl) OnStart() error {
 	}
 
 	if n.config.Mode != config.ModeSeed {
-		if n.config.BlockSync.Version == config.BlockSyncV0 {
-			if err := n.bcReactor.Start(); err != nil {
-				return err
-			}
+		if err := n.bcReactor.Start(); err != nil {
+			return err
 		}
 
 		// Start the real consensus reactor separately since the switch uses the shim.
@@ -830,11 +828,10 @@ func (n *nodeImpl) OnStop() {
 
 	if n.config.Mode != config.ModeSeed {
 		// now stop the reactors
-		if n.config.BlockSync.Version == config.BlockSyncV0 {
-			// Stop the real blockchain reactor separately since the switch uses the shim.
-			if err := n.bcReactor.Stop(); err != nil {
-				n.Logger.Error("failed to stop the blockchain reactor", "err", err)
-			}
+
+		// Stop the real blockchain reactor separately since the switch uses the shim.
+		if err := n.bcReactor.Stop(); err != nil {
+			n.Logger.Error("failed to stop the blockchain reactor", "err", err)
 		}
 
 		// Stop the real consensus reactor separately since the switch uses the shim.
