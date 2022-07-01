@@ -221,11 +221,11 @@ func (o *PeerManagerOptions) Validate() error {
 	return nil
 }
 
-// isPersistentPeer checks if a peer is in PersistentPeers. It will panic
+// isPersistent checks if a peer is in PersistentPeers. It will panic
 // if called before optimize().
 func (o *PeerManagerOptions) isPersistent(id types.NodeID) bool {
 	if o.persistentPeers == nil {
-		panic("isPersistentPeer() called before optimize()")
+		panic("isPersistent() called before optimize()")
 	}
 	return o.persistentPeers[id]
 }
