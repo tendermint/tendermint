@@ -34,6 +34,7 @@ perturb = ["restart"]
 [node.validator01]
 perturb = ["disconnect"]
 seeds = ["seed01"]
+block_sync = "v0"
 snapshot_interval = 5
 
 [node.validator02]
