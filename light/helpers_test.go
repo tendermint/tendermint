@@ -6,9 +6,9 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/bls12381"
 	provider_mocks "github.com/tendermint/tendermint/light/provider/mocks"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -58,10 +58,6 @@ func (pkz privKeys) ToValidators(thresholdPublicKey crypto.PubKey) *types.Valida
 func (pkz privKeys) signHeader(t testing.TB, header *types.Header, valSet *types.ValidatorSet, first, last int) *types.Commit {
 	t.Helper()
 
-	var blockSigs [][]byte
-	var stateSigs [][]byte
-	var blsIDs [][]byte
-
 	blockID := types.BlockID{
 		Hash:          header.Hash(),
 		PartSetHeader: types.PartSetHeader{Total: 1, Hash: crypto.CRandBytes(32)},
@@ -72,6 +68,7 @@ func (pkz privKeys) signHeader(t testing.TB, header *types.Header, valSet *types
 		LastAppHash: header.AppHash,
 	}
 
+	votes := make([]*types.Vote, len(pkz))
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
 		// Verify that the private key matches the validator proTxHash
@@ -86,16 +83,15 @@ func (pkz privKeys) signHeader(t testing.TB, header *types.Header, valSet *types
 		if !privateKey.PubKey().Equals(val.PubKey) {
 			panic("light client keys do not match")
 		}
-		vote := makeVote(t, header, valSet, proTxHash, pkz[i], blockID, stateID)
-		blockSigs = append(blockSigs, vote.BlockSignature)
-		stateSigs = append(stateSigs, vote.StateSignature)
-		blsIDs = append(blsIDs, vote.ValidatorProTxHash)
+		votes[i] = makeVote(t, header, valSet, proTxHash, pkz[i], blockID, stateID)
 	}
-
-	thresholdBlockSig, _ := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
-	thresholdStateSig, _ := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
-
-	return types.NewCommit(header.Height, 1, blockID, stateID, valSet.QuorumHash, thresholdBlockSig, thresholdStateSig)
+	thresholdSigns, err := types.NewSignsRecoverer(votes).Recover()
+	require.NoError(t, err)
+	quorumSigns := &types.CommitSigns{
+		QuorumSigns: *thresholdSigns,
+		QuorumHash:  valSet.QuorumHash,
+	}
+	return types.NewCommit(header.Height, 1, blockID, stateID, quorumSigns)
 }
 
 func makeVote(t testing.TB, header *types.Header, valset *types.ValidatorSet, proTxHash crypto.ProTxHash,

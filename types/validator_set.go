@@ -914,15 +914,6 @@ func (vals *ValidatorSet) UpdateWithChangeSet(
 	return vals.updateWithChangeSet(changes, true, newThresholdPublicKey, newQuorumHash)
 }
 
-func (vals *ValidatorSet) CommitSignIds(chainID string, commit *Commit) ([]byte, []byte) {
-
-	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
-
-	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
-
-	return blockSignID, stateSignID
-}
-
 // VerifyCommit verifies +2/3 of the set had signed the given commit.
 //
 // It checks all the signatures! While it's safe to exit as soon as we have
@@ -947,24 +938,16 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, stateID 
 			stateID, commit.StateID)
 	}
 
-	blockSignID := commit.CanonicalVoteVerifySignID(chainID, vals.QuorumType, vals.QuorumHash)
-
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(blockSignID, commit.ThresholdBlockSignature) {
-		canonicalVoteBlockSignBytes := commit.CanonicalVoteVerifySignBytes(chainID)
-		return fmt.Errorf(
-			"incorrect threshold block signature bytes: %X signId %X commit: %v valQuorumType %d valQuorumHash %X valThresholdPublicKey %X", // nolint:lll
-			canonicalVoteBlockSignBytes, blockSignID, commit, vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey)
+	canonVote := commit.GetCanonicalVote()
+	quorumSigns, err := MakeQuorumSigns(chainID, vals.QuorumType, vals.QuorumHash, canonVote.ToProto(), stateID)
+	if err != nil {
+		return err
 	}
-
-	stateSignID := commit.StateID.SignID(chainID, vals.QuorumType, vals.QuorumHash)
-
-	if !vals.ThresholdPublicKey.VerifySignatureDigest(stateSignID, commit.ThresholdStateSignature) {
-		commit.StateID.SignBytes(chainID)
-		stateSignBytes := commit.StateID.SignBytes(chainID)
-		return fmt.Errorf("incorrect threshold state signature bytes: %X commit: %v valQuorumHash %X",
-			stateSignBytes, commit, vals.QuorumHash)
+	err = quorumSigns.Verify(vals.ThresholdPublicKey, NewQuorumSignsFromCommit(commit))
+	if err != nil {
+		return fmt.Errorf("invalid commit signatures for quorum(type=%v, hash=%X), thresholdPubKey=%X: %w",
+			vals.QuorumType, vals.QuorumHash, vals.ThresholdPublicKey, err)
 	}
-
 	return nil
 }
 

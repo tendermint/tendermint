@@ -351,22 +351,27 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrecommitType
 	stateID := types.RandStateID().WithHeight(height - 1)
-	ext := []byte("extension")
+	exts := types.VoteExtensions{
+		tmproto.VoteExtensionType_DEFAULT: []types.VoteExtension{{Extension: []byte("extension")}},
+	}
 	// We initially sign this vote without an extension
-	vote1 := newVote(proTxHash, 0, height, round, voteType, blockID, ext)
+	vote1 := newVote(proTxHash, 0, height, round, voteType, blockID, exts)
 	vpb1 := vote1.ToProto()
 
 	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, vpb1, stateID, logger)
 	assert.NoError(t, err, "expected no error signing vote")
-	assert.NotNil(t, vpb1.ExtensionSignature)
+	assert.NotNil(t, vpb1.VoteExtensions[0].Signature)
 
-	extSignID1 := types.VoteExtensionSignID(chainID, vpb1, quorumType, quorumHash)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignID1, vpb1.ExtensionSignature))
+	extSignItem1, err := types.MakeVoteExtensionSignItems(chainID, vpb1, quorumType, quorumHash)
+	require.NoError(t, err)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignItem1[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb1.VoteExtensions[0].Signature))
 
 	// We duplicate this vote precisely, including its timestamp, but change
 	// its extension
 	vote2 := vote1.Copy()
-	vote2.Extension = []byte("new extension")
+	vote2.VoteExtensions = types.VoteExtensions{
+		tmproto.VoteExtensionType_DEFAULT: []types.VoteExtension{{Extension: []byte("new extension")}},
+	}
 	vpb2 := vote2.ToProto()
 
 	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, vpb2, stateID, logger)
@@ -376,24 +381,26 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	// that validates against the vote extension sign bytes with the new
 	// extension, and does not validate against the vote extension sign bytes
 	// with the old extension.
-	extSignID2 := types.VoteExtensionSignID(chainID, vpb2, quorumType, quorumHash)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignID2, vpb2.ExtensionSignature))
-	assert.False(t, pubKey.VerifySignatureDigest(extSignID1, vpb2.ExtensionSignature))
+	extSignItem2, err := types.MakeVoteExtensionSignItems(chainID, vpb2, quorumType, quorumHash)
+	require.NoError(t, err)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignItem2[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignItem1[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
 
 	vpb2.BlockSignature = nil
 	vpb2.StateSignature = nil
-	vpb2.ExtensionSignature = nil
+	vpb2.VoteExtensions[0].Signature = nil
 
 	err = privVal.SignVote(ctx, chainID, quorumType, quorumHash, vpb2, stateID, logger)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated timestamp and vote extension")
 
-	extSignID3 := types.VoteExtensionSignID(chainID, vpb2, quorumType, quorumHash)
-	assert.True(t, pubKey.VerifySignatureDigest(extSignID3, vpb2.ExtensionSignature))
-	assert.False(t, pubKey.VerifySignatureDigest(extSignID1, vpb2.ExtensionSignature))
+	extSignItem3, err := types.MakeVoteExtensionSignItems(chainID, vpb2, quorumType, quorumHash)
+	require.NoError(t, err)
+	assert.True(t, pubKey.VerifySignatureDigest(extSignItem3[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
+	assert.False(t, pubKey.VerifySignatureDigest(extSignItem1[tmproto.VoteExtensionType_DEFAULT][0].ID, vpb2.VoteExtensions[0].Signature))
 }
 
 func newVote(proTxHash types.ProTxHash, idx int32, height int64, round int32,
-	typ tmproto.SignedMsgType, blockID types.BlockID, ext []byte) *types.Vote {
+	typ tmproto.SignedMsgType, blockID types.BlockID, exts types.VoteExtensions) *types.Vote {
 	return &types.Vote{
 		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     idx,
@@ -401,7 +408,7 @@ func newVote(proTxHash types.ProTxHash, idx int32, height int64, round int32,
 		Round:              round,
 		Type:               typ,
 		BlockID:            blockID,
-		Extension:          ext,
+		VoteExtensions:     exts,
 	}
 }
 

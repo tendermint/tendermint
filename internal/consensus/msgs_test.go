@@ -382,8 +382,11 @@ func TestConsMsgsVectors(t *testing.T) {
 		Round:              0,
 		Type:               tmproto.PrecommitType,
 		BlockID:            bi,
-		Extension:          []byte("extension"),
+		VoteExtensions: types.VoteExtensions{
+			tmproto.VoteExtensionType_DEFAULT: []types.VoteExtension{{Extension: []byte("extension")}},
+		},
 	}
+
 	vpb := v.ToProto()
 
 	testCases := []struct {
@@ -419,7 +422,7 @@ func TestConsMsgsVectors(t *testing.T) {
 			"2a36080110011a3008011204746573741a26080110011a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d"},
 		{"Vote", &tmcons.Message{Sum: &tmcons.Message_Vote{
 			Vote: &tmcons.Vote{Vote: vpb}}},
-			"32730a710802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d32146164645f6d6f72655f6578636c616d6174696f6e38015a09657874656e73696f6e"},
+			"32750a730802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d32146164645f6d6f72655f6578636c616d6174696f6e38015a0b1209657874656e73696f6e"},
 		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
 			HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
 			"3a080801100118012001"},

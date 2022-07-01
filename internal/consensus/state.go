@@ -1586,7 +1586,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, cs.state.StateID(), nil, nil, nil)
+		commit = types.NewCommit(0, 0, types.BlockID{}, cs.state.StateID(), nil)
 	case cs.LastCommit != nil:
 		// Make the commit from LastPrecommits
 		commit = cs.LastCommit
@@ -1604,9 +1604,7 @@ func (cs *State) createProposalBlock(ctx context.Context) (*types.Block, error) 
 	}
 	proposerProTxHash := cs.privValidatorProTxHash
 
-	votes := cs.LastPrecommits.GetVotes()
-
-	ret, err := cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerProTxHash, cs.proposedAppVersion, votes)
+	ret, err := cs.blockExec.CreateProposalBlock(ctx, cs.Height, cs.state, commit, proposerProTxHash, cs.proposedAppVersion)
 	if err != nil {
 		panic(err)
 	}
@@ -2980,11 +2978,11 @@ func (cs *State) signVote(
 	switch msgType {
 	case tmproto.PrecommitType:
 		// if the signedMessage type is for a precommit, add VoteExtension
-		ext, err := cs.blockExec.ExtendVote(ctx, vote)
+		exts, err := cs.blockExec.ExtendVote(ctx, vote)
 		if err != nil {
 			return nil, err
 		}
-		vote.Extension = ext
+		vote.VoteExtensions = types.NewVoteExtensionsFromABCIExtended(exts)
 	default:
 		timeout = time.Second
 	}
@@ -2996,11 +2994,15 @@ func (cs *State) signVote(
 
 	err := cs.privValidator.SignVote(ctxto, cs.state.ChainID, cs.state.Validators.QuorumType, cs.state.Validators.QuorumHash,
 		v, stateID, cs.logger)
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
-	vote.ExtensionSignature = v.ExtensionSignature
+	if err != nil {
+		return nil, err
+	}
+	err = vote.PopulateSignsFromProto(v)
+	if err != nil {
+		return nil, err
+	}
 
-	return vote, err
+	return vote, nil
 }
 
 // sign the vote and publish on internalMsgQueue

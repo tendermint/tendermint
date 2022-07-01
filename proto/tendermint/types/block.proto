@@ -5,6 +5,7 @@ option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
 
 import "gogoproto/gogo.proto";
 import "tendermint/types/types.proto";
+import "tendermint/types/dash.proto";
 import "tendermint/types/evidence.proto";
 
 message Block {

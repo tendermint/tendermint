@@ -2,7 +2,6 @@ package types
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/dashevo/dashd-go/btcjson"
@@ -25,7 +24,9 @@ func examplePrevote(t *testing.T) *Vote {
 func examplePrecommit(t testing.TB) *Vote {
 	t.Helper()
 	vote := exampleVote(t, byte(tmproto.PrecommitType))
-	vote.ExtensionSignature = []byte("signature")
+	vote.VoteExtensions = VoteExtensions{
+		tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Signature: []byte("signature")}},
+	}
 	return vote
 }
 
@@ -124,9 +125,11 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 		// containing vote extension
 		5: {
 			"test_chain_id", &Vote{
-				Height:    1,
-				Round:     1,
-				Extension: []byte("extension"),
+				Height: 1,
+				Round:  1,
+				VoteExtensions: VoteExtensions{
+					tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Extension: []byte("extension")}},
+				},
 			},
 			[]byte{
 				0x21,                                   // length
@@ -239,13 +242,15 @@ func TestVoteExtension(t *testing.T) {
 
 	testCases := []struct {
 		name             string
-		extension        []byte
+		extensions       VoteExtensions
 		includeSignature bool
 		expectError      bool
 	}{
 		{
-			name:             "all fields present",
-			extension:        []byte("extension"),
+			name: "all fields present",
+			extensions: VoteExtensions{
+				tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Extension: []byte("extension")}},
+			},
 			includeSignature: true,
 			expectError:      false,
 		},
@@ -293,7 +298,7 @@ func TestVoteExtension(t *testing.T) {
 				Round:              round,
 				Type:               tmproto.PrecommitType,
 				BlockID:            blockID,
-				Extension:          tc.extension,
+				VoteExtensions:     tc.extensions,
 			}
 
 			v := vote.ToProto()
@@ -302,9 +307,14 @@ func TestVoteExtension(t *testing.T) {
 			vote.BlockSignature = v.BlockSignature
 			vote.StateSignature = v.StateSignature
 			if tc.includeSignature {
-				vote.ExtensionSignature = v.ExtensionSignature
+				protoExtensionsMap := v.VoteExtensionsToMap()
+				for et, extensions := range protoExtensionsMap {
+					for i, ext := range extensions {
+						vote.VoteExtensions[et][i].Signature = ext.Signature
+					}
+				}
 			}
-			_, _, err = vote.VerifyWithExtension("test_chain_id", btcjson.LLMQType_5_60, quorumHash, pk, proTxHash, stateID)
+			err = vote.VerifyWithExtension("test_chain_id", btcjson.LLMQType_5_60, quorumHash, pk, proTxHash, stateID)
 			if tc.expectError {
 				require.Error(t, err)
 			} else {
@@ -353,18 +363,16 @@ func TestVoteVerify(t *testing.T) {
 	vote.ValidatorProTxHash = proTxHash
 
 	stateID := RandStateID().WithHeight(vote.Height - 1)
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, bls12381.GenPrivKey().PubKey(),
-		crypto.RandProTxHash(), stateID)
+	pubKey := bls12381.GenPrivKey().PubKey()
+	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubKey, crypto.RandProTxHash(), stateID)
 
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorProTxHash, err)
 	}
 
-	_, _, err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID)
+	err = vote.Verify("test_chain_id", quorumType, quorumHash, pubkey, proTxHash, stateID)
 	if assert.Error(t, err) {
-		assert.True(
-			t, strings.HasPrefix(err.Error(), ErrVoteInvalidBlockSignature.Error()),
-		) // since block signatures are verified first
+		assert.ErrorIs(t, err, ErrVoteInvalidBlockSignature) // since block signatures are verified first
 	}
 }
 
@@ -397,9 +405,8 @@ func signVote(
 
 	v := vote.ToProto()
 	require.NoError(t, pv.SignVote(ctx, chainID, quorumType, quorumHash, v, stateID, logger))
-	vote.StateSignature = v.StateSignature
-	vote.BlockSignature = v.BlockSignature
-	vote.ExtensionSignature = v.ExtensionSignature
+	err := vote.PopulateSignsFromProto(v)
+	require.NoError(t, err)
 }
 
 func TestValidVotes(t *testing.T) {
@@ -412,8 +419,13 @@ func TestValidVotes(t *testing.T) {
 		malleateVote func(*Vote)
 	}{
 		{"good prevote", examplePrevote(t), func(v *Vote) {}},
-		{"good precommit without vote extension", examplePrecommit(t), func(v *Vote) { v.Extension = nil }},
-		{"good precommit with vote extension", examplePrecommit(t), func(v *Vote) { v.Extension = []byte("extension") }},
+		{"good precommit without vote extension", examplePrecommit(t), func(v *Vote) { v.VoteExtensions = nil }},
+		{
+			"good precommit with vote extension",
+			examplePrecommit(t), func(v *Vote) {
+				v.VoteExtensions[tmproto.VoteExtensionType_DEFAULT][0].Extension = []byte("extension")
+			},
+		},
 	}
 	for _, tc := range testCases {
 		quorumHash := crypto.RandQuorumHash()
@@ -474,8 +486,18 @@ func TestInvalidPrevotes(t *testing.T) {
 		name         string
 		malleateVote func(*Vote)
 	}{
-		{"vote extension present", func(v *Vote) { v.Extension = []byte("extension") }},
-		{"vote extension signature present", func(v *Vote) { v.ExtensionSignature = []byte("signature") }},
+		{
+			"vote extension present",
+			func(v *Vote) {
+				v.VoteExtensions = VoteExtensions{tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Extension: []byte("extension")}}}
+			},
+		},
+		{
+			"vote extension signature present",
+			func(v *Vote) {
+				v.VoteExtensions = VoteExtensions{tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Signature: []byte("signature")}}}
+			},
+		},
 	}
 	for _, tc := range testCases {
 		prevote := examplePrevote(t)
@@ -499,13 +521,21 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 		name         string
 		malleateVote func(*Vote)
 	}{
-		{"vote extension present without signature", func(v *Vote) {
-			v.Extension = []byte("extension")
-			v.ExtensionSignature = nil
-		}},
+		{
+			"vote extension present without signature", func(v *Vote) {
+				v.VoteExtensions = VoteExtensions{
+					tmproto.VoteExtensionType_DEFAULT: {{Extension: []byte("extension")}},
+				}
+			}},
 		// TODO(thane): Re-enable once https://github.com/tendermint/tendermint/issues/8272 is resolved
 		//{"missing vote extension signature", func(v *Vote) { v.ExtensionSignature = nil }},
-		{"oversized vote extension signature", func(v *Vote) { v.ExtensionSignature = make([]byte, SignatureSize+1) }},
+		{
+			"oversized vote extension signature",
+			func(v *Vote) {
+				v.VoteExtensions = VoteExtensions{
+					tmproto.VoteExtensionType_DEFAULT: []VoteExtension{{Signature: make([]byte, SignatureSize+1)}},
+				}
+			}},
 	}
 	for _, tc := range testCases {
 		precommit := examplePrecommit(t)

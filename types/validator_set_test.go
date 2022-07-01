@@ -1373,7 +1373,7 @@ func BenchmarkUpdates(b *testing.B) {
 		n = 100
 		m = 2000
 	)
-	// Init with n validators
+	// init with n validators
 	proTxHashes0 := make([]crypto.ProTxHash, n)
 	for j := 0; j < n; j++ {
 		proTxHashes0[j] = crypto.Checksum([]byte(fmt.Sprintf("v%d", j)))

@@ -188,7 +188,7 @@ func TestVoteSet_AddVote_StateID(t *testing.T) {
 			_, err = signAddVoteForStateID(ctx, val1, vote2, voteSet, tc.wrongStateID)
 			if tc.shouldFail {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "invalid state signature")
+				assert.Contains(t, err.Error(), "threshold state signature is invalid")
 			} else {
 				require.NoError(t, err)
 			}

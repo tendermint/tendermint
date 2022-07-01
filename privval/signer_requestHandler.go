@@ -171,7 +171,7 @@ func handleKeyRequest(
 				Description: err.Error(),
 			},
 		))
-		return res, fmt.Errorf("cannot load public key from priv validator: %w", err)
+		return
 	}
 
 	var pk cryptoproto.PublicKey

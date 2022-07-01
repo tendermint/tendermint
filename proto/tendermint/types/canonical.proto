@@ -5,6 +5,7 @@ option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
 
 import "gogoproto/gogo.proto";
 import "tendermint/types/types.proto";
+import "tendermint/types/dash.proto";
 import "google/protobuf/timestamp.proto";
 
 message CanonicalBlockID {
@@ -42,4 +43,6 @@ message CanonicalVoteExtension {
   sfixed64 height    = 2;
   sfixed64 round     = 3;
   string   chain_id  = 4;
+
+  tendermint.types.VoteExtensionType type = 100;
 }

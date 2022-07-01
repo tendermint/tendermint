@@ -678,13 +678,10 @@ func (pv *FilePV) signVote(
 		return fmt.Errorf("invalid height in StateID: is %d, should be %d", stateID.Height, height-1)
 	}
 
-	blockSignID := types.VoteBlockSignID(chainID, vote, quorumType, quorumHash)
-
-	stateSignID := stateID.SignID(chainID, quorumType, quorumHash)
-
-	blockSignBytes := types.VoteBlockSignBytes(chainID, vote)
-
-	stateSignBytes := stateID.SignBytes(chainID)
+	quorumSigns, err := types.MakeQuorumSigns(chainID, quorumType, quorumHash, vote, stateID)
+	if err != nil {
+		return err
+	}
 
 	privKey, err := pv.getPrivateKey(ctx, quorumHash)
 	if err != nil {
@@ -695,14 +692,18 @@ func (pv *FilePV) signVote(
 	// application may have created a different extension. We therefore always
 	// re-sign the vote extensions of precommits. For prevotes, the extension
 	// signature will always be empty.
-	var extSig []byte
+	extSigns := make(map[tmproto.VoteExtensionType][]tmbytes.HexBytes)
 	if vote.Type == tmproto.PrecommitType {
-		extSignID := types.VoteExtensionSignID(chainID, vote, quorumType, quorumHash)
-		extSig, err = privKey.SignDigest(extSignID)
-		if err != nil {
-			return err
+		for et, signItems := range quorumSigns.Extensions {
+			for _, signItem := range signItems {
+				extSig, err := privKey.SignDigest(signItem.ID)
+				if err != nil {
+					return err
+				}
+				extSigns[et] = append(extSigns[et], extSig)
+			}
 		}
-	} else if len(vote.Extension) > 0 {
+	} else if len(vote.VoteExtensions) > 0 {
 		return errors.New("unexpected vote extension - extensions are only allowed in precommits")
 	}
 
@@ -712,24 +713,24 @@ func (pv *FilePV) signVote(
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(blockSignBytes, lss.BlockSignBytes) && bytes.Equal(stateSignBytes, lss.StateSignBytes) {
+		if bytes.Equal(quorumSigns.Block.Raw, lss.BlockSignBytes) && bytes.Equal(quorumSigns.State.Raw, lss.StateSignBytes) {
 			vote.BlockSignature = lss.BlockSignature
 			vote.StateSignature = lss.StateSignature
 		} else {
 			return errors.New("conflicting data")
 		}
-		vote.ExtensionSignature = extSig
+		fillProtoVoteExtensionSigns(vote.VoteExtensionsToMap(), extSigns)
 		return nil
 	}
 
-	sigBlock, err := privKey.SignDigest(blockSignID)
+	sigBlock, err := privKey.SignDigest(quorumSigns.Block.ID)
 	if err != nil {
 		return err
 	}
 
 	var sigState []byte
 	if vote.BlockID.Hash != nil {
-		sigState, err = privKey.SignDigest(stateSignID)
+		sigState, err = privKey.SignDigest(quorumSigns.State.ID)
 		if err != nil {
 			return err
 		}
@@ -743,14 +744,14 @@ func (pv *FilePV) signVote(
 	//	   sigBlock, vote)
 	//  }
 
-	err = pv.saveSigned(height, round, step, blockSignBytes, sigBlock, stateSignBytes, sigState)
+	err = pv.saveSigned(height, round, step, quorumSigns.Block.Raw, sigBlock, quorumSigns.State.Raw, sigState)
 	if err != nil {
 		return err
 	}
 
 	vote.BlockSignature = sigBlock
 	vote.StateSignature = sigState
-	vote.ExtensionSignature = extSig
+	fillProtoVoteExtensionSigns(vote.VoteExtensionsToMap(), extSigns)
 
 	return nil
 }
@@ -830,4 +831,15 @@ func (pv *FilePV) saveSigned(
 	pv.LastSignState.StateSignature = stateSig
 	pv.LastSignState.StateSignBytes = stateSignBytes
 	return pv.LastSignState.Save()
+}
+
+func fillProtoVoteExtensionSigns(
+	voteExtensions map[tmproto.VoteExtensionType][]*tmproto.VoteExtension,
+	signs map[tmproto.VoteExtensionType][]tmbytes.HexBytes,
+) {
+	for et, extensions := range voteExtensions {
+		for i, ext := range extensions {
+			ext.Signature = signs[et][i]
+		}
+	}
 }

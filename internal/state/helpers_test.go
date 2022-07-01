@@ -87,24 +87,24 @@ func makeValidCommit(
 	privVals map[string]types.PrivValidator,
 ) (*types.Commit, []*types.Vote) {
 	t.Helper()
-	var (
-		blockSigs [][]byte
-		stateSigs [][]byte
-		blsIDs    [][]byte
-	)
 	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
 		vote, err := factory.MakeVote(ctx, privVals[val.ProTxHash.String()], vals, chainID, int32(i), height, 0, 2, blockID, stateID)
 		require.NoError(t, err)
-		blockSigs = append(blockSigs, vote.BlockSignature)
-		stateSigs = append(stateSigs, vote.StateSignature)
-		blsIDs = append(blsIDs, vote.ValidatorProTxHash)
 		votes[i] = vote
 	}
-	thresholdBlockSig, _ := bls12381.RecoverThresholdSignatureFromShares(blockSigs, blsIDs)
-	thresholdStateSig, _ := bls12381.RecoverThresholdSignatureFromShares(stateSigs, blsIDs)
-	return types.NewCommit(height, 0, blockID, stateID, vals.QuorumHash, thresholdBlockSig, thresholdStateSig), votes
+	thresholdSigns, err := types.NewSignsRecoverer(votes).Recover()
+	require.NoError(t, err)
+	return types.NewCommit(
+		height, 0,
+		blockID,
+		stateID,
+		&types.CommitSigns{
+			QuorumSigns: *thresholdSigns,
+			QuorumHash:  vals.QuorumHash,
+		},
+	), votes
 }
 
 func makeState(t *testing.T, nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {

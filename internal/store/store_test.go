@@ -48,11 +48,17 @@ func makeTestCommit(state sm.State, height int64, timestamp time.Time) *types.Co
 
 	goodVote.BlockSignature = g.BlockSignature
 	goodVote.StateSignature = g.StateSignature
+	goodVote.VoteExtensions = types.VoteExtensionsFromProto(g.VoteExtensions)
+	thresholdSigns, _ := types.NewSignsRecoverer([]*types.Vote{goodVote}).Recover()
 
 	return types.NewCommit(height, 0,
 		types.BlockID{Hash: []byte(""), PartSetHeader: types.PartSetHeader{Hash: []byte(""), Total: 2}},
-		types.StateID{LastAppHash: make([]byte, 32)}, crypto.RandQuorumHash(),
-		goodVote.BlockSignature, goodVote.StateSignature)
+		types.StateID{LastAppHash: make([]byte, 32)},
+		&types.CommitSigns{
+			QuorumSigns: *thresholdSigns,
+			QuorumHash:  crypto.RandQuorumHash(),
+		},
+	)
 }
 
 func makeStateAndBlockStore(t *testing.T, dir string) (sm.State, *BlockStore) {

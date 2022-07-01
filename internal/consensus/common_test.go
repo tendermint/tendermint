@@ -104,7 +104,7 @@ func (vs *validatorStub) signVote(
 	lastAppHash []byte,
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash,
-	voteExtension []byte) (*types.Vote, error) {
+	voteExtensions types.VoteExtensions) (*types.Vote, error) {
 
 	proTxHash, err := vs.PrivValidator.GetProTxHash(ctx)
 	if err != nil {
@@ -118,7 +118,7 @@ func (vs *validatorStub) signVote(
 		BlockID:            blockID,
 		ValidatorProTxHash: proTxHash,
 		ValidatorIndex:     vs.Index,
-		Extension:          voteExtension,
+		VoteExtensions:     voteExtensions,
 	}
 
 	stateID := types.StateID{
@@ -133,16 +133,17 @@ func (vs *validatorStub) signVote(
 
 	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
-		v.BlockSignature = vs.lastVote.BlockSignature
-		v.StateSignature = vs.lastVote.StateSignature
-		v.ExtensionSignature = vs.lastVote.ExtensionSignature
+		err = vs.lastVote.PopulateSignsToProto(v)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	vote.BlockSignature = v.BlockSignature
-	vote.StateSignature = v.StateSignature
-	vote.ExtensionSignature = v.ExtensionSignature
-
-	return vote, err
+	err = vote.PopulateSignsFromProto(v)
+	if err != nil {
+		return nil, err
+	}
+	return vote, nil
 }
 
 // Sign vote for type/hash/header
@@ -157,11 +158,11 @@ func signVote(
 	quorumType btcjson.LLMQType,
 	quorumHash crypto.QuorumHash) *types.Vote {
 
-	var ext []byte
+	exts := make(types.VoteExtensions)
 	if voteType == tmproto.PrecommitType {
-		ext = []byte("extension")
+		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte("extension"))
 	}
-	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, ext)
+	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, exts)
 	require.NoError(t, err, "failed to sign vote")
 
 	vs.lastVote = v
@@ -1005,14 +1006,15 @@ func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {
 	if v1 == nil || v2 == nil {
 		return false
 	}
-
+	if v1.VoteExtensions.IsSameWithProto(v2.VoteExtensionsToMap()) {
+		return false
+	}
 	return v1.Type == v2.Type &&
 		bytes.Equal(v1.BlockID.Hash, v2.BlockID.GetHash()) &&
 		v1.Height == v2.GetHeight() &&
 		v1.Round == v2.Round &&
 		bytes.Equal(v1.ValidatorProTxHash.Bytes(), v2.GetValidatorProTxHash()) &&
-		v1.ValidatorIndex == v2.GetValidatorIndex() &&
-		bytes.Equal(v1.Extension, v2.Extension)
+		v1.ValidatorIndex == v2.GetValidatorIndex()
 }
 
 type stateQuorumManager struct {

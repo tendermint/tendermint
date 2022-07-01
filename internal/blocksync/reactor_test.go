@@ -148,7 +148,7 @@ func (rts *reactorTestSuite) addNode(
 	)
 
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, nil, nil, nil)
+		lastCommit := types.NewCommit(blockHeight-1, 0, types.BlockID{}, types.StateID{}, nil)
 
 		if blockHeight > 1 {
 			lastBlockMeta := blockStore.LoadBlockMeta(blockHeight - 1)
@@ -169,9 +169,14 @@ func (rts *reactorTestSuite) addNode(
 				vote.Round,
 				lastBlockMeta.BlockID,
 				state.LastStateID,
-				state.Validators.QuorumHash,
-				vote.BlockSignature,
-				vote.StateSignature,
+				&types.CommitSigns{
+					QuorumSigns: types.QuorumSigns{
+						BlockSign:      vote.BlockSignature,
+						StateSign:      vote.StateSignature,
+						ExtensionSigns: types.MakeThresholdExtensionSigns(vote.VoteExtensions),
+					},
+					QuorumHash: state.Validators.QuorumHash,
+				},
 			)
 		}
 

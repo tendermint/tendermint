@@ -1401,7 +1401,16 @@ func makeBlockchainFromWAL(t *testing.T, wal WAL, genDoc *types.GenesisDoc) ([]*
 				}
 
 				thisBlockCommit = types.NewCommit(p.Height, p.Round,
-					p.BlockID, stateID, crypto.RandQuorumHash(), p.BlockSignature, p.StateSignature)
+					p.BlockID, stateID,
+					&types.CommitSigns{
+						QuorumSigns: types.QuorumSigns{
+							BlockSign:      p.BlockSignature,
+							StateSign:      p.StateSignature,
+							ExtensionSigns: types.MakeThresholdExtensionSigns(p.VoteExtensions),
+						},
+						QuorumHash: crypto.RandQuorumHash(),
+					},
+				)
 			}
 		}
 	}

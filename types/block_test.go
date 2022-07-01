@@ -119,7 +119,7 @@ func TestBlockValidateBasic(t *testing.T) {
 			blk.LastCommit = nil
 		}, true},
 		{"Invalid LastCommit", func(blk *Block) {
-			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, StateID{}, nil, nil, nil)
+			blk.LastCommit = NewCommit(-1, 0, *voteSet.maj23, StateID{}, nil)
 		}, true},
 		{"Invalid Evidence", func(blk *Block) {
 			emptyEv := &DuplicateVoteEvidence{}
