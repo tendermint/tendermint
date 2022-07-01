@@ -65,7 +65,7 @@ for details on the possible call sequences of these methods.
   Tendermint calls it once upon genesis.
 
 - [**PrepareProposal:**](./abci++_methods.md#prepareproposal) It allows the block
-  proposer to perform application-dependent work in a block before using it as its proposal.
+  proposer to perform application-dependent work in a block before proposing it.
   This enables, for instance, batch optimizations to a block, which has been empirically demonstrated
   to be a key component for scaling. Method `PrepareProposal` is called every time Tendermint is
   about to send a proposal message, but no previous proposal has been locked at the Tendermint level.
