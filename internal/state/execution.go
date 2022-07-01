@@ -134,7 +134,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			Height:              block.Height,
 			Time:                block.Time,
 			NextValidatorsHash:  block.NextValidatorsHash,
-			ProposerProTxHash:   block.ProposerProTxHash,
+
+			// Dash's fields
+			CoreChainLockedHeight: block.CoreChainLockedHeight,
+			ProposerProTxHash:     block.ProposerProTxHash,
+			ProposedAppVersion:    block.ProposedAppVersion,
 		},
 	)
 	if err != nil {
@@ -269,8 +273,12 @@ func (blockExec *BlockExecutor) ApplyBlock(
 			Txs:                 txs,
 			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
 			ByzantineValidators: block.Evidence.ToABCI(),
-			ProposerProTxHash:   block.ProposerProTxHash,
 			NextValidatorsHash:  block.NextValidatorsHash,
+
+			// Dash's fields
+			ProposerProTxHash:     block.ProposerProTxHash,
+			CoreChainLockedHeight: block.CoreChainLockedHeight,
+			ProposedAppVersion:    block.ProposedAppVersion,
 		},
 	)
 	endTime := time.Now().UnixNano()
