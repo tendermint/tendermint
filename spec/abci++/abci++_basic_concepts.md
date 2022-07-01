@@ -55,7 +55,7 @@ Methods can be classified into four categories: *consensus*, *mempool*, *info*, 
 The first time a new blockchain is started, Tendermint calls
 `InitChain`. From then on, method `FinalizeBlock` is executed at the end of each
 block, resulting in an updated Application state.
-During consensus execution of a block height, before method `FinalizeBlock` is
+During the execution of an instance of consensus, which decides the block for a given height, before method `FinalizeBlock` is
 called, methods `PrepareProposal`, `ProcessProposal`, `ExtendVote`, and
 `VerifyVoteExtension` may be called several times.
 See [Tendermint's expected behavior](abci++_tmint_expected_behavior.md)
