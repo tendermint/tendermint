@@ -89,7 +89,6 @@ func (n *Network) Start(ctx context.Context, t *testing.T) {
 	for i, sourceAddress := range dialQueue {
 		sourceNode := n.Nodes[sourceAddress.NodeID]
 		sourceSub := subs[sourceAddress.NodeID]
-
 		for _, targetAddress := range dialQueue[i+1:] { // nodes <i already connected
 			targetNode := n.Nodes[targetAddress.NodeID]
 			targetSub := subs[targetAddress.NodeID]

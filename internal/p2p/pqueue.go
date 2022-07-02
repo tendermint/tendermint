@@ -57,9 +57,9 @@ func (pq priorityQueue) Swap(i, j int) {
 
 func (pq *priorityQueue) Push(x interface{}) {
 	n := len(*pq)
-	pqEnv := x.(pqEnvelope)
+	pqEnv := x.(*pqEnvelope)
 	pqEnv.index = n
-	*pq = append(*pq, &pqEnv)
+	*pq = append(*pq, pqEnv)
 }
 
 func (pq *priorityQueue) Pop() interface{} {
@@ -69,7 +69,7 @@ func (pq *priorityQueue) Pop() interface{} {
 	old[n-1] = nil
 	pqEnv.index = -1
 	*pq = old[:n-1]
-	return *pqEnv
+	return pqEnv
 }
 
 // Assert the priority queue scheduler implements the queue interface at
@@ -165,7 +165,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 		select {
 		case e := <-s.enqueueCh:
 			chIDStr := strconv.Itoa(int(e.ChannelID))
-			pqEnv := pqEnvelope{
+			pqEnv := &pqEnvelope{
 				envelope:  e,
 				size:      uint(proto.Size(e.Message)),
 				priority:  s.chPriorities[e.ChannelID],
@@ -252,7 +252,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 			// dequeue
 
 			for s.pq.Len() > 0 {
-				pqEnv = heap.Pop(s.pq).(pqEnvelope)
+				pqEnv = heap.Pop(s.pq).(*pqEnvelope)
 				s.size -= pqEnv.size
 
 				// deduct the Envelope size from all the relevant cumulative sizes
@@ -280,7 +280,7 @@ func (s *pqScheduler) process(ctx context.Context) {
 	}
 }
 
-func (s *pqScheduler) push(pqEnv pqEnvelope) {
+func (s *pqScheduler) push(pqEnv *pqEnvelope) {
 	// enqueue the incoming Envelope
 	heap.Push(s.pq, pqEnv)
 	s.size += pqEnv.size

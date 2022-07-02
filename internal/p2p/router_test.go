@@ -48,11 +48,13 @@ func TestRouter_Network(t *testing.T) {
 
 	// Create a test network and open a channel where all peers run echoReactor.
 	network := p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: 8})
+
 	local := network.RandomNode()
 	peers := network.Peers(local.NodeID)
 	channels := network.MakeChannels(ctx, t, chDesc)
 
 	network.Start(ctx, t)
+	fmt.Println(len(channels))
 
 	channel := channels[local.NodeID]
 	for _, peer := range peers {
