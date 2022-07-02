@@ -829,7 +829,7 @@ func (r *Router) receivePeer(ctx context.Context, peerID types.NodeID, conn Conn
 		start := time.Now().UTC()
 
 		select {
-		case queue.enqueue() <- &Envelope{From: peerID, Message: msg, ChannelID: chID}:
+		case queue.enqueue() <- Envelope{From: peerID, Message: msg, ChannelID: chID}:
 			r.metrics.PeerReceiveBytesTotal.With(
 				"chID", fmt.Sprint(chID),
 				"peer_id", string(peerID),

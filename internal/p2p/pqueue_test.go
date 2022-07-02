@@ -20,7 +20,7 @@ func TestCloseWhileDequeueFull(t *testing.T) {
 	pqueue := newPQScheduler(log.NewNopLogger(), NopMetrics(), newMetricsLabelCache(), chDescs, uint(enqueueLength), 1, 120)
 
 	for i := 0; i < enqueueLength; i++ {
-		pqueue.enqueue() <- &Envelope{
+		pqueue.enqueue() <- Envelope{
 			ChannelID: 0x01,
 			Message:   &testMessage{Value: "foo"}, // 5 bytes
 		}
