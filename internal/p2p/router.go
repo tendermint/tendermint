@@ -233,9 +233,7 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 			if size%2 != 0 {
 				size++
 			}
-			q := newSimplePriorityQueue(ctx, size, r.chDescs)
-			q.run(ctx)
-			return q
+			return newSimplePriorityQueue(ctx, size, r.chDescs)
 		}, nil
 
 	default:

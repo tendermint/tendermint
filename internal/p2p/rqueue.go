@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"context"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -21,17 +20,17 @@ type simpleQueue struct {
 }
 
 func newSimplePriorityQueue(ctx context.Context, size int, chDescs []*ChannelDescriptor) *simpleQueue {
-	closeCh := make(chan struct{})
-	once := &sync.Once{}
-
-	return &simpleQueue{
+	ctx, cancel := context.WithCancel(ctx)
+	q := &simpleQueue{
 		input:   make(chan Envelope, size*2),
 		output:  make(chan Envelope, size/2),
-		closeFn: func() { once.Do(func() { close(closeCh) }) },
 		maxSize: size * size,
-		chDescs: chDescs,
-		closeCh: closeCh,
+		closeCh: ctx.Done(),
+		closeFn: cancel,
 	}
+
+	q.run(ctx)
+	return q
 }
 
 func (q *simpleQueue) enqueue() chan<- Envelope { return q.input }
