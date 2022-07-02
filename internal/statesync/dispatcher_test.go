@@ -19,15 +19,15 @@ import (
 )
 
 type channelInternal struct {
-	In    chan *p2p.Envelope
-	Out   chan *p2p.Envelope
+	In    chan p2p.Envelope
+	Out   chan p2p.Envelope
 	Error chan p2p.PeerError
 }
 
 func testChannel(size int) (*channelInternal, *p2p.Channel) {
 	in := &channelInternal{
-		In:    make(chan *p2p.Envelope, size),
-		Out:   make(chan *p2p.Envelope, size),
+		In:    make(chan p2p.Envelope, size),
+		Out:   make(chan p2p.Envelope, size),
 		Error: make(chan p2p.PeerError, size),
 	}
 	return in, p2p.NewChannel(0, in.In, in.Out, in.Error)
@@ -300,7 +300,7 @@ func TestPeerListRemove(t *testing.T) {
 
 // handleRequests is a helper function usually run in a separate go routine to
 // imitate the expected responses of the reactor wired to the dispatcher
-func handleRequests(ctx context.Context, t *testing.T, d *Dispatcher, ch chan *p2p.Envelope) {
+func handleRequests(ctx context.Context, t *testing.T, d *Dispatcher, ch chan p2p.Envelope) {
 	t.Helper()
 	for {
 		select {

@@ -14,10 +14,10 @@ const defaultCapacity uint = 16e6 // ~16MB
 // - Sending outbound messages to a single peer from all channels.
 type queue interface {
 	// enqueue returns a channel for submitting envelopes.
-	enqueue() chan<- *Envelope
+	enqueue() chan<- Envelope
 
 	// dequeue returns a channel ordered according to some queueing policy.
-	dequeue() <-chan *Envelope
+	dequeue() <-chan Envelope
 
 	// close closes the queue. After this call enqueue() will block, so the
 	// caller must select on closed() as well to avoid blocking forever. The
@@ -31,7 +31,7 @@ type queue interface {
 // fifoQueue is a simple unbuffered lossless queue that passes messages through
 // in the order they were received, and blocks until message is received.
 type fifoQueue struct {
-	queueCh chan *Envelope
+	queueCh chan Envelope
 	closeFn func()
 	closeCh <-chan struct{}
 }
@@ -41,13 +41,13 @@ func newFIFOQueue(size int) queue {
 	once := &sync.Once{}
 
 	return &fifoQueue{
-		queueCh: make(chan *Envelope, size),
+		queueCh: make(chan Envelope, size),
 		closeFn: func() { once.Do(func() { close(closeCh) }) },
 		closeCh: closeCh,
 	}
 }
 
-func (q *fifoQueue) enqueue() chan<- *Envelope { return q.queueCh }
-func (q *fifoQueue) dequeue() <-chan *Envelope { return q.queueCh }
-func (q *fifoQueue) close()                    { q.closeFn() }
-func (q *fifoQueue) closed() <-chan struct{}   { return q.closeCh }
+func (q *fifoQueue) enqueue() chan<- Envelope { return q.queueCh }
+func (q *fifoQueue) dequeue() <-chan Envelope { return q.queueCh }
+func (q *fifoQueue) close()                   { q.closeFn() }
+func (q *fifoQueue) closed() <-chan struct{}  { return q.closeCh }

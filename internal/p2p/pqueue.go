@@ -17,7 +17,7 @@ import (
 // pqEnvelope defines a wrapper around an Envelope with priority to be inserted
 // into a priority queue used for Envelope scheduling.
 type pqEnvelope struct {
-	envelope  *Envelope
+	envelope  Envelope
 	priority  uint
 	size      uint
 	timestamp time.Time
@@ -87,8 +87,8 @@ type pqScheduler struct {
 	capacity     uint
 	chPriorities map[ChannelID]uint
 
-	enqueueCh chan *Envelope
-	dequeueCh chan *Envelope
+	enqueueCh chan Envelope
+	dequeueCh chan Envelope
 
 	closeFn func()
 	closeCh <-chan struct{}
@@ -134,8 +134,8 @@ func newPQScheduler(
 		chPriorities: chPriorities,
 		pq:           &pq,
 		sizes:        sizes,
-		enqueueCh:    make(chan *Envelope, enqueueBuf),
-		dequeueCh:    make(chan *Envelope, dequeueBuf),
+		enqueueCh:    make(chan Envelope, enqueueBuf),
+		dequeueCh:    make(chan Envelope, dequeueBuf),
 		closeFn:      func() { once.Do(func() { close(closeCh) }) },
 		closeCh:      closeCh,
 		done:         make(chan struct{}),
@@ -144,8 +144,8 @@ func newPQScheduler(
 
 // start starts non-blocking process that starts the priority queue scheduler.
 func (s *pqScheduler) start(ctx context.Context) { go s.process(ctx) }
-func (s *pqScheduler) enqueue() chan<- *Envelope { return s.enqueueCh }
-func (s *pqScheduler) dequeue() <-chan *Envelope { return s.dequeueCh }
+func (s *pqScheduler) enqueue() chan<- Envelope  { return s.enqueueCh }
+func (s *pqScheduler) dequeue() <-chan Envelope  { return s.dequeueCh }
 func (s *pqScheduler) close()                    { s.closeFn() }
 func (s *pqScheduler) closed() <-chan struct{}   { return s.done }
 

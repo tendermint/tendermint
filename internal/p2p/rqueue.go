@@ -11,8 +11,8 @@ import (
 )
 
 type simpleQueue struct {
-	input   chan *Envelope
-	output  chan *Envelope
+	input   chan Envelope
+	output  chan Envelope
 	closeFn func()
 	closeCh <-chan struct{}
 
@@ -25,8 +25,8 @@ func newSimplePriorityQueue(ctx context.Context, size int, chDescs []*ChannelDes
 	once := &sync.Once{}
 
 	return &simpleQueue{
-		input:   make(chan *Envelope, size*2),
-		output:  make(chan *Envelope, size/2),
+		input:   make(chan Envelope, size*2),
+		output:  make(chan Envelope, size/2),
 		closeFn: func() { once.Do(func() { close(closeCh) }) },
 		maxSize: size * size,
 		chDescs: chDescs,
@@ -34,10 +34,10 @@ func newSimplePriorityQueue(ctx context.Context, size int, chDescs []*ChannelDes
 	}
 }
 
-func (q *simpleQueue) enqueue() chan<- *Envelope { return q.input }
-func (q *simpleQueue) dequeue() <-chan *Envelope { return q.output }
-func (q *simpleQueue) close()                    { q.closeFn() }
-func (q *simpleQueue) closed() <-chan struct{}   { return q.closeCh }
+func (q *simpleQueue) enqueue() chan<- Envelope { return q.input }
+func (q *simpleQueue) dequeue() <-chan Envelope { return q.output }
+func (q *simpleQueue) close()                   { q.closeFn() }
+func (q *simpleQueue) closed() <-chan struct{}  { return q.closeCh }
 func (q *simpleQueue) run(ctx context.Context) {
 	defer q.closeFn()
 

@@ -267,7 +267,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	messageType := chDesc.MessageType
 
 	queue := r.queueFactory(chDesc.RecvBufferCapacity)
-	outCh := make(chan *Envelope, chDesc.RecvBufferCapacity)
+	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
 	channel := NewChannel(id, queue.dequeue(), outCh, errCh)
 	channel.name = chDesc.Name
@@ -308,14 +308,14 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 func (r *Router) routeChannel(
 	ctx context.Context,
 	chID ChannelID,
-	outCh <-chan *Envelope,
+	outCh <-chan Envelope,
 	errCh <-chan PeerError,
 	wrapper Wrapper,
 ) {
 	for {
 		select {
 		case envelope := <-outCh:
-			if envelope == nil {
+			if envelope.IsZero() {
 				continue
 			}
 			// Mark the envelope with the channel ID to allow sendPeer() to pass

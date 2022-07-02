@@ -11,15 +11,15 @@ import (
 )
 
 type channelInternal struct {
-	In    chan *Envelope
-	Out   chan *Envelope
+	In    chan Envelope
+	Out   chan Envelope
 	Error chan PeerError
 }
 
 func testChannel(size int) (*channelInternal, *Channel) {
 	in := &channelInternal{
-		In:    make(chan *Envelope, size),
-		Out:   make(chan *Envelope, size),
+		In:    make(chan Envelope, size),
+		Out:   make(chan Envelope, size),
 		Error: make(chan PeerError, size),
 	}
 	ch := &Channel{
@@ -109,7 +109,7 @@ func TestChannel(t *testing.T) {
 			Name: "ReceiveWithData",
 			Case: func(ctx context.Context, t *testing.T) {
 				ins, ch := testChannel(1)
-				ins.In <- &Envelope{From: "kip", To: "merlin"}
+				ins.In <- Envelope{From: "kip", To: "merlin"}
 				iter := ch.Receive(ctx)
 				require.NotNil(t, iter)
 				require.True(t, iter.Next(ctx))
@@ -151,7 +151,7 @@ func TestChannel(t *testing.T) {
 			Case: func(ctx context.Context, t *testing.T) {
 				ins, ch := testChannel(1)
 
-				ins.In <- &Envelope{From: "kip", To: "merlin"}
+				ins.In <- Envelope{From: "kip", To: "merlin"}
 				iter := ch.Receive(ctx)
 				require.NotNil(t, iter)
 
@@ -173,7 +173,7 @@ func TestChannel(t *testing.T) {
 			Case: func(ctx context.Context, t *testing.T) {
 				ins, ch := testChannel(1)
 
-				ins.In <- &Envelope{From: "kip", To: "merlin"}
+				ins.In <- Envelope{From: "kip", To: "merlin"}
 				iter := ch.Receive(ctx)
 				require.NotNil(t, iter)
 
@@ -196,7 +196,7 @@ func TestChannel(t *testing.T) {
 				require.NotNil(t, iter)
 				require.Nil(t, iter.Envelope())
 
-				ins.In <- &Envelope{From: "kip", To: "merlin"}
+				ins.In <- Envelope{From: "kip", To: "merlin"}
 				require.NotNil(t, iter)
 				require.True(t, iter.Next(ctx))
 
