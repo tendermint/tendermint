@@ -142,7 +142,7 @@ State sync allows new nodes to rapidly bootstrap by discovering, fetching, and a
 state machine (application) snapshots instead of replaying historical blocks. For more details, see the
 [state sync documentation](../p2p/messages/state-sync.md).
 
-New nodes will discover and request snapshots from other nodes in the P2P network.
+New nodes discover and request snapshots from other nodes in the P2P network.
 A Tendermint node that receives a request for snapshots from a peer will call
 `ListSnapshots` on its Application. The Application returns the list of locally available
 snapshots.
