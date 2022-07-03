@@ -709,7 +709,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 
 #### When does Tendermint call `FinalizeBlock`?
 
-When a validator _p_ is in Tendermint consensus height _h_, and _p_ receives
+When a node _p_ is in Tendermint consensus height _h_, and _p_ receives
 
 * the Proposal message with block _v_ for a round _r_, along with all its block parts, from _q_,
   which is the proposer of round _r_, height _h_,
