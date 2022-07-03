@@ -660,7 +660,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 * **Usage**:
     * Contains the fields of the newly decided block.
     * This method is equivalent to the call sequence `BeginBlock`, [`DeliverTx`],
-      `EndBlock` in the previous version of ABCI.
+      and `EndBlock` in the previous version of ABCI.
     * The height and timestamp values match the values from the header of the proposed block.
     * The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.misbehavior`
       to determine rewards and punishments for the validators.
