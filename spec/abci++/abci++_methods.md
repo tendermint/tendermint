@@ -616,7 +616,7 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
 #### When does Tendermint call `VerifyVoteExtension`?
 
-When a process _p_ is in Tendermint consensus round _r_, height _h_, and _p_ receives a Precommit
+When a node _p_ is in Tendermint consensus round _r_, height _h_, and _p_ receives a Precommit
 message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 
 1. If the Precommit message does not contain a vote extension with a valid signature, Tendermint
