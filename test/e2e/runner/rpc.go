@@ -23,7 +23,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 		clients         = map[string]*rpchttp.HTTP{}
 		lastHeight      int64
 		lastIncrease    = time.Now()
-		nodesAtHeight   = map[string]struct{}{}
+		nodesAtHeight   = map[string]int64{}
 		numRunningNodes int
 	)
 	if height == 0 {
@@ -85,7 +85,7 @@ func waitForHeight(ctx context.Context, testnet *e2e.Testnet, height int64) (*ty
 
 					// add this node to the set of target
 					// height nodes
-					nodesAtHeight[node.Name] = struct{}{}
+					nodesAtHeight[node.Name] = result.SyncInfo.LatestBlockHeight
 
 					// if not all of the nodes that we
 					// have clients for have reached the
