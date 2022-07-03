@@ -400,7 +400,7 @@ Example:
 Tendermint's security model relies on the use of evidences of misbehavior. An evidence is an irrefutable proof of
 malicious behavior by a network participant. It is the responsibility of Tendermint
 to detect such malicious behavior. When malicious behavior is detected, Tendermint
-will gossip evidence of the behavior to other nodes and commit the evidence to
+will gossip evidences of misbehavior to other nodes and commit the evidences to
 the chain once it is verified by all validators. This evidence will then be
 passed on to the Application through ABCI++. It is the responsibility of the
 Application to handle the evidence and exercise punishment.
