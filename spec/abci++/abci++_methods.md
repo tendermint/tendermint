@@ -516,7 +516,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 5. If Tendermint should prevote for the proposed block:
     1. Tendermint calls `RequestProcessProposal` with the block. The call is synchronous.
     2. The Application checks/processes the proposed block, which is read-only, and returns
-       _accept_ or _reject_ in `ResponseProcessProposal.status`.
+       `ACCEPT` or `REJECT` in the `ResponseProcessProposal.status` field.
        * The Application, depending on its needs, may call `ResponseProcessProposal`
          * either after it has completely processed the block (immediate execution),
          * or after doing some basic checks, and process the block asynchronously. In this case the
