@@ -139,7 +139,7 @@ for details on the possible call sequences of these methods.
 ### State-sync methods
 
 State sync allows new nodes to rapidly bootstrap by discovering, fetching, and applying
-state machine snapshots instead of replaying historical blocks. For more details, see the
+state machine (application) snapshots instead of replaying historical blocks. For more details, see the
 [state sync section](../p2p/messages/state-sync.md).
 
 New nodes will discover and request snapshots from other nodes in the P2P network.
