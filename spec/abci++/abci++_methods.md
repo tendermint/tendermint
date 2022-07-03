@@ -643,7 +643,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
     | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                              | 3            |
     | hash                 | bytes                                           | The block's hash.                                                                  | 4            |
     | height               | int64                                           | The height of the finalized block.                                                        | 5            |
-    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp included in the finalized block.                                                | 6            |
+    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the finalized block.                                                | 6            |
     | next_validators_hash | bytes                                           | Merkle root of the next validator set.                                                    | 7            |
     | proposer_address     | bytes                                           | [Address](../core/data_structures.md#address) of the validator that created the proposal. | 8            |
 
