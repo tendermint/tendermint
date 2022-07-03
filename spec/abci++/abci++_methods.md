@@ -457,7 +457,7 @@ proposal and will not call `RequestPrepareProposal`.
     |----------------------|-------------------------------------------------|-------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                                  | List of transactions of the proposed block.                                               | 1            |
     | proposed_last_commit | [CommitInfo](#commitinfo)                       | Info about the last commit, obtained from the information in the proposed block.          | 2            |
-    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that acted incorrectly.                              | 3            |
+    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                              | 3            |
     | hash                 | bytes                                           | The block header's hash of the proposed block.                                            | 4            |
     | height               | int64                                           | The height of the proposed block.                                                         | 5            |
     | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp included in the proposed block.                                                 | 6            |
