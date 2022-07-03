@@ -205,7 +205,7 @@ previous block, namely:
 With ABCI++, an Application may decide to keep using the next-block execution model, by doing all
 its processing in `FinalizeBlock`. Notice, however, that the new methods introduced, `PrepareProposal` and
 `ProcessProposal` disclose the entire proposed block to the Application, allowing for its immediate
-exectution. An Application implementing immediate exectution may additionally wish to store
+exectution. An Application implementing immediate execution may additionally wish to store
 certain data resulting from the block's execution in the same block that has just been executed.
 This brings about a new execution model, called *same-block execution*. An Application
 implementing this execution model, upon receiving a raw proposal via `RequestPrepareProposal`
