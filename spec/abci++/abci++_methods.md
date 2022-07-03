@@ -524,7 +524,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
            afterwards.
     3. If the returned value is
          * `ACCEPT`: Tendermint prevotes on this proposal for round _r_, height _h_.
-         * _reject_, Tendermint prevotes `nil`.
+         * `REJECT`: Tendermint prevotes `nil`.
 
 ### ExtendVote
 
