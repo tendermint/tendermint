@@ -460,7 +460,7 @@ proposal and will not call `RequestPrepareProposal`.
     | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                              | 3            |
     | hash                 | bytes                                           | The hash of the proposed block.                                            | 4            |
     | height               | int64                                           | The height of the proposed block.                                                         | 5            |
-    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp included in the proposed block.                                                 | 6            |
+    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the proposed block.                                                 | 6            |
     | next_validators_hash | bytes                                           | Merkle root of the next validator set.                                                    | 7            |
     | proposer_address     | bytes                                           | [Address](../core/data_structures.md#address) of the validator that created the proposal. | 8            |
 
