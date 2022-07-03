@@ -397,7 +397,7 @@ Example:
 
 [&uparrow; Back to Outline](#outline)
 
-Tendermint's security model relies on the use of "evidence". Evidence is proof of
+Tendermint's security model relies on the use of evidences of misbehavior. An evidence is an irrefutable proof of
 malicious behavior by a network participant. It is the responsibility of Tendermint
 to detect such malicious behavior. When malicious behavior is detected, Tendermint
 will gossip evidence of the behavior to other nodes and commit the evidence to
