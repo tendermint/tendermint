@@ -337,7 +337,7 @@ title: Methods
     * The `height`, `time`, and `proposer_address` values match the values from the header of the
       proposed block.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint
-      considers to be a good block proposal, called _raw proposal_. The Application can modify this
+      retrieved from the mempool, called _raw proposal_. The Application can modify this
       set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
         * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx`
           be a transaction in `txs`:
