@@ -234,7 +234,7 @@ execution mode, however same-block execution mode *requires* immediate execution
 
 In the long term, the execution model will be set in a new boolean parameter
 *same_block* in `ConsensusParams`.
-It **must not** be changed once the blockchain has started unless the Application
+Once this parameter is introduced,  it **must not** be changed once the blockchain has started, unless the Application
 developers *really* know what they are doing.
 However, modifying `ConsensusParams` structure cannot be done lightly if we are to
 preserve blockchain compatibility. Therefore we need an interim solution until
