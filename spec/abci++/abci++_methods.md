@@ -413,7 +413,7 @@ title: Methods
 When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _p_ is the proposer,
 and _p_'s _validValue_ is `nil`:
 
-1. _p_'s Tendermint collects outstanding transactions from the mempool
+1. Tendermint collects outstanding transactions from _p_'s mempool
     * the transactions will be collected in order of priority
     * _p_'s Tendermint creates a block header.
 2. _p_'s Tendermint calls `RequestPrepareProposal` with the newly generated block, the local
