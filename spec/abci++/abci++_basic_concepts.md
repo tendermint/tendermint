@@ -458,7 +458,7 @@ it is already included.
 The `ExecTxResult` type delivers transactions from Tendermint to the Application.
 When Tendermint receives a `ResponseFinalizeBlock` containing an `ExecTxResult`
 with a non-zero `Code`, the response code is logged.
-The transaction was already included in a block, so the `Code` does not influence
+As the transaction was part of a decided block, the `Code` does not influence
 Tendermint consensus.
 
 ### `Query`
