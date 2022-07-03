@@ -11,15 +11,16 @@ This section describes what the Application can expect from Tendermint.
 
 The Tendermint consensus algorithm is designed to protect safety under any network conditions, as long as
 less than 1/3 of validators' voting power is byzantine. Most of the time, though, the network will behave
-synchronously and there will be no byzantine process. In these frequent, benign conditions:
+synchronously, no process will fall behind, and there will be no byzantine process. The following describes
+what will happen during a block height _h_ in these frequent, benign conditions:
 
-* Tendermint will decide in round 0;
+* Tendermint will decide in round 0, for height _h_;
 * `PrepareProposal` will be called exactly once at the proposer process of round 0, height _h_;
 * `ProcessProposal` will be called exactly once at all processes, and
   will return _accept_ in its `Response*`;
 * `ExtendVote` will be called exactly once at all processes;
-* `VerifyVoteExtension` will be called _n-1_ times at each validator process, where _n_ is the
-  number of validators, and will always return _accept_ in its `Response*`;
+* `VerifyVoteExtension` will be called exactly _n-1_ times at each validator process, where _n_ is
+  the number of validators, and will always return _accept_ in its `Response*`;
 * `FinalizeBlock` will be called exactly once at all processes, conveying the same prepared
   block that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for
   height _h_; and
@@ -202,21 +203,21 @@ to undergo any changes in their implementation.
 
 As for the new methods:
 
-* `PrepareProposal` must create a list of [TxRecord](./abci++_methods.md#txrecord) each containing a
-  transaction passed in `RequestPrepareProposal.txs`, in the same other. The field `action` must be set to `UNMODIFIED`
-  for all [TxRecord](./abci++_methods.md#txrecord) elements in the list.
+* `PrepareProposal` must create a list of [TxRecord](./abci++_methods.md#txrecord) each containing
+  a transaction passed in `RequestPrepareProposal.txs`, in the same other. The field `action` must
+  be set to `UNMODIFIED` for all [TxRecord](./abci++_methods.md#txrecord) elements in the list.
   The Application must check whether the size of all transactions exceeds the byte limit
-  (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the end of the list
-  until the total byte size is at or below the limit.
+  (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the
+  end of the list until the total byte size is at or below the limit.
 * `ProcessProposal` must set `ResponseProcessProposal.accept` to _true_ and return.
 * `ExtendVote` is to set `ResponseExtendVote.extension` to an empty byte array and return.
-* `VerifyVoteExtension` must set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is an empty byte array
-  and _false_ otherwise, then return.
-* `FinalizeBlock` is to coalesce the implementation of methods `BeginBlock`, `DeliverTx`, `EndBlock`, and `Commit`.
-  Legacy applications looking to reuse old code that implemented `DeliverTx` should wrap the legacy
-  `DeliverTx` logic in a loop that executes one transaction iteration per
+* `VerifyVoteExtension` must set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is
+  an empty byte array and _false_ otherwise, then return.
+* `FinalizeBlock` is to coalesce the implementation of methods `BeginBlock`, `DeliverTx`, and
+  `EndBlock`. Legacy applications looking to reuse old code that implemented `DeliverTx` should
+  wrap the legacy `DeliverTx` logic in a loop that executes one transaction iteration per
   transaction in `RequestFinalizeBlock.tx`.
 
-Finally, `Commit`, which is kept in ABCI++, no longer returns the `AppHash`. It is now up to `FinalizeBlock` to
-do so. Thus, a slight refactoring of the old `Commit` implementation will be needed to move the return of
-`AppHash` to `FinalizeBlock`.
+Finally, `Commit`, which is kept in ABCI++, no longer returns the `AppHash`. It is now up to
+`FinalizeBlock` to do so. Thus, a slight refactoring of the old `Commit` implementation will be
+needed to move the return of `AppHash` to `FinalizeBlock`.

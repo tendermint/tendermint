@@ -24,25 +24,27 @@ title: Overview and basic concepts
 
 [&uparrow; Back to Outline](#outline)
 
-With ABCI, the application can only act at one phase in consensus, immediately after a block has
-been decided (finalized). This restriction on the application prevents numerous features for the
-application, including many scalability improvements that are now better understood than when ABCI
-was first written. For example, many of the scalability proposals can be boiled down to "make the
-block proposers do work, so the network does not have to". This includes optimizations such as
-transaction level signature aggregation, state transition proofs, etc. Furthermore, many new
-security properties cannot be achieved in the current paradigm, as the application cannot enforce
-validators to do more than just finalize transactions. This includes features such as threshold
-cryptography, and guaranteed IBC connection attempts.
+The Application's main role is to execute blocks decided (a.k.a. finalized) by consensus. The
+decided blocks are the main consensus's ouput to the (replicated) Application. With ABCI, the
+application only interacts with consensus at *decision* time. This restricted mode of interaction
+prevents numerous features for the Application, including many scalability improvements that are
+now better understood than when ABCI was first written. For example, many ideas proposed to improve
+scalability can be boiled down to "make the block proposers do work, so the network does not have
+to". This includes optimizations such as transaction level signature aggregation, state transition
+proofs, etc. Furthermore, many new security properties cannot be achieved in the current paradigm,
+as the Application cannot require validators to do more than execute the transactions contained in
+finalized blocks. This includes features such as threshold cryptography, and guaranteed IBC
+connection attempts.
 
-ABCI++ overcomes these limitations by allowing the application to intervene at three key places of
-the block execution: (a) at the moment a proposal is need, (b) at the moment a proposal is
-received, and (c) at the moment a (precommit) vote is sent/received. The new interface allows
-block proposers to perform application-dependent work in a block through the `PrepareProposal`
-method (a); validators to perform application-dependent work and checks in a proposed block through
-the `ProcessProposal` method (b); and applications to require their validators do more than just
-validate blocks through the `ExtendVote` and `VerifyVoteExtension` methods (c). Furthermore,
-ABCI++ coalesces {`BeginBlock`, [`DeliverTx`], `EndBlock`} into `FinalizeBlock`, as a simplified,
-efficient way to deliver a decided block to the Application.
+ABCI++ addresses these limitations by allowing the application to intervene at three key places of
+consensus execution: (a) at the moment a new proposal is to be created, (b) at the moment a
+proposal is to be validated, and (c) at the moment a (precommit) vote is sent/received. The new
+interface allows block proposers to perform application-dependent work in a block through the
+`PrepareProposal` method (a); validators to perform application-dependent work and checks in a
+proposed block through the `ProcessProposal` method (b); and applications to require their validators
+do more than just validate blocks through the `ExtendVote` and `VerifyVoteExtension` methods (c).
+Furthermore, ABCI++ coalesces {`BeginBlock`, [`DeliverTx`], `EndBlock`} into `FinalizeBlock`, as a
+simplified, efficient way to deliver a decided block to the Application.
 
 ## Method overview
 
@@ -52,36 +54,35 @@ Methods can be classified into four categories: *consensus*, *mempool*, *info*, 
 
 ### Consensus/block execution methods
 
-The first time a new blockchain is started, Tendermint calls
-`InitChain`. From then on, method `FinalizeBlock` is executed at the end of each
-block, resulting in an updated Application state.
-During the execution of an instance of consensus, which decides the block for a given height, before method `FinalizeBlock` is
-called, methods `PrepareProposal`, `ProcessProposal`, `ExtendVote`, and
-`VerifyVoteExtension` may be called several times.
-See [Tendermint's expected behavior](abci++_tmint_expected_behavior.md)
-for details on the possible call sequences of these methods.
+The first time a new blockchain is started, Tendermint calls `InitChain`. From then on, method
+`FinalizeBlock` is executed upon the decision of each block, resulting in an updated Application
+state. During the execution of an instance of consensus, which decides the block for a given
+height, and before method `FinalizeBlock` is called, methods `PrepareProposal`, `ProcessProposal`,
+`ExtendVote`, and `VerifyVoteExtension` may be called several times. See
+[Tendermint's expected behavior](abci++_tmint_expected_behavior.md) for details on the possible
+call sequences of these methods.
 
 - [**InitChain:**](./abci++_methods.md#initchain) This method initializes the blockchain.
   Tendermint calls it once upon genesis.
 
 - [**PrepareProposal:**](./abci++_methods.md#prepareproposal) It allows the block
   proposer to perform application-dependent work in a block before proposing it.
-  This enables, for instance, batch optimizations to a block, which has been empirically demonstrated
-  to be a key component for scaling. Method `PrepareProposal` is called every time Tendermint is
-  about to broadcast a Proposal message, but no previous proposal has been locked at the Tendermint level.
-  Tendermint gathers outstanding transactions from the mempool, generates a block header, and uses
-  them to create a block to propose. Then, it calls `RequestPrepareProposal`
-  with the newly created proposal, called *raw proposal*. The Application can
-  make changes to the raw proposal, such as modifying transactions, and returns
-  the (potentially) modified proposal, called *prepared proposal* in the
-  `ResponsePrepareProposal` call. The logic modifying the raw proposal can be non-deterministic.
+  This enables, for instance, batch optimizations to a block, which has been empirically
+  demonstrated to be a key component for improved performance. Method `PrepareProposal` is called
+  every time Tendermint is about to broadcast a Proposal message, but no previous proposal has
+  been locked at the Tendermint level. Tendermint gathers outstanding transactions from the
+  mempool, generates a block header, and uses them to create a block to propose. Then, it calls
+  `RequestPrepareProposal` with the newly created proposal, called *raw proposal*. The Application
+  can make changes to the raw proposal, such as modifying transactions, and returns the
+  (potentially) modified proposal, called *prepared proposal* in the `ResponsePrepareProposal`
+  call. The logic modifying the raw proposal can be non-deterministic.
 
 - [**ProcessProposal:**](./abci++_methods.md#processproposal) It allows a validator to
   perform application-dependent work in a proposed block. This enables features such as immediate
-  block execution, and allowing validators to reject invalid blocks.
-  Tendermint calls it when it receives a proposal and it is not locked on a block. The Application
-  cannot modify the proposal at this point but can reject it if it is invalid.
-  If that is the case, Tendermint will prevote `nil` on the proposal, which has
+  block execution, and allows the Application to reject invalid blocks.
+  Tendermint calls it when it receives a proposal and the Tendermint algorithms has not locked on a
+  value. The Application cannot modify the proposal at this point but can reject it if it is
+  invalid. If that is the case, Tendermint will prevote `nil` on the proposal, which has
   strong liveness implications for Tendermint. As a general rule, the Application
   SHOULD accept a prepared proposal passed via `ProcessProposal`, even if a part of
   the proposal is invalid (e.g., an invalid transaction); the Application can
@@ -90,12 +91,12 @@ for details on the possible call sequences of these methods.
 - [**ExtendVote:**](./abci++_methods.md#extendvote) It allows applications to force their
   validators to do more than just validate within consensus. `ExtendVote` allows applications to
   include non-deterministic data, opaque to Tendermint, to precommit messages (the final round of
-  voting). The data, called *vote extension*, will also be made available to the
-  application in the next height, along with the vote it is extending, in the rounds
-  where the local process is the proposer.
-  If the Application does not have vote extension information to provide, it returns a 0-length byte
-  array as its vote extension. Tendermint calls `ExtendVote` when it is about to send a non-`nil`
-  precommit message.
+  voting). The data, called *vote extension*, will be broadcast and received together with the
+  vote it is extending, and will be made available to the Application in the next height,
+  in the rounds where the local process is the proposer.
+  Tendermint calls `ExtendVote` when it is about to send a non-`nil` precommit message.
+  If the Application does not have vote extension information to provide at that time, it returns
+  a 0-length byte array as its vote extension.
 
 - [**VerifyVoteExtension:**](./abci++_methods.md#verifyvoteextension) It allows
   validators to validate the vote extension data attached to a precommit message. If the validation
@@ -108,32 +109,35 @@ for details on the possible call sequences of these methods.
   accept it in `ResponseVerifyVoteExtension` and ignore it in its own logic. Tendermint calls it when
   a process receives a precommit message with a (possibly empty) vote extension.
 
-- [**FinalizeBlock:**](./abci++_methods.md#finalizeblock) It delivers a decided block to
-  the Application. The Application must execute the transactions in the block in order and update its
-  state accordingly. Cryptographic commitments to the block and transaction results, returned via the
-  corresponding parameters in `ResponseFinalizeBlock`, are included in the header of the next block.
-  Tendermint calls it when a new block is decided.
+- [**FinalizeBlock:**](./abci++_methods.md#finalizeblock) It delivers a decided block to the
+  Application. The Application must execute the transactions in the block deterministically and
+  update its state accordingly. Cryptographic commitments to the block and transaction results,
+  returned via the corresponding parameters in `ResponseFinalizeBlock`, are included in the header
+  of the next block. Tendermint calls it when a new block is decided.
 
 - [**Commit:**](./abci++_methods.md#commit) Instructs the Application to persist its
   state. It is a fundamental part of Tendermint's crash-recovery mechanism that ensures the
   synchronization between Tendermint and the Applicatin upon recovery. Tendermint calls it just after
-  having persisted the data returned by `ResponseFinalizeBlock`.
+  having persisted the data returned by `ResponseFinalizeBlock`. The Application can now discard
+  any state or data except the one resulting from executing the transactions in the decided block.
 
 ### Mempool methods
 
 - [**CheckTx:**](./abci++_methods.md#checktx) This method allows the Application to validate
-  transactions against its current state, e.g., checking signatures and account balances. If a
-  transaction passes the validation, then Tendermint adds it to the mempool; if not, the transaction is discarded.
-  otherwise. Tendermint calls it when it receives a new transaction either coming from an external
-  user or another node. Furthermore, Tendermint can be configured to call re-`CheckTx` on all
-  outstanding transactions in the mempool after deciding a block (i.e., after `FinalizeBlock`).
+  transactions. Validation can be stateless (e.g., checking signatures ) or stateful
+  (e.g., account balances). The type of validation performed is up to the application. If a
+  transaction passes the validation, then Tendermint adds it to the mempool; otherwise the
+  transaction is discarded.
+  Tendermint calls it when it receives a new transaction either coming from an external
+  user (e.g., a client) or another node. Furthermore, Tendermint can be configured to call
+  re-`CheckTx` on all outstanding transactions in the mempool after calling `Commit`for a block.
 
 ### Info methods
 
 - [**Info:**](./abci++_methods.md#info) Used to sync Tendermint with the Application during a
-  handshake that happens on startup.
+  handshake that happens upon recovery, or on startup when state-sync is used.
 
-- [**Query:**](./abci++_methods.md#query) Clients can use this method to query the Application for
+- [**Query:**](./abci++_methods.md#query) This method can be used to query the Application for
   information about the application state.
 
 ### State-sync methods
@@ -171,11 +175,11 @@ In summary:
 - [**ListSnapshots:**](./abci++_methods.md#listsnapshots) Used by nodes to discover available
   snapshots on peers.
 
-- [**LoadSnapshotChunk:**](./abci++_methods.md#loadsnapshotchunk) Used by Tendermint to retrieve
-  snapshot chunks from the Application to send to peers.
-
 - [**OfferSnapshot:**](./abci++_methods.md#offersnapshot) When a node receives a snapshot from a
   peer, Tendermint uses this method to offer the snapshot to the Application.
+
+- [**LoadSnapshotChunk:**](./abci++_methods.md#loadsnapshotchunk) Used by Tendermint to retrieve
+  snapshot chunks from the Application to send to peers.
 
 - [**ApplySnapshotChunk:**](./abci++_methods.md#applysnapshotchunk) Used by Tendermint to hand
   snapshot chunks to the Application.
@@ -202,16 +206,16 @@ previous block, namely:
 - the consensus parameter updates
 - the validator updates
 
-With ABCI++, an Application may decide to keep using the next-block execution model, by doing all
-its processing in `FinalizeBlock`. Notice, however, that the new methods introduced, `PrepareProposal` and
-`ProcessProposal` disclose the entire proposed block to the Application, allowing for its immediate
-exectution. An Application implementing immediate execution may additionally wish to store
-certain data resulting from the block's execution in the same block that has just been executed.
-This brings about a new execution model, called *same-block execution*. An Application
-implementing this execution model, upon receiving a raw proposal via `RequestPrepareProposal`
-and potentially modifying its transaction list, fully executes the resulting prepared proposal
-as though it was the decided block (immediate execution), and
-the results of the block execution are used as follows:
+With ABCI++, an Application may be configured to keep using the next-block execution model, by
+executing the decided block in `FinalizeBlock`. However, the new methods introduced &mdash;
+`PrepareProposal` and `ProcessProposal` &mdash; disclose the entire proposed block to the
+Application, allowing for its immediate exectution. An Application implementing immediate execution
+may additionally wish to store certain data resulting from the block's execution in the same block
+that has just been executed. This brings about a new execution model, called
+*same-block execution*. An Application implementing this execution model, upon receiving a raw
+proposal via `RequestPrepareProposal` and potentially modifying its transaction list, fully
+executes the resulting prepared proposal as though it was the decided block (immediate execution),
+and the results of the block execution are used as follows:
 
 - The block execution may generate a set of events. The Application should store these events and
   return them back to Tendermint during the `FinalizeBlock` call if the block is finally decided.
@@ -227,15 +231,14 @@ the results of the block execution are used as follows:
   execution. They come into force in height H+1 (as opposed to the H+2 rule
   in next-block execution model).
 
-If the Application decides to keep the next-block execution model, it will not
+If the Application is configured to keep the next-block execution model, it will not
 provide any data in `ResponsePrepareProposal`, other than a potentially modified
-transaction list. The Application may choose to perform immediate execution even in next-block
-execution mode, however same-block execution mode *requires* immediate execution.
+transaction list. The Application may nevertheless choose to perform immediate execution even in
+next-block execution mode, however same-block execution mode *requires* immediate execution.
 
-In the long term, the execution model will be set in a new boolean parameter
-*same_block* in `ConsensusParams`.
-Once this parameter is introduced,  it **must not** be changed once the blockchain has started, unless the Application
-developers *really* know what they are doing.
+The long term plan is for the execution model to be set in a new boolean parameter *same_block* in
+`ConsensusParams`. Once this parameter is introduced,  it **must not** be changed once the
+blockchain has started, unless the Application developers *really* know what they are doing.
 However, modifying `ConsensusParams` structure cannot be done lightly if we are to
 preserve blockchain compatibility. Therefore we need an interim solution until
 soft upgrades are specified and implemented in Tendermint. This somewhat *unsafe*
@@ -244,9 +247,9 @@ fills the above mentioned fields in `ResponsePrepareProposal`.
 
 ## Tendermint proposal timeout
 
-Immediate execution requires the Application to fully execute the prepared block at
-`PrepareProposal` time. This execution is synchronous, so Tendermint cannot make progress until
-the Application returns from `PrepareProposal`.
+Immediate execution requires the Application to fully execute the prepared block
+before returning from `PrepareProposal`, this means that Tendermint cannot make progress
+during the block execution.
 This stands on Tendermint's critical path: if the Application takes a long time
 executing the block, the default value of *TimeoutPropose* might not be sufficient
 to accommodate the long block execution time and non-proposer nodes might time
@@ -309,10 +312,9 @@ Sources of non-determinism in applications may include:
 
 See [#56](https://github.com/tendermint/abci/issues/56) for the original discussion.
 
-Note that some methods (`Query, CheckTx, FinalizeBlock`) return
-explicitly non-deterministic data in the form of `Info` and `Log` fields. The `Log` is
-intended for the literal output from the Application's logger, while the
-`Info` is any additional info that should be returned. These are the only fields
+Note that some methods (`Query, CheckTx, FinalizeBlock`) return non-deterministic data in the form
+of `Info` and `Log` fields. The `Log` is intended for the literal output from the Application's
+logger, while the `Info` is any additional info that should be returned. These are the only fields
 that are not included in block header computations, so we don't need agreement
 on them. All other fields in the `Response*` must be strictly deterministic.
 
@@ -397,13 +399,17 @@ Example:
 
 [&uparrow; Back to Outline](#outline)
 
-Tendermint's security model relies on the use of evidences of misbehavior. An evidence is an irrefutable proof of
-malicious behavior by a network participant. It is the responsibility of Tendermint
-to detect such malicious behavior. When malicious behavior is detected, Tendermint
+Tendermint's security model relies on the use of evidences of misbehavior. An evidence is an
+irrefutable proof of malicious behavior by a network participant. It is the responsibility of
+Tendermint to detect such malicious behavior. When malicious behavior is detected, Tendermint
 will gossip evidences of misbehavior to other nodes and commit the evidences to
-the chain once they are verified by a subset validators. These evidences will then be
+the chain once they are verified by a subset of validators. These evidences will then be
 passed on to the Application through ABCI++. It is the responsibility of the
 Application to handle evidence of misbehavior and exercise punishment.
+
+There are two forms of evidence: Duplicate Vote and Light Client Attack. More
+information can be found in either [data structures](../core/data_structures.md)
+or [accountability](../light-client/accountability/).
 
 EvidenceType has the following protobuf format:
 
@@ -414,10 +420,6 @@ enum EvidenceType {
   LIGHT_CLIENT_ATTACK   = 2;
 }
 ```
-
-There are two forms of evidence: Duplicate Vote and Light Client Attack. More
-information can be found in either [data structures](../core/data_structures.md)
-or [accountability](../light-client/accountability/).
 
 ## Errors
 
@@ -455,11 +457,10 @@ it is already included.
 
 ### `ExecTxResult` (as part of `FinalizeBlock`)
 
-The `ExecTxResult` type delivers transactions from Tendermint to the Application.
-When Tendermint receives a `ResponseFinalizeBlock` containing an `ExecTxResult`
-with a non-zero `Code`, the response code is logged.
-As the transaction was part of a decided block, the `Code` does not influence
-Tendermint consensus.
+The `ExecTxResult` type delivers transaction results from the Application to Tendermint. When
+Tendermint receives a `ResponseFinalizeBlock` containing an `ExecTxResult` with a non-zero `Code`,
+the response code is logged. Past `Code` values can be queried by clients. As the transaction was
+part of a decided block, the `Code` does not influence Tendermint consensus.
 
 ### `Query`
 

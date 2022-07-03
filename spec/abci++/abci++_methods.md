@@ -96,7 +96,7 @@ title: Methods
     | Name   | Type   | Description                                                                                                                                                                                                                                                                            | Field Number |
     |--------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
     | data   | bytes  | Raw query bytes. Can be used with or in lieu of Path.                                                                                                                                                                                                                                  | 1            |
-    | path   | string | Path field of the request URI. Can be used with or in lieu of `data`. Apps MUST interpret `/store` as a query by key on the underlying store. The key SHOULD be specified in the `data` field. Apps SHOULD allow queries over specific types like `/accounts/...` or `/votes/...` | 2            |
+    | path   | string | Path field of the request URI. Can be used with or in lieu of `data`. Apps MUST interpret `/store` as a query by key on the underlying store. The key SHOULD be specified in the `data` field. Apps SHOULD allow queries over specific types like `/accounts/...` or `/votes/...`      | 2            |
     | height | int64  | The block height for which you want the query (default=0 returns data for the latest committed block). Note that this is the height of the block containing the application's Merkle root hash, which represents the state as it was after committing the block at Height-1            | 3            |
     | prove  | bool   | Return Merkle proof with response if possible                                                                                                                                                                                                                                          | 4            |
 
@@ -312,7 +312,7 @@ title: Methods
     | max_tx_bytes         | int64                                           | Currently configured maximum size in bytes taken by the modified transactions.                | 1            |
     | txs                  | repeated bytes                                  | Preliminary list of transactions that have been picked as part of the block to propose.       | 2            |
     | local_last_commit    | [ExtendedCommitInfo](#extendedcommitinfo)       | Info about the last commit, obtained locally from Tendermint's data structures.               | 3            |
-    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                                  | 4            |
+    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                                         | 4            |
     | height               | int64                                           | The height of the block that will be proposed.                                                | 5            |
     | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the block that that will be proposed.                                            | 6            |
     | next_validators_hash | bytes                                           | Merkle root of the next validator set.                                                        | 7            |
@@ -326,7 +326,7 @@ title: Methods
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
     | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions            | 4            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                              | 6            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to gas, size, and other consensus-related parameters.                               | 6            |
 
 * **Usage**:
     * `RequestPrepareProposal`'s parameters `txs`, `misbehavior`, `height`, `time`,
@@ -339,8 +339,8 @@ title: Methods
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint
       retrieved from the mempool, called _raw proposal_. The Application can modify this
       set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
-        * The Application _can_ reorder, remove or add transactions to the raw proposal. Let `tx`
-          be a transaction in `txs`:
+        * The Application _can_ modify the raw proposal: it can reorder, remove or add transactions.
+          Let `tx` be a transaction in `txs`:
             * If the Application considers that `tx` should not be proposed in this block, e.g.,
               there are other transactions with higher priority, then it should not include it in
               `tx_records`. In this case, Tendermint will not remove `tx` from the mempool. The
@@ -357,18 +357,20 @@ title: Methods
           > Consider the following example: the Application transforms a client-submitted
             transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint
             to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what
-            happened to `t1`, it will discover that `t1` is not in the mempool nor in a committed
-            block, getting the wrong idea that `t1` did not make it into a block. Note that `t2`
-            _will be_ in a committed block, but unless the Application tracks this information, no
-            component will be aware of it. Thus, if the Application wants traceability, it is its
-            responsability to support it. For instance, the Application could attach to a
-            transformed transaction a list with the hashes of the transactions it derives from.
+            happened to `t1`, it will discover that `t1` is neither in the mempool nor in a
+            committed block, getting the wrong idea that `t1` did not make it into a block. Note
+            that `t2` _will be_ in a committed block, but unless the Application tracks this
+            information, no component will be aware of it. Thus, if the Application wants
+            traceability, it is its responsability to support it. For instance, the Application
+            could attach to a transformed transaction a list with the hashes of the transactions it
+            derives from.
     * Tendermint MAY include a list of transactions in `RequestPrepareProposal.txs` whose total
       size in bytes exceeds `RequestPrepareProposal.max_tx_bytes`.
       Therefore, if the size of `RequestPrepareProposal.txs` is greater than
-      `RequestPrepareProposal.max_tx_bytes`, the Application MUST make sure that the
-      `RequestPrepareProposal.max_tx_bytes` limit is respected by those transaction records
-      returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or `ADDED`.
+      `RequestPrepareProposal.max_tx_bytes`, the Application MUST remove transactions to ensure
+      that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those transaction
+      records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or
+      `ADDED`.
     * In same-block execution mode, the Application must provide values for
       `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`,
       `ResponsePrepareProposal.validator_updates`, and
@@ -432,10 +434,10 @@ and _p_'s _validValue_ is `nil`:
       `ResponsePrepareProposal.consensus_param_updates`.
     * in both modes, the Application can manipulate transactions:
         * leave transactions untouched - `TxAction = UNMODIFIED`
-        * add new transactions directly to the proposal - `TxAction = ADDED`
+        * add new transactions (not present initially) to the proposal - `TxAction = ADDED`
         * remove (invalid) transactions from the proposal and from the mempool - `TxAction = REMOVED`
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
-          Application removes the transaction from the list
+          Application does not include the transaction in `ResponsePrepareProposal.tx_records`
         * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by
           `TxAction = REMOVED`. As explained above, this compromises client traceability, unless
           it is implemented at the Application level.
@@ -457,10 +459,10 @@ proposal and will not call `RequestPrepareProposal`.
     |----------------------|-------------------------------------------------|-------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                                  | List of transactions of the proposed block.                                               | 1            |
     | proposed_last_commit | [CommitInfo](#commitinfo)                       | Info about the last commit, obtained from the information in the proposed block.          | 2            |
-    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                              | 3            |
-    | hash                 | bytes                                           | The hash of the proposed block.                                            | 4            |
+    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                                     | 3            |
+    | hash                 | bytes                                           | The hash of the proposed block.                                                           | 4            |
     | height               | int64                                           | The height of the proposed block.                                                         | 5            |
-    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the proposed block.                                                 | 6            |
+    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the proposed block.                                                          | 6            |
     | next_validators_hash | bytes                                           | Merkle root of the next validator set.                                                    | 7            |
     | proposer_address     | bytes                                           | [Address](../core/data_structures.md#address) of the validator that created the proposal. | 8            |
 
@@ -472,7 +474,7 @@ proposal and will not call `RequestPrepareProposal`.
     | app_hash                | bytes                                            | The Merkle root hash of the application state.                                    | 2            |
     | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions. | 3            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to consensus-critical gas, size, and other parameters.                    | 5            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to gas, size, and other consensus-related parameters.                     | 5            |
 
 * **Usage**:
     * Contains all information on the proposed block needed to fully execute it.
@@ -512,7 +514,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
    _q_, _p_'s Tendermint verifies the block header.
 4. Upon reception of Proposal message, along with all the block parts, for round _r_, height _h_
    from _q_, _p_'s Tendermint follows its algorithm to check whether it should prevote for the
-   proposed block or for `nil`
+   proposed block, or `nil`.
 5. If Tendermint should prevote for the proposed block:
     1. Tendermint calls `RequestProcessProposal` with the block. The call is synchronous.
     2. The Application checks/processes the proposed block, which is read-only, and returns
@@ -585,7 +587,7 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
     | Name              | Type  | Description                                                                               | Field Number |
     |-------------------|-------|-------------------------------------------------------------------------------------------|--------------|
-    | hash              | bytes | The hash of the proposed block that the vote extension refers to.                  | 1            |
+    | hash              | bytes | The hash of the proposed block that the vote extension refers to.                         | 1            |
     | validator_address | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension. | 2            |
     | height            | int64 | Height of the block (for sanity check).                                                   | 3            |
     | vote_extension    | bytes | Application-specific information signed by Tendermint. Can have 0 length.                 | 4            |
@@ -625,10 +627,10 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 2. Else, _p_'s Tendermint calls `RequestVerifyVoteExtension`.
 3. The Application returns `ACCEPT` or `REJECT` via `ResponseVerifyVoteExtension.status`.
 4. If the Application returns
-   * _accept_, _p_'s Tendermint will keep the received vote, together with its corresponding
+   * `ACCEPT`, _p_'s Tendermint will keep the received vote, together with its corresponding
      vote extension in its internal data structures. It will be used to populate the [ExtendedCommitInfo](#extendedcommitinfo)
      structure in calls to `RequestPrepareProposal`, in rounds of height _h + 1_ where _p_ is the proposer.
-   * _reject_, _p_'s Tendermint will deem the Precommit message invalid and discard it.
+   * `REJECT`, _p_'s Tendermint will deem the Precommit message invalid and discard it.
 
 ### FinalizeBlock
 
@@ -640,10 +642,10 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
     |----------------------|-------------------------------------------------|-------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                                  | List of transactions committed as part of the block.                                      | 1            |
     | decided_last_commit  | [CommitInfo](#commitinfo)                       | Info about the last commit, obtained from the block that was just decided.                | 2            |
-    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                              | 3            |
-    | hash                 | bytes                                           | The block's hash.                                                                  | 4            |
+    | misbehavior          | repeated [Misbehavior](#misbehavior)            | List of information about validators that misbehaved.                                     | 3            |
+    | hash                 | bytes                                           | The block's hash.                                                                         | 4            |
     | height               | int64                                           | The height of the finalized block.                                                        | 5            |
-    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the finalized block.                                                | 6            |
+    | time                 | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the finalized block.                                                         | 6            |
     | next_validators_hash | bytes                                           | Merkle root of the next validator set.                                                    | 7            |
     | proposer_address     | bytes                                           | [Address](../core/data_structures.md#address) of the validator that created the proposal. | 8            |
 
@@ -651,10 +653,10 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 
     | Name                    | Type                                                        | Description                                                                      | Field Number |
     |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
-    | events                  | repeated [Event](abci++_basic_concepts.md#events) | Type & Key-Value events for indexing                                             | 1            |
+    | events                  | repeated [Event](abci++_basic_concepts.md#events)           | Type & Key-Value events for indexing                                             | 1            |
     | tx_results              | repeated [ExecTxResult](#exectxresult)                      | List of structures containing the data resulting from executing the transactions | 2            |
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to gas, size, and other consensus-related parameters.                    | 4            |
     | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |
 
 * **Usage**:
@@ -664,9 +666,10 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
     * The height and time values match the values from the header of the proposed block.
     * The Application can use `RequestFinalizeBlock.decided_last_commit` and `RequestFinalizeBlock.misbehavior`
       to determine rewards and punishments for the validators.
-    * The application must execute the transactions in full, in the order they appear in `RequestFinalizeBlock.txs`,
-      before returning control to Tendermint. Alternatively, it can commit the candidate state corresponding to the same block
-      previously executed via `PrepareProposal` or `ProcessProposal`.
+    * The Application executes the transactions in `RequestFinalizeBlock.txs` deterministically,
+      according to the rules set up by the Application, before returning control to Tendermint.
+      Alternatively, it can commit the candidate state corresponding to the same block previously
+      executed via `PrepareProposal` or `ProcessProposal`.
     * `ResponseFinalizeBlock.tx_results[i].Code == 0` only if the _i_-th transaction is fully valid.
     * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_hash`,
       `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`, and
@@ -718,16 +721,19 @@ When a node _p_ is in Tendermint consensus height _h_, and _p_ receives
 
 then _p_'s Tendermint decides block _v_ and finalizes consensus for height _h_ in the following way
 
-1. _p_'s Tendermint persists _v_ as decision for height _h_.
-2. _p_'s Tendermint locks the mempool -- no calls to `CheckTx` on new transactions.
-3. _p_'s Tendermint calls `RequestFinalizeBlock` with _id(v)_. The call is synchronous.
-4. _p_'s Application processes block _v_, received in a previous call to `RequestProcessProposal`.
-5. _p_'s Application calculates and returns the _AppHash_, along with an array of arrays of bytes representing the output of each of the transactions
-6. _p_'s Tendermint hashes the array of transaction outputs and stores it in _ResultHash_
-7. _p_'s Tendermint persists the transaction outputs, _AppHash_, and _ResultsHash_
-8. _p_'s Tendermint unlocks the mempool -- newly received transactions can now be checked.
-9. _p_'s Tendermint calls `RequestCommit` to instruct the Application to persist its state.
-10. _p_'s starts consensus for a new height _h+1_, round 0
+1. _p_'s Tendermint persists _v_ as the decision for height _h_.
+2. _p_'s Tendermint calls `RequestFinalizeBlock` with _v_'s data. The call is synchronous.
+3. _p_'s Application executes block _v_.
+4. _p_'s Application calculates and returns the _AppHash_, along with a list containing
+   the outputs of each of the transactions executed.
+5. _p_'s Tendermint hashes all the transaction outputs and stores it in _ResultHash_.
+6. _p_'s Tendermint persists the transaction outputs, _AppHash_, and _ResultsHash_.
+7. _p_'s Tendermint locks the mempool &mdash; no calls to `CheckTx` on new transactions.
+8. _p_'s Tendermint calls `RequestCommit` to instruct the Application to persist its state.
+9. _p_'s Tendermint, optionally, re-checks all outstanding transactions in the mempool
+   against the newly persisted Application state.
+10. _p_'s Tendermint unlocks the mempool &mdash; newly received transactions can now be checked.
+11. _p_'s starts consensus for height _h+1_, round 0
 
 ## Data Types existing in ABCI
 
@@ -770,8 +776,8 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | type               | [MisbehaviorType](#misbehaviortype)             | Type of the misbehavior. An enum of possible misbehaviors.                   | 1            |
     | validator          | [Validator](#validator)                         | The offending validator                                                      | 2            |
     | height             | int64                                           | Height when the offense occurred                                             | 3            |
-    | time               | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the block that was committed at height `Height` | 4            |
-    | total_voting_power | int64                                           | Total voting power of the validator set at height `Height`                   | 5            |
+    | time               | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the block that was committed at height `height`                 | 4            |
+    | total_voting_power | int64                                           | Total voting power of the validator set at height `height`                   | 5            |
 
 #### MisbehaviorType
 
@@ -892,7 +898,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | info       | string                                                      | Additional information. **May be non-deterministic.**                 | 4            |
     | gas_wanted | int64                                                       | Amount of gas requested for transaction.                              | 5            |
     | gas_used   | int64                                                       | Amount of gas consumed by transaction.                                | 6            |
-    | events     | repeated [Event](abci++_basic_concepts.md#events) | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
+    | events     | repeated [Event](abci++_basic_concepts.md#events)           | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
 ### TxAction
