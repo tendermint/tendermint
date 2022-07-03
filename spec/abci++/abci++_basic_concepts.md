@@ -401,7 +401,7 @@ Tendermint's security model relies on the use of evidences of misbehavior. An ev
 malicious behavior by a network participant. It is the responsibility of Tendermint
 to detect such malicious behavior. When malicious behavior is detected, Tendermint
 will gossip evidences of misbehavior to other nodes and commit the evidences to
-the chain once it is verified by all validators. This evidence will then be
+the chain once they are verified by a subset validators. These evidences will then be
 passed on to the Application through ABCI++. It is the responsibility of the
 Application to handle the evidence and exercise punishment.
 
