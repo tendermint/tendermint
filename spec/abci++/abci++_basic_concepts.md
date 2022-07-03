@@ -250,7 +250,7 @@ the Application returns from `PrepareProposal`.
 This stands on Tendermint's critical path: if the Application takes a long time
 executing the block, the default value of *TimeoutPropose* might not be sufficient
 to accommodate the long block execution time and non-proposer nodes might time
-out and prevote `nil`, thus starting a further round unnecessarily.
+out and prevote `nil`. The proposal, in this case, will probably be rejected and a new round will be necessary.
 
 The Application is the best suited to provide a value for *TimeoutPropose* so
 that the block execution time upon `PrepareProposal` fits well in the propose
