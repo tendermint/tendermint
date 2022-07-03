@@ -357,7 +357,7 @@ title: Methods
           > Consider the following example: the Application transforms a client-submitted
             transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint
             to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what
-            happened to `t1`, it will discover that `t1` is not in the mempool or in a committed
+            happened to `t1`, it will discover that `t1` is not in the mempool nor in a committed
             block, getting the wrong idea that `t1` did not make it into a block. Note that `t2`
             _will be_ in a committed block, but unless the Application tracks this information, no
             component will be aware of it. Thus, if the Application wants traceability, it is its
