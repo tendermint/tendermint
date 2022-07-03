@@ -183,7 +183,7 @@ In summary:
 ### Other methods
 
 Additionally, there is a [**Flush**](./abci++_methods.md#flush) method that is called on every connection,
-and an [**Echo**](./abci++_methods.md#echo) method that is just for debugging.
+and an [**Echo**](./abci++_methods.md#echo) method that is used for debugging.
 
 More details on managing state across connections can be found in the section on
 [Managing Application State](./abci%2B%2B_app_requirements.md#managing-the-application-state-and-related-topics)
