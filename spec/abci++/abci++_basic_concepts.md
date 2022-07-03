@@ -249,7 +249,7 @@ Immediate execution requires the Application to fully execute the prepared block
 the Application returns from `PrepareProposal`.
 This stands on Tendermint's critical path: if the Application takes a long time
 executing the block, the default value of *TimeoutPropose* might not be sufficient
-to accommodate the long block execution time and non-proposer processes might time
+to accommodate the long block execution time and non-proposer nodes might time
 out and prevote `nil`, thus starting a further round unnecessarily.
 
 The Application is the best suited to provide a value for *TimeoutPropose* so
