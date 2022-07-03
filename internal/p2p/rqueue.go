@@ -82,18 +82,25 @@ func (q *simpleQueue) run(ctx context.Context) {
 				sort.Sort(pq)
 				pq = pq[:q.maxSize]
 			}
-		case <-signal:
 			if len(pq) > 0 {
+				select {
+				case signal <- struct{}{}:
+				default:
+				}
+			}
+		case <-signal:
+		SEND:
+			for len(pq) > 0 {
 				select {
 				case <-ctx.Done():
 					return
 				case <-q.closeCh:
 					return
 				case q.output <- heap.Pop(&pq).(*pqEnvelope).envelope:
+					continue SEND
 				default:
-					continue
+					break SEND
 				}
-
 			}
 		}
 	}
