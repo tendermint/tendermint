@@ -20,6 +20,10 @@ type simpleQueue struct {
 }
 
 func newSimplePriorityQueue(ctx context.Context, size int, chDescs []*ChannelDescriptor) *simpleQueue {
+	if size%2 != 0 {
+		size++
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	q := &simpleQueue{
 		input:   make(chan Envelope, size*2),

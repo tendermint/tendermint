@@ -13,7 +13,7 @@ func TestSimpleQueue(t *testing.T) {
 	// set up a small queue with very small buffers so we can
 	// watch it shed load, then send a bunch of messages to the
 	// queue, most of which we'll watch it drop.
-	sq := newSimplePriorityQueue(ctx, 2, nil)
+	sq := newSimplePriorityQueue(ctx, 1, nil)
 	for i := 0; i < 100; i++ {
 		sq.enqueue() <- Envelope{From: "merlin"}
 	}

@@ -229,12 +229,7 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 		}, nil
 
 	case queueTypeSimplePriority:
-		return func(size int) queue {
-			if size%2 != 0 {
-				size++
-			}
-			return newSimplePriorityQueue(ctx, size, r.chDescs)
-		}, nil
+		return func(size int) queue { return newSimplePriorityQueue(ctx, size, r.chDescs) }, nil
 
 	default:
 		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
