@@ -623,7 +623,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
    discards the Precommit message as invalid.
    * a 0-length vote extension is valid as long as its accompanying signature is also valid.
 2. Else, _p_'s Tendermint calls `RequestVerifyVoteExtension`.
-3. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.status`.
+3. The Application returns `ACCEPT` or `REJECT` via `ResponseVerifyVoteExtension.status`.
 4. If the Application returns
    * _accept_, _p_'s Tendermint will keep the received vote, together with its corresponding
      vote extension in its internal data structures. It will be used to populate the [ExtendedCommitInfo](#extendedcommitinfo)
