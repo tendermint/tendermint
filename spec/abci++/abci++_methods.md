@@ -483,7 +483,7 @@ proposal and will not call `RequestPrepareProposal`.
     * `RequestProcessProposal` is also called at the proposer of a round. The reason for this is to
       inform the Application of the block header's hash, which cannot be done at `PrepareProposal`
       time.
-    * The height and timestamp values match the values from the header of the proposed block.
+    * The height and time values match the values from the header of the proposed block.
     * If `ResponseProcessProposal.status` is `REJECT`, Tendermint assumes the proposal received
       is not valid.
     * In same-block execution mode, the Application is required to fully execute the block and provide values
