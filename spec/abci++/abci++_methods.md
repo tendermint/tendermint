@@ -430,7 +430,7 @@ and _p_'s _validValue_ is `nil`:
       `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`,
       `ResponsePrepareProposal.validator_updates`, and
       `ResponsePrepareProposal.consensus_param_updates`.
-    * in both modes, the Application can manipulate transactions
+    * in both modes, the Application can manipulate transactions:
         * leave transactions untouched - `TxAction = UNMODIFIED`
         * add new transactions directly to the proposal - `TxAction = ADDED`
         * remove transactions (invalid) from the proposal and from the mempool - `TxAction = REMOVED`
