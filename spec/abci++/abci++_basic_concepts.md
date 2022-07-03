@@ -403,7 +403,7 @@ to detect such malicious behavior. When malicious behavior is detected, Tendermi
 will gossip evidences of misbehavior to other nodes and commit the evidences to
 the chain once they are verified by a subset validators. These evidences will then be
 passed on to the Application through ABCI++. It is the responsibility of the
-Application to handle the evidence and exercise punishment.
+Application to handle evidence of misbehavior and exercise punishment.
 
 EvidenceType has the following protobuf format:
 
