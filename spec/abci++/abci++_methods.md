@@ -523,7 +523,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
            Application will not be able to reject the block, or force prevote/precommit `nil`
            afterwards.
     3. If the returned value is
-         * _accept_, Tendermint prevotes on this proposal for round _r_, height _h_.
+         * `ACCEPT`: Tendermint prevotes on this proposal for round _r_, height _h_.
          * _reject_, Tendermint prevotes `nil`.
 
 ### ExtendVote
