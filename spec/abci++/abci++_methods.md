@@ -418,7 +418,7 @@ and _p_'s _validValue_ is `nil`:
     * _p_'s Tendermint creates a block header.
 2. _p_'s Tendermint calls `RequestPrepareProposal` with the newly generated block, the local
    commit of the previous height (with vote extensions), and any outstanding evidence of
-   misbahavior. The call is synchronous: Tendermint's execution will block until the Application
+   misbehavior. The call is synchronous: Tendermint's execution will block until the Application
    returns from the call.
 3. The Application uses the information received (transactions, commit info, misbehavior, time) to
     (potentially) modify the proposal.
