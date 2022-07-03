@@ -307,7 +307,7 @@ Sources of non-determinism in applications may include:
     - Filesystem
     - Network calls (eg. some external REST API service)
 
-See [#56](https://github.com/tendermint/abci/issues/56) for original discussion.
+See [#56](https://github.com/tendermint/abci/issues/56) for the original discussion.
 
 Note that some methods (`Query, CheckTx, FinalizeBlock`) return
 explicitly non-deterministic data in the form of `Info` and `Log` fields. The `Log` is
