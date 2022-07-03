@@ -512,7 +512,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
    _q_, _p_'s Tendermint verifies the block header.
 4. Upon reception of Proposal message, along with all the block parts, for round _r_, height _h_
    from _q_, _p_'s Tendermint follows its algorithm to check whether it should prevote for the
-   block just received, or `nil`
+   proposed block or for `nil`
 5. If Tendermint should prevote for the block just received
     1. Tendermint calls `RequestProcessProposal` with the block. The call is synchronous.
     2. The Application checks/processes the proposed block, which is read-only, and returns
