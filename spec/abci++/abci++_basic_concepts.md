@@ -203,7 +203,7 @@ previous block, namely:
 - the validator updates
 
 With ABCI++, an Application may decide to keep using the next-block execution model, by doing all
-its processing in `FinalizeBlock`; however the new methods introduced, `PrepareProposal` and
+its processing in `FinalizeBlock`. Notice, however, that the new methods introduced, `PrepareProposal` and
 `ProcessProposal` disclose the entire proposed block to the Application, allowing for its immediate
 exectution. An Application implementing immediate exectution may additionally wish to store
 certain data resulting from the block's execution in the same block that has just been executed.
