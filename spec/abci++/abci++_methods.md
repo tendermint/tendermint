@@ -770,7 +770,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | type               | [MisbehaviorType](#misbehaviortype)             | Type of the misbehavior. An enum of possible misbehaviors.                   | 1            |
     | validator          | [Validator](#validator)                         | The offending validator                                                      | 2            |
     | height             | int64                                           | Height when the offense occurred                                             | 3            |
-    | time               | [google.protobuf.Timestamp][protobuf-timestamp] | Time of the block that was committed at the height that the offense occurred | 4            |
+    | time               | [google.protobuf.Timestamp][protobuf-timestamp] | Timestamp of the block that was committed at height `Height` | 4            |
     | total_voting_power | int64                                           | Total voting power of the validator set at height `Height`                   | 5            |
 
 #### MisbehaviorType
