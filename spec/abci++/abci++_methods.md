@@ -585,7 +585,7 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
     | Name              | Type  | Description                                                                               | Field Number |
     |-------------------|-------|-------------------------------------------------------------------------------------------|--------------|
-    | hash              | bytes | The header hash of the proposed block that the vote extension refers to.                  | 1            |
+    | hash              | bytes | The hash of the proposed block that the vote extension refers to.                  | 1            |
     | validator_address | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension. | 2            |
     | height            | int64 | Height of the block (for sanity check).                                                   | 3            |
     | vote_extension    | bytes | Application-specific information signed by Tendermint. Can have 0 length.                 | 4            |
