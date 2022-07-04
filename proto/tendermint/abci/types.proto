@@ -133,7 +133,7 @@ message RequestPrepareProposal {
   // sent to the app for possible modifications.
   repeated bytes            txs                  = 2;
   ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
-  repeated Misbehavior      byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Misbehavior      misbehavior          = 4 [(gogoproto.nullable) = false];
   int64                     height               = 5;
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
