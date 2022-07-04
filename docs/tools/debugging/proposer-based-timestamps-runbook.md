@@ -213,4 +213,8 @@ documentation](https://hub.cosmos.network/main/governance/submitting.html#sendin
 
 If the application does not implement a way to update the consensus parameters
 programatically, then the application itself must be updated to do so. More information on updating
+<<<<<<< HEAD
 the consensus parameters via ABCI can be found in the [FinalizeBlock documentation](https://github.com/tendermint/tendermint/blob/v0.36.x/spec/abci++/abci++_methods_002_draft.md#finalizeblock).
+=======
+the consensus parameters via ABCI can be found in the [FinalizeBlock documentation](../../../spec/abci++/abci%2B%2B_methods.md#finalizeblock).
+>>>>>>> 331860c2a (Restore `Commit` to the ABCI++ spec, and other late modifications (#8796))

@@ -1,23 +1,24 @@
 ---
 order: 3
-title: Application Requirements
+title: Requirements for the Application
 ---
 
-# Application Requirements
+# Requirements for the Application
 
 ## Formal Requirements
 
 This section specifies what Tendermint expects from the Application. It is structured as a set
 of formal requirements that can be used for testing and verification of the Application's logic.
 
-Let *p* and *q* be two different correct proposers in rounds *r<sub>p</sub>* and *r<sub>q</sub>*
-respectively, in height *h*.
+Let *p* and *q* be two correct processes.
+Let *r<sub>p</sub>* (resp. *r<sub>q</sub>*) be a round of height *h* where *p* (resp. *q*) is the
+proposer.
 Let *s<sub>p,h-1</sub>* be *p*'s Application's state committed for height *h-1*.
 Let *v<sub>p</sub>* (resp. *v<sub>q</sub>*) be the block that *p*'s (resp. *q*'s) Tendermint passes
 on to the Application
 via `RequestPrepareProposal` as proposer of round *r<sub>p</sub>* (resp *r<sub>q</sub>*), height *h*,
 also known as the raw proposal.
-Let *v'<sub>p</sub>* (resp. *v'<sub>q</sub>*) the possibly modified block *p*'s (resp. *q*'s) Application
+Let *u<sub>p</sub>* (resp. *u<sub>q</sub>*) the possibly modified block *p*'s (resp. *q*'s) Application
 returns via `ResponsePrepareProposal` to Tendermint, also known as the prepared proposal.
 
 Process *p*'s prepared proposal can differ in two different rounds where *p* is the proposer.
@@ -49,6 +50,7 @@ same-block execution mode and *does not* provide values for
 Full execution of blocks at `PrepareProposal` time stands on Tendermint's critical path. Thus,
 Requirement 3 ensures the Application will set a value for `TimeoutPropose` such that the time it takes
 to fully execute blocks in `PrepareProposal` does not interfere with Tendermint's propose timer.
+Note that violation of Requirement 3 may just lead to further rounds, but will not compromise liveness.
 
 * Requirement 4 [`PrepareProposal`, tx-size]: When *p*'s Application calls `ResponsePrepareProposal`, the
   total size in bytes of the transactions returned does not exceed `RequestPrepareProposal.max_tx_bytes`.
@@ -62,7 +64,7 @@ transaction list returned by the application will never cause the resulting bloc
 limit.
 
 * Requirement 5 [`PrepareProposal`, `ProcessProposal`, coherence]: For any two correct processes *p* and *q*,
-  if *q*'s Tendermint calls `RequestProcessProposal` on *v'<sub>p</sub>*,
+  if *q*'s Tendermint calls `RequestProcessProposal` on *u<sub>p</sub>*,
   *q*'s Application returns Accept in `ResponseProcessProposal`.
 
 Requirement 5 makes sure that blocks proposed by correct processes *always* pass the correct receiving process's
@@ -75,14 +77,14 @@ serious consequences on Tendermint's liveness that this entails. Due to its crit
 target for extensive testing and automated verification.
 
 * Requirement 6 [`ProcessProposal`, determinism-1]: `ProcessProposal` is a (deterministic) function of the current
-  state and the block that is about to be applied. In other words, for any correct process *p*, and any arbitrary block *v'*,
-  if *p*'s Tendermint calls `RequestProcessProposal` on *v'* at height *h*,
-  then *p*'s Application's acceptance or rejection **exclusively** depends on *v'* and *s<sub>p,h-1</sub>*.
+  state and the block that is about to be applied. In other words, for any correct process *p*, and any arbitrary block *u*,
+  if *p*'s Tendermint calls `RequestProcessProposal` on *u* at height *h*,
+  then *p*'s Application's acceptance or rejection **exclusively** depends on *u* and *s<sub>p,h-1</sub>*.
 
 * Requirement 7 [`ProcessProposal`, determinism-2]: For any two correct processes *p* and *q*, and any arbitrary
-  block *v'*,
-  if *p*'s (resp. *q*'s) Tendermint calls `RequestProcessProposal` on *v'* at height *h*,
-  then *p*'s Application accepts *v'* if and only if *q*'s Application accepts *v'*.
+  block *u*,
+  if *p*'s (resp. *q*'s) Tendermint calls `RequestProcessProposal` on *u* at height *h*,
+  then *p*'s Application accepts *u* if and only if *q*'s Application accepts *u*.
   Note that this requirement follows from Requirement 6 and the Agreement property of consensus.
 
 Requirements 6 and 7 ensure that all correct processes will react in the same way to a proposed block, even
@@ -97,7 +99,7 @@ of `ProcessProposal`. As a general rule `ProcessProposal` SHOULD always accept t
 
 According to the Tendermint algorithm, a correct process can broadcast at most one precommit
 message in round *r*, height *h*.
-Since, as stated in the [Methods](./abci++_methods_002_draft.md#extendvote) section, `ResponseExtendVote`
+Since, as stated in the [Methods](./abci++_methods.md#extendvote) section, `ResponseExtendVote`
 is only called when Tendermint
 is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension
 in round *r*, height *h*.
@@ -106,9 +108,9 @@ Let *e<sup>r</sup><sub>p</sub>* be the vote extension that the Application of a 
 Let *w<sup>r</sup><sub>p</sub>* be the proposed block that *p*'s Tendermint passes to the Application via `RequestExtendVote`
 in round *r*, height *h*.
 
-* Requirement 8 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two correct processes *p* and *q*, if *q*
-receives *e<sup>r</sup><sub>p</sub>*
-  from *p* in height *h*, *q*'s Application returns Accept in `ResponseVerifyVoteExtension`.
+* Requirement 8 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two different correct
+  processes *p* and *q*, if *q* receives *e<sup>r</sup><sub>p</sub>* from *p* in height *h*, *q*'s
+  Application returns Accept in `ResponseVerifyVoteExtension`.
 
 Requirement 8 constrains the creation and handling of vote extensions in a similar way as Requirement 5
 constrains the creation and handling of proposed blocks.
@@ -170,8 +172,8 @@ Finally, notice that neither `PrepareProposal` nor `ExtendVote` have determinism
 requirements associated.
 Indeed, `PrepareProposal` is not required to be deterministic:
 
-* *v'<sub>p</sub>* may depend on *v<sub>p</sub>* and *s<sub>p,h-1</sub>*, but may also depend on other values or operations.
-* *v<sub>p</sub> = v<sub>q</sub> &#8655; v'<sub>p</sub> = v'<sub>q</sub>*.
+* *u<sub>p</sub>* may depend on *v<sub>p</sub>* and *s<sub>p,h-1</sub>*, but may also depend on other values or operations.
+* *v<sub>p</sub> = v<sub>q</sub> &#8655; u<sub>p</sub> = u<sub>q</sub>*.
 
 Likewise, `ExtendVote` can also be non-deterministic:
 
@@ -365,12 +367,12 @@ For more information, see Section [State Sync](#state-sync).
 ### Transaction Results
 
 The Application is expected to return a list of
-[`ExecTxResult`](./abci%2B%2B_methods_002_draft.md#exectxresult) in
-[`ResponseFinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock). The list of transaction
+[`ExecTxResult`](./abci%2B%2B_methods.md#exectxresult) in
+[`ResponseFinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock). The list of transaction
 results must respect the same order as the list of transactions delivered via
-[`RequestFinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock).
+[`RequestFinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock).
 This section discusses the fields inside this structure, along with the fields in
-[`ResponseCheckTx`](./abci%2B%2B_methods_002_draft.md#checktx),
+[`ResponseCheckTx`](./abci%2B%2B_methods.md#checktx),
 whose semantics are similar.
 
 The `Info` and `Log` fields are
@@ -471,12 +473,12 @@ events took place during their execution.
 ### Updating the Validator Set
 
 The application may set the validator set during
-[`InitChain`](./abci%2B%2B_methods_002_draft.md#initchain), and may update it during
-[`FinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock)
+[`InitChain`](./abci%2B%2B_methods.md#initchain), and may update it during
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
 (next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods_002_draft.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods_002_draft.md#processproposal)
+[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
 (same block execution mode). In all cases, a structure of type
-[`ValidatorUpdate`](./abci%2B%2B_methods_002_draft.md#validatorupdate) is returned.
+[`ValidatorUpdate`](./abci%2B%2B_methods.md#validatorupdate) is returned.
 
 The `InitChain` method, used to initialize the Application, can return a list of validators.
 If the list is empty, Tendermint will use the validators loaded from the genesis
@@ -510,7 +512,7 @@ Applications must ensure that
   `MaxTotalVotingPower = MaxInt64 / 8`
 
 Note the updates returned after processing the block at height `H` will only take effect
-at block `H+2` (see Section [Methods](./abci%2B%2B_methods_002_draft.md)).
+at block `H+2` (see Section [Methods](./abci%2B%2B_methods.md)).
 
 ### Consensus Parameters
 
@@ -518,10 +520,10 @@ at block `H+2` (see Section [Methods](./abci%2B%2B_methods_002_draft.md)).
 They enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in
-[`InitChain`](./abci%2B%2B_methods_002_draft.md#initchain), and updated in
-[`FinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock)
+[`InitChain`](./abci%2B%2B_methods.md#initchain), and updated in
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
 (next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods_002_draft.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods_002_draft.md#processproposal)
+[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
 (same block execution model).
 These parameters are deterministically set and/or updated by the Application, so
 all full nodes have the same value at a given height.
@@ -672,14 +674,33 @@ node has received all precommits for a block, forgoing the remaining commit time
 Setting this parameter to `false` (the default) causes Tendermint to wait
 for the full commit timeout configured in `TimeoutParams.Commit`.
 
+##### ABCIParams.VoteExtensionsEnableHeight
+
+This parameter is either 0 or a positive height at which vote extensions
+become mandatory. If the value is zero (which is the default), vote
+extensions are not required. Otherwise, at all heights greater than the
+configured height `H` vote extensions must be present (even if empty).
+When the configured height `H` is reached, `PrepareProposal` will not
+include vote extensions yet, but `ExtendVote` and `VerifyVoteExtension` will
+be called. Then, when reaching height `H+1`, `PrepareProposal` will
+include the vote extensions from height `H`. For all heights after `H`
+
+* vote extensions cannot be disabled,
+* they are mandatory: all precommit messages sent MUST have an extension
+  attached. Nevetheless, the application MAY provide 0-length
+  extensions.
+
+Must always be set to a future height. Once set to a value different from
+0, its value must not be changed.
+
 #### Updating Consensus Parameters
 
 The application may set the `ConsensusParams` during
-[`InitChain`](./abci%2B%2B_methods_002_draft.md#initchain),
+[`InitChain`](./abci%2B%2B_methods.md#initchain),
 and update them during
-[`FinalizeBlock`](./abci%2B%2B_methods_002_draft.md#finalizeblock)
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
 (next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods_002_draft.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods_002_draft.md#processproposal)
+[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
 (same block execution mode).
 If the `ConsensusParams` is empty, it will be ignored. Each field
 that is not empty will be applied in full. For instance, if updating the
@@ -885,7 +906,7 @@ truncated block history - users are advised to consider the broader network impl
 terms of block availability and auditability. This functionality may be added in the future.
 
 For details on the specific ABCI calls and types, see the
-[methods](abci%2B%2B_methods_002_draft.md) section.
+[methods](abci%2B%2B_methods.md) section.
 
 #### Taking Snapshots
 
