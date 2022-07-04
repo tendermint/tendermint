@@ -332,8 +332,8 @@ title: Methods
     * `RequestPrepareProposal`'s parameters `txs`, `misbehavior`, `height`, `time`,
       `next_validators_hash`, and `proposer_address` are the same as in `RequestProcessProposal`
       and `RequestFinalizeBlock`.
-    * `RequestPrepareProposal.local_last_commit` is a set of the precommit votes that allowed the decision of the previous
-     block, together with their corresponding vote extensions.
+    * `RequestPrepareProposal.local_last_commit` is a set of the precommit votes that allowed the
+      decision of the previous block, together with their corresponding vote extensions.
     * The `height`, `time`, and `proposer_address` values match the values from the header of the
       proposed block.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint
@@ -484,7 +484,8 @@ proposal and will not call `RequestPrepareProposal`.
           and the Application should be ready to discard it in case another block is decided.
     * `RequestProcessProposal` is also called at the proposer of a round. The reason for this is to
       inform the Application of the block header's hash, which cannot be done at `PrepareProposal`
-      time.
+      time. In this case, the call to `RequestProcessProposal` occurs right after the call to
+      `RequestPrepareProposal`.
     * The height and time values match the values from the header of the proposed block.
     * If `ResponseProcessProposal.status` is `REJECT`, Tendermint assumes the proposal received
       is not valid.
