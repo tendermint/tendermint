@@ -6,17 +6,17 @@ Each peer has an open p2p channel. The number of total requests in flight is lim
 
 Once a node receives messages via the p2p channel, they are propagated further via the reactor's go channels. This section contains details on each of the open communication channels, their capacity and when they get activated. 
 
-On startup, the reactor fires up four go routines:
+On startup, the reactor fires up four go routines and starts the block pool service:
 1. Process requests
 2. Pool routine
 3. Handle p2p channel messages
 4. Process peer updates
 
-The pool routine picks out blocks form the block pool and processes them. It also checks whether the node should switch to consensus.
+The process requests routine sends out requests and error messages to peers while all requests received through the p2p channel are processed within the `processBlockSyncCh` routine (routine 3 above).
 
-All messages that go through the p2p channel are processed within the `processBlockSyncCh` routine.
+The pool routine picks out blocks form the block pool and processes them. It also checks whether the node should switch to consensus (#2). 
 
-On peer update messages the reactor adds or removes the peer that has sent the update message.
+On peer update messages the reactor adds or removes the peer that has sent the update message (#4) .
 
 **Note** There is currently a check for whether we have a message from an empty peer. 
 
@@ -26,6 +26,7 @@ On peer update messages the reactor adds or removes the peer that has sent the u
 		return
 	}
  ``` 
+ The pool service launches the block requesters (processes requesting blocks from particular peers) and starts waiting for blocks to arrive from peers.
 
 ### Communication channels
 
