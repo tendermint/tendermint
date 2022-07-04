@@ -26,7 +26,7 @@ On peer update messages the reactor adds or removes the peer that has sent the u
 		return
 	}
  ``` 
- The pool service launches the block requesters (processes requesting blocks from particular peers) and starts waiting for blocks to arrive from peers.
+ The pool service launches the block requesters (processes requesting blocks from particular peers). Each requester requests a block for a given height. It picks the next available peer from the pool and requets a block at a given height from it. The block pool forwards these requests via internal channels to the reactor who is the only one doing actual p2p communication with other peers. 
 
 ### Communication channels
 
