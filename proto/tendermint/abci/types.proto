@@ -135,7 +135,10 @@ message RequestPrepareProposal {
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
 
-  bytes proposer_pro_tx_hash = 8;
+  // Dash's fields
+  uint32 core_chain_locked_height = 100;
+  bytes  proposer_pro_tx_hash     = 101; // original proposer of the block
+  uint64 proposed_app_version     = 102; // proposer's latest available app protocol version
 }
 
 message RequestProcessProposal {
@@ -176,7 +179,10 @@ message RequestFinalizeBlock {
   google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes                     next_validators_hash = 7;
 
-  bytes proposer_pro_tx_hash = 8;
+  // Dash's fields
+  uint32 core_chain_locked_height = 100;
+  bytes  proposer_pro_tx_hash     = 101; // original proposer of the block
+  uint64 proposed_app_version     = 102; // proposer's latest available app protocol version
 }
 
 //----------------------------------------
