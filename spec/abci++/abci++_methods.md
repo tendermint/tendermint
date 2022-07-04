@@ -323,10 +323,6 @@ title: Methods
     | Name                    | Type                                             | Description                                                                                 | Field Number |
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
     | tx_records              | repeated [TxRecord](#txrecord)                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
-    | app_hash                | bytes                                            | The Merkle root hash of the application state.                                              | 3            |
-    | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions            | 4            |
-    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                                 | 5            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to gas, size, and other consensus-related parameters.                               | 6            |
 
 * **Usage**:
     * `RequestPrepareProposal`'s parameters `txs`, `misbehavior`, `height`, `time`,
@@ -371,35 +367,9 @@ title: Methods
       that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those transaction
       records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or
       `ADDED`.
-    * In same-block execution mode, the Application must provide values for
-      `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`,
-      `ResponsePrepareProposal.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates`, as a result of fully executing the block.
-        * The values for `ResponsePrepareProposal.validator_updates`, or
-          `ResponsePrepareProposal.consensus_param_updates` may be empty. In this case, Tendermint will keep
-          the current values.
-        * `ResponsePrepareProposal.validator_updates`, triggered by block `H`, affect validation
-          for blocks `H+1`, and `H+2`. Heights following a validator update are affected in the following way:
-            * Height `H`: `NextValidatorsHash` includes the new `validator_updates` value.
-            * Height `H+1`: The validator set change takes effect and `ValidatorsHash` is updated.
-            * Height `H+2`: `*_last_commit` fields in `PrepareProposal`, `ProcessProposal`, and
-              `FinalizeBlock` now include the altered validator set.
-        * `ResponseFinalizeBlock.consensus_param_updates` returned for block `H` apply to the consensus
-          params for block `H+1` even if the change is agreed in block `H`.
-          For more information on the consensus parameters,
-          see the [consensus parameters](./abci%2B%2B_app_requirements.md#consensus-parameters)
-          section.
-        * It is the Application's responsibility to set the right value for _TimeoutPropose_ so that
-          the (synchronous) execution of the block does not cause other processes to prevote `nil` because
-          their propose timeout goes off.
-    * In next-block execution mode, Tendermint will ignore parameters
-      `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`,
-      `ResponsePrepareProposal.validator_updates`, and `ResponsePrepareProposal.consensus_param_updates`.
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
       `ResponseFinalizeBlock`.
-    * Likewise, in next-block execution mode, the Application must keep all responses to executing
-      transactions until it can call `ResponseFinalizeBlock`.
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
       In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
         * There is a duplicate transaction in the list.
@@ -424,15 +394,9 @@ and _p_'s _validValue_ is `nil`:
    returns from the call.
 3. The Application uses the information received (transactions, commit info, misbehavior, time) to
     (potentially) modify the proposal.
-    * in same-block execution mode, the Application fully executes the block and provides values
-      for `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`,
-      `ResponsePrepareProposal.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates`.
-    * in next-block execution mode, _p_'s Tendermint will ignore the values for
-      `ResponsePrepareProposal.app_hash`, `ResponsePrepareProposal.tx_results`,
-      `ResponsePrepareProposal.validator_updates`, and
-      `ResponsePrepareProposal.consensus_param_updates`.
-    * in both modes, the Application can manipulate transactions:
+    * the Application MAY fully execute the block and produce a candidate state &mdash; immediate
+      execution
+    * the Application can manipulate transactions:
         * leave transactions untouched - `TxAction = UNMODIFIED`
         * add new transactions (not present initially) to the proposal - `TxAction = ADDED`
         * remove (invalid) transactions from the proposal and from the mempool - `TxAction = REMOVED`
@@ -471,10 +435,6 @@ proposal and will not call `RequestPrepareProposal`.
     | Name                    | Type                                             | Description                                                                       | Field Number |
     |-------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------|--------------|
     | status                  | [ProposalStatus](#proposalstatus)                | `enum` that signals if the application finds the proposal valid.                  | 1            |
-    | app_hash                | bytes                                            | The Merkle root hash of the application state.                                    | 2            |
-    | tx_results              | repeated [ExecTxResult](#exectxresult)           | List of structures containing the data resulting from executing the transactions. | 3            |
-    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)     | Changes to validator set (set voting power to 0 to remove).                       | 4            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)              | Changes to gas, size, and other consensus-related parameters.                     | 5            |
 
 * **Usage**:
     * Contains all information on the proposed block needed to fully execute it.
@@ -489,15 +449,7 @@ proposal and will not call `RequestPrepareProposal`.
     * The height and time values match the values from the header of the proposed block.
     * If `ResponseProcessProposal.status` is `REJECT`, Tendermint assumes the proposal received
       is not valid.
-    * In same-block execution mode, the Application is required to fully execute the block and provide values
-      for parameters `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_results`,
-      `ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`,
-      so that Tendermint can then verify the hashes in the block's header are correct.
-      If the hashes mismatch, Tendermint will reject the block even if `ResponseProcessProposal.status`
-      was set to `ACCEPT`.
-    * In next-block execution mode, the Application should _not_ provide values for parameters
-      `ResponseProcessProposal.app_hash`, `ResponseProcessProposal.tx_results`,
-      `ResponseProcessProposal.validator_updates`, and `ResponseProcessProposal.consensus_param_updates`.
+    * The Application MAY fully execute the block &mdash; immediate execution
     * The implementation of `ProcessProposal` MUST be deterministic. Moreover, the value of
       `ResponseProcessProposal.status` MUST **exclusively** depend on the parameters passed in
       the call to `RequestProcessProposal`, and the last committed Application state
@@ -669,10 +621,10 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
       to determine rewards and punishments for the validators.
     * The Application executes the transactions in `RequestFinalizeBlock.txs` deterministically,
       according to the rules set up by the Application, before returning control to Tendermint.
-      Alternatively, it can commit the candidate state corresponding to the same block previously
+      Alternatively, it can apply the candidate state corresponding to the same block previously
       executed via `PrepareProposal` or `ProcessProposal`.
     * `ResponseFinalizeBlock.tx_results[i].Code == 0` only if the _i_-th transaction is fully valid.
-    * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_hash`,
+    * The Application must provide values for `ResponseFinalizeBlock.app_hash`,
       `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`, and
       `ResponseFinalizeBlock.consensus_param_updates` as a result of executing the block.
         * The values for `ResponseFinalizeBlock.validator_updates`, or
@@ -688,16 +640,8 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
           params for block `H+1`. For more information on the consensus parameters,
           see the [consensus parameters](./abci%2B%2B_app_requirements.md#consensus-parameters)
           section.
-
-    * In same-block execution mode, Tendermint will log an error and ignore values for
-      `ResponseFinalizeBlock.app_hash`, `ResponseFinalizeBlock.tx_results`, `ResponseFinalizeBlock.validator_updates`,
-      and `ResponsePrepareProposal.consensus_param_updates`, as those must have been provided by `PrepareProposal`.
     * `ResponseFinalizeBlock.app_hash` contains an (optional) Merkle root hash of the application state.
-    * `ResponseFinalizeBlock.app_hash` is included
-        * [in next-block execution mode] as the `Header.AppHash` in the next block.
-        * [in same-block execution mode] as the `Header.AppHash` in the current block. In this case,
-          `PrepareProposal` is required to fully execute the block and set the App hash before
-          returning the proposed block to Tendermint.
+    * `ResponseFinalizeBlock.app_hash` is included as the `Header.AppHash` in the next block.
         * `ResponseFinalizeBlock.app_hash` may also be empty or hard-coded, but MUST be
           **deterministic** - it must not be a function of anything that did not come from the parameters
           of `RequestFinalizeBlock` and the previous committed state.
@@ -707,9 +651,6 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
       making the Application's state evolve in the context of state machine replication.
     * Currently, Tendermint will fill up all fields in `RequestFinalizeBlock`, even if they were
       already passed on to the Application via `RequestPrepareProposal` or `RequestProcessProposal`.
-      If the Application is in same-block execution mode, it applies the right candidate state here
-      (rather than executing the whole block). In this case the Application disregards all parameters in
-      `RequestFinalizeBlock` except `RequestFinalizeBlock.hash`.
 
 #### When does Tendermint call `FinalizeBlock`?
 
@@ -830,8 +771,8 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | height   | uint64 | The height at which the snapshot was taken (after commit).                                                                                                                        | 1            |
     | format   | uint32 | An application-specific snapshot format, allowing applications to version their snapshot data format and make backwards-incompatible changes. Tendermint does not interpret this. | 2            |
     | chunks   | uint32 | The number of chunks in the snapshot. Must be at least 1 (even if empty).                                                                                                         | 3            |
-    | hash     | bytes  | TAn arbitrary snapshot hash. Must be equal only for identical snapshots across nodes. Tendermint does not interpret the hash, it only compares them.                              | 3            |
-    | metadata | bytes  | Arbitrary application metadata, for example chunk hashes or other verification data.                                                                                              | 3            |
+    | hash     | bytes  | An arbitrary snapshot hash. Must be equal only for identical snapshots across nodes. Tendermint does not interpret the hash, it only compares them.                               | 4            |
+    | metadata | bytes  | Arbitrary application metadata, for example chunk hashes or other verification data.                                                                                              | 5?           |
 
 * **Usage**:
     * Used for state sync snapshots, see the [state sync section](../p2p/messages/state-sync.md) for details.
