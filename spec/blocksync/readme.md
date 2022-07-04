@@ -1,10 +1,11 @@
 ---
-order: 
+order: 1
 parent:
     title: blocksync
-    order: 
+    order: 3
 ---
 
+# Blocksync
 
 In a proof of work blockchain, syncing with the chain is the same process as staying up-to-date with the consensus: download blocks, and look for the one with the most total work. In proof-of-stake, the consensus process is more complex, as it involves rounds of communication between the nodes to determine what block should be committed next. Using this process to sync up with the blockchain from scratch can take a very long time. It's much faster to just download blocks and check the merkle tree of validators than to run the real-time consensus gossip protocol.
 
