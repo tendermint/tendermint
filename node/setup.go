@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
@@ -28,7 +29,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
-	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/types"
@@ -235,17 +235,18 @@ func createPeerManager(
 	maxUpgradeConns := uint16(4)
 
 	options := p2p.PeerManagerOptions{
-		SelfAddress:            selfAddr,
-		MaxConnected:           maxConns,
-		MaxOutgoingConnections: maxOutgoingConns,
-		MaxConnectedUpgrade:    maxUpgradeConns,
-		MaxPeers:               maxUpgradeConns + 4*maxConns,
-		MinRetryTime:           250 * time.Millisecond,
-		MaxRetryTime:           30 * time.Minute,
-		MaxRetryTimePersistent: 5 * time.Minute,
-		RetryTimeJitter:        5 * time.Second,
-		PrivatePeers:           privatePeerIDs,
-		Metrics:                metrics,
+		SelfAddress:              selfAddr,
+		MaxConnected:             maxConns,
+		MaxOutgoingConnections:   maxOutgoingConns,
+		MaxConnectedUpgrade:      maxUpgradeConns,
+		DisconnectCooldownPeriod: 2 * time.Second,
+		MaxPeers:                 maxUpgradeConns + 4*maxConns,
+		MinRetryTime:             250 * time.Millisecond,
+		MaxRetryTime:             30 * time.Minute,
+		MaxRetryTimePersistent:   5 * time.Minute,
+		RetryTimeJitter:          5 * time.Second,
+		PrivatePeers:             privatePeerIDs,
+		Metrics:                  metrics,
 	}
 
 	peers := []p2p.NodeAddress{}
