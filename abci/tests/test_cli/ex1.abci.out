@@ -12,6 +12,10 @@
 -> code: OK
 -> log: Succeeded. Tx: abc action: UNMODIFIED
 
+> process_proposal "abc"
+-> code: OK
+-> status: ACCEPT
+
 > commit 
 -> code: OK
 -> data.hex: 0x0000000000000000
@@ -58,4 +62,22 @@
 -> log: Succeeded. Tx: def action: ADDED
 -> code: OK
 -> log: Succeeded. Tx: preparedef action: REMOVED
+
+> process_proposal "def"
+-> code: OK
+-> status: ACCEPT
+
+> process_proposal "preparedef"
+-> code: OK
+-> status: REJECT
+
+> prepare_proposal 
+
+> process_proposal 
+-> code: OK
+-> status: ACCEPT
+
+> commit 
+-> code: OK
+-> data.hex: 0x0400000000000000
 

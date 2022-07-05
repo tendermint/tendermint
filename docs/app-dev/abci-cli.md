@@ -168,6 +168,14 @@ Try running these commands:
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
+> prepare_proposal "abc"
+-> code: OK
+-> log: Succeeded. Tx: abc action: UNMODIFIED
+
+> process_proposal "abc"
+-> code: OK
+-> status: ACCEPT
+
 > commit
 -> code: OK
 -> data.hex: 0x0000000000000000
@@ -188,6 +196,8 @@ Try running these commands:
 -> code: OK
 -> log: exists
 -> height: 2
+-> key: abc
+-> key.hex: 616263
 -> value: abc
 -> value.hex: 616263
 
@@ -202,8 +212,34 @@ Try running these commands:
 -> code: OK
 -> log: exists
 -> height: 3
+-> key: def
+-> key.hex: 646566
 -> value: xyz
 -> value.hex: 78797A
+
+> prepare_proposal "preparedef"
+-> code: OK
+-> log: Succeeded. Tx: def action: ADDED
+-> code: OK
+-> log: Succeeded. Tx: preparedef action: REMOVED
+
+> process_proposal "def"
+-> code: OK
+-> status: ACCEPT
+
+> process_proposal "preparedef"
+-> code: OK
+-> status: REJECT
+
+> prepare_proposal 
+
+> process_proposal 
+-> code: OK
+-> status: ACCEPT
+
+> commit 
+-> code: OK
+-> data.hex: 0x0400000000000000
 ```
 
 Note that if we do `deliver_tx "abc"` it will store `(abc, abc)`, but if

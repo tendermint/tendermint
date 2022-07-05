@@ -79,6 +79,18 @@ func PrepareProposal(client abcicli.Client, txBytes [][]byte, codeExp []types.Tx
 	return nil
 }
 
+func ProcessProposal(client abcicli.Client, txBytes [][]byte, statusExp types.ResponseProcessProposal_ProposalStatus) error {
+	res, _ := client.ProcessProposalSync(types.RequestProcessProposal{Txs: txBytes})
+	if res.Status != statusExp {
+		fmt.Println("Failed test: ProcessProposal")
+		fmt.Printf("ProcessProposal response status was unexpected. Got %v expected %v.",
+			res.Status, statusExp)
+		return errors.New("ProcessProposal error")
+	}
+	fmt.Println("Passed test: ProcessProposal")
+	return nil
+}
+
 func CheckTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
 	res, _ := client.CheckTxSync(types.RequestCheckTx{Tx: txBytes})
 	code, data, log := res.Code, res.Data, res.Log

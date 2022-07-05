@@ -17,6 +17,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
   - [abci] \#5783 Make length delimiter encoding consistent (`uint64`) between ABCI and P2P wire-level protocols
   - [abci] \#9145 Removes Response/Request `SetOption` from ABCI
   - [abci] \#8656 Added cli command for `PrepareProposal`. (@jmalicevic)
+  - [abci] \#8901 Added cli command for `ProcessProposal`. (@hvanz)
 
 - P2P Protocol
 
