@@ -70,3 +70,16 @@
 -> code: OK
 -> status: REJECT
 
+> prepare_proposal 
+
+> process_proposal 
+-> code: OK
+-> status: ACCEPT
+
+> finalize_block 
+-> code: OK
+-> data.hex: 0x0600000000000000
+
+> commit 
+-> code: OK
+

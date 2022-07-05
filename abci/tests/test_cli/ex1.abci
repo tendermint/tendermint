@@ -12,3 +12,7 @@ query "def"
 prepare_proposal "preparedef"
 process_proposal "def"
 process_proposal "preparedef"
+prepare_proposal
+process_proposal
+finalize_block
+commit
