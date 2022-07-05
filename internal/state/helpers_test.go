@@ -266,9 +266,9 @@ func makeRandomStateFromConsensusParams(
 type testApp struct {
 	abci.BaseApplication
 
-	CommitVotes         []abci.VoteInfo
-	ByzantineValidators []abci.Misbehavior
-	ValidatorUpdates    []abci.ValidatorUpdate
+	CommitVotes      []abci.VoteInfo
+	Misbehavior      []abci.Misbehavior
+	ValidatorUpdates []abci.ValidatorUpdate
 }
 
 var _ abci.Application = (*testApp)(nil)
@@ -279,7 +279,7 @@ func (app *testApp) Info(_ context.Context, req *abci.RequestInfo) (*abci.Respon
 
 func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.CommitVotes = req.DecidedLastCommit.Votes
-	app.ByzantineValidators = req.ByzantineValidators
+	app.Misbehavior = req.Misbehavior
 
 	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
