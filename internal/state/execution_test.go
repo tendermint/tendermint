@@ -158,8 +158,8 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	}
 }
 
-// TestFinalizeBlockByzantineValidators ensures we send byzantine validators list.
-func TestFinalizeBlockByzantineValidators(t *testing.T) {
+// TestFinalizeBlockMisbehavior ensures we send misbehavior list.
+func TestFinalizeBlockMisbehavior(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -274,7 +274,7 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO check state and mempool
-	assert.Equal(t, abciMb, app.ByzantineValidators)
+	assert.Equal(t, abciMb, app.Misbehavior)
 }
 
 func TestProcessProposal(t *testing.T) {
@@ -338,11 +338,11 @@ func TestProcessProposal(t *testing.T) {
 	block1.Txs = txs
 
 	expectedRpp := &abci.RequestProcessProposal{
-		Txs:                 block1.Txs.ToSliceOfBytes(),
-		Hash:                block1.Hash(),
-		Height:              block1.Header.Height,
-		Time:                block1.Header.Time,
-		ByzantineValidators: block1.Evidence.ToABCI(),
+		Txs:         block1.Txs.ToSliceOfBytes(),
+		Hash:        block1.Hash(),
+		Height:      block1.Header.Height,
+		Time:        block1.Header.Time,
+		Misbehavior: block1.Evidence.ToABCI(),
 		ProposedLastCommit: abci.CommitInfo{
 			Round: 0,
 			Votes: voteInfos,
