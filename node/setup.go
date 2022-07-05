@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
-	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -504,17 +503,18 @@ func createPeerManager(
 	const maxUpgradeConns = 4
 
 	options := p2p.PeerManagerOptions{
-		SelfAddress:            selfAddr,
-		MaxConnected:           maxConns,
-		MaxOutgoingConnections: maxOutgoingConns,
-		MaxConnectedUpgrade:    maxUpgradeConns,
-		MaxPeers:               maxUpgradeConns + 4*maxConns,
-		MinRetryTime:           250 * time.Millisecond,
-		MaxRetryTime:           30 * time.Minute,
-		MaxRetryTimePersistent: 5 * time.Minute,
-		RetryTimeJitter:        5 * time.Second,
-		PrivatePeers:           privatePeerIDs,
-		Metrics:                metrics,
+		SelfAddress:              selfAddr,
+		MaxConnected:             maxConns,
+		MaxOutgoingConnections:   maxOutgoingConns,
+		MaxConnectedUpgrade:      maxUpgradeConns,
+		DisconnectCooldownPeriod: 2 * time.Second,
+		MaxPeers:                 maxUpgradeConns + 4*maxConns,
+		MinRetryTime:             250 * time.Millisecond,
+		MaxRetryTime:             30 * time.Minute,
+		MaxRetryTimePersistent:   5 * time.Minute,
+		RetryTimeJitter:          5 * time.Second,
+		PrivatePeers:             privatePeerIDs,
+		Metrics:                  metrics,
 	}
 
 	peers := []p2p.NodeAddress{}
@@ -745,10 +745,8 @@ func makeNodeInfo(
 	switch cfg.BlockSync.Version {
 	case config.BlockSyncV0:
 		bcChannel = byte(bcv0.BlockSyncChannel)
-
 	case config.BlockSyncV2:
-		bcChannel = bcv2.BlockchainChannel
-
+		return types.NodeInfo{}, fmt.Errorf("unsupported blocksync version %s", cfg.BlockSync.Version)
 	default:
 		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", cfg.BlockSync.Version)
 	}
