@@ -593,7 +593,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				"new_priority", wtx.priority,
 			)
 			txmp.metrics.EvictedTxs.Add(1)
-			
+
 		}
 	}
 
