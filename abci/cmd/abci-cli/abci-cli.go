@@ -534,13 +534,6 @@ const codeBad uint32 = 10
 
 // Append new txs to application
 func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		printResponse(cmd, args, response{
-			Code: codeBad,
-			Log:  "Must provide at least one transaction",
-		})
-		return nil
-	}
 	txs := make([][]byte, len(args))
 	for i, arg := range args {
 		txBytes, err := stringOrHexToBytes(arg)
@@ -652,14 +645,6 @@ func inTxArray(txByteArray [][]byte, tx []byte) bool {
 }
 
 func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		printResponse(cmd, args, response{
-			Code: codeBad,
-			Info: "Must provide at least one transaction",
-			Log:  "Must provide at least one transaction",
-		})
-		return nil
-	}
 	txsBytesArray := make([][]byte, len(args))
 
 	for i, arg := range args {
@@ -701,14 +686,6 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 }
 
 func cmdProcessProposal(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		printResponse(cmd, args, response{
-			Code: codeBad,
-			Info: "Must provide at least one transaction",
-			Log:  "Must provide at least one transaction",
-		})
-		return nil
-	}
 	txsBytesArray := make([][]byte, len(args))
 
 	for i, arg := range args {
