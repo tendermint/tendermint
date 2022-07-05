@@ -250,7 +250,7 @@ func makeNode(cfg *config.Config,
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := cfg.BlockSync.Enable && !onlyValidatorIsUs(state, pubKey)
+	blockSync := !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger, cfg.Mode)
 
