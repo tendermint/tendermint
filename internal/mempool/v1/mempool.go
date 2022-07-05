@@ -574,6 +574,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				"err", err.Error(),
 			)
 			txmp.metrics.RejectedTxs.Add(1)
+			checkTxRes.CheckTx.MempoolError = err.Error()
 			return
 		}
 
@@ -592,6 +593,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response, txInfo
 				"new_priority", wtx.priority,
 			)
 			txmp.metrics.EvictedTxs.Add(1)
+			
 		}
 	}
 
