@@ -293,7 +293,7 @@ func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPre
 
 func (*Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
-		if len(tx) == 0 {
+		if len(tx) == 0 || isPrepareTx(tx) {
 			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
 		}
 	}
