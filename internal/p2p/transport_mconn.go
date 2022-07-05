@@ -296,7 +296,7 @@ func (c *mConnConnection) Handshake(
 	select {
 	case <-handshakeCtx.Done():
 		_ = c.Close()
-		return types.NodeInfo{}, nil, ctx.Err()
+		return types.NodeInfo{}, nil, handshakeCtx.Err()
 
 	case err := <-errCh:
 		if err != nil {
