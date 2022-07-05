@@ -197,7 +197,7 @@ var finalizeBlockCmd = &cobra.Command{
 	Use:   "finalize_block",
 	Short: "deliver a block of transactions to the application",
 	Long:  "deliver a block of transactions to the application",
-	Args:  cobra.MinimumNArgs(1),
+	Args:  cobra.MinimumNArgs(0),
 	RunE:  cmdFinalizeBlock,
 }
 
@@ -232,7 +232,7 @@ var prepareProposalCmd = &cobra.Command{
 	Use:   "prepare_proposal",
 	Short: "prepare proposal",
 	Long:  "prepare proposal",
-	Args:  cobra.MinimumNArgs(1),
+	Args:  cobra.MinimumNArgs(0),
 	RunE:  cmdPrepareProposal,
 }
 
@@ -240,7 +240,7 @@ var processProposalCmd = &cobra.Command{
 	Use:   "process_proposal",
 	Short: "process proposal",
 	Long:  "process proposal",
-	Args:  cobra.MinimumNArgs(1),
+	Args:  cobra.MinimumNArgs(0),
 	RunE:  cmdProcessProposal,
 }
 
