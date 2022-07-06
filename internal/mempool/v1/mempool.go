@@ -637,12 +637,14 @@ func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) 
 		return
 	}
 
+	// Check whether we are expecting recheck responses at this point.
+	// If not, we will ignore the response, this usually means the mempool was Flushed.
+	// If this is the "last" pending recheck, trigger a notification when it's been processed.
 	numLeft := atomic.AddInt64(&txmp.txRecheck, -1)
-	if numLeft <= 0 {
-		defer txmp.notifyTxsAvailable()
-		if numLeft < 0 {
-			return
-		}
+	if numLeft == 0 {
+		defer txmp.notifyTxsAvailable() // notify waiters on return, if mempool is non-empty
+	} else if numLeft < 0 {
+		return
 	}
 
 	txmp.metrics.RecheckTimes.Add(1)
