@@ -754,6 +754,10 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 //
 // The caller must hold txmp.mtx exclusively.
 func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
+	if txmp.config.TTLNumBlocks == 0 && txmp.config.TTLDuration == 0 {
+		return // nothing to do
+	}
+
 	now := time.Now()
 	cur := txmp.txs.Front()
 	for cur != nil {
