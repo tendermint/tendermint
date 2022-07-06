@@ -596,11 +596,10 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 	wtx.SetGasWanted(checkTxRes.CheckTx.GasWanted)
 	wtx.SetPriority(priority)
 	wtx.SetSender(sender)
+	txmp.insertTx(wtx)
 
 	txmp.metrics.TxSizeBytes.Observe(float64(wtx.Size()))
 	txmp.metrics.Size.Set(float64(txmp.Size()))
-
-	txmp.insertTx(wtx)
 	txmp.logger.Debug(
 		"inserted new valid transaction",
 		"priority", wtx.Priority(),
