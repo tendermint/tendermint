@@ -3,6 +3,160 @@
 The [`PeerManager`][peermanager.go] manages peer life-cycle information, using
 a `peerStore` for underlying storage.
 
+## Peer life-cycle
+
+TODO: this deserve a picture
+
+### Dialing
+
+A candidate peer returned to the router as the next peer to dial.
+
+### Connected
+
+A peer to which the node is connected.
+A peer is this state is not considered a candidate peer.
+
+The peer manager distinguishes *incoming* from *outgoing* connections.
+Incoming connections are established through the `Accepted` transition.
+Outgoing connections are established through the `Dialed` transition.
+
+### Ready
+
+A peer that is connected and with which the node can exchange messages.
+
+The router sets a peer to this state just after successfully setting the peer
+as the `Dialed` or `Accepted`.
+The reason (from comments in the code), is to allow the router to setup
+internal queues to interact with the peer and reactors.
+
+In fact, the router provides to the peer manager a list of channels
+(communication abstraction used by reactors) to be informed to all reactors.
+When entering this state, the peer reactor broadcast a `PeerUpdate` to all
+subscriptions, including the peer ID, its status (up), and the list of channels.
+
+### Dialed transition
+
+This transition is performed when the node establishes an *outgoing* connection
+with a peer.
+The router has dialed and sucessfully established a connection with the peer.
+
+This peer should be a candidate peer that has been provided to the router.
+So, this node should be in `dialing` state, from which it is removed.
+
+It may occur, however, that this peer is already in `connected` state.
+This can happen because the router already successfully dialed or accepted a
+connection from the same peer.
+In this case, the transitions fails.
+
+> Question: is it possible to have multiple dialing routines to the same peer?
+
+It may also occur that the node is already connected to `MaxConnected` peers.
+In this case, the peer manager has to find a peer to evict to given place to
+the newly established connection.
+If non suitable connected peer is found for eviction, or the hard limit of
+connected peers (`MaxConnected + MaxConnectedUpgrade`) is reached, the
+transitions fails.
+
+If the transition succeeds, the peer is set to the `connected` state as an
+*outgoing* peer.
+The peer `LastConnected` time is set and, if the peer was `Inactive`, it
+becomes active.
+Moreover,  the dialed address's `LastDialSuccess` time is set, and its
+`DialFailures` counter is reset.
+
+#### Errors
+
+The transition fails if:
+
+- node accepted itself
+- peer is already in `connected` state
+- node is connected to enough peers, and eviction is not possible
+
+Errors are also returned if:
+
+- dialed peer was removed from the peer store
+- peer information is invalid
+- unable to save peer state in the store
+
+Result: the router closes the established connection with the peer.
+
+#### Eviction procedure
+
+TODO: detail this eviction procedure
+
+### DialFailed transition
+
+This transition informs a failure when establishing an *outgoing* connection to
+a peer.
+
+This peer should be a candidate peer that has been provided to the router.
+So, this node should be in `dialing` state, from which it is removed.
+
+The dialed address's `LastDialFailure` time is set, and its `DialFailures`
+counter is increased.
+This information is used to compute the retry delay for the peer.
+
+The goal of this transition is to restore the peer to a candidate state.
+The peer manager then spawns a routine to, after the computed retry delay,
+notify the next peer to dial routine about the availability of this peer.
+
+#### Errors
+
+Errors are also returned if:
+
+- peer information is invalid
+- unable to save peer state in the store
+
+When the router informs this transition, dialing the peer already failed.
+
+### Accepted transition
+
+This transition is performed when the node establishes an *incoming* connection
+with a peer.
+The router has accepted a connection from and successfully established a
+connection with the peer.
+
+The accepted peer might not be known by the peer manager.
+In this case it is registered in the peer store.
+
+It may occur, however, that this peer is already in `connected` state.
+This can happen because the router already successfully dialed or accepted a
+connection from the same peer.
+In this case, the transitions fails.
+
+It may also occur that the node is already connected to `MaxConnected` peers.
+In this case, the peer manager has to find a peer to evict to given place to
+the newly established connection.
+If non suitable connected peer is found for eviction, or the hard limit of
+connected peers (`MaxConnected + MaxConnectedUpgrade`) is reached, the
+transitions fails.
+
+If the transition succeeds, the peer is set to the `connected` state as an
+*incoming* peer.
+The peer `LastConnected` time is set and, if the peer was `Inactive`, it
+becomes active.
+Moreover, the `DialFailures` counter is reset for all addresses associated to
+the peer.
+
+#### Errors
+
+The transition fails if:
+
+- node accepted itself
+- peer is already in `connected` state
+- node is connected to enough peers, and eviction is not possible
+
+Errors are also returned if:
+
+- peer information is invalid
+- unable to save peer state in the store
+
+Result: the router closes the established connection with the peer.
+
+#### Eviction procedure
+
+TODO: detail this eviction procedure
+
 ## Next peer to dial
 
 This is the main service provided by the peer manager.
@@ -24,7 +178,7 @@ defining when the node is connected to enough peers.
 At this point, and while its state does not change (e.g., a peer is
 disconnected), it should not provide the router with *candidate peers*.
 
-The peer manager therefore implements the connection `policy` for the node,
+The peer manager therefore implements the connection *policy* for the node,
 based on the configuration provided by the operators, the current state of the
 connections, and the set of known candidate peers.
 

@@ -1,7 +1,7 @@
 # Peer-to-peer communication substrate
 
 This document details the operation of the [`p2p`][p2p-package] package of
-Tendermint, refactored in the release `v.035`.
+Tendermint, refactored in the `v0.35` release.
 
 **This is a work in progress** ([#8935][issue]).
 
