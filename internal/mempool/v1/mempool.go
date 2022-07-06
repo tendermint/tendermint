@@ -233,7 +233,7 @@ func (txmp *TxMempool) CheckTx(
 				height:    height,
 			}
 			wtx.SetPeer(txInfo.SenderID)
-			txmp.initTxCallback(wtx, res)
+			txmp.initialTxCallback(wtx, res)
 			if cb != nil {
 				cb(res)
 			}
@@ -446,7 +446,7 @@ func (txmp *TxMempool) Update(
 	return nil
 }
 
-// initTxCallback handles the ABCI CheckTx response for the first time a
+// initialTxCallback handles the ABCI CheckTx response for the first time a
 // transaction is added to the mempool.  A recheck after a block is committed
 // goes to the default callback (see recheckTxCallback).
 //
@@ -459,7 +459,7 @@ func (txmp *TxMempool) Update(
 // transactions are evicted.
 //
 // Finally, the new transaction is added and size stats updated.
-func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response) {
+func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
 		return
@@ -626,7 +626,7 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 // and removes any transactions invalidated by the application.
 //
 // This callback is NOT executed for the initial CheckTx on a new transaction;
-// that case is handled by initTxCallback instead.
+// that case is handled by initialTxCallback instead.
 func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
@@ -712,6 +712,7 @@ func (txmp *TxMempool) recheckTransactions() {
 	for e := txmp.txs.Front(); e != nil; e = e.Next() {
 		wtx := e.Value.(*WrappedTx)
 
+		// The response for this CheckTx is handled by the default recheckTxCallback.
 		_, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{
 			Tx:   wtx.tx,
 			Type: abci.CheckTxType_Recheck,
