@@ -514,6 +514,10 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", w.tx.Hash()),
 				"sender", sender,
 			)
+			checkTxRes.CheckTx.MempoolError =
+				fmt.Sprintf("rejected valid incoming transaction; tx already exists for sender %q (%X)",
+					sender, w.tx.Hash())
+			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}
 	}
@@ -544,6 +548,9 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err.Error(),
 			)
+			checkTxRes.CheckTx.MempoolError =
+				fmt.Sprintf("rejected valid incoming transaction; mempool is full (%X)",
+					wtx.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}
