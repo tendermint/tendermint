@@ -237,12 +237,13 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		MinRetryTime:    10 * time.Millisecond,
-		MaxRetryTime:    100 * time.Millisecond,
-		RetryTimeJitter: time.Millisecond,
-		MaxPeers:        opts.MaxPeers,
-		MaxConnected:    opts.MaxConnected,
-		Metrics:         p2p.NopMetrics(),
+		MinRetryTime:             10 * time.Millisecond,
+		DisconnectCooldownPeriod: 10 * time.Millisecond,
+		MaxRetryTime:             100 * time.Millisecond,
+		RetryTimeJitter:          time.Millisecond,
+		MaxPeers:                 opts.MaxPeers,
+		MaxConnected:             opts.MaxConnected,
+		Metrics:                  p2p.NopMetrics(),
 	})
 	require.NoError(t, err)
 
