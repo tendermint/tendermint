@@ -509,7 +509,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 		elt, ok := txmp.txBySender[sender]
 		if ok {
 			w := elt.Value.(*WrappedTx)
-			txmp.logger.Error(
+			txmp.logger.Debug(
 				"rejected valid incoming transaction; tx already exists for sender",
 				"tx", fmt.Sprintf("%X", w.tx.Hash()),
 				"sender", sender,
