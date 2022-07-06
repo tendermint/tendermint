@@ -32,7 +32,7 @@ now better understood than when ABCI was first written. For example, many ideas 
 scalability can be boiled down to "make the block proposers do work, so the network does not have
 to". This includes optimizations such as transaction level signature aggregation, state transition
 proofs, etc. Furthermore, many new security properties cannot be achieved in the current paradigm,
-as the Application cannot require validators to do more than execute the transactions contained in
+as the Application cannot require validators to do more than executing the transactions contained in
 finalized blocks. This includes features such as threshold cryptography, and guaranteed IBC
 connection attempts.
 
@@ -312,7 +312,7 @@ Sources of non-determinism in applications may include:
 
 See [#56](https://github.com/tendermint/abci/issues/56) for the original discussion.
 
-Note that some methods (`Query, CheckTx, FinalizeBlock`) return non-deterministic data in the form
+Note that some methods (`Query, FinalizeBlock`) return non-deterministic data in the form
 of `Info` and `Log` fields. The `Log` is intended for the literal output from the Application's
 logger, while the `Info` is any additional info that should be returned. These are the only fields
 that are not included in block header computations, so we don't need agreement
