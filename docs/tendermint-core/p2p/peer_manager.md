@@ -5,7 +5,7 @@ a `peerStore` for underlying storage.
 
 ## Peer life-cycle
 
-TODO: this deserve a picture
+<img src="pics/p2p-v0.35-peermanager.png" alt="peer life cycle" title="" width="400px" name="" align="center"/>
 
 ### Dialing
 
@@ -31,14 +31,15 @@ internal queues to interact with the peer and reactors.
 
 In fact, the router provides to the peer manager a list of channels
 (communication abstraction used by reactors) to be informed to all reactors.
-When entering this state, the peer reactor broadcast a `PeerUpdate` to all
-subscriptions, including the peer ID, its status (up), and the list of channels.
+When entering this state, the peer manager broadcast a `PeerUpdate` to all
+subscriptions, notifying the new state (up) of this peer and providing the list
+of channels.
 
 ### Dialed transition
 
 This transition is performed when the node establishes an *outgoing* connection
 with a peer.
-The router has dialed and sucessfully established a connection with the peer.
+The router has dialed and successfully established a connection with the peer.
 
 This peer should be a candidate peer that has been provided to the router.
 So, this node should be in `dialing` state, from which it is removed.
@@ -59,23 +60,24 @@ transitions fails.
 
 If the transition succeeds, the peer is set to the `connected` state as an
 *outgoing* peer.
-The peer `LastConnected` time is set and, if the peer was `Inactive`, it
-becomes active.
-Moreover,  the dialed address's `LastDialSuccess` time is set, and its
-`DialFailures` counter is reset.
+The peer `LastConnected` time is set, the dialed address's `LastDialSuccess`
+time is set, and its `DialFailures` counter is reset.
+
+> If the peer is `Inactive`, it is set as active.
+> This action has not effect apart from producing metrics.
 
 #### Errors
 
 The transition fails if:
 
-- node accepted itself
+- node dialed itself
 - peer is already in `connected` state
 - node is connected to enough peers, and eviction is not possible
 
 Errors are also returned if:
 
 - dialed peer was removed from the peer store
-- peer information is invalid
+- the peer information is invalid
 - unable to save peer state in the store
 
 Result: the router closes the established connection with the peer.
@@ -97,8 +99,8 @@ counter is increased.
 This information is used to compute the retry delay for the peer.
 
 The goal of this transition is to restore the peer to a candidate state.
-The peer manager then spawns a routine to, after the computed retry delay,
-notify the next peer to dial routine about the availability of this peer.
+The peer manager then spawns a routine that after the computed retry delay
+notifies the next peer to dial routine about the availability of this peer.
 
 #### Errors
 
@@ -116,9 +118,6 @@ with a peer.
 The router has accepted a connection from and successfully established a
 connection with the peer.
 
-The accepted peer might not be known by the peer manager.
-In this case it is registered in the peer store.
-
 It may occur, however, that this peer is already in `connected` state.
 This can happen because the router already successfully dialed or accepted a
 connection from the same peer.
@@ -133,10 +132,15 @@ transitions fails.
 
 If the transition succeeds, the peer is set to the `connected` state as an
 *incoming* peer.
-The peer `LastConnected` time is set and, if the peer was `Inactive`, it
-becomes active.
-Moreover, the `DialFailures` counter is reset for all addresses associated to
-the peer.
+
+The accepted peer might not be known by the peer manager.
+In this case it is registered in the peer store, without any associated
+address.
+The peer `LastConnected` time is set and the `DialFailures` counter is reset
+for all addresses associated to the peer.
+
+> If the peer is `Inactive`, it is set as active.
+> This action has not effect apart from producing metrics.
 
 #### Errors
 
@@ -156,6 +160,18 @@ Result: the router closes the established connection with the peer.
 #### Eviction procedure
 
 TODO: detail this eviction procedure
+
+### Disconnected transition
+
+A peer with which the node is not exchanging messages any longer.
+
+The peer is expected to be in `ready` state.
+In this case, the peer manager broadcast a `PeerUpdate` to all subscriptions
+notifying the new status (down) of this peer.
+
+Once disconnected, the peer should become a candidate peer.
+The peer manager then spawns a routine that after `DisconnectCooldownPeriod`
+notifies the next peer to dial routine about the availability of this peer.
 
 ## Next peer to dial
 
