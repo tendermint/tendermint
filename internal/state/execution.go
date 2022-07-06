@@ -280,8 +280,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 			// Dash's fields
 			ProposerProTxHash:     block.ProposerProTxHash,
-			ProposedAppVersion:    block.ProposedAppVersion,
 			CoreChainLockedHeight: block.CoreChainLockedHeight,
+			ProposedAppVersion:    block.ProposedAppVersion,
 			Version:               &version,
 		},
 	)
@@ -734,13 +734,12 @@ func ExecCommitBlock(
 	finalizeBlockResponse, err := appConn.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			DecidedLastCommit:   buildLastCommitInfo(block, store, initialHeight),
-			ByzantineValidators: block.Evidence.ToABCI(),
 			Hash:                block.Hash(),
 			Height:              block.Height,
 			Time:                block.Time,
-			NextValidatorsHash:  block.NextValidatorsHash,
+			Txs:                 block.Txs.ToSliceOfBytes(),
+			DecidedLastCommit:   buildLastCommitInfo(block, store, initialHeight),
+			ByzantineValidators: block.Evidence.ToABCI(),
 
 			// Dash's fields
 			CoreChainLockedHeight: block.CoreChainLockedHeight,
