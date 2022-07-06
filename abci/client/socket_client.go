@@ -279,6 +279,10 @@ func (cli *socketClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotC
 	return cli.queueRequest(types.ToRequestApplySnapshotChunk(req))
 }
 
+func (cli *socketClient) PrepareProposalAsync(req types.RequestPrepareProposal) *ReqRes {
+	return cli.queueRequest(types.ToRequestPrepareProposal(req))
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync() error {
@@ -417,15 +421,13 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 	return reqres.Response.GetApplySnapshotChunk(), cli.Error()
 }
 
-func (cli *socketClient) PrepareProposal(
-	ctx context.Context,
-	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-
-	reqres, err := cli.queueRequestAndFlush(ctx, types.ToRequestPrepareProposal(req))
-	if err != nil {
+func (cli *socketClient) PrepareProposalSync(req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	reqres := cli.queueRequest(types.ToRequestPrepareProposal(req))
+	if err := cli.FlushSync(); err != nil {
 		return nil, err
 	}
-	return reqres.Response.GetPrepareProposal(), nil
+
+	return reqres.Response.GetPrepareProposal(), cli.Error()
 }
 
 //----------------------------------------
