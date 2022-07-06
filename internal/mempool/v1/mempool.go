@@ -679,6 +679,7 @@ func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) 
 		"code", checkTxRes.CheckTx.Code,
 	)
 	txmp.removeTxByElement(elt)
+	txmp.metrics.RejectedTxs.Add(1)
 	if !txmp.config.KeepInvalidTxsInCache {
 		txmp.cache.Remove(wtx.tx)
 	}
