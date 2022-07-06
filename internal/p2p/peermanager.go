@@ -966,7 +966,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		}
 		score := int(peer.Score())
 		if score < 0 {
-			totalAbsScore += (-1 * score)
+			totalAbsScore += -score
 		} else {
 			totalAbsScore += score
 		}
