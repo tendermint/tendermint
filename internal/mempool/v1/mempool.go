@@ -693,6 +693,10 @@ func (txmp *TxMempool) recheckTransactions() {
 		"num_txs", txmp.Size(),
 		"height", txmp.height,
 	)
+	// N.B.: We have to issue the calls outside the lock. In a local client,
+	// even an "async" call invokes its callback immediately which will make the
+	// callback deadlock trying to acquire the same lock. This isn't a problem
+	// with out-of-process calls, but this has to work for both.
 	txmp.mtx.Unlock()
 	defer txmp.mtx.Lock()
 
