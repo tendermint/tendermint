@@ -393,11 +393,12 @@ func (txmp *TxMempool) Update(
 	newPreFn mempool.PreCheckFunc,
 	newPostFn mempool.PostCheckFunc,
 ) error {
-	// Safety check: The caller is required to hold the lock.
-	if txmp.mtx.TryLock() {
-		txmp.mtx.Unlock()
-		panic("mempool: Update caller does not hold the lock")
-	}
+	// TODO(creachadair): This would be a nice safety check but requires Go 1.18.
+	// // Safety check: The caller is required to hold the lock.
+	// if txmp.mtx.TryLock() {
+	// 	txmp.mtx.Unlock()
+	// 	panic("mempool: Update caller does not hold the lock")
+	// }
 	// Safety check: Transactions and responses must match in number.
 	if len(blockTxs) != len(deliverTxResponses) {
 		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
