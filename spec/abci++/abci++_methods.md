@@ -669,7 +669,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
       to determine rewards and punishments for the validators.
     * The Application executes the transactions in `RequestFinalizeBlock.txs` deterministically,
       according to the rules set up by the Application, before returning control to Tendermint.
-      Alternatively, it can commit the candidate state corresponding to the same block previously
+      Alternatively, it can apply the candidate state corresponding to the same block previously
       executed via `PrepareProposal` or `ProcessProposal`.
     * `ResponseFinalizeBlock.tx_results[i].Code == 0` only if the _i_-th transaction is fully valid.
     * In next-block execution mode, the Application must provide values for `ResponseFinalizeBlock.app_hash`,
@@ -830,8 +830,8 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | height   | uint64 | The height at which the snapshot was taken (after commit).                                                                                                                        | 1            |
     | format   | uint32 | An application-specific snapshot format, allowing applications to version their snapshot data format and make backwards-incompatible changes. Tendermint does not interpret this. | 2            |
     | chunks   | uint32 | The number of chunks in the snapshot. Must be at least 1 (even if empty).                                                                                                         | 3            |
-    | hash     | bytes  | TAn arbitrary snapshot hash. Must be equal only for identical snapshots across nodes. Tendermint does not interpret the hash, it only compares them.                              | 3            |
-    | metadata | bytes  | Arbitrary application metadata, for example chunk hashes or other verification data.                                                                                              | 3            |
+    | hash     | bytes  | An arbitrary snapshot hash. Must be equal only for identical snapshots across nodes. Tendermint does not interpret the hash, it only compares them.                               | 4            |
+    | metadata | bytes  | Arbitrary application metadata, for example chunk hashes or other verification data.                                                                                              | 5            |
 
 * **Usage**:
     * Used for state sync snapshots, see the [state sync section](../p2p/messages/state-sync.md) for details.
