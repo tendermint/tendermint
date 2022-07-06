@@ -979,7 +979,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 		}
 	}
 
-	meanAbsScore := totalAbsScore / len(scores)
+	meanAbsScore := (totalAbsScore + 1) / (len(scores) + 1)
 
 	var attempts uint16
 	var addedLastIteration bool
