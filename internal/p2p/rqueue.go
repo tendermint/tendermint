@@ -41,6 +41,7 @@ func (q *simpleQueue) enqueue() chan<- Envelope { return q.input }
 func (q *simpleQueue) dequeue() <-chan Envelope { return q.output }
 func (q *simpleQueue) close()                   { q.closeFn() }
 func (q *simpleQueue) closed() <-chan struct{}  { return q.closeCh }
+
 func (q *simpleQueue) run(ctx context.Context) {
 	defer q.closeFn()
 
