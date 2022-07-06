@@ -139,7 +139,8 @@ message RequestPrepareProposal {
   // Dash's fields
   uint32 core_chain_locked_height      = 100;
   bytes  proposer_pro_tx_hash          = 101; // original proposer of the block
-  tendermint.version.Consensus version = 102;
+  uint64 proposed_app_version          = 102; // proposer's latest available app protocol version
+  tendermint.version.Consensus version = 103;
 }
 
 message RequestProcessProposal {
@@ -183,7 +184,8 @@ message RequestFinalizeBlock {
   // Dash's fields
   uint32 core_chain_locked_height      = 100;
   bytes  proposer_pro_tx_hash          = 101; // original proposer of the block
-  tendermint.version.Consensus version = 102;
+  uint64 proposed_app_version          = 102; // proposer's latest available app protocol version
+  tendermint.version.Consensus version = 103;
 }
 
 //----------------------------------------

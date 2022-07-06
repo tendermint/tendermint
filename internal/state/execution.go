@@ -139,6 +139,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			// Dash's fields
 			CoreChainLockedHeight: block.CoreChainLockedHeight,
 			ProposerProTxHash:     block.ProposerProTxHash,
+			ProposedAppVersion:    block.ProposedAppVersion,
 			Version:               &version,
 		},
 	)
@@ -279,6 +280,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 			// Dash's fields
 			ProposerProTxHash:     block.ProposerProTxHash,
+			ProposedAppVersion:    block.ProposedAppVersion,
 			CoreChainLockedHeight: block.CoreChainLockedHeight,
 			Version:               &version,
 		},
@@ -743,6 +745,7 @@ func ExecCommitBlock(
 			// Dash's fields
 			CoreChainLockedHeight: block.CoreChainLockedHeight,
 			ProposerProTxHash:     block.ProposerProTxHash,
+			ProposedAppVersion:    block.ProposedAppVersion,
 			Version:               &version,
 		},
 	)
