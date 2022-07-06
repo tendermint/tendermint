@@ -285,7 +285,7 @@ func (txmp *TxMempool) Flush() {
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 
-	// Remove all the transactions in the list explicitsly, so that the sizes
+	// Remove all the transactions in the list explicitly, so that the sizes
 	// and indexes get updated properly.
 	cur := txmp.txs.Front()
 	for cur != nil {
