@@ -333,7 +333,7 @@ func (txmp *TxMempool) allEntriesSorted() []*WrappedTx {
 func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	var totalGas, totalBytes int64
 
-	var keep []types.Tx
+	var keep []types.Tx //nolint:prealloc
 	for _, w := range txmp.allEntriesSorted() {
 		// N.B. When computing byte size, we need to include the overhead for
 		// encoding as protobuf to send to the application.
@@ -364,7 +364,7 @@ func (txmp *TxMempool) TxsFront() *clist.CElement { return txmp.txs.Front() }
 // The result may have fewer than max elements (possibly zero) if the mempool
 // does not have that many transactions available.
 func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
-	var keep []types.Tx
+	var keep []types.Tx //nolint:prealloc
 
 	for _, w := range txmp.allEntriesSorted() {
 		if max >= 0 && len(keep) >= max {
