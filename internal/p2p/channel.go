@@ -19,6 +19,10 @@ type Envelope struct {
 	ChannelID ChannelID
 }
 
+func (e Envelope) IsZero() bool {
+	return e.From == "" && e.To == "" && e.Message == nil
+}
+
 // Wrapper is a Protobuf message that can contain a variety of inner messages
 // (e.g. via oneof fields). If a Channel's message type implements Wrapper, the
 // Router will automatically wrap outbound messages and unwrap inbound messages,
