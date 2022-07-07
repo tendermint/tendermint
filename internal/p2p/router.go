@@ -40,6 +40,10 @@ type Envelope struct {
 	channelID ChannelID
 }
 
+func (e Envelope) IsZero() bool {
+	return e.From == "" && e.To == "" && e.Message == nil
+}
+
 // PeerError is a peer error reported via Channel.Error.
 //
 // FIXME: This currently just disconnects the peer, which is too simplistic.

@@ -16,10 +16,10 @@ type simpleQueue struct {
 	closeCh <-chan struct{}
 
 	maxSize int
-	chDescs []*ChannelDescriptor
+	chDescs []ChannelDescriptor
 }
 
-func newSimplePriorityQueue(ctx context.Context, size int, chDescs []*ChannelDescriptor) *simpleQueue {
+func newSimplePriorityQueue(ctx context.Context, size int, chDescs []ChannelDescriptor) *simpleQueue {
 	if size%2 != 0 {
 		size++
 	}
@@ -47,7 +47,7 @@ func (q *simpleQueue) run(ctx context.Context) {
 
 	var chPriorities = make(map[ChannelID]uint, len(q.chDescs))
 	for _, chDesc := range q.chDescs {
-		chID := chDesc.ID
+		chID := ChannelID(chDesc.ID)
 		chPriorities[chID] = uint(chDesc.Priority)
 	}
 
@@ -69,7 +69,7 @@ func (q *simpleQueue) run(ctx context.Context) {
 			heap.Push(&pq, &pqEnvelope{
 				envelope:  e,
 				size:      uint(proto.Size(e.Message)),
-				priority:  chPriorities[e.ChannelID],
+				priority:  chPriorities[e.channelID],
 				timestamp: time.Now().UTC(),
 			})
 
