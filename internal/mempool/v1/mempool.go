@@ -535,7 +535,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 			cw := cur.Value.(*WrappedTx)
 			if cw.priority < priority {
 				victims = append(victims, cur)
-				victimBytes += cur.Size()
+				victimBytes += cw.Size()
 			}
 		}
 
