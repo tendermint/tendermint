@@ -23,74 +23,55 @@ returns via `ResponsePrepareProposal` to Tendermint, also known as the prepared 
 
 Process *p*'s prepared proposal can differ in two different rounds where *p* is the proposer.
 
-* Requirement 1 [`PrepareProposal`, header-changes]: When the blockchain is in same-block execution mode,
-  *p*'s Application provides values for the following parameters in `ResponsePrepareProposal`:
-  `AppHash`, `TxResults`, `ConsensusParams`, `ValidatorUpdates`. Provided values for
-  `ConsensusParams` and `ValidatorUpdates` MAY be empty to denote that the Application
-  wishes to keep the current values.
-
-Parameters `AppHash`, `TxResults`, `ConsensusParams`, and `ValidatorUpdates` are used by Tendermint to
-compute various hashes in the block header that will finally be part of the proposal.
-
-* Requirement 2 [`PrepareProposal`, no-header-changes]: When the blockchain is in next-block execution
-  mode, *p*'s Application does not provide values for the following parameters in `ResponsePrepareProposal`:
-  `AppHash`, `TxResults`, `ConsensusParams`, `ValidatorUpdates`.
-
-In practical terms, Requirements 1 and 2 imply that Tendermint will (a) panic if the Application is in
-same-block execution mode and *does not* provide values for
-`AppHash`, `TxResults`, `ConsensusParams`, and `ValidatorUpdates`, or
-(b) log an error if the Application is in next-block execution mode and *does* provide values for
-`AppHash`, `TxResults`, `ConsensusParams`, or `ValidatorUpdates` (the values provided will be ignored).
-
-* Requirement 3 [`PrepareProposal`, timeliness]: If *p*'s Application fully executes prepared blocks in
+* Requirement 1 [`PrepareProposal`, timeliness]: If *p*'s Application fully executes prepared blocks in
   `PrepareProposal` and the network is in a synchronous period while processes *p* and *q* are in *r<sub>p</sub>*,
   then the value of *TimeoutPropose* at *q* must be such that *q*'s propose timer does not time out
   (which would result in *q* prevoting `nil` in *r<sub>p</sub>*).
 
 Full execution of blocks at `PrepareProposal` time stands on Tendermint's critical path. Thus,
-Requirement 3 ensures the Application will set a value for `TimeoutPropose` such that the time it takes
+Requirement 1 ensures the Application will set a value for `TimeoutPropose` such that the time it takes
 to fully execute blocks in `PrepareProposal` does not interfere with Tendermint's propose timer.
-Note that violation of Requirement 3 may just lead to further rounds, but will not compromise liveness.
+Note that violation of Requirement 1 may just lead to further rounds, but will not compromise liveness.
 
-* Requirement 4 [`PrepareProposal`, tx-size]: When *p*'s Application calls `ResponsePrepareProposal`, the
+* Requirement 2 [`PrepareProposal`, tx-size]: When *p*'s Application calls `ResponsePrepareProposal`, the
   total size in bytes of the transactions returned does not exceed `RequestPrepareProposal.max_tx_bytes`.
 
 Busy blockchains might seek to maximize the amount of transactions included in each block. Under those conditions,
 Tendermint might choose to increase the transactions passed to the Application via `RequestPrepareProposal.txs`
 beyond the `RequestPrepareProposal.max_tx_bytes` limit. The idea is that, if the Application drops some of
 those transactions, it can still return a transaction list whose byte size is as close to
-`RequestPrepareProposal.max_tx_bytes` as possible. Thus, Requirement 4 ensures that the size in bytes of the
+`RequestPrepareProposal.max_tx_bytes` as possible. Thus, Requirement 2 ensures that the size in bytes of the
 transaction list returned by the application will never cause the resulting block to go beyond its byte size
 limit.
 
-* Requirement 5 [`PrepareProposal`, `ProcessProposal`, coherence]: For any two correct processes *p* and *q*,
+* Requirement 3 [`PrepareProposal`, `ProcessProposal`, coherence]: For any two correct processes *p* and *q*,
   if *q*'s Tendermint calls `RequestProcessProposal` on *u<sub>p</sub>*,
   *q*'s Application returns Accept in `ResponseProcessProposal`.
 
-Requirement 5 makes sure that blocks proposed by correct processes *always* pass the correct receiving process's
+Requirement 3 makes sure that blocks proposed by correct processes *always* pass the correct receiving process's
 `ProcessProposal` check.
 On the other hand, if there is a deterministic bug in `PrepareProposal` or `ProcessProposal` (or in both),
 strictly speaking, this makes all processes that hit the bug byzantine. This is a problem in practice,
 as very often validators are running the Application from the same codebase, so potentially *all* would
 likely hit the bug at the same time. This would result in most (or all) processes prevoting `nil`, with the
-serious consequences on Tendermint's liveness that this entails. Due to its criticality, Requirement 5 is a
+serious consequences on Tendermint's liveness that this entails. Due to its criticality, Requirement 3 is a
 target for extensive testing and automated verification.
 
-* Requirement 6 [`ProcessProposal`, determinism-1]: `ProcessProposal` is a (deterministic) function of the current
+* Requirement 4 [`ProcessProposal`, determinism-1]: `ProcessProposal` is a (deterministic) function of the current
   state and the block that is about to be applied. In other words, for any correct process *p*, and any arbitrary block *u*,
   if *p*'s Tendermint calls `RequestProcessProposal` on *u* at height *h*,
   then *p*'s Application's acceptance or rejection **exclusively** depends on *u* and *s<sub>p,h-1</sub>*.
 
-* Requirement 7 [`ProcessProposal`, determinism-2]: For any two correct processes *p* and *q*, and any arbitrary
+* Requirement 5 [`ProcessProposal`, determinism-2]: For any two correct processes *p* and *q*, and any arbitrary
   block *u*,
   if *p*'s (resp. *q*'s) Tendermint calls `RequestProcessProposal` on *u* at height *h*,
   then *p*'s Application accepts *u* if and only if *q*'s Application accepts *u*.
-  Note that this requirement follows from Requirement 6 and the Agreement property of consensus.
+  Note that this requirement follows from Requirement 4 and the Agreement property of consensus.
 
-Requirements 6 and 7 ensure that all correct processes will react in the same way to a proposed block, even
+Requirements 4 and 5 ensure that all correct processes will react in the same way to a proposed block, even
 if the proposer is Byzantine. However, `ProcessProposal` may contain a bug that renders the
 acceptance or rejection of the block non-deterministic, and therefore prevents processes hitting
-the bug from fulfilling Requirements 6 or 7 (effectively making those processes Byzantine).
+the bug from fulfilling Requirements 4 or 5 (effectively making those processes Byzantine).
 In such a scenario, Tendermint's liveness cannot be guaranteed.
 Again, this is a problem in practice if most validators are running the same software, as they are likely
 to hit the bug at the same point. There is currently no clear solution to help with this situation, so
@@ -108,64 +89,58 @@ Let *e<sup>r</sup><sub>p</sub>* be the vote extension that the Application of a 
 Let *w<sup>r</sup><sub>p</sub>* be the proposed block that *p*'s Tendermint passes to the Application via `RequestExtendVote`
 in round *r*, height *h*.
 
-* Requirement 8 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two different correct
+* Requirement 6 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two different correct
   processes *p* and *q*, if *q* receives *e<sup>r</sup><sub>p</sub>* from *p* in height *h*, *q*'s
   Application returns Accept in `ResponseVerifyVoteExtension`.
 
-Requirement 8 constrains the creation and handling of vote extensions in a similar way as Requirement 5
+Requirement 6 constrains the creation and handling of vote extensions in a similar way as Requirement 3
 constrains the creation and handling of proposed blocks.
-Requirement 8 ensures that extensions created by correct processes *always* pass the `VerifyVoteExtension`
+Requirement 6 ensures that extensions created by correct processes *always* pass the `VerifyVoteExtension`
 checks performed by correct processes receiving those extensions.
 However, if there is a (deterministic) bug in `ExtendVote` or `VerifyVoteExtension` (or in both),
 we will face the same liveness issues as described for Requirement 5, as Precommit messages with invalid vote
 extensions will be discarded.
 
-* Requirement 9 [`VerifyVoteExtension`, determinism-1]: `VerifyVoteExtension` is a (deterministic) function of
+* Requirement 7 [`VerifyVoteExtension`, determinism-1]: `VerifyVoteExtension` is a (deterministic) function of
   the current state, the vote extension received, and the prepared proposal that the extension refers to.
   In other words, for any correct process *p*, and any arbitrary vote extension *e*, and any arbitrary
   block *w*, if *p*'s (resp. *q*'s) Tendermint calls `RequestVerifyVoteExtension` on *e* and *w* at height *h*,
   then *p*'s Application's acceptance or rejection **exclusively** depends on *e*, *w* and *s<sub>p,h-1</sub>*.
 
-* Requirement 10 [`VerifyVoteExtension`, determinism-2]: For any two correct processes *p* and *q*,
+* Requirement 8 [`VerifyVoteExtension`, determinism-2]: For any two correct processes *p* and *q*,
   and any arbitrary vote extension *e*, and any arbitrary block *w*,
   if *p*'s (resp. *q*'s) Tendermint calls `RequestVerifyVoteExtension` on *e* and *w* at height *h*,
   then *p*'s Application accepts *e* if and only if *q*'s Application accepts *e*.
-  Note that this requirement follows from Requirement 9 and the Agreement property of consensus.
+  Note that this requirement follows from Requirement 7 and the Agreement property of consensus.
 
-Requirements 9 and 10 ensure that the validation of vote extensions will be deterministic at all
+Requirements 7 and 8 ensure that the validation of vote extensions will be deterministic at all
 correct processes.
-Requirements 9 and 10 protect against arbitrary vote extension data from Byzantine processes,
-in a similar way as Requirements 6 and 7 protect against arbitrary proposed blocks.
-Requirements 9 and 10 can be violated by a bug inducing non-determinism in
+Requirements 7 and 8 protect against arbitrary vote extension data from Byzantine processes,
+in a similar way as Requirements 4 and 5 protect against arbitrary proposed blocks.
+Requirements 7 and 8 can be violated by a bug inducing non-determinism in
 `VerifyVoteExtension`. In this case liveness can be compromised.
 Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension`.
 As a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension.
 
-* Requirement 11 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
+* Requirement 9 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
   `RequestProcessProposal`, `RequestExtendVote`, and `RequestVerifyVoteExtension` at height *h* do
   not modify *s<sub>p,h-1</sub>*.
 
-* Requirement 12 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process *p*,
+* Requirement 10 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process *p*,
 and any vote extension *e* that *p* received at height *h*, the computation of
 *s<sub>p,h</sub>* does not depend on *e*.
 
 The call to correct process *p*'s `RequestFinalizeBlock` at height *h*, with block *v<sub>p,h</sub>*
 passed as parameter, creates state *s<sub>p,h</sub>*.
-Additionally,
+Additionally, *p*'s `FinalizeBlock` creates a set of transaction results *T<sub>p,h</sub>*.
 
-* in next-block execution mode, *p*'s `FinalizeBlock` creates a set of transaction results *T<sub>p,h</sub>*,
-* in same-block execution mode, *p*'s `PrepareProposal` creates a set of transaction results *T<sub>p,h</sub>*
-  if *p* was the proposer of *v<sub>p,h</sub>*. If *p* was not the proposer of *v<sub>p,h</sub>*,
-  `ProcessProposal` creates *T<sub>p,h</sub>*. `FinalizeBlock` MAY re-create *T<sub>p,h</sub>* if it was
-  removed from memory during the execution of height *h*.
-
-* Requirement 13 [`FinalizeBlock`, determinism-1]: For any correct process *p*,
+* Requirement 11 [`FinalizeBlock`, determinism-1]: For any correct process *p*,
   *s<sub>p,h</sub>* exclusively depends on *s<sub>p,h-1</sub>* and *v<sub>p,h</sub>*.
 
-* Requirement 14 [`FinalizeBlock`, determinism-2]: For any correct process *p*,
+* Requirement 12 [`FinalizeBlock`, determinism-2]: For any correct process *p*,
   the contents of *T<sub>p,h</sub>* exclusively depend on *s<sub>p,h-1</sub>* and *v<sub>p,h</sub>*.
 
-Note that Requirements 13 and 14, combined with Agreement property of consensus ensure
+Note that Requirements 11 and 12, combined with Agreement property of consensus ensure
 state machine replication, i.e., the Application state evolves consistently at all correct processes.
 
 Finally, notice that neither `PrepareProposal` nor `ExtendVote` have determinism-related
@@ -449,11 +424,6 @@ including the list of all its transactions synchronously to the Application.
 The block delivered (and thus the transaction order) is the same at all correct nodes as guaranteed
 by the Agreement property of Tendermint consensus.
 
-In same block execution mode, field `LastResultsHash` in the block header refers to the results
-of all transactions stored in that block. Therefore,
-`PrepareProposal` must return `ExecTxResult` so that it can
-be used to build the block to be proposed in the current height.
-
 The `Data` field in `ExecTxResult` contains an array of bytes with the transaction result.
 It must be deterministic (i.e., the same value must be returned at all nodes), but it can contain arbitrary
 data. Likewise, the value of `Code` must be deterministic.
@@ -462,9 +432,7 @@ though it is still included in the block. Invalid transaction are not indexed, a
 considered analogous to those that failed `CheckTx`.
 
 Both the `Code` and `Data` are included in a structure that is hashed into the
-`LastResultsHash` of the block header in the next height (next block execution mode), or the
-header of the block to propose in the current height (same block execution mode, `ExecTxResult` as
-part of `PrepareProposal`).
+`LastResultsHash` of the block header in the next height.
 
 `Events` include any events for the execution, which Tendermint will use to index
 the transaction by. This allows transactions to be queried according to what
@@ -474,10 +442,7 @@ events took place during their execution.
 
 The application may set the validator set during
 [`InitChain`](./abci%2B%2B_methods.md#initchain), and may update it during
-[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
-(next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
-(same block execution mode). In all cases, a structure of type
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock). In both cases, a structure of type
 [`ValidatorUpdate`](./abci%2B%2B_methods.md#validatorupdate) is returned.
 
 The `InitChain` method, used to initialize the Application, can return a list of validators.
@@ -521,10 +486,7 @@ They enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in
 [`InitChain`](./abci%2B%2B_methods.md#initchain), and updated in
-[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
-(next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
-(same block execution model).
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock).
 These parameters are deterministically set and/or updated by the Application, so
 all full nodes have the same value at a given height.
 
@@ -698,10 +660,7 @@ Must always be set to a future height. Once set to a value different from
 The application may set the `ConsensusParams` during
 [`InitChain`](./abci%2B%2B_methods.md#initchain),
 and update them during
-[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock)
-(next block execution mode) or
-[`PrepareProposal`](./abci%2B%2B_methods.md#prepareproposal)/[`ProcessProposal`](./abci%2B%2B_methods.md#processproposal)
-(same block execution mode).
+[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock).
 If the `ConsensusParams` is empty, it will be ignored. Each field
 that is not empty will be applied in full. For instance, if updating the
 `Block.MaxBytes`, applications must also set the other `Block` fields (like
@@ -718,21 +677,13 @@ blockchain.
 
 ##### `FinalizeBlock`, `PrepareProposal`/`ProcessProposal`
 
-In next block execution mode, `ResponseFinalizeBlock` accepts a `ConsensusParams` parameter.
+`ResponseFinalizeBlock` accepts a `ConsensusParams` parameter.
 If `ConsensusParams` is `nil`, Tendermint will do nothing.
 If `ConsensusParams` is not `nil`, Tendermint will use it.
 This way the application can update the consensus parameters over time.
 
-Likewise, in same block execution mode, `PrepareProposal` and `ProcessProposal` include
-a `ConsensusParams` parameter. `PrepareProposal` may return a `ConsensusParams` to update
-the consensus parameters in the block that is about to be proposed. If it returns `nil`
-the consensus parameters will not be updated. `ProcessProposal` also accepts a
-`ConsensusParams` parameter, which Tendermint will use it to calculate the corresponding
-hashes and sanity-check them against those of the block that triggered `ProcessProposal`
-at the first place.
-
-Note the updates returned in block `H` will take effect right away for block
-`H+1` (both in next block and same block execution mode).
+The updates returned in block `H` will take effect right away for block
+`H+1`.
 
 ### `Query`
 
@@ -769,11 +720,8 @@ For such applications, the `AppHash` provides a much more efficient way to verif
 ABCI applications can take advantage of more efficient light-client proofs for
 their state as follows:
 
-* in next block executon mode, return the Merkle root of the deterministic application state in
-  `ResponseCommit.Data`. This Merkle root will be included as the `AppHash` in the next block.
-* in same block execution mode, return the Merkle root of the deterministic application state
-  in `ResponsePrepareProposal.AppHash`. This Merkle root will be included as the `AppHash` in
-  the block that is about to be proposed.
+* return the Merkle root of the deterministic application state in
+  `ResponseFinalizeBlock.Data`. This Merkle root will be included as the `AppHash` in the next block.
 * return efficient Merkle proofs about that application state in `ResponseQuery.Proof`
   that can be verified using the `AppHash` of the corresponding block.
 
@@ -1031,8 +979,7 @@ bootstrapping the node (e.g. chain ID, consensus parameters, validator sets, and
 from the genesis file and light client RPC servers. It also calls `Info` to verify the following:
 
 * that the app hash from the snapshot it has delivered to the Application matches the apphash
-  stored in the next height's block (in next block execution), or the current block's height
-  (same block execution)
+  stored in the next height's block
 * that the version that the Application returns in `ResponseInfo` matches the version in the
   current height's block header
 
