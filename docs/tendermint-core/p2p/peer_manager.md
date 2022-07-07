@@ -9,12 +9,12 @@ a `peerStore` for underlying storage.
 
 ### Dialing
 
-A candidate peer returned to the router as the next peer to dial.
+A candidate peer is returned to the router as the next peer to dial.
 
 ### Connected
 
 A peer to which the node is connected.
-A peer is this state is not considered a candidate peer.
+A peer in this state is not considered a candidate peer.
 
 The peer manager distinguishes *incoming* from *outgoing* connections.
 Incoming connections are established through the `Accepted` transition.
@@ -31,7 +31,7 @@ internal queues to interact with the peer and reactors.
 
 In fact, the router provides to the peer manager a list of channels
 (communication abstraction used by reactors) to be informed to all reactors.
-When entering this state, the peer manager broadcast a `PeerUpdate` to all
+When entering this state, the peer manager broadcasts a `PeerUpdate` to all
 subscriptions, notifying the new state (up) of this peer and providing the list
 of channels.
 
@@ -52,9 +52,9 @@ In this case, the transitions fails.
 > Question: is it possible to have multiple dialing routines to the same peer?
 
 It may also occur that the node is already connected to `MaxConnected` peers.
-In this case, the peer manager has to find a peer to evict to given place to
+In this case, the peer manager has to find a peer to evict to give its place to
 the newly established connection.
-If non suitable connected peer is found for eviction, or the hard limit of
+If a non suitable connected peer is found for eviction, or the hard limit of
 connected peers (`MaxConnected + MaxConnectedUpgrade`) is reached, the
 transitions fails.
 
@@ -64,7 +64,7 @@ The peer `LastConnected` time is set, the dialed address's `LastDialSuccess`
 time is set, and its `DialFailures` counter is reset.
 
 > If the peer is `Inactive`, it is set as active.
-> This action has not effect apart from producing metrics.
+> This action has no effect apart from producing metrics.
 
 #### Errors
 
@@ -126,7 +126,7 @@ In this case, the transitions fails.
 It may also occur that the node is already connected to `MaxConnected` peers.
 In this case, the peer manager has to find a peer to evict to given place to
 the newly established connection.
-If non suitable connected peer is found for eviction, or the hard limit of
+If no suitable connected peer is found for eviction, or the hard limit of
 connected peers (`MaxConnected + MaxConnectedUpgrade`) is reached, the
 transitions fails.
 
@@ -181,7 +181,7 @@ node should establish a connection, and provide it to the router.
 
 By *candidate peer* we mean the information about a node in the network.
 This information can be manually configured by the node operator (e.g., via
-`PersistentPeers` parameter) or can be obtained via PEX protocol.
+`PersistentPeers` parameter) or can be obtained via the PEX protocol.
 
 A *candidate peer* may become an actual peer, to which the node is connected.
 We do not use *candidate* to refer to a peer to which we are connected, nor to
@@ -216,7 +216,7 @@ The peer manager **may not** return a candidate peer if:
 
 Observations:
 
-- `MaxConnected` in thesis can be set to `0`, meaning there are no limits for
+- `MaxConnected` in thesis(theory?) can be set to `0`, meaning there are no limits for the
   number of connections established;
 - If `MaxConnectedUpgrade` is set to `0`, `MaxConnected` becomes a hard limit;
 - `MaxOutgoingConnections` can be set to `0`, meaning that the node should not
@@ -227,7 +227,7 @@ Observations:
 For each network address of a peer, the peer manager keeps the number of failed
 dial attempts and the time of the latest failed dial attempt.
 
-The retry dial is the minimum time, from the latest failed dial attempt, we
+The retry dial is the minimum time, from the latest failed dialing attempt, we
 should wait until dialing a peer address again.
 
 The default delay is defined by `MinRetryTime` parameter.
@@ -236,7 +236,7 @@ If it is set to zero, we *never* retry dialing a peer address.
 Upon each failed dial attempt, we increase the delay by `MinRetryTime`, plus an
 optional random jitter of up to `RetryTimeJitter`.
 
-The retry delay should not be longer than `MaxRetryTime` parameter.
+The retry delay should not be longer than the `MaxRetryTime` parameter.
 For *persistent* peers, a different `MaxRetryTimePersistent` should be set.
 
 > This is a linear backoff, while the code mentions an exponential backoff.
@@ -244,8 +244,8 @@ For *persistent* peers, a different `MaxRetryTimePersistent` should be set.
 ### Interaction with the router
 
 The `Router` invokes the `PeerManager.DialNext()` method in a closed loop to
-obtain candidate peers to which dial, in the form of a `NodeAddress` object.
-This methods blocks when there are no candidate peers or the peer manager
+obtain candidate peers which to dial, in the form of a `NodeAddress` object.
+This method blocks when there are no candidate peers or the peer manager
 decides that the node has established enough connections.
 
 [peermanager.go]: https://github.com/tendermint/tendermint/blob/v0.35.x/internal/p2p/peermanager.go
