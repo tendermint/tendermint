@@ -11,7 +11,6 @@ title: Overview and basic concepts
     - [Mempool methods](#mempool-methods)
     - [Info methods](#info-methods)
     - [State-sync methods](#state-sync-methods)
-- [Next-block execution vs. same-block execution](#next-block-execution-vs-same-block-execution)
 - [Tendermint proposal timeout](#tendermint-proposal-timeout)
 - [Deterministic State-Machine Replication](#deterministic-state-machine-replication)
 - [Events](#events)
@@ -32,7 +31,7 @@ now better understood than when ABCI was first written. For example, many ideas 
 scalability can be boiled down to "make the block proposers do work, so the network does not have
 to". This includes optimizations such as transaction level signature aggregation, state transition
 proofs, etc. Furthermore, many new security properties cannot be achieved in the current paradigm,
-as the Application cannot require validators to do more than execute the transactions contained in
+as the Application cannot require validators to do more than executing the transactions contained in
 finalized blocks. This includes features such as threshold cryptography, and guaranteed IBC
 connection attempts.
 
@@ -192,59 +191,6 @@ and an [**Echo**](./abci++_methods.md#echo) method that is used for debugging.
 More details on managing state across connections can be found in the section on
 [Managing Application State](./abci%2B%2B_app_requirements.md#managing-the-application-state-and-related-topics).
 
-## Next-block execution vs. same-block execution
-
-[&uparrow; Back to Outline](#outline)
-
-In the original ABCI protocol, the only moment when the Application had access to a
-block was after it was decided. This led to a block execution model, called *next-block
-execution*, where some fields hashed in a block header refer to the execution of the
-previous block, namely:
-
-- the Merkle root of the Application's state
-- the transaction results
-- the consensus parameter updates
-- the validator updates
-
-With ABCI++, an Application may be configured to keep using the next-block execution model, by
-executing the decided block in `FinalizeBlock`. However, the new methods introduced &mdash;
-`PrepareProposal` and `ProcessProposal` &mdash; disclose the entire proposed block to the
-Application, allowing for its immediate exectution. An Application implementing immediate execution
-may additionally wish to store certain data resulting from the block's execution in the same block
-that has just been executed. This brings about a new execution model, called
-*same-block execution*. An Application implementing this execution model, upon receiving a raw
-proposal via `RequestPrepareProposal` and potentially modifying its transaction list, fully
-executes the resulting prepared proposal as though it was the decided block (immediate execution),
-and the results of the block execution are used as follows:
-
-- The block execution may generate a set of events. The Application should store these events and
-  return them back to Tendermint during the `FinalizeBlock` call if the block is finally decided.
-- The Merkle root resulting from executing the prepared proposal is provided in
-  `ResponsePrepareProposal` and thus refers to the **current block**. Tendermint
-  will use it in the prepared proposal's header.
-- Likewise, the transaction results from executing the prepared proposal are
-  provided in `ResponsePrepareProposal` and refer to the transactions in the
-  **current block**. Tendermint will use them to calculate the results hash
-  in the prepared proposal's header.
-- The consensus parameter updates and validator updates are also provided in
-  `ResponsePrepareProposal` and reflect the result of the prepared proposal's
-  execution. They come into force in height H+1 (as opposed to the H+2 rule
-  in next-block execution model).
-
-If the Application is configured to keep the next-block execution model, it will not
-provide any data in `ResponsePrepareProposal`, other than a potentially modified
-transaction list. The Application may nevertheless choose to perform immediate execution even in
-next-block execution mode, however same-block execution mode *requires* immediate execution.
-
-The long term plan is for the execution model to be set in a new boolean parameter *same_block* in
-`ConsensusParams`. Once this parameter is introduced,  it **must not** be changed once the
-blockchain has started, unless the Application developers *really* know what they are doing.
-However, modifying `ConsensusParams` structure cannot be done lightly if we are to
-preserve blockchain compatibility. Therefore we need an interim solution until
-soft upgrades are specified and implemented in Tendermint. This somewhat *unsafe*
-solution consists in Tendermint assuming same-block execution if the Application
-fills the above mentioned fields in `ResponsePrepareProposal`.
-
 ## Tendermint proposal timeout
 
 Immediate execution requires the Application to fully execute the prepared block
@@ -312,7 +258,7 @@ Sources of non-determinism in applications may include:
 
 See [#56](https://github.com/tendermint/abci/issues/56) for the original discussion.
 
-Note that some methods (`Query, CheckTx, FinalizeBlock`) return non-deterministic data in the form
+Note that some methods (`Query, FinalizeBlock`) return non-deterministic data in the form
 of `Info` and `Log` fields. The `Log` is intended for the literal output from the Application's
 logger, while the `Info` is any additional info that should be returned. These are the only fields
 that are not included in block header computations, so we don't need agreement

@@ -290,18 +290,10 @@ message ResponseApplySnapshotChunk {
 
 message ResponsePrepareProposal {
   repeated TxRecord                tx_records              = 1;
-  bytes                            app_hash                = 2;
-  repeated ExecTxResult            tx_results              = 3;
-  repeated ValidatorUpdate         validator_updates       = 4;
-  tendermint.types.ConsensusParams consensus_param_updates = 5;
 }
 
 message ResponseProcessProposal {
   ProposalStatus                   status                  = 1;
-  bytes                            app_hash                = 2;
-  repeated ExecTxResult            tx_results              = 3;
-  repeated ValidatorUpdate         validator_updates       = 4;
-  tendermint.types.ConsensusParams consensus_param_updates = 5;
 
   enum ProposalStatus {
     UNKNOWN = 0;
