@@ -109,8 +109,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
-	preparedProposal, err := blockExec.proxyApp.PrepareProposal(
-		context.Background(),
+	preparedProposal, err := blockExec.proxyApp.PrepareProposalSync(
 		abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes(), BlockDataSize: maxDataBytes},
 	)
 	if err != nil {
