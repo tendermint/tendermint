@@ -211,6 +211,7 @@ func TestTxMempool_Size(t *testing.T) {
 func TestTxMempool_Eviction(t *testing.T) {
 	txmp := setup(t, 0)
 	txmp.config.Size = 5
+	txmp.config.MaxTxsBytes = 60
 	txExists := func(spec string) bool {
 		txmp.Lock()
 		defer txmp.Unlock()
@@ -219,12 +220,31 @@ func TestTxMempool_Eviction(t *testing.T) {
 		return ok
 	}
 
-	// Fill the mempool with known transaction priorities.
+	// A transaction bigger than the mempool should be rejected even when there
+	// are slots available.
+	mustCheckTx(t, txmp, "big=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef=1")
+	require.Equal(t, 0, txmp.Size())
+
+	// Nearly-fill the mempool with a low-priority transaction, to show that it
+	// is evicted even when slots are available for a higher-priority tx.
+	const bigTx = "big=0123456789abcdef0123456789abcdef0123456789abcdef01234=2"
+	mustCheckTx(t, txmp, bigTx)
+	require.Equal(t, 1, txmp.Size()) // bigTx is the only element
+	require.True(t, txExists(bigTx))
+	require.Equal(t, int64(len(bigTx)), txmp.SizeBytes())
+
+	// The next transaction should evict bigTx, because it is higher priority
+	// but does not fit on size.
 	mustCheckTx(t, txmp, "key1=0000=25")
+	require.True(t, txExists("key1=0000=25"))
+	require.False(t, txExists(bigTx))
+	require.Equal(t, int64(len("key1=0000=25")), txmp.SizeBytes())
+
+	// Now fill up the rest of the slots with other transactions.
 	mustCheckTx(t, txmp, "key2=0001=5")
 	mustCheckTx(t, txmp, "key3=0002=10")
-	mustCheckTx(t, txmp, "key4=0003=2")
-	mustCheckTx(t, txmp, "key5=0004=2")
+	mustCheckTx(t, txmp, "key4=0003=3")
+	mustCheckTx(t, txmp, "key5=0004=3")
 
 	// A new transaction with low priority should be discarded.
 	mustCheckTx(t, txmp, "key6=0005=1")
@@ -234,18 +254,28 @@ func TestTxMempool_Eviction(t *testing.T) {
 	// newest of the two transactions with lowest priority.
 	mustCheckTx(t, txmp, "key7=0006=7")
 	require.True(t, txExists("key7=0006=7"))  // new transaction added
-	require.False(t, txExists("key5=0004=2")) // newest low-priority tx evicted
-	require.True(t, txExists("key4=0003=2"))  // older low-priority tx retained
+	require.False(t, txExists("key5=0004=3")) // newest low-priority tx evicted
+	require.True(t, txExists("key4=0003=3"))  // older low-priority tx retained
 
 	// Another new transaction evicts the other low-priority element.
 	mustCheckTx(t, txmp, "key8=0007=20")
 	require.True(t, txExists("key8=0007=20"))
-	require.False(t, txExists("key4=0003=2"))
+	require.False(t, txExists("key4=0003=3"))
 
 	// Now the lowest-priority tx is 5, so that should be the next to go.
 	mustCheckTx(t, txmp, "key9=0008=9")
 	require.True(t, txExists("key9=0008=9"))
 	require.False(t, txExists("k3y2=0001=5"))
+
+	// Add a transaction that requires eviction of multiple lower-priority
+	// entries, in order to fit the size of the element.
+	mustCheckTx(t, txmp, "key10=0123456789abcdef=11") // evict 10, 9, 7; keep 25, 20, 11
+	require.True(t, txExists("key1=0000=25"))
+	require.True(t, txExists("key8=0007=20"))
+	require.True(t, txExists("key10=0123456789abcdef=11"))
+	require.False(t, txExists("key3=0002=10"))
+	require.False(t, txExists("key9=0008=9"))
+	require.False(t, txExists("key7=0006=7"))
 }
 
 func TestTxMempool_Flush(t *testing.T) {
