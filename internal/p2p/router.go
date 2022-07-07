@@ -166,15 +166,10 @@ type RouterOptions struct {
 }
 
 const (
-<<<<<<< HEAD
-	queueTypeFifo     = "fifo"
-	queueTypePriority = "priority"
-	queueTypeWDRR     = "wdrr"
-=======
 	queueTypeFifo           = "fifo"
 	queueTypePriority       = "priority"
+	queueTypeWDRR           = "wdrr"
 	queueTypeSimplePriority = "simple-priority"
->>>>>>> d1a16e8ff (p2p: simpler priority queue (#8929))
 )
 
 // Validate validates router options.
@@ -182,13 +177,8 @@ func (o *RouterOptions) Validate() error {
 	switch o.QueueType {
 	case "":
 		o.QueueType = queueTypeFifo
-<<<<<<< HEAD
-	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
-		// passI me
-=======
-	case queueTypeFifo, queueTypePriority, queueTypeSimplePriority:
+	case queueTypeFifo, queueTypeWDRR, queueTypePriority, queueTypeSimplePriority:
 		// pass
->>>>>>> d1a16e8ff (p2p: simpler priority queue (#8929))
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
 	}

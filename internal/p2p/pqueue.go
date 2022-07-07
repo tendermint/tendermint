@@ -280,11 +280,6 @@ func (s *pqScheduler) process() {
 }
 
 func (s *pqScheduler) push(pqEnv *pqEnvelope) {
-<<<<<<< HEAD
-	chIDStr := strconv.Itoa(int(pqEnv.envelope.channelID))
-
-=======
->>>>>>> d1a16e8ff (p2p: simpler priority queue (#8929))
 	// enqueue the incoming Envelope
 	heap.Push(s.pq, pqEnv)
 	s.size += pqEnv.size
