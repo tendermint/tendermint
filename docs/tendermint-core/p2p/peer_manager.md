@@ -5,7 +5,7 @@ a `peerStore` for underlying storage.
 
 ## Peer life-cycle
 
-<img src="pics/p2p-v0.35-peermanager.png" alt="peer life cycle" title="" width="400px" name="" align="center"/>
+<img src="pics/p2p-v0.35-peermanager.png" alt="peer life cycle" title="" width="600px" name="" align="center"/>
 
 ### Dialing
 
@@ -249,4 +249,3 @@ This method blocks when there are no candidate peers or the peer manager
 decides that the node has established enough connections.
 
 [peermanager.go]: https://github.com/tendermint/tendermint/blob/v0.35.x/internal/p2p/peermanager.go
-
