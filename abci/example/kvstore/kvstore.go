@@ -175,7 +175,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
 	// Punish validators who committed equivocation.
-	for _, ev := range req.ByzantineValidators {
+	for _, ev := range req.Misbehavior {
 		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
 			addr := string(ev.Validator.Address)
 			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
@@ -293,7 +293,7 @@ func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPre
 
 func (*Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
-		if len(tx) == 0 {
+		if len(tx) == 0 || isPrepareTx(tx) {
 			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
 		}
 	}

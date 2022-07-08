@@ -239,7 +239,6 @@ Example:
 		for i := 0; i < nValidators+nNonValidators; i++ {
 			nodeDir := filepath.Join(outputDir, fmt.Sprintf("%s%d", nodeDirPrefix, i))
 			config.SetRoot(nodeDir)
-			config.P2P.AllowDuplicateIP = true
 			if populatePersistentPeers {
 				persistentPeersWithoutSelf := make([]string, 0)
 				for j := 0; j < len(persistentPeers); j++ {

@@ -631,7 +631,7 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 				require.NoError(t, txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0}))
 			} else {
 				err = txmp.CheckTx(ctx, tx, callback, TxInfo{SenderID: 0})
-				fmt.Print(err.Error())
+				require.EqualError(t, err, "test error")
 			}
 		})
 	}

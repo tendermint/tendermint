@@ -31,12 +31,19 @@ Special thanks to external contributors on this release:
   - [abci] \#7984 Remove the locks preventing concurrent use of ABCI applications by Tendermint. (@tychoish)
   - [abci] \#8605 Remove info, log, events, gasUsed and mempoolError fields from ResponseCheckTx as they are not used by Tendermint. (@jmalicevic)
   - [abci] \#8664 Move `app_hash` parameter from `Commit` to `FinalizeBlock`. (@sergio-mena)
+  - [abci] \#8656 Added cli command for `PrepareProposal`. (@jmalicevic)
+  - [sink/psql] \#8637 tx_results emitted from psql sink are now json encoded, previously they were protobuf encoded
+  - [abci] \#8901 Added cli command for `ProcessProposal`. (@hvanz)
 
 - P2P Protocol
 
   - [p2p] \#7035 Remove legacy P2P routing implementation and associated configuration options. (@tychoish)
   - [p2p] \#7265 Peer manager reduces peer score for each failed dial attempts for peers that have not successfully dialed. (@tychoish)
   - [p2p] [\#7594](https://github.com/tendermint/tendermint/pull/7594) always advertise self, to enable mutual address discovery. (@altergui)
+  - [p2p] \#8737 Introduce "inactive" peer label to avoid re-dialing incompatible peers. (@tychoish)
+  - [p2p] \#8737 Increase frequency of dialing attempts to reduce latency for peer acquisition. (@tychoish)
+  - [p2p] \#8737 Improvements to peer scoring and sorting to gossip a greater variety of peers during PEX. (@tychoish)
+  - [p2p] \#8737 Track incoming and outgoing peers separately to ensure more peer slots open for incoming connections. (@tychoish)
 
 - Go API
 
@@ -94,3 +101,4 @@ Special thanks to external contributors on this release:
 - [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
 - [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
 - [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
+- (indexer) \#8625 Fix overriding tx index of duplicated txs.

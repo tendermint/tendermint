@@ -204,7 +204,7 @@ func makeNode(
 		}
 	}
 
-	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
+	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID, nodeMetrics.p2p)
 	closers = append(closers, peerCloser)
 	if err != nil {
 		return nil, combineCloseError(
@@ -716,8 +716,10 @@ func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.Gene
 
 func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
-		QueueType: conf.P2P.QueueType,
-		UseLibP2P: conf.P2P.UseLibP2P,
+		QueueType:        conf.P2P.QueueType,
+		UseLibP2P:        conf.P2P.UseLibP2P,
+		HandshakeTimeout: conf.P2P.HandshakeTimeout,
+		DialTimeout:      conf.P2P.DialTimeout,
 	}
 
 	if conf.FilterPeers && appClient != nil {
