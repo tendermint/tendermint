@@ -1,0 +1,72 @@
+ipv6 = false
+initial_height = 0
+key_type = ""
+abci_protocol = "tcp"
+[initial_state]
+  initial01 = "a"
+  initial02 = "b"
+  initial03 = "c"
+[validators]
+[validator_update]
+  [validator_update.0]
+    validator01 = 47
+    validator02 = 89
+    validator03 = 83
+  [validator_update.10]
+    validator04 = 98
+[node]
+  [node.validator01]
+    mode = "validator"
+    database = "rocksdb"
+    privval_protocol = "tcp"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v1"
+    state_sync = false
+    persist_interval = 0
+    snapshot_interval = 3
+    retain_blocks = 0
+    perturb = []
+    [node.validator01.misbehaviors]
+  [node.validator02]
+    mode = "validator"
+    persistent_peers = ["validator01"]
+    database = "rocksdb"
+    privval_protocol = "file"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v0"
+    state_sync = false
+    persist_interval = 0
+    snapshot_interval = 3
+    retain_blocks = 0
+    perturb = []
+    [node.validator02.misbehaviors]
+  [node.validator03]
+    mode = "validator"
+    persistent_peers = ["validator02"]
+    database = "rocksdb"
+    privval_protocol = "file"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v1"
+    state_sync = false
+    persist_interval = 5
+    snapshot_interval = 3
+    retain_blocks = 0
+    perturb = ["restart"]
+    [node.validator03.misbehaviors]
+  [node.validator04]
+    mode = "validator"
+    persistent_peers = ["validator01"]
+    database = "rocksdb"
+    privval_protocol = "file"
+    start_at = 5
+    fast_sync = "v0"
+    mempool_version = "v1"
+    state_sync = true
+    persist_interval = 5
+    snapshot_interval = 3
+    retain_blocks = 0
+    perturb = ["restart"]
+    [node.validator04.misbehaviors]
