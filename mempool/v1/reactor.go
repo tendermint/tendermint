@@ -198,8 +198,8 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// start from the beginning.
 		if next == nil {
 			select {
-			case <-memR.mempool.WaitForNextTx(): // Wait until a tx is available
-				if next = memR.mempool.NextGossipTx(); next == nil {
+			case <-memR.mempool.TxsWaitChan(): // Wait until a tx is available
+				if next = memR.mempool.TxsFront(); next == nil {
 					continue
 				}
 
@@ -232,7 +232,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 
 		// NOTE: Transaction batching was disabled due to
 		// https://github.com/tendermint/tendermint/issues/5796
-		if ok := memR.mempool.txStore.TxHasPeer(memTx.hash, peerID); !ok {
+		if !memTx.HasPeer(peerID) {
 			msg := protomem.Message{
 				Sum: &protomem.Message_Txs{
 					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
