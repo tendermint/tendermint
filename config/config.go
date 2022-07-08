@@ -554,6 +554,10 @@ type RPCConfig struct {
 
 	// pprof listen address (https://golang.org/pkg/net/http/pprof)
 	PprofListenAddress string `mapstructure:"pprof-laddr"`
+
+	// Set to true to enable the /BlockResults query. Saving ABCI Responses is also necessary
+	// to reindex events used in the command line
+	PersistABCIResponses bool `mapstructure:"persist-abci-responses"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -580,6 +584,7 @@ func DefaultRPCConfig() *RPCConfig {
 
 		TLSCertFile: "",
 		TLSKeyFile:  "",
+		PersistABCIResponses: false,
 	}
 }
 
