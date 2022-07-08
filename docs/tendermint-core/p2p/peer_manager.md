@@ -233,12 +233,73 @@ configuration provided by the operators, the current state of the connections
 
 The connection policy defines:
 
-1. When the node should try to establish new connections, and
+1. When the node should establish new connections to peers, and
 1. The next peer to which the router should try to establish a connection.
 
 ### Connection slots
 
-### Upgrades
+The number of connection slots is defined by the `MaxConnected` parameter.
+
+The peer manager will try to fill every connection slot with a peer.
+Thus, while there are available connection slots, the peer manager will provide
+[candidate peers](#candidate-peer) to the router, which will try to establish
+connections to them.
+Each time the peer manager [provides a candidate peer](#dialnext-transition) to
+the router, a connection slot is _virtually_ occupied by the candidate peer.
+The connection slot will become actually occupied if the router succeeds
+establishing a connection with the candidate peer.
+
+When the router establishes a connection to a peer, because it either
+[accepted](#accepted-transition) a connection from a peer
+or successfully [dialed](#dialed-transition) a peer,
+the peer manager should find a slot for this connection.
+
+If there is an available connection slot, and this is the first connection
+established with that peer, the slot is filled by the new connection.
+Observe that the peer manager should not allow two slots to be filled with
+connections to the same peer.
+
+If all `MaxConnected` connection slots are full, the node should _a priori_
+reject the connection.
+However, it is possible that this new connection allows the node to connect to
+a peer whose score is better than the score of a peer occupying one of the
+connection slots.
+In this case, the peer manager will try to [upgrade](#slot-upgrades) that
+connection slot.
+
+> Although not advisable, the `MaxConnected` parameter can be set `0`.
+> In this case, there is not limit in the number of connections a node can
+> establish with peers.
+> This means that the node will accept all connections established with peers,
+> and will dial every candidate peer it knows about.
+
+### Outgoing connections
+
+The peer manager distinguishes *incoming* from *outgoing* connections.
+A connection is *incoming* when the router has [`Accepted`](#accepted-transition) it.
+A connection is *outgoing* when the router has successfully
+[`Dialed`](#dialed-transition) a peer.
+
+If the `MaxOutgoingConnections` parameter is set (it is not zero larger), it
+defines the maximum number of *outgoing* connections the node should have.
+More precisely, it defines that the node should not attempt to
+[dial](#dialnext-transition) new peers when if already has established outgoing
+connections to `MaxOutgoingConnections` peers.
+
+If this parameter is not set, the peer manager does not actually make any
+distinction between incoming and outgoing connections.
+Note that even when this parameter is set, this distinction is only made when
+the peer manager defines whether the router should dial a candidate peer.
+Once a connection is established, this distinction is no longer made.
+
+> The previous version of the `p2p` explicitly distinguished incoming and
+> outgoing peers. Configuring the `MaxOutgoingConnections` parameters should
+> therefore make the connection policy similar to the one adopted in the
+> previous version. (TODO: check)
+
+### Slot upgrades
+
+TODO:
 
 ### Peer ranking
 
