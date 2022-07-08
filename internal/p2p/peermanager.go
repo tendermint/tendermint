@@ -975,7 +975,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	}
 
 	var numAddresses int
-	var totalScore int
+	var totalAbsScore int
 	ranked := m.store.Ranked()
 	seenAddresses := map[NodeAddress]struct{}{}
 	scores := map[types.NodeID]int{}
@@ -986,8 +986,12 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 			continue
 		}
 		score := int(peer.Score())
+		if score < 0 {
+			totalAbsScore += -score
+		} else {
+			totalAbsScore += score
+		}
 
-		totalScore += score
 		scores[peer.ID] = score
 		for addr := range peer.AddressInfo {
 			if _, ok := m.options.PrivatePeers[addr.NodeID]; !ok {
@@ -995,6 +999,8 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 			}
 		}
 	}
+
+	meanAbsScore := (totalAbsScore + 1) / (len(scores) + 1)
 
 	var attempts uint16
 	var addedLastIteration bool
@@ -1044,7 +1050,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 					// peer.
 
 					// nolint:gosec // G404: Use of weak random number generator
-					if numAddresses <= int(limit) || rand.Intn(totalScore+1) <= scores[peer.ID]+1 || rand.Intn((idx+1)*10) <= idx+1 {
+					if numAddresses <= int(limit) || rand.Intn((meanAbsScore*2)+1) <= scores[peer.ID]+1 || rand.Intn((idx+1)*10) <= idx+1 {
 						addresses = append(addresses, addressInfo.Address)
 						addedLastIteration = true
 						seenAddresses[addressInfo.Address] = struct{}{}
