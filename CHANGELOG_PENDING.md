@@ -27,3 +27,5 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [mempool] \#8944 Fix unbounded heap growth in the priority mempool. (@creachadair)
