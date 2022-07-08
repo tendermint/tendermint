@@ -349,20 +349,37 @@ to disconnect from the peer, and the next peer to evict routine is notified.
 
 ### Upgrading peer
 
-A peer whose eviction was scheduled to given room to a higher-ranked peer the
-router is dialing to.
+A [connected peer](#connected-peer) which should be evicted to given room to a
+higher-ranked peer the router is dialing to.
 
-This is a [connected peer](#connected-peer), and the `Upgrading` sub-state is
-part of the connection [slots upgrading](#slots-upgrade) procedure.
-
-The eviction of this peer, i.e. its transition to the [evict](#evict-peer)
-sub-state, only occur if and when a connection with the higher-ranker peer that
-should take its connection slot is [established](#dialed-transition).
+The `Upgrading` sub-state is part of the procedure to [upgrade connection slots](#slots-upgrade).
+When a connection with the higher-ranker peer that should take the connection
+slot from this peer is [established](#dialed-transition), the
+[eviction](#evict-peer) of this peer is scheduled.
 
 ### Evict peer
 
+A peer whose eviction was scheduled, for either of the following reasons:
+
+1. to given room to a higher-ranked peer the router is connected to, as part of
+   the procedure to [upgrade connection slots](#slots-upgrade),
+2. or because this peer was reported as [errored](#errored-transition) by a
+   reactor interacting with this peer.
+
+This peer is a [connected peer](#connected-peer).
+`Evict` is the first sub-state of the procedure that should lead the node to
+[disconnect](#disconnected-transition) from a peer.
+
 ### EvictNext transition
 
+TODO:
+
 ### Evicting peer
+
+A peer whose eviction, performed by the router, is in progress.
+
+This peer is still a [connected peer](#connected-peer).
+`Evicting` is the second and last sub-state of the procedure for 
+[disconnecting](#disconnected-transition) from a peer.
 
 [peermanager.go]: https://github.com/tendermint/tendermint/blob/v0.35.x/internal/p2p/peermanager.go
