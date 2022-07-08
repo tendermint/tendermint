@@ -397,7 +397,7 @@ func generateNode(
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
-		BlockSync:        nodeBlockSyncs.Choose(r).(string),
+		BlockSync:        "v0",
 		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        e2e.StateSyncDisabled,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
