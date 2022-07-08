@@ -47,8 +47,6 @@ var (
 		"tcp":  20,
 		"unix": 10,
 	}
-	// FIXME: v2 disabled due to flake
-	nodeBlockSyncs = uniformChoice{"v0"} // "v2"
 	nodeMempools   = uniformChoice{"v0", "v1"}
 	nodeStateSyncs = weightedChoice{
 		e2e.StateSyncDisabled: 10,
