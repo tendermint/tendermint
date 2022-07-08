@@ -71,26 +71,47 @@ peers when the router already has established outgoing connections to
 
 ### Slot upgrades
 
-TODO:
+The rationale behind this concept is that the node may try to establish or
+accept connections even when all the connection slots are full, provided that
+the peer in the other side of the new connection is better-ranked than a peer
+that is occupying a connection slot.
+A connection slot can therefore be upgraded, meaning that the lower-ranked peer
+occupying this connection slot will be replaced by a higher-ranked peer.
+
+The upgrading of connection slots is determined by the `MaxConnectedUpgrade`
+parameter, which defines the number of connections that the peer manager can
+use for upgrading connection slots.
+
+If `MaxConnectedUpgrade` is set to zero, the upgrading of connection slots is
+disabled.
+This means, in particular, that `MaxConnected` is the hard limit of peers that
+can be in the [connected state](#connected-peer).
+
+If `MaxConnectedUpgrade` is larger than zero, the upgrading of connection slots
+is enabled.
+As a result, the hard limit for the number of peers that can be in the
+[connected state](#connected-peer) becomes `MaxConnected + MaxConnectedUpgrade`.
+Some of these peers, however, will not remain in this state as they should be
+[evicted](#evictnext-transition) by the router.
 
 ### Peer ranking
 
 TODO:
 
-The [`PeerManager`][peermanager.go] manages peer life-cycle information, using
-a `peerStore` for underlying storage.
-
 ## Peer life cycle
+
+For implementing the connection policy, the peer manager keeps track of the
+state of peers and manages their life-cycle, using a `peerStore` for underlying
+storage.
 
 The life cycle of a peer in the peer manager is represented in the picture
 below.
 The circles represent _states_ of a peer and the rectangles represent
 _transitions_.
-All transitions are performed by the `Router`, by invoking the corresponding
-methods.
+All transitions are performed by the `Router`, by invoking methods with
+corresponding names.
 Green arrows represent normal transitions, while red arrows represent
-alternative transitions in case of errors.
-Dashed arrows, in their turn, represent eventual transitions.
+alternative transitions taken in case of errors.
 
 <img src="pics/p2p-v0.35-peermanager.png" alt="peer life cycle" title="" width="600px" name="" align="center"/>
 
@@ -121,6 +142,13 @@ When both conditions are met, the peer manager selects the
 [best-ranked](#peer-ranking) candidate peer and provides it to the router,
 which is responsible for dialing the peer.
 
+Dialing this candidate peer may have become possible because the peer manager
+has found a connection slot to [upgrade](#slots-upgrades) for (possibly) given
+room to the selected candidate peer.
+If this is the case, the peer occupying this connection slot is set to the
+[upgrading state](#upgrading-peer), so that it will be evicted once the
+connection to the candidate peer is successfully established.
+
 ### Dialing peer
 
 A peer that was returned to the router as the next peer to dial.
@@ -144,11 +172,15 @@ In this case, the transitions fails.
 
 > Question: is it possible to have multiple routines dialing to the same peer?
 
-It may also occur that the node is already connected to `MaxConnected` peers.
-In this case, the peer manager tries to find a peer to evict to give its place
-to the newly established connection.
-If no suitable peer is found for eviction, or the hard limit of connected peers
-(`MaxConnected + MaxConnectedUpgrade`) is reached, the transitions fails.
+It may also occur that the node is already connected to `MaxConnected` peers,
+which means that all connection slots are full.
+In this case, the peer manager tries to find a connection slot that can be
+[upgraded](#slots-upgrading) to give room for the new established connection.
+If another peer was set to the [upgrading state](#upgrading-peeer) to give room
+to this peer, the slot for the established connection is reserved.
+Otherwise, if no suitable connection slot is found, or the hard limit
+`MaxConnected + MaxConnectedUpgrade` of connected peers is reached, the
+transitions fails.
 
 If the transition succeeds, the peer is set to the
 [`Connected`](#connected-peer) state as an `outgoing` peer.
@@ -157,6 +189,15 @@ set, and dialed address' `DialFailures` counter is reset.
 
 > If the peer is `Inactive`, it is set as active.
 > This action has no effect apart from producing metrics.
+
+If a connection slot was upgraded to give room for the established connection, the
+peer occupying that slot transitions to the [evict state](#evict-peer).
+
+> The peer to evict could have been previously selected in the associated
+> [next to dial transition](#dialnext-transition).
+> In this case, the peer manager looks for an even lower-ranked peer to replace
+> the peer that was previously selected; if such a peer is found, it is is to
+> be evicted, not the originally selected.
 
 #### Errors
 
@@ -224,11 +265,12 @@ This can happen because the router already successfully dialed or accepted a
 connection from the same peer.
 In this case, the transitions fails.
 
-It may also occur that the node is already connected to `MaxConnected` peers.
-In this case, the peer manager tries to find a peer to evict to give its place
-to the newly established connection.
-If no suitable peer is found for eviction, or the hard limit of connected peers
-(`MaxConnected + MaxConnectedUpgrade`) is reached, the transitions fails.
+It may also occur that the node is already connected to `MaxConnected` peers,
+which means that all connection slots are full.
+In this case, the peer manager tries to find a connection slot that can be
+[upgraded](#slots-upgrading) to give room for the accepted connection.
+If no suitable connection slot is found, or the hard limit `MaxConnected +
+MaxConnectedUpgrade` of connected peers is reached, the transitions fails.
 
 If the transition succeeds, the peer is set to the
 [`Connected`](#connected-peer) state as an `incoming` peer.
@@ -241,6 +283,9 @@ for all addresses associated to the peer.
 
 > If the peer is `Inactive`, it is set as active.
 > This action has not effect apart from producing metrics.
+
+If a connection slot was upgraded to give room for the accepted connection, the
+peer occupying that slot transitions to the [evict state](#evict-peer).
 
 #### Errors
 
@@ -301,5 +346,23 @@ an error to the router.
 The peer is expected to be in the [`Connected`](#connected-peer) state.
 If so, the peer transitions to the [`Evict`](#evict-peer) state, which should lead the router
 to disconnect from the peer, and the next peer to evict routine is notified.
+
+### Upgrading peer
+
+A peer whose eviction was scheduled to given room to a higher-ranked peer the
+router is dialing to.
+
+This is a [connected peer](#connected-peer), and the `Upgrading` sub-state is
+part of the connection [slots upgrading](#slots-upgrade) procedure.
+
+The eviction of this peer, i.e. its transition to the [evict](#evict-peer)
+sub-state, only occur if and when a connection with the higher-ranker peer that
+should take its connection slot is [established](#dialed-transition).
+
+### Evict peer
+
+### EvictNext transition
+
+### Evicting peer
 
 [peermanager.go]: https://github.com/tendermint/tendermint/blob/v0.35.x/internal/p2p/peermanager.go
