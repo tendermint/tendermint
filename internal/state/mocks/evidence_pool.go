@@ -69,13 +69,13 @@ func (_m *EvidencePool) Update(_a0 state.State, _a1 types.EvidenceList) {
 	_m.Called(_a0, _a1)
 }
 
-type NewEvidencePoolT interface {
+type mockConstructorTestingTNewEvidencePool interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewEvidencePool creates a new instance of EvidencePool. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewEvidencePool(t NewEvidencePoolT) *EvidencePool {
+func NewEvidencePool(t mockConstructorTestingTNewEvidencePool) *EvidencePool {
 	mock := &EvidencePool{}
 	mock.Mock.Test(t)
 
