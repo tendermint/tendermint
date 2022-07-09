@@ -2,7 +2,6 @@ package v1
 
 import (
 	"fmt"
-	stdlog "log"
 	"reflect"
 	"sort"
 	"sync"
