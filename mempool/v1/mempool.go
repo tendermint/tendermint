@@ -450,6 +450,10 @@ func (txmp *TxMempool) Update(
 func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
+		txmp.logger.Error("mempool: received incorrect result type in CheckTx callback",
+			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
+			"got", reflect.TypeOf(res.Value).Name(),
+		)
 		return
 	}
 
@@ -618,10 +622,8 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
-		txmp.logger.Error("mempool: received incorrect result type in CheckTx callback",
-			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
-			"got", reflect.TypeOf(res.Value).Name(),
-		)
+		// Don't log this; this is the default callback and other response types
+		// can safely be ignored.
 		return
 	}
 
@@ -709,9 +711,7 @@ func (txmp *TxMempool) recheckTransactions() {
 		})
 	}
 
-	if err := txmp.proxyAppConn.FlushAsync(); err != nil {
-		txmp.logger.Error("failed to flush transactions during recheck", "err", err)
-	}
+	txmp.proxyAppConn.FlushAsync()
 }
 
 // canAddTx returns an error if we cannot insert the provided *WrappedTx into

@@ -374,8 +374,6 @@ func createMempoolAndMempoolReactor(
 
 	switch config.Mempool.Version {
 	case cfg.MempoolV1:
-		// TODO(thane): Remove log once https://github.com/tendermint/tendermint/issues/8775 is resolved.
-		logger.Error("While the prioritized mempool API is stable, there is a critical bug in it that is currently under investigation. See https://github.com/tendermint/tendermint/issues/8775 for details")
 		mp := mempoolv1.NewTxMempool(
 			logger,
 			config.Mempool,
@@ -406,7 +404,6 @@ func createMempoolAndMempoolReactor(
 			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
 		)
 
-		mp.SetLogger(logger)
 		mp.SetLogger(logger)
 
 		reactor := mempoolv0.NewReactor(
