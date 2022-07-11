@@ -16,6 +16,106 @@ abci_protocol = "tcp"
     validator07 = 82
 [node]
   [node.full01]
+    mode = "full"
+    database = "boltdb"
+    privval_protocol = "file"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v1"
+    state_sync = false
+    persist_interval = 5
+    snapshot_interval = 0
+    retain_blocks = 5
+    perturb = ["disconnect"]
+  [node.full02]
+    mode = "full"
+    persistent_peers = ["validator03", "validator07", "validator04", "validator02", "full01"]
+    database = "boltdb"
+    privval_protocol = "tcp"
+    start_at = 15
+    fast_sync = "v0"
+    mempool_version = "v1"
+    state_sync = false
+    persist_interval = 1
+    snapshot_interval = 0
+    retain_blocks = 5
+    perturb = []
+  [node.light01]
+    mode = "light"
+    persistent_peers = ["validator01", "validator02", "validator04", "validator03"]
+    database = "cleveldb"
+    privval_protocol = ""
+    start_at = 10
+    fast_sync = ""
+    mempool_version = ""
+    state_sync = false
+    persist_interval = 0
+    snapshot_interval = 0
+    retain_blocks = 0
+  [node.validator01]
+    mode = "validator"
+    persistent_peers = ["full01"]
+    database = "boltdb"
+    privval_protocol = "unix"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v1"
+    state_sync = false
+    persist_interval = 1
+    snapshot_interval = 3
+    retain_blocks = 0
+    perturb = []
+    [node.validator01.misbehaviors]
+  [node.validator02]
+    mode = "validator"
+    persistent_peers = ["full01"]
+    database = "goleveldb"
+    privval_protocol = "tcp"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v1"
+    state_sync = false
+    persist_interval = 5
+    snapshot_interval = 3
+    retain_blocks = 0
+    perturb = []
+    [node.validator02.misbehaviors]
+  [node.validator03]
+    mode = "validator"
+    persistent_peers = ["validator02", "validator01"]
+    database = "cleveldb"
+    privval_protocol = "unix"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v0"
+    state_sync = false
+    persist_interval = 1
+    snapshot_interval = 0
+    retain_blocks = 0
+    perturb = []
+    [node.validator03.misbehaviors]
+  [node.validator04]
+    mode = "validator"
+    persistent_peers = ["full01", "validator02"]
+    database = "rocksdb"
+    privval_protocol = "tcp"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v0"
+    state_sync = false
+    persist_interval = 1
+    snapshot_interval = 3
+    retain_blocks = 0
+    perturb = ["disconnect"]
+    [node.validator04.misbehaviors]
+  [node.validator05]
+    mode = "validator"
+    persistent_peers = ["validator01"]
+    database = "cleveldb"
+    privval_protocol = "file"
+    start_at = 0
+    fast_sync = "v0"
+    mempool_version = "v0"
     state_sync = false
     persist_interval = 1
     snapshot_interval = 3
