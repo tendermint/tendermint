@@ -16,13 +16,13 @@ type channelInternal struct {
 	Error chan PeerError
 }
 
-func testChannel(size int) (*channelInternal, *Channel) {
+func testChannel(size int) (*channelInternal, *legacyChannel) {
 	in := &channelInternal{
 		In:    make(chan Envelope, size),
 		Out:   make(chan Envelope, size),
 		Error: make(chan PeerError, size),
 	}
-	ch := &Channel{
+	ch := &legacyChannel{
 		inCh:  in.In,
 		outCh: in.Out,
 		errCh: in.Error,

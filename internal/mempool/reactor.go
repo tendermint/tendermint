@@ -194,7 +194,7 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope) (er
 
 // processMempoolCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the mempoolCh.
-func (r *Reactor) processMempoolCh(ctx context.Context, mempoolCh *p2p.Channel) {
+func (r *Reactor) processMempoolCh(ctx context.Context, mempoolCh p2p.Channel) {
 	iter := mempoolCh.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
@@ -215,7 +215,7 @@ func (r *Reactor) processMempoolCh(ctx context.Context, mempoolCh *p2p.Channel) 
 // goroutine or not. If not, we start one for the newly added peer. For down or
 // removed peers, we remove the peer from the mempool peer ID set and signal to
 // stop the tx broadcasting goroutine.
-func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate, mempoolCh *p2p.Channel) {
+func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate, mempoolCh p2p.Channel) {
 	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
@@ -264,7 +264,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 // processPeerUpdates initiates a blocking process where we listen for and handle
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
-func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerUpdates, mempoolCh *p2p.Channel) {
+func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerUpdates, mempoolCh p2p.Channel) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -275,7 +275,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerU
 	}
 }
 
-func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, mempoolCh *p2p.Channel) {
+func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, mempoolCh p2p.Channel) {
 	peerMempoolID := r.ids.GetForPeer(peerID)
 	var nextGossipTx *clist.CElement
 

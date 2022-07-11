@@ -38,7 +38,7 @@ type reactorTestSuite struct {
 	logger           log.Logger
 	reactors         map[types.NodeID]*evidence.Reactor
 	pools            map[types.NodeID]*evidence.Pool
-	evidenceChannels map[types.NodeID]*p2p.Channel
+	evidenceChannels map[types.NodeID]p2p.Channel
 	peerUpdates      map[types.NodeID]*p2p.PeerUpdates
 	peerChans        map[types.NodeID]chan p2p.PeerUpdate
 	nodes            []*p2ptest.Node
@@ -96,7 +96,7 @@ func setup(ctx context.Context, t *testing.T, stateStores []sm.Store) *reactorTe
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, pu)
 		rts.nodes = append(rts.nodes, rts.network.Nodes[nodeID])
 
-		chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (p2p.Channel, error) {
 			return rts.evidenceChannels[nodeID], nil
 		}
 
