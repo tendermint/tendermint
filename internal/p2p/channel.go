@@ -126,7 +126,7 @@ func (ch *legacyChannel) Receive(ctx context.Context) *ChannelIterator {
 	iter := &ChannelIterator{
 		pipe: make(chan Envelope), // unbuffered
 	}
-	go func(pipe chan Envelope) {
+	go func(pipe chan<- Envelope) {
 		defer close(iter.pipe)
 		for {
 			select {
