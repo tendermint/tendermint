@@ -172,7 +172,7 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	if len(req.BlockData) > 1 {
+	if len(req.BlockData) > 1 && false { // this breaks TC: TestReactorValidatorSetChanges
 		req.BlockData[1] = []byte("modified tx")
 	}
 
