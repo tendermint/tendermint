@@ -11,7 +11,7 @@ The connection policy defines:
 1. When the node should establish new connections to peers, and
 1. The next peer to which the router should try to establish a connection.
 
-The first definition is made based the concept of [connection slots](#connection slots).
+The first definition is made based the concept of [connection slots](#connection-slots).
 In short, the peer manager will try to fill every connection slot with a peer.
 If all the connection slots are full but there is the possibility to connect to
 a peer that is higher-[ranked](#peer-ranking) that one of the connecting peers,
@@ -407,7 +407,23 @@ This peer is a [connected peer](#connected-peer).
 
 ### EvictNext transition
 
-TODO:
+This transition returns a peer to the router to evict.
+
+The state transition is performed whenever the peer manager has scheduled the
+eviction of a peer, i.e., whenever there is a peer on `Evict` sub-state.
+The peer to evict must be a peer in the `Connected` state.
+
+The peer to evict is randomly picked from the possible multiple peers with
+eviction scheduled.
+
+> This transition is invoked when the next to evict routine is notified by
+> another routine.
+> In some cases, the transition is processed when no peer should be evicted. In
+> this case, if the connections slots are not full, or there are enough peers
+> in the `Evicting` state so to respect the `MaxConnected` parameter, the
+> transition is not taken.
+> Otherwise, the peer with the lowest rank is evicted. This should not occur,
+> from comments in the code, but this is something to check.
 
 ### Evicting peer
 
