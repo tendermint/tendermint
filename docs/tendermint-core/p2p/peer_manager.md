@@ -2,7 +2,7 @@
 
 The peer manager implements the connection policy for the node, based on the
 configuration provided by the operators, the current state of the connections
-(reported by the [Router](./router.md), and the set of known candidate peers.
+reported by the [Router](./router.md), and the set of known candidate peers.
 
 ## Connection policy
 
@@ -11,8 +11,12 @@ The connection policy defines:
 1. When the node should establish new connections to peers, and
 1. The next peer to which the router should try to establish a connection.
 
-The first definition is made based the concept of connection slots.
+The first definition is made based the concept of [connection slots](#connection slots).
 In short, the peer manager will try to fill every connection slot with a peer.
+If all the connection slots are full but there is the possibility to connect to
+a peer that is higher-[ranked](#peer-ranking) that one of the connecting peers,
+the peer manager may attempt to [upgrade a connection slot](#slot-upgrades).
+Details of these operations are provided in the following.
 
 ### Connection slots
 
@@ -44,11 +48,11 @@ In this case, the peer manager will try to [upgrade the slot](#slot-upgrades)
 to make room to the new connection, by evicting the peer currently occupying
 this slot.
 
-> Although not advisable, the `MaxConnected` parameter can be set `0`.
-> In this case, there is not limit in the number of connections a node can
-> establish with peers.
-> This means that the node will accept all connections established with peers,
-> and will dial every candidate peer it knows about.
+> Although not advisable, the `MaxConnected` parameter can be set `0`, which
+> means no limit.
+>
+> In this case, the node will accept all connections established by peers, and
+> will try to establish connections (dial) to every candidate peer it knows.
 
 ### Outgoing connections
 
@@ -96,7 +100,42 @@ Some of these peers, however, will not remain in this state as they should be
 
 ### Peer ranking
 
-TODO:
+The peer manager should rank peers based on user-provided parameters and on the
+current state of the peer.
+
+The ranking is established by ordering all known peers by its score.
+This mechanism is currently very basic.
+
+> The code contains a number of potential replacements for this ranking
+> mechanism. Therefore, improving this mechanism is a work in progress.
+
+Peers configured as `PersistentPeers` have _always_ `PeerScorePersistent`,
+which is the maximum allowed peer score.
+
+The remaining peers have a `MutableScore`, initialized to `0` when the peer is
+added to the peer manager.
+When the peer is reported as a `PeerStatusGood`, its score is incremented.
+When the peer is reported as a `PeerStatusBad`, its score is decremented.
+
+> The mechanisms based on the "reputation" of the peer according to reactors,
+> however, appears not to be fully implemented.
+> A peer is never `PeerStatusGood`, and is only reported as `PeerStatusBad` a
+> reactor interacting with the peer reports an error to the router, and the
+> error is not "fatal".
+> If the error is fatal, the peer is reported as [errored](#errored-peer).
+
+This score can also be _temporarily_ decremented due to connection errors.
+When the router fails to dial to a peer, it increments the peer's
+`DialFailures` counter.
+This counter is reset when the router successfully dials the peer, establishing
+a connection to it.
+During this period, between dial failures and succeeding to dial the peer, the
+peer score is decremented by the `DialFailures` counter.
+
+> `DialFailures` actually refers to a peer address. A peer may have multiple
+> addresses, and all associated counters are considered for decrementing the
+> peer's score. Also, all counters are reset when the router succeeds dialing
+> the peer.
 
 ## Peer life cycle
 
@@ -105,8 +144,8 @@ state of peers and manages their life-cycle.
 The life cycle of a peer is synthesized in the picture below.
 The circles represent _states_ of a peer and the rectangles represent
 _transitions_.
-All transitions are performed by the `Router`, by invoking methods with
-corresponding names.
+All transitions are performed by the `Router`, by invoking methods of the peer
+manager with corresponding names.
 Green arrows represent normal transitions, while red arrows represent
 alternative transitions taken in case of errors.
 
@@ -136,14 +175,12 @@ determines that the node should try to establish a connection with a peer.
 
 The peer manager selects the [best-ranked](#peer-ranking) peer which is in the
 [`Candidate`](#candidate-peer) state and provides it to the router.
-As the router is supposed to dial the peer, the peer manager set the peer to the
-[dialing](#dialing-peer) state.
-
-TODO: reword this
+As the router is supposed to dial the peer, the peer manager sets the peer to
+the [dialing](#dialing-peer) state.
 
 Dialing a candidate peer may have become possible because the peer manager
-has found a connection slot to [upgrade](#slots-upgrades) for (possibly) given
-room to the selected candidate peer.
+has found a connection slot to [upgrade](#slots-upgrades) for given room to the
+selected candidate peer.
 If this is the case, the peer occupying this connection slot is set to the
 [upgrading state](#upgrading-peer), so that it will be evicted once the
 connection to the candidate peer is successfully established.
@@ -379,7 +416,7 @@ A peer transitions to this sub-state when it is returned to the router by the
 [next peer to evict](#evictnext-transition) transition.
 
 This peer is still a [connected peer](#connected-peer).
-`Evicting` is the second and last sub-state of the procedure for 
+`Evicting` is the second and last sub-state of the procedure for
 [disconnecting](#disconnected-transition) from a peer.
 
 [peermanager.go]: https://github.com/tendermint/tendermint/blob/v0.35.x/internal/p2p/peermanager.go
