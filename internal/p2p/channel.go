@@ -201,7 +201,7 @@ func MergedChannelIterator(ctx context.Context, chs ...Channel) *ChannelIterator
 
 	for _, ch := range chs {
 		wg.Add(1)
-		go func(ch Channel, pipe chan Envelope) {
+		go func(ch Channel, pipe chan<- Envelope) {
 			defer wg.Done()
 			iter := ch.Receive(ctx)
 			for iter.Next(ctx) {
