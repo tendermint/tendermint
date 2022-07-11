@@ -2,7 +2,13 @@
 
 The peer manager implements the connection policy for the node, based on the
 configuration provided by the operators, the current state of the connections
-reported by the [Router](./router.md), and the set of known candidate peers.
+reported by the [`Router`](./router.md), and the set of known candidate peers.
+
+This document uses *candidate peer* to refer to the information about a node in
+the network, namely its unique identifier and one or more network addresses.
+This information can be manually configured by the node operator (e.g., via
+`PersistentPeers` parameter) or can be obtained via the Peer-Exchange Protocol
+(PEX), which feeds the peer manager with discovered peers' information.
 
 ## Connection policy
 
@@ -155,17 +161,12 @@ alternative transitions taken in case of errors.
 
 The initial state of a peer in the peer manager.
 
-This document uses *candidate peer* to refer to the information about a node in
-the network.
-This information can be manually configured by the node operator (e.g., via
-`PersistentPeers` parameter) or can be obtained via the PEX protocol.
-
-A *candidate peer* may become an actual peer, to which the node is connected.
+A *candidate* peer may become an actual peer, to which the node is connected.
 We do not use *candidate* to refer to a peer to which we are connected, nor to
 a peer we are attempting to connect.
 
 Candidate peers from which the router recently disconnected or failed to dial
-are not eligible for establishing connections.
+are, during a certain period, not eligible for establishing connections.
 This scenario is represented by the `Frozen Candidate` state.
 
 ### DialNext transition
