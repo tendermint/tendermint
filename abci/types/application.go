@@ -97,7 +97,9 @@ func (BaseApplication) ApplySnapshotChunk(req RequestApplySnapshotChunk) Respons
 }
 
 func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepareProposal {
-	return ResponsePrepareProposal{}
+	return ResponsePrepareProposal{
+		BlockData: req.BlockData,
+	}
 }
 
 //-------------------------------------------------------
