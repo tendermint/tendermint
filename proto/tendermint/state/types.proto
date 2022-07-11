@@ -32,6 +32,10 @@ message ConsensusParamsInfo {
   int64                            last_height_changed = 2;
 }
 
+message ResponsesInfo {
+  ABCIResponses abc
+}
+
 message Version {
   tendermint.version.Consensus consensus = 1 [(gogoproto.nullable) = false];
   string                       software  = 2;

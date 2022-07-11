@@ -298,7 +298,7 @@ func createEvidenceReactor(
 	logger = logger.With("module", "evidence")
 	reactorShim := p2p.NewReactorShim(logger, "EvidenceShim", evidence.ChannelShims)
 
-	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB), blockStore)
+	evidencePool, err := evidence.NewPool(logger, evidenceDB, sm.NewStore(stateDB, cfg.RPC.DiscardABCIResponses), blockStore)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("creating evidence pool: %w", err)
 	}
