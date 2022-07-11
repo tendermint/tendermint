@@ -1,0 +1,52 @@
+ipv6 = false
+initial_height = 0
+key_type = ""
+abci_protocol = "tcp"
+[initial_state]
+[validators]
+  validator01 = 85
+  validator02 = 48
+  validator03 = 31
+  validator04 = 37
+  validator05 = 48
+[validator_update]
+  [validator_update.10]
+    validator06 = 69
+  [validator_update.15]
+    validator07 = 82
+[node]
+  [node.full01]
+    state_sync = false
+    persist_interval = 1
+    snapshot_interval = 3
+    retain_blocks = 5
+    perturb = ["restart"]
+    [node.validator05.misbehaviors]
+  [node.validator06]
+    mode = "validator"
+    persistent_peers = ["validator02", "validator01", "validator04"]
+    database = "cleveldb"
+    privval_protocol = "tcp"
+    start_at = 5
+    fast_sync = "v0"
+    mempool_version = "v0"
+    state_sync = true
+    persist_interval = 5
+    snapshot_interval = 0
+    retain_blocks = 5
+    perturb = ["pause"]
+    [node.validator06.misbehaviors]
+  [node.validator07]
+    mode = "validator"
+    persistent_peers = ["validator04", "validator03", "validator02", "validator01", "validator06"]
+    database = "cleveldb"
+    privval_protocol = "file"
+    start_at = 10
+    fast_sync = "v0"
+    mempool_version = "v0"
+    state_sync = false
+    persist_interval = 1
+    snapshot_interval = 3
+    retain_blocks = 3
+    perturb = ["restart"]
+    [node.validator07.misbehaviors]
