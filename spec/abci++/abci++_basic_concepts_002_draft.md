@@ -61,18 +61,20 @@ SHOULD accept a prepared proposal passed via `ProcessProposal`, even if a part o
 the proposal is invalid (e.g., an invalid transaction); the Application can
 ignore the invalid part of the prepared proposal at block execution time.
 
-* [**ExtendVote:**](./abci++_methods_002_draft.md#extendvote) It allows applications to force their validators to do more than just validate within consensus. `ExtendVote` allows applications to include non-deterministic data, opaque to Tendermint, to precommit messages (the final round of voting). 
-The data, called _vote extension_, will also be made available to the
+* [**ExtendVote:**](./abci++_methods_002_draft.md#extendvote) It allows applications to force their validators to do more than just validate within consensus. `ExtendVote` allows applications to include deterministic and non-deterministic data, opaque to Tendermint, to precommit messages (the final round of voting).
+The data, called _vote extensions_, will also be made available to the
 application in the next height, along with the vote it is extending, in the rounds
 where the local process is the proposer.
-If the Application does not have vote extension information to provide, it returns a 0-length byte array as its vote extension.
-Tendermint calls `ExtendVote` when is about to send a non-`nil` precommit message. 
-
-* [**VerifyVoteExtension:**](./abci++_methods_002_draft.md#verifyvoteextension) It allows validators to validate the vote extension data attached to a precommit message. If the validation fails, the precommit message will be deemed invalid and ignored
+Instead of Tendermint where the vote extensions are `ExtendVoteExtension` array.
+ExtendVote call should return the `ExtendVoteExtension` list, where each element is an object with two attributes: a type and
+bytes array.
+If the Application does not have vote extensions to provide, it returns an empty array as its vote extensions.
+Tendermint calls `ExtendVote` when is about to send a non-`nil` precommit message.
+* [**VerifyVoteExtension:**](./abci++_methods_002_draft.md#verifyvoteextension) It allows validators to validate the vote extensions data attached to a precommit message. If the validation fails, the precommit message will be deemed invalid and ignored
 by Tendermint. This has a negative impact on Tendermint's liveness, i.e., if vote extensions repeatedly cannot be verified by correct validators, Tendermint may not be able to finalize a block even if sufficiently many (+2/3) of the validators send precommit votes for that block. Thus, `VerifyVoteExtension` should be used with special care.
 As a general rule, an Application that detects an invalid vote extension SHOULD
-accept it in `ResponseVerifyVoteExtension` and ignore it in its own logic. Tendermint calls it when 
-a process receives a precommit message with a (possibly empty) vote extension.
+accept it in `ResponseVerifyVoteExtension` and ignore it in its own logic. Tendermint calls it when
+a process receives a precommit message with a (possibly empty) vote extensions.
 
 * [**FinalizeBlock:**](./abci++_methods_002_draft.md#finalizeblock) It delivers a decided block to the Application. The Application must execute the transactions in the block in order and update its state accordingly. Cryptographic commitments to the block and transaction results, via the corresponding
 parameters in `ResponseFinalizeBlock`, are included in the header of the next block. Tendermint calls it when a new block is decided.
@@ -95,7 +97,7 @@ state machine snapshots instead of replaying historical blocks. For more details
 
 New nodes will discover and request snapshots from other nodes in the P2P network.
 A Tendermint node that receives a request for snapshots from a peer will call
-`ListSnapshots` on its Application. The Application returns the list of locally avaiable snapshots. 
+`ListSnapshots` on its Application. The Application returns the list of locally avaiable snapshots.
 Note that the list does not contain the actual snapshot but metadata about it: height at which the snapshot was taken, application-specific verification data and more (see [snapshot data type](./abci++_methods_002_draft.md#snapshot) for more details). After receiving a list of available snapshots from a peer, the new node can offer any of the snapshots in the list to its local Application via the `OfferSnapshot` method. The Application can check at this point the validity of the snapshot metadata.
 
 Snapshots may be quite large and are thus broken into smaller "chunks" that can be
@@ -106,7 +108,7 @@ the `LoadSnapshotChunk` method.
 
 As the new node receives "chunks" it will apply them sequentially to the local
 application with `ApplySnapshotChunk`. When all chunks have been applied, the
-Application's `AppHash` is retrieved via an `Info` query. 
+Application's `AppHash` is retrieved via an `Info` query.
 To ensure that the sync proceeded correctly, Tendermint compares the local Application's `AppHash` to the `AppHash` stored on the blockchain (verified via
 [light client verification](../light-client/verification/README.md)).
 

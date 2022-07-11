@@ -61,22 +61,23 @@ title: Methods
 
 * **Request**:
 
-    | Name             | Type                                                                                                                                 | Description                                         | Field Number |
+    | Name                | Type                                                                                                                                   | Description                                                   | Field Number |
     |------------------|--------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|--------------|
-    | time             | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Genesis time                                        | 1            |
-    | chain_id         | string                                                                                                                               | ID of the blockchain.                               | 2            |
-    | consensus_params | [ConsensusParams](#consensusparams)                                                                                                  | Initial consensus-critical parameters.              | 3            |
-    | validators       | repeated [ValidatorUpdate](#validatorupdate)                                                                                         | Initial genesis validators, sorted by voting power. | 4            |
-    | app_state_bytes  | bytes                                                                                                                                | Serialized initial application state. JSON bytes.   | 5            |
-    | initial_height   | int64                                                                                                                                | Height of the initial block (typically `1`).        | 6            |
+    | time                | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp)   | Genesis time                                                  | 1            |
+    | chain_id            | string                                                                                                                                 | ID of the blockchain.                                         | 2            |
+    | consensus_params    | [ConsensusParams](#consensusparams)                                                                                                    | Initial consensus-critical parameters.                        | 3            |
+    | validator_set       | [ValidatorSetUpdate](#validatorsetupdate)                                                                                              | Initial genesis validator set update, sorted by voting power. | 4            |
+    | app_state_bytes     | bytes                                                                                                                                  | Serialized initial application state. JSON bytes.             | 5            |
+    | initial_height      | int64                                                                                                                                  | Height of the initial block (typically `1`).                  | 6            |
+    | initial_core_height | int64                                                                                                                                  | Height of the initial core height.                            | 7            |
 
 * **Response**:
 
     | Name             | Type                                         | Description                                     | Field Number |
-    |------------------|----------------------------------------------|-------------------------------------------------|--------------|
+------------------|------------------|----------------------------------------------|-------------------------------------------------|--------------|
     | consensus_params | [ConsensusParams](#consensusparams)          | Initial consensus-critical parameters (optional) | 1            |
-    | validators       | repeated [ValidatorUpdate](#validatorupdate) | Initial validator set (optional).               | 2            |
-    | app_hash         | bytes                                        | Initial application hash.                       | 3            |
+    | validator_set    | [ValidatorSetUpdate](#validatorsetupdate) | Initial validator set (optional).                   | 2            |
+    | app_hash         | bytes                                        | Initial application hash.                        | 3            |
 
 * **Usage**:
     * Called once upon genesis.
@@ -285,16 +286,16 @@ title: Methods
 
 * **Request**:
 
-    | Name                    | Type                                        | Description                                                                                                      | Field Number |
-    |-------------------------|---------------------------------------------|------------------------------------------------------------------------------------------------------------------|--------------|
-    | max_tx_bytes            | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                                   | 1            |
-    | txs                     | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.                          | 2            |
-    | local_last_commit       | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.                                  | 3            |
-    | byzantine_validators    | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                                                           | 4            |
-    | height                  | int64                                       | The height of the block that will be proposed.                                                                   | 5            |
-    | time                    | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 6            |
-    | next_validators_hash    | bytes                                       | Merkle root of the next validator set.                                                                           | 7            |
-    | proposer_address        | bytes                                       | [Address](../core/data_structures.md#address) of the validator that is creating the proposal.                    | 8            |
+    | Name                 | Type                                        | Description                                                                                   | Field Number |
+    |----------------------|---------------------------------------------|-----------------------------------------------------------------------------------------------|--------------|
+    | max_tx_bytes         | int64                                       | Currently configured maximum size in bytes taken by the modified transactions.                | 1            |
+    | txs                  | repeated bytes                              | Preliminary list of transactions that have been picked as part of the block to propose.       | 2            |
+    | local_last_commit    | [ExtendedCommitInfo](#extendedcommitinfo)   | Info about the last commit, obtained locally from Tendermint's data structures.               | 3            |
+    | byzantine_validators | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                                  | 4            |
+    | height               | int64                                       | The height of the block that will be proposed.                                                | 5            |
+    | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp of the block that that will be proposed. | 6            |
+    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                        | 7            |
+    | proposer_pro_tx_hash | bytes                                       | [ProTxHash](../core/data_structures.md#protxhash) of the validator that created the proposal. | 8            |
 
 * **Response**:
 
@@ -316,7 +317,7 @@ title: Methods
             * If the Application considers that a `tx` should not be included in the proposal and removed from the mempool, then the Application should include it in `tx_records` and _mark_ it as `REMOVED`. In this case, Tendermint will remove `tx` from the mempool.
             * If the Application wants to add a new transaction, then the Application should include it in `tx_records` and _mark_ it as `ADD`. In this case, Tendermint will add it to the mempool.
         * The Application should be aware that removing and adding transactions may compromise _traceability_.
-          > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from. 
+          > Consider the following example: the Application transforms a client-submitted transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what happened to `t1`, it will discover that `t_1` is not in the mempool or in a committed block, getting the wrong idea that `t_1` did not make it into a block. Note that `t_2` _will be_ in a committed block, but unless the Application tracks this information, no component will be aware of it. Thus, if the Application wants traceability, it is its responsability to support it. For instance, the Application could attach to a transformed transaction a list with the hashes of the transactions it derives from.
     * Tendermint MAY include a list of transactions in `RequestPrepareProposal.txs` whose total size in bytes exceeds `RequestPrepareProposal.max_tx_bytes`.
       Therefore, if the size of `RequestPrepareProposal.txs` is greater than `RequestPrepareProposal.max_tx_bytes`, the Application MUST make sure that the
       `RequestPrepareProposal.max_tx_bytes` limit is respected by those transaction records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or `ADDED`.
@@ -401,12 +402,12 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     |----------------------|---------------------------------------------|----------------------------------------------------------------------------------------------------------------|--------------|
     | txs                  | repeated bytes                              | List of transactions that have been picked as part of the proposed block.                                      | 1            |
     | proposed_last_commit | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the information in the proposed block.                               | 2            |
-    | byzantine_validators    | repeated [Misbehavior](#misbehavior)     | List of information about validators that acted incorrectly.                                                   | 3            |
+    | byzantine_validators | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                                                   | 3            |
     | hash                 | bytes                                       | The block header's hash of the proposed block.                                                                 | 4            |
     | height               | int64                                       | The height of the proposed block.                                                                              | 5            |
     | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the proposed block.  | 6            |
     | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                                         | 7            |
-    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.                      | 8            |
+    | proposer_pro_hx_hash | bytes                                       | [ProTxHash](../core/data_structures.md#protxhash) of the validator that created the proposal.                  | 8            |
 
 * **Response**:
 
@@ -468,25 +469,25 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 
 * **Request**:
 
-    | Name   | Type  | Description                                                                   | Field Number |
-    |--------|-------|-------------------------------------------------------------------------------|--------------|
-    | hash   | bytes | The header hash of the proposed block that the vote extension is to refer to. | 1            |
-    | height | int64 | Height of the proposed block (for sanity check).                              | 2            |
+    | Name   | Type  | Description                                                                    | Field Number |
+    |--------|-------|--------------------------------------------------------------------------------|--------------|
+    | hash   | bytes | The header hash of the proposed block that the vote extensions is to refer to. | 1            |
+    | height | int64 | Height of the proposed block (for sanity check).                               | 2            |
 
 * **Response**:
 
-    | Name              | Type  | Description                                   | Field Number |
-    |-------------------|-------|-----------------------------------------------|--------------|
-    | vote_extension    | bytes | Optional information signed by by Tendermint. | 1            |
+    | Name            | Type  | Description                                   | Field Number |
+-----------------|-------------------|-------|-----------------------------------------------|--------------|
+    | vote_extensions | [ExtendVoteExtension](#extendvoteextension) | Optional information signed by Tendermint. | 1            |
 
 * **Usage**:
-    * `ResponseExtendVote.vote_extension` is optional information that, if present, will be signed by Tendermint and
+    * `ResponseExtendVote.vote_extensions` is optional information that, if present, will be signed by Tendermint and
       attached to the Precommit message.
     * `RequestExtendVote.hash` corresponds to the hash of a proposed block that was made available to the application
       in a previous call to `ProcessProposal` or `PrepareProposal` for the current height.
-    * `ResponseExtendVote.vote_extension` will only be attached to a non-`nil` Precommit message. If Tendermint is to
+    * `ResponseExtendVote.vote_extensions` will only be attached to a non-`nil` Precommit message. If Tendermint is to
       precommit `nil`, it will not call `RequestExtendVote`.
-    * The Application logic that creates the extension can be non-deterministic.
+    * The Application logic that creates the extensions can be non-deterministic.
 
 #### When does Tendermint call it?
 
@@ -518,12 +519,12 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 
 * **Request**:
 
-    | Name              | Type  | Description                                                                              | Field Number |
-    |-------------------|-------|------------------------------------------------------------------------------------------|--------------|
-    | hash              | bytes | The header hash of the propsed block that the vote extension refers to.                  | 1            |
-    | validator_address | bytes | [Address](../core/data_structures.md#address) of the validator that signed the extension | 2            |
-    | height            | int64 | Height of the block  (for sanity check).                                                 | 3            |
-    | vote_extension    | bytes | Application-specific information signed by Tendermint. Can have 0 length                 | 4            |
+    | Name                  | Type                                        | Description                                                                                   | Field Number |
+    |-----------------------|---------------------------------------------|-----------------------------------------------------------------------------------------------|--------------|
+    | hash                  | bytes                                       | The header hash of the propsed block that the vote extensions refers to.                      | 1            |
+    | validator_pro_tx_hash | bytes                                       | [ProTxHash](../core/data_structures.md#protxhash) of the validator that signed the extensions | 2            |
+    | height                | int64                                       | Height of the block  (for sanity check).                                                      | 3            |
+    | vote_extensions       | [ExtendVoteExtension](#extendvoteextension) | Application-specific information signed by Tendermint. Can have 0 length                      | 4            |
 
 * **Response**:
 
@@ -550,8 +551,8 @@ a [CanonicalVoteExtension](#canonicalvoteextension) field in the `precommit nil`
 When a validator _p_ is in Tendermint consensus round _r_, height _h_, state _prevote_ (**TODO** discuss: I think I must remove the state
 from this condition, but not sure), and _p_ receives a Precommit message for round _r_, height _h_ from _q_:
 
-1. If the Precommit message does not contain a vote extension with a valid signature, Tendermint discards the message as invalid.
-   * a 0-length vote extension is valid as long as its accompanying signature is also valid.
+1. If the Precommit message does not contain a vote extensions with a valid signature, Tendermint discards the message as invalid.
+   * a 0-length vote extensions is valid as long as its accompanying signature is also valid.
 2. Else, _p_'s Tendermint calls `RequestVerifyVoteExtension`.
 3. The Application returns _accept_ or _reject_ via `ResponseVerifyVoteExtension.status`.
 4. If the Application returns
@@ -566,27 +567,28 @@ from this condition, but not sure), and _p_ receives a Precommit message for rou
 
 * **Request**:
 
-    | Name                 | Type                                        | Description                                                                              | Field Number |
-    |----------------------|---------------------------------------------|------------------------------------------------------------------------------------------|--------------|
-    | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                     | 1            |
-    | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.               | 2            |
-    | byzantine_validators | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                             | 3            |
-    | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header). | 4            |
-    | height               | int64                                       | The height of the finalized block.                                                       | 5            |
-    | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the finalized block.  | 6            |
-    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                   | 7            |
-    | proposer_address     | bytes                                       | [Address](../core/data_structures.md#address) of the validator that created the proposal.| 8            |
+    | Name                 | Type                                        | Description                                                                                    | Field Number |
+    |----------------------|---------------------------------------------|------------------------------------------------------------------------------------------------|--------------|
+    | txs                  | repeated bytes                              | List of transactions committed as part of the block.                                           | 1            |
+    | decided_last_commit  | [CommitInfo](#commitinfo)                   | Info about the last commit, obtained from the block that was just decided.                     | 2            |
+    | byzantine_validators | repeated [Misbehavior](#misbehavior)        | List of information about validators that acted incorrectly.                                   | 3            |
+    | hash                 | bytes                                       | The block header's hash. Present for convenience (can be derived from the block header).       | 4            |
+    | height               | int64                                       | The height of the finalized block.                                                             | 5            |
+    | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the finalized block. | 6            |
+    | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                         | 7            |
+    | proposer_pro_tx_hash | bytes                                       | [ProTxHash](../core/data_structures.md#protxhash) of the validator that created the proposal.  | 8            |
 
 * **Response**:
 
-    | Name                    | Type                                                        | Description                                                                      | Field Number |
-    |-------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
-    | events                  | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
-    | tx_results              | repeated [ExecTxResult](#txresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
-    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate)                | Changes to validator set (set voting power to 0 to remove).                      | 3            |
-    | consensus_param_updates | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
-    | app_hash                | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |
-    | retain_height           | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 6            |
+    | Name                        | Type                                                        | Description                                                                      | Field Number |
+    |-----------------------------|-------------------------------------------------------------|----------------------------------------------------------------------------------|--------------|
+    | events                      | repeated [Event](abci++_basic_concepts_002_draft.md#events) | Type & Key-Value events for indexing                                             | 1            |
+    | tx_results                  | repeated [ExecTxResult](#txresult)                          | List of structures containing the data resulting from executing the transactions | 2            |
+    | validator_set_update        | repeated [ValidatorSetUpdate](#validatorsetupdate)          | Changes to validator set (set voting power to 0 to remove).                      | 3            |
+    | consensus_param_updates     | [ConsensusParams](#consensusparams)                         | Changes to consensus-critical gas, size, and other parameters.                   | 4            |
+    | app_hash                    | bytes                                                       | The Merkle root hash of the application state.                                   | 5            |
+    | retain_height               | int64                                                       | Blocks below this height may be removed. Defaults to `0` (retain all).           | 6            |
+    | next_core_chain_lock_update | int64                                                       | Next Core Chain lock update                                                      | 6            |
 
 * **Usage**:
     * Contains the fields of the newly decided block.
@@ -670,13 +672,13 @@ Most of the data structures used in ABCI are shared [common data structures](../
 
 * **Fields**:
 
-    | Name    | Type  | Description                                                         | Field Number |
-    |---------|-------|---------------------------------------------------------------------|--------------|
-    | address | bytes | [Address](../core/data_structures.md#address) of validator          | 1            |
-    | power   | int64 | Voting power of the validator                                       | 3            |
+    | Name        | Type  | Description                                                    | Field Number |
+    |-------------|-------|----------------------------------------------------------------|--------------|
+    | pro_tx_hash | bytes | [ProTxHash](../core/data_structures.md#protxhash) of validator | 3            |
+    | power       | int64 | Voting power of the validator                                  | 4            |
 
 * **Usage**:
-    * Validator identified by address
+    * Validator identified by ProTxHash
     * Used in RequestBeginBlock as part of VoteInfo
     * Does not include PubKey to avoid sending potentially large quantum pubkeys
     over the ABCI
@@ -685,14 +687,29 @@ Most of the data structures used in ABCI are shared [common data structures](../
 
 * **Fields**:
 
-    | Name    | Type                                             | Description                   | Field Number |
-    |---------|--------------------------------------------------|-------------------------------|--------------|
-    | pub_key | [Public Key](../core/data_structures.md#pub_key) | Public key of the validator   | 1            |
-    | power   | int64                                            | Voting power of the validator | 2            |
+    | Name         | Type  | Description                                                        | Field Number |
+    |--------------|-------|--------------------------------------------------------------------|--------------|
+    | node_address | bytes | [NodeAddress](../core/data_structures.md#nodeaddress) of validator | 1            |
+    | pro_tx_hash  | bytes | [ProTxHash](../core/data_structures.md#protxhash) of validator     | 2            |
+    | pub_key      | bytes | [PublicKey](../core/data_structures.md#publickey) of validator     | 3            |
+    | power        | int64 | Voting power of the validator                                      | 4            |
 
 * **Usage**:
-    * Validator identified by PubKey
+    * Validator identified by ProTxHash
     * Used to tell Tendermint to update the validator set
+
+### ValidatorSetUpdate
+
+* **Fields**:
+
+    | Name                 | Type                                                                       | Description                    | Field Number |
+    |----------------------|----------------------------------------------------------------------------|--------------------------------|--------------|
+    | validator_updates    | repeated [ValidatorUpdate Key](../core/data_structures.md#validatorupdate) | Public key of the validator    | 1            |
+    | threshold_public_key | bytes                                                                      | Threshold public key of quorum | 2            |
+    | quorum_hash          | bytes                                                                      | Quorum hash                    | 3            |
+
+* **Usage**:
+    * Used to tell Tendermint to update the validator set update
 
 ### Misbehavior
 
@@ -780,38 +797,54 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
     * This information is typically extracted from a proposed or decided block.
 
-### ExtendedVoteInfo
+### ExtendVoteExtension
 
 * **Fields**:
 
-    | Name              | Type                    | Description                                                                  | Field Number |
-    |-------------------|-------------------------|------------------------------------------------------------------------------|--------------|
-    | validator         | [Validator](#validator) | The validator that sent the vote.                                            | 1            |
-    | signed_last_block | bool                    | Indicates whether or not the validator signed the last block.                | 2            |
-    | vote_extension    | bytes                   | Non-deterministic extension provided by the sending validator's Application. | 3            |
+    | Name           | Type                                    | Description                                                                                                                   | Field Number |
+    |----------------|-----------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|--------------|
+    | type           | [VoteExtensionType](#voteextensiontype) | Vote extension type can be either DEFAULT or THRESHOLD_RECOVER, the Tenderdash supports only THRESHOLD_RECOVER at this moment | 1            |
+    | extension      | bytes                                   | Deterministic or (Non-Deterministic) extension provided by the sending validator's Application.                               | 2            |
 
 * **Usage**:
-    * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
-    * This information is extracted from Tendermint's data structures in the local process.
-    * `vote_extension` contains the sending validator's vote extension, which is signed by Tendermint. It can be empty
+    * Provides a vote extension for signing
+    * Each field is mandatory for filling
+    * Type can be `THRESHOLD_RECOVER` or `DEFAULT`
+    * `DEFAULT` is not supported so far
+    * `THRESHOLD_RECOVER` is a deterministic, that means, each validator in a quorum must provide the same vote extension data
+
+### VoteExtensionType
+
+```proto
+enum VoteExtensionType {
+  VOTE_EXTENSION_DEFAULT           = 0;
+  VOTE_EXTENSION_THRESHOLD_RECOVER = 1;
+}
+```
 
 ### CommitInfo
 
 * **Fields**:
 
-    | Name  | Type                           | Description                                                                                  | Field Number |
-    |-------|--------------------------------|----------------------------------------------------------------------------------------------|--------------|
-    | round | int32                          | Commit round. Reflects the round at which the block proposer decided in the previous height. | 1            |
-    | votes | repeated [VoteInfo](#voteinfo) | List of validators' addresses in the last validator set with their voting information.       | 2            |
+    | Name           | Type  | Description                                                                                  | Field Number |
+    |----------------|-------|----------------------------------------------------------------------------------------------|--------------|
+    | round          | int32 | Commit round. Reflects the round at which the block proposer decided in the previous height. | 1            |
+    | QuorumHash     | bytes | Quorum hash of a current height.                                                             | 3            |
+    | BlockSignature | bytes | Block signature.                                                                             | 4            |
+    | StateSignature | bytes | State signature.                                                                             | 5            |
 
 ### ExtendedCommitInfo
 
 * **Fields**:
 
-    | Name  | Type                                           | Description                                                                                                       | Field Number |
-    |-------|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
-    | round | int32                                          | Commit round. Reflects the round at which the block proposer decided in the previous height.                      | 1            |
-    | votes | repeated [ExtendedVoteInfo](#extendedvoteinfo) | List of validators' addresses in the last validator set with their voting information, including vote extensions. | 2            |
+    | Name                    | Type                                     | Description                                                                                  | Field Number |
+    |-------------------------|------------------------------------------|----------------------------------------------------------------------------------------------|--------------|
+    | round                   | int32                                    | Commit round. Reflects the round at which the block proposer decided in the previous height. | 1            |
+    | QuorumHash              | bytes                                    | Quorum hash of a current height.                                                             | 3            |
+    | BlockSignature          | bytes                                    | Block signature.                                                                             | 4            |
+    | StateSignature          | bytes                                    | State signature.                                                                             | 5            |
+    | ThresholdVoteExtensions | repeated [VoteExtension](#voteextension) | List of VoteExtension, each element provides type, extension and its signature.              | 6            |
+
 
 ### ExecTxResult
 
@@ -859,7 +892,7 @@ enum TxAction {
 
 ```proto
 enum ProposalStatus {
-  UNKNOWN = 0; // Unknown status. Returning this from the application is always an error. 
+  UNKNOWN = 0; // Unknown status. Returning this from the application is always an error.
   ACCEPT  = 1; // Status that signals that the application finds the proposal valid.
   REJECT  = 2; // Status that signals that the application finds the proposal invalid.
 }
@@ -895,13 +928,13 @@ enum VerifyStatus {
 
 * **Fields**:
 
-    | Name      | Type   | Description                                                                                | Field Number |
-    |-----------|--------|--------------------------------------------------------------------------------------------|--------------|
-    | extension | bytes  | Vote extension provided by the Application.                                                | 1            |
-    | height    | int64  | Height in which the extension was provided.                                                | 2            |
-    | round     | int32  | Round in which the extension was provided.                                                 | 3            |
-    | chain_id  | string | ID of the blockchain running consensus.                                                    | 4            |
-    | address   | bytes  | [Address](../core/data_structures.md#address) of the validator that provided the extension | 5            |
+    | Name      | Type              | Description                                                             | Field Number |
+    |-----------|-------------------|-------------------------------------------------------------------------|--------------|
+    | extension | bytes             | Vote extension provided by the Application.                             | 1            |
+    | height    | int64             | Height in which the extension was provided.                             | 2            |
+    | round     | int32             | Round in which the extension was provided.                              | 3            |
+    | chain_id  | string            | ID of the blockchain running consensus.                                 | 4            |
+    | Type      | VoteExtensionType | [VoteExtensionType](../core/data_structures.md#voteExtensiontype)       | 100          |
 
 * **Usage**:
     * Tendermint is to sign the whole data structure and attach it to a Precommit message
