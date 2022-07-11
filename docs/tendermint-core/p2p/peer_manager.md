@@ -29,11 +29,11 @@ Details of these operations are provided in the following.
 The number of connection slots is defined by the `MaxConnected` parameter.
 
 While there are available connection slots, the peer manager will provide
-[candidate peers](#candidate-peer) to the router, which will try to establish
+candidate peers to the router, which will try to establish
 new connections to them.
-When the peer manager [provides a candidate peer](#dialnext-transition) to
+When the peer manager provides a candidate peer to
 the router, a connection slot becomes _virtually_ occupied by the peer, as the
-router should be [dialing](#dialing-peer) it.
+router should be dialing it.
 
 When the router establishes a connection to a peer, either
 because it [accepted a connection](#accepted-transition) from a peer,
@@ -147,12 +147,12 @@ peer score is decremented by the `DialFailures` counter.
 
 For implementing the connection policy, the peer manager keeps track of the
 state of peers and manages their life-cycle.
-The life cycle of a peer is synthesized in the picture below.
+The life cycle of a peer is summarized in the picture below.
 The circles represent _states_ of a peer and the rectangles represent
 _transitions_.
 All transitions are performed by the `Router`, by invoking methods of the peer
 manager with corresponding names.
-Green arrows represent normal transitions, while red arrows represent
+Normal transitions are represented by green arrows, while red arrows represent
 alternative transitions taken in case of errors.
 
 <img src="pics/p2p-v0.35-peermanager.png" alt="peer life cycle" title="" width="600px" name="" align="center"/>
@@ -161,8 +161,8 @@ alternative transitions taken in case of errors.
 
 The initial state of a peer in the peer manager.
 
-A *candidate* peer may become an actual peer, to which the node is connected.
-We do not use *candidate* to refer to a peer to which we are connected, nor to
+A `Candidate` peer may become an actual peer, to which the node is connected.
+We do not use candidate to refer to a peer to which we are connected, nor to
 a peer we are attempting to connect.
 
 Candidate peers from which the router recently disconnected or failed to dial
@@ -188,10 +188,10 @@ connection to the candidate peer is successfully established.
 
 ### Dialing peer
 
-A peer that was returned to the router as the next peer to dial.
+A peer that has been returned to the router as the next peer to dial.
 The router should be attempting to connect to this peer.
 
-A peer in this state it is not considered as a candidate peer.
+A peer in `Dialing` state it is not considered as a candidate peer.
 
 ### Dialed transition
 
@@ -205,9 +205,9 @@ The peer is thus expected to be in the [`Dialing`](#dialing-peer) state.
 It may occur, however, that when this transition is invoked the peer is already
 in the [`Connected`](#connected-peer) state.
 The most likely reason is that the router, while dialing this peer, has also
-accepted an incoming connection from this same peer.
+accepted an incoming connection from the same peer.
 In this case, the transition fails, indicating to the router that is should
-close the established connection.
+close the newly established connection.
 
 > Question: is it possible to have multiple routines dialing to the same peer?
 > This could be another reason for this transition to fail.
@@ -223,7 +223,7 @@ Notice that, in order to dial this peer, the peer manager may have put another
 lower-ranked peer in the [upgrading sub-state](#upgrading-peeer) to give room
 to this connection.
 In this case, the slot for the established connection was *reserved*, and this
-transition should not fail.
+transition will not fail.
 
 If the transition succeeds, the peer is set to the
 [`Connected`](#connected-peer) state as an `outgoing` peer.
@@ -234,7 +234,7 @@ set, and dialed address' `DialFailures` counter is reset.
 > This action has no effect apart from producing metrics.
 
 If a connection slot was upgraded to give room for the established connection, the
-peer occupying that slot transitions to the [evict sub-state](#evict-peer).
+peer on that slot transitions to the [evict sub-state](#evict-peer).
 
 #### Errors
 
@@ -242,7 +242,7 @@ The transition fails if:
 
 - the node dialed itself
 - the peer is already in the `Connected` state
-- the node is connected to enough peers, and no slot is suitable for upgrading
+- the node is connected to `MaxConnected` peers, and no slot is suitable for upgrading
 
 Errors are also returned if:
 
@@ -275,8 +275,8 @@ If it is set to zero, we *never* retry dialing a peer address.
 Upon each failed dial attempt, we increase the delay by `MinRetryTime`, plus an
 optional random jitter of up to `RetryTimeJitter`.
 
-The retry delay should not be longer than the `MaxRetryTime` parameter.
-For *persistent* peers, a different `MaxRetryTimePersistent` can be set.
+The retry delay should not be longer than the `MaxRetryTime` parameter,
+or `MaxRetryTimePersistent` parameter in the case of persistent peers.
 
 #### Errors
 
@@ -320,7 +320,7 @@ for all addresses associated to the peer.
 > This action has not effect apart from producing metrics.
 
 If a connection slot was upgraded to give room for the accepted connection, the
-peer occupying that slot transitions to the [evict state](#evict-peer).
+peer on that slot transitions to the [evict sub-state](#evict-peer).
 
 #### Errors
 
@@ -328,7 +328,7 @@ The transition fails if:
 
 - the node accepted itself
 - the peer is already in the `Connected` state
-- the node is connected to enough peers, and no slot is suitable for upgrading
+- the node is connected to `MaxConnected` peers, and no slot is suitable for upgrading
 
 Errors are also returned if:
 
