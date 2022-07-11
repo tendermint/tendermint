@@ -98,13 +98,13 @@ func (_m *AppConnQuery) QuerySync(_a0 context.Context, _a1 types.RequestQuery) (
 	return r0, r1
 }
 
-type NewAppConnQueryT interface {
+type mockConstructorTestingTNewAppConnQuery interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewAppConnQuery creates a new instance of AppConnQuery. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewAppConnQuery(t NewAppConnQueryT) *AppConnQuery {
+func NewAppConnQuery(t mockConstructorTestingTNewAppConnQuery) *AppConnQuery {
 	mock := &AppConnQuery{}
 	mock.Mock.Test(t)
 

@@ -27,13 +27,13 @@ func (_m *ConsSyncReactor) SwitchToConsensus(_a0 state.State, _a1 bool) {
 	_m.Called(_a0, _a1)
 }
 
-type NewConsSyncReactorT interface {
+type mockConstructorTestingTNewConsSyncReactor interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewConsSyncReactor creates a new instance of ConsSyncReactor. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewConsSyncReactor(t NewConsSyncReactorT) *ConsSyncReactor {
+func NewConsSyncReactor(t mockConstructorTestingTNewConsSyncReactor) *ConsSyncReactor {
 	mock := &ConsSyncReactor{}
 	mock.Mock.Test(t)
 
