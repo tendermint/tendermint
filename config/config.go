@@ -685,7 +685,7 @@ func DefaultP2PConfig() *P2PConfig {
 		PexReactor:              true,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
-		QueueType:               "priority",
+		QueueType:               "simple-priority",
 	}
 }
 
