@@ -466,7 +466,6 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
 			"got", reflect.TypeOf(res.Value).Name(),
 		)
-		stdlog.Printf("MJF :: wrong CheckTx result type %[1]T %+[1]v", res.Value)
 		return
 	}
 
