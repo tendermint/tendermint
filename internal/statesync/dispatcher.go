@@ -26,14 +26,14 @@ var (
 // NOTE: It is not the responsibility of the dispatcher to verify the light blocks.
 type Dispatcher struct {
 	// the channel with which to send light block requests on
-	requestCh *p2p.Channel
+	requestCh p2p.Channel
 
 	mtx sync.Mutex
 	// all pending calls that have been dispatched and are awaiting an answer
 	calls map[types.NodeID]chan *types.LightBlock
 }
 
-func NewDispatcher(requestChannel *p2p.Channel) *Dispatcher {
+func NewDispatcher(requestChannel p2p.Channel) *Dispatcher {
 	return &Dispatcher{
 		requestCh: requestChannel,
 		calls:     make(map[types.NodeID]chan *types.LightBlock),
