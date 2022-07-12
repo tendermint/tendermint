@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -37,6 +38,16 @@ type Wrapper interface {
 	Unwrap() (proto.Message, error)
 }
 
+type Channel interface {
+	fmt.Stringer
+
+	Err() error
+
+	Send(context.Context, Envelope) error
+	SendError(context.Context, PeerError) error
+	Receive(context.Context) *ChannelIterator
+}
+
 // PeerError is a peer error reported via Channel.Error.
 //
 // FIXME: This currently just disconnects the peer, which is too simplistic.
@@ -56,9 +67,9 @@ type PeerError struct {
 func (pe PeerError) Error() string { return fmt.Sprintf("peer=%q: %s", pe.NodeID, pe.Err.Error()) }
 func (pe PeerError) Unwrap() error { return pe.Err }
 
-// Channel is a bidirectional channel to exchange Protobuf messages with peers.
+// legacyChannel is a bidirectional channel to exchange Protobuf messages with peers.
 // Each message is wrapped in an Envelope to specify its sender and receiver.
-type Channel struct {
+type legacyChannel struct {
 	ID    ChannelID
 	inCh  <-chan Envelope  // inbound messages (peers to reactors)
 	outCh chan<- Envelope  // outbound messages (reactors to peers)
@@ -69,9 +80,10 @@ type Channel struct {
 
 // NewChannel creates a new channel. It is primarily for internal and test
 // use, reactors should use Router.OpenChannel().
-func NewChannel(id ChannelID, inCh <-chan Envelope, outCh chan<- Envelope, errCh chan<- PeerError) *Channel {
-	return &Channel{
+func NewChannel(id ChannelID, name string, inCh <-chan Envelope, outCh chan<- Envelope, errCh chan<- PeerError) Channel {
+	return &legacyChannel{
 		ID:    id,
+		name:  name,
 		inCh:  inCh,
 		outCh: outCh,
 		errCh: errCh,
@@ -80,7 +92,7 @@ func NewChannel(id ChannelID, inCh <-chan Envelope, outCh chan<- Envelope, errCh
 
 // Send blocks until the envelope has been sent, or until ctx ends.
 // An error only occurs if the context ends before the send completes.
-func (ch *Channel) Send(ctx context.Context, envelope Envelope) error {
+func (ch *legacyChannel) Send(ctx context.Context, envelope Envelope) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -89,9 +101,15 @@ func (ch *Channel) Send(ctx context.Context, envelope Envelope) error {
 	}
 }
 
+func (ch *legacyChannel) Err() error { return nil }
+
 // SendError blocks until the given error has been sent, or ctx ends.
 // An error only occurs if the context ends before the send completes.
-func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
+func (ch *legacyChannel) SendError(ctx context.Context, pe PeerError) error {
+	if errors.Is(pe.Err, context.Canceled) || errors.Is(pe.Err, context.DeadlineExceeded) {
+		return nil
+	}
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -100,18 +118,29 @@ func (ch *Channel) SendError(ctx context.Context, pe PeerError) error {
 	}
 }
 
-func (ch *Channel) String() string { return fmt.Sprintf("p2p.Channel<%d:%s>", ch.ID, ch.name) }
+func (ch *legacyChannel) String() string { return fmt.Sprintf("p2p.Channel<%d:%s>", ch.ID, ch.name) }
 
 // Receive returns a new unbuffered iterator to receive messages from ch.
 // The iterator runs until ctx ends.
-func (ch *Channel) Receive(ctx context.Context) *ChannelIterator {
+func (ch *legacyChannel) Receive(ctx context.Context) *ChannelIterator {
 	iter := &ChannelIterator{
 		pipe: make(chan Envelope), // unbuffered
 	}
-	go func() {
+	go func(pipe chan<- Envelope) {
 		defer close(iter.pipe)
-		iteratorWorker(ctx, ch, iter.pipe)
-	}()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case envelope := <-ch.inCh:
+				select {
+				case <-ctx.Done():
+					return
+				case pipe <- envelope:
+				}
+			}
+		}
+	}(iter.pipe)
 	return iter
 }
 
@@ -124,21 +153,6 @@ func (ch *Channel) Receive(ctx context.Context) *ChannelIterator {
 type ChannelIterator struct {
 	pipe    chan Envelope
 	current *Envelope
-}
-
-func iteratorWorker(ctx context.Context, ch *Channel, pipe chan Envelope) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case envelope := <-ch.inCh:
-			select {
-			case <-ctx.Done():
-				return
-			case pipe <- envelope:
-			}
-		}
-	}
 }
 
 // Next returns true when the Envelope value has advanced, and false
@@ -179,7 +193,7 @@ func (iter *ChannelIterator) Envelope() *Envelope { return iter.current }
 //
 // This allows the caller to consume messages from multiple channels
 // without needing to manage the concurrency separately.
-func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterator {
+func MergedChannelIterator(ctx context.Context, chs ...Channel) *ChannelIterator {
 	iter := &ChannelIterator{
 		pipe: make(chan Envelope), // unbuffered
 	}
@@ -187,10 +201,17 @@ func MergedChannelIterator(ctx context.Context, chs ...*Channel) *ChannelIterato
 
 	for _, ch := range chs {
 		wg.Add(1)
-		go func(ch *Channel) {
+		go func(ch Channel, pipe chan<- Envelope) {
 			defer wg.Done()
-			iteratorWorker(ctx, ch, iter.pipe)
-		}(ch)
+			iter := ch.Receive(ctx)
+			for iter.Next(ctx) {
+				select {
+				case <-ctx.Done():
+					return
+				case pipe <- *iter.Envelope():
+				}
+			}
+		}(ch, iter.pipe)
 	}
 
 	done := make(chan struct{})
