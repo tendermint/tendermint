@@ -693,8 +693,12 @@ func DefaultP2PConfig() *P2PConfig {
 		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
+<<<<<<< HEAD
 		TestDialFail:            false,
 		QueueType:               "priority",
+=======
+		QueueType:               "simple-priority",
+>>>>>>> e9239e9ca (p2p: switch default queue implementation (#8976))
 	}
 }
 
