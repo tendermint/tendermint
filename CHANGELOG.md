@@ -2,6 +2,35 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.8
+
+July 12, 2022
+
+Special thanks to external contributors on this release: @joeabbey
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+   - [node] [\#8902](https://github.com/tendermint/tendermint/pull/8902) Always start blocksync and avoid misconfiguration (@tychoish)
+
+### FEATURES
+
+- [cli] [\#8675] Add command to force compact goleveldb databases (@cmwaters)
+
+### IMPROVEMENTS
+
+- [p2p] [\#8914](https://github.com/tendermint/tendermint/pull/8914) [\#8875](https://github.com/tendermint/tendermint/pull/8875) Improvements to peer dialing (backported). (@tychoish)
+- [p2p] [\#8820](https://github.com/tendermint/tendermint/pull/8820) add eviction metrics and cleanup dialing error handling (backport #8819) (@tychoish)
+- [logging] [\#8896](https://github.com/tendermint/tendermint/pull/8896) Do not pre-process log results (backport #8895). (@tychoish)
+- [p2p] [\#8956](https://github.com/tendermint/tendermint/pull/8956) Simpler priority queue (backport #8929). (@tychoish)
+
+### BUG FIXES
+
+- [mempool] [\#8944](https://github.com/tendermint/tendermint/pull/8944) Fix unbounded heap growth in the priority mempool. (@creachadair)
+- [p2p] [\#8869](https://github.com/tendermint/tendermint/pull/8869) Set empty timeouts to configed values. (backport #8847). (@williambanfield)
+
+
 ## v0.35.7
 
 June 16, 2022
