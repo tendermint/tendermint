@@ -16,7 +16,7 @@ Special thanks to external contributors on this release: @joeabbey
 
 ### FEATURES
 
-- [cli] [\#8675] Add command to force compact goleveldb databases (@cmwaters)
+- [cli] [\#8675](https://github.com/tendermint/tendermint/pull/8675) Add command to force compact goleveldb databases (@cmwaters)
 
 ### IMPROVEMENTS
 
