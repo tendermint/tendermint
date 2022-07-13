@@ -131,6 +131,15 @@ func (txmp *TxMempool) SizeBytes() int64 { return atomic.LoadInt64(&txmp.txsByte
 // The caller must hold an exclusive mempool lock (by calling txmp.Lock) before
 // calling FlushAppConn.
 func (txmp *TxMempool) FlushAppConn() error {
+	// N.B.: We have to issue the call outside the lock so that its callback can
+	// fire.  It's safe to do this, the flush will block until complete.
+	//
+	// We could just not require the caller to hold the lock at all, but the
+	// semantics of the Mempool interface require the caller to hold it, and we
+	// can't change that without disrupting existing use.
+	txmp.mtx.Unlock()
+	defer txmp.mtx.Lock()
+
 	return txmp.proxyAppConn.FlushSync(context.Background())
 }
 
@@ -177,69 +186,70 @@ func (txmp *TxMempool) CheckTx(
 	// During the initial phase of CheckTx, we do not need to modify any state.
 	// A transaction will not actually be added to the mempool until it survives
 	// a call to the ABCI CheckTx method and size constraint checks.
-	txmp.mtx.RLock()
-	defer txmp.mtx.RUnlock()
+	height, err := func() (int64, error) {
+		txmp.mtx.RLock()
+		defer txmp.mtx.RUnlock()
 
-	// Reject transactions in excess of the configured maximum transaction size.
-	if len(tx) > txmp.config.MaxTxBytes {
-		return types.ErrTxTooLarge{Max: txmp.config.MaxTxBytes, Actual: len(tx)}
-	}
-
-	// If a precheck hook is defined, call it before invoking the application.
-	if txmp.preCheck != nil {
-		if err := txmp.preCheck(tx); err != nil {
-			return types.ErrPreCheck{Reason: err}
+		// Reject transactions in excess of the configured maximum transaction size.
+		if len(tx) > txmp.config.MaxTxBytes {
+			return 0, types.ErrTxTooLarge{Max: txmp.config.MaxTxBytes, Actual: len(tx)}
 		}
-	}
 
-	// Early exit if the proxy connection has an error.
-	if err := txmp.proxyAppConn.Error(); err != nil {
+		// If a precheck hook is defined, call it before invoking the application.
+		if txmp.preCheck != nil {
+			if err := txmp.preCheck(tx); err != nil {
+				return 0, types.ErrPreCheck{Reason: err}
+			}
+		}
+
+		// Early exit if the proxy connection has an error.
+		if err := txmp.proxyAppConn.Error(); err != nil {
+			return 0, err
+		}
+
+		txKey := tx.Key()
+
+		// Check for the transaction in the cache.
+		if !txmp.cache.Push(tx) {
+			// If the cached transaction is also in the pool, record its sender.
+			if elt, ok := txmp.txByKey[txKey]; ok {
+				w := elt.Value.(*WrappedTx)
+				w.SetPeer(txInfo.SenderID)
+			}
+			return 0, types.ErrTxInCache
+		}
+		return txmp.height, nil
+	}()
+	if err != nil {
 		return err
-	}
-
-	txKey := tx.Key()
-
-	// Check for the transaction in the cache.
-	if !txmp.cache.Push(tx) {
-		// If the cached transaction is also in the pool, record its sender.
-		if elt, ok := txmp.txByKey[txKey]; ok {
-			w := elt.Value.(*WrappedTx)
-			w.SetPeer(txInfo.SenderID)
-		}
-		return types.ErrTxInCache
 	}
 
 	// Initiate an ABCI CheckTx for this transaction. The callback is
 	// responsible for adding the transaction to the pool if it survives.
-	return func() error {
-		// N.B.: We have to issue the call outside the lock. In a local client,
-		// even an "async" call invokes its callback immediately which will make
-		// the callback deadlock trying to acquire the same lock. This isn't a
-		// problem with out-of-process calls, but this has to work for both.
-		height := txmp.height
-		txmp.mtx.RUnlock()
-		defer txmp.mtx.RLock()
-
-		reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
-		if err != nil {
-			txmp.cache.Remove(tx)
-			return err
+	//
+	// N.B.: We have to issue the call outside the lock. In a local client,
+	// even an "async" call invokes its callback immediately which will make
+	// the callback deadlock trying to acquire the same lock. This isn't a
+	// problem with out-of-process calls, but this has to work for both.
+	reqRes, err := txmp.proxyAppConn.CheckTxAsync(ctx, abci.RequestCheckTx{Tx: tx})
+	if err != nil {
+		txmp.cache.Remove(tx)
+		return err
+	}
+	reqRes.SetCallback(func(res *abci.Response) {
+		wtx := &WrappedTx{
+			tx:        tx,
+			hash:      tx.Key(),
+			timestamp: time.Now().UTC(),
+			height:    height,
 		}
-		reqRes.SetCallback(func(res *abci.Response) {
-			wtx := &WrappedTx{
-				tx:        tx,
-				hash:      txKey,
-				timestamp: time.Now().UTC(),
-				height:    height,
-			}
-			wtx.SetPeer(txInfo.SenderID)
-			txmp.initialTxCallback(wtx, res)
-			if cb != nil {
-				cb(res)
-			}
-		})
-		return nil
-	}()
+		wtx.SetPeer(txInfo.SenderID)
+		txmp.initialTxCallback(wtx, res)
+		if cb != nil {
+			cb(res)
+		}
+	})
+	return nil
 }
 
 // RemoveTxByKey removes the transaction with the specified key from the
@@ -462,6 +472,10 @@ func (txmp *TxMempool) Update(
 func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
+		txmp.logger.Error("mempool: received incorrect result type in CheckTx callback",
+			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
+			"got", reflect.TypeOf(res.Value).Name(),
+		)
 		return
 	}
 
@@ -630,10 +644,8 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
-		txmp.logger.Error("mempool: received incorrect result type in CheckTx callback",
-			"expected", reflect.TypeOf(&abci.Response_CheckTx{}).Name(),
-			"got", reflect.TypeOf(res.Value).Name(),
-		)
+		// Don't log this; this is the default callback and other response types
+		// can safely be ignored.
 		return
 	}
 

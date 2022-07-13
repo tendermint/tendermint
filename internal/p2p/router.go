@@ -427,8 +427,10 @@ func (r *Router) routeChannel(
 ) {
 	for {
 		select {
-		case envelope := <-outCh:
-			if envelope.IsZero() {
+		case envelope, ok := <-outCh:
+			if !ok {
+				return
+			} else if envelope.IsZero() {
 				continue
 			}
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
@@ -507,7 +509,10 @@ func (r *Router) routeChannel(
 				}
 			}
 
-		case peerError := <-errCh:
+		case peerError, ok := <-errCh:
+			if !ok {
+				return
+			}
 			maxPeerCapacity := r.peerManager.HasMaxPeerCapacity()
 			r.logger.Error("peer error",
 				"peer", peerError.NodeID,
