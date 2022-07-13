@@ -345,9 +345,6 @@ dial_timeout = "{{ .P2P.DialTimeout }}"
 # Mempool version to use:
 #   1) "v0" - (default) FIFO mempool.
 #   2) "v1" - prioritized mempool.
-# WARNING: There's a known memory leak with the prioritized mempool
-# that the team are working on. Read more here: 
-# https://github.com/tendermint/tendermint/issues/8775
 version = "{{ .Mempool.Version }}"
 
 recheck = {{ .Mempool.Recheck }}
