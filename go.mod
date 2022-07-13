@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.7.5
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
 	go.etcd.io/bbolt v1.3.6
-	google.golang.org/grpc v1.47.0
+	google.golang.org/grpc v1.48.0
 )
 
 require github.com/dgraph-io/badger/v3 v3.2103.2
