@@ -445,12 +445,23 @@ func createConsensusReactor(
 }
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
+	var maxAccepted uint32
+	switch {
+	case cfg.P2P.MaxConnections > 0 && !cfg.P2P.UseLegacy:
+		maxAccepted = uint32(cfg.P2P.MaxConnections) +
+			uint32(len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")))
+
+	case cfg.P2P.MaxNumInboundPeers > 0:
+		maxAccepted = uint32(cfg.P2P.MaxNumInboundPeers) +
+			uint32(len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")))
+	default:
+		maxAccepted = 0
+	}
+
 	return p2p.NewMConnTransport(
 		logger, p2p.MConnConfig(cfg.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
-			MaxAcceptedConnections: uint32(cfg.P2P.MaxNumInboundPeers +
-				len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")),
-			),
+			MaxAcceptedConnections: maxAccepted,
 		},
 	)
 }
