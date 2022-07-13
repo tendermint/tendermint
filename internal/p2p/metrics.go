@@ -26,14 +26,33 @@ var (
 
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
-	// Number of peers.
-	Peers metrics.Gauge
+	// Number of peers connected.
+	PeersConnected metrics.Gauge
+	// Nomber of peers in the peer store database.
+	PeersStored metrics.Gauge
+	// Number of inactive peers stored.
+	PeersInactivated metrics.Gauge
 	// Number of bytes per channel received from a given peer.
 	PeerReceiveBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`
 	// Number of bytes per channel sent to a given peer.
 	PeerSendBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`
 	// Number of bytes pending being sent to a given peer.
 	PeerPendingSendBytes metrics.Gauge `metrics_labels:"peer_id"`
+
+	// Number of successful connection attempts
+	PeersConnectedSuccess metrics.Counter
+	// Number of failed connection attempts
+	PeersConnectedFailure metrics.Counter
+
+	// Number of peers connected as a result of dialing the
+	// peer.
+	PeersConnectedIncoming metrics.Gauge
+	// Number of peers connected as a result of the peer dialing
+	// this node.
+	PeersConnectedOutgoing metrics.Gauge
+
+	// Number of peers evicted by this node.
+	PeersEvicted metrics.Counter
 
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.

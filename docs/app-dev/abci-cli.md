@@ -208,6 +208,33 @@ Try running these commands:
 -> key.hex: 646566
 -> value: xyz
 -> value.hex: 78797A
+
+> prepare_proposal "preparedef"
+-> code: OK
+-> log: Succeeded. Tx: def action: ADDED
+-> code: OK
+-> log: Succeeded. Tx: preparedef action: REMOVED
+
+> process_proposal "def"
+-> code: OK
+-> status: ACCEPT
+
+> process_proposal "preparedef"
+-> code: OK
+-> status: REJECT
+
+> prepare_proposal 
+
+> process_proposal 
+-> code: OK
+-> status: ACCEPT
+
+> finalize_block 
+-> code: OK
+-> data.hex: 0x0600000000000000
+
+> commit 
+-> code: OK
 ```
 
 Note that if we do `finalize_block "abc" ...` it will store `(abc, abc)`, but if

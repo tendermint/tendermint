@@ -33,9 +33,13 @@ $ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			pid, err := strconv.ParseInt(args[0], 10, 64)
+			// Using Atoi so that the size of an integer can be automatically inferred.
+			pid, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
+			}
+			if pid <= 0 {
+				return fmt.Errorf("PID value must be > 0; given value %q, got %d", args[0], pid)
 			}
 
 			outFile := args[1]
@@ -95,7 +99,7 @@ $ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 			}
 
 			logger.Info("killing Tendermint process")
-			if err := killProc(int(pid), tmpDir); err != nil {
+			if err := killProc(pid, tmpDir); err != nil {
 				return err
 			}
 
@@ -113,6 +117,9 @@ $ tendermint debug kill 34255 /path/to/tm-debug.zip`,
 // if the output file cannot be created or the tail command cannot be started.
 // An error is not returned if any subsequent syscall fails.
 func killProc(pid int, dir string) error {
+	if pid <= 0 {
+		return fmt.Errorf("PID must be > 0, got %d", pid)
+	}
 	// pipe STDERR output from tailing the Tendermint process to a file
 	//
 	// NOTE: This will only work on UNIX systems.

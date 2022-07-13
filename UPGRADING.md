@@ -17,9 +17,9 @@ by Tendermint itself. Right now, we return a regular error when this happens.
 #### ABCI++
 
 For information on how ABCI++ works, see the
-[Specification](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/README.md).
+[Specification](spec/abci%2B%2B/README.md).
 In particular, the simplest way to upgrade your application is described
-[here](https://github.com/tendermint/tendermint/blob/master/spec/abci%2B%2B/abci++_tmint_expected_behavior_002_draft.md#adapting-existing-applications-that-use-abci).
+[here](spec/abci%2B%2B/abci++_tmint_expected_behavior.md#adapting-existing-applications-that-use-abci).
 
 #### Moving the `app_hash` parameter
 

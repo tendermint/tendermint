@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"runtime"
 	"sync"
@@ -62,12 +61,6 @@ type RouterOptions struct {
 	// return an error to reject the peer.
 	FilterPeerByID func(context.Context, types.NodeID) error
 
-	// DialSleep controls the amount of time that the router
-	// sleeps between dialing peers. If not set, a default value
-	// is used that sleeps for a (random) amount of time up to 3
-	// seconds between submitting each peer to be dialed.
-	DialSleep func(context.Context)
-
 	// NumConcrruentDials controls how many parallel go routines
 	// are used to dial peers. This defaults to the value of
 	// runtime.NumCPU.
@@ -75,8 +68,9 @@ type RouterOptions struct {
 }
 
 const (
-	queueTypeFifo     = "fifo"
-	queueTypePriority = "priority"
+	queueTypeFifo           = "fifo"
+	queueTypePriority       = "priority"
+	queueTypeSimplePriority = "simple-priority"
 )
 
 // Validate validates router options.
@@ -84,7 +78,7 @@ func (o *RouterOptions) Validate() error {
 	switch o.QueueType {
 	case "":
 		o.QueueType = queueTypeFifo
-	case queueTypeFifo, queueTypePriority:
+	case queueTypeFifo, queueTypePriority, queueTypeSimplePriority:
 		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
@@ -234,6 +228,9 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 			return q
 		}, nil
 
+	case queueTypeSimplePriority:
+		return func(size int) queue { return newSimplePriorityQueue(ctx, size, r.chDescs) }, nil
+
 	default:
 		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
 	}
@@ -242,7 +239,7 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 // ChannelCreator allows routers to construct their own channels,
 // either by receiving a reference to Router.OpenChannel or using some
 // kind shim for testing purposes.
-type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
+type ChannelCreator func(context.Context, *ChannelDescriptor) (Channel, error)
 
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
@@ -250,7 +247,7 @@ type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*Channel, error) {
+func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Channel, error) {
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
@@ -265,11 +262,10 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	queue := r.queueFactory(chDesc.RecvBufferCapacity)
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
-	channel := NewChannel(id, queue.dequeue(), outCh, errCh)
-	channel.name = chDesc.Name
+	channel := NewChannel(chDesc.ID, chDesc.Name, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
-	if w, ok := messageType.(Wrapper); ok {
+	if w, ok := chDesc.MessageType.(Wrapper); ok {
 		wrapper = w
 	}
 
@@ -290,7 +286,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 			queue.close()
 		}()
 
-		r.routeChannel(ctx, id, outCh, errCh, wrapper)
+		r.routeChannel(ctx, chDesc.ID, outCh, errCh, wrapper)
 	}()
 
 	return channel, nil
@@ -310,11 +306,10 @@ func (r *Router) routeChannel(
 ) {
 	for {
 		select {
-		case envelope, ok := <-outCh:
-			if !ok {
-				return
+		case envelope := <-outCh:
+			if envelope.IsZero() {
+				continue
 			}
-
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
 			// it on to Transport.SendMessage().
 			envelope.ChannelID = chID
@@ -391,20 +386,22 @@ func (r *Router) routeChannel(
 				}
 			}
 
-		case peerError, ok := <-errCh:
-			if !ok {
-				return
-			}
-
-			shouldEvict := peerError.Fatal || r.peerManager.HasMaxPeerCapacity()
+		case peerError := <-errCh:
+			maxPeerCapacity := r.peerManager.HasMaxPeerCapacity()
 			r.logger.Error("peer error",
 				"peer", peerError.NodeID,
 				"err", peerError.Err,
-				"evicting", shouldEvict,
+				"disconnecting", peerError.Fatal || maxPeerCapacity,
 			)
-			if shouldEvict {
+
+			if peerError.Fatal || maxPeerCapacity {
+				// if the error is fatal or all peer
+				// slots are in use, we can error
+				// (disconnect) from the peer.
 				r.peerManager.Errored(peerError.NodeID, peerError.Err)
 			} else {
+				// this just decrements the peer
+				// score.
 				r.peerManager.processPeerEvent(ctx, PeerUpdate{
 					NodeID: peerError.NodeID,
 					Status: PeerStatusBad,
@@ -417,9 +414,9 @@ func (r *Router) routeChannel(
 	}
 }
 
-func (r *Router) numConccurentDials() int {
+func (r *Router) numConcurrentDials() int {
 	if r.options.NumConcurrentDials == nil {
-		return runtime.NumCPU()
+		return runtime.NumCPU() * 32
 	}
 
 	return r.options.NumConcurrentDials()
@@ -439,30 +436,6 @@ func (r *Router) filterPeersID(ctx context.Context, id types.NodeID) error {
 	}
 
 	return r.options.FilterPeerByID(ctx, id)
-}
-
-func (r *Router) dialSleep(ctx context.Context) {
-	if r.options.DialSleep == nil {
-		const (
-			maxDialerInterval = 3000
-			minDialerInterval = 250
-		)
-
-		// nolint:gosec // G404: Use of weak random number generator
-		dur := time.Duration(rand.Int63n(maxDialerInterval-minDialerInterval+1) + minDialerInterval)
-
-		timer := time.NewTimer(dur * time.Millisecond)
-		defer timer.Stop()
-
-		select {
-		case <-ctx.Done():
-		case <-timer.C:
-		}
-
-		return
-	}
-
-	r.options.DialSleep(ctx)
 }
 
 // acceptPeers accepts inbound connections from peers on the given transport,
@@ -561,7 +534,7 @@ func (r *Router) dialPeers(ctx context.Context) {
 	// able to add peers at a reasonable pace, though the number
 	// is somewhat arbitrary. The action is further throttled by a
 	// sleep after sending to the addresses channel.
-	for i := 0; i < r.numConccurentDials(); i++ {
+	for i := 0; i < r.numConcurrentDials(); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -583,19 +556,13 @@ LOOP:
 		switch {
 		case errors.Is(err, context.Canceled):
 			break LOOP
-		case err != nil:
-			r.logger.Error("failed to find next peer to dial", "err", err)
-			break LOOP
+		case address == NodeAddress{}:
+			continue LOOP
 		}
 
 		select {
 		case addresses <- address:
-			// this jitters the frequency that we call
-			// DialNext and prevents us from attempting to
-			// create connections too quickly.
-
-			r.dialSleep(ctx)
-			continue
+			continue LOOP
 		case <-ctx.Done():
 			close(addresses)
 			break LOOP
@@ -611,7 +578,7 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	case errors.Is(err, context.Canceled):
 		return
 	case err != nil:
-		r.logger.Error("failed to dial peer", "peer", address, "err", err)
+		r.logger.Debug("failed to dial peer", "peer", address, "err", err)
 		if err = r.peerManager.DialFailed(ctx, address); err != nil {
 			r.logger.Error("failed to report dial failure", "peer", address, "err", err)
 		}
@@ -633,8 +600,8 @@ func (r *Router) connectPeer(ctx context.Context, address NodeAddress) {
 	}
 
 	if err := r.runWithPeerMutex(func() error { return r.peerManager.Dialed(address) }); err != nil {
-		r.logger.Error("failed to dial peer",
-			"op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		r.logger.Error("failed to dial peer", "op", "outgoing/dialing", "peer", address.NodeID, "err", err)
+		r.peerManager.dialWaker.Wake()
 		conn.Close()
 		return
 	}
@@ -692,12 +659,13 @@ func (r *Router) dialPeer(ctx context.Context, address NodeAddress) (Connection,
 		// Internet can't and needs a different public address.
 		conn, err := r.transport.Dial(dialCtx, endpoint)
 		if err != nil {
-			r.logger.Error("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
+			r.logger.Debug("failed to dial endpoint", "peer", address.NodeID, "endpoint", endpoint, "err", err)
 		} else {
 			r.logger.Debug("dialed peer", "peer", address.NodeID, "endpoint", endpoint)
 			return conn, nil
 		}
 	}
+
 	return nil, errors.New("all endpoints failed")
 }
 
@@ -709,27 +677,13 @@ func (r *Router) handshakePeer(
 	expectID types.NodeID,
 ) (types.NodeInfo, error) {
 
-	if r.options.HandshakeTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.options.HandshakeTimeout)
-		defer cancel()
-	}
-
 	nodeInfo := r.nodeInfoProducer()
-	peerInfo, peerKey, err := conn.Handshake(ctx, *nodeInfo, r.privKey)
+	peerInfo, peerKey, err := conn.Handshake(ctx, r.options.HandshakeTimeout, *nodeInfo, r.privKey)
 	if err != nil {
 		return peerInfo, err
 	}
 	if err = peerInfo.Validate(); err != nil {
 		return peerInfo, fmt.Errorf("invalid handshake NodeInfo: %w", err)
-	}
-
-	if peerInfo.Network != nodeInfo.Network {
-		if err := r.peerManager.store.Delete(peerInfo.NodeID); err != nil {
-			return peerInfo, fmt.Errorf("problem removing peer from store from incorrect network [%s]: %w", peerInfo.Network, err)
-		}
-
-		return peerInfo, fmt.Errorf("connected to peer from wrong network, %q, removed from peer store", peerInfo.Network)
 	}
 
 	if types.NodeIDFromPubKey(peerKey) != peerInfo.NodeID {
@@ -742,6 +696,10 @@ func (r *Router) handshakePeer(
 	}
 
 	if err := nodeInfo.CompatibleWith(peerInfo); err != nil {
+		if err := r.peerManager.Inactivate(peerInfo.NodeID); err != nil {
+			return peerInfo, fmt.Errorf("problem inactivating peer %q: %w", peerInfo.ID(), err)
+		}
+
 		return peerInfo, ErrRejected{
 			err:            err,
 			id:             peerInfo.ID(),
@@ -761,7 +719,7 @@ func (r *Router) runWithPeerMutex(fn func() error) error {
 // channels. It will close the given connection and send queue when done, or if
 // they are closed elsewhere it will cause this method to shut down and return.
 func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connection, channels ChannelIDSet) {
-	r.metrics.Peers.Add(1)
+	r.metrics.PeersConnected.Add(1)
 	r.peerManager.Ready(ctx, peerID, channels)
 
 	sendQueue := r.getOrMakeQueue(peerID, channels)
@@ -774,7 +732,7 @@ func (r *Router) routePeer(ctx context.Context, peerID types.NodeID, conn Connec
 		sendQueue.close()
 
 		r.peerManager.Disconnected(ctx, peerID)
-		r.metrics.Peers.Add(-1)
+		r.metrics.PeersConnected.Add(-1)
 	}()
 
 	r.logger.Info("peer connected", "peer", peerID, "endpoint", conn)
@@ -932,6 +890,8 @@ func (r *Router) evictPeers(ctx context.Context) {
 		r.peerMtx.RLock()
 		queue, ok := r.peerQueues[peerID]
 		r.peerMtx.RUnlock()
+
+		r.metrics.PeersEvicted.Add(1)
 
 		if ok {
 			queue.close()
