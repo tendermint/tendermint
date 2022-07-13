@@ -450,8 +450,6 @@ func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport 
 	case cfg.P2P.MaxNumInboundPeers > 0:
 		maxAccepted = uint32(cfg.P2P.MaxNumInboundPeers) +
 			uint32(len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")))
-	default:
-		maxAccepted = 0
 	}
 
 	return p2p.NewMConnTransport(
