@@ -785,22 +785,18 @@ func (n *nodeImpl) OnStart() error {
 			// TODO: Some form of orchestrator is needed here between the state
 			// advancing reactors to be able to control which one of the three
 			// is running
-			if n.config.BlockSync.Enable {
-				// FIXME Very ugly to have these metrics bleed through here.
-				n.consensusReactor.SetBlockSyncingMetrics(1)
-				if err := bcR.SwitchToBlockSync(state); err != nil {
-					n.Logger.Error("failed to switch to block sync", "err", err)
-					return
-				}
-
-				d := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
-				if err := n.eventBus.PublishEventBlockSyncStatus(d); err != nil {
-					n.eventBus.Logger.Error("failed to emit the block sync starting event", "err", err)
-				}
-
-			} else {
-				n.consensusReactor.SwitchToConsensus(state, true)
+			// FIXME Very ugly to have these metrics bleed through here.
+			n.consensusReactor.SetBlockSyncingMetrics(1)
+			if err := bcR.SwitchToBlockSync(state); err != nil {
+				n.Logger.Error("failed to switch to block sync", "err", err)
+				return
 			}
+
+			s := types.EventDataBlockSyncStatus{Complete: false, Height: state.LastBlockHeight}
+			if err := n.eventBus.PublishEventBlockSyncStatus(s); err != nil {
+				n.eventBus.Logger.Error("failed to emit the block sync starting event", "err", err)
+			}
+
 		}()
 	}
 
