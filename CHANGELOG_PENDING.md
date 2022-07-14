@@ -2,7 +2,7 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35.8
+## v0.35.9
 
 Month DD, YYYY
 
@@ -22,10 +22,6 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
-- [cli] [\#8675] Add command to force compact goleveldb databases (@cmwaters)
-
 ### IMPROVEMENTS
 
 ### BUG FIXES
-
-- [mempool] \#8944 Fix unbounded heap growth in the priority mempool. (@creachadair)
