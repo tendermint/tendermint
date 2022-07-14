@@ -101,7 +101,7 @@ After doing these steps, go back to `master` and do the following:
 
 ## Release candidates
 
-Before creating an official release, especially a major release, we may want to create a
+Before creating an official release, especially a minor release, we may want to create a
 release candidate (RC) for our friends and partners to test out. We use git tags to
 create RCs, and we build them off of backport branches.
 
@@ -111,7 +111,7 @@ Tags for RCs should follow the "standard" release naming conventions, with `-rcX
 (Note that branches and tags _cannot_ have the same names, so it's important that these branches
 have distinct names from the tags/release names.)
 
-If this is the first RC for a major release, you'll have to make a new backport branch (see above).
+If this is the first RC for a minor release, you'll have to make a new backport branch (see above).
 Otherwise:
 
 1. Start from the backport branch (e.g. `v0.35.x`).
@@ -142,10 +142,12 @@ Note that this process should only be used for "true" RCs--
 release candidates that, if successful, will be the next release.
 For more experimental "RCs," create a new, short-lived branch and tag that instead.
 
-## Major release
+## Minor release
 
-This major release process assumes that this release was preceded by release candidates.
+This minor release process assumes that this release was preceded by release candidates.
 If there were no release candidates, begin by creating a backport branch, as described above.
+
+Before performing these steps, be sure the [Release Checklist](#release-checklist) has been completed.
 
 1. Start on the backport branch (e.g. `v0.35.x`)
 2. Run integration tests (`make test_integrations`) and the e2e nightlies.
