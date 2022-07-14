@@ -32,7 +32,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	google.golang.org/grpc v1.47.0
+	google.golang.org/grpc v1.48.0
 	pgregory.net/rapid v0.4.7
 )
 
@@ -240,6 +240,6 @@ require (
 require (
 	github.com/creachadair/tomledit v0.0.22
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.35.0
+	github.com/prometheus/common v0.36.0
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
 )

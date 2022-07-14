@@ -954,7 +954,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 	}
 
 	var numAddresses int
-	var totalScore int
+	var totalAbsScore int
 	ranked := m.store.Ranked()
 	seenAddresses := map[NodeAddress]struct{}{}
 	scores := map[types.NodeID]int{}
@@ -965,8 +965,12 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 			continue
 		}
 		score := int(peer.Score())
+		if score < 0 {
+			totalAbsScore += -score
+		} else {
+			totalAbsScore += score
+		}
 
-		totalScore += score
 		scores[peer.ID] = score
 		for addr := range peer.AddressInfo {
 			if _, ok := m.options.PrivatePeers[addr.NodeID]; !ok {
@@ -974,6 +978,8 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 			}
 		}
 	}
+
+	meanAbsScore := (totalAbsScore + 1) / (len(scores) + 1)
 
 	var attempts uint16
 	var addedLastIteration bool
@@ -1023,7 +1029,7 @@ func (m *PeerManager) Advertise(peerID types.NodeID, limit uint16) []NodeAddress
 					// peer.
 
 					// nolint:gosec // G404: Use of weak random number generator
-					if numAddresses <= int(limit) || rand.Intn(totalScore+1) <= scores[peer.ID]+1 || rand.Intn((idx+1)*10) <= idx+1 {
+					if numAddresses <= int(limit) || rand.Intn((meanAbsScore*2)+1) <= scores[peer.ID]+1 || rand.Intn((idx+1)*10) <= idx+1 {
 						addresses = append(addresses, addressInfo.Address)
 						addedLastIteration = true
 						seenAddresses[addressInfo.Address] = struct{}{}
@@ -1419,47 +1425,6 @@ func (s *peerStore) Ranked() []*peerInfo {
 	}
 	sort.Slice(s.ranked, func(i, j int) bool {
 		return s.ranked[i].Score() > s.ranked[j].Score()
-		// TODO: reevaluate more wholistic sorting, perhaps as follows:
-
-		// // sort inactive peers after active peers
-		// if s.ranked[i].Inactive && !s.ranked[j].Inactive {
-		// 	return false
-		// } else if !s.ranked[i].Inactive && s.ranked[j].Inactive {
-		// 	return true
-		// }
-
-		// iLastDialed, iLastDialSuccess := s.ranked[i].LastDialed()
-		// jLastDialed, jLastDialSuccess := s.ranked[j].LastDialed()
-
-		// // sort peers who our most recent dialing attempt was
-		// // successful ahead of peers with recent dialing
-		// // failures
-		// switch {
-		// case iLastDialSuccess && jLastDialSuccess:
-		// 	// if both peers were (are?) successfully
-		// 	// connected, convey their score, but give the
-		// 	// one we dialed successfully most recently a bonus
-
-		// 	iScore := s.ranked[i].Score()
-		// 	jScore := s.ranked[j].Score()
-		// 	if jLastDialed.Before(iLastDialed) {
-		// 		jScore++
-		// 	} else {
-		// 		iScore++
-		// 	}
-
-		// 	return iScore > jScore
-		// case iLastDialSuccess:
-		// 	return true
-		// case jLastDialSuccess:
-		// 	return false
-		// default:
-		// 	// if both peers were not successful in their
-		// 	// most recent dialing attempt, fall back to
-		// 	// peer score.
-
-		// 	return s.ranked[i].Score() > s.ranked[j].Score()
-		// }
 	})
 	return s.ranked
 }
