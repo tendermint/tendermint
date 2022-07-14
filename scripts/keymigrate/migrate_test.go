@@ -234,8 +234,4 @@ func TestGlobalDataStructuresForRefactor(t *testing.T) {
 			}
 		})
 	})
-
-	t.Run("CorrectMigrationsDefined", func(t *testing.T) {
-	})
-
 }
