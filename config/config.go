@@ -666,7 +666,7 @@ type P2PConfig struct { //nolint: maligned
 	TestDialFail bool `mapstructure:"test-dial-fail"`
 
 	// Makes it possible to configure which queue backend the p2p
-	// layer uses. Options are: "fifo" and "priority",
+	// layer uses. Options are: "fifo", "simple-priority", and "priority"
 	// with the default being "priority".
 	QueueType string `mapstructure:"queue-type"`
 }
