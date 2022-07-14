@@ -80,7 +80,7 @@ call sequences of these methods.
 - [**ProcessProposal:**](./abci++_methods.md#processproposal) It allows a validator to
   perform application-dependent work in a proposed block. This enables features such as immediate
   block execution, and allows the Application to reject invalid blocks.
-  Tendermint calls it when it receives a proposal and the Tendermint algorithms has not locked on a
+  Tendermint calls it when it receives a proposal and the Tendermint algorithm has not locked on a
   value. The Application cannot modify the proposal at this point but can reject it if it is
   invalid. If that is the case, Tendermint will prevote `nil` on the proposal, which has
   strong liveness implications for Tendermint. As a general rule, the Application
