@@ -208,4 +208,11 @@ func TestGlobalDataStructuresForRefactor(t *testing.T) {
 			}
 		})
 	})
+	t.Run("NilPrefix", func(t *testing.T) {
+		_, err := getMigrationFunc("tx_index", []byte("fooo"))
+		if err != nil {
+			t.Fatal("should find an index for tx", err)
+		}
+	})
+
 }

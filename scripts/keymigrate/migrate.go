@@ -546,9 +546,16 @@ func isHex(data []byte) bool {
 }
 
 func getMigrationFunc(storeName string, key keyID) (*migrationDefinition, error) {
-	for _, migration := range migrations {
-		if migration.storeName == storeName && bytes.HasPrefix(migration.prefix, key) {
-			return &migration, nil
+	for idx := range migrations {
+		migration := migrations[idx]
+
+		if migration.storeName == storeName {
+			if migration.prefix == nil {
+				return &migration, nil
+			}
+			if bytes.HasPrefix(migration.prefix, key) {
+				return &migration, nil
+			}
 		}
 	}
 	return nil, fmt.Errorf("no migration defined for data store %q and key %q", storeName, key)
