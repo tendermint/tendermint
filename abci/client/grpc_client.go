@@ -340,7 +340,9 @@ func (cli *grpcClient) finishSyncCall(reqres *ReqRes) *types.Response {
 //----------------------------------------
 
 func (cli *grpcClient) FlushSync() error {
-	return nil
+	reqres := cli.FlushAsync()
+	cli.finishSyncCall(reqres).GetFlush()
+	return cli.Error()
 }
 
 func (cli *grpcClient) EchoSync(msg string) (*types.ResponseEcho, error) {
