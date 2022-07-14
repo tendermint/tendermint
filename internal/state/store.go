@@ -1,4 +1,4 @@
-qpackage state
+package state
 
 import (
 	"bytes"

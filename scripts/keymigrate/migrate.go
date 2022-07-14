@@ -224,6 +224,7 @@ var migrations = []migrationDefinition{
 			if err != nil {
 				return nil, err
 			}
+
 			return orderedcode.Append(nil, int64(1), int64(valOne), int64(valTwo))
 		},
 	},
@@ -239,7 +240,6 @@ var migrations = []migrationDefinition{
 			}
 
 			return orderedcode.Append(nil, int64(2), int64(val))
-
 		},
 	},
 	{
@@ -389,6 +389,7 @@ var migrations = []migrationDefinition{
 				appKey := bytes.Join(parts[:len(parts)-3], []byte("/"))
 				elems = append(elems, string(appKey), int64(val), int64(val2))
 			}
+
 			return orderedcode.Append(nil, elems...)
 		},
 	},
