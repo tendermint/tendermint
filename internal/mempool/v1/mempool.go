@@ -597,6 +597,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"old_priority", w.priority,
 			)
 			txmp.removeTxByElement(vic)
+			txmp.cache.Remove(w.tx)
 			txmp.metrics.EvictedTxs.Add(1)
 
 			// We may not need to evict all the eligible transactions.  Bail out

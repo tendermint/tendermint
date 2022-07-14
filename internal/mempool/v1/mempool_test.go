@@ -209,7 +209,7 @@ func TestTxMempool_Size(t *testing.T) {
 }
 
 func TestTxMempool_Eviction(t *testing.T) {
-	txmp := setup(t, 0)
+	txmp := setup(t, 1000)
 	txmp.config.Size = 5
 	txmp.config.MaxTxsBytes = 60
 	txExists := func(spec string) bool {
@@ -238,6 +238,7 @@ func TestTxMempool_Eviction(t *testing.T) {
 	mustCheckTx(t, txmp, "key1=0000=25")
 	require.True(t, txExists("key1=0000=25"))
 	require.False(t, txExists(bigTx))
+	require.False(t, txmp.cache.Has([]byte(bigTx)))
 	require.Equal(t, int64(len("key1=0000=25")), txmp.SizeBytes())
 
 	// Now fill up the rest of the slots with other transactions.
