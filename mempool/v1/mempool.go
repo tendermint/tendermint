@@ -587,6 +587,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"old_priority", w.priority,
 			)
 			txmp.removeTxByElement(vic)
+			txmp.cache.Remove(w.tx)
 			txmp.metrics.EvictedTxs.Add(1)
 
 			// We may not need to evict all the eligible transactions.  Bail out
@@ -765,9 +766,11 @@ func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 		w := cur.Value.(*WrappedTx)
 		if txmp.config.TTLNumBlocks > 0 && (blockHeight-w.height) > txmp.config.TTLNumBlocks {
 			txmp.removeTxByElement(cur)
+			txmp.cache.Remove(w.tx)
 			txmp.metrics.EvictedTxs.Add(1)
 		} else if txmp.config.TTLDuration > 0 && now.Sub(w.timestamp) > txmp.config.TTLDuration {
 			txmp.removeTxByElement(cur)
+			txmp.cache.Remove(w.tx)
 			txmp.metrics.EvictedTxs.Add(1)
 		}
 		cur = next
