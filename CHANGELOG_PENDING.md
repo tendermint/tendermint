@@ -26,10 +26,6 @@ Special thanks to external contributors on this release:
 
 ### IMPROVEMENTS
 
-### BUG FIXES
-<<<<<<< HEAD
-=======
-
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
 - [light] \#7640 Light Client: fix absence proof verification (@ashcherbakov)
 - [light] \#7641 Light Client: fix querying against the latest height (@ashcherbakov)
@@ -38,4 +34,4 @@ Special thanks to external contributors on this release:
 - [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
 - [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
 - (indexer) \#8625 Fix overriding tx index of duplicated txs.
->>>>>>> be6d74e65 (Work around indexing problem for duplicate transactions (forward port: #8625) (#8945))
+- [mempool] \#8944 Fix unbounded heap growth in the priority mempool. (@creachadair)

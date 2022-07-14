@@ -40,6 +40,10 @@ type Envelope struct {
 	channelID ChannelID
 }
 
+func (e Envelope) IsZero() bool {
+	return e.From == "" && e.To == "" && e.Message == nil
+}
+
 // PeerError is a peer error reported via Channel.Error.
 //
 // FIXME: This currently just disconnects the peer, which is too simplistic.
@@ -166,9 +170,10 @@ type RouterOptions struct {
 }
 
 const (
-	queueTypeFifo     = "fifo"
-	queueTypePriority = "priority"
-	queueTypeWDRR     = "wdrr"
+	queueTypeFifo           = "fifo"
+	queueTypePriority       = "priority"
+	queueTypeWDRR           = "wdrr"
+	queueTypeSimplePriority = "simple-priority"
 )
 
 // Validate validates router options.
@@ -176,8 +181,8 @@ func (o *RouterOptions) Validate() error {
 	switch o.QueueType {
 	case "":
 		o.QueueType = queueTypeFifo
-	case queueTypeFifo, queueTypeWDRR, queueTypePriority:
-		// passI me
+	case queueTypeFifo, queueTypeWDRR, queueTypePriority, queueTypeSimplePriority:
+		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
 	}
@@ -354,6 +359,9 @@ func (r *Router) createQueueFactory() (func(int) queue, error) {
 			return q
 		}, nil
 
+	case queueTypeSimplePriority:
+		return func(size int) queue { return newSimplePriorityQueue(r.stopCtx(), size, r.chDescs) }, nil
+
 	default:
 		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
 	}
@@ -419,7 +427,12 @@ func (r *Router) routeChannel(
 ) {
 	for {
 		select {
-		case envelope := <-outCh:
+		case envelope, ok := <-outCh:
+			if !ok {
+				return
+			} else if envelope.IsZero() {
+				continue
+			}
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
 			// it on to Transport.SendMessage().
 			envelope.channelID = chID
@@ -496,7 +509,10 @@ func (r *Router) routeChannel(
 				}
 			}
 
-		case peerError := <-errCh:
+		case peerError, ok := <-errCh:
+			if !ok {
+				return
+			}
 			maxPeerCapacity := r.peerManager.HasMaxPeerCapacity()
 			r.logger.Error("peer error",
 				"peer", peerError.NodeID,

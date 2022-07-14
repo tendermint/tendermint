@@ -151,13 +151,13 @@ func (_m *AppConnConsensus) SetResponseCallback(_a0 abciclient.Callback) {
 	_m.Called(_a0)
 }
 
-type NewAppConnConsensusT interface {
+type mockConstructorTestingTNewAppConnConsensus interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewAppConnConsensus creates a new instance of AppConnConsensus. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewAppConnConsensus(t NewAppConnConsensusT) *AppConnConsensus {
+func NewAppConnConsensus(t mockConstructorTestingTNewAppConnConsensus) *AppConnConsensus {
 	mock := &AppConnConsensus{}
 	mock.Mock.Test(t)
 
