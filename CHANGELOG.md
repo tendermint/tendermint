@@ -8,6 +8,10 @@ July 12, 2022
 
 Special thanks to external contributors on this release: @joeabbey
 
+This release fixes an unbounded heap growth issue in the implementation of the
+priority mempool, as well as some configuring, logging, and peer dialing
+improvements in the non-legacy p2p stack.
+
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
