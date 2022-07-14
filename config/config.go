@@ -671,7 +671,7 @@ func DefaultP2PConfig() *P2PConfig {
 		ExternalAddress:               "",
 		UPNP:                          false,
 		MaxConnections:                64,
-		MaxOutgoingConnections:        32,
+		MaxOutgoingConnections:        12,
 		MaxIncomingConnectionAttempts: 100,
 		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
@@ -685,7 +685,7 @@ func DefaultP2PConfig() *P2PConfig {
 		PexReactor:              true,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
-		QueueType:               "priority",
+		QueueType:               "simple-priority",
 	}
 }
 

@@ -540,7 +540,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 		)
 		if len(evictTxs) == 0 {
 			// No room for the new incoming transaction so we just remove it from
-			// the cache.
+			// the cache and return an error to the user.
 			txmp.cache.Remove(wtx.tx)
 			txmp.logger.Error(
 				"rejected incoming good transaction; mempool full",
@@ -548,7 +548,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 				"err", err.Error(),
 			)
 			txmp.metrics.RejectedTxs.Add(1)
-			return nil
+			return err
 		}
 
 		// evict an existing transaction(s)
