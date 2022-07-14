@@ -29,9 +29,6 @@ type (
 func getAllLegacyKeys(db dbm.DB, storeName string) ([]keyID, error) {
 	var out []keyID
 
-	// TODO: there is a theoretical optimization where we build a
-	// range that is exclusive of all "new keys" to avoid needing
-	// to iterate over too many keys
 	iter, err := db.Iterator(nil, nil)
 	if err != nil {
 		return nil, err
@@ -417,12 +414,6 @@ func checkKeyType(key keyID, storeName string) (keyType, error) {
 			//    <name> / <value> / <height> / <index>
 			//
 			// Transaction hashes are stored as a raw binary hash with no prefix.
-			//
-			// Because a hash can contain any byte, it is possible (though unlikely)
-			// that a hash could have the correct form for an event key, in which case
-			// we would translate it incorrectly.  To reduce the likelihood of an
-			// incorrect interpretation, we parse candidate event keys and check for
-			// some structural properties before making a decision.
 			//
 			// Note, though, that nothing prevents event names or values from containing
 			// additional "/" separators, so the parse has to be forgiving.
