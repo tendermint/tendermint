@@ -2,13 +2,11 @@ package keymigrate
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"testing"
 
 	"github.com/google/orderedcode"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func makeKey(t *testing.T, elems ...interface{}) []byte {
@@ -74,30 +72,6 @@ func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 		"TxHashMimic0":      makeKey(t, "tx.hash", "\x00"+strings.Repeat(vstr, 16)[:31]),
 		"TxHashMimic1":      makeKey(t, "tx.hash", "\x01"+strings.Repeat(vstr, 16)[:31]),
 	}
-}
-
-func getLegacyDatabase(t *testing.T) (int, dbm.DB) {
-	db := dbm.NewMemDB()
-	batch := db.NewBatch()
-	ct := 0
-
-	generated := []map[string][]byte{
-		getLegacyPrefixKeys(8),
-		getLegacyPrefixKeys(9001),
-		getLegacyPrefixKeys(math.MaxInt32 << 1),
-		getLegacyPrefixKeys(math.MaxInt64 - 8),
-	}
-
-	// populate database
-	for _, km := range generated {
-		for _, key := range km {
-			ct++
-			require.NoError(t, batch.Set(key, []byte(fmt.Sprintf(`{"value": %d}`, ct))))
-		}
-	}
-	require.NoError(t, batch.WriteSync())
-	require.NoError(t, batch.Close())
-	return ct - (2 * len(generated)) + 2, db
 }
 
 func TestMigration(t *testing.T) {

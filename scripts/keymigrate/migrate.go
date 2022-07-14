@@ -311,7 +311,7 @@ var migrations = []migrationDefinition{
 		},
 	},
 	{
-		name:      "evidence-comitted",
+		name:      "evidence-committed",
 		storeName: "evidence",
 		prefix:    []byte(legacyEvidenceComittedPrefix),
 		ktype:     evidenceCommittedKey,
