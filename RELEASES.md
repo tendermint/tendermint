@@ -296,6 +296,21 @@ to blocksync to the head of the chain and begins producing blocks using
 Tendermint consensus it is stopped. Once stopped, a new node is started and
 takes its place. This network is run for several days.
 
+#### Network Partition Testnet
+
+Tendermint is expected to recover from network partitions. A partition where no
+subset of the nodes is left with the super-majority of the stake is expected to
+stop making blocks. Upon alleviation of the partition, the network is expected
+to once again become fully connected and capable of producing blocks. The
+network partition testnet ensures that Tendermint is able to handle this
+reliably at scale. In this test, a network with 100 validators and 95 full
+nodes is started. All validators have equal stake. Once the network is
+producing blocks, a set of firewall rules is deployed to create a partitioned
+network with 50% of the stake on one side and 50% on the other. Once the
+network stops producing blocks, the firewall rules are removed and the nodes
+are monitored to ensure they reconnect and that the network again begins
+producing blocks.
+
 #### Absent Stake Testnet
 
 Tendermint networks often run with _some_ portion of the voting power offline.
