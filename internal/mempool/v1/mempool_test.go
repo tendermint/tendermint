@@ -522,10 +522,10 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 }
 
 func TestTxMempool_ExpiredTxs_Timestamp(t *testing.T) {
-	txmp := setup(t, 50)
+	txmp := setup(t, 5000)
 	txmp.config.TTLDuration = 5 * time.Millisecond
 
-	added1 := checkTxs(t, txmp, 25, 0)
+	added1 := checkTxs(t, txmp, 10, 0)
 	require.Equal(t, len(added1), txmp.Size())
 
 	// Wait a while, then add some more transactions that should not be expired
@@ -541,7 +541,7 @@ func TestTxMempool_ExpiredTxs_Timestamp(t *testing.T) {
 	// The exact intervals are not important except that the delta should be
 	// large relative to the cost of CheckTx (ms vs. ns is fine here).
 	time.Sleep(3 * time.Millisecond)
-	added2 := checkTxs(t, txmp, 25, 1)
+	added2 := checkTxs(t, txmp, 10, 1)
 
 	// Wait a while longer, so that the first batch will expire.
 	time.Sleep(3 * time.Millisecond)
@@ -555,6 +555,9 @@ func TestTxMempool_ExpiredTxs_Timestamp(t *testing.T) {
 	for _, tx := range added1 {
 		if _, ok := txmp.txByKey[tx.tx.Key()]; ok {
 			t.Errorf("Transaction %X should have been purged for TTL", tx.tx.Key())
+		}
+		if txmp.cache.Has(tx.tx) {
+			t.Errorf("Transaction %X should have been removed from the cache", tx.tx.Key())
 		}
 	}
 
