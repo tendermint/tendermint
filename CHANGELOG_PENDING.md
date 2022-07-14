@@ -33,6 +33,7 @@ Special thanks to external contributors on this release:
   - [abci] \#8664 Move `app_hash` parameter from `Commit` to `FinalizeBlock`. (@sergio-mena)
   - [abci] \#8656 Added cli command for `PrepareProposal`. (@jmalicevic)
   - [sink/psql] \#8637 tx_results emitted from psql sink are now json encoded, previously they were protobuf encoded
+  - [abci] \#8901 Added cli command for `ProcessProposal`. (@hvanz)
 
 - P2P Protocol
 
@@ -100,3 +101,4 @@ Special thanks to external contributors on this release:
 - [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
 - [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
 - [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
+- (indexer) \#8625 Fix overriding tx index of duplicated txs.

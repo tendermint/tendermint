@@ -69,8 +69,9 @@ type RouterOptions struct {
 }
 
 const (
-	queueTypeFifo     = "fifo"
-	queueTypePriority = "priority"
+	queueTypeFifo           = "fifo"
+	queueTypePriority       = "priority"
+	queueTypeSimplePriority = "simple-priority"
 )
 
 // Validate validates router options.
@@ -78,7 +79,7 @@ func (o *RouterOptions) Validate() error {
 	switch o.QueueType {
 	case "":
 		o.QueueType = queueTypeFifo
-	case queueTypeFifo, queueTypePriority:
+	case queueTypeFifo, queueTypePriority, queueTypeSimplePriority:
 		// pass
 	default:
 		return fmt.Errorf("queue type %q is not supported", o.QueueType)
@@ -228,6 +229,9 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 			return q
 		}, nil
 
+	case queueTypeSimplePriority:
+		return func(size int) queue { return newSimplePriorityQueue(ctx, size, r.chDescs) }, nil
+
 	default:
 		return nil, fmt.Errorf("cannot construct queue of type %q", r.options.QueueType)
 	}
@@ -236,7 +240,7 @@ func (r *Router) createQueueFactory(ctx context.Context) (func(int) queue, error
 // ChannelCreator allows routers to construct their own channels,
 // either by receiving a reference to Router.OpenChannel or using some
 // kind shim for testing purposes.
-type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
+type ChannelCreator func(context.Context, *ChannelDescriptor) (Channel, error)
 
 // OpenChannel opens a new channel for the given message type. The caller must
 // close the channel when done, before stopping the Router. messageType is the
@@ -244,7 +248,7 @@ type ChannelCreator func(context.Context, *ChannelDescriptor) (*Channel, error)
 // implement Wrapper to automatically (un)wrap multiple message types in a
 // wrapper message. The caller may provide a size to make the channel buffered,
 // which internally makes the inbound, outbound, and error channel buffered.
-func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*Channel, error) {
+func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (Channel, error) {
 	r.channelMtx.Lock()
 	defer r.channelMtx.Unlock()
 
@@ -259,11 +263,10 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 	queue := r.queueFactory(chDesc.RecvBufferCapacity)
 	outCh := make(chan Envelope, chDesc.RecvBufferCapacity)
 	errCh := make(chan PeerError, chDesc.RecvBufferCapacity)
-	channel := NewChannel(id, queue.dequeue(), outCh, errCh)
-	channel.name = chDesc.Name
+	channel := NewChannel(chDesc.ID, chDesc.Name, queue.dequeue(), outCh, errCh)
 
 	var wrapper Wrapper
-	if w, ok := messageType.(Wrapper); ok {
+	if w, ok := chDesc.MessageType.(Wrapper); ok {
 		wrapper = w
 	}
 
@@ -284,7 +287,7 @@ func (r *Router) OpenChannel(ctx context.Context, chDesc *ChannelDescriptor) (*C
 			queue.close()
 		}()
 
-		r.routeChannel(ctx, id, outCh, errCh, wrapper)
+		r.routeChannel(ctx, chDesc.ID, outCh, errCh, wrapper)
 	}()
 
 	return channel, nil
@@ -305,6 +308,9 @@ func (r *Router) routeChannel(
 	for {
 		select {
 		case envelope := <-outCh:
+			if envelope.IsZero() {
+				continue
+			}
 			// Mark the envelope with the channel ID to allow sendPeer() to pass
 			// it on to Transport.SendMessage().
 			envelope.ChannelID = chID

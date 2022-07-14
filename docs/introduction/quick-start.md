@@ -106,10 +106,10 @@ Next, use the `tendermint testnet` command to create four directories of config 
 Before you can start the network, you'll need peers identifiers (IPs are not enough and can change). We'll refer to them as ID1, ID2, ID3, ID4.
 
 ```sh
-tendermint show_node_id --home ./mytestnet/node0
-tendermint show_node_id --home ./mytestnet/node1
-tendermint show_node_id --home ./mytestnet/node2
-tendermint show_node_id --home ./mytestnet/node3
+tendermint show-node-id --home ./mytestnet/node0
+tendermint show-node-id --home ./mytestnet/node1
+tendermint show-node-id --home ./mytestnet/node2
+tendermint show-node-id --home ./mytestnet/node3
 ```
 
 Finally, from each machine, run:
