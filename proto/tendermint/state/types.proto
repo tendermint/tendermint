@@ -32,8 +32,9 @@ message ConsensusParamsInfo {
   int64                            last_height_changed = 2;
 }
 
-message ResponsesInfo {
-  ABCIResponses abc
+message ABCIResponsesInfo {
+  ABCIResponses abci_responses = 1;
+  int64 height = 2;
 }
 
 message Version {

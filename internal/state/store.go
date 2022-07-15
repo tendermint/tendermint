@@ -125,17 +125,6 @@ func NewStore(db dbm.DB, discardABCIResponses bool) Store {
 	return dbStore{db, discardABCIResponses}
 }
 
-// Struct created when we are saving the last abci response which includes the height for the sanity check
-type ResponseInfo struct {
-	abciResponses *tmstate.ABCIResponses
-	height int64
-}
-
-//
-func Response( abciresponses *tmstate.ABCIResponses, height int64) ResponseInfo {
-	return ResponseInfo{abciResponses: abciresponses, height: height}
-}
-
 // LoadState loads the State from the database.
 func (store dbStore) Load() (State, error) {
 	return store.loadState(stateKey)
@@ -470,34 +459,25 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // the result of txs.
 func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
 	bz, err := store.db.Get(lastABCIResponseKey())
-
-	//Here we sanitise by comparing the height from the height that is given to the last ABCIResponse
-	if !store.discardABCIResponses {
-		abciResponse := new(tmstate.ABCIResponses)
-		err = abciResponse.Unmarshal(bz)
-		if err != nil {
-			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			tmos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has
-				changed: %v\n`, err))
-		}
-
-		if height != abciResponse.height {
-			return nil, errors.New("Height cannot be found")
-		}
-		return abciResponse, nil
-
-	} else {
-		abciResponse := new(tmstate.ABCIResponses)
-		err = abciResponse.Unmarshal(bz)
-		if err != nil {
-			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-			tmos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has
-				changed: %v\n`, err))
-		}
-		return abciResponse, nil
+	if err != nil {
+		return err
 	}
 
+	abciResponse := new(tmstate.ABCIResponsesInfo)
+	err = abciResponse.Unmarshal(bz)
+	if err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		tmos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has
+			changed: %v\n`, err))
+	}
 
+	// DO WE NEED TO SPECIFY IF THE FLAG DETERMINES IF THIS IF STATEMENT IS CALLED??
+	//Here we sanitise by comparing the height from the height that is given to the last ABCIResponse
+	if height != abciResponse.height {
+		return nil, errors.New("Height cannot be found")
+	} else {
+		return abciResponse, nil
+	}
 }
 
 // SaveABCIResponses persists the ABCIResponses to the database.
@@ -505,8 +485,8 @@ func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses,
 // Responses are indexed by height so they can also be loaded later to produce
 // Merkle proofs.
 //
-
-func strip(abciResponses *tmstate.ABCIResponses) []byte {
+// CONTRACT: height must be monotonically increasing every time this is called
+func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
 	// strip nil values,
 	for _, tx := range abciResponses.DeliverTxs {
@@ -514,31 +494,11 @@ func strip(abciResponses *tmstate.ABCIResponses) []byte {
 			dtxs = append(dtxs, tx)
 		}
 	}
-
 	abciResponses.DeliverTxs = dtxs
-
-}
-
-func stripRI(abciResponses ResponseInfo) []byte {
-	var dtxs []*abci.ResponseDeliverTx
-	// strip nil values,
-	for _, tx := range abciResponses.abciResponses.DeliverTxs {
-		if tx != nil {
-			dtxs = append(dtxs, tx)
-		}
-	}
-
-	abciResponses.abciResponses.DeliverTxs = dtxs
-
-}
-
-// CONTRACT: height must be monotonically increasing every time this is called
-func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 
 	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
 	// query or to reindex an event using the command line.
 	if !store.discardABCIResponses {
-		bz := strip(abciResponses)
 		bz, err := abciResponses.Marshal()
 		if err != nil {
 			return err
@@ -546,23 +506,21 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		if err := store.db.Set(abciResponsesKey(height), bz); err != nil {
 			return err
 		}
-		// We always save the last ABCI response incase we crash after app.Commit and before s.Save(.)
-		// This overwrites the previous saved ABCI Responsej
-
-		return store.db.SetSync(lastABCIResponseKey(), bz)
-
-	} else {
-		//if we discard the abci responses then we create a struct and save in the height of the abci response
-		response:= Response(abciResponses,height)
-		bz := stripRI(response)
-		bz, err := response.Marshal()
-		if err != nil {
-			return err
-		}
-
-		return store.db.SetSync(lastABCIResponseKey(), bz)
+		
 	}
-
+	
+	// We always save the last ABCI response incase we crash after app.Commit and before s.Save(.)
+	// This overwrites the previous saved ABCI Response
+	response:= &tmstate.ABCIResponsesInfo{
+		abciResponses,
+		height,
+	}
+	bz, err := response.Marshal()
+	if err != nil {
+		return err
+	}
+	
+	return store.db.SetSync(lastABCIResponseKey(), bz)
 }
 
 // SaveValidatorSets is used to save the validator set over multiple heights.
