@@ -1,11 +1,8 @@
 syntax = "proto3";
 package tendermint.types;
 
-<<<<<<< HEAD
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/types";
 
-=======
->>>>>>> b907d637cadfa187e6d30a2b9ef31b504148207e
 import "gogoproto/gogo.proto";
 import "tendermint/crypto/keys.proto";
 

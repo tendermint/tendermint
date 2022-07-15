@@ -3,7 +3,7 @@
  * This is a specification of the light client detector module.
  * It follows the English specification:
  *
- * https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md
+ * https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/detection/detection_003_reviewed.md
  *
  * The assumptions made in this specification:
  *

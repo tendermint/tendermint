@@ -45,8 +45,8 @@ able to verify anything.
 Cross-checking this trusted block with providers upon initialization is helpful
 for ensuring that the node is responsive and correctly configured but does not
 increase trust since proving a conflicting block is a
-[light client attack](https://github.com/tendermint/spec/blob/master/spec/light-client/detection/detection_003_reviewed.md#tmbc-lc-attack1)
-and not just a [bogus](https://github.com/tendermint/spec/blob/master/spec/light-client/detection/detection_003_reviewed.md#tmbc-bogus1) block could result in
+[light client attack](https://github.com/tendermint/tendermint/blob/v0.35.x/spec/light-client/detection/detection_003_reviewed.md#tmbc-lc-attack1)
+and not just a [bogus](https://github.com/tendermint/tendermint/blob/v0.35.x/spec/light-client/detection/detection_003_reviewed.md#tmbc-bogus1) block could result in
 performing backwards verification beyond the trusted period, thus a fruitless
 endeavour.
 

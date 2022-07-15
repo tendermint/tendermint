@@ -6,19 +6,24 @@ on:
   workflow_dispatch: # allow running workflow manually
   pull_request:
     paths:
-      - "proto/*"
+      - "proto/**"
 jobs:
   proto-lint:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v2.4.0
-      - name: lint
-        run: make proto-lint
+      - uses: bufbuild/buf-setup-action@v1.6.0
+      - uses: bufbuild/buf-lint-action@v1
+        with:
+          input: 'proto'
+
   proto-breakage:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
       - uses: actions/checkout@v2.4.0
-      - name: check-breakage
-        run: make proto-check-breaking-ci
+      - uses: bufbuild/buf-setup-action@v1.6.0
+      - uses: bufbuild/buf-breaking-action@v1
+        with:
+          against: 'https://github.com/tendermint/tendermint.git#branch=v0.35.x'

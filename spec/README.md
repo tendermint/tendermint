@@ -1,12 +1,4 @@
----
-order: 1
-title: Overview
-parent:
-  title: Spec
-  order: 7
----
-
-# Tendermint Spec
+# Tendermint Specifications
 
 This directory hosts the canonical Markdown specifications of the Tendermint Protocol.
 

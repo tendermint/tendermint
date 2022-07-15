@@ -23,7 +23,7 @@ After providing the [problem statement](#Part-I---Basics-and-Definition-of-the-P
 
 # Part I - Basics and Definition of the Problem
 
-For definitions of data structures used here, in particular LightBlocks [[LCV-DATA-LIGHTBLOCK.1]](https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification_002_draft.md#lcv-data-lightblock1), we refer to the specification of [Light Client Verification][verification].
+For definitions of data structures used here, in particular LightBlocks [[LCV-DATA-LIGHTBLOCK.1]](https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/verification/verification_002_draft.md#lcv-data-lightblock1), we refer to the specification of [Light Client Verification][verification].
 
 The specification of the [detection mechanism][detection] describes
 
@@ -199,25 +199,25 @@ For this fixed group membership, we have analyzed the attacks using the TLA+ spe
 [[tendermint-accountability]]: TLA+ specification to check the types of attacks
 
 [tendermint-accountability]:
-https://github.com/tendermint/spec/blob/master/rust-spec/tendermint-accountability/README.md
+https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/tendermint-accountability/README.md
 
 [supervisor]:
-https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/supervisor/supervisor_001_draft.md
+https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/supervisor/supervisor_001_draft.md
 
-[verification]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification_002_draft.md
+[verification]: https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/verification/verification_002_draft.md
 
 [detection]:
-https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md
+https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/detection/detection_003_reviewed.md
 
 [LC-DATA-EVIDENCE-link]:
-https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md#lc-data-evidence1
+https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/detection/detection_003_reviewed.md#lc-data-evidence1
 
 [TMBC-LC-EVIDENCE-DATA-link]:
-https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md#tmbc-lc-evidence-data1
+https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/detection/detection_003_reviewed.md#tmbc-lc-evidence-data1
 
 [node-based-attack-characterization]:
-https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md#node-based-characterization-of-attacks
+https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/detection/detection_003_reviewed.md#node-based-characterization-of-attacks
 
-[TMBC-FM-2THIRDS-link]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification_002_draft.md#tmbc-fm-2thirds1
+[TMBC-FM-2THIRDS-link]: https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/verification/verification_002_draft.md#tmbc-fm-2thirds1
 
-[LCV-FUNC-VALID.link]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification_002_draft.md#lcv-func-valid2
+[LCV-FUNC-VALID.link]: https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/verification/verification_002_draft.md#lcv-func-valid2

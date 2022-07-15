@@ -7,7 +7,7 @@
  *
  * It follows the English specification:
  *
- * https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/attacks/isolate-attackers_001_draft.md
+ * https://github.com/tendermint/tendermint/blob/v0.35.x/rust-spec/lightclient/attacks/isolate-attackers_001_draft.md
  *
  * The assumptions made in this specification:
  *
