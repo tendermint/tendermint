@@ -22,8 +22,6 @@ type grpcClient struct {
 	service.BaseService
 	logger log.Logger
 
-	mustConnect bool
-
 	client types.ABCIApplicationClient
 	conn   *grpc.ClientConn
 
@@ -37,11 +35,10 @@ var _ Client = (*grpcClient)(nil)
 // NewGRPCClient creates a gRPC client, which will connect to addr upon the
 // start. Note Client#Start returns an error if connection is unsuccessful and
 // mustConnect is true.
-func NewGRPCClient(logger log.Logger, addr string, mustConnect bool) Client {
+func NewGRPCClient(logger log.Logger, addr string) Client {
 	cli := &grpcClient{
-		logger:      logger,
-		addr:        addr,
-		mustConnect: mustConnect,
+		logger: logger,
+		addr:   addr,
 	}
 	cli.BaseService = *service.NewBaseService(logger, "grpcClient", cli)
 	return cli
@@ -62,9 +59,6 @@ RETRY_LOOP:
 			grpc.WithContextDialer(dialerFunc),
 		)
 		if err != nil {
-			if cli.mustConnect {
-				return err
-			}
 			cli.logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr), "err", err)
 			timer.Reset(time.Second * dialRetryIntervalSeconds)
 			select {

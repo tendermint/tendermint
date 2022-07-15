@@ -273,7 +273,7 @@ func makeSocketClientServer(
 	}
 
 	// Connect to the socket
-	client := abciclient.NewSocketClient(logger.With("module", "abci-client"), socket, false)
+	client := abciclient.NewSocketClient(logger.With("module", "abci-client"), socket)
 	if err := client.Start(ctx); err != nil {
 		cancel()
 		return nil, nil, err
@@ -303,7 +303,7 @@ func makeGRPCClientServer(
 		return nil, nil, err
 	}
 
-	client := abciclient.NewGRPCClient(logger.With("module", "abci-client"), socket, true)
+	client := abciclient.NewGRPCClient(logger.With("module", "abci-client"), socket)
 
 	if err := client.Start(ctx); err != nil {
 		cancel()

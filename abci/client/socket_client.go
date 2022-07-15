@@ -23,9 +23,8 @@ type socketClient struct {
 	service.BaseService
 	logger log.Logger
 
-	addr        string
-	mustConnect bool
-	conn        net.Conn
+	addr string
+	conn net.Conn
 
 	reqQueue chan *requestAndResponse
 
@@ -39,13 +38,12 @@ var _ Client = (*socketClient)(nil)
 // NewSocketClient creates a new socket client, which connects to a given
 // address. If mustConnect is true, the client will return an error upon start
 // if it fails to connect.
-func NewSocketClient(logger log.Logger, addr string, mustConnect bool) Client {
+func NewSocketClient(logger log.Logger, addr string) Client {
 	cli := &socketClient{
-		logger:      logger,
-		reqQueue:    make(chan *requestAndResponse),
-		mustConnect: mustConnect,
-		addr:        addr,
-		reqSent:     list.New(),
+		logger:   logger,
+		reqQueue: make(chan *requestAndResponse),
+		addr:     addr,
+		reqSent:  list.New(),
 	}
 	cli.BaseService = *service.NewBaseService(logger, "socketClient", cli)
 	return cli
@@ -64,9 +62,6 @@ func (cli *socketClient) OnStart(ctx context.Context) error {
 	for {
 		conn, err = tmnet.Connect(cli.addr)
 		if err != nil {
-			if cli.mustConnect {
-				return err
-			}
 			cli.logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
 				cli.addr, dialRetryIntervalSeconds), "err", err)
 
