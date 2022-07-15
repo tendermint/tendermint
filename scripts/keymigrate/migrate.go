@@ -179,7 +179,7 @@ var migrations = []migrationDefinition{
 		},
 	},
 	{
-		name:      "state-store",
+		name:      "tendermint-state",
 		storeName: "state",
 		prefix:    []byte(legacyStateKeyPrefix),
 		ktype:     stateStoreKey,
