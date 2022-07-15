@@ -659,8 +659,8 @@ type P2PConfig struct { //nolint: maligned
 	DialTimeout      time.Duration `mapstructure:"dial-timeout"`
 
 	// Makes it possible to configure which queue backend the p2p
-	// layer uses. Options are: "fifo" and "priority",
-	// with the default being "priority".
+	// layer uses. Options are: "fifo" and "simple-priority", and "priority",
+	// with the default being "simple-priority".
 	QueueType string `mapstructure:"queue-type"`
 }
 
