@@ -419,21 +419,21 @@ func SumTruncated(bz []byte) []byte {
 | Name      | Type                                | Description                                                                               | Field Number |
 |-----------|-------------------------------------|-------------------------------------------------------------------------------------------|--------------|
 | block     | [BlockParams](#blockparams)         | Parameters limiting the size of a block and time between consecutive blocks.              | 1            |
-| evidence  | [EvidenceParams](#evidenceparams)   | Parameters limiting the validity of evidence of byzantine behaviour.                      | 2            |
+| evidence  | [EvidenceParams](#evidenceparams)   | Parameters limiting the validity of evidence of Byzantine behaviour.                      | 2            |
 | validator | [ValidatorParams](#validatorparams) | Parameters limiting the types of public keys validators can use.                          | 3            |
 | version   | [BlockParams](#blockparams)         | The ABCI application version.                                                             | 4            |
-| synchrony | [SynchronyParams](#synchronyparams) | SynchronyParams influence the validity of block timestamps.                               | 5            |
-| timeout   | [TimeoutParams](#timeoutparams)     | TimeoutParams configure the timings of the steps of the Tendermint consensus algorithm.   | 6            |
+| synchrony | [SynchronyParams](#synchronyparams) | Are used to define the validity of block timestamps.                               | 5            |
+| timeout   | [TimeoutParams](#timeoutparams)     | Configure the timings of the steps of the Tendermint consensus algorithm.   | 6            |
 | ABCI      | [ABCIParams](#abciparams)           | ABCIParams configure ABCI functionality specific to the Application Blockchain Interface. | 7            |
 
 
 ### HashedParams
 Hashed Params is a subset of Consensus Params, it is amino encoded and hashed into the Header.ConsensusHash.
 
-| Name            | Type  | Description                                                                                                                                                                                                 | Field Number |
-|-----------------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
-| block_max_bytes | int64 | Max size of a block, in bytes.                                                                                                                                                                              | 1            |
-| block_max_gas   | int64 | Max sum of `GasWanted` in a proposed block. NOTE: blocks that violate this may be committed if there are Byzantine proposers. It's the application's responsibility to handle this when processing a block! | 2            |
+| Name            | Type  | Description                                                                                                                                                                                                     | Field Number |
+|-----------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
+| block_max_bytes | int64 | Maximum size of a block, in bytes.                                                                                                                                                                              | 1            |
+| block_max_gas   | int64 | Maximum sum of `GasWanted` in a proposed block.e proposers. | 2            |
 
 ### BlockParams
 
@@ -466,8 +466,8 @@ Hashed Params is a subset of Consensus Params, it is amino encoded and hashed in
 
 | Name          | Type   | Description                   | Field Number |
 |---------------|--------|-------------------------------|--------------|
-| precision     | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Bound for how skewed a proposer's clock may be from any validator on the network while still producing valid proposals. | 1            |
-| message_delay | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Bound for how long a proposal message may take to reach all validators on a newtork and still be considered valid. | 2            |
+| message_delay | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Maximum duration for a proposal message to reach all validators on a network | 1            |
+| precision     | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Bound for how skewed a proposer's clock may be from any validator on the network while still producing valid proposals. | 2            |
 
 ### TimeoutParams
 
@@ -480,12 +480,12 @@ Hashed Params is a subset of Consensus Params, it is amino encoded and hashed in
 | commit | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Parameter that configures how long Tendermint will wait after receiving a quorum of precommits before beginning consensus for the next height.| 5 |
 | bypass_commit_timeout | bool | Parameter that, if enabled, configures the node to proceed immediately to the next height once the node has received all precommits for a block, forgoing the commit timeout. |  6  |
 
-## ABCIParams
+### ABCIParams
 
-| Name                            | Type  | Description                                                                                      | Field Number |
-|---------------------------------|-------|--------------------------------------------------------------------------------------------------|---|
-| vote_extensions_enable_height   | int64 |                                                                                                  | 1 |
-| recheck_tx                      | bool  | Indicated whether to run CheckTx on all remaining transactions after every execution of a block. | 2 |
+| Name                            | Type  | Description                                                                                                                                           | Field Number |
+|---------------------------------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------|---|
+| vote_extensions_enable_height   | int64 | Parameter that is either 0 or a positive height at which vote extensions become mandatory. Vote extensions cannot be disabled and they are mandatory. | 1 |
+| recheck_tx                      | bool  | Indicates whether to run CheckTx on all remaining transactions after every execution of a block.                                                      | 2 |
 
 ## Proof
 
