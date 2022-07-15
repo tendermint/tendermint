@@ -112,7 +112,24 @@ func startApp(cfg *Config) error {
 		return err
 	}
 	logger.Info("start app", "msg", log.NewLazySprintf("Server listening on %v (%v protocol)", cfg.Listen, cfg.Protocol))
-	return nil
+	tmcfg, nodeLogger, nodeKey, err := setupNode()
+	if err != nil {
+		return fmt.Errorf("failed to setup config: %w", err)
+	}
+
+	n, err := node.NewNode(tmcfg,
+		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
+		nodeKey,
+		proxy.NewRemoteClientCreator(cfg.Listen, cfg.Protocol, true),
+		node.DefaultGenesisDocProviderFunc(tmcfg),
+		node.DefaultDBProvider,
+		node.DefaultMetricsProvider(tmcfg.Instrumentation),
+		nodeLogger,
+	)
+	if err != nil {
+		return err
+	}
+	return n.Start()
 }
 
 // startNode starts a Tendermint node running the application directly. It assumes the Tendermint

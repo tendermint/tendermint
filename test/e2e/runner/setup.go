@@ -82,10 +82,15 @@ func Setup(testnet *e2e.Testnet) error {
 			}
 		}
 
+		fmt.Println("proxy! app")
+		fmt.Println(node.Name)
+		fmt.Println(node.Mode)
+		fmt.Println(node.ABCIProtocol)
 		cfg, err := MakeConfig(node)
 		if err != nil {
 			return err
 		}
+		fmt.Println(cfg.ProxyApp)
 		config.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), cfg) // panics
 
 		appCfg, err := MakeAppConfig(node)
@@ -244,6 +249,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 	case e2e.ProtocolUNIX:
 		cfg.ProxyApp = AppAddressUNIX
 	case e2e.ProtocolTCP:
+		fmt.Println("tcp?")
 		cfg.ProxyApp = AppAddressTCP
 	case e2e.ProtocolGRPC:
 		cfg.ProxyApp = AppAddressTCP

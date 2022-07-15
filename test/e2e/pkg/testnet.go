@@ -145,6 +145,10 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 	for _, name := range nodeNames {
 		nodeManifest := manifest.Nodes[name]
+		abciProtocol := "builtin"
+		if nodeManifest.ABCIProtocol != "" {
+			abciProtocol = nodeManifest.ABCIProtocol
+		}
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
@@ -154,7 +158,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
-			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
+			ABCIProtocol:     Protocol(abciProtocol),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			FastSync:         nodeManifest.FastSync,

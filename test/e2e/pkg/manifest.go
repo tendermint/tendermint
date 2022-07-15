@@ -96,6 +96,8 @@ type ManifestNode struct {
 	// This defaults to v0.
 	Mempool string `toml:"mempool_version"`
 
+	ABCIProtocol string `toml:"abci_protocol"`
+
 	// StateSync enables state sync. The runner automatically configures trusted
 	// block hashes and RPC servers. At least one node in the network must have
 	// SnapshotInterval set to non-zero, and the state syncing node must have
