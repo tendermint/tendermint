@@ -51,5 +51,5 @@ require (
 	google.golang.org/grpc v1.48.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	gotest.tools v2.2.0+incompatible // indirect
-	pgregory.net/rapid v0.4.7
+	pgregory.net/rapid v0.4.8
 )
