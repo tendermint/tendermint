@@ -90,6 +90,8 @@ type Store interface {
 	LoadValidators(int64) (*types.ValidatorSet, error)
 	// LoadABCIResponses loads the abciResponse for a given height
 	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
+	//LoadLastABCIResponse loads the last abciResponse for a given height
+	LoadLastABCIResponse(int64) (*tmstate.ABCIResponsesInfo, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one

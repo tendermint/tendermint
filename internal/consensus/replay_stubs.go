@@ -54,7 +54,7 @@ func (emptyMempool) CloseWAL()      {}
 // Useful because we don't want to call Commit() twice for the same block on
 // the real app.
 
-func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
+func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponsesInfo) proxy.AppConnConsensus {
 	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
