@@ -28,7 +28,7 @@ import (
 // exists, it is overwritten. In case of error, the output is not written.
 //
 // Upgrade is a convenience wrapper for calls to LoadConfig, ApplyFixes, and
-// CheckValid. If the caller requires more control over the behaviour of the
+// CheckValid. If the caller requires more control over the behavior of the
 // upgrade, call those functions directly.
 func Upgrade(ctx context.Context, configPath, outputPath string) error {
 	if configPath == "" {
