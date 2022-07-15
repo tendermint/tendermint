@@ -1,4 +1,4 @@
-package main_test
+package confix_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"github.com/creachadair/tomledit"
 	"github.com/google/go-cmp/cmp"
 
-	confix "github.com/tendermint/tendermint/scripts/confix"
+	"github.com/tendermint/tendermint/internal/libs/confix"
 )
 
 func mustParseConfig(t *testing.T, path string) *tomledit.Document {
