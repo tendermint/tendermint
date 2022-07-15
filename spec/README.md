@@ -8,13 +8,9 @@ parent:
 
 # Tendermint Spec
 
-This is a markdown specification of the Tendermint blockchain.
-It defines the base data structures, how they are validated,
-and how they are communicated over the network.
+This directory hosts the canonical Markdown specifications of the Tendermint Protocol.
 
-If you find discrepancies between the spec and the code that
-do not have an associated issue or pull request on github,
-please submit them to our [bug bounty](https://tendermint.com/security)!
+It shall be used to describe protocol semantics, namely the BFT consensus engine, leader election, block propagation and light client verification. The specification includes encoding descriptions used in interprocess communication to comply with the protocol. It defines the interface between the application and Tendermint. The english specifications are often accompanies with a TLA+ specification.
 
 ## Contents
 
@@ -52,6 +48,18 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
   application and consensus engine over ABCI
 - [Write-Ahead Log](./consensus/wal.md): Details about how the consensus
   engine preserves data and recovers from crash failures
+
+## Contibuting
+
+Contributions are welcome.
+
+Proposals at an early stage can first be drafted as Github issues. To progress, a proposal will often need to be written out and approved as a [Request For Comment (RFC)](../docs/rfc/README.md).
+
+The standard language for coding blocks is Golang.
+
+If you find discrepancies between the spec and the code that
+do not have an associated issue or pull request on github,
+please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ## Overview
 

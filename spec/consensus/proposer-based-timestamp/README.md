@@ -11,7 +11,7 @@ which uses proposer-based timestamps.
 - [TLA+ Specification][proposertla]
 
 
-[algorithm]: ./pbts-algorithm_002_draft.md
+[algorithm]: ./pbts-algorithm_001_draft.md
 
 [sysmodel]: ./pbts-sysmodel_001_draft.md
 

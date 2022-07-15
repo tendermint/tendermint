@@ -1,3 +1,3 @@
 # Fork accountability
 
-Deprecated, please see [light-client/accountability](../../light-client/accountability/README.md).
+Deprecated, please see [light-client/accountability](../../light-client/accountability.md).

@@ -1,5 +1,3 @@
-<!-- markdown-link-check-disable -->
-
 # Draft of Light Client Supervisor for discussion
 
 ## TODOs

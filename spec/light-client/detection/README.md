@@ -14,7 +14,7 @@ This directory captures the ongoing work and discussion on fork
 detection both in the context of a Tendermint light node and in the
 context of IBC. It contains the following files
 
-### detection.md
+### [detection.md](./detection.md)
 
 a draft of the light node fork detection including "proof of fork"
   definition, that is, the data structure to submit evidence to full

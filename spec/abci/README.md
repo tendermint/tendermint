@@ -10,11 +10,11 @@ parent:
 ABCI stands for "**A**pplication **B**lock**c**hain **I**nterface".
 ABCI is the interface between Tendermint (a state-machine replication engine)
 and your application (the actual state machine). It consists of a set of
-_methods_, each with a corresponding `Request` and `Response`message type.
-To perform state-machine replication, Tendermint calls the ABCI methods on the
+_methods_, each with a corresponding `Request` and `Response`message type. 
+To perform state-machine replication, Tendermint calls the ABCI methods on the 
 ABCI application by sending the `Request*` messages and receiving the `Response*` messages in return.
 
-All ABCI messages and methods are defined in [protocol buffers](../../proto/tendermint/abci/types.proto).
+All ABCI messages and methods are defined in [protocol buffers](https://github.com/tendermint/spec/blob/master/proto/abci/types.proto). 
 This allows Tendermint to run with applications written in many programming languages.
 
 This specification is split as follows:

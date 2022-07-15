@@ -26,7 +26,7 @@ Specification of the Tendermint consensus protocol.
   consensus state machine to recover from crashes.
 
 The protocol used to gossip consensus messages between peers, which is critical
-for liveness, is described in the [reactors section](./consensus.md).
+for liveness, is described in the [reactors section](../reactors/consensus/consensus.md).
 
 There is also a [stale markdown description](consensus.md) of the consensus state machine
 (TODO update this).

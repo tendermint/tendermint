@@ -1,7 +1,5 @@
 # Proposer-Based Time - Part II
 
-This specification is **OUTDATED**. Please refer to the [new version][v2].
-
 ## Updated Consensus Algorithm
 
 ### Outline
@@ -163,5 +161,3 @@ Back to [main document][main].
 [bfttime]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/spec/consensus/bft-time.md
 
 [lcspec]: https://github.com/tendermint/spec/blob/439a5bcacb5ef6ef1118566d7b0cd68fff3553d4/rust-spec/lightclient/README.md
-
-[v2]: ./pbts-algorithm_002_draft.md

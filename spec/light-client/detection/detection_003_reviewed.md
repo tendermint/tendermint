@@ -1,5 +1,3 @@
-<!-- markdown-link-check-disable -->
-
 # Light Client Attack Detector
 
 In this specification, we strengthen the light client to be resistant

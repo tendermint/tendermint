@@ -11,8 +11,8 @@ This file defines the JSON-RPC spec of Tendermint. This is meant to be implement
 
 ## Support
 
-  |              | [Tendermint-Go](https://github.com/tendermint/tendermint/)  | [Tendermint-Rs](https://github.com/informalsystems/tendermint-rs) |
-  |--------------|:-----------------------------------------------------------:|:-----------------------------------------------------------------:|
+  |              | [Tendermint-Go](https://github.com/tendermint/tendermint/) | [endermint-Rs](https://github.com/informalsystems/tendermint-rs) |
+  |--------------|:----------------------------------------------------------:|:----------------------------------------------------------------:|
   | JSON-RPC 2.0 |                             ✅                              |                                ✅                                 |
   | HTTP         |                             ✅                              |                                ✅                                 |
   | HTTPS        |                             ✅                              |                                ❌                                 |
@@ -24,8 +24,6 @@ This file defines the JSON-RPC spec of Tendermint. This is meant to be implement
   | [Status](#status)                       |                             ✅                              |                                 ✅                                 |
   | [NetInfo](#netinfo)                     |                             ✅                              |                                 ✅                                 |
   | [Blockchain](#blockchain)               |                             ✅                              |                                 ✅                                 |
-  | [Header](#header)                       |                             ✅                              |                                 ❌                                  |
-  | [HeaderByHash](#headerbyhash)           |                             ✅                              |                                 ❌                                 |
   | [Block](#block)                         |                             ✅                              |                                 ✅                                 |
   | [BlockByHash](#blockbyhash)             |                             ✅                              |                                 ❌                                 |
   | [BlockResults](#blockresults)           |                             ✅                              |                                 ✅                                 |
@@ -49,6 +47,7 @@ This file defines the JSON-RPC spec of Tendermint. This is meant to be implement
 Timestamps in the RPC layer of Tendermint follows RFC3339Nano.  The RFC3339Nano format removes trailing zeros from the seconds field.
 
 This means if a block has a timestamp like: `1985-04-12T23:20:50.5200000Z`, the value returned in the RPC will be `1985-04-12T23:20:50.52Z`.
+
 
 
 ## Info Routes
@@ -273,130 +272,13 @@ curl -X POST https://localhost:26657 -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\
 }
 ```
 
-### Header
-
-Get a header at a specified height.
-
-#### Parameters
-
-- `height (integer)`: height of the requested header. If no height is specified the latest height will be used.
-
-#### Request
-
-##### HTTP
-
-```sh
-curl http://127.0.0.1:26657/header
-
-curl http://127.0.0.1:26657/header?height=1
-```
-
-##### JSONRPC
-
-```sh
-curl -X POST https://localhost:26657 -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"header\",\"params\":{\"height\":\"1\"}}"
-```
-
-#### Response
-
-```json
-{
-  "id": 0,
-  "jsonrpc": "2.0",
-  "result": {
-    "header": {
-      "version": {
-        "block": "10",
-        "app": "0"
-      },
-      "chain_id": "cosmoshub-2",
-      "height": "12",
-      "time": "2019-04-22T17:01:51.701356223Z",
-      "last_block_id": {
-        "hash": "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7",
-        "parts": {
-          "total": 1,
-          "hash": "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
-        }
-      },
-      "last_commit_hash": "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812",
-      "data_hash": "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73",
-      "validators_hash": "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0",
-      "next_validators_hash": "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0",
-      "consensus_hash": "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8",
-      "app_hash": "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C",
-      "last_results_hash": "",
-      "evidence_hash": "",
-      "proposer_address": "D540AB022088612AC74B287D076DBFBC4A377A2E"
-    }
-  }
-}
-```
-
-### HeaderByHash
-
-#### Parameters
-
-- `hash (string)`: Hash of the header to query for.
-
-#### Request
-
-##### HTTP
-
-```sh
-curl http://127.0.0.1:26657/header_by_hash?hash=0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED
-```
-
-##### JSONRPC
-
-```sh
-curl -X POST https://localhost:26657 -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"header_by_hash\",\"params\":{\"hash\":\"0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED\"}}"
-```
-
-#### Response
-
-```json
-{
-  "id": 0,
-  "jsonrpc": "2.0",
-  "result": {
-      "header": {
-        "version": {
-          "block": "10",
-          "app": "0"
-        },
-        "chain_id": "cosmoshub-2",
-        "height": "12",
-        "time": "2019-04-22T17:01:51.701356223Z",
-        "last_block_id": {
-          "hash": "112BC173FD838FB68EB43476816CD7B4C6661B6884A9E357B417EE957E1CF8F7",
-          "parts": {
-            "total": 1,
-            "hash": "38D4B26B5B725C4F13571EFE022C030390E4C33C8CF6F88EDD142EA769642DBD"
-          }
-        },
-        "last_commit_hash": "21B9BC845AD2CB2C4193CDD17BFC506F1EBE5A7402E84AD96E64171287A34812",
-        "data_hash": "970886F99E77ED0D60DA8FCE0447C2676E59F2F77302B0C4AA10E1D02F18EF73",
-        "validators_hash": "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0",
-        "next_validators_hash": "D658BFD100CA8025CFD3BECFE86194322731D387286FBD26E059115FD5F2BCA0",
-        "consensus_hash": "0F2908883A105C793B74495EB7D6DF2EEA479ED7FC9349206A65CB0F9987A0B8",
-        "app_hash": "223BF64D4A01074DC523A80E76B9BBC786C791FB0A1893AC5B14866356FCFD6C",
-        "last_results_hash": "",
-        "evidence_hash": "",
-        "proposer_address": "D540AB022088612AC74B287D076DBFBC4A377A2E"
-      }
-    }
-  }
-}
-```
-
 ### Block
 
 Get block at a specified height.
 
 #### Parameters
 
-- `height (integer)`: height of the requested block. If no height is specified the latest height will be used.
+- `height (integer)`: height of the requested block. If no height is specified the latest block will be used.
 
 #### Request
 
