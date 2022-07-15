@@ -33,8 +33,7 @@ type grpcClient struct {
 var _ Client = (*grpcClient)(nil)
 
 // NewGRPCClient creates a gRPC client, which will connect to addr upon the
-// start. Note Client#Start returns an error if connection is unsuccessful and
-// mustConnect is true.
+// start.
 func NewGRPCClient(logger log.Logger, addr string) Client {
 	cli := &grpcClient{
 		logger: logger,
