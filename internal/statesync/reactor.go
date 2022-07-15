@@ -61,7 +61,7 @@ const (
 
 	// lightBlockResponseTimeout is how long the dispatcher waits for a peer to
 	// return a light block
-	lightBlockResponseTimeout = 10 * time.Second
+	lightBlockResponseTimeout = 25 * time.Second
 
 	// consensusParamsResponseTimeout is the time the p2p state provider waits
 	// before performing a secondary call
