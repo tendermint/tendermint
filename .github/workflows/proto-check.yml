@@ -1,0 +1,24 @@
+name: Proto Check
+# Protobuf runs buf (https://buf.build/) lint and check-breakage
+# This workflow is only run when a file in the proto directory
+# has been modified.
+on:
+  workflow_dispatch: # allow running workflow manually
+  pull_request:
+    paths:
+      - "proto/*"
+jobs:
+  proto-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: lint
+        run: make proto-lint
+  proto-breakage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: check-breakage
+        run: make proto-check-breaking-ci

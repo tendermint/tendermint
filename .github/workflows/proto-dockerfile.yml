@@ -1,0 +1,64 @@
+# This workflow (re)builds and pushes a Docker image containing the
+# protobuf build tools used by the other workflows.
+#
+# When making changes that require updates to the builder image, you
+# should merge the updates first and wait for this workflow to complete,
+# so that the changes will be available for the dependent workflows.
+#
+
+name: Build & Push Proto Builder Image
+on:
+  pull_request:
+    paths:
+      - "proto/*"
+  push:
+    branches:
+      - master
+    paths:
+      - "proto/*"
+  schedule:
+    # run this job once a month to recieve any go or buf updates
+    - cron: "* * 1 * *"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: tendermint/docker-build-proto
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.4.0
+      - name: Check out and assign tags
+        id: prep
+        run: |
+          DOCKER_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          VERSION=noop
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          elif [[ $GITHUB_REF == refs/heads/* ]]; then
+            VERSION=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
+            if [ "${{ github.event.repository.default_branch }}" = "$VERSION" ]; then
+              VERSION=latest
+            fi
+          fi
+          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          echo ::set-output name=tags::${TAGS}
+
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v1.6.0
+
+      - name: Log in to the container registry
+        uses: docker/login-action@v1.10.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v2.7.0
+        with:
+          context: ./proto
+          file: ./proto/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.prep.outputs.tags }}
