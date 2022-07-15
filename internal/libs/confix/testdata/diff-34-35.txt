@@ -8,13 +8,11 @@
 +M blocksync.version
 -S fastsync
 -M fastsync.version
-+M mempool.ttl-duration
-+M mempool.ttl-num-blocks
-+M mempool.version
 -M mempool.wal-dir
 +M p2p.bootstrap-peers
 +M p2p.max-connections
 +M p2p.max-incoming-connection-attempts
++M p2p.max-outgoing-connections
 +M p2p.queue-type
 -M p2p.seed-mode
 +M p2p.use-legacy
@@ -28,4 +26,3 @@
 -M statesync.chunk-fetchers
 +M statesync.fetchers
 +M statesync.use-p2p
-+M tx-index.psql-conn
