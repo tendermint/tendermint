@@ -1,81 +1,65 @@
-// Program confix applies changes to a Tendermint TOML configuration file, to
+// Package confix applies changes to a Tendermint TOML configuration file, to
 // update configurations created with an older version of Tendermint to a
 // compatible format for a newer version.
-package main
+package confix
 
 import (
+	"bytes"
 	"context"
-	"flag"
+	"errors"
 	"fmt"
-	"log"
+	"io"
 	"os"
-	"path/filepath"
 
-<<<<<<< HEAD
 	"github.com/creachadair/atomicfile"
 	"github.com/creachadair/tomledit"
 	"github.com/creachadair/tomledit/transform"
 	"github.com/spf13/viper"
+
 	"github.com/tendermint/tendermint/config"
-=======
-	"github.com/tendermint/tendermint/internal/libs/confix"
->>>>>>> 18b5a500d (Extract a library from the confix command-line tool. (#9012))
 )
 
-func init() {
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `Usage: %[1]s -config <src> [-out <dst>]
-
-Modify the contents of the specified -config TOML file to update the names,
-locations, and values of configuration settings to the current configuration
-layout. The output is written to -out, or to stdout.
-
-It is valid to set -config and -out to the same path. In that case, the file will
-be modified in-place. In case of any error in updating the file, no output is
-written.
-
-Options:
-`, filepath.Base(os.Args[0]))
-		flag.PrintDefaults()
-	}
-}
-
-var (
-	configPath = flag.String("config", "", "Config file path (required)")
-	outPath    = flag.String("out", "", "Output file path (default stdout)")
-	doVerbose  = flag.Bool("v", false, "Log changes to stderr")
-)
-
-func main() {
-	flag.Parse()
-	if *configPath == "" {
-		log.Fatal("You must specify a non-empty -config path")
+// Upgrade reads the configuration file at configPath and applies any
+// transformations necessary to upgrade it to the current version.  If this
+// succeeds, the transformed output is written to outputPath. As a special
+// case, if outputPath == "" the output is written to stdout.
+//
+// It is safe if outputPath == inputPath. If a regular file outputPath already
+// exists, it is overwritten. In case of error, the output is not written.
+//
+// Upgrade is a convenience wrapper for calls to LoadConfig, ApplyFixes, and
+// CheckValid. If the caller requires more control over the behavior of the
+// upgrade, call those functions directly.
+func Upgrade(ctx context.Context, configPath, outputPath string) error {
+	if configPath == "" {
+		return errors.New("empty input configuration path")
 	}
 
-	ctx := context.Background()
-	if *doVerbose {
-		ctx = confix.WithLogWriter(ctx, os.Stderr)
+	doc, err := LoadConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("loading config: %v", err)
 	}
-	if err := confix.Upgrade(ctx, *configPath, *outPath); err != nil {
-		log.Fatalf("Upgrading config: %v", err)
+
+	if err := ApplyFixes(ctx, doc); err != nil {
+		return fmt.Errorf("updating %q: %v", configPath, err)
 	}
-<<<<<<< HEAD
 
 	var buf bytes.Buffer
 	if err := tomledit.Format(&buf, doc); err != nil {
-		log.Fatalf("Formatting config: %v", err)
+		return fmt.Errorf("formatting config: %v", err)
 	}
 
 	// Verify that Tendermint can parse the results after our edits.
 	if err := CheckValid(buf.Bytes()); err != nil {
-		log.Fatalf("Updated config is invalid: %v", err)
+		return fmt.Errorf("updated config is invalid: %v", err)
 	}
 
-	if *outPath == "" {
-		os.Stdout.Write(buf.Bytes())
-	} else if err := atomicfile.WriteData(*outPath, buf.Bytes(), 0600); err != nil {
-		log.Fatalf("Writing output: %v", err)
+	if outputPath == "" {
+		_, err = os.Stdout.Write(buf.Bytes())
+	} else {
+		err = atomicfile.WriteData(outputPath, buf.Bytes(), 0600)
 	}
+	return err
 }
 
 // ApplyFixes transforms doc and reports whether it succeeded.
@@ -85,7 +69,7 @@ func ApplyFixes(ctx context.Context, doc *tomledit.Document) error {
 	tmVersion := GuessConfigVersion(doc)
 	if tmVersion == vUnknown {
 		return errors.New("cannot tell what Tendermint version created this config")
-	} else if tmVersion < v34 || tmVersion > v35 {
+	} else if tmVersion < v34 || tmVersion > v36 {
 		// TODO(creachadair): Add in rewrites for older versions.  This will
 		// require some digging to discover what the changes were.  The upgrade
 		// instructions do not give specifics.
@@ -161,10 +145,11 @@ func CheckValid(data []byte) error {
 		return fmt.Errorf("decoding config: %w", err)
 	}
 
-	// Stub in required value not stored in the config file, so that validation
-	// will not fail spuriously.
-	cfg.Mode = config.ModeValidator
 	return cfg.ValidateBasic()
-=======
->>>>>>> 18b5a500d (Extract a library from the confix command-line tool. (#9012))
+}
+
+// WithLogWriter returns a child of ctx with a logger attached that sends
+// output to w. This is a convenience wrapper for transform.WithLogWriter.
+func WithLogWriter(ctx context.Context, w io.Writer) context.Context {
+	return transform.WithLogWriter(ctx, w)
 }
