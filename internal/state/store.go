@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tendermint/tendermint/internal/store"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
@@ -457,10 +456,14 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // This is used for recovering from crashes where we called app.Commit and
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
-func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
+func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponsesInfo, error) {
 	bz, err := store.db.Get(lastABCIResponseKey())
 	if err != nil {
 		return err
+	}
+
+	if len(bz) == 0 {
+		return nil, errors.New("value retrieved from db is empty")
 	}
 
 	abciResponse := new(tmstate.ABCIResponsesInfo)
@@ -471,10 +474,9 @@ func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses,
 			changed: %v\n`, err))
 	}
 
-	// DO WE NEED TO SPECIFY IF THE FLAG DETERMINES IF THIS IF STATEMENT IS CALLED??
 	//Here we sanitise by comparing the height from the height that is given to the last ABCIResponse
-	if height != abciResponse.height {
-		return nil, errors.New("Height cannot be found")
+	if height != abciResponse.GetHeight() {
+		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
 	} else {
 		return abciResponse, nil
 	}
@@ -506,9 +508,9 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		if err := store.db.Set(abciResponsesKey(height), bz); err != nil {
 			return err
 		}
-		
+
 	}
-	
+
 	// We always save the last ABCI response incase we crash after app.Commit and before s.Save(.)
 	// This overwrites the previous saved ABCI Response
 	response:= &tmstate.ABCIResponsesInfo{
@@ -519,7 +521,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	if err != nil {
 		return err
 	}
-	
+
 	return store.db.SetSync(lastABCIResponseKey(), bz)
 }
 
