@@ -224,11 +224,12 @@ pprof-laddr = ""
 #######################################################
 [p2p]
 
+# Enable the legacy p2p layer.
+use-legacy = false
+
 # Select the p2p internal queue.
 # Options are: "fifo", "simple-priority", "priority", and "wdrr"
 # with the default being "priority".
-use-legacy = false
-
 queue-type = "priority"
 
 # Address to listen for incoming connections
