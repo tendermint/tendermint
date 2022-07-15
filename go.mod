@@ -51,5 +51,5 @@ require (
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
 	google.golang.org/grpc v1.47.0
 	gotest.tools v2.2.0+incompatible // indirect
-	pgregory.net/rapid v0.4.7
+	pgregory.net/rapid v0.4.8
 )
