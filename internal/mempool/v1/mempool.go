@@ -113,10 +113,10 @@ func WithMetrics(metrics *mempool.Metrics) TxMempoolOption {
 
 // Lock obtains a write-lock on the mempool. A caller must be sure to explicitly
 // release the lock when finished.
-func (txmp *TxMempool) Lock() { txmp.mtx.Lock() }
+func (txmp *TxMempool) Lock() {}
 
 // Unlock releases a write-lock on the mempool.
-func (txmp *TxMempool) Unlock() { txmp.mtx.Unlock() }
+func (txmp *TxMempool) Unlock() {}
 
 // Size returns the number of valid transactions in the mempool. It is
 // thread-safe.
@@ -403,6 +403,8 @@ func (txmp *TxMempool) Update(
 			len(blockTxs), len(deliverTxResponses)))
 	}
 
+	txmp.mtx.Lock()
+	defer txmp.mtx.Unlock()
 	txmp.height = blockHeight
 	txmp.notifiedTxsAvailable = false
 
