@@ -126,10 +126,22 @@ func (txmp *TxMempool) Size() int { return txmp.txs.Len() }
 // mempool. It is thread-safe.
 func (txmp *TxMempool) SizeBytes() int64 { return atomic.LoadInt64(&txmp.txsBytes) }
 
-// FlushAppConn implements part of the mempool.Mempool interface.
-// This implementation is a no-op. In Tendermint v0.35 and later, ABCI clients
-// handle this automatically.
-func (txmp *TxMempool) FlushAppConn() error { return nil }
+// FlushAppConn executes FlushSync on the mempool's proxyAppConn.
+//
+// The caller must hold an exclusive mempool lock (by calling txmp.Lock) before
+// calling FlushAppConn.
+func (txmp *TxMempool) FlushAppConn() error {
+	// N.B.: We have to issue the call outside the lock so that its callback can
+	// fire.  It's safe to do this, the flush will block until complete.
+	//
+	// We could just not require the caller to hold the lock at all, but the
+	// semantics of the Mempool interface require the caller to hold it, and we
+	// can't change that without disrupting existing use.
+	txmp.mtx.Unlock()
+	defer txmp.mtx.Lock()
+
+	return txmp.proxyAppConn.FlushSync(context.Background())
+}
 
 // EnableTxsAvailable enables the mempool to trigger events when transactions
 // are available on a block by block basis.
