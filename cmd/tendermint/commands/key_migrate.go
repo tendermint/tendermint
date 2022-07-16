@@ -34,7 +34,6 @@ func RunDatabaseMigration(ctx context.Context, logger log.Logger, conf *config.C
 		// reduce the possibility of the
 		// ephemeral data overwriting later data
 		"tx_index",
-		"peerstore",
 		"light",
 		"blockstore",
 		"state",
@@ -57,7 +56,7 @@ func RunDatabaseMigration(ctx context.Context, logger log.Logger, conf *config.C
 			return fmt.Errorf("constructing database handle: %w", err)
 		}
 
-		if err = keymigrate.Migrate(ctx, db); err != nil {
+		if err = keymigrate.Migrate(ctx, dbctx, db); err != nil {
 			return fmt.Errorf("running migration for context %q: %w",
 				dbctx, err)
 		}
