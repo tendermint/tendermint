@@ -490,7 +490,7 @@ if err != nil {
 
 [tmnode.New](https://github.com/tendermint/tendermint/blob/v0.35.8/node/public.go#L29) requires a few things including a configuration file, a logger and a few others in order to construct the full node.
 
-Note: We use [abciclient.NewLocalCreator](https://github.com/tendermint/tendermint/blob/v0.35.8/abci/client/creators.go#L15) here to create a local client instead of one communicating through a socket or gRPC.
+Note that we use [abciclient.NewLocalCreator](https://github.com/tendermint/tendermint/blob/v0.35.8/abci/client/creators.go#L15) here to create a local client instead of one communicating through a socket or gRPC.
 
 [viper](https://github.com/spf13/viper) is being used for reading the config,
 which we will generate later using the `tendermint init` command.
@@ -539,13 +539,13 @@ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 ## 1.5 Getting Up and Running
 
-Make sure to enable [Go modules](https://github.com/golang/go/wiki/Modules). Run `go mod tidy` to download and cleanup dependencies in `go.mod` file.
+Make sure to enable [Go modules](https://github.com/golang/go/wiki/Modules). Run `go mod tidy` to download and add dependencies in `go.mod` file.
 
 ```bash
 $ go mod tidy
 ```
 
-The current tutorial only works with the latest version of Tendermint. so let's make sure we're using the latest version:
+The current tutorial only works with the latest version of Tendermint. So, let's make sure we're using the latest version:
 
 ```sh
 go get github.com/tendermint/tendermint@latest
@@ -634,7 +634,7 @@ Response should contain the height where this transaction was committed.
 
 Now let's check if the given key now exists and its value:
 
-```json
+```bash
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   ...
