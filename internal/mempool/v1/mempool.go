@@ -131,15 +131,6 @@ func (txmp *TxMempool) SizeBytes() int64 { return atomic.LoadInt64(&txmp.txsByte
 // The caller must hold an exclusive mempool lock (by calling txmp.Lock) before
 // calling FlushAppConn.
 func (txmp *TxMempool) FlushAppConn() error {
-	// N.B.: We have to issue the call outside the lock so that its callback can
-	// fire.  It's safe to do this, the flush will block until complete.
-	//
-	// We could just not require the caller to hold the lock at all, but the
-	// semantics of the Mempool interface require the caller to hold it, and we
-	// can't change that without disrupting existing use.
-	txmp.mtx.Unlock()
-	defer txmp.mtx.Lock()
-
 	return txmp.proxyAppConn.FlushSync(context.Background())
 }
 
