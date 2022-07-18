@@ -279,7 +279,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 			"trustHeight", to.Height, "useP2P", r.cfg.UseP2P)
 
 		if r.cfg.UseP2P {
-			if err := r.waitForEnoughPeers(ctx, 3); err != nil {
+			if err := r.waitForEnoughPeers(ctx, 2); err != nil {
 				return err
 			}
 
@@ -348,7 +348,7 @@ func (r *Reactor) Sync(ctx context.Context) (sm.State, error) {
 
 	// We need at least two peers (for cross-referencing of light blocks) before we can
 	// begin state sync
-	if err := r.waitForEnoughPeers(ctx, 3); err != nil {
+	if err := r.waitForEnoughPeers(ctx, 2); err != nil {
 		return sm.State{}, err
 	}
 
