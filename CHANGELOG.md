@@ -2,20 +2,19 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.34.20-rc1
+## v0.34.20
 
 Special thanks to external contributors on this release: @joeabbey @yihuang
 
+This release introduces a prioritized mempool. Further notes can be found in UPGRADING.md.
+
+NOTE: There's a known issue when combining the prioritized mempool with the ABCI socket client, that the team are curently working to resolve. Read more about the issue [here](https://github.com/tendermint/tendermint/pull/9030).
+
 ### BUG FIXES
 
+- [blocksync] [\#8496](https://github.com/tendermint/tendermint/pull/8496) validate block against state before persisting it to disk (@cmwaters)
 - [indexer] [#8625](https://github.com/tendermint/tendermint/pull/8625) Fix overriding tx index of duplicated txs. (@yihuang)
 - [mempool] [\#8962](https://github.com/tendermint/tendermint/issues/8962) Backport priority mempool fixes from v0.35.x to v0.34.x (@creachadair).
-
-## v0.34.20-rc0
-
-This RC introduces the prioritized mempool.
-
-NOTE: There's a known memory leak with the prioritized mempool that the team are currently working on resolving. We will cut v0.34.20 when this has been resolved. This release candidate is to provide the SDK with the new APIs. Read more about the issue [here](https://github.com/tendermint/tendermint/issues/8775)
 
 ### FEATURES
 
@@ -25,10 +24,6 @@ NOTE: There's a known memory leak with the prioritized mempool that the team are
 ### IMPROVEMENTS
 
 - [logging] [\#8845](https://github.com/tendermint/tendermint/issues/8845) Add "Lazy" Stringers to defer Sprintf and Hash until logs print. (@joeabbey)
-
-### BUG FIXES
-
-- [blocksync] [\#8496](https://github.com/tendermint/tendermint/pull/8496) validate block against state before persisting it to disk (@cmwaters)
 
 ## v0.34.19
 
