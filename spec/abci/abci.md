@@ -40,13 +40,13 @@ tendermint should not continue.
 In the Go implementation these methods take a context and may return
 an error. The context exists so that applications can terminate
 gracefully during shutdown, and the error return value makes it
-possible for applications to singal transient errors to Tendermint.
+possible for applications to signal transient errors to Tendermint.
 
 ### CheckTx
 
 The `CheckTx` ABCI method controls what transactions are considered for inclusion in a block.
 When Tendermint receives a `ResponseCheckTx` with a non-zero `Code`, the associated
-transaction will be not be added to Tendermint's mempool or it will be removed if
+transaction will not be added to Tendermint's mempool or it will be removed if
 it is already included.
 
 ### DeliverTx
