@@ -6,7 +6,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
 Special thanks to external contributors on this release: @joeabbey @yihuang
 
-This release introduces a prioritized mempool.
+This release introduces a prioritized mempool. Further notes can be found in UPGRADING.md.
 
 NOTE: There's a known issue when combining the prioritized mempool with the ABCI socket client, that the team are curently working to resolve. Read more about the issue [here](https://github.com/tendermint/tendermint/pull/9030).
 
