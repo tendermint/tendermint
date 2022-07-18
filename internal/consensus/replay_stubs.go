@@ -72,11 +72,11 @@ type mockProxyApp struct {
 
 	appHash       []byte
 	txCount       int
-	abciResponses *tmstate.ABCIResponses
+	abciResponses *tmstate.ABCIResponsesInfo
 }
 
 func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.DeliverTxs[mock.txCount]
+	r := mock.abciResponses.AbciResponses.DeliverTxs[mock.txCount]
 	mock.txCount++
 	if r == nil {
 		return abci.ResponseDeliverTx{}
@@ -86,7 +86,7 @@ func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeli
 
 func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	mock.txCount = 0
-	return *mock.abciResponses.EndBlock
+	return *mock.abciResponses.AbciResponses.EndBlock
 }
 
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {
