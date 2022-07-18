@@ -549,7 +549,7 @@ func (m *PeerManager) TryDialNext() NodeAddress {
 	}
 
 	for _, peer := range m.store.Ranked() {
-		if m.dialing[peer.ID] || m.isConnected(peer.ID) {
+		if m.dialing[peer.ID] || m.isConnected(peer.ID) || peer.ID == m.selfID {
 			continue
 		}
 
