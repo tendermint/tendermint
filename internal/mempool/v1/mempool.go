@@ -234,7 +234,7 @@ func (txmp *TxMempool) CheckTx(
 		height:    height,
 	}
 	wtx.SetPeer(txInfo.SenderID)
-	txmp.initialTxCallback(wtx, rsp)
+	txmp.addNewTransaction(wtx, rsp)
 	if cb != nil {
 		cb(&abci.Response{Value: &abci.Response_CheckTx{CheckTx: rsp}})
 	}
@@ -435,9 +435,9 @@ func (txmp *TxMempool) Update(
 	return nil
 }
 
-// initialTxCallback handles the ABCI CheckTx response for the first time a
+// addNewTransaction handles the ABCI CheckTx response for the first time a
 // transaction is added to the mempool.  A recheck after a block is committed
-// goes to the default callback (see recheckTxCallback).
+// goes to handleRecheckResult.
 //
 // If either the application rejected the transaction or a post-check hook is
 // defined and rejects the transaction, it is discarded.
@@ -448,7 +448,7 @@ func (txmp *TxMempool) Update(
 // transactions are evicted.
 //
 // Finally, the new transaction is added and size stats updated.
-func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, checkTxRes *abci.ResponseCheckTx) {
+func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, checkTxRes *abci.ResponseCheckTx) {
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 
@@ -606,13 +606,13 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	atomic.AddInt64(&txmp.txsBytes, wtx.Size())
 }
 
-// recheckTxCallback handles the responses from ABCI CheckTx calls issued
-// during the recheck phase of a block Update. It updates the recheck counter
-// and removes any transactions invalidated by the application.
+// handleRecheckResult handles the responses from ABCI CheckTx calls issued
+// during the recheck phase of a block Update.  It removes any transactions
+// invalidated by the application.
 //
-// This callback is NOT executed for the initial CheckTx on a new transaction;
-// that case is handled by initialTxCallback instead.
-func (txmp *TxMempool) recheckTxCallback(tx types.Tx, checkTxRes *abci.ResponseCheckTx) {
+// This method is NOT executed for the initial CheckTx on a new transaction;
+// that case is handled by addNewTransaction instead.
+func (txmp *TxMempool) handleRecheckResult(tx types.Tx, checkTxRes *abci.ResponseCheckTx) {
 	txmp.metrics.RecheckTimes.Add(1)
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
@@ -683,7 +683,6 @@ func (txmp *TxMempool) recheckTransactions() {
 		for _, wtx := range wtxs {
 			wtx := wtx
 			start(func() error {
-				// The response for this CheckTx is handled by the default recheckTxCallback.
 				rsp, err := txmp.proxyAppConn.CheckTxSync(ctx, abci.RequestCheckTx{
 					Tx:   wtx.tx,
 					Type: abci.CheckTxType_Recheck,
@@ -691,8 +690,9 @@ func (txmp *TxMempool) recheckTransactions() {
 				if err != nil {
 					txmp.logger.Error("failed to execute CheckTx during recheck",
 						"err", err, "hash", fmt.Sprintf("%x", wtx.tx.Hash()))
+				} else {
+					txmp.handleRecheckResult(wtx.tx, rsp)
 				}
-				txmp.recheckTxCallback(wtx.tx, rsp)
 				return nil
 			})
 		}
