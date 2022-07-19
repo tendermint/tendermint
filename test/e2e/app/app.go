@@ -141,7 +141,7 @@ func (app *Application) Info(_ context.Context, req *abci.RequestInfo) (*abci.Re
 	}, nil
 }
 
-// Info implements ABCI.
+// InitChain implements ABCI.
 func (app *Application) InitChain(_ context.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
@@ -441,7 +441,11 @@ func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProc
 func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVote) (*abci.ResponseExtendVote, error) {
 	// We ignore any requests for vote extensions that don't match our expected
 	// next height.
-	if req.Height != int64(app.state.Height)+1 {
+	currentHeight := app.state.Height
+	if currentHeight == 0 {
+		currentHeight = app.state.initialHeight
+	}
+	if req.Height != int64(currentHeight)+1 {
 		app.logger.Error(
 			"got unexpected height in ExtendVote request",
 			"expectedHeight", app.state.Height+1,
