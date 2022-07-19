@@ -128,7 +128,7 @@ When the peer is reported as a `PeerStatusBad`, its score is decremented.
 > A peer is never `PeerStatusGood`, and is only reported as `PeerStatusBad` a
 > reactor interacting with the peer reports an error to the router, and the
 > error is not "fatal".
-> If the error is fatal, the peer is reported as [errored](#errored-peer).
+> If the error is fatal, the peer is reported as [errored](#errored-transition).
 
 This score can also be _temporarily_ decremented due to connection errors.
 When the router fails to dial to a peer, it increments the peer's
@@ -180,7 +180,7 @@ As the router is supposed to dial the peer, the peer manager sets the peer to
 the [dialing](#dialing-peer) state.
 
 Dialing a candidate peer may have become possible because the peer manager
-has found a connection slot to [upgrade](#slots-upgrades) for given room to the
+has found a connection slot to [upgrade](#slot-upgrades) for given room to the
 selected candidate peer.
 If this is the case, the peer occupying this connection slot is set to the
 [upgrading state](#upgrading-peer), and will be evicted once the
@@ -215,12 +215,12 @@ close the newly established connection.
 It may also occur that the node is already connected to `MaxConnected` peers,
 which means that all connection slots are full.
 In this case, the peer manager tries to find a connection slot that can be
-[upgraded](#slots-upgrading) to give room for the new established connection.
+[upgraded](#slot-upgrades) to give room for the new established connection.
 If no suitable connection slot is found, or the hard limit `MaxConnected +
 MaxConnectedUpgrade` of connected peers is reached, the transitions fails.
 
 Notice that, in order to dial this peer, the peer manager may have put another
-lower-ranked peer in the [upgrading sub-state](#upgrading-peeer) to give room
+lower-ranked peer in the [upgrading sub-state](#upgrading-peer) to give room
 to this connection.
 In this case, the slot for the established connection was *reserved*, and this
 transition will not fail.
@@ -303,7 +303,7 @@ close the accepted connection.
 It may also occur that the node is already connected to `MaxConnected` peers,
 which means that all connection slots are full.
 In this case, the peer manager tries to find a connection slot that can be
-[upgraded](#slots-upgrading) to give room for the accepted connection.
+[upgraded](#slot-upgrades) to give room for the accepted connection.
 If no suitable connection slot is found, or the hard limit `MaxConnected +
 MaxConnectedUpgrade` of connected peers is reached, the transitions fails.
 
@@ -388,7 +388,7 @@ routine is notified.
 A [connected peer](#connected-peer) which should be evicted to give room to a
 higher-ranked peer the router is dialing to.
 
-The `Upgrading` sub-state is part of the procedure to [upgrade connection slots](#slots-upgrade).
+The `Upgrading` sub-state is part of the procedure to [upgrade connection slots](#slot-upgrades).
 When a connection with the higher-ranked peer that should take the connection
 slot from this peer is [established](#dialed-transition), the
 [eviction](#evict-peer) of this peer is scheduled.
@@ -398,7 +398,7 @@ slot from this peer is [established](#dialed-transition), the
 A peer whose eviction was scheduled, for either of the following reasons:
 
 1. to give room to a higher-ranked peer the router is connected to, as part of
-   the procedure to [upgrade connection slots](#slots-upgrade),
+   the procedure to [upgrade connection slots](#slot-upgrades),
 2. or because this peer was reported as [errored](#errored-transition) by a
    reactor interacting with this peer.
 
