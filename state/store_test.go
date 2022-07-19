@@ -200,6 +200,64 @@ func TestPruneStates(t *testing.T) {
 	}
 }
 
+func mockABCIResponses() *tmstate.ABCIResponses {
+	return &tmstate.ABCIResponses{
+		DeliverTxs: make([]*abci.ResponseDeliverTx, 0),
+		EndBlock:   &abci.ResponseEndBlock{},
+		BeginBlock: &abci.ResponseBeginBlock{},
+	}
+}
+
+func TestSaveBatchABCIResponseBytes(t *testing.T) {
+	heights := []int64{1, 2}
+	bytes, _ := mockABCIResponses().Marshal()
+	testCases := []struct {
+		name              string
+		heights           []int64
+		abciResponseBytes [][]byte
+		errMsg            string
+	}{
+		{
+			"heights doesn't match abciResponseBytes",
+			heights,
+			[][]byte{
+				bytes,
+			},
+			"heights doesn't match abciResponseBytes",
+		},
+		{
+			"save heights with abciResponseBytes",
+			heights,
+			[][]byte{
+				bytes,
+				bytes,
+			},
+			"",
+		},
+		{
+			"return error on invalid abciResponseBytes",
+			heights,
+			[][]byte{
+				nil,
+				nil,
+			},
+			"value cannot be nil",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := dbm.NewMemDB()
+			stateStore := sm.NewStore(db)
+			err := stateStore.SaveBatchABCIResponseBytes(tc.heights, tc.abciResponseBytes)
+			if tc.errMsg != "" {
+				require.ErrorContains(t, err, tc.errMsg)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestABCIResponsesResultsHash(t *testing.T) {
 	responses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
