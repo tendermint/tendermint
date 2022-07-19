@@ -538,6 +538,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		if len(cosmosTx.Body.Messages) == 1 &&
 			(cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgPlaceOrder" ||
 				cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgCancelOrder") {
+			// Remove the transaction from the mempool
+			mem.removeTx(memTx.tx, e, false)
 			continue
 		}
 
