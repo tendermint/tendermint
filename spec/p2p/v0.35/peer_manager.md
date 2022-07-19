@@ -47,7 +47,7 @@ The peer manager does not allow two slots to be filled with connections to the
 same peer.
 
 If all `MaxConnected` connection slots are full, the node should _a priori_
-reject the connection with the peer.
+reject the connection established with or accepted from the peer.
 However, it is possible that the new connection is with a peer whose score is
 better than the score of a peer occupying one of the connection slots.
 In this case, the peer manager will try to [upgrade the slot](#slot-upgrades)
@@ -73,6 +73,7 @@ defines the maximum number of *outgoing* connections the node should maintain.
 More precisely, it determines that the node should not attempt to dial new
 peers when the router already has established outgoing connections to
 `MaxOutgoingConnections` peers.
+This parameter cannot be set to a value larger than `MaxConnected`.
 
 > The previous version of the `p2p` explicitly distinguished incoming and
 > outgoing peers. Configuring the `MaxOutgoingConnections` parameters should
@@ -180,7 +181,7 @@ As the router is supposed to dial the peer, the peer manager sets the peer to
 the [dialing](#dialing-peer) state.
 
 Dialing a candidate peer may have become possible because the peer manager
-has found a connection slot to [upgrade](#slot-upgrades) for given room to the
+has found a [connection slot to upgrade](#slot-upgrades) to given room to the
 selected candidate peer.
 If this is the case, the peer occupying this connection slot is set to the
 [upgrading state](#upgrading-peer), and will be evicted once the
@@ -246,7 +247,7 @@ The transition fails if:
 
 Errors are also returned if:
 
-- the dialed peer was removed from the peer store
+- the dialed peer was pruned from the peer store (because it had more than `MaxPeers` stored)
 - the updated peer information is invalid
 - there is an error when saving the peer state to the peer store
 
@@ -312,7 +313,7 @@ If the transition succeeds, the peer is set to the
 
 The accepted peer might not be known by the peer manager.
 In this case the peer is registered in the peer store, without any associated
-address.
+address (as the connection remote address usually _is not_ the peer's listen address).
 The peer's `LastConnected` time is set and the `DialFailures` counter is reset
 for all addresses associated to the peer.
 
