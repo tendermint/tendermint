@@ -17,10 +17,10 @@ The connection policy defines:
 1. When the node should establish new connections to peers, and
 1. The next peer to which the router should try to establish a connection.
 
-The first definition is made based the concept of [connection slots](#connection-slots).
+The first definition is made based on the concept of [connection slots](#connection-slots).
 In short, the peer manager will try to fill every connection slot with a peer.
 If all the connection slots are full but there is the possibility to connect to
-a peer that is higher-[ranked](#peer-ranking) that one of the connecting peers,
+a peer that is higher-[ranked](#peer-ranking) than one of the connecting peers,
 the peer manager may attempt to [upgrade a connection slot](#slot-upgrades).
 Details of these operations are provided in the following.
 
@@ -54,7 +54,7 @@ In this case, the peer manager will try to [upgrade the slot](#slot-upgrades)
 to make room to the new connection, by evicting the peer currently occupying
 this slot.
 
-> Although not advisable, the `MaxConnected` parameter can be set `0`, which
+> Although not advisable, the `MaxConnected` parameter can be set to `0`, which
 > means no limit.
 >
 > In this case, the node will accept all connections established by peers, and
@@ -68,7 +68,7 @@ it from a peer.
 A connection is *outgoing* when the router has successfully
 [dialed](#dialed-transition) a peer.
 
-If the `MaxOutgoingConnections` parameter is set (it is larger than zero), it
+If the `MaxOutgoingConnections` parameter is set (i.e., it is greater than zero), it
 defines the maximum number of *outgoing* connections the node should maintain.
 More precisely, it determines that the node should not attempt to dial new
 peers when the router already has established outgoing connections to
@@ -183,7 +183,7 @@ Dialing a candidate peer may have become possible because the peer manager
 has found a connection slot to [upgrade](#slots-upgrades) for given room to the
 selected candidate peer.
 If this is the case, the peer occupying this connection slot is set to the
-[upgrading state](#upgrading-peer), so that it will be evicted once the
+[upgrading state](#upgrading-peer), and will be evicted once the
 connection to the candidate peer is successfully established.
 
 ### Dialing peer
@@ -191,7 +191,7 @@ connection to the candidate peer is successfully established.
 A peer that has been returned to the router as the next peer to dial.
 The router should be attempting to connect to this peer.
 
-A peer in `Dialing` state it is not considered as a candidate peer.
+A peer in `Dialing` state is not considered as a candidate peer.
 
 ### Dialed transition
 
@@ -252,7 +252,7 @@ Errors are also returned if:
 
 ### DialFailed transition
 
-This transition informs a failure when establishing an `outgoing` connection to
+This transition informs of a failure when establishing an `outgoing` connection to
 a peer.
 
 The dialed address's `LastDialFailure` time is set, and its `DialFailures`
@@ -266,7 +266,7 @@ Until then, the peer is the `Frozen Candidate` state.
 
 #### Retry delay
 
-The retry dial is the minimum time, from the latest failed dialing attempt, we
+The retry delay is the minimum time, from the latest failed dialing attempt, we
 should wait until dialing a peer address again.
 
 The default delay is defined by `MinRetryTime` parameter.
@@ -297,7 +297,7 @@ in the [`Connected`](#connected-peer) state.
 The most likely reason is that the router was simultaneously dialing the same
 peer, and has successfully [established a connection](#dialed-transition) with
 it.
-In this case, the transition fails, indicating to the router that is should
+In this case, the transition fails, indicating to the router that it should
 close the accepted connection.
 
 It may also occur that the node is already connected to `MaxConnected` peers,
@@ -313,7 +313,7 @@ If the transition succeeds, the peer is set to the
 The accepted peer might not be known by the peer manager.
 In this case the peer is registered in the peer store, without any associated
 address.
-The peer `LastConnected` time is set and the `DialFailures` counter is reset
+The peer's `LastConnected` time is set and the `DialFailures` counter is reset
 for all addresses associated to the peer.
 
 > If the peer is `Inactive`, it is set as active.
@@ -365,7 +365,7 @@ It is invoked by the router when an error is returned by the routines used to
 exchange messages with the peer.
 
 The peer is expected to be in the [`Connected`](#connected-peer) state.
-If the [`Ready`](#ready-transition) transition has been performed, the peer manager broadcast a
+If the [`Ready`](#ready-transition) transition has been performed, the peer manager broadcasts a
 `PeerUpdate` to all reactors notifying the new status (down) of this peer.
 
 If the peer is still present in the peer store, its `LastDisconnected` time is
@@ -385,11 +385,11 @@ routine is notified.
 
 ### Upgrading peer
 
-A [connected peer](#connected-peer) which should be evicted to given room to a
+A [connected peer](#connected-peer) which should be evicted to give room to a
 higher-ranked peer the router is dialing to.
 
 The `Upgrading` sub-state is part of the procedure to [upgrade connection slots](#slots-upgrade).
-When a connection with the higher-ranker peer that should take the connection
+When a connection with the higher-ranked peer that should take the connection
 slot from this peer is [established](#dialed-transition), the
 [eviction](#evict-peer) of this peer is scheduled.
 
@@ -397,7 +397,7 @@ slot from this peer is [established](#dialed-transition), the
 
 A peer whose eviction was scheduled, for either of the following reasons:
 
-1. to given room to a higher-ranked peer the router is connected to, as part of
+1. to give room to a higher-ranked peer the router is connected to, as part of
    the procedure to [upgrade connection slots](#slots-upgrade),
 2. or because this peer was reported as [errored](#errored-transition) by a
    reactor interacting with this peer.
