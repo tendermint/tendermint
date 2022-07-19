@@ -1,14 +1,20 @@
-# ADR 082: The Future of the Socket Protocol
+# RFC 021: The Future of the Socket Protocol
 
 ## Changelog
 
 - 19-May-2022: Initial draft (@creachadair)
+- 19-Jul-2022: Converted from ADR to RFC (@creachadair)
 
-## Status
+## Abstract
 
-(in review)
+This RFC captures some technical discussion about the ABCI socket protocol that
+was originally documented to solicit an architectural decision.  This topic was
+not high-enough priority as of this writing to justify making a final decision.
 
-## Context
+For that reason, the text of this RFC has the general structure of an ADR, but
+should be viewed primarily as a record of the issue for future reference.
+
+## Background
 
 The [Application Blockchain Interface (ABCI)][abci] is a client-server protocol
 used by the Tendermint consensus engine to communicate with the application on
