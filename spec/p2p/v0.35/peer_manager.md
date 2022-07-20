@@ -173,7 +173,7 @@ This scenario is represented by the `Frozen Candidate` state.
 ### DialNext transition
 
 This state transition produces candidate peers the node should dial to, which
-are consumed by the dialing routine of the router.
+are consumed by the [dialing routine](./router.md#dialing-peers) of the router.
 
 The transition is performed when the [connection policy](#connection-policy)
 determines that the node should try to establish a connection with a peer.
