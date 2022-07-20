@@ -434,7 +434,7 @@ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
 ```
 
-## 1.5 Getting Up and Running
+## 1.5 Getting up and running
 
 Make sure to enable [Go modules](https://github.com/golang/go/wiki/Modules). Run `go mod tidy` to download and add dependencies in `go.mod` file.
 
@@ -464,7 +464,7 @@ require (
 )
 ```
 
-Now we can build the binary:
+Now, we can build the binary:
 
 ```sh
 $ go build
