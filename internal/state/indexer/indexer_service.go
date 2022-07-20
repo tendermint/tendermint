@@ -4,12 +4,9 @@ import (
 	"context"
 	"time"
 
-<<<<<<< HEAD
-=======
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/pubsub"
->>>>>>> be6d74e65 (Work around indexing problem for duplicate transactions (forward port: #8625) (#8945))
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -102,7 +99,6 @@ func (is *Service) OnStart() error {
 					continue
 				}
 
-<<<<<<< HEAD
 				for _, sink := range is.eventSinks {
 					start := time.Now()
 					if err := sink.IndexBlockEvents(eventDataHeader); err != nil {
@@ -115,7 +111,15 @@ func (is *Service) OnStart() error {
 
 					if len(batch.Ops) > 0 {
 						start := time.Now()
-						err := sink.IndexTxEvents(batch.Ops)
+
+						var err error
+						curr.Ops, err = DeduplicateBatch(curr.Ops, sink)
+						if err != nil {
+							is.logger.Error("failed to deduplicate batch", "height", height, "error", err, "sink", sink.Type())
+							continue
+						}
+
+						err = sink.IndexTxEvents(batch.Ops)
 						if err != nil {
 							is.Logger.Error("failed to index block txs", "height", height, "err", err)
 						} else {
@@ -124,26 +128,6 @@ func (is *Service) OnStart() error {
 							is.Logger.Debug("indexed txs", "height", height, "sink", sink.Type())
 						}
 					}
-=======
-			if curr.Size() != 0 {
-				start := time.Now()
-
-				var err error
-				curr.Ops, err = DeduplicateBatch(curr.Ops, sink)
-				if err != nil {
-					is.logger.Error("failed to deduplicate batch", "height", is.currentBlock.height, "error", err)
-				}
-
-				err = sink.IndexTxEvents(curr.Ops)
-				if err != nil {
-					is.logger.Error("failed to index block txs",
-						"height", is.currentBlock.height, "err", err)
-				} else {
-					is.metrics.TxEventsSeconds.Observe(time.Since(start).Seconds())
-					is.metrics.TransactionsIndexed.Add(float64(curr.Size()))
-					is.logger.Debug("indexed txs",
-						"height", is.currentBlock.height, "sink", sink.Type())
->>>>>>> be6d74e65 (Work around indexing problem for duplicate transactions (forward port: #8625) (#8945))
 				}
 			}
 		}
