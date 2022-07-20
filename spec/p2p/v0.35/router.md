@@ -1,1 +1,76 @@
 # Router 
+
+## Dialing peers
+
+The router maintains a persistent routine `dialPeers()` consuming
+[candidate peers to dial](./peer_manager.md#dialnext-transition)
+produced by the peer manager.
+
+The consumed candidate peers (addresses) are provided for dialing routines,
+retrieved from a pool with `numConcurrentDials()` threads.
+The default number of threads in the pool is set to 32 times the number of
+available CPUs.
+
+> The 32 factor was introduced in [#8827](https://github.com/tendermint/tendermint/pull/8827), 
+> with the goal of speeding up the establishment of outbound connections.
+
+The router thus dials a peer whenever there are: (i) a candidate peer to be
+consumed and (ii) a dialing routine is available in the pool.
+Given the size of the thread pool, the router is in practice is expected to
+dial in parallel all candidate peers produced by the peer manager.
+
+> There was a random-interval sleep between starting subsequent dialing
+> routines. This behavior was removed by [#8839](https://github.com/tendermint/tendermint/pull/8839).
+
+The dialing routine selected to dial to a peer runs by the `connectPeer()`
+method, which:
+
+1. Calls `dialPeer()` to establish a connection with the remote peer
+   1. In case of errors, invokes the `DialFailed` transition of the peer manager
+1. Calls `handshakePeer()` with the established connection and the expected remote node ID
+   1. In case of errors, invokes the `DialFailed` transition of the peer manager
+1. Reports the established outbound connection through the `Dialed` transition of the peer manager
+   1. In the transition fails, the established connection was refused
+1. Spawns a `routePeer()` routine for the peer
+
+> Step 3. above acquires a mutex, preventing concurrent calls from different threads.
+> The reason is not clear, as all peer manager transitions are also protected by a mutex.
+>
+> Step 3i. above also notifies the peer manager's next peer to dial routine.
+> This should trigger the peer manager to produce another candidate peer.
+> TODO: check when this was introduced, as it breaks modularity.
+
+In case of any of the above errors, the connection with the remote peer is
+**closed** and the dialing routines returns.
+
+## Accepting peers
+
+The router maintains a persistent routine `acceptPeers()` consuming connections
+accepted by each of the configured transports.
+
+Each accepted connection is handled by a different `openConnection()` routine,
+spawned for this purpose, that operate as follows.
+There is no limit for the number of concurrent routines accepting peer's connections.
+
+1. Calls `filterPeersIP()` with the peer address
+   1. If the peer IP is rejected, the method returns
+1. Calls `handshakePeer()` with the accepted connection to retrieve the remote node ID
+   1. If the handshake fails, the method returns
+1. Calls `filterPeersID()` with the peer ID (learned from the handshake)
+   1. If the peer ID is rejected, the method returns
+1. Reports the established incoming connection through the `Accepted` transition of the peer manager
+   1. In the transition fails, the accepted connection was refused and the method returns
+1. Switches to the `routePeer()` routine for the accepted peer
+
+> Step 4. above acquires a mutex, preventing concurrent calls from different threads.
+> The reason is not clear, as all peer manager transitions are also protected by a mutex.
+
+In case of any of the above errors, the connection with the remote peer is
+**closed**.
+
+> TODO: Step 2. above has a limitation, commented in the source code, referring
+> to absence of an ack/nack in the handshake, which may case further
+> connections to be rejected.
+
+> TODO: there is a `connTracker` in the router that rate limits addresses that
+> try to establish connections to often. This procedure should be documented.
