@@ -36,29 +36,27 @@ through a TCP, Unix domain socket or gRPC.
 ## 1.1 Installing Go
 
 Please refer to [the official guide for installing
-Go](https://golang.org/doc/install).
+Go](https://go.dev/doc/install).
 
 Verify that you have the latest version of Go installed:
 
-```bash
+```sh
 $ go version
-go version go1.16.x darwin/amd64
+go version go1.18.x darwin/amd64
 ```
 
 ## 1.2 Creating a new Go project
 
-We'll start by creating a new Go project. Initialize the folder with `go mod init`,
-which should create the `go.mod` file.
+We'll start by creating a new Go project. First, initialize the project folder with `go mod init`. Running this command should create the `go.mod` file.
 
-```bash
+```sh
 $ mkdir kvstore
 $ cd kvstore
 $ go mod init github.com/<username>/kvstore
+go: creating new go.mod: module github.com/<username>/kvstore
 ```
 
-Inside the example directory create a `main.go` file with the following content:
-
-> Note: there is no need to clone or fork Tendermint in this tutorial.
+Inside the project directory, create a `main.go` file with the following content:
 
 ```go
 package main
@@ -74,7 +72,7 @@ func main() {
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
-```bash
+```sh
 $ go run main.go
 Hello, Tendermint Core
 ```
@@ -153,21 +151,20 @@ func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk
 }
 ```
 
-Now I will go through each method explaining when it's called and adding
+Now, we will go through each method and explain when it is executed while adding
 required business logic.
 
 ### 1.3.1 Key-value store setup
 
-For the underlying key-value store we'll use
-[badger](https://github.com/dgraph-io/badger), which is an embeddable,
-persistent and fast key-value (KV) database.
+For the underlying key-value store we'll use the latest version of [badger](https://github.com/dgraph-io/badger), which is an embeddable, persistent and fast key-value (KV) database.
 
-```bash
-$ go get github.com/dgraph-io/badger
+```sh
+$ go get github.com/dgraph-io/badger/v3
+go: added github.com/dgraph-io/badger/v3 v3.2103.2
 ```
 
 ```go
-import "github.com/dgraph-io/badger"
+import "github.com/dgraph-io/badger/v3"
 
 type KVStoreApplication struct {
  db           *badger.DB
@@ -180,7 +177,6 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
  }
 }
 ```
-
 
 ### 1.3.2 CheckTx
 
@@ -301,7 +297,7 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 }
 ```
 
-### 1.3.3 Query
+### 1.3.4 Query
 
 Now, when the client wants to know whenever a particular key/value exist, it
 will call Tendermint Core RPC `/abci_query` endpoint, which in turn will call
@@ -359,7 +355,7 @@ import (
  "path/filepath"
  "syscall"
 
- "github.com/dgraph-io/badger"
+ "github.com/dgraph-io/badger/v3"
  "github.com/spf13/viper"
 
   abciclient "github.com/tendermint/tendermint/abci/client"
@@ -421,7 +417,7 @@ func newTendermint(app abcitypes.Application, configFile string) (tmservice.Serv
 	}
 
 	// create logger
-	logger, err := tmlog.NewDefaultLogger(tmlog.LogFormatPlain, config.LogLevel, true)
+	logger, err := tmlog.NewDefaultLogger(tmlog.LogFormatPlain, config.LogLevel, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
@@ -541,14 +537,16 @@ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
 Make sure to enable [Go modules](https://github.com/golang/go/wiki/Modules). Run `go mod tidy` to download and add dependencies in `go.mod` file.
 
-```bash
+```sh
 $ go mod tidy
+...
 ```
 
-The current tutorial only works with the latest version of Tendermint. So, let's make sure we're using the latest version:
+Let's make sure we're using the latest version of Tendermint (currently `v0.35.8`).
 
 ```sh
-go get github.com/tendermint/tendermint@latest
+$ go get github.com/tendermint/tendermint@latest
+...
 ```
 
 This will populate the `go.mod` with a release number followed by a hash for Tendermint.
@@ -556,18 +554,20 @@ This will populate the `go.mod` with a release number followed by a hash for Ten
 ```go
 module github.com/<username>/kvstore
 
-go 1.16
+go 1.18
 
 require (
- github.com/dgraph-io/badger v1.6.2
- github.com/tendermint/tendermint <vX>
+ github.com/dgraph-io/badger/v3 v3.2103.2
+ github.com/tendermint/tendermint v0.35.8
+ ...
 )
 ```
 
-Now we can build the binary:
+Now, we can build the binary:
 
-```bash
-go build
+```sh
+$ go build
+...
 ```
 
 To create a default configuration, nodeKey and private validator files, let's
@@ -578,19 +578,23 @@ installing from source, don't forget to checkout the latest release (`git
 checkout vX.Y.Z`). Don't forget to check that the application uses the same
 major version.
 
-```bash
-$ rm -rf /tmp/kvstore
+```sh
+$ rm -rf /tmp/kvstore /tmp/badger
 $ TMHOME="/tmp/kvstore" tendermint init validator
 
-2022-07-16T13:51:58+08:00 INFO Found private validator keyFile=/tmp/kvstore/config/priv_validator_key.json module=main stateFile=/tmp/kvstore/data/priv_validator_state.json
-2022-07-16T13:51:58+08:00 INFO Found node key module=main path=/tmp/kvstore/config/node_key.json
-2022-07-16T13:51:58+08:00 INFO Found genesis file module=main path=/tmp/kvstore/config/genesis.json
-2022-07-16T13:51:58+08:00 INFO Generated config mode=validator module=main
+2022-07-20T17:04:41+08:00 INFO Generated private validator keyFile=/tmp/kvstore/config/priv_validator_key.json module=main stateFile=/tmp/kvstore/data/priv_validator_state.json
+2022-07-20T17:04:41+08:00 INFO Generated node key module=main path=/tmp/kvstore/config/node_key.json
+2022-07-20T17:04:41+08:00 INFO Generated genesis file module=main path=/tmp/kvstore/config/genesis.json
+2022-07-20T17:04:41+08:00 INFO Generated config mode=validator module=main
 ```
+
+Feel free to explore the generated files, which can be found at
+`/tmp/kvstore/config` directory. Documentation on the config can be found
+[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
-```bash
+```sh
 $ ./kvstore -config "/tmp/kvstore/config/config.toml"
 
 badger 2022/07/16 13:55:59 INFO: All 0 tables opened in 0s
@@ -611,9 +615,9 @@ badger 2022/07/16 13:55:59 DEBUG: Value log discard stats empty
 2022-07-16T13:55:59+08:00 INFO Version info block=11 mode=validator p2p=8 tmVersion=0.35.8
 ```
 
-Now open another tab in your terminal and try sending a transaction:
+Let's try sending a transaction. Open another terminal and execute the below command.
 
-```bash
+```sh
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
   ...
@@ -632,9 +636,9 @@ $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 
 Response should contain the height where this transaction was committed.
 
-Now let's check if the given key now exists and its value:
+Let's check if the given key now exists and its value:
 
-```bash
+```sh
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
   ...
