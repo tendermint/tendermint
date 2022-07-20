@@ -247,7 +247,7 @@ func (txmp *TxMempool) RemoveTxByKey(txKey types.TxKey) error {
 }
 
 // removeTxByKey removes the specified transaction key from the mempool.
-// The caller must hold txmp.mtx excluxively.
+// The caller must hold txmp.mtx exclusively.
 func (txmp *TxMempool) removeTxByKey(key types.TxKey) error {
 	if elt, ok := txmp.txByKey[key]; ok {
 		w := elt.Value.(*WrappedTx)
