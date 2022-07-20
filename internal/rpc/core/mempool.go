@@ -126,7 +126,7 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*co
 // UnconfirmedTxs gets unconfirmed transactions from the mempool in order of priority
 // More: https://docs.tendermint.com/master/rpc/#/Info/unconfirmed_txs
 func (env *Environment) UnconfirmedTxs(ctx context.Context, pagePtr, perPagePtr *int) (*coretypes.ResultUnconfirmedTxs, error) {
-	totalCount := env.Mempool.Size()
+	totalCount := env.Mempool.PoolMeta().Size
 	perPage := env.validatePerPage(perPagePtr)
 	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
@@ -135,23 +135,28 @@ func (env *Environment) UnconfirmedTxs(ctx context.Context, pagePtr, perPagePtr 
 
 	skipCount := validateSkipCount(page, perPage)
 
-	txs := env.Mempool.ReapMaxTxs(skipCount + tmmath.MinInt(perPage, totalCount-skipCount))
+	txs, err := env.Mempool.Reap(ctx, mempool.ReapTXs(skipCount+tmmath.MinInt(perPage, totalCount-skipCount)))
+	if err != nil {
+		return nil, err
+	}
 	result := txs[skipCount:]
 
 	return &coretypes.ResultUnconfirmedTxs{
 		Count:      len(result),
 		Total:      totalCount,
-		TotalBytes: env.Mempool.SizeBytes(),
+		TotalBytes: env.Mempool.PoolMeta().TotalBytes,
 		Txs:        result}, nil
 }
 
 // NumUnconfirmedTxs gets number of unconfirmed transactions.
 // More: https://docs.tendermint.com/master/rpc/#/Info/num_unconfirmed_txs
 func (env *Environment) NumUnconfirmedTxs(ctx context.Context) (*coretypes.ResultUnconfirmedTxs, error) {
+	meta := env.Mempool.PoolMeta()
 	return &coretypes.ResultUnconfirmedTxs{
-		Count:      env.Mempool.Size(),
-		Total:      env.Mempool.Size(),
-		TotalBytes: env.Mempool.SizeBytes()}, nil
+		Count:      meta.Size,
+		Total:      meta.Size,
+		TotalBytes: meta.TotalBytes,
+	}, nil
 }
 
 // CheckTx checks the transaction without executing it. The transaction won't
@@ -166,5 +171,5 @@ func (env *Environment) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.Re
 }
 
 func (env *Environment) RemoveTx(ctx context.Context, txkey types.TxKey) error {
-	return env.Mempool.RemoveTxByKey(txkey)
+	return env.Mempool.Remove(ctx, mempool.RemByTXKeys(txkey))
 }

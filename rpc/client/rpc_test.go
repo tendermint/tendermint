@@ -445,20 +445,21 @@ func TestClientMethodCalls(t *testing.T) {
 				require.True(t, bres.CheckTx.IsOK())
 				require.True(t, bres.TxResult.IsOK())
 
-				require.Equal(t, 0, pool.Size())
+				require.Equal(t, 0, pool.PoolMeta().Size)
 			})
 			t.Run("BroadcastTxSync", func(t *testing.T) {
 				_, _, tx := MakeTxKV()
-				initMempoolSize := pool.Size()
+				initMempoolSize := pool.PoolMeta().Size
 				bres, err := c.BroadcastTxSync(ctx, tx)
 				require.NoError(t, err, "%d: %+v", i, err)
 				require.Equal(t, bres.Code, abci.CodeTypeOK) // FIXME
 
-				require.Equal(t, initMempoolSize+1, pool.Size())
+				require.Equal(t, initMempoolSize+1, pool.PoolMeta().Size)
 
-				txs := pool.ReapMaxTxs(len(tx))
+				txs, err := pool.Reap(ctx, mempool.ReapTXs(len(tx)))
+				require.NoError(t, err)
 				require.EqualValues(t, tx, txs[0])
-				pool.Flush()
+				require.NoError(t, pool.Flush(ctx))
 			})
 			t.Run("CheckTx", func(t *testing.T) {
 				_, _, tx := MakeTxKV()
@@ -467,7 +468,7 @@ func TestClientMethodCalls(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, abci.CodeTypeOK, res.Code)
 
-				assert.Equal(t, 0, pool.Size(), "mempool must be empty")
+				assert.Equal(t, 0, pool.PoolMeta().Size, "mempool must be empty")
 			})
 			t.Run("Events", func(t *testing.T) {
 				t.Run("Header", func(t *testing.T) {
@@ -567,7 +568,7 @@ func TestClientMethodCalls(t *testing.T) {
 	}
 }
 
-func getMempool(t *testing.T, srv service.Service) mempool.Mempool {
+func getMempool(t *testing.T, srv service.Service) mempool.MempoolABCI {
 	t.Helper()
 	n, ok := srv.(interface {
 		RPCEnvironment() *rpccore.Environment
@@ -623,14 +624,14 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 				}
 				assert.Equal(t, perPage, res.Count)
 				assert.Equal(t, 5, res.Total)
-				assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
+				assert.Equal(t, pool.PoolMeta().Size, res.TotalBytes)
 				for _, tx := range res.Txs {
 					assert.Contains(t, txs, tx)
 				}
 			}
 		}
 
-		pool.Flush()
+		require.NoError(t, pool.Flush(ctx))
 	})
 	t.Run("NumUnconfirmedTxs", func(t *testing.T) {
 		ch := make(chan struct{})
@@ -649,7 +650,7 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 			t.Error("Timed out waiting for CheckTx callback")
 		}
 
-		mempoolSize := pool.Size()
+		mempoolSize := pool.PoolMeta().Size
 		for i, c := range GetClients(t, n, conf) {
 			mc, ok := c.(client.MempoolClient)
 			require.True(t, ok, "%d", i)
@@ -658,10 +659,10 @@ func TestClientMethodCallsAdvanced(t *testing.T) {
 
 			assert.Equal(t, mempoolSize, res.Count)
 			assert.Equal(t, mempoolSize, res.Total)
-			assert.Equal(t, pool.SizeBytes(), res.TotalBytes)
+			assert.Equal(t, pool.PoolMeta().TotalBytes, res.TotalBytes)
 		}
 
-		pool.Flush()
+		require.NoError(t, pool.Flush(ctx))
 	})
 	t.Run("Tx", func(t *testing.T) {
 		logger := log.NewTestingLogger(t)

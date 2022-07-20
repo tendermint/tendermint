@@ -17,17 +17,25 @@ import (
 
 type emptyMempool struct{}
 
-var _ mempool.Mempool = emptyMempool{}
+var _ mempool.MempoolABCI = emptyMempool{}
 
 func (emptyMempool) Lock()     {}
 func (emptyMempool) Unlock()   {}
-func (emptyMempool) Size() int { return 0 }
+func (emptyMempool) size() int { return 0 }
 func (emptyMempool) CheckTx(context.Context, types.Tx, func(*abci.ResponseCheckTx), mempool.TxInfo) error {
 	return nil
 }
-func (emptyMempool) RemoveTxByKey(txKey types.TxKey) error   { return nil }
-func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
-func (emptyMempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
+func (m emptyMempool) PoolMeta() mempool.PoolMeta { return mempool.PoolMeta{} }
+func (m emptyMempool) PrepBlockFinality(ctx context.Context) (finishFn func(), err error) {
+	return func() {}, nil
+}
+func (m emptyMempool) Reap(ctx context.Context, opts ...mempool.ReapOptFn) (types.Txs, error) {
+	return types.Txs{}, nil
+}
+func (m emptyMempool) Remove(ctx context.Context, opts ...mempool.RemOptFn) error { return nil }
+func (emptyMempool) RemoveTxByKey(txKey types.TxKey) error                        { return nil }
+func (emptyMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs                      { return types.Txs{} }
+func (emptyMempool) ReapMaxTxs(n int) types.Txs                                   { return types.Txs{} }
 func (emptyMempool) Update(
 	_ context.Context,
 	_ int64,
@@ -38,7 +46,7 @@ func (emptyMempool) Update(
 ) error {
 	return nil
 }
-func (emptyMempool) Flush()                                 {}
+func (emptyMempool) Flush(ctx context.Context) error        { return nil }
 func (emptyMempool) FlushAppConn(ctx context.Context) error { return nil }
 func (emptyMempool) TxsAvailable() <-chan struct{}          { return make(chan struct{}) }
 func (emptyMempool) EnableTxsAvailable()                    {}

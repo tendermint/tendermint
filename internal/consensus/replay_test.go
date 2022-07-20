@@ -300,7 +300,7 @@ type simulatorTestSuite struct {
 	Commits      []*types.Commit
 	CleanupFunc  cleanupFunc
 
-	Mempool mempool.Mempool
+	Mempool mempool.MempoolABCI
 	Evpool  sm.EvidencePool
 }
 
@@ -819,7 +819,7 @@ func applyBlock(
 	ctx context.Context,
 	t *testing.T,
 	stateStore sm.Store,
-	mempool mempool.Mempool,
+	mempool mempool.MempoolABCI,
 	evpool sm.EvidencePool,
 	st sm.State,
 	blk *types.Block,
@@ -843,7 +843,7 @@ func buildAppStateFromChain(
 	t *testing.T,
 	appClient abciclient.Client,
 	stateStore sm.Store,
-	mempool mempool.Mempool,
+	mempool mempool.MempoolABCI,
 	evpool sm.EvidencePool,
 	state sm.State,
 	chain []*types.Block,
@@ -893,7 +893,7 @@ func buildTMStateFromChain(
 	t *testing.T,
 	cfg *config.Config,
 	logger log.Logger,
-	mempool mempool.Mempool,
+	mempool mempool.MempoolABCI,
 	evpool sm.EvidencePool,
 	stateStore sm.Store,
 	state sm.State,

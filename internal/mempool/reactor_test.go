@@ -30,7 +30,7 @@ type reactorTestSuite struct {
 
 	reactors        map[types.NodeID]*Reactor
 	mempoolChannels map[types.NodeID]*p2p.Channel
-	mempools        map[types.NodeID]*TxMempool
+	mempools        map[types.NodeID]MempoolABCI
 	kvstores        map[types.NodeID]*kvstore.Application
 
 	peerChans   map[types.NodeID]chan p2p.PeerUpdate
@@ -51,7 +51,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 		network:         p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		reactors:        make(map[types.NodeID]*Reactor, numNodes),
 		mempoolChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
-		mempools:        make(map[types.NodeID]*TxMempool, numNodes),
+		mempools:        make(map[types.NodeID]MempoolABCI, numNodes),
 		kvstores:        make(map[types.NodeID]*kvstore.Application, numNodes),
 		peerChans:       make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
 		peerUpdates:     make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
@@ -63,8 +63,8 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 	for nodeID := range rts.network.Nodes {
 		rts.kvstores[nodeID] = kvstore.NewApplication()
 
-		mempool := setup(ctx, t, 0)
-		rts.mempools[nodeID] = mempool
+		mempool, mpABCI := setup(ctx, t, 0)
+		rts.mempools[nodeID] = mpABCI
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate, chBuf)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
@@ -79,6 +79,7 @@ func setupReactors(ctx context.Context, t *testing.T, numNodes int, chBuf uint) 
 			rts.logger.With("nodeID", nodeID),
 			cfg.Mempool,
 			rts.network.Nodes[nodeID].PeerManager,
+			mpABCI,
 			mempool,
 			chCreator,
 			rts.peerUpdates[nodeID],
@@ -129,17 +130,17 @@ func (rts *reactorTestSuite) waitForTxns(t *testing.T, txs []types.Tx, ids ...ty
 		if !p2ptest.NodeInSlice(name, ids) {
 			continue
 		}
-		if len(txs) == pool.Size() {
+		if len(txs) == pool.PoolMeta().Size {
 			continue
 		}
 
 		wg.Add(1)
-		go func(pool *TxMempool) {
+		go func(mp MempoolABCI) {
 			defer wg.Done()
-			require.Eventually(t, func() bool { return len(txs) == pool.Size() },
+			require.Eventually(t, func() bool { return len(txs) == mp.PoolMeta().Size },
 				time.Minute,
 				250*time.Millisecond,
-				"ntx=%d, size=%d", len(txs), pool.Size(),
+				"ntx=%d, size=%d", len(txs), mp.PoolMeta().Size,
 			)
 		}(pool)
 	}
@@ -199,9 +200,9 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	primary := rts.nodes[0]
 	secondaries := rts.nodes[1:]
 
-	txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
+	txs := checkTxs(ctx, t, rts.mempools[primary], numTxs, UnknownPeerID)
 
-	require.Equal(t, numTxs, rts.reactors[primary].mempool.Size())
+	require.Equal(t, numTxs, rts.reactors[primary].mempool.size())
 
 	rts.start(ctx, t)
 
@@ -233,14 +234,15 @@ func TestReactorConcurrency(t *testing.T) {
 		// 1. submit a bunch of txs
 		// 2. update the whole mempool
 
-		txs := checkTxs(ctx, t, rts.reactors[primary].mempool, numTxs, UnknownPeerID)
+		txs := checkTxs(ctx, t, rts.mempools[primary], numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
 			mempool := rts.mempools[primary]
 
-			mempool.Lock()
-			defer mempool.Unlock()
+			finisher, err := mempool.PrepBlockFinality(ctx)
+			require.NoError(t, err)
+			defer finisher()
 
 			deliverTxResponses := make([]*abci.ExecTxResult, len(txs))
 			for i := range txs {
@@ -252,16 +254,17 @@ func TestReactorConcurrency(t *testing.T) {
 
 		// 1. submit a bunch of txs
 		// 2. update none
-		_ = checkTxs(ctx, t, rts.reactors[secondary].mempool, numTxs, UnknownPeerID)
+		_ = checkTxs(ctx, t, rts.mempools[secondary], numTxs, UnknownPeerID)
 		go func() {
 			defer wg.Done()
 
 			mempool := rts.mempools[secondary]
 
-			mempool.Lock()
-			defer mempool.Unlock()
+			finisher, err := mempool.PrepBlockFinality(ctx)
+			require.NoError(t, err)
+			defer finisher()
 
-			err := mempool.Update(ctx, 1, []types.Tx{}, make([]*abci.ExecTxResult, 0), nil, nil)
+			err = mempool.Update(ctx, 1, []types.Tx{}, make([]*abci.ExecTxResult, 0), nil, nil)
 			require.NoError(t, err)
 		}()
 	}
@@ -289,7 +292,7 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	require.Eventually(t, func() bool {
-		return rts.mempools[secondary].Size() == 0
+		return rts.mempools[secondary].PoolMeta().Size == 0
 	}, time.Minute, 100*time.Millisecond)
 }
 
@@ -308,7 +311,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Broadcast a tx, which has the max size and ensure it's received by the
 	// second reactor.
 	tx1 := tmrand.Bytes(cfg.Mempool.MaxTxBytes)
-	err := rts.reactors[primary].mempool.CheckTx(
+	err := rts.reactors[primary].txChecker.CheckTx(
 		ctx,
 		tx1,
 		nil,
@@ -320,8 +323,8 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	rts.start(ctx, t)
 
-	rts.reactors[primary].mempool.Flush()
-	rts.reactors[secondary].mempool.Flush()
+	require.NoError(t, rts.mempools[primary].Flush(ctx))
+	require.NoError(t, rts.mempools[secondary].Flush(ctx))
 
 	// broadcast a tx, which is beyond the max size and ensure it's not sent
 	tx2 := tmrand.Bytes(cfg.Mempool.MaxTxBytes + 1)
@@ -402,8 +405,8 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	}
 	time.Sleep(500 * time.Millisecond)
 
-	txs := checkTxs(ctx, t, rts.reactors[primary].mempool, 4, UnknownPeerID)
+	txs := checkTxs(ctx, t, rts.mempools[primary], 4, UnknownPeerID)
 	require.Equal(t, 4, len(txs))
-	require.Equal(t, 4, rts.mempools[primary].Size())
-	require.Equal(t, 0, rts.mempools[secondary].Size())
+	require.Equal(t, 4, rts.mempools[primary].PoolMeta().Size)
+	require.Equal(t, 0, rts.mempools[secondary].PoolMeta().Size)
 }

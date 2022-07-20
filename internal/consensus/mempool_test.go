@@ -22,9 +22,9 @@ import (
 )
 
 // for testing
-func assertMempool(t *testing.T, txn txNotifier) mempool.Mempool {
+func assertMempool(t *testing.T, txn txNotifier) mempool.MempoolABCI {
 	t.Helper()
-	mp, ok := txn.(mempool.Mempool)
+	mp, ok := txn.(mempool.MempoolABCI)
 	require.True(t, ok)
 	return mp
 }
@@ -218,7 +218,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 		// check for the tx
 		for {
-			txs := assertMempool(t, cs.txNotifier).ReapMaxBytesMaxGas(int64(len(txBytes)), -1)
+			txs, err := assertMempool(t, cs.txNotifier).Reap(ctx, mempool.ReapBytes(int64(len(txBytes))))
+			require.NoError(t, err)
 			if len(txs) == 0 {
 				emptyMempoolCh <- struct{}{}
 				return

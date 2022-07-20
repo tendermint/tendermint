@@ -12,17 +12,21 @@ import (
 // Mempool is an empty implementation of a Mempool, useful for testing.
 type Mempool struct{}
 
-var _ Mempool = Mempool{}
+var _ mempool.MempoolABCI = Mempool{}
 
-func (Mempool) Lock()     {}
-func (Mempool) Unlock()   {}
 func (Mempool) Size() int { return 0 }
 func (Mempool) CheckTx(context.Context, types.Tx, func(*abci.ResponseCheckTx), mempool.TxInfo) error {
 	return nil
 }
-func (Mempool) RemoveTxByKey(txKey types.TxKey) error   { return nil }
-func (Mempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs { return types.Txs{} }
-func (Mempool) ReapMaxTxs(n int) types.Txs              { return types.Txs{} }
+func (m Mempool) Remove(ctx context.Context, opts ...mempool.RemOptFn) error { return nil }
+func (Mempool) RemoveTxByKey(txKey types.TxKey) error                        { return nil }
+func (m Mempool) PoolMeta() mempool.PoolMeta                                 { return mempool.PoolMeta{} }
+func (Mempool) PrepBlockFinality(ctx context.Context) (finishFn func(), err error) {
+	return func() {}, nil
+}
+func (m Mempool) Reap(ctx context.Context, opts ...mempool.ReapOptFn) (types.Txs, error) {
+	return types.Txs{}, nil
+}
 func (Mempool) Update(
 	_ context.Context,
 	_ int64,
@@ -33,7 +37,7 @@ func (Mempool) Update(
 ) error {
 	return nil
 }
-func (Mempool) Flush()                                 {}
+func (Mempool) Flush(ctx context.Context) error        { return nil }
 func (Mempool) FlushAppConn(ctx context.Context) error { return nil }
 func (Mempool) TxsAvailable() <-chan struct{}          { return make(chan struct{}) }
 func (Mempool) EnableTxsAvailable()                    {}

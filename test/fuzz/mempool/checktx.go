@@ -10,8 +10,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-var mp *mempool.TxMempool
-var getMp func() mempool.Mempool
+var (
+	mp        mempool.MempoolABCI
+	getMpABCI func() mempool.MempoolABCI
+)
 
 func init() {
 	app := kvstore.NewApplication()
@@ -25,16 +27,17 @@ func init() {
 	cfg := config.DefaultMempoolConfig()
 	cfg.Broadcast = false
 
-	getMp = func() mempool.Mempool {
+	getMpABCI = func() mempool.MempoolABCI {
 		if mp == nil {
-			mp = mempool.NewTxMempool(logger, cfg, conn)
+			pool := mempool.NewTxMempool(logger, cfg, conn)
+			mp = mempool.NewABCI(cfg, conn, pool, nil)
 		}
 		return mp
 	}
 }
 
 func Fuzz(data []byte) int {
-	err := getMp().CheckTx(context.Background(), data, nil, mempool.TxInfo{})
+	err := getMpABCI().CheckTx(context.Background(), data, nil, mempool.TxInfo{})
 	if err != nil {
 		return 0
 	}

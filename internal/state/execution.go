@@ -37,7 +37,7 @@ type BlockExecutor struct {
 
 	// manage the mempool lock during commit
 	// and update both with block results after commit.
-	mempool mempool.Mempool
+	mempool mempool.MempoolABCI
 	evpool  EvidencePool
 
 	logger  log.Logger
@@ -61,7 +61,7 @@ func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
 	appClient abciclient.Client,
-	pool mempool.Mempool,
+	pool mempool.MempoolABCI,
 	evpool EvidencePool,
 	blockStore BlockStore,
 	eventBus *eventbus.EventBus,
@@ -112,7 +112,13 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	// Fetch a limited amount of valid txs
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
-	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+	txs, err := blockExec.mempool.Reap(ctx, mempool.ReapBytes(maxDataBytes), mempool.ReapGas(maxGas))
+	if err != nil {
+		// returning an error is pertinent... with mempools that aren't in mem,
+		// i.e. a DAG mempool like narwhal, we need the ability to handle errors
+		// before calling prepare proposal.
+		return nil, nil, err
+	}
 
 	preparedProposal, err := blockExec.appClient.PrepareProposal(
 		ctx,
@@ -330,16 +336,11 @@ func (blockExec *BlockExecutor) Commit(
 	block *types.Block,
 	txResults []*abci.ExecTxResult,
 ) ([]byte, int64, error) {
-	blockExec.mempool.Lock()
-	defer blockExec.mempool.Unlock()
-
-	// while mempool is Locked, flush to ensure all async requests have completed
-	// in the ABCI app before Commit.
-	err := blockExec.mempool.FlushAppConn(ctx)
+	finishFn, err := blockExec.mempool.PrepBlockFinality(ctx)
 	if err != nil {
-		blockExec.logger.Error("client error during mempool.FlushAppConn", "err", err)
 		return nil, 0, err
 	}
+	defer finishFn()
 
 	// Commit block, get hash back
 	res, err := blockExec.appClient.Commit(ctx)

@@ -293,6 +293,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		cfg.Mempool,
 		proxyApp,
 	)
+	mpABCI := mempool.NewABCI(cfg.Mempool, proxyApp, mp, nil)
 
 	// Make EvidencePool
 	evidenceDB := dbm.NewMemDB()
@@ -319,7 +320,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	txLength := 100
 	for i := 0; i <= maxBytes/txLength; i++ {
 		tx := tmrand.Bytes(txLength)
-		err := mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
+		err := mpABCI.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -329,7 +330,7 @@ func TestCreateProposalBlock(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp,
-		mp,
+		mpABCI,
 		evidencePool,
 		blockStore,
 		eventBus,
@@ -394,11 +395,12 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		cfg.Mempool,
 		proxyApp,
 	)
+	mpABCI := mempool.NewABCI(cfg.Mempool, proxyApp, mp, nil)
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, 1))
 	tx := tmrand.Bytes(txLength - 4) // to account for the varint
-	err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
+	err = mpABCI.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 
 	eventBus := eventbus.NewDefault(logger)
@@ -408,7 +410,7 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp,
-		mp,
+		mpABCI,
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,
@@ -462,17 +464,18 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		cfg.Mempool,
 		proxyApp,
 	)
+	mpABCI := mempool.NewABCI(cfg.Mempool, proxyApp, mp, nil)
 
 	// fill the mempool with one txs just below the maximum size
 	txLength := int(types.MaxDataBytesNoEvidence(maxBytes, types.MaxVotesCount))
 	tx := tmrand.Bytes(txLength - 6) // to account for the varint
-	err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
+	err = mpABCI.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
 	// now produce more txs than what a normal block can hold with 10 smaller txs
 	// At the end of the test, only the single big tx should be added
 	for i := 0; i < 10; i++ {
 		tx := tmrand.Bytes(10)
-		err = mp.CheckTx(ctx, tx, nil, mempool.TxInfo{})
+		err = mpABCI.CheckTx(ctx, tx, nil, mempool.TxInfo{})
 		assert.NoError(t, err)
 	}
 
@@ -483,7 +486,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		stateStore,
 		logger,
 		proxyApp,
-		mp,
+		mpABCI,
 		sm.EmptyEvidencePool{},
 		blockStore,
 		eventBus,

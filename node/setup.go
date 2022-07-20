@@ -177,7 +177,7 @@ func createMempoolReactor(
 	peerManager *p2p.PeerManager,
 	router *p2p.Router,
 	logger log.Logger,
-) (service.Service, mempool.Mempool, error) {
+) (service.Service, mempool.MempoolABCI, error) {
 	logger = logger.With("module", "mempool")
 
 	mp := mempool.NewTxMempool(
@@ -185,8 +185,13 @@ func createMempoolReactor(
 		cfg.Mempool,
 		appClient,
 		mempool.WithMetrics(memplMetrics),
-		mempool.WithPreCheck(sm.TxPreCheckFromStore(store)),
 		mempool.WithPostCheck(sm.TxPostCheckFromStore(store)),
+	)
+	mpABCI := mempool.NewABCI(
+		cfg.Mempool,
+		appClient,
+		mp,
+		sm.TxPreCheckFromStore(store),
 	)
 
 	reactor, err := mempool.NewReactor(
@@ -194,6 +199,7 @@ func createMempoolReactor(
 		logger,
 		cfg.Mempool,
 		peerManager,
+		mpABCI,
 		mp,
 		router.OpenChannel,
 		peerManager.Subscribe(ctx),
@@ -203,10 +209,10 @@ func createMempoolReactor(
 	}
 
 	if cfg.Consensus.WaitForTxs() {
-		mp.EnableTxsAvailable()
+		mpABCI.EnableTxsAvailable()
 	}
 
-	return reactor, mp, nil
+	return reactor, mpABCI, nil
 }
 
 func createEvidenceReactor(
@@ -250,7 +256,7 @@ func createConsensusReactor(
 	store sm.Store,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mp mempool.Mempool,
+	mp mempool.MempoolABCI,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *consensus.Metrics,

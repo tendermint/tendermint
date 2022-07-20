@@ -477,14 +477,15 @@ func TestReactorWithEvidence(t *testing.T) {
 		proxyAppConnMem := abciclient.NewLocalClient(logger, app)
 		proxyAppConnCon := abciclient.NewLocalClient(logger, app)
 
-		mempool := mempool.NewTxMempool(
+		mp := mempool.NewTxMempool(
 			log.TestingLogger().With("module", "mempool"),
 			thisConfig.Mempool,
 			proxyAppConnMem,
 		)
+		mpABCI := mempool.NewABCI(thisConfig.Mempool, proxyAppConnMem, mp, nil)
 
 		if thisConfig.Consensus.WaitForTxs() {
-			mempool.EnableTxsAvailable()
+			mpABCI.EnableTxsAvailable()
 		}
 
 		// mock the evidence pool
@@ -504,10 +505,10 @@ func TestReactorWithEvidence(t *testing.T) {
 		eventBus := eventbus.NewDefault(log.TestingLogger().With("module", "events"))
 		require.NoError(t, eventBus.Start(ctx))
 
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore, eventBus)
+		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mpABCI, evpool, blockStore, eventBus)
 
 		cs, err := NewState(ctx, logger.With("validator", i, "module", "consensus"),
-			thisConfig.Consensus, stateStore, blockExec, blockStore, mempool, evpool2, eventBus)
+			thisConfig.Consensus, stateStore, blockExec, blockStore, mpABCI, evpool2, eventBus)
 		require.NoError(t, err)
 		cs.SetPrivValidator(ctx, pv)
 

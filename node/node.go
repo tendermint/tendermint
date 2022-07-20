@@ -267,7 +267,7 @@ func makeNode(
 			makeCloser(closers))
 	}
 
-	mpReactor, mp, err := createMempoolReactor(ctx,
+	mpReactor, mpABCI, err := createMempoolReactor(ctx,
 		cfg, proxyApp, stateStore, nodeMetrics.mempool, peerManager, router, logger,
 	)
 	if err != nil {
@@ -286,7 +286,7 @@ func makeNode(
 		stateStore,
 		logger.With("module", "state"),
 		proxyApp,
-		mp,
+		mpABCI,
 		evPool,
 		blockStore,
 		eventBus,
@@ -298,7 +298,7 @@ func makeNode(
 	blockSync := !onlyValidatorIsUs(state, pubKey)
 
 	csReactor, csState, err := createConsensusReactor(ctx,
-		cfg, stateStore, blockExec, blockStore, mp, evPool,
+		cfg, stateStore, blockExec, blockStore, mpABCI, evPool,
 		privValidator, nodeMetrics.consensus, stateSync || blockSync, eventBus,
 		peerManager, router, logger,
 	)
@@ -411,7 +411,7 @@ func makeNode(
 			EventSinks: eventSinks,
 			EventBus:   eventBus,
 			EventLog:   eventLog,
-			Mempool:    mp,
+			Mempool:    mpABCI,
 			Logger:     logger.With("module", "rpc"),
 			Config:     *cfg.RPC,
 		},
