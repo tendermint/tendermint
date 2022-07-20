@@ -47,8 +47,6 @@ var (
 		"tcp":  20,
 		"unix": 10,
 	}
-	// FIXME: v2 disabled due to flake
-	nodeBlockSyncs = uniformChoice{"v0"} // "v2"
 	nodeMempools   = uniformChoice{"v0", "v1"}
 	nodeStateSyncs = weightedChoice{
 		e2e.StateSyncDisabled: 10,
@@ -397,7 +395,7 @@ func generateNode(
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r),
-		BlockSync:        nodeBlockSyncs.Choose(r).(string),
+		BlockSync:        "v0",
 		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        e2e.StateSyncDisabled,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),

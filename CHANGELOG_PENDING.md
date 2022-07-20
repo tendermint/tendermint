@@ -2,7 +2,7 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35.8
+## v0.35.9
 
 Month DD, YYYY
 
@@ -22,8 +22,6 @@ Special thanks to external contributors on this release:
 
 ### FEATURES
 
-- [cli] [\#8675] Add command to force compact goleveldb databases (@cmwaters)
-
 ### IMPROVEMENTS
 
 - fix: assignment copies lock value in `BitArray.UnmarshalJSON()` (@lklimek)
@@ -35,3 +33,5 @@ Special thanks to external contributors on this release:
 - [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
 - (indexer) \#8625 Fix overriding tx index of duplicated txs.
 - [mempool] \#8944 Fix unbounded heap growth in the priority mempool. (@creachadair)
+
+### BUG FIXES

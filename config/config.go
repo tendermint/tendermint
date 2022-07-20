@@ -762,7 +762,7 @@ type P2PConfig struct { //nolint: maligned
 	UseLegacy bool `mapstructure:"use-legacy"`
 
 	// Makes it possible to configure which queue backend the p2p
-	// layer uses. Options are: "fifo", "priority" and "wdrr",
+	// layer uses. Options are: "fifo", "simple-priority", "priority", and "wdrr",
 	// with the default being "priority".
 	QueueType string `mapstructure:"queue-type"`
 }

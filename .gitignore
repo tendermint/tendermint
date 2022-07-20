@@ -10,7 +10,7 @@
 .idea/
 .revision
 .tendermint
-.tendermint-lite
+.tendermint-light
 .terraform
 .vagrant
 .vendor-new/
@@ -47,3 +47,10 @@ test/fuzz/**/corpus
 test/fuzz/**/crashers
 test/fuzz/**/suppressions
 test/fuzz/**/*.zip
+*.aux
+*.bbl
+*.blg
+*.pdf
+*.gz
+*.dvi
+.idea
