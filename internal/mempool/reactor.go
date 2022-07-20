@@ -36,9 +36,10 @@ type Reactor struct {
 	service.BaseService
 	logger log.Logger
 
-	cfg     *config.MempoolConfig
-	mempool *TxMempool
-	ids     *IDs
+	cfg       *config.MempoolConfig
+	txChecker MempoolABCI
+	mempool   *TxMempool
+	ids       *IDs
 
 	// XXX: Currently, this is the only way to get information about a peer. Ideally,
 	// we rely on message-oriented communication to get necessary peer data.
@@ -62,6 +63,7 @@ func NewReactor(
 	logger log.Logger,
 	cfg *config.MempoolConfig,
 	peerMgr PeerManager,
+	txChecker MempoolABCI,
 	txmp *TxMempool,
 	chCreator p2p.ChannelCreator,
 	peerUpdates *p2p.PeerUpdates,
@@ -76,6 +78,7 @@ func NewReactor(
 		logger:       logger,
 		cfg:          cfg,
 		peerMgr:      peerMgr,
+		txChecker:    txChecker,
 		mempool:      txmp,
 		ids:          NewMempoolIDs(),
 		mempoolCh:    ch,
@@ -148,7 +151,7 @@ func (r *Reactor) handleMempoolMessage(ctx context.Context, envelope *p2p.Envelo
 		}
 
 		for _, tx := range protoTxs {
-			if err := r.mempool.CheckTx(ctx, types.Tx(tx), nil, txInfo); err != nil {
+			if err := r.txChecker.CheckTx(ctx, types.Tx(tx), nil, txInfo); err != nil {
 				if errors.Is(err, types.ErrTxInCache) {
 					// if the tx is in the cache,
 					// then we've been gossiped a
