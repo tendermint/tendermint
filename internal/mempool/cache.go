@@ -22,6 +22,10 @@ type TxCache interface {
 
 	// Remove removes the given raw transaction from the cache.
 	Remove(tx types.Tx)
+
+	// Has reports whether tx is present in the cache. Checking for presence is
+	// not treated as an access of the value.
+	Has(tx types.Tx) bool
 }
 
 var _ TxCache = (*LRUTxCache)(nil)
@@ -97,6 +101,14 @@ func (c *LRUTxCache) Remove(tx types.Tx) {
 	}
 }
 
+func (c *LRUTxCache) Has(tx types.Tx) bool {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+
+	_, ok := c.cacheMap[tx.Key()]
+	return ok
+}
+
 // NopTxCache defines a no-op raw transaction cache.
 type NopTxCache struct{}
 
@@ -105,3 +117,4 @@ var _ TxCache = (*NopTxCache)(nil)
 func (NopTxCache) Reset()             {}
 func (NopTxCache) Push(types.Tx) bool { return true }
 func (NopTxCache) Remove(types.Tx)    {}
+func (NopTxCache) Has(types.Tx) bool  { return false }
