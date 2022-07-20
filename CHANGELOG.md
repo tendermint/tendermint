@@ -2,14 +2,16 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35.9-rc0
+## v0.35.9
+
+July 20, 2022
 
 This release fixes a deadlock that could occur in some cases when using the
 priority mempool with the ABCI socket client.
 
 ### BUG FIXES
 
-- [mempool] \#9030 rework lock discipline to mitigate callback deadlocks (@creachadair)
+- [mempool] [\#9030](https://github.com/tendermint/tendermint/pull/9030) rework lock discipline to mitigate callback deadlocks (@creachadair)
 
 ## v0.35.8
 
