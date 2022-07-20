@@ -12,7 +12,7 @@ func BenchmarkDetaching(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		start.removed = true
-		start.detachNext()
+		start.DetachNext()
 		start.DetachPrev()
 		tmp := nxt
 		nxt = nxt.Next()

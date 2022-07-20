@@ -307,8 +307,8 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, m
 			select {
 			case <-ctx.Done():
 				return
-			case <-r.mempool.WaitForNextTx(): // wait until a tx is available
-				if nextGossipTx = r.mempool.NextGossipTx(); nextGossipTx == nil {
+			case <-r.mempool.TxsWaitChan(): // wait until a tx is available
+				if nextGossipTx = r.mempool.TxsFront(); nextGossipTx == nil {
 					continue
 				}
 			}
@@ -318,7 +318,7 @@ func (r *Reactor) broadcastTxRoutine(ctx context.Context, peerID types.NodeID, m
 
 		// NOTE: Transaction batching was disabled due to:
 		// https://github.com/tendermint/tendermint/issues/5796
-		if ok := r.mempool.txStore.TxHasPeer(memTx.hash, peerMempoolID); !ok {
+		if !memTx.HasPeer(peerMempoolID) {
 			// Send the mempool tx to the corresponding peer. Note, the peer may be
 			// behind and thus would not be able to process the mempool tx correctly.
 			if err := mempoolCh.Send(ctx, p2p.Envelope{
