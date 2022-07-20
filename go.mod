@@ -8,6 +8,7 @@ require (
 	github.com/adlio/schema v1.3.3
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
+	github.com/bufbuild/buf v1.3.1
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/creachadair/atomicfile v0.2.6
 	github.com/creachadair/taskgroup v0.3.2
@@ -47,9 +48,8 @@ require (
 	github.com/vektra/mockery/v2 v2.14.0
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 	golang.org/x/net v0.0.0-20220617184016-355a448f1bc9
-	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	google.golang.org/grpc v1.48.0
-	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
+	google.golang.org/grpc v1.47.0
 	gotest.tools v2.2.0+incompatible // indirect
 	pgregory.net/rapid v0.4.8
 )

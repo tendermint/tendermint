@@ -83,14 +83,29 @@ $(BUILDDIR)/:
 proto-all: proto-gen proto-lint proto-check-breaking
 .PHONY: proto-all
 
-proto-gen:
-	@echo "Generating Go packages for .proto files"
-	@$(DOCKER_PROTO) sh ./scripts/protocgen.sh
+check-proto-deps:
+ifeq (,$(shell which protoc-gen-gogofaster))
+	$(error "gogofaster plugin for protoc is required. Run 'go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest' to install")
+endif
+.PHONY: check-proto-deps
+
+check-proto-format-deps:
+ifeq (,$(shell which clang-format))
+	$(error "clang-format is required for Protobuf formatting. See instructions for your platform on how to install it.")
+endif
+.PHONY: check-proto-format-deps
+
+proto-gen: check-proto-deps
+	@echo "Generating Protobuf files"
+	@go run github.com/bufbuild/buf/cmd/buf generate
+	@mv ./proto/tendermint/abci/types.pb.go ./abci/types/
 .PHONY: proto-gen
 
-proto-lint:
-	@echo "Running lint checks for .proto files"
-	@$(DOCKER_PROTO) buf lint --error-format=json
+# These targets are provided for convenience and are intended for local
+# execution only.
+proto-lint: check-proto-deps
+	@echo "Linting Protobuf files"
+	@go run github.com/bufbuild/buf/cmd/buf lint
 .PHONY: proto-lint
 
 proto-format:
@@ -98,15 +113,13 @@ proto-format:
 	@$(DOCKER_PROTO) find ./ -not -path "./third_party/*" -name '*.proto' -exec clang-format -i {} \;
 .PHONY: proto-format
 
-proto-check-breaking:
-	@echo "Checking for breaking changes in .proto files"
-	@$(DOCKER_PROTO) buf breaking --against .git#branch=$(BASE_BRANCH)
+proto-check-breaking: check-proto-deps
+	@echo "Checking for breaking changes in Protobuf files against local branch"
+	@echo "Note: This is only useful if your changes have not yet been committed."
+	@echo "      Otherwise read up on buf's \"breaking\" command usage:"
+	@echo "      https://docs.buf.build/breaking/usage"
+	@go run github.com/bufbuild/buf/cmd/buf breaking --against ".git"
 .PHONY: proto-check-breaking
-
-proto-check-breaking-ci:
-	@echo "Checking for breaking changes in .proto files"
-	@$(DOCKER_PROTO) buf breaking --against $(HTTPS_GIT)#branch=$(BASE_BRANCH)
-.PHONY: proto-check-breaking-ci
 
 ###############################################################################
 ###                              Build ABCI                                 ###
