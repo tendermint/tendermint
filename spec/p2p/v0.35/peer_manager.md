@@ -172,8 +172,21 @@ This scenario is represented by the `Frozen Candidate` state.
 
 ### DialNext transition
 
-This state transition is performed when the [connection policy](#connection-policy)
+This state transition produces candidate peers the node should dial to, which
+are consumed by the dialing routine of the router.
+
+The transition is performed when the [connection policy](#connection-policy)
 determines that the node should try to establish a connection with a peer.
+
+The algorithm controlling this state transition can be synthesized as follows:
+
+1. Wait until there are peers in `Candidate` state
+1. Select the best-ranked `peer` in `Candidate` state
+1. If `|Candidate + Dialing| < MaxConnected`, returns the selected `peer`
+1. Else if `|Candidate + Dialing| < MaxConnected + MaxConnectedUpgrade`, try to
+   find a connection `slot` to upgrade to give room to the selected `peer`
+   1. If a connection `slot` to upgrade is found, set the peer in the slot to
+      the `Upgrading` sub-state and returns the selected `peer`
 
 The peer manager selects the [best-ranked](#peer-ranking) peer which is in the
 [`Candidate`](#candidate-peer) state and provides it to the router.
