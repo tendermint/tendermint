@@ -351,7 +351,7 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	require.Len(t, reapedTxs, len(tTxs))
 
 	// reap a single transaction
-	reapedTxs, err = mpABCI.Reap(ctx, ReapTXs(1))
+	reapedTxs, err = mpABCI.Reap(ctx, ReapTxs(1))
 	require.NoError(t, err)
 	ensurePrioritized(reapedTxs)
 	require.Equal(t, len(tTxs), mpABCI.PoolMeta().Size)
@@ -359,7 +359,7 @@ func TestTxMempool_ReapMaxTxs(t *testing.T) {
 	require.Len(t, reapedTxs, 1)
 
 	// reap half of the transactions
-	reapedTxs, err = mpABCI.Reap(ctx, ReapTXs(len(tTxs)/2))
+	reapedTxs, err = mpABCI.Reap(ctx, ReapTxs(len(tTxs)/2))
 	require.NoError(t, err)
 	ensurePrioritized(reapedTxs)
 	require.Equal(t, len(tTxs), mpABCI.PoolMeta().Size)
@@ -461,7 +461,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 		var height int64 = 1
 
 		for range ticker.C {
-			reapedTxs, err := mpABCI.Reap(ctx, ReapTXs(200))
+			reapedTxs, err := mpABCI.Reap(ctx, ReapTxs(200))
 			require.NoError(t, err)
 			if len(reapedTxs) > 0 {
 				responses := make([]*abci.ExecTxResult, len(reapedTxs))
@@ -512,7 +512,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	require.Equal(t, 100, txmp.heightIndex.Size())
 
 	// reap 5 txs at the next height -- no txs should expire
-	reapedTxs, err := mpABCI.Reap(ctx, ReapTXs(5))
+	reapedTxs, err := mpABCI.Reap(ctx, ReapTxs(5))
 	require.NoError(t, err)
 	responses := make([]*abci.ExecTxResult, len(reapedTxs))
 	for i := 0; i < len(responses); i++ {
@@ -539,7 +539,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	// initial CheckTx calls or from the second round of CheckTx calls. Thus, we
 	// cannot guarantee that all 95 txs are remaining that should be expired and
 	// removed. However, we do know that at most 95 txs can be expired and removed.
-	reapedTxs, err = mpABCI.Reap(ctx, ReapTXs(5))
+	reapedTxs, err = mpABCI.Reap(ctx, ReapTxs(5))
 	require.NoError(t, err)
 	responses = make([]*abci.ExecTxResult, len(reapedTxs))
 	for i := 0; i < len(responses); i++ {

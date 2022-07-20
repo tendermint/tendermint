@@ -24,9 +24,7 @@ import (
 // for testing
 func assertMempool(t *testing.T, txn txNotifier) mempool.MempoolABCI {
 	t.Helper()
-	mp, ok := txn.(mempool.MempoolABCI)
-	require.True(t, ok)
-	return mp
+	return txn.(mempool.MempoolABCI)
 }
 
 func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {

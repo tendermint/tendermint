@@ -125,7 +125,7 @@ func WithMetrics(metrics *Metrics) TxMempoolOption {
 	return func(txmp *TxMempool) { txmp.metrics = metrics }
 }
 
-// Meta returns the tx mempool's metatdata.
+// Meta returns the tx mempool's metadata.
 func (txmp *TxMempool) Meta() PoolMeta {
 	return PoolMeta{
 		Type:       "priority",
@@ -134,13 +134,13 @@ func (txmp *TxMempool) Meta() PoolMeta {
 	}
 }
 
-// Size returns the number of valid transactions in the mempool. It is
+// size returns the number of valid transactions in the mempool. It is
 // thread-safe.
 func (txmp *TxMempool) size() int {
 	return txmp.txStore.Size()
 }
 
-// SizeBytes return the total sum in bytes of all the valid transactions in the
+// sizeBytes return the total sum in bytes of all the valid transactions in the
 // mempool. It is thread-safe.
 func (txmp *TxMempool) sizeBytes() int64 {
 	return atomic.LoadInt64(&txmp.szBytes)
@@ -159,11 +159,8 @@ func (txmp *TxMempool) NextGossipTx() *clist.CElement {
 	return txmp.gossipIndex.Front()
 }
 
-// CheckTXCallback satisfies the behavior the MempoolABCI client depends on from the
-// Pool type. In this, our MempoolABCI client is managing the Locking and app conn.
-// The CheckTXCallback only happens after the necessary abci preparations have been
-// made. Removing those concerns from our store implementation.
-func (txmp *TxMempool) CheckTXCallback(ctx context.Context, tx types.Tx, res *abci.ResponseCheckTx, txInfo TxInfo) (OpResult, error) {
+// CheckTxCallback performs pool lvl controls as part of the abci mempool guarantees.
+func (txmp *TxMempool) CheckTxCallback(ctx context.Context, tx types.Tx, res *abci.ResponseCheckTx, txInfo TxInfo) (OpResult, error) {
 	if txmp.recheckCursor != nil {
 		return OpResult{}, errors.New("recheck cursor is non-nil")
 	}
@@ -185,14 +182,14 @@ func (txmp *TxMempool) CheckTXCallback(ctx context.Context, tx types.Tx, res *ab
 	if opRes.Status == "" && initCBOpRes.Status != "" {
 		opRes.Status = initCBOpRes.Status
 	}
-	opRes.RemovedTXs = make(types.Txs, 0, len(defCBOpRes.RemovedTXs)+len(initCBOpRes.RemovedTXs))
-	opRes.RemovedTXs = append(opRes.RemovedTXs, defCBOpRes.RemovedTXs...)
-	opRes.RemovedTXs = append(opRes.RemovedTXs, initCBOpRes.RemovedTXs...)
+	opRes.RemovedTxs = make(types.Txs, 0, len(defCBOpRes.RemovedTxs)+len(initCBOpRes.RemovedTxs))
+	opRes.RemovedTxs = append(opRes.RemovedTxs, defCBOpRes.RemovedTxs...)
+	opRes.RemovedTxs = append(opRes.RemovedTxs, initCBOpRes.RemovedTxs...)
 
 	return opRes, nil
 }
 
-// Remove removes TXs from the underlying store.
+// Remove removes txs from the underlying store.
 func (txmp *TxMempool) Remove(ctx context.Context, opts ...RemOptFn) (OpResult, error) {
 	opt := CoalesceRemOptFns(opts...)
 
@@ -201,13 +198,13 @@ func (txmp *TxMempool) Remove(ctx context.Context, opts ...RemOptFn) (OpResult, 
 		opRes OpResult
 	)
 
-	for _, txKey := range opt.TXKeys {
+	for _, txKey := range opt.TxKeys {
 		tx, remErr := txmp.removeTxByKey(txKey)
 		if remErr != nil {
 			err = multierror.Append(err, remErr)
 			continue
 		}
-		opRes.RemovedTXs = append(opRes.RemovedTXs, tx)
+		opRes.RemovedTxs = append(opRes.RemovedTxs, tx)
 	}
 
 	return opRes, err.ErrorOrNil()
@@ -250,21 +247,21 @@ func (txmp *TxMempool) Flush(ctx context.Context) error {
 }
 
 // Reap will return a list of TXs by the chose input. As of writing this, this implementation
-// only supports providing either NumTXs or one of GasLimit BlockSizeLimit. Providing non
+// only supports providing either NumTxs or one of GasLimit BlockSizeLimit. Providing non
 // default values for all values, will result in an error.
 func (txmp *TxMempool) Reap(ctx context.Context, opts ...ReapOptFn) (types.Txs, error) {
 	opt := CoalesceReapOpts(opts...)
 
-	if opt.NumTXs > -1 && (opt.GasLimit > -1 || opt.BlockSizeLimit > -1) {
+	if opt.NumTxs > -1 && (opt.GasLimit > -1 || opt.BlockSizeLimit > -1) {
 		return nil, errors.New("reaping by num txs and one of gas limit or block size limit is not supported")
 	}
 
-	if opt.NumTXs == -1 && opt.GasLimit == -1 && opt.BlockSizeLimit == -1 {
+	if opt.NumTxs == -1 && opt.GasLimit == -1 && opt.BlockSizeLimit == -1 {
 		return txmp.reapMaxTxs(-1), nil
 	}
 
-	if opt.NumTXs > -1 {
-		return txmp.reapMaxTxs(opt.NumTXs), nil
+	if opt.NumTxs > -1 {
+		return txmp.reapMaxTxs(opt.NumTxs), nil
 	}
 
 	return txmp.reapMaxBytesMaxGas(opt.BlockSizeLimit, opt.GasLimit), nil
@@ -353,10 +350,15 @@ func (txmp *TxMempool) reapMaxTxs(max int) types.Txs {
 	return txs
 }
 
-// OnUpdate fulfills the behavior the MempoolABCI client needs. The contract with the MempoolABCI
-// client is that the MempoolABCI client manages locking/unlocking and all preparation for the
-// update. Additionally, caching to reduce app pressure happens there as well.
-func (txmp *TxMempool) OnUpdate(ctx context.Context, blockHeight int64, blockTxs types.Txs, txResults []*abci.ExecTxResult, newPostFn PostCheckFunc) (OpResult, error) {
+// OnUpdate performs an update to the mempool store. These updates can generate
+// rejected txs, i.e. when a recheck tx is no longer valid.
+func (txmp *TxMempool) OnUpdate(
+	ctx context.Context,
+	blockHeight int64,
+	blockTxs types.Txs,
+	txResults []*abci.ExecTxResult,
+	newPostFn PostCheckFunc,
+) (OpResult, error) {
 	txmp.height = blockHeight
 	if newPostFn != nil {
 		txmp.postCheck = newPostFn
@@ -366,10 +368,10 @@ func (txmp *TxMempool) OnUpdate(ctx context.Context, blockHeight int64, blockTxs
 	for i, tx := range blockTxs {
 		if txResults[i].Code == abci.CodeTypeOK {
 			// add the valid committed transaction to the cache (if missing)
-			opRes.AddedTXs = append(opRes.AddedTXs, tx)
+			opRes.AddedTxs = append(opRes.AddedTxs, tx)
 		} else if !txmp.config.KeepInvalidTxsInCache {
 			// allow invalid transactions to be re-submitted
-			opRes.RemovedTXs = append(opRes.RemovedTXs, tx)
+			opRes.RemovedTxs = append(opRes.RemovedTxs, tx)
 		}
 
 		// remove the committed transaction from the transaction store and indexes
@@ -392,10 +394,10 @@ func (txmp *TxMempool) OnUpdate(ctx context.Context, blockHeight int64, blockTxs
 			)
 			updateOpRes := txmp.updateReCheckTxs(ctx)
 			opRes.Status = updateOpRes.Status
-			opRes.AddedTXs = append(opRes.AddedTXs, updateOpRes.AddedTXs...)
-			opRes.RemovedTXs = append(opRes.RemovedTXs, updateOpRes.RemovedTXs...)
+			opRes.AddedTxs = append(opRes.AddedTxs, updateOpRes.AddedTxs...)
+			opRes.RemovedTxs = append(opRes.RemovedTxs, updateOpRes.RemovedTxs...)
 		} else {
-			opRes.Status = StatusTXsAvailable
+			opRes.Status = StatusTxsAvailable
 		}
 	}
 
@@ -423,8 +425,6 @@ func (txmp *TxMempool) OnUpdate(ctx context.Context, blockHeight int64, blockTxs
 //
 // NOTE:
 // - An explicit lock is NOT required.
-// TODO(berg): move this into ABCI, this is likely universal, also we get to consolidate the
-// 			   postCheckFn in ABCI as well as the cache
 func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx, txInfo TxInfo) OpResult {
 	var err error
 	if txmp.postCheck != nil {
@@ -447,7 +447,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 		if err != nil {
 			res.MempoolError = err.Error()
 		}
-		return OpResult{RemovedTXs: types.Txs{wtx.tx}}
+		return OpResult{RemovedTxs: types.Txs{wtx.tx}}
 	}
 
 	sender := res.Sender
@@ -482,7 +482,7 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 				"err", err.Error(),
 			)
 			txmp.metrics.RejectedTxs.Add(1)
-			return OpResult{RemovedTXs: types.Txs{wtx.tx}}
+			return OpResult{RemovedTxs: types.Txs{wtx.tx}}
 		}
 
 		evictedTXs = make(types.Txs, 0, len(evictTxs))
@@ -525,8 +525,8 @@ func (txmp *TxMempool) initTxCallback(wtx *WrappedTx, res *abci.ResponseCheckTx,
 	)
 
 	return OpResult{
-		RemovedTXs: evictedTXs,
-		Status:     StatusTXsAvailable,
+		RemovedTxs: evictedTXs,
+		Status:     StatusTxsAvailable,
 	}
 }
 
@@ -598,7 +598,7 @@ func (txmp *TxMempool) defaultTxCallback(tx types.Tx, res *abci.ResponseCheckTx)
 			if wtx.gossipEl != txmp.recheckCursor {
 				panic("corrupted reCheckTx cursor")
 			}
-			opRes.RemovedTXs = append(opRes.RemovedTXs, wtx.tx)
+			opRes.RemovedTxs = append(opRes.RemovedTxs, wtx.tx)
 			txmp.removeTx(wtx)
 		}
 	}
@@ -614,7 +614,7 @@ func (txmp *TxMempool) defaultTxCallback(tx types.Tx, res *abci.ResponseCheckTx)
 		txmp.logger.Debug("finished rechecking transactions")
 
 		if txmp.size() > 0 {
-			opRes.Status = StatusTXsAvailable
+			opRes.Status = StatusTxsAvailable
 		}
 	}
 
@@ -658,7 +658,7 @@ func (txmp *TxMempool) updateReCheckTxs(ctx context.Context) OpResult {
 			if opRes.Status == "" && defCBOpRes.Status != "" {
 				opRes.Status = defCBOpRes.Status
 			}
-			opRes.RemovedTXs = append(opRes.RemovedTXs, defCBOpRes.RemovedTXs...)
+			opRes.RemovedTxs = append(opRes.RemovedTxs, defCBOpRes.RemovedTxs...)
 		}
 	}
 
@@ -705,7 +705,7 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	atomic.AddInt64(&txmp.szBytes, int64(wtx.Size()))
 }
 
-func (txmp *TxMempool) removeTx(wtx *WrappedTx, ) {
+func (txmp *TxMempool) removeTx(wtx *WrappedTx) {
 	if txmp.txStore.IsTxRemoved(wtx.hash) {
 		return
 	}

@@ -27,8 +27,8 @@ const (
 type Status string
 
 const (
-	// StatusTXsAvailable indicates the pool has txs available.
-	StatusTXsAvailable = "txs_available"
+	// StatusTxsAvailable indicates the pool has txs available.
+	StatusTxsAvailable = "txs_available"
 )
 
 type MempoolABCI interface {
@@ -40,7 +40,7 @@ type MempoolABCI interface {
 	// trigger once every height when transactions are available.
 	EnableTxsAvailable()
 
-	// Flush will clear all caches in the MempoolABCI and clear any volatile
+	// Flush clears all caches in the MempoolABCI and clear any volatile
 	// memory within the pool.
 	Flush(ctx context.Context) error
 
@@ -62,18 +62,17 @@ type MempoolABCI interface {
 	// TxsAvailable returns a channel which fires once for every height, and only
 	// when transactions are available in the mempool.
 	//
-	// NOTE:
-	// 1. The returned channel may be nil if EnableTxsAvailable was not called.
+	// NOTE: The returned channel may be nil if EnableTxsAvailable was not called.
 	TxsAvailable() <-chan struct{}
 
 	// Update informs the mempool that the given txs were committed and can be
 	// discarded.
 	//
 	// NOTE:
-	// 1. This should be called *after* block is committed by consensus.
-	// 2. PrepBlockFinality must be called before calling Update, effectively
-	//	  preparing the MempoolABCI -> App communication so that the application
-	//	  state is correct.
+	// 	1. This should be called *after* block is committed by consensus.
+	// 	2. PrepBlockFinality must be called before calling Update, effectively
+	//		preparing the MempoolABCI -> App communication so that the application
+	//		state is correct.
 	Update(
 		ctx context.Context,
 		blockHeight int64,
@@ -87,8 +86,8 @@ type MempoolABCI interface {
 // OpResult is the result of a pool operation. This result informs the ABCI type
 // what happened in the storage/pool layer so it can maintain cache coherence.
 type OpResult struct {
-	AddedTXs   types.Txs
-	RemovedTXs types.Txs
+	AddedTxs   types.Txs
+	RemovedTxs types.Txs
 	Status     Status
 }
 
@@ -96,17 +95,17 @@ type OpResult struct {
 type PoolMeta struct {
 	// Type describes the type of mempool store. Examples could be priority or narwhal.
 	Type string
-	// Size is the num of TXs or whatever the unit of measure for the store.
+	// Size is the num of txs or whatever the unit of measure for the store.
 	Size int
-	// TotalBytes is a measure of hte store's data size.
+	// TotalBytes is a measure of the store's data size.
 	TotalBytes int64
 }
 
 // Pool defines the underlying pool storage engine behavior.
 type Pool interface {
-	// CheckTXCallback is called by the ABCI type during CheckTX. When called by ABCI,
-	// the CheckTXCallback can assume the ABCI type will hold the app write lock.
-	CheckTXCallback(ctx context.Context, tx types.Tx, res *abci.ResponseCheckTx, txInfo TxInfo) (OpResult, error)
+	// CheckTxCallback is called by the ABCI type during CheckTx. When called by ABCI,
+	// the CheckTxCallback can assume the ABCI type will hold the app write lock.
+	CheckTxCallback(ctx context.Context, tx types.Tx, res *abci.ResponseCheckTx, txInfo TxInfo) (OpResult, error)
 
 	// Flush removes all transactions from the mempool and caches.
 	Flush(ctx context.Context) error
@@ -130,29 +129,27 @@ type Pool interface {
 	// how they handle the possible predicates from option combinations.
 	Reap(ctx context.Context, opts ...ReapOptFn) (types.Txs, error)
 
-	// Remove removes TXs by the provided RemOptFn. If an argument is provided to the
+	// Remove removes txs by the provided RemOptFn. If an argument is provided to the
 	// options that don't make sense for the given pool, then it will be ignored.
 	Remove(ctx context.Context, opts ...RemOptFn) (OpResult, error)
 }
 
 // DisableReapOpt sets the reap opt to disabled. This is the default value for all
-// fields in the ReapOption type. If you call Reap(ctx), you will get all TXs within
+// fields in the ReapOption type. If you call Reap(ctx), you will get all txs within
 // the mempool (if allowed).
 const DisableReapOpt = -1
 
 // ReapOption is the options to reaping a collection useful to proposal from the mempool.
-// A collection for proposal in teh Clist or Priority mempools, would be a list of TXs.
-// For a DAG (narwhal) mempool, we'd want the DAGCerts for the proposal. However,
-// we use the same predicates to reap from all mempools. When a predicate has multiple opts
-// specified, will take the collections that satisfy all limits specified are adhered too.
-// When a field is set to DisablePredicate (-1), the field will not be enforced.
+// When a predicate has multiple opts specified, will take the collections that satisfy
+// all limits specified are adhered too. When a field is set to DisablePredicate (-1),
+// the field will not be enforced.
 //
-// Example predicate: BlockSizeLimit AND NumTXs are both set enforcing that BlockSizeLimit
-//					  and NumTXs limits are satisfied in the Reaping.
+// Example predicate: BlockSizeLimit AND GasLimit are both set enforcing that BlockSizeLimit
+// and GasLimit limits are satisfied in the Reaping.
 type ReapOption struct {
 	BlockSizeLimit int64
 	GasLimit       int64
-	NumTXs         int
+	NumTxs         int
 }
 
 // CoalesceReapOpts provides a quick way to coalesce ReapOptFn's with default field
@@ -161,7 +158,7 @@ func CoalesceReapOpts(opts ...ReapOptFn) ReapOption {
 	opt := ReapOption{
 		BlockSizeLimit: DisableReapOpt,
 		GasLimit:       DisableReapOpt,
-		NumTXs:         DisableReapOpt,
+		NumTxs:         DisableReapOpt,
 	}
 	for _, o := range opts {
 		o(&opt)
@@ -172,36 +169,36 @@ func CoalesceReapOpts(opts ...ReapOptFn) ReapOption {
 // ReapOptFn is a functional option for setting the reap predicates.
 type ReapOptFn func(*ReapOption)
 
-// ReapBytes will limit the reap by a maximum number of bytes. Note, if
-// you provide a value less than 0, it will ignore the max bytes limit.
-// This is the same as if you did not provide the option to the Reap method.
+// ReapBytes limits the reap by a maximum number of bytes. Note, if you
+// provide a value less than 0, it will ignore the max bytes limit. This
+// is the same as if you did not provide the option to the Reap method.
 func ReapBytes(maxBytes int64) ReapOptFn {
 	return func(option *ReapOption) {
 		option.BlockSizeLimit = maxBytes
 	}
 }
 
-// ReapGas will limit the reap by the maxGas. Note, if you provide a
-// value less than 0, it will ignore the gas limit. This is the same as if
-// you did not provide the option to the Reap method.
+// ReapGas limits the reap by the maxGas. Note, if you provide a value
+// less than 0, it will ignore the gas limit. This is the same as if you
+// did not provide the option to the Reap method.
 func ReapGas(maxGas int64) ReapOptFn {
 	return func(option *ReapOption) {
 		option.GasLimit = maxGas
 	}
 }
 
-// ReapTXs will limit the reap to a number of TXs. Note, if you provide
-// a value less than 0, it will ignore the TXs. This is the same as if
+// ReapTxs will limit the reap to a number of txs. Note, if you provide
+// a value less than 0, it will ignore the txs. This is the same as if
 // you did not provide the option to the Reap method.
-func ReapTXs(maxTXs int) ReapOptFn {
+func ReapTxs(maxTxs int) ReapOptFn {
 	return func(option *ReapOption) {
-		option.NumTXs = maxTXs
+		option.NumTxs = maxTxs
 	}
 }
 
-// RemOption is an option for removing TXs from a pool.
+// RemOption is an option for removing txs from a pool.
 type RemOption struct {
-	TXKeys []types.TxKey
+	TxKeys []types.TxKey
 }
 
 // RemOptFn is a functional option definition for setting fields on RemOption.
@@ -216,10 +213,10 @@ func CoalesceRemOptFns(opts ...RemOptFn) RemOption {
 	return opt
 }
 
-// RemByTXKeys removes a transaction(s), identified by its key, from the mempool.
-func RemByTXKeys(txs ...types.TxKey) RemOptFn {
+// RemByTxKeys removes a transaction(s), identified by its key, from the mempool.
+func RemByTxKeys(txs ...types.TxKey) RemOptFn {
 	return func(option *RemOption) {
-		option.TXKeys = append(option.TXKeys, txs...)
+		option.TxKeys = append(option.TxKeys, txs...)
 	}
 }
 

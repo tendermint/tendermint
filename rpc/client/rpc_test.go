@@ -456,7 +456,7 @@ func TestClientMethodCalls(t *testing.T) {
 
 				require.Equal(t, initMempoolSize+1, pool.PoolMeta().Size)
 
-				txs, err := pool.Reap(ctx, mempool.ReapTXs(len(tx)))
+				txs, err := pool.Reap(ctx, mempool.ReapTxs(len(tx)))
 				require.NoError(t, err)
 				require.EqualValues(t, tx, txs[0])
 				require.NoError(t, pool.Flush(ctx))

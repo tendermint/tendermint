@@ -135,7 +135,7 @@ func (env *Environment) UnconfirmedTxs(ctx context.Context, pagePtr, perPagePtr 
 
 	skipCount := validateSkipCount(page, perPage)
 
-	txs, err := env.Mempool.Reap(ctx, mempool.ReapTXs(skipCount+tmmath.MinInt(perPage, totalCount-skipCount)))
+	txs, err := env.Mempool.Reap(ctx, mempool.ReapTxs(skipCount+tmmath.MinInt(perPage, totalCount-skipCount)))
 	if err != nil {
 		return nil, err
 	}
@@ -171,5 +171,5 @@ func (env *Environment) CheckTx(ctx context.Context, tx types.Tx) (*coretypes.Re
 }
 
 func (env *Environment) RemoveTx(ctx context.Context, txkey types.TxKey) error {
-	return env.Mempool.Remove(ctx, mempool.RemByTXKeys(txkey))
+	return env.Mempool.Remove(ctx, mempool.RemByTxKeys(txkey))
 }

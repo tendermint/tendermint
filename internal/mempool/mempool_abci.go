@@ -104,7 +104,7 @@ func (a *ABCI) CheckTx(ctx context.Context, tx types.Tx, callback func(*abci.Res
 		return err
 	}
 
-	opRes, err := a.pool.CheckTXCallback(ctx, tx, res, txInfo)
+	opRes, err := a.pool.CheckTxCallback(ctx, tx, res, txInfo)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (a *ABCI) EnableTxsAvailable() {
 	a.txsAvailable = make(chan struct{}, 1)
 }
 
-// Flush clears the tx cache and the calls Flush on the underlying pool type.
+// Flush clears the tx cache and then calls Flush on the underlying pool.
 func (a *ABCI) Flush(ctx context.Context) error {
 	a.cache.Reset()
 	return a.pool.Flush(ctx)
@@ -153,13 +153,12 @@ func (a *ABCI) PrepBlockFinality(ctx context.Context) (func(), error) {
 	return finishFn, nil
 }
 
-// Reap is the sole means to reap TXs atm. Options are provided and when none are provide
-// the mempool store will typically return all TXs. It is up to the store implementation
-// to limit or allow that usecase.
+// Reap calls the underlying pool's Reap method with the given options.
 func (a *ABCI) Reap(ctx context.Context, opts ...ReapOptFn) (types.Txs, error) {
 	return a.pool.Reap(ctx, opts...)
 }
 
+// Remove removes txs from the cache and underlying pool.
 func (a *ABCI) Remove(ctx context.Context, opts ...RemOptFn) error {
 	opRes, err := a.pool.Remove(ctx, opts...)
 	if err != nil {
@@ -217,24 +216,24 @@ func (a *ABCI) Update(
 	return nil
 }
 
-// TxsAvailable returns a channel which fires once for every height, and only
-// when transactions are available in the mempool. It is thread-safe.
+// TxsAvailable returns a channel which sends one value for every height, and only
+// when transactions are available in the mempool. It is safe for concurrent use.
 func (a *ABCI) TxsAvailable() <-chan struct{} {
 	return a.txsAvailable
 }
 
 func (a *ABCI) applyOpResult(o OpResult) {
-	for _, tx := range o.AddedTXs {
+	for _, tx := range o.AddedTxs {
 		a.cache.Push(tx)
 	}
 
 	if !a.cfg.KeepInvalidTxsInCache {
-		for _, tx := range o.RemovedTXs {
+		for _, tx := range o.RemovedTxs {
 			a.cache.Remove(tx)
 		}
 	}
 
-	if o.Status == StatusTXsAvailable {
+	if o.Status == StatusTxsAvailable {
 		a.notifyTxsAvailable()
 	}
 }
