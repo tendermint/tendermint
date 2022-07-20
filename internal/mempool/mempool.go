@@ -473,8 +473,6 @@ func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, checkTxRes *abci.Respon
 			txmp.cache.Remove(wtx.tx)
 		}
 
-		// If there was a post-check error, record its text in the result for
-		// debugging purposes.
 		if err != nil {
 			return err
 		}
