@@ -43,3 +43,34 @@ method, which:
 In case of any of the above errors, the connection with the remote peer is
 **closed** and the dialing routines returns.
 
+## Accepting peers
+
+The router maintains a persistent routine `acceptPeers()` consuming connections
+accepted by each of the configured transports.
+
+Each accepted connection is handled by a different `openConnection()` routine,
+spawned for this purpose, that operate as follows.
+There is no limit for the number of concurrent routines accepting peer's connections.
+
+1. Calls `filterPeersIP()` with the peer address
+   1. If the peer IP is rejected, the method returns
+1. Calls `handshakePeer()` with the accepted connection to retrieve the remote node ID
+   1. If the handshake fails, the method returns
+1. Calls `filterPeersID()` with the peer ID (learned from the handshake)
+   1. If the peer ID is rejected, the method returns
+1. Reports the established incoming connection through the `Accepted` transition of the peer manager
+   1. In the transition fails, the accepted connection was refused and the method returns
+1. Switches to the `routePeer()` routine for the accepted peer
+
+> Step 4. above acquires a mutex, preventing concurrent calls from different threads.
+> The reason is not clear, as all peer manager transitions are also protected by a mutex.
+
+In case of any of the above errors, the connection with the remote peer is
+**closed**.
+
+> TODO: Step 2. above has a limitation, commented in the source code, referring
+> to absence of an ack/nack in the handshake, which may case further
+> connections to be rejected.
+
+> TODO: there is a `connTracker` in the router that rate limits addresses that
+> try to establish connections to often. This procedure should be documented.
