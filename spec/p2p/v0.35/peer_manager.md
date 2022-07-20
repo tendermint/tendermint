@@ -214,33 +214,42 @@ with a peer.
 This means that the peer manager has provided this peer to the router as the
 [next peer to dial](#dialnext-transition), and the router has dialed and
 successfully established a connection with the peer.
-The peer is thus expected to be in the [`Dialing`](#dialing-peer) state.
+The peer is thus expected to be in the `Dialing` state.
 
 It may occur, however, that when this transition is invoked the peer is already
-in the [`Connected`](#connected-peer) state.
+in the `Connected` state.
 The most likely reason is that the router, while dialing this peer, has also
 accepted an incoming connection from the same peer.
 In this case, the transition fails, indicating to the router that is should
 close the newly established connection.
 
-> Question: is it possible to have multiple routines dialing to the same peer?
-> This could be another reason for this transition to fail.
-
 It may also occur that the node is already connected to `MaxConnected` peers,
 which means that all connection slots are full.
 In this case, the peer manager tries to find a connection slot that can be
 [upgraded](#slot-upgrades) to give room for the new established connection.
-If no suitable connection slot is found, or the hard limit `MaxConnected +
-MaxConnectedUpgrade` of connected peers is reached, the transitions fails.
+If no suitable connection slot is found, the transitions fails.
+This logic considered in this step is synthesized by the following algorithm:
+
+1. If `|Connected| < MaxConnected`, the transition succeeds
+   1. The established connection occupies one of the available connection slots
+1. If a connected peer was put in the `Upgrading` sub-state to give room to this peer
+   1. Let `slot` be the connection slot occupied by this peer
+1. If `|Connected| < MaxConnected + MaxConnectedUpgrade`
+   1. Let `slot` be a connection slot that can be upgraded to give room to
+   the established connection, if any
+1. If `slot` is set to a valid connection slot, the transition succeeds
+   1. Set the peer occupying `slot` to the `Evict` sub-state
+   1. The established connection occupies one of the connection slots reserved for upgrades
+1. Else the transition fails and the connection is refused
 
 Notice that, in order to dial this peer, the peer manager may have put another
 lower-ranked peer in the [upgrading sub-state](#upgrading-peer) to give room
 to this connection.
-In this case, the slot for the established connection was *reserved*, and this
-transition will not fail.
+In this case, as illustrated above, the slot for the established connection was
+*reserved*, and this transition will not fail.
 
 If the transition succeeds, the peer is set to the
-[`Connected`](#connected-peer) state as an `outgoing` peer.
+[`Connected`](#connected-peer) state as an _outgoing_ peer.
 The peer's `LastConnected` and the dialed address' `LastDialSuccess` times are
 set, and dialed address' `DialFailures` counter is reset.
 
@@ -266,7 +275,7 @@ Errors are also returned if:
 
 ### DialFailed transition
 
-This transition informs of a failure when establishing an `outgoing` connection to
+This transition informs of a failure when establishing an outgoing connection to
 a peer.
 
 The dialed address's `LastDialFailure` time is set, and its `DialFailures`
@@ -318,11 +327,21 @@ It may also occur that the node is already connected to `MaxConnected` peers,
 which means that all connection slots are full.
 In this case, the peer manager tries to find a connection slot that can be
 [upgraded](#slot-upgrades) to give room for the accepted connection.
-If no suitable connection slot is found, or the hard limit `MaxConnected +
-MaxConnectedUpgrade` of connected peers is reached, the transitions fails.
+If no suitable connection slot is found, the transitions fails.
+This logic considered in this step is synthesized by the following algorithm:
+
+1. If `|Connected| < MaxConnected`, the transition succeeds
+   1. The established connection occupies one of the available connection slots
+1. Let `slot` be a connection slot that can be upgraded to give room to the
+   established connection, if any
+1. If `|Connected| < MaxConnected + MaxConnectedUpgrade` and `slot` is set to a
+   valid connection slot, the transition succeeds
+   1. Set the peer occupying `slot` to the `Evict` sub-state
+   1. The established connection occupies one of the connection slots reserved for upgrades
+1. Else the transition fails and the connection is refused
 
 If the transition succeeds, the peer is set to the
-[`Connected`](#connected-peer) state as an `incoming` peer.
+[`Connected`](#connected-peer) state as an *incoming* peer.
 
 The accepted peer might not be known by the peer manager.
 In this case the peer is registered in the peer store, without any associated
