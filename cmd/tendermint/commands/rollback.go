@@ -43,6 +43,10 @@ func RollbackState(config *cfg.Config) (int64, []byte, error) {
 	if err != nil {
 		return -1, nil, err
 	}
+	defer func() {
+		_ = blockStore.Close()
+		_ = stateStore.Close()
+	}()
 
 	// rollback the last state
 	return state.Rollback(blockStore, stateStore)

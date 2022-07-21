@@ -4,6 +4,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
 )
 
