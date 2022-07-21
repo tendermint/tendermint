@@ -3,7 +3,7 @@ module github.com/tendermint/tendermint
 go 1.17
 
 require (
-	github.com/BurntSushi/toml v1.1.0
+	github.com/BurntSushi/toml v1.2.0
 	github.com/adlio/schema v1.3.3
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
