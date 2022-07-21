@@ -32,7 +32,7 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, sm.State) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	require.NoError(t, err)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	state, err := stateStore.Load()
 	require.NoError(t, err)
 	require.Empty(t, state)
@@ -82,7 +82,7 @@ func TestMakeGenesisStateNilValidators(t *testing.T) {
 func TestStateSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -101,7 +101,7 @@ func TestStateSaveLoad(t *testing.T) {
 func TestABCIResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -134,7 +134,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	defer tearDown(t)
 	assert := assert.New(t)
 
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 
 	cases := [...]struct {
 		// Height is implied to equal index+2,
@@ -222,7 +222,7 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	defer tearDown(t)
 	assert := assert.New(t)
 
-	statestore := sm.NewStore(stateDB)
+	statestore := sm.NewStore(stateDB, false)
 
 	// Can't load anything for height 0.
 	_, err := statestore.LoadValidators(0)
@@ -255,7 +255,7 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 
 	// Change vals at these heights.
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
@@ -907,7 +907,7 @@ func TestStoreLoadValidatorsIncrementsProposerPriority(t *testing.T) {
 	const valSetSize = 2
 	tearDown, stateDB, state := setupTestCase(t)
 	t.Cleanup(func() { tearDown(t) })
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err := stateStore.Save(state)
@@ -932,7 +932,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.Validators = genValSet(valSetSize)
 	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
@@ -996,7 +996,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 
 	// Change vals at these heights.
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}

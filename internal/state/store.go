@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tendermint/tendermint/internal/store"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
@@ -56,20 +56,18 @@ func abciResponsesKey(height int64) []byte {
 	return encodeKey(prefixAllABCIResponses, height)
 }
 
-func lastABCIResponseKey() []byte {
-	stateKey, err := orderedcode.Append(nil, prefixState)
-	if err != nil {
-		panic(err)
-	}
-	return stateKey
-}
-
 // stateKey should never change after being set in init()
 var stateKey []byte
+var lastABCIResponseKey []byte
 
 func init() {
 	var err error
 	stateKey, err = orderedcode.Append(nil, prefixState)
+	if err != nil {
+		panic(err)
+	}
+
+	lastABCIResponseKey, err = orderedcode.Append(nil, prefixLastABCIResponse)
 	if err != nil {
 		panic(err)
 	}
@@ -106,7 +104,6 @@ type Store interface {
 	PruneStates(int64) error
 	// Close closes the connection with the database
 	Close() error
-
 }
 
 // dbStore wraps a db (github.com/tendermint/tm-db)
@@ -119,7 +116,6 @@ type dbStore struct {
 }
 
 var _ Store = (*dbStore)(nil)
-
 
 // NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB, discardABCIResponses bool) Store {
@@ -459,9 +455,9 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
 func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponsesInfo, error) {
-	bz, err := store.db.Get(lastABCIResponseKey())
+	bz, err := store.db.Get(lastABCIResponseKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(bz) == 0 {
@@ -515,7 +511,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 
 	// We always save the last ABCI response incase we crash after app.Commit and before s.Save(.)
 	// This overwrites the previous saved ABCI Response
-	response:= &tmstate.ABCIResponsesInfo{
+	response := &tmstate.ABCIResponsesInfo{
 		abciResponses,
 		height,
 	}
@@ -524,7 +520,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		return err
 	}
 
-	return store.db.SetSync(lastABCIResponseKey(), bz)
+	return store.db.SetSync(lastABCIResponseKey, bz)
 }
 
 // SaveValidatorSets is used to save the validator set over multiple heights.
@@ -563,9 +559,7 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 				fmt.Errorf("couldn't find validators at height %d (height %d was originally requested): %w",
 					lastStoredHeight,
 					height,
-					err,
-				)
-			23 ^
+					err)
 		}
 
 		vs, err := types.ValidatorSetFromProto(valInfo2.ValidatorSet)

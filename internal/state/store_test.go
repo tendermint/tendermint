@@ -27,7 +27,7 @@ const (
 
 func TestStoreBootstrap(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
 	val3, _ := factory.RandValidator(true, 10)
@@ -53,7 +53,7 @@ func TestStoreBootstrap(t *testing.T) {
 
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
 	val3, _ := factory.RandValidator(true, 10)
@@ -108,7 +108,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	require.NoError(b, err)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
@@ -142,7 +142,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 func TestStoreLoadConsensusParams(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
 	params, err := stateStore.LoadConsensusParams(1)
@@ -185,7 +185,7 @@ func TestPruneStates(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
 
-			stateStore := sm.NewStore(db)
+			stateStore := sm.NewStore(db, true)
 			pk := ed25519.GenPrivKey().PubKey()
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
@@ -306,4 +306,52 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 	bz, err := results[0].Marshal()
 	require.NoError(t, err)
 	assert.NoError(t, proof.Verify(root, bz))
+}
+
+func TestLastABCIResponses(t *testing.T) {
+	response1 := &tmstate.ABCIResponses{
+		BeginBlock: &abci.ResponseBeginBlock{},
+		DeliverTxs: []*abci.ResponseDeliverTx{
+			{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+		},
+		EndBlock: &abci.ResponseEndBlock{},
+	}
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB, false)
+	//stub the abciresponses
+
+	height := int64(response1.Size())
+	//save the last abci response
+	stateStore.SaveABCIResponses(height, response1)
+	//search for the last abciresponse
+	lastResponse, err := stateStore.LoadLastABCIResponse(height)
+	require.NoError(t, err)
+	fmt.Println(lastResponse)
+	// test if the last response saved
+
+	//check to see if the saved response height is the same as the loaded height
+	assert.Equal(t, lastResponse.Height, int64(response1.Size()))
+	//test if the responses are the same
+	response2 := &tmstate.ABCIResponses{
+		BeginBlock: &abci.ResponseBeginBlock{},
+		DeliverTxs: []*abci.ResponseDeliverTx{
+			{Code: 44, Data: []byte("Hello again"), Log: "????"},
+		},
+		EndBlock: &abci.ResponseEndBlock{},
+	}
+
+	//test to see if there are multiple responses
+	
+	//when the flag is on
+	stateStore = sm.NewStore(stateDB, true)
+	// add to the responses
+	height = int64(response1.Size())
+	stateStore.SaveABCIResponses(height, response2)
+	lastResponse2, err := stateStore.LoadLastABCIResponse(height)
+	require.NoError(t, err)
+	fmt.Println(lastResponse2)
+
+	//test to see if the responses other than the last is deleted
+	assert.Equal(t, lastResponse2.Height, int64(response2.Size()))
+	//check to see if the saved response height is the same as the loaded height
 }
