@@ -2,7 +2,7 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
-## v0.35.9
+## v0.35.10
 
 Month DD, YYYY
 
@@ -23,5 +23,7 @@ Special thanks to external contributors on this release:
 ### FEATURES
 
 ### IMPROVEMENTS
+
+- (indexer) \#8625 Fix overriding tx index of duplicated txs.
 
 ### BUG FIXES

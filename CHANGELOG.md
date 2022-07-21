@@ -2,6 +2,17 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.9
+
+July 20, 2022
+
+This release fixes a deadlock that could occur in some cases when using the
+priority mempool with the ABCI socket client.
+
+### BUG FIXES
+
+- [mempool] [\#9030](https://github.com/tendermint/tendermint/pull/9030) rework lock discipline to mitigate callback deadlocks (@creachadair)
+
 ## v0.35.8
 
 July 12, 2022
@@ -1082,7 +1093,7 @@ and a validator address plus a timestamp. Note we may remove the validator
 address & timestamp fields in the future (see ADR-25).
 
 `lite2` package has been added to solve `lite` issues and introduce weak
-subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md) for complete details.
+subjectivity interface. Refer to the [spec](https://github.com/tendermint/tendermint/blob/v0.35.x/spec/consensus/light-client.md) for complete details.
 `lite` package is now deprecated and will be removed in v0.34 release.
 
 ### BREAKING CHANGES:

@@ -94,7 +94,7 @@ Check out other examples in example_test.go
 ## 2. Pure functions to verify a new header (see verifier.go)
 
 Verify function verifies a new header against some trusted header. See
-https://github.com/tendermint/spec/blob/master/spec/light-client/verification/README.md
+https://github.com/tendermint/tendermint/blob/v0.35.x/spec/light-client/verification/README.md
 for details.
 
 There are two methods of verification: sequential and bisection
