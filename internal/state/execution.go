@@ -105,14 +105,14 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		&abci.RequestPrepareProposal{
-			MaxTxBytes:          maxDataBytes,
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight, state.ConsensusParams.ABCI),
-			ByzantineValidators: block.Evidence.ToABCI(),
-			Height:              block.Height,
-			Time:                block.Time,
-			NextValidatorsHash:  block.NextValidatorsHash,
-			ProposerAddress:     block.ProposerAddress,
+			MaxTxBytes:         maxDataBytes,
+			Txs:                block.Txs.ToSliceOfBytes(),
+			LocalLastCommit:    buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight, state.ConsensusParams.ABCI),
+			Misbehavior:        block.Evidence.ToABCI(),
+			Height:             block.Height,
+			Time:               block.Time,
+			NextValidatorsHash: block.NextValidatorsHash,
+			ProposerAddress:    block.ProposerAddress,
 		},
 	)
 	if err != nil {
@@ -147,14 +147,14 @@ func (blockExec *BlockExecutor) ProcessProposal(
 	state State,
 ) (bool, error) {
 	resp, err := blockExec.appClient.ProcessProposal(ctx, &abci.RequestProcessProposal{
-		Hash:                block.Header.Hash(),
-		Height:              block.Header.Height,
-		Time:                block.Header.Time,
-		Txs:                 block.Data.Txs.ToSliceOfBytes(),
-		ProposedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
-		ByzantineValidators: block.Evidence.ToABCI(),
-		ProposerAddress:     block.ProposerAddress,
-		NextValidatorsHash:  block.NextValidatorsHash,
+		Hash:               block.Header.Hash(),
+		Height:             block.Header.Height,
+		Time:               block.Header.Time,
+		Txs:                block.Data.Txs.ToSliceOfBytes(),
+		ProposedLastCommit: buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+		Misbehavior:        block.Evidence.ToABCI(),
+		ProposerAddress:    block.ProposerAddress,
+		NextValidatorsHash: block.NextValidatorsHash,
 	})
 	if err != nil {
 		return false, ErrInvalidBlock(err)
@@ -208,14 +208,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	fBlockRes, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
-			Hash:                block.Hash(),
-			Height:              block.Header.Height,
-			Time:                block.Header.Time,
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
-			ByzantineValidators: block.Evidence.ToABCI(),
-			ProposerAddress:     block.ProposerAddress,
-			NextValidatorsHash:  block.NextValidatorsHash,
+			Hash:               block.Hash(),
+			Height:             block.Header.Height,
+			Time:               block.Header.Time,
+			Txs:                block.Txs.ToSliceOfBytes(),
+			DecidedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+			Misbehavior:        block.Evidence.ToABCI(),
+			ProposerAddress:    block.ProposerAddress,
+			NextValidatorsHash: block.NextValidatorsHash,
 		},
 	)
 	endTime := time.Now().UnixNano()
@@ -677,12 +677,12 @@ func ExecCommitBlock(
 	finalizeBlockResponse, err := appConn.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
-			Hash:                block.Hash(),
-			Height:              block.Height,
-			Time:                block.Time,
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			DecidedLastCommit:   buildLastCommitInfo(block, store, initialHeight),
-			ByzantineValidators: block.Evidence.ToABCI(),
+			Hash:              block.Hash(),
+			Height:            block.Height,
+			Time:              block.Time,
+			Txs:               block.Txs.ToSliceOfBytes(),
+			DecidedLastCommit: buildLastCommitInfo(block, store, initialHeight),
+			Misbehavior:       block.Evidence.ToABCI(),
 		},
 	)
 

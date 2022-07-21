@@ -208,8 +208,10 @@ pprof-laddr = ""
 #######################################################
 [p2p]
 
-# Select the p2p internal queue
-queue-type = "priority"
+# Select the p2p internal queue.
+# Options are: "fifo", "simple-priority", and "priority",
+# with the default being "priority".
+queue-type = "simple-priority"
 
 # Address to listen for incoming connections
 laddr = "tcp://0.0.0.0:26656"
@@ -234,6 +236,10 @@ upnp = false
 
 # Maximum number of connections (inbound and outbound).
 max-connections = 64
+
+# Maximum number of connections reserved for outgoing
+# connections. Must be less than max-connections
+max-outgoing-connections = 12
 
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = 100

@@ -61,20 +61,20 @@ func NewDefaultLogger(format, level string) (Logger, error) {
 }
 
 func (l defaultLogger) Info(msg string, keyVals ...interface{}) {
-	l.Logger.Info().Fields(getLogFields(keyVals...)).Msg(msg)
+	l.Logger.Info().Fields(keyVals).Msg(msg)
 }
 
 func (l defaultLogger) Error(msg string, keyVals ...interface{}) {
-	l.Logger.Error().Fields(getLogFields(keyVals...)).Msg(msg)
+	l.Logger.Error().Fields(keyVals).Msg(msg)
 }
 
 func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
-	l.Logger.Debug().Fields(getLogFields(keyVals...)).Msg(msg)
+	l.Logger.Debug().Fields(keyVals).Msg(msg)
 }
 
 func (l defaultLogger) With(keyVals ...interface{}) Logger {
 	return &defaultLogger{
-		Logger: l.Logger.With().Fields(getLogFields(keyVals...)).Logger(),
+		Logger: l.Logger.With().Fields(keyVals).Logger(),
 	}
 }
 
@@ -98,17 +98,4 @@ func OverrideWithNewLogger(logger Logger, format, level string) error {
 
 	ol.Logger = nl.Logger
 	return nil
-}
-
-func getLogFields(keyVals ...interface{}) map[string]interface{} {
-	if len(keyVals)%2 != 0 {
-		return nil
-	}
-
-	fields := make(map[string]interface{}, len(keyVals))
-	for i := 0; i < len(keyVals); i += 2 {
-		fields[fmt.Sprint(keyVals[i])] = keyVals[i+1]
-	}
-
-	return fields
 }

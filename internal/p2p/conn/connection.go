@@ -100,7 +100,8 @@ type MConnection struct {
 
 	// used to ensure FlushStop and OnStop
 	// are safe to call concurrently.
-	stopMtx sync.Mutex
+	stopMtx    sync.Mutex
+	stopSignal <-chan struct{}
 
 	cancel context.CancelFunc
 
@@ -207,6 +208,7 @@ func (c *MConnection) OnStart(ctx context.Context) error {
 	c.quitSendRoutine = make(chan struct{})
 	c.doneSendRoutine = make(chan struct{})
 	c.quitRecvRoutine = make(chan struct{})
+	c.stopSignal = ctx.Done()
 	c.setRecvLastMsgAt(time.Now())
 	go c.sendRoutine(ctx)
 	go c.recvRoutine(ctx)
@@ -680,6 +682,8 @@ func (ch *channel) sendBytes(bytes []byte) bool {
 		atomic.AddInt32(&ch.sendQueueSize, 1)
 		return true
 	case <-time.After(defaultSendTimeout):
+		return false
+	case <-ch.conn.stopSignal:
 		return false
 	}
 }
