@@ -221,15 +221,26 @@ that rely on Tendermint.
 
 Ahead of any minor version release of Tendermint, the software enters 'Feature
 Freeze' for at least two weeks. A feature freeze means that _no_ new features
-are added to the code being prepared for release. This period directly follows
-the creation of the [backport branch](#creating-a-backport-branch). The
-Tendermint team instead directs all attention to ensuring that the existing
-code is stable and reliable. Broken tests are fixed, flakey-tests are remedied,
-end-to-end test failures are thoroughly diagnosed and all efforts of the team
-are aimed at improving the quality of the code. During this period, the upgrade
-harness tests are run repeatedly and a variety of in-house testnets are run to
-ensure Tendermint functions at the scale it will be used by application
-developers and node operators.
+are added to the code being prepared for release. No code changes should be made
+to the code being released that do not directly improve pressing issues of code
+quality. The following must not be merged during a feature freeze:
+
+* Refactors that are not related to specific bug fixes.
+* Dependency upgrades.
+* New test code that does not test a discovered regression.
+* New features of any kind.
+* Documentation or spec improvements that are not related to the newly developed
+code.
+
+This period directly follows the creation of the [backport
+branch](#creating-a-backport-branch). The Tendermint team instead directs all
+attention to ensuring that the existing code is stable and reliable. Broken
+tests are fixed, flakey-tests are remedied, end-to-end test failures are
+thoroughly diagnosed and all efforts of the team are aimed at improving the
+quality of the code. During this period, the upgrade harness tests are run
+repeatedly and a variety of in-house testnets are run to ensure Tendermint
+functions at the scale it will be used by application developers and node
+operators.
 
 ### Nightly End-To-End Tests
 
@@ -265,8 +276,14 @@ larger-scale test networks to shake out emergent behaviors at scale.
 Large-scale test networks are run on a set of virtual machines (VMs). Each VM
 is equipped with 4 Gigabytes of RAM and 2 CPU cores. The network runs a very
 simple key-value store application. The application adds artificial delays to
-different ABCI calls to simulate a slow application. During each test net, the
-following metrics are monitored and collected on each node:
+different ABCI calls to simulate a slow application. Each testnet is briefly
+run with no load being generated to collect a baseline performance. Once
+baseline is captured, a consistent load is applied across the network. This
+load takes the form of 10% of the running nodes all receiving a consistent
+stream of two hundred transactions per minute each.
+
+During each test net, the following metrics are monitored and collected on each
+node:
 
 * Tendermint rounds per height
 * Maximum connected peers, Minimum connected peers, Rate of change of peer connections
