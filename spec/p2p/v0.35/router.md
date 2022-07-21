@@ -11,7 +11,7 @@ retrieved from a pool with `numConcurrentDials()` threads.
 The default number of threads in the pool is set to 32 times the number of
 available CPUs.
 
-> The 32 factor was introduced in [#8827](https://github.com/tendermint/tendermint/pull/8827), 
+> The 32 factor was introduced in [#8827](https://github.com/tendermint/tendermint/pull/8827),
 > with the goal of speeding up the establishment of outbound connections.
 
 The router thus dials a peer whenever there are: (i) a candidate peer to be
@@ -74,3 +74,22 @@ In case of any of the above errors, the connection with the remote peer is
 
 > TODO: there is a `connTracker` in the router that rate limits addresses that
 > try to establish connections to often. This procedure should be documented.
+
+## Evicting peers
+
+The router maintains a persistent routine `evictPeers()` consuming
+[peers to evict](./peer_manager.md#evictnext-transition)
+produced by the peer manager.
+
+The eviction of a peer is performed by closing the send queue associated to the peer.
+This queue maintains outbound messages destined to the peer, consumed by the
+peer's send routine.
+When the peer's send queue is closed, the peer's send routine is interrupted
+with no errors.
+
+When the [routing messages](#routing-messages) routine notices that the peer's
+send routine was interrupted, it forces the interruption of peer's receive routine.
+When both send and receive routines are interrupted, the router considers the
+peer as disconnected, and its eviction has been done.
+
+## Routing messages
