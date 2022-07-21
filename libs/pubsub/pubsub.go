@@ -194,7 +194,7 @@ func (s *Server) subscribe(ctx context.Context, clientID string, query Query, ou
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-s.Quit():
-		return nil, nil
+		return nil, errors.New("service is shutting down")
 	}
 }
 

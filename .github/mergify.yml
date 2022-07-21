@@ -1,0 +1,19 @@
+queue_rules:
+  - name: default
+    conditions:
+      - base=v0.34.x
+      - label=S:automerge
+
+pull_request_rules:
+  - name: Automerge to v0.34.x
+    conditions:
+      - base=v0.34.x
+      - label=S:automerge
+    actions:
+      queue:
+        method: squash
+        name: default
+        commit_message_template: |
+          {{ title }} (#{{ number }})
+
+          {{ body }}

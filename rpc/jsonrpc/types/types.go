@@ -191,7 +191,7 @@ func NewRPCSuccessResponse(id jsonrpcid, res interface{}) RPCResponse {
 		var js []byte
 		js, err := tmjson.Marshal(res)
 		if err != nil {
-			return RPCInternalError(id, fmt.Errorf("error marshalling response: %w", err))
+			return RPCInternalError(id, fmt.Errorf("error marshaling response: %w", err))
 		}
 		rawMsg = json.RawMessage(js)
 	}

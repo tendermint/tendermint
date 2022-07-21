@@ -118,7 +118,7 @@ little overview what they do.
 - `abci-client` As mentioned in [Application Development Guide](../app-dev/app-development.md), Tendermint acts as an ABCI
   client with respect to the application and maintains 3 connections:
   mempool, consensus and query. The code used by Tendermint Core can
-  be found [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
+  be found [here](https://github.com/tendermint/tendermint/blob/v0.34.x/abci/client).
 - `blockchain` Provides storage, pool (a group of peers), and reactor
   for both storing and exchanging blocks between peers.
 - `consensus` The heart of Tendermint core, which is the
@@ -128,17 +128,17 @@ little overview what they do.
   from a crash.
 - `events` Simple event notification system. The list of events can be
   found
-  [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
+  [here](https://github.com/tendermint/tendermint/blob/v0.34.x/types/events.go).
   You can subscribe to them by calling `subscribe` RPC method. Refer
   to [RPC docs](./rpc.md) for additional information.
 - `mempool` Mempool module handles all incoming transactions, whenever
   they are coming from peers or the application.
 - `p2p` Provides an abstraction around peer-to-peer communication. For
   more details, please check out the
-  [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
+  [README](https://github.com/tendermint/tendermint/blob/v0.34.x/p2p/README.md).
 - `rpc` [Tendermint's RPC](./rpc.md).
 - `rpc-server` RPC server. For implementation details, please read the
-  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
+  [doc.go](https://github.com/tendermint/tendermint/blob/v0.34.x/rpc/jsonrpc/doc.go).
 - `state` Represents the latest state and execution submodule, which
   executes blocks against the application.
 - `types` A collection of the publicly exposed types and methods to

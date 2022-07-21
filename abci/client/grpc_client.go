@@ -90,6 +90,7 @@ func (cli *grpcClient) OnStart() error {
 
 RETRY_LOOP:
 	for {
+		//nolint:staticcheck // SA1019 Existing use of deprecated but supported dial option.
 		conn, err := grpc.Dial(cli.addr, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
 		if err != nil {
 			if cli.mustConnect {

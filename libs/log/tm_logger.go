@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	kitlog "github.com/go-kit/kit/log"
-	kitlevel "github.com/go-kit/kit/log/level"
-	"github.com/go-kit/kit/log/term"
+	kitlog "github.com/go-kit/log"
+	kitlevel "github.com/go-kit/log/level"
+	"github.com/go-kit/log/term"
 )
 
 const (

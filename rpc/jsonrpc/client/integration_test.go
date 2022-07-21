@@ -1,3 +1,4 @@
+//go:build release
 // +build release
 
 // The code in here is comprehensive as an integration
