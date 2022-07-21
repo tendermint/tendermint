@@ -429,8 +429,7 @@ func (store dbStore) SaveBatchABCIResponseBytes(heights []int64, abciResponseByt
 	batch := store.db.NewBatch()
 	defer batch.Close()
 	for i, height := range heights {
-		err := batch.Set(calcABCIResponsesKey(height), abciResponseBytes[i])
-		if err != nil {
+		if err := batch.Set(calcABCIResponsesKey(height), abciResponseBytes[i]); err != nil {
 			return err
 		}
 	}
