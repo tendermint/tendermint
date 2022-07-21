@@ -64,7 +64,7 @@ type Store interface {
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
-	// SaveBatchABCIResponseBytes saves multi ABCIResponses with related height by batch
+	// SaveBatchABCIResponseBytes saves a batch of ABCIResponses with given heights
 	SaveBatchABCIResponseBytes(heights []int64, abciResponseBytes [][]byte) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
@@ -416,13 +416,13 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	return nil
 }
 
-// SaveBatchABCIResponseBytes persists heights with ABCIResponses to the database by batch.
+// SaveBatchABCIResponseBytes saves a batch of ABCIResponses with given heights.
 func (store dbStore) SaveBatchABCIResponseBytes(heights []int64, abciResponseBytes [][]byte) error {
-	heightLen := len(heights)
+	heightsLen := len(heights)
 	bytesLen := len(abciResponseBytes)
-	if heightLen != bytesLen {
+	if heightsLen != bytesLen {
 		return fmt.Errorf("heights doesn't match abciResponseBytes: %d vs %d",
-			heightLen,
+			heightsLen,
 			bytesLen,
 		)
 	}
