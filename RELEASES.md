@@ -236,7 +236,7 @@ developers and node operators.
 The Tendermint team maintains [a set of end-to-end
 tests](https://github.com/tendermint/tendermint/blob/master/test/e2e/README.md#L1)
 that run each night on the latest commit of the project and on the code in the
-tip of each backport branch. These tests start a network of containerized
+tip of each supported backport branch. These tests start a network of containerized
 Tendermint processes and run automated checks that the network functions as
 expected in both stable and unstable conditions. During the feature freeze,
 these tests are run nightly and must pass consistently for a release of
@@ -266,7 +266,7 @@ different ABCI calls to simulate a slow application. During each test net, the
 following metrics are monitored and collected on each node:
 
 * Tendermint rounds per height
-* Peers connected
+* Maximum connected peers, Minimum connected peers, Rate of change of peer connections
 * Memory resident set size
 * CPU utilization
 * Blocks produced per minute
