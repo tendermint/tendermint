@@ -223,7 +223,7 @@ func TestSaveBatchABCIResponseBytes(t *testing.T) {
 			[][]byte{
 				bytes,
 			},
-			"heights doesn't match abciResponseBytes",
+			"doesn't match with the size of abciResponseBytes",
 		},
 		{
 			"save heights with abciResponseBytes",

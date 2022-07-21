@@ -421,7 +421,7 @@ func (store dbStore) SaveBatchABCIResponseBytes(heights []int64, abciResponseByt
 	heightsLen := len(heights)
 	bytesLen := len(abciResponseBytes)
 	if heightsLen != bytesLen {
-		return fmt.Errorf("heights doesn't match abciResponseBytes: %d vs %d",
+		return fmt.Errorf("SaveBatchABCIResponseBytes: the size of height %d doesn't match with the size of abciResponseBytes %d",
 			heightsLen,
 			bytesLen,
 		)
