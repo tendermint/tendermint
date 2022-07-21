@@ -244,6 +244,9 @@ Tendermint to be considered stable.
 
 ### Upgrade Harness
 
+> TODO(williambanfield): Change to past tense and clarify this section once
+> upgrade harness is complete.
+
 The Tendermint team is creating an upgrade test harness to exercise the
 workflow of stopping an instance of Tendermint running one version of the
 software and starting up the same application running the next version. To
@@ -271,7 +274,7 @@ following metrics are monitored and collected on each node:
 * CPU utilization
 * Blocks produced per minute
 * Seconds for each step of consensus (Propose, Prevote, Precommit, Commit)
-* Latency to receive each block proposal
+* Latency to receive block proposals
 
 For these tests we intentionally target low-powered host machines (with low core
 counts and limited memory) to ensure we observe similar kinds of resource contention 
@@ -283,8 +286,9 @@ To test the stability and performance of Tendermint in a real world scenario,
 a 200 node test network is run. The network comprises 5 seed nodes, 100
 validators and 95 non-validating full nodes. All nodes begin by dialing
 a subset of the seed nodes to discover peers. The network is run for several
-days, with metrics being collected continuously.
- 
+days, with metrics being collected continuously. In cases of changes to performance
+critical systems, testnets of larger sizes should be considered.
+
 #### Rotating Node Testnet
 
 Real-world deployments of Tendermint frequently see new nodes arrive and old
