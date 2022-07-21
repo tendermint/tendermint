@@ -5,8 +5,6 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/internal/eventbus"
-	"github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
@@ -113,9 +111,9 @@ func (is *Service) OnStart() error {
 						start := time.Now()
 
 						var err error
-						curr.Ops, err = DeduplicateBatch(curr.Ops, sink)
+						batch.Ops, err = DeduplicateBatch(batch.Ops, sink)
 						if err != nil {
-							is.logger.Error("failed to deduplicate batch", "height", height, "error", err, "sink", sink.Type())
+							is.Logger.Error("failed to deduplicate batch", "height", height, "error", err, "sink", sink.Type())
 							continue
 						}
 
