@@ -11,7 +11,7 @@ retrieved from a pool with `numConcurrentDials()` threads.
 The default number of threads in the pool is set to 32 times the number of
 available CPUs.
 
-> The 32 factor was introduced in [#8827](https://github.com/tendermint/tendermint/pull/8827), 
+> The 32 factor was introduced in [#8827](https://github.com/tendermint/tendermint/pull/8827),
 > with the goal of speeding up the establishment of outbound connections.
 
 The router thus dials a peer whenever there are: (i) a candidate peer to be
@@ -74,3 +74,51 @@ In case of any of the above errors, the connection with the remote peer is
 
 > TODO: there is a `connTracker` in the router that rate limits addresses that
 > try to establish connections to often. This procedure should be documented.
+
+## Evicting peers
+
+The router maintains a persistent routine `evictPeers()` consuming
+[peers to evict](./peer_manager.md#evictnext-transition)
+produced by the peer manager.
+
+The eviction of a peer is performed by closing the send queue associated to the peer.
+This queue maintains outbound messages destined to the peer, consumed by the
+peer's send routine.
+When the peer's send queue is closed, the peer's send routine is interrupted
+with no errors.
+
+When the [routing messages](#routing-messages) routine notices that the peer's
+send routine was interrupted, it forces the interruption of peer's receive routine.
+When both send and receive routines are interrupted, the router considers the
+peer as disconnected, and its eviction has been done.
+
+## Routing messages
+
+When the router successfully establishes a connection with a peer, because it
+dialed the peer or accepted a connection from the peer, it starts routing
+messages from and to the peer.
+
+This role is implemented by the `routePeer()` routine.
+Initially, the router notifies the peer manager that the peer is
+[`Ready`](./peer_manager#ready-transition).
+This notification includes the list of channels IDs supported by the peer,
+information obtained during the handshake process.
+
+Then, the peer's send and receive routines are spawned.
+The send routine receives the peer ID, the established connection, and a new
+send queue associated with the peer.
+The peer's send queue is fed with messages produced by reactors and destined to
+the peer, which are sent to the peer through the established connection.
+The receive routine receives the peer ID and the established connection.
+Messages received through the established connections are forwarded to the
+appropriate reactors, using message queues associated to each channel ID.
+
+From this point, the routing routine will monitor the peer's send and receive routines.
+When one of them returns, due to errors or because it was interrupted, the
+router forces the interruption of the other.
+To force the interruption of the send routine, the router closes the peer's
+send queue. To force the interruption of the receive routine, the router closes
+the connection established with the peer.
+
+Finally, when both peer's send and receive routine return, the router notifies
+the peer manager that the peer is [`Disconnected`](./peer_manager#disconnected-transition).
