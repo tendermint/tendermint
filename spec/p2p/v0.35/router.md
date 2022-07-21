@@ -100,7 +100,7 @@ messages from and to the peer.
 
 This role is implemented by the `routePeer()` routine.
 Initially, the router notifies the peer manager that the peer is
-[`Ready`](./peer_manager#ready-transition).
+[`Ready`](./peer_manager.md#ready-transition).
 This notification includes the list of channels IDs supported by the peer,
 information obtained during the handshake process.
 
@@ -121,4 +121,4 @@ send queue. To force the interruption of the receive routine, the router closes
 the connection established with the peer.
 
 Finally, when both peer's send and receive routine return, the router notifies
-the peer manager that the peer is [`Disconnected`](./peer_manager#disconnected-transition).
+the peer manager that the peer is [`Disconnected`](./peer_manager.md#disconnected-transition).
