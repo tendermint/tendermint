@@ -340,6 +340,10 @@ func TestRPC(t *testing.T) {
 		}
 	})
 	t.Run("WSClientPingPong", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping test in short mode")
+		}
+
 		// TestWSClientPingPong checks that a client & server exchange pings
 		// & pongs so connection stays alive.
 		t.Cleanup(leaktest.CheckTimeout(t, 4*time.Second))
