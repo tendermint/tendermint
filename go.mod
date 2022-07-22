@@ -3,7 +3,7 @@ module github.com/tendermint/tendermint
 go 1.16
 
 require (
-	github.com/BurntSushi/toml v1.1.0
+	github.com/BurntSushi/toml v1.2.0
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.3.3
@@ -45,7 +45,8 @@ require (
 
 require (
 	github.com/bufbuild/buf v1.4.0
-	github.com/golangci/golangci-lint v1.46.2
+	github.com/creachadair/taskgroup v0.3.2
+	github.com/golangci/golangci-lint v1.47.1
 	github.com/prometheus/common v0.34.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
 	github.com/vektra/mockery/v2 v2.14.0
