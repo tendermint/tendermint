@@ -3,7 +3,6 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -11,7 +10,6 @@ import (
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/libs/progressbar"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
@@ -19,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/state/indexer/sink/psql"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
-	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -32,7 +29,7 @@ var (
 	ErrInvalidRequest     = errors.New("invalid request")
 )
 
-// MakeReindexEventCommand constructs a command to re-index events in a block height interval.
+// ReIndexEventCmd constructs a command to re-index events in a block height interval.
 var ReIndexEventCmd = &cobra.Command{
 	Use:   "reindex-event",
 	Short: "reindex events to the event store backends",
@@ -120,34 +117,6 @@ func loadEventSinks(cfg *tmcfg.Config) (indexer.BlockIndexer, txindex.TxIndexer,
 	default:
 		return nil, nil, fmt.Errorf("unsupported event sink type: %s", cfg.TxIndex.Indexer)
 	}
-}
-
-func loadStores(cfg *tmcfg.Config) (*store.BlockStore, state.Store, error) {
-	dbType := dbm.BackendType(cfg.DBBackend)
-
-	if !os.FileExists(filepath.Join(cfg.DBDir(), "blockstore.db")) {
-		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
-	}
-
-	// Get BlockStore
-	blockStoreDB, err := dbm.NewDB("blockstore", dbType, cfg.DBDir())
-	if err != nil {
-		return nil, nil, err
-	}
-	blockStore := store.NewBlockStore(blockStoreDB)
-
-	if !os.FileExists(filepath.Join(cfg.DBDir(), "state.db")) {
-		return nil, nil, fmt.Errorf("no blockstore found in %v", cfg.DBDir())
-	}
-
-	// Get StateStore
-	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
-	if err != nil {
-		return nil, nil, err
-	}
-	stateStore := state.NewStore(stateDB)
-
-	return blockStore, stateStore, nil
 }
 
 type eventReIndexArgs struct {

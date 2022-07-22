@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/state/mocks"
 	txmocks "github.com/tendermint/tendermint/state/txindex/mocks"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -87,8 +88,7 @@ func TestLoadEventSink(t *testing.T) {
 		{"", "", true},
 		{"NULL", "", true},
 		{"KV", "", false},
-		{"PSQL", "", true},         // true because empty connect url
-		{"PSQL", "wrongUrl", true}, // true because wrong connect url
+		{"PSQL", "", true}, // true because empty connect url
 		// skip to test PSQL connect with correct url
 		{"UnsupportedSinkType", "wrongUrl", true},
 	}
@@ -107,7 +107,19 @@ func TestLoadEventSink(t *testing.T) {
 }
 
 func TestLoadBlockStore(t *testing.T) {
-	bs, ss, err := loadStateAndBlockStore(tmcfg.TestConfig())
+	cfg := tmcfg.TestConfig()
+	cfg.DBPath = t.TempDir()
+	_, _, err := loadStateAndBlockStore(cfg)
+	require.Error(t, err)
+
+	_, err = dbm.NewDB("blockstore", dbm.GoLevelDBBackend, cfg.DBDir())
+	require.NoError(t, err)
+
+	// Get StateStore
+	_, err = dbm.NewDB("state", dbm.GoLevelDBBackend, cfg.DBDir())
+	require.NoError(t, err)
+
+	bs, ss, err := loadStateAndBlockStore(cfg)
 	require.NoError(t, err)
 	require.NotNil(t, bs)
 	require.NotNil(t, ss)
