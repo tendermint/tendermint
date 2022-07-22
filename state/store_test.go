@@ -1,8 +1,10 @@
 package state_test
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -200,17 +202,70 @@ func TestPruneStates(t *testing.T) {
 	}
 }
 
-func mockABCIResponses() *tmstate.ABCIResponses {
+func mockABCIResponses(height, num int) *tmstate.ABCIResponses {
+	valUpdates := make([]abci.ValidatorUpdate, num)
+	for i := 0; i < num; i++ {
+		pk := make([]byte, 32)
+		rand.Read(pk)
+		valUpdates[i] = abci.UpdateValidator(pk, int64(i), "")
+	}
 	return &tmstate.ABCIResponses{
 		DeliverTxs: make([]*abci.ResponseDeliverTx, 0),
-		EndBlock:   &abci.ResponseEndBlock{},
+		EndBlock: &abci.ResponseEndBlock{
+			ValidatorUpdates: valUpdates,
+			Events: []abci.Event{
+				{
+					Type: "val_updates",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("size"),
+							Value: []byte(strconv.Itoa(len(valUpdates))),
+						},
+						{
+							Key:   []byte("height"),
+							Value: []byte(strconv.Itoa(height)),
+						},
+					},
+				},
+			},
+		},
 		BeginBlock: &abci.ResponseBeginBlock{},
 	}
 }
 
+func mockResponseDeliverTx(success bool) *abci.ResponseDeliverTx {
+	result := abci.ResponseDeliverTx{}
+	if success {
+		result.Code = abci.CodeTypeOK
+		result.Data = []byte{0x01}
+		result.Log = "ok"
+	} else {
+		result.Code = 11
+		result.Log = "out of gas in location: block gas meter; gasWanted:"
+	}
+	return &result
+}
+
+func appendResponseDeliverTx(res *tmstate.ABCIResponses, num int) {
+	for i := 0; i < num; i++ {
+		res.DeliverTxs = append(
+			res.DeliverTxs,
+			mockResponseDeliverTx(true),
+			mockResponseDeliverTx(false),
+		)
+	}
+}
+
+func mockStateStore(config *cfg.Config, b *testing.B) sm.Store {
+	dbType := dbm.BackendType(config.DBBackend)
+	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
+	require.NoError(b, err)
+	return sm.NewStore(stateDB)
+}
+
 func TestSaveBatchABCIResponseBytes(t *testing.T) {
 	heights := []int64{1, 2}
-	bytes, _ := mockABCIResponses().Marshal()
+	bytes, _ := mockABCIResponses(1, 1).Marshal()
 	testCases := []struct {
 		name              string
 		heights           []int64
@@ -253,6 +308,57 @@ func TestSaveBatchABCIResponseBytes(t *testing.T) {
 				require.ErrorContains(t, err, tc.errMsg)
 			} else {
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func BenchmarkSaveBatchABCIResponseBytes(b *testing.B) {
+	config := cfg.ResetTestRoot("state_")
+	defer os.RemoveAll(config.RootDir)
+	stateStore := mockStateStore(config, b)
+	for i := 100; i <= 1000000; i *= 10 { // 100, 1000, 10000, ...
+		var heights []int64
+		var abciBytes [][]byte
+		for j := 0; j < i; j++ {
+			heights = append(heights, int64(j))
+			res := mockABCIResponses(j, 10)
+			appendResponseDeliverTx(res, 50)
+			bytes, _ := res.Marshal()
+			abciBytes = append(abciBytes, bytes)
+		}
+		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				err := stateStore.SaveBatchABCIResponseBytes(heights, abciBytes)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkSaveABCIResponses(b *testing.B) {
+	config := cfg.ResetTestRoot("state_")
+	defer os.RemoveAll(config.RootDir)
+	stateStore := mockStateStore(config, b)
+	for i := 100; i <= 1000000; i *= 10 { // 100, 1000, 10000, ...
+		var heights []int64
+		var responses []*tmstate.ABCIResponses
+		for j := 0; j < i; j++ {
+			heights = append(heights, int64(j))
+			res := mockABCIResponses(j, 10)
+			appendResponseDeliverTx(res, 50)
+			responses = append(responses, res)
+		}
+		b.Run(fmt.Sprintf("height=%d", i), func(b *testing.B) {
+			for n := 0; n < b.N; n++ {
+				for j := 0; j < i; j++ {
+					err := stateStore.SaveABCIResponses(heights[j], responses[j])
+					if err != nil {
+						b.Fatal(err)
+					}
+				}
 			}
 		})
 	}
