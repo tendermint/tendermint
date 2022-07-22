@@ -2,13 +2,8 @@ package state_test
 
 import (
 	"fmt"
-	"os"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
@@ -18,6 +13,9 @@ import (
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tm-db"
+	"os"
+	"testing"
 )
 
 const (
@@ -309,6 +307,7 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 }
 
 func TestLastABCIResponses(t *testing.T) {
+	//stub the abciresponses
 	response1 := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		DeliverTxs: []*abci.ResponseDeliverTx{
@@ -316,22 +315,21 @@ func TestLastABCIResponses(t *testing.T) {
 		},
 		EndBlock: &abci.ResponseEndBlock{},
 	}
+	//Create new db and state store and set discard abciresponses to false
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB, false)
-	//stub the abciresponses
-
 	height := int64(response1.Size())
 	//save the last abci response
-	stateStore.SaveABCIResponses(height, response1)
-	//search for the last abciresponse
+	err := stateStore.SaveABCIResponses(height, response1)
+	require.NoError(t, err)
+	//search for the last abciresponse and check if it has saved
 	lastResponse, err := stateStore.LoadLastABCIResponse(height)
 	require.NoError(t, err)
 	fmt.Println(lastResponse)
-	// test if the last response saved
-
 	//check to see if the saved response height is the same as the loaded height
 	assert.Equal(t, lastResponse.Height, int64(response1.Size()))
-	//test if the responses are the same
+
+	//create a second abciresponse
 	response2 := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		DeliverTxs: []*abci.ResponseDeliverTx{
@@ -340,18 +338,18 @@ func TestLastABCIResponses(t *testing.T) {
 		EndBlock: &abci.ResponseEndBlock{},
 	}
 
-	//test to see if there are multiple responses
-	
-	//when the flag is on
+	//create a new statestore with the responses on
 	stateStore = sm.NewStore(stateDB, true)
-	// add to the responses
+	// save an additional response
 	height = int64(response1.Size())
-	stateStore.SaveABCIResponses(height, response2)
+	err = stateStore.SaveABCIResponses(height, response2)
+	require.NoError(t, err)
+	//check to see if the response saved by calling the last response
 	lastResponse2, err := stateStore.LoadLastABCIResponse(height)
 	require.NoError(t, err)
+	require.NotNil(t, lastResponse2)
 	fmt.Println(lastResponse2)
-
-	//test to see if the responses other than the last is deleted
-	assert.Equal(t, lastResponse2.Height, int64(response2.Size()))
 	//check to see if the saved response height is the same as the loaded height
+	assert.Equal(t, lastResponse2.Height, int64(response2.Size()))
+
 }
