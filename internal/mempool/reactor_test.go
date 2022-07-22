@@ -68,7 +68,7 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 		require.NoError(t, client.Start(ctx))
 		t.Cleanup(client.Wait)
 
-		mempool := setup(t, client, 0)
+		mempool := setup(t, client, 1<<20)
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate, chBuf)
@@ -170,7 +170,9 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	secondaryReactor.observePanic = observePanic
 
 	firstTx := &WrappedTx{}
+	primaryMempool.Lock()
 	primaryMempool.insertTx(firstTx)
+	primaryMempool.Unlock()
 
 	// run the router
 	rts.start(ctx, t)
@@ -183,6 +185,8 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			primaryMempool.Lock()
+			defer primaryMempool.Unlock()
 			primaryMempool.insertTx(next)
 		}()
 	}
