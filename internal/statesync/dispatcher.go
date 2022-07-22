@@ -47,6 +47,7 @@ func (d *Dispatcher) LightBlock(ctx context.Context, height int64, peer types.No
 	// dispatch the request to the peer
 	callCh, err := d.dispatch(ctx, peer, height)
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -188,12 +189,13 @@ func (p *BlockProvider) LightBlock(ctx context.Context, height int64) (*types.Li
 	switch err {
 	case nil:
 		if lb == nil {
+
 			return nil, provider.ErrLightBlockNotFound
 		}
 	case context.DeadlineExceeded, context.Canceled:
 		return nil, err
 	case errPeerAlreadyBusy:
-		return nil, provider.ErrLightBlockNotFound
+		return nil, err
 	default:
 		return nil, provider.ErrUnreliableProvider{Reason: err}
 	}

@@ -279,7 +279,9 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 			"trustHeight", to.Height, "useP2P", r.cfg.UseP2P)
 
 		if r.cfg.UseP2P {
-			if err := r.waitForEnoughPeers(ctx, 2); err != nil {
+		WAIT:
+			failed := 0
+			if err := r.waitForEnoughPeers(ctx, 2+failed); err != nil {
 				return err
 			}
 
@@ -291,8 +293,14 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 
 			stateProvider, err := NewP2PStateProvider(ctx, chainID, initialHeight, providers, to, paramsCh, r.logger.With("module", "stateprovider"))
 			if err != nil {
-				return fmt.Errorf("failed to initialize P2P state provider: %w", err)
+				failed++
+				if len(peers) == 2 && failed == 1 {
+					r.logger.Info("***** attempting to find more peers due to init error")
+					goto WAIT
+				}
+				return fmt.Errorf("failed to initialize P2P state provider: %w %d %s %s", err, r.peers.Len(), providers[0].ID(), providers[1].ID())
 			}
+
 			r.stateProvider = stateProvider
 			return nil
 		}
