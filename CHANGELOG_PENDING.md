@@ -20,6 +20,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
+- [#9083] backport cli command to reindex missed events (@cmwaters)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
