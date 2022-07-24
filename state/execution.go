@@ -141,13 +141,12 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 func (blockExec *BlockExecutor) ProcessProposal(
 	block *types.Block,
 ) (bool, error) {
-	ctx := context.Background()
 	req := abci.RequestProcessProposal{
 		Txs:    block.Data.Txs.ToSliceOfBytes(),
 		Header: *block.Header.ToProto(),
 	}
 
-	resp, err := blockExec.proxyApp.ProcessProposalSync(ctx, req)
+	resp, err := blockExec.proxyApp.ProcessProposalSync(req)
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
