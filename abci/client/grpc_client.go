@@ -309,26 +309,14 @@ func (cli *grpcClient) PrepareProposalAsync(params types.RequestPrepareProposal)
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_PrepareProposal{PrepareProposal: res}})
 }
 
-func (cli *grpcClient) ProcessProposalAsync(
-	ctx context.Context,
-	params types.RequestProcessProposal,
-) (*ReqRes, error) {
-
+func (cli *grpcClient) ProcessProposalAsync(params types.RequestProcessProposal) *ReqRes {
 	req := types.ToRequestProcessProposal(params)
-	res, err := cli.client.ProcessProposal(ctx, req.GetProcessProposal(), grpc.WaitForReady(true))
+	res, err := cli.client.ProcessProposal(context.Background(), req.GetProcessProposal(), grpc.WaitForReady(true))
 	if err != nil {
-		return nil, err
+		cli.StopForError(err)
 	}
 
-	return cli.finishAsyncCall(
-		ctx,
-		req,
-		&types.Response{
-			Value: &types.Response_ProcessProposal{
-				ProcessProposal: res,
-			},
-		},
-	)
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_ProcessProposal{ProcessProposal: res}})
 }
 
 // finishAsyncCall creates a ReqRes for an async call, and immediately populates it
@@ -455,14 +443,7 @@ func (cli *grpcClient) PrepareProposalSync(
 	return cli.finishSyncCall(reqres).GetPrepareProposal(), cli.Error()
 }
 
-func (cli *grpcClient) ProcessProposalSync(
-	ctx context.Context,
-	params types.RequestProcessProposal,
-) (*types.ResponseProcessProposal, error) {
-
-	reqres, err := cli.ProcessProposalAsync(ctx, params)
-	if err != nil {
-		return nil, err
-	}
+func (cli *grpcClient) ProcessProposalSync(params types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	reqres := cli.ProcessProposalAsync(params)
 	return cli.finishSyncCall(reqres).GetProcessProposal(), cli.Error()
 }

@@ -4,6 +4,7 @@ import (
 	types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
+	"golang.org/x/net/context"
 )
 
 var _ Client = (*localClient)(nil)
@@ -218,10 +219,7 @@ func (app *localClient) PrepareProposalAsync(req types.RequestPrepareProposal) *
 	)
 }
 
-func (app *localClient) ProcessProposalAsync(
-	ctx context.Context,
-	req types.RequestProcessProposal,
-) (*ReqRes, error) {
+func (app *localClient) ProcessProposalAsync(req types.RequestProcessProposal) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -229,7 +227,7 @@ func (app *localClient) ProcessProposalAsync(
 	return app.callback(
 		types.ToRequestProcessProposal(req),
 		types.ToResponseProcessProposal(res),
-	), nil
+	)
 }
 
 //-------------------------------------------------------

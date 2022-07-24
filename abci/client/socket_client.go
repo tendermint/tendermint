@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/libs/timer"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -283,11 +284,8 @@ func (cli *socketClient) PrepareProposalAsync(req types.RequestPrepareProposal) 
 	return cli.queueRequest(types.ToRequestPrepareProposal(req))
 }
 
-func (cli *socketClient) ProcessProposalAsync(
-	ctx context.Context,
-	req types.RequestProcessProposal,
-) (*ReqRes, error) {
-	return cli.queueRequestAsync(ctx, types.ToRequestProcessProposal(req))
+func (cli *socketClient) ProcessProposalAsync(req types.RequestProcessProposal) *ReqRes {
+	return cli.queueRequest(types.ToRequestProcessProposal(req))
 }
 
 //----------------------------------------
