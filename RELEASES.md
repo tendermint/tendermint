@@ -285,7 +285,7 @@ stream of two hundred transactions per minute each.
 During each test net, the following metrics are monitored and collected on each
 node:
 
-* Tendermint rounds per height
+* Consensus rounds per height
 * Maximum connected peers, Minimum connected peers, Rate of change of peer connections
 * Memory resident set size
 * CPU utilization
