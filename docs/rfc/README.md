@@ -59,5 +59,6 @@ sections.
 - [RFC-019: Configuration File Versioning](./rfc-019-config-version.md)
 - [RFC-020: Onboarding Projects](./rfc-020-onboarding-projects.rst)
 - [RFC-021: The Future of the Socket Protocol](./rfc-021-socket-protocol.md)
+- [RFC-022: Structuring Tendermint as a Library](./rfc-022-structuring-as-a-library.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
