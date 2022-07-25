@@ -423,7 +423,7 @@ func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
 // database. If the node has DiscardABCIResponses set to true, ErrABCIResponsesNotPersisted
 // is persisted. If not found, ErrNoABCIResponsesForHeight is returned.
 func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
-	if !store.discardABCIResponses {
+	if store.discardABCIResponses {
 		return nil, ErrABCIResponsesNotPersisted
 	}
 
