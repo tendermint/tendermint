@@ -6,7 +6,7 @@ ifneq (,$(VERSION))
 	docker build --tag tendermint/e2e-node:$(VERSION) -f docker/Dockerfile ../..
 	git worktree remove e2e-node
 else 
-	docker build --tag tendermint/e2e-node:$(shell git symbolic-ref -q --short HEAD) -f docker/Dockerfile ../..
+	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
 endif
 
 node:

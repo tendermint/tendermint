@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"strings"
 
+	"github.com/tendermint/tendermint/internal/libs/confix"
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 
 	"github.com/tendermint/tendermint/scripts/keymigrate"
 	"github.com/tendermint/tendermint/scripts/scmigrate"
@@ -15,12 +18,12 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-func Upgrade(ctx context.Context, testnet *e2e.Testnet, logger log.Logger) error {
-	if err := Cleanup(logger, testnet); err != nil {
+func Upgrade(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infra.TestnetInfra) error {
+	if err := Cleanup(ctx, logger, testnet.Dir, ti); err != nil {
 		return err
 	}
 
-	if err := Setup(logger, testnet); err != nil {
+	if err := Setup(ctx, logger, testnet, ti); err != nil {
 		return err
 	}
 
@@ -34,7 +37,7 @@ func Upgrade(ctx context.Context, testnet *e2e.Testnet, logger log.Logger) error
 		chLoadResult <- Load(lctx, logger, r, testnet)
 	}()
 
-	if err := Start(ctx, logger, testnet); err != nil {
+	if err := Start(ctx, logger, testnet, ti); err != nil {
 		return err
 	}
 
@@ -48,15 +51,18 @@ func Upgrade(ctx context.Context, testnet *e2e.Testnet, logger log.Logger) error
 	}
 
 	// stop the network
-	if err := execCompose(testnet.Dir, "down"); err != nil {
+	if err := ti.Stop(ctx); err != nil {
 		return err
 	}
 
+	logger.Info("Migrating network...")
+
+	// migrate to the current version
 	if err := Migrate(ctx, logger, testnet); err != nil {
 		return err
 	}
 
-	if err := Start(ctx, logger, testnet); err != nil {
+	if err := Start(ctx, logger, testnet, ti); err != nil {
 		return err
 	}
 
@@ -64,6 +70,7 @@ func Upgrade(ctx context.Context, testnet *e2e.Testnet, logger log.Logger) error
 }
 
 func Migrate(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error {
+
 	stores := []string{
 		"tx_index",
 		"light",
@@ -72,6 +79,13 @@ func Migrate(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error
 		"evidence",
 	}
 	for _, node := range testnet.Nodes {
+		// update the config file
+		configFilePath := filepath.Join(node.Dir(), "config")
+		if err := confix.Upgrade(ctx, configFilePath, configFilePath); err != nil {
+			return fmt.Errorf("Upgrading config: %w", err)
+		}
+
+		// perform a database migration if going from v0.34 to a version gte v0.35
 		if strings.HasPrefix(testnet.Version, "v0.34") && version.TMVersion > "v0.35" {
 			for _, store := range stores {
 				db, err := node.DB(store)
@@ -79,7 +93,7 @@ func Migrate(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error
 					return fmt.Errorf("migrating db: %w", err)
 				}
 
-				if err = keymigrate.Migrate(ctx, db); err != nil {
+				if err = keymigrate.Migrate(ctx, store, db); err != nil {
 					return fmt.Errorf("running migration for context %q: %w",
 						store, err)
 				}

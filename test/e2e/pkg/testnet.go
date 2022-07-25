@@ -27,10 +27,10 @@ const (
 	proxyPortFirst uint32 = 5701
 	networkIPv4           = "10.186.73.0/24"
 	networkIPv6           = "fd80:b10c::/48"
-	defaultVersion        = "master"
+	defaultVersion        = "latest"
 )
 
-var IsVersionValid = regexp.MustCompile(`master|v0.3[4-6]+.([0-9]+|x)`)
+var IsVersionValid = regexp.MustCompile(`latest|master|v0.3[4-6]+.([0-9]+|x)`)
 
 type Mode string
 type Protocol string
