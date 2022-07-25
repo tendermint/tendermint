@@ -358,7 +358,7 @@ func TestLastABCIResponses(t *testing.T) {
 	//create a new statestore with the responses on
 	stateStore = sm.NewStore(stateDB, true)
 	// save an additional response
-	err = stateStore.SaveABCIResponses(height + 1, response2)
+	err = stateStore.SaveABCIResponses(height+1, response2)
 	require.NoError(t, err)
 	//check to see if the response saved by calling the last response
 	lastResponse2, err := stateStore.LoadLastABCIResponse(height + 1)
