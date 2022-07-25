@@ -169,7 +169,7 @@ func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
 		err := proxyApp.Start()
 		require.NoError(t, err)
 		db := dbm.NewMemDB()
-		stateStore := sm.NewStore(db)
+		stateStore := sm.NewStore(db, false)
 		blockStore := tmstore.NewBlockStore(dbm.NewMemDB())
 		appl = sm.NewBlockExecutor(
 			stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
@@ -494,7 +494,7 @@ func newReactorStore(
 
 	stateDB := dbm.NewMemDB()
 	blockStore := tmstore.NewBlockStore(dbm.NewMemDB())
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	state, err := sm.MakeGenesisState(genDoc)
 	require.NoError(t, err)
 

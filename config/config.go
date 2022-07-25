@@ -582,8 +582,8 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
 
-		TLSCertFile: "",
-		TLSKeyFile:  "",
+		TLSCertFile:          "",
+		TLSKeyFile:           "",
 		DiscardABCIResponses: true,
 	}
 }

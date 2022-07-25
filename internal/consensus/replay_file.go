@@ -300,7 +300,7 @@ func newConsensusStateForReplay(cfg config.BaseConfig, csConfig *config.Consensu
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	gdoc, err := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
 		tmos.Exit(err.Error())

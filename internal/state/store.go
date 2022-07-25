@@ -472,12 +472,12 @@ func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses,
 			changed: %v\n`, err))
 	}
 
-	//Here we sanitise by comparing the height from the height that is given to the last ABCIResponse
+	//Here we sanitize by comparing the height from the height that is given to the last ABCIResponse
 	if height != abciResponse.GetHeight() {
 		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
-	} else {
-		return abciResponse.AbciResponses, nil
 	}
+
+	return abciResponse.AbciResponses, nil
 }
 
 // SaveABCIResponses persists the ABCIResponses to the database.
@@ -512,8 +512,8 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	// We always save the last ABCI response incase we crash after app.Commit and before s.Save(.)
 	// This overwrites the previous saved ABCI Response
 	response := &tmstate.ABCIResponsesInfo{
-		abciResponses,
-		height,
+		AbciResponses: abciResponses,
+		Height:        height,
 	}
 	bz, err := response.Marshal()
 	if err != nil {

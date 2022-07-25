@@ -53,7 +53,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	}
 	blockStoreDB := dbm.NewMemDB()
 	stateDB := blockStoreDB
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return fmt.Errorf("failed to make genesis state: %w", err)

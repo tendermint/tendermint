@@ -152,7 +152,7 @@ LOOP:
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
 		stateDB := dbm.NewMemDB()
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, false)
 		blockStore := store.NewBlockStore(blockDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
@@ -730,7 +730,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		stateDB, genesisState, store = stateAndStore(cfg, pubKey, kvstore.ProtocolVersion)
 
 	}
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	store.chain = chain
 	store.commits = commits
 
@@ -749,8 +749,7 @@ func testHandshakeReplay(t *testing.T, sim *simulatorTestSuite, nBlocks int, mod
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
-		stateDB1 := dbm.NewMemDB()
-		stateStore := sm.NewStore(stateDB1)
+		stateStore := sm.NewStore(dbm.NewMemDB(), false)
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
 		buildAppStateFromChain(proxyApp, stateStore, sim.Mempool, sim.Evpool, genesisState, chain, nBlocks, mode, store)
@@ -950,7 +949,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(cfg, pubKey, appVersion)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	genDoc, _ := sm.MakeGenesisDocFromFile(cfg.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
@@ -1161,7 +1160,7 @@ func stateAndStore(
 	pubKey crypto.PubKey,
 	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 	state, _ := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	state.Version.Consensus.App = appVersion
 	store := newMockBlockStore(cfg, state.ConsensusParams)
@@ -1242,7 +1241,7 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	pubKey, err := privVal.GetPubKey(context.Background())
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(cfg, pubKey, 0x0)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, false)
 
 	oldValAddr := state.Validators.Validators[0].Address
 

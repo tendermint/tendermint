@@ -54,7 +54,7 @@ func (emptyMempool) CloseWAL()      {}
 // Useful because we don't want to call Commit() twice for the same block on
 // the real app.
 
-func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponsesInfo) proxy.AppConnConsensus {
+func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy.AppConnConsensus {
 	clientCreator := abciclient.NewLocalCreator(&mockProxyApp{
 		appHash:       appHash,
 		abciResponses: abciResponses,
@@ -72,11 +72,11 @@ type mockProxyApp struct {
 
 	appHash       []byte
 	txCount       int
-	abciResponses *tmstate.ABCIResponsesInfo
+	abciResponses *tmstate.ABCIResponses
 }
 
 func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	r := mock.abciResponses.AbciResponses.DeliverTxs[mock.txCount]
+	r := mock.abciResponses.DeliverTxs[mock.txCount]
 	mock.txCount++
 	if r == nil {
 		return abci.ResponseDeliverTx{}
@@ -86,7 +86,7 @@ func (mock *mockProxyApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeli
 
 func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	mock.txCount = 0
-	return *mock.abciResponses.AbciResponses.EndBlock
+	return *mock.abciResponses.EndBlock
 }
 
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {
