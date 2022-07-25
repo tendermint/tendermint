@@ -146,8 +146,8 @@ func (n *Network) MakeChannels(
 	ctx context.Context,
 	t *testing.T,
 	chDesc *p2p.ChannelDescriptor,
-) map[types.NodeID]*p2p.Channel {
-	channels := map[types.NodeID]*p2p.Channel{}
+) map[types.NodeID]p2p.Channel {
+	channels := map[types.NodeID]p2p.Channel{}
 	for _, node := range n.Nodes {
 		channels[node.NodeID] = node.MakeChannel(ctx, t, chDesc)
 	}
@@ -161,8 +161,8 @@ func (n *Network) MakeChannelsNoCleanup(
 	ctx context.Context,
 	t *testing.T,
 	chDesc *p2p.ChannelDescriptor,
-) map[types.NodeID]*p2p.Channel {
-	channels := map[types.NodeID]*p2p.Channel{}
+) map[types.NodeID]p2p.Channel {
+	channels := map[types.NodeID]p2p.Channel{}
 	for _, node := range n.Nodes {
 		channels[node.NodeID] = node.MakeChannelNoCleanup(ctx, t, chDesc)
 	}
@@ -252,11 +252,13 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 	require.NotNil(t, ep, "transport not listening an endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		MinRetryTime:    10 * time.Millisecond,
-		MaxRetryTime:    100 * time.Millisecond,
-		RetryTimeJitter: time.Millisecond,
-		MaxPeers:        opts.MaxPeers,
-		MaxConnected:    opts.MaxConnected,
+		MinRetryTime:             10 * time.Millisecond,
+		DisconnectCooldownPeriod: 10 * time.Millisecond,
+		MaxRetryTime:             100 * time.Millisecond,
+		RetryTimeJitter:          time.Millisecond,
+		MaxPeers:                 opts.MaxPeers,
+		MaxConnected:             opts.MaxConnected,
+		Metrics:                  p2p.NopMetrics(),
 	})
 	require.NoError(t, err)
 
@@ -268,7 +270,7 @@ func (n *Network) MakeNode(ctx context.Context, t *testing.T, opts NodeOptions) 
 		func() *types.NodeInfo { return &nodeInfo },
 		transport,
 		ep,
-		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
+		p2p.RouterOptions{},
 	)
 
 	require.NoError(t, err)
@@ -302,7 +304,7 @@ func (n *Node) MakeChannel(
 	ctx context.Context,
 	t *testing.T,
 	chDesc *p2p.ChannelDescriptor,
-) *p2p.Channel {
+) p2p.Channel {
 	ctx, cancel := context.WithCancel(ctx)
 	channel, err := n.Router.OpenChannel(ctx, chDesc)
 	require.NoError(t, err)
@@ -319,7 +321,7 @@ func (n *Node) MakeChannelNoCleanup(
 	ctx context.Context,
 	t *testing.T,
 	chDesc *p2p.ChannelDescriptor,
-) *p2p.Channel {
+) p2p.Channel {
 	channel, err := n.Router.OpenChannel(ctx, chDesc)
 	require.NoError(t, err)
 	return channel

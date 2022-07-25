@@ -145,7 +145,7 @@ func (r *Reactor) OnStop() {}
 
 // processPexCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the pexCh.
-func (r *Reactor) processPexCh(ctx context.Context, pexCh *p2p.Channel) {
+func (r *Reactor) processPexCh(ctx context.Context, pexCh p2p.Channel) {
 	incoming := make(chan *p2p.Envelope)
 	go func() {
 		defer close(incoming)
@@ -192,8 +192,7 @@ func (r *Reactor) processPexCh(ctx context.Context, pexCh *p2p.Channel) {
 			// A request from another peer, or a response to one of our requests.
 			dur, err := r.handlePexMessage(ctx, envelope, pexCh)
 			if err != nil {
-				r.logger.Error("failed to process message",
-					"ch_id", envelope.ChannelID, "envelope", envelope, "err", err)
+				r.logger.Error("failed to process message", "ch_id", envelope.ChannelID, "envelope", envelope, "err", err)
 				if serr := pexCh.SendError(ctx, p2p.PeerError{
 					NodeID: envelope.From,
 					Err:    err,
@@ -225,7 +224,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerU
 // handlePexMessage handles envelopes sent from peers on the PexChannel.
 // If an update was received, a new polling interval is returned; otherwise the
 // duration is 0.
-func (r *Reactor) handlePexMessage(ctx context.Context, envelope *p2p.Envelope, pexCh *p2p.Channel) (time.Duration, error) {
+func (r *Reactor) handlePexMessage(ctx context.Context, envelope *p2p.Envelope, pexCh p2p.Channel) (time.Duration, error) {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -308,7 +307,7 @@ func (r *Reactor) processPeerUpdate(peerUpdate p2p.PeerUpdate) {
 // that peer a request for more peer addresses. The chosen peer is moved into
 // the requestsSent bucket so that we will not attempt to contact them again
 // until they've replied or updated.
-func (r *Reactor) sendRequestForPeers(ctx context.Context, pexCh *p2p.Channel) error {
+func (r *Reactor) sendRequestForPeers(ctx context.Context, pexCh p2p.Channel) error {
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 	if len(r.availablePeers) == 0 {

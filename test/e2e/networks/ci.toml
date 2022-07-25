@@ -4,7 +4,7 @@ version = "master"
 evidence = 5
 initial_height = 1000
 initial_state = {initial01 = "a", initial02 = "b", initial03 = "c"}
-queue_type = "priority"
+queue_type = "simple-priority"
 abci_protocol = "builtin"
 
 [validators]

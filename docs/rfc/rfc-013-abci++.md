@@ -3,7 +3,7 @@
 ## Changelog
 
 - 2020-01-11: initialized
-- 2021-02-11: Migrate RFC to tendermint repo (Originally [RFC 004](https://github.com/tendermint/spec/pull/254))
+- 2022-02-11: Migrate RFC to tendermint repo (Originally [RFC 004](https://github.com/tendermint/spec/pull/254))
 
 ## Author(s)
 

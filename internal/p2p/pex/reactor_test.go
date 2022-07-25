@@ -275,7 +275,7 @@ type singleTestReactor struct {
 	pexInCh  chan p2p.Envelope
 	pexOutCh chan p2p.Envelope
 	pexErrCh chan p2p.PeerError
-	pexCh    *p2p.Channel
+	pexCh    p2p.Channel
 	peerCh   chan p2p.PeerUpdate
 	manager  *p2p.PeerManager
 }
@@ -287,8 +287,11 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	pexInCh := make(chan p2p.Envelope, chBuf)
 	pexOutCh := make(chan p2p.Envelope, chBuf)
 	pexErrCh := make(chan p2p.PeerError, chBuf)
+
+	chDesc := pex.ChannelDescriptor()
 	pexCh := p2p.NewChannel(
-		p2p.ChannelID(pex.PexChannel),
+		chDesc.ID,
+		chDesc.Name,
 		pexInCh,
 		pexOutCh,
 		pexErrCh,
@@ -299,7 +302,7 @@ func setupSingle(ctx context.Context, t *testing.T) *singleTestReactor {
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{})
 	require.NoError(t, err)
 
-	chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+	chCreator := func(context.Context, *p2p.ChannelDescriptor) (p2p.Channel, error) {
 		return pexCh, nil
 	}
 
@@ -324,7 +327,7 @@ type reactorTestSuite struct {
 	logger  log.Logger
 
 	reactors    map[types.NodeID]*pex.Reactor
-	pexChannels map[types.NodeID]*p2p.Channel
+	pexChannels map[types.NodeID]p2p.Channel
 
 	peerChans   map[types.NodeID]chan p2p.PeerUpdate
 	peerUpdates map[types.NodeID]*p2p.PeerUpdates
@@ -367,7 +370,7 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 		logger:      log.NewNopLogger().With("testCase", t.Name()),
 		network:     p2ptest.MakeNetwork(ctx, t, networkOpts),
 		reactors:    make(map[types.NodeID]*pex.Reactor, realNodes),
-		pexChannels: make(map[types.NodeID]*p2p.Channel, opts.TotalNodes),
+		pexChannels: make(map[types.NodeID]p2p.Channel, opts.TotalNodes),
 		peerChans:   make(map[types.NodeID]chan p2p.PeerUpdate, opts.TotalNodes),
 		peerUpdates: make(map[types.NodeID]*p2p.PeerUpdates, opts.TotalNodes),
 		total:       opts.TotalNodes,
@@ -388,7 +391,7 @@ func setupNetwork(ctx context.Context, t *testing.T, opts testOptions) *reactorT
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], chBuf)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
-		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (p2p.Channel, error) {
 			return rts.pexChannels[nodeID], nil
 		}
 
@@ -448,7 +451,7 @@ func (r *reactorTestSuite) addNodes(ctx context.Context, t *testing.T, nodes int
 		r.peerUpdates[nodeID] = p2p.NewPeerUpdates(r.peerChans[nodeID], r.opts.BufferSize)
 		r.network.Nodes[nodeID].PeerManager.Register(ctx, r.peerUpdates[nodeID])
 
-		chCreator := func(context.Context, *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		chCreator := func(context.Context, *p2p.ChannelDescriptor) (p2p.Channel, error) {
 			return r.pexChannels[nodeID], nil
 		}
 

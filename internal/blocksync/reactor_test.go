@@ -35,7 +35,7 @@ type reactorTestSuite struct {
 	reactors map[types.NodeID]*Reactor
 	app      map[types.NodeID]abciclient.Client
 
-	blockSyncChannels map[types.NodeID]*p2p.Channel
+	blockSyncChannels map[types.NodeID]p2p.Channel
 	peerChans         map[types.NodeID]chan p2p.PeerUpdate
 	peerUpdates       map[types.NodeID]*p2p.PeerUpdates
 }
@@ -62,7 +62,7 @@ func setup(
 		nodes:             make([]types.NodeID, 0, numNodes),
 		reactors:          make(map[types.NodeID]*Reactor, numNodes),
 		app:               make(map[types.NodeID]abciclient.Client, numNodes),
-		blockSyncChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
+		blockSyncChannels: make(map[types.NodeID]p2p.Channel, numNodes),
 		peerChans:         make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
 		peerUpdates:       make(map[types.NodeID]*p2p.PeerUpdates, numNodes),
 	}
@@ -175,7 +175,7 @@ func (rts *reactorTestSuite) addNode(
 	rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 	rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
-	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+	chCreator := func(ctx context.Context, chdesc *p2p.ChannelDescriptor) (p2p.Channel, error) {
 		return rts.blockSyncChannels[nodeID], nil
 	}
 
