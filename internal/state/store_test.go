@@ -312,6 +312,7 @@ func TestLastABCIResponses(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB, false)
 	responses, err := stateStore.LoadABCIResponses(1)
+	require.NoError(t, err)
 	require.Nil(t, responses)
 	fmt.Println(responses)
 

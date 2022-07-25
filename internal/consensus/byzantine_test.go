@@ -45,7 +45,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		func() {
 			logger := consensusLogger().With("test", "byzantine", "validator", i)
 			stateDB := dbm.NewMemDB() // each state needs its own db
-			stateStore := sm.NewStore(stateDB)
+			stateStore := sm.NewStore(stateDB, false)
 			state, err := sm.MakeGenesisState(genDoc)
 			require.NoError(t, err)
 			require.NoError(t, stateStore.Save(state))
