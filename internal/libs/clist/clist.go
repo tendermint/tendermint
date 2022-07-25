@@ -103,7 +103,7 @@ func (e *CElement) Removed() bool {
 	return isRemoved
 }
 
-func (e *CElement) detachNext() {
+func (e *CElement) DetachNext() {
 	e.mtx.Lock()
 	if !e.removed {
 		e.mtx.Unlock()
