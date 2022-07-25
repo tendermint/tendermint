@@ -38,7 +38,7 @@ services:
     labels:
       e2e: true
     container_name: {{ .Name }}
-    image: tendermint/e2e-node
+    image: tendermint/e2e-node:{{ $.Version }}
 {{- if isBuiltin $.ABCIProtocol .Mode }}
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if .LogLevel }}
@@ -67,3 +67,4 @@ services:
 	}
 	return buf.Bytes(), nil
 }
+
