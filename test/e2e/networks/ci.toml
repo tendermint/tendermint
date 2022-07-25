@@ -43,7 +43,6 @@ persist_interval = 0
 perturb = ["restart"]
 privval_protocol = "tcp"
 seeds = ["seed01"]
-block_sync = "v0"
 
 [node.validator03]
 database = "badgerdb"
@@ -52,7 +51,6 @@ abci_protocol = "grpc"
 persist_interval = 3
 perturb = ["kill"]
 privval_protocol = "grpc"
-block_sync = "v0"
 retain_blocks = 10
 
 [node.validator04]
@@ -61,11 +59,9 @@ snapshot_interval = 5
 database = "rocksdb"
 persistent_peers = ["validator01"]
 perturb = ["pause"]
-block_sync = "v0"
 
 [node.validator05]
 database = "cleveldb"
-block_sync = "v0"
 state_sync = "p2p"
 seeds = ["seed01"]
 start_at = 1005 # Becomes part of the validator set at 1010
@@ -76,7 +72,6 @@ privval_protocol = "tcp"
 [node.full01]
 mode = "full"
 start_at = 1010
-block_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04"]
 perturb = ["restart"]
 retain_blocks = 10

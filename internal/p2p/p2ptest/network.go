@@ -1,7 +1,6 @@
 package p2ptest
 
 import (
-	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -238,12 +237,13 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 	require.Len(t, transport.Endpoints(), 1, "transport not listening on 1 endpoint")
 
 	peerManager, err := p2p.NewPeerManager(nodeID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		MinRetryTime:    10 * time.Millisecond,
-		MaxRetryTime:    100 * time.Millisecond,
-		RetryTimeJitter: time.Millisecond,
-		MaxPeers:        opts.MaxPeers,
-		MaxConnected:    opts.MaxConnected,
-		Metrics:         p2p.NopMetrics(),
+		MinRetryTime:             10 * time.Millisecond,
+		DisconnectCooldownPeriod: 10 * time.Millisecond,
+		MaxRetryTime:             100 * time.Millisecond,
+		RetryTimeJitter:          time.Millisecond,
+		MaxPeers:                 opts.MaxPeers,
+		MaxConnected:             opts.MaxConnected,
+		Metrics:                  p2p.NopMetrics(),
 	})
 	require.NoError(t, err)
 
@@ -254,7 +254,7 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		p2p.RouterOptions{DialSleep: func(_ context.Context) {}},
+		p2p.RouterOptions{},
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())

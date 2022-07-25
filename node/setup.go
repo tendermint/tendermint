@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	bcv0 "github.com/tendermint/tendermint/internal/blocksync/v0"
-	bcv2 "github.com/tendermint/tendermint/internal/blocksync/v2"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/evidence"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -339,6 +338,10 @@ func createBlockchainReactor(
 	metrics *consensus.Metrics,
 ) (*p2p.ReactorShim, service.Service, error) {
 
+	if !cfg.BlockSync.Enable {
+		logger.Error("blocksync.enable = false, but Tendermint no longer allows blocksync to be disabled. This setting is now ignored and will be removed in the next version.")
+	}
+
 	logger = logger.With("module", "blockchain")
 
 	switch cfg.BlockSync.Version {
@@ -442,12 +445,21 @@ func createConsensusReactor(
 }
 
 func createTransport(logger log.Logger, cfg *config.Config) *p2p.MConnTransport {
+	var maxAccepted uint32
+	switch {
+	case cfg.P2P.MaxConnections > 0 && !cfg.P2P.UseLegacy:
+		maxAccepted = uint32(cfg.P2P.MaxConnections) +
+			uint32(len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")))
+
+	case cfg.P2P.MaxNumInboundPeers > 0:
+		maxAccepted = uint32(cfg.P2P.MaxNumInboundPeers) +
+			uint32(len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")))
+	}
+
 	return p2p.NewMConnTransport(
 		logger, p2p.MConnConfig(cfg.P2P), []*p2p.ChannelDescriptor{},
 		p2p.MConnTransportOptions{
-			MaxAcceptedConnections: uint32(cfg.P2P.MaxNumInboundPeers +
-				len(tmstrings.SplitAndTrimEmpty(cfg.P2P.UnconditionalPeerIDs, ",", " ")),
-			),
+			MaxAcceptedConnections: maxAccepted,
 		},
 	)
 }
@@ -504,17 +516,18 @@ func createPeerManager(
 	const maxUpgradeConns = 4
 
 	options := p2p.PeerManagerOptions{
-		SelfAddress:            selfAddr,
-		MaxConnected:           maxConns,
-		MaxOutgoingConnections: maxOutgoingConns,
-		MaxConnectedUpgrade:    maxUpgradeConns,
-		MaxPeers:               maxUpgradeConns + 4*maxConns,
-		MinRetryTime:           250 * time.Millisecond,
-		MaxRetryTime:           30 * time.Minute,
-		MaxRetryTimePersistent: 5 * time.Minute,
-		RetryTimeJitter:        5 * time.Second,
-		PrivatePeers:           privatePeerIDs,
-		Metrics:                metrics,
+		SelfAddress:              selfAddr,
+		MaxConnected:             maxConns,
+		MaxOutgoingConnections:   maxOutgoingConns,
+		MaxConnectedUpgrade:      maxUpgradeConns,
+		DisconnectCooldownPeriod: 2 * time.Second,
+		MaxPeers:                 maxUpgradeConns + 4*maxConns,
+		MinRetryTime:             250 * time.Millisecond,
+		MaxRetryTime:             30 * time.Minute,
+		MaxRetryTimePersistent:   5 * time.Minute,
+		RetryTimeJitter:          5 * time.Second,
+		PrivatePeers:             privatePeerIDs,
+		Metrics:                  metrics,
 	}
 
 	peers := []p2p.NodeAddress{}
@@ -745,10 +758,8 @@ func makeNodeInfo(
 	switch cfg.BlockSync.Version {
 	case config.BlockSyncV0:
 		bcChannel = byte(bcv0.BlockSyncChannel)
-
 	case config.BlockSyncV2:
-		bcChannel = bcv2.BlockchainChannel
-
+		return types.NodeInfo{}, fmt.Errorf("unsupported blocksync version %s", cfg.BlockSync.Version)
 	default:
 		return types.NodeInfo{}, fmt.Errorf("unknown blocksync version %s", cfg.BlockSync.Version)
 	}

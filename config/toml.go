@@ -301,7 +301,9 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 # Enable the legacy p2p layer.
 use-legacy = {{ .P2P.UseLegacy }}
 
-# Select the p2p internal queue
+# Select the p2p internal queue.
+# Options are: "fifo", "simple-priority", "priority", and "wdrr"
+# with the default being "priority".
 queue-type = "{{ .P2P.QueueType }}"
 
 # Address to listen for incoming connections

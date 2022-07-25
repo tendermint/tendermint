@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 
 	"golang.org/x/net/netutil"
 
@@ -255,6 +256,7 @@ func newMConnConnection(
 // Handshake implements Connection.
 func (c *mConnConnection) Handshake(
 	ctx context.Context,
+	timeout time.Duration,
 	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 ) (types.NodeInfo, crypto.PubKey, error) {
@@ -264,6 +266,12 @@ func (c *mConnConnection) Handshake(
 		peerKey  crypto.PubKey
 		errCh    = make(chan error, 1)
 	)
+	handshakeCtx := ctx
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		handshakeCtx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
 	// To handle context cancellation, we need to do the handshake in a
 	// goroutine and abort the blocking network calls by closing the connection
 	// when the context is canceled.
@@ -276,14 +284,19 @@ func (c *mConnConnection) Handshake(
 			}
 		}()
 		var err error
-		mconn, peerInfo, peerKey, err = c.handshake(ctx, nodeInfo, privKey)
-		errCh <- err
+		mconn, peerInfo, peerKey, err = c.handshake(handshakeCtx, nodeInfo, privKey)
+
+		select {
+		case errCh <- err:
+		case <-handshakeCtx.Done():
+		}
+
 	}()
 
 	select {
-	case <-ctx.Done():
+	case <-handshakeCtx.Done():
 		_ = c.Close()
-		return types.NodeInfo{}, nil, ctx.Err()
+		return types.NodeInfo{}, nil, handshakeCtx.Err()
 
 	case err := <-errCh:
 		if err != nil {

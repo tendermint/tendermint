@@ -32,6 +32,7 @@ func main() {
 		cmd.InspectCmd,
 		cmd.RollbackStateCmd,
 		cmd.MakeKeyMigrateCommand(),
+		cmd.MakeCompactDBCommand(),
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
