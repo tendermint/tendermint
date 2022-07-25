@@ -23,8 +23,6 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
-> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master.
-
 ## Built-in app vs external app
 
 Running your application inside the same process as Tendermint Core will give
@@ -36,28 +34,27 @@ through a TCP, Unix domain socket or gRPC.
 ## 1.1 Installing Go
 
 Please refer to [the official guide for installing
-Go](https://golang.org/doc/install).
+Go](https://go.dev/doc/install).
 
 Verify that you have the latest version of Go installed:
 
-```bash
+```sh
 $ go version
-go version go1.16.x darwin/amd64
+go version go1.18.x darwin/amd64
 ```
 
 ## 1.2 Creating a new Go project
 
-We'll start by creating a new Go project.
+We'll start by creating a new Go project. First, initialize the project folder with `go mod init`. Running this command should create the `go.mod` file.
 
-```bash
-mkdir kvstore
-cd kvstore
-go mod init github.com/<github_username>/<repo_name>
+```sh
+$ mkdir kvstore
+$ cd kvstore
+$ go mod init github.com/<username>/kvstore
+go: creating new go.mod: module github.com/<username>/kvstore
 ```
 
-Inside the example directory create a `main.go` file with the following content:
-
-> Note: there is no need to clone or fork Tendermint in this tutorial.
+Inside the project directory, create a `main.go` file with the following content:
 
 ```go
 package main
@@ -73,7 +70,7 @@ func main() {
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
-```bash
+```sh
 $ go run main.go
 Hello, Tendermint Core
 ```
@@ -152,16 +149,43 @@ func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk
 }
 ```
 
-Now I will go through each method explaining when it's called and adding
+Now, we will go through each method and explain when it is executed while adding
 required business logic.
 
-### 1.3.1 CheckTx
+### 1.3.1 Key-value store setup
 
-When a new transaction is added to the Tendermint Core, it will ask the
-application to check it (validate the format, signatures, etc.).
+For the underlying key-value store we'll use the latest version of [badger](https://github.com/dgraph-io/badger), which is an embeddable, persistent and fast key-value (KV) database.
+
+```sh
+$ go get github.com/dgraph-io/badger/v3
+go: added github.com/dgraph-io/badger/v3 v3.2103.2
+```
 
 ```go
-import "bytes"
+import "github.com/dgraph-io/badger/v3"
+
+type KVStoreApplication struct {
+ db           *badger.DB
+ currentBatch *badger.Txn
+}
+
+func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
+ return &KVStoreApplication{
+  db: db,
+ }
+}
+```
+
+### 1.3.2 CheckTx
+
+When a new transaction is added to the Tendermint Core, it will ask the application to check it (validate the format, signatures, etc.).
+
+```go
+import (
+  "bytes"
+
+  ...
+)
 
 func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
  // check format
@@ -214,26 +238,7 @@ Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
 specification"](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#gas).
 
-For the underlying key-value store we'll use
-[badger](https://github.com/dgraph-io/badger), which is an embeddable,
-persistent and fast key-value (KV) database.
-
-```go
-import "github.com/dgraph-io/badger"
-
-type KVStoreApplication struct {
- db           *badger.DB
- currentBatch *badger.Txn
-}
-
-func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
- return &KVStoreApplication{
-  db: db,
- }
-}
-```
-
-### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
+### 1.3.3 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
 When Tendermint Core has decided on the block, it's transfered to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
@@ -290,7 +295,7 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 }
 ```
 
-### 1.3.3 Query
+### 1.3.4 Query
 
 Now, when the client wants to know whenever a particular key/value exist, it
 will call Tendermint Core RPC `/abci_query` endpoint, which in turn will call
@@ -348,17 +353,15 @@ import (
  "path/filepath"
  "syscall"
 
- "github.com/dgraph-io/badger"
+ "github.com/dgraph-io/badger/v3"
  "github.com/spf13/viper"
 
- abci "github.com/tendermint/tendermint/abci/types"
- cfg "github.com/tendermint/tendermint/config"
- tmflags "github.com/tendermint/tendermint/libs/cli/flags"
- "github.com/tendermint/tendermint/libs/log"
- nm "github.com/tendermint/tendermint/node"
- "github.com/tendermint/tendermint/internal/p2p"
- "github.com/tendermint/tendermint/privval"
- "github.com/tendermint/tendermint/proxy"
+  abciclient "github.com/tendermint/tendermint/abci/client"
+  abcitypes "github.com/tendermint/tendermint/abci/types"
+  tmconfig "github.com/tendermint/tendermint/config"
+  tmlog "github.com/tendermint/tendermint/libs/log"
+  tmservice "github.com/tendermint/tendermint/libs/service"
+  tmnode "github.com/tendermint/tendermint/node"
 )
 
 var configFile string
@@ -395,57 +398,42 @@ func main() {
  <-c
 }
 
-func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
- // read config
- config := cfg.DefaultValidatorConfig()
- config.RootDir = filepath.Dir(filepath.Dir(configFile))
- viper.SetConfigFile(configFile)
- if err := viper.ReadInConfig(); err != nil {
-  return nil, fmt.Errorf("viper failed to read config file: %w", err)
- }
- if err := viper.Unmarshal(config); err != nil {
-  return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
- }
- if err := config.ValidateBasic(); err != nil {
-  return nil, fmt.Errorf("config is invalid: %w", err)
- }
+func newTendermint(app abcitypes.Application, configFile string) (tmservice.Service, error) {
+	// read config
+	config := tmconfig.DefaultValidatorConfig()
+	config.SetRoot(filepath.Dir(filepath.Dir(configFile)))
 
- // create logger
- logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
- var err error
- logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
- if err != nil {
-  return nil, fmt.Errorf("failed to parse log level: %w", err)
- }
+	viper.SetConfigFile(configFile)
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("viper failed to read config file: %w", err)
+	}
+	if err := viper.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
+	}
+	if err := config.ValidateBasic(); err != nil {
+		return nil, fmt.Errorf("config is invalid: %w", err)
+	}
 
- // read private validator
- pv := privval.LoadFilePV(
-  config.PrivValidatorKeyFile(),
-  config.PrivValidatorStateFile(),
- )
+	// create logger
+	logger, err := tmlog.NewDefaultLogger(tmlog.LogFormatPlain, config.LogLevel, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
 
- // read node key
- nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
- if err != nil {
-  return nil, fmt.Errorf("failed to load node's key: %w", err)
- }
+	// create node
+	node, err := tmnode.New(
+		config,
+		logger,
+		abciclient.NewLocalCreator(app),
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
+	}
 
- // create node
- node, err := nm.NewNode(
-  config,
-  pv,
-  nodeKey,
-  abcicli.NewLocalClientCreator(app),
-  nm.DefaultGenesisDocProviderFunc(config),
-  nm.DefaultDBProvider,
-  nm.DefaultMetricsProvider(config.Instrumentation),
-  logger)
- if err != nil {
-  return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
- }
-
- return node, nil
+	return node, nil
 }
+
 ```
 
 This is a huge blob of code, so let's break it down into pieces.
@@ -469,7 +457,7 @@ This can be avoided by setting the truncate option to true, like this:
 db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
 ```
 
-Then we use it to create a Tendermint Core `Node` instance:
+Then we use it to create a Tendermint Core [Service](https://github.com/tendermint/tendermint/blob/v0.35.8/libs/service/service.go#L24) instance:
 
 ```go
 flag.Parse()
@@ -483,75 +471,48 @@ if err != nil {
 ...
 
 // create node
-node, err := nm.NewNode(
- config,
- pv,
- nodeKey,
- abcicli.NewLocalClientCreator(app),
- nm.DefaultGenesisDocProviderFunc(config),
- nm.DefaultDBProvider,
- nm.DefaultMetricsProvider(config.Instrumentation),
- logger)
+node, err := tmnode.New(
+  config,
+  logger,
+  abciclient.NewLocalCreator(app),
+  nil,
+)
 if err != nil {
- return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
+  return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
 }
 ```
 
-`NewNode` requires a few things including a configuration file, a private
-validator, a node key and a few others in order to construct the full node.
+[tmnode.New](https://github.com/tendermint/tendermint/blob/v0.35.8/node/public.go#L29) requires a few things including a configuration file, a logger and a few others in order to construct the full node.
 
-Note we use `abcicli.NewLocalClientCreator` here to create a local client instead
-of one communicating through a socket or gRPC.
+Note that we use [abciclient.NewLocalCreator](https://github.com/tendermint/tendermint/blob/v0.35.8/abci/client/creators.go#L15) here to create a local client instead of one communicating through a socket or gRPC.
 
 [viper](https://github.com/spf13/viper) is being used for reading the config,
 which we will generate later using the `tendermint init` command.
 
 ```go
-config := cfg.DefaultValidatorConfig()
-config.RootDir = filepath.Dir(filepath.Dir(configFile))
+// read config
+config := tmconfig.DefaultValidatorConfig()
+config.SetRoot(filepath.Dir(filepath.Dir(configFile)))
 viper.SetConfigFile(configFile)
 if err := viper.ReadInConfig(); err != nil {
- return nil, fmt.Errorf("viper failed to read config file: %w", err)
+  return nil, fmt.Errorf("viper failed to read config file: %w", err)
 }
 if err := viper.Unmarshal(config); err != nil {
- return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
+  return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
 }
 if err := config.ValidateBasic(); err != nil {
- return nil, fmt.Errorf("config is invalid: %w", err)
+  return nil, fmt.Errorf("config is invalid: %w", err)
 }
 ```
 
-We use `FilePV`, which is a private validator (i.e. thing which signs consensus
-messages). Normally, you would use `SignerRemote` to connect to an external
-[HSM](https://kb.certus.one/hsm.html).
+As for the logger, we use the built-in library, which provides a nice
+abstraction over [zerolog](https://github.com/rs/zerolog).
 
 ```go
-pv := privval.LoadFilePV(
- config.PrivValidatorKeyFile(),
- config.PrivValidatorStateFile(),
-)
-
-```
-
-`nodeKey` is needed to identify the node in a p2p network.
-
-```go
-nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+// create logger
+logger, err := tmlog.NewDefaultLogger(tmlog.LogFormatPlain, config.LogLevel, true)
 if err != nil {
- return nil, fmt.Errorf("failed to load node's key: %w", err)
-}
-```
-
-As for the logger, we use the build-in library, which provides a nice
-abstraction over [go-kit's
-logger](https://github.com/go-kit/kit/tree/master/log).
-
-```go
-logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-var err error
-logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
-if err != nil {
- return nil, fmt.Errorf("failed to parse log level: %w", err)
+  return nil, fmt.Errorf("failed to create logger: %w", err)
 }
 ```
 
@@ -570,40 +531,41 @@ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
 ```
 
-## 1.5 Getting Up and Running
+## 1.5 Getting up and running
 
-We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
-dependency management.
-
-```bash
-export GO111MODULE=on
-go mod init github.com/me/example
-```
-
-This should create a `go.mod` file. The current tutorial only works with
-the master branch of Tendermint. so let's make sure we're using the latest version:
+Make sure to enable [Go modules](https://github.com/golang/go/wiki/Modules). Run `go mod tidy` to download and add dependencies in `go.mod` file.
 
 ```sh
-go get github.com/tendermint/tendermint@master
+$ go mod tidy
+...
+```
+
+Let's make sure we're using the latest version of Tendermint (currently `v0.35.8`).
+
+```sh
+$ go get github.com/tendermint/tendermint@latest
+...
 ```
 
 This will populate the `go.mod` with a release number followed by a hash for Tendermint.
 
 ```go
-module github.com/me/example
+module github.com/<username>/kvstore
 
-go 1.15
+go 1.18
 
 require (
- github.com/dgraph-io/badger v1.6.2
- github.com/tendermint/tendermint <vX>
+ github.com/dgraph-io/badger/v3 v3.2103.2
+ github.com/tendermint/tendermint v0.35.8
+ ...
 )
 ```
 
-Now we can build the binary:
+Now, we can build the binary:
 
-```bash
-go build
+```sh
+$ go build
+...
 ```
 
 To create a default configuration, nodeKey and private validator files, let's
@@ -614,66 +576,87 @@ installing from source, don't forget to checkout the latest release (`git
 checkout vX.Y.Z`). Don't forget to check that the application uses the same
 major version.
 
-```bash
-$ rm -rf /tmp/example
-$ TMHOME="/tmp/example" tendermint init validator
+```sh
+$ rm -rf /tmp/kvstore /tmp/badger
+$ TMHOME="/tmp/kvstore" tendermint init validator
 
-I[2019-07-16|18:40:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
-I[2019-07-16|18:40:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
-I[2019-07-16|18:40:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
-I[2019-07-16|18:40:36.483] Generated config                             module=main mode=validator
+2022-07-20T17:04:41+08:00 INFO Generated private validator keyFile=/tmp/kvstore/config/priv_validator_key.json module=main stateFile=/tmp/kvstore/data/priv_validator_state.json
+2022-07-20T17:04:41+08:00 INFO Generated node key module=main path=/tmp/kvstore/config/node_key.json
+2022-07-20T17:04:41+08:00 INFO Generated genesis file module=main path=/tmp/kvstore/config/genesis.json
+2022-07-20T17:04:41+08:00 INFO Generated config mode=validator module=main
 ```
+
+Feel free to explore the generated files, which can be found at
+`/tmp/kvstore/config` directory. Documentation on the config can be found
+[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
-```bash
-$ ./example -config "/tmp/example/config/config.toml"
+```sh
+$ ./kvstore -config "/tmp/kvstore/config/config.toml"
 
-badger 2019/07/16 18:42:25 INFO: All 0 tables opened in 0s
-badger 2019/07/16 18:42:25 INFO: Replaying file id: 0 at offset: 0
-badger 2019/07/16 18:42:25 INFO: Replay took: 695.227s
-E[2019-07-16|18:42:25.818] Couldn't connect to any seeds                module=p2p
-I[2019-07-16|18:42:26.853] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
-I[2019-07-16|18:42:26.865] Committed state                              module=state height=1 txs=0 appHash=
+badger 2022/07/16 13:55:59 INFO: All 0 tables opened in 0s
+badger 2022/07/16 13:55:59 INFO: Replaying file id: 0 at offset: 0
+badger 2022/07/16 13:55:59 INFO: Replay took: 3.052µs
+badger 2022/07/16 13:55:59 DEBUG: Value log discard stats empty
+2022-07-16T13:55:59+08:00 INFO starting service impl=multiAppConn module=proxy service=multiAppConn
+2022-07-16T13:55:59+08:00 INFO starting service connection=query impl=localClient module=abci-client service=localClient
+2022-07-16T13:55:59+08:00 INFO starting service connection=snapshot impl=localClient module=abci-client service=localClient
+2022-07-16T13:55:59+08:00 INFO starting service connection=mempool impl=localClient module=abci-client service=localClient
+2022-07-16T13:55:59+08:00 INFO starting service connection=consensus impl=localClient module=abci-client service=localClient
+2022-07-16T13:55:59+08:00 INFO starting service impl=EventBus module=events service=EventBus
+2022-07-16T13:55:59+08:00 INFO starting service impl=PubSub module=pubsub service=PubSub
+2022-07-16T13:55:59+08:00 INFO starting service impl=IndexerService module=txindex service=IndexerService
+2022-07-16T13:55:59+08:00 INFO ABCI Handshake App Info hash= height=0 module=consensus protocol-version=0 software-version=
+2022-07-16T13:55:59+08:00 INFO ABCI Replay Blocks appHeight=0 module=consensus stateHeight=0 storeHeight=0
+2022-07-16T13:55:59+08:00 INFO Completed ABCI Handshake - Tendermint and App are synced appHash= appHeight=0 module=consensus
+2022-07-16T13:55:59+08:00 INFO Version info block=11 mode=validator p2p=8 tmVersion=0.35.8
 ```
 
-Now open another tab in your terminal and try sending a transaction:
+Let's try sending a transaction. Open another terminal and execute the below command.
 
-```bash
+```sh
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
-  "check_tx": {
-    "gasWanted": "1",
-    ...
-  },
-  "deliver_tx": { ... },
-  "hash": "1B3C5A1093DB952C331B1749A21DCCBB0F6C7F4E0055CD04D16346472FC60EC6",
-  "height": "128"
+  ...
+  "result": {
+    "check_tx": {
+      ...
+      "gas_wanted": "1",
+      ...
+    },
+    "deliver_tx": {...},
+    "hash": "1B3C5A1093DB952C331B1749A21DCCBB0F6C7F4E0055CD04D16346472FC60EC6",
+    "height": "91"
+  }
 }
 ```
 
 Response should contain the height where this transaction was committed.
 
-Now let's check if the given key now exists and its value:
+Let's check if the given key now exists and its value:
 
-```json
+```sh
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
-  "response": {
-    "code": 0,
-    "log": "exists",
-    "info": "",
-    "index": "0",
-    "key": "dGVuZGVybWludA==",
-    "value": "cm9ja3M=",
-    "proofOps": null,
-    "height": "6",
-    "codespace": ""
+  ...
+  "result": {
+    "response": {
+      "code": 0,
+      "log": "exists",
+      "info": "",
+      "index": "0",
+      "key": "dGVuZGVybWludA==",
+      "value": "cm9ja3M=",
+      "proofOps": null,
+      "height": "0",
+      "codespace": ""
+    }
   }
 }
 ```
 
-"dGVuZGVybWludA==" and "cm9ja3M=" are the base64-encoding of the ASCII of
+`dGVuZGVybWludA==` and `cm9ja3M=` are the base64-encoding of the ASCII of
 "tendermint" and "rocks" accordingly.
 
 ## Outro

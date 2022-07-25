@@ -37,25 +37,27 @@ Core will not have access to application's state.
 ## 1.1 Installing Go
 
 Please refer to [the official guide for installing
-Go](https://golang.org/doc/install).
+Go](https://go.dev/doc/install).
 
 Verify that you have the latest version of Go installed:
 
-```bash
+```sh
 $ go version
-go version go1.16.x darwin/amd64
+go version go1.18.x darwin/amd64
 ```
 
 ## 1.2 Creating a new Go project
 
-We'll start by creating a new Go project.
+We'll start by creating a new Go project. Initialize the folder with `go mod init`. Running this command should create the `go.mod` file.
 
-```bash
-mkdir kvstore
-cd kvstore
+```sh
+$ mkdir kvstore
+$ cd kvstore
+$ go mod init github.com/<username>/kvstore
+go: creating new go.mod: module github.com/<username>/kvstore
 ```
 
-Inside the example directory create a `main.go` file with the following content:
+Inside the project directory, create a `main.go` file with the following content:
 
 ```go
 package main
@@ -71,8 +73,8 @@ func main() {
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
-```bash
-go run main.go
+```sh
+$ go run main.go
 Hello, Tendermint Core
 ```
 
@@ -150,10 +152,34 @@ func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk
 }
 ```
 
-Now I will go through each method explaining when it's called and adding
+Now, we will go through each method and explain when it is executed while adding
 required business logic.
 
-### 1.3.1 CheckTx
+### 1.3.1 Key-value store setup
+
+For the underlying key-value store we'll use the latest version of [badger](https://github.com/dgraph-io/badger), which is an embeddable, persistent and fast key-value (KV) database.
+
+```sh
+$ go get github.com/dgraph-io/badger/v3
+go: added github.com/dgraph-io/badger/v3 v3.2103.2
+```
+
+```go
+import "github.com/dgraph-io/badger/v3"
+
+type KVStoreApplication struct {
+ db           *badger.DB
+ currentBatch *badger.Txn
+}
+
+func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
+ return &KVStoreApplication{
+  db: db,
+ }
+}
+```
+
+### 1.3.2 CheckTx
 
 When a new transaction is added to the Tendermint Core, it will ask the
 application to check it (validate the format, signatures, etc.).
@@ -212,26 +238,8 @@ Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
 specification"](https://github.com/tendermint/tendermint/blob/master/spec/abci/apps.md#gas).
 
-For the underlying key-value store we'll use
-[badger](https://github.com/dgraph-io/badger), which is an embeddable,
-persistent and fast key-value (KV) database.
 
-```go
-import "github.com/dgraph-io/badger"
-
-type KVStoreApplication struct {
- db           *badger.DB
- currentBatch *badger.Txn
-}
-
-func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
- return &KVStoreApplication{
-  db: db,
- }
-}
-```
-
-### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
+### 1.3.3 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
 When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
@@ -287,7 +295,7 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 }
 ```
 
-### 1.3.3 Query
+### 1.3.4 Query
 
 Now, when the client wants to know whenever a particular key/value exist, it
 will call Tendermint Core RPC `/abci_query` endpoint, which in turn will call
@@ -344,7 +352,7 @@ import (
  "os/signal"
  "syscall"
 
- "github.com/dgraph-io/badger"
+ "github.com/dgraph-io/badger/v3"
 
  abciserver "github.com/tendermint/tendermint/abci/server"
  "github.com/tendermint/tendermint/libs/log"
@@ -353,7 +361,7 @@ import (
 var socketAddr string
 
 func init() {
- flag.StringVar(&socketAddr, "socket-addr", "unix://example.sock", "Unix domain socket address")
+ flag.StringVar(&socketAddr, "socket-addr", "unix://kvstore.sock", "Unix domain socket address")
 }
 
 func main() {
@@ -426,40 +434,41 @@ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 <-c
 ```
 
-## 1.5 Getting Up and Running
+## 1.5 Getting up and running
 
-We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
-dependency management.
-
-```bash
-export GO111MODULE=on
-go mod init github.com/me/example
-```
-
-This should create a `go.mod` file. The current tutorial only works with
-the master branch of Tendermint, so let's make sure we're using the latest version:
+Make sure to enable [Go modules](https://github.com/golang/go/wiki/Modules). Run `go mod tidy` to download and add dependencies in `go.mod` file.
 
 ```sh
-go get github.com/tendermint/tendermint@97a3e44e0724f2017079ce24d36433f03124c09e
+$ go mod tidy
+...
+```
+
+Let's make sure we're using the latest version of Tendermint (currently `v0.35.8`).
+
+```sh
+$ go get github.com/tendermint/tendermint@latest
+...
 ```
 
 This will populate the `go.mod` with a release number followed by a hash for Tendermint.
 
 ```go
-module github.com/me/example
+module github.com/<username>/kvstore
 
-go 1.16
+go 1.18
 
 require (
- github.com/dgraph-io/badger v1.6.2
- github.com/tendermint/tendermint <vX>
+ github.com/dgraph-io/badger/v3 v3.2103.2
+ github.com/tendermint/tendermint v0.35.8
+ ...
 )
 ```
 
-Now we can build the binary:
+Now, we can build the binary:
 
-```bash
-go build
+```sh
+$ go build
+...
 ```
 
 To create a default configuration, nodeKey and private validator files, let's
@@ -470,94 +479,112 @@ installing from source, don't forget to checkout the latest release (`git
 checkout vX.Y.Z`). Don't forget to check that the application uses the same
 major version.
 
-```bash
-rm -rf /tmp/example
-TMHOME="/tmp/example" tendermint init validator
+```sh
+$ rm -rf /tmp/kvstore /tmp/badger
+$ TMHOME="/tmp/kvstore" tendermint init validator
 
-I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
-I[2019-07-16|18:20:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
-I[2019-07-16|18:20:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
-I[2019-07-16|18:20:36.483] Generated config                             module=main mode=validator
+2022-07-20T17:04:41+08:00 INFO Generated private validator keyFile=/tmp/kvstore/config/priv_validator_key.json module=main stateFile=/tmp/kvstore/data/priv_validator_state.json
+2022-07-20T17:04:41+08:00 INFO Generated node key module=main path=/tmp/kvstore/config/node_key.json
+2022-07-20T17:04:41+08:00 INFO Generated genesis file module=main path=/tmp/kvstore/config/genesis.json
+2022-07-20T17:04:41+08:00 INFO Generated config mode=validator module=main
 ```
 
 Feel free to explore the generated files, which can be found at
-`/tmp/example/config` directory. Documentation on the config can be found
+`/tmp/kvstore/config` directory. Documentation on the config can be found
 [here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
-```bash
-rm example.sock
-./example
+```sh
+$ rm kvstore.sock
+$ ./kvstore
 
-badger 2019/07/16 18:25:11 INFO: All 0 tables opened in 0s
-badger 2019/07/16 18:25:11 INFO: Replaying file id: 0 at offset: 0
-badger 2019/07/16 18:25:11 INFO: Replay took: 300.4s
-I[2019-07-16|18:25:11.523] Starting ABCIServer                          impl=ABCIServ
+badger 2022/07/20 17:07:17 INFO: All 1 tables opened in 9ms
+badger 2022/07/20 17:07:17 INFO: Replaying file id: 0 at offset: 256
+badger 2022/07/20 17:07:17 INFO: Replay took: 9.077µs
+badger 2022/07/20 17:07:17 DEBUG: Value log discard stats empty
+2022-07-20T17:07:17+08:00 INFO starting service impl=ABCIServer service=ABCIServer
+2022-07-20T17:07:17+08:00 INFO Waiting for new connection...
 ```
 
-Then we need to start Tendermint Core and point it to our application. Staying
-within the application directory execute:
+Then, we need to start Tendermint Core and point it to our application. Staying
+within the project directory, open another terminal and execute the command below:
 
-```bash
-TMHOME="/tmp/example" tendermint node --proxy-app=unix://example.sock
+```sh
+$ TMHOME="/tmp/kvstore" tendermint node --proxy-app=unix://kvstore.sock
 
-I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
-I[2019-07-16|18:26:20.383] Starting Node                                module=main impl=Node
-E[2019-07-16|18:26:20.392] Couldn't connect to any seeds                module=p2p
-I[2019-07-16|18:26:20.394] Started node                                 module=main nodeInfo="{ProtocolVersion:{P2P:7 Block:10 App:0} ID_:8dab80770ae8e295d4ce905d86af78c4ff634b79 ListenAddr:tcp://0.0.0.0:26656 Network:test-chain-nIO96P Version:0.32.1 Channels:4020212223303800 Moniker:app48.fun-box.ru Other:{TxIndex:on RPCAddress:tcp://127.0.0.1:26657}}"
-I[2019-07-16|18:26:21.440] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
-I[2019-07-16|18:26:21.446] Committed state                              module=state height=1 txs=0 appHash=
+2022-07-20T17:10:22+08:00 INFO starting service impl=multiAppConn module=proxy service=multiAppConn
+2022-07-20T17:10:22+08:00 INFO starting service connection=query impl=socketClient module=abci-client service=socketClient
+2022-07-20T17:10:22+08:00 INFO starting service connection=snapshot impl=socketClient module=abci-client service=socketClient
+2022-07-20T17:10:22+08:00 INFO starting service connection=mempool impl=socketClient module=abci-client service=socketClient
+2022-07-20T17:10:22+08:00 INFO starting service connection=consensus impl=socketClient module=abci-client service=socketClient
+2022-07-20T17:10:22+08:00 INFO starting service impl=EventBus module=events service=EventBus
+2022-07-20T17:10:22+08:00 INFO starting service impl=PubSub module=pubsub service=PubSub
+2022-07-20T17:10:22+08:00 INFO starting service impl=IndexerService module=txindex service=IndexerService
+...
+2022-07-20T17:10:22+08:00 INFO starting service impl=Node module=main service=Node
+2022-07-20T17:10:22+08:00 INFO Starting RPC HTTP server on 127.0.0.1:26657 module=rpc-server
+2022-07-20T17:10:22+08:00 INFO p2p service legacy_enabled=false module=main
+2022-07-20T17:10:22+08:00 INFO starting service impl=router module=p2p service=router
+2022-07-20T17:10:22+08:00 INFO starting router channels=402021222330386061626300 listen_addr=tcp://0.0.0.0:26656 module=p2p net_addr={"id":"715727499e94f8fcaef1763192ebcc8460f44666","ip":"0.0.0.0","port":26656} node_id=715727499e94f8fcaef1763192ebcc8460f44666
+...
 ```
 
 This should start the full node and connect to our ABCI application.
 
 ```sh
-I[2019-07-16|18:25:11.525] Waiting for new connection...
-I[2019-07-16|18:26:20.329] Accepted a new connection
-I[2019-07-16|18:26:20.329] Waiting for new connection...
-I[2019-07-16|18:26:20.330] Accepted a new connection
-I[2019-07-16|18:26:20.330] Waiting for new connection...
-I[2019-07-16|18:26:20.330] Accepted a new connection
+2022-07-20T17:09:55+08:00 INFO Waiting for new connection...
+2022-07-20T17:10:22+08:00 INFO Accepted a new connection
+2022-07-20T17:10:22+08:00 INFO Waiting for new connection...
+2022-07-20T17:10:22+08:00 INFO Accepted a new connection
+2022-07-20T17:10:22+08:00 INFO Waiting for new connection...
+2022-07-20T17:10:22+08:00 INFO Accepted a new connection
 ```
 
-Now open another tab in your terminal and try sending a transaction:
+Let's try sending a transaction. Open another terminal and execute the below command.
 
-```json
+```sh
 $ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 {
-  "check_tx": {
-    "gasWanted": "1",
-    ...
-  },
-  "deliver_tx": { ... },
-  "hash": "CDD3C6DFA0A08CAEDF546F9938A2EEC232209C24AA0E4201194E0AFB78A2C2BB",
-  "height": "33"
+  ...
+  "result": {
+    "check_tx": {
+      ...
+      "gas_wanted": "1",
+      ...
+    },
+    "deliver_tx": { ... },
+    "hash": "1B3C5A1093DB952C331B1749A21DCCBB0F6C7F4E0055CD04D16346472FC60EC6",
+    "height": "15"
+  }
 }
 ```
 
 Response should contain the height where this transaction was committed.
 
-Now let's check if the given key now exists and its value:
+Let's check if the given key now exists and its value:
 
-```json
+```sh
 $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 {
-  "response": {
-    "code": 0,
-    "log": "exists",
-    "info": "",
-    "index": "0",
-    "key": "dGVuZGVybWludA==",
-    "value": "cm9ja3M=",
-    "proofOps": null,
-    "height": "6",
-    "codespace": ""
+  ...
+  "result": {
+    "response": {
+      "code": 0,
+      "log": "exists",
+      "info": "",
+      "index": "0",
+      "key": "dGVuZGVybWludA==",
+      "value": "cm9ja3M=",
+      "proofOps": null,
+      "height": "0",
+      "codespace": ""
+    }
   }
 }
 ```
 
-"dGVuZGVybWludA==" and "cm9ja3M=" are the base64-encoding of the ASCII of
+`dGVuZGVybWludA==` and `cm9ja3M=` are the base64-encoding of the ASCII of
 "tendermint" and "rocks" accordingly.
 
 ## Outro
