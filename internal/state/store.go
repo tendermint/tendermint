@@ -89,7 +89,7 @@ type Store interface {
 	// LoadABCIResponses loads the abciResponse for a given height
 	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
 	//LoadLastABCIResponse loads the last abciResponse for a given height
-	LoadLastABCIResponse(int64) (*tmstate.ABCIResponsesInfo, error)
+	LoadLastABCIResponse(int64) (*tmstate.ABCIResponses, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
@@ -454,7 +454,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // This is used for recovering from crashes where we called app.Commit and
 // before we called s.Save(). It can also be used to produce Merkle proofs of
 // the result of txs.
-func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponsesInfo, error) {
+func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
 	bz, err := store.db.Get(lastABCIResponseKey)
 	if err != nil {
 		return nil, err
@@ -476,7 +476,7 @@ func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponsesI
 	if height != abciResponse.GetHeight() {
 		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
 	} else {
-		return abciResponse, nil
+		return abciResponse.AbciResponses, nil
 	}
 }
 

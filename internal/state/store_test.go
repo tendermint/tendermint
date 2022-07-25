@@ -307,6 +307,13 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 }
 
 func TestLastABCIResponses(t *testing.T) {
+	//if the state store is empty
+	stateDB := dbm.NewMemDB()
+	stateStore := sm.NewStore(stateDB, false)
+	responses, err := stateStore.LoadABCIResponses(1)
+	require.Nil(t, responses)
+	fmt.Println(responses)
+
 	//stub the abciresponses
 	response1 := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
@@ -316,18 +323,18 @@ func TestLastABCIResponses(t *testing.T) {
 		EndBlock: &abci.ResponseEndBlock{},
 	}
 	//Create new db and state store and set discard abciresponses to false
-	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB, false)
+	stateDB = dbm.NewMemDB()
+	stateStore = sm.NewStore(stateDB, false)
 	height := int64(response1.Size())
 	//save the last abci response
-	err := stateStore.SaveABCIResponses(height, response1)
+	err = stateStore.SaveABCIResponses(height, response1)
 	require.NoError(t, err)
 	//search for the last abciresponse and check if it has saved
 	lastResponse, err := stateStore.LoadLastABCIResponse(height)
 	require.NoError(t, err)
 	fmt.Println(lastResponse)
 	//check to see if the saved response height is the same as the loaded height
-	assert.Equal(t, lastResponse.Height, int64(response1.Size()))
+	assert.Equal(t, int64(lastResponse.Size()), int64(response1.Size()))
 
 	//stub the second abciresponse
 	response2 := &tmstate.ABCIResponses{
@@ -350,9 +357,9 @@ func TestLastABCIResponses(t *testing.T) {
 	require.NotNil(t, lastResponse2)
 	fmt.Println(lastResponse2)
 	//check to see if the saved response height is the same as the loaded height
-	assert.Equal(t, lastResponse2.Height, int64(response2.Size()))
+	assert.Equal(t, int64(lastResponse2.Size()), int64(response2.Size()))
 	//check if the abci response didnt save in the abciresponses
-	responses, err := stateStore.LoadABCIResponses(height)
+	responses, err = stateStore.LoadABCIResponses(height)
 	require.Error(t, err, responses)
 	require.Nil(t, responses)
 	fmt.Println(responses)
