@@ -25,5 +25,6 @@ Special thanks to external contributors on this release:
 ### IMPROVEMENTS
 
 - (indexer) \#8625 Fix overriding tx index of duplicated txs.
+- [config] \##9054 Flag added to overwrite abciresponses.
 
 ### BUG FIXES
