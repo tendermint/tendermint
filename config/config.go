@@ -584,7 +584,7 @@ func DefaultRPCConfig() *RPCConfig {
 
 		TLSCertFile:          "",
 		TLSKeyFile:           "",
-		DiscardABCIResponses: true,
+		DiscardABCIResponses: false,
 	}
 }
 
