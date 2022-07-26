@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	sf "github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	mmock "github.com/tendermint/tendermint/mempool/mock"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -23,11 +22,10 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	sf "github.com/tendermint/tendermint/state/test/factory"
-	"github.com/tendermint/tendermint/store"
+	"github.com/tendermint/tendermint/test/factory"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -230,10 +228,8 @@ func TestProcessProposal(t *testing.T) {
 		state, stateDB, _ := makeState(1, height)
 		stateStore := sm.NewStore(stateDB)
 
-		blockStore := store.NewBlockStore(dbm.NewMemDB())
-
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-			mmock.Mempool{}, sm.EmptyEvidencePool{}, blockStore)
+			mmock.Mempool{}, sm.EmptyEvidencePool{})
 
 		block := sf.MakeBlock(state, int64(height), new(types.Commit))
 		block.Txs = txs
@@ -241,10 +237,10 @@ func TestProcessProposal(t *testing.T) {
 		require.Nil(t, err)
 		require.Equal(t, expectAccept, acceptBlock)
 	}
-	goodTxs := sf.MakeTenTxs(int64(height))
+	goodTxs := factory.MakeTenTxs(int64(height))
 	runTest(goodTxs, true)
 	// testApp has process proposal fail if any tx is 0-len
-	badTxs := sf.MakeTenTxs(int64(height))
+	badTxs := factory.MakeTenTxs(int64(height))
 	badTxs[0] = types.Tx{}
 	runTest(badTxs, false)
 }
