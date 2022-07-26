@@ -36,6 +36,7 @@ message Request {
     RequestOfferSnapshot      offer_snapshot       = 13;
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
     RequestApplySnapshotChunk apply_snapshot_chunk = 15;
+    RequestPrepareProposal    prepare_proposal     = 16;
   }
 }
 
@@ -75,10 +76,10 @@ message RequestQuery {
 }
 
 message RequestBeginBlock {
-  bytes                   hash             = 1;
-  tendermint.types.Header header           = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo          last_commit_info = 3 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators   = 4 [(gogoproto.nullable) = false];
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
+  repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -124,6 +125,21 @@ message RequestApplySnapshotChunk {
   string sender = 3;
 }
 
+message RequestPrepareProposal {
+  // the modified transactions cannot exceed this size.
+  int64 max_tx_bytes = 1;
+  // txs is an array of transactions that will be included in a block,
+  // sent to the app for possible modifications.
+  repeated bytes            txs                  = 2;
+  LastCommitInfo            local_last_commit    = 3 [(gogoproto.nullable) = false];
+  repeated Misbehavior      misbehavior          = 4 [(gogoproto.nullable) = false];
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // address of the public key of the validator proposing the block.
+  bytes proposer_address = 8;
+}
+
 //----------------------------------------
 // Response types
 
@@ -145,6 +161,7 @@ message Response {
     ResponseOfferSnapshot      offer_snapshot       = 14;
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
+    ResponsePrepareProposal    prepare_proposal     = 17;
   }
 }
 
@@ -234,7 +251,7 @@ message ResponseDeliverTx {
 }
 
 message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable) = false];
+  repeated ValidatorUpdate validator_updates       = 1 [(gogoproto.nullable) = false];
   ConsensusParams          consensus_param_updates = 2;
   repeated Event           events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
@@ -280,6 +297,10 @@ message ResponseApplySnapshotChunk {
     RETRY_SNAPSHOT  = 4;  // Retry snapshot (combine with refetch and reject)
     REJECT_SNAPSHOT = 5;  // Reject this snapshot, try others
   }
+}
+
+message ResponsePrepareProposal {
+  repeated TxRecord tx_records = 1;
 }
 
 //----------------------------------------
@@ -335,6 +356,19 @@ message TxResult {
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
+message TxRecord {
+  TxAction action = 1;
+  bytes    tx     = 2;
+
+  // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
+  enum TxAction {
+    UNKNOWN    = 0;  // Unknown action
+    UNMODIFIED = 1;  // The Application did not modify this transaction.
+    ADDED      = 2;  // The Application added this transaction.
+    REMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
+  }
+}
+
 //----------------------------------------
 // Blockchain Types
 
@@ -357,14 +391,14 @@ message VoteInfo {
   bool      signed_last_block = 2;
 }
 
-enum EvidenceType {
+enum MisbehaviorType {
   UNKNOWN             = 0;
   DUPLICATE_VOTE      = 1;
   LIGHT_CLIENT_ATTACK = 2;
 }
 
-message Evidence {
-  EvidenceType type = 1;
+message Misbehavior {
+  MisbehaviorType type = 1;
   // The offending validator
   Validator validator = 2 [(gogoproto.nullable) = false];
   // The height when the offense occurred
@@ -410,4 +444,5 @@ service ABCIApplication {
       returns (ResponseLoadSnapshotChunk);
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk)
       returns (ResponseApplySnapshotChunk);
+  rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
 }

@@ -220,7 +220,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 	evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 	evpool.On("Update", mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 	evpool.On("ABCIEvidence", mock.AnythingOfType("int64"), mock.AnythingOfType("[]types.Evidence")).Return(
-		[]abci.Evidence{})
+		[]abci.Misbehavior{})
 
 	state.ConsensusParams.Evidence.MaxBytes = 1000
 	blockExec := sm.NewBlockExecutor(

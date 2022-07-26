@@ -126,7 +126,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 
 	// Punish validators who committed equivocation.
 	for _, ev := range req.ByzantineValidators {
-		if ev.Type == types.EvidenceType_DUPLICATE_VOTE {
+		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
 			addr := string(ev.Validator.Address)
 			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
 				app.updateValidator(types.ValidatorUpdate{
@@ -168,6 +168,11 @@ func (app *PersistentKVStoreApplication) OfferSnapshot(
 func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 	req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
 	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
+}
+
+func (app *PersistentKVStoreApplication) PrepareProposal(
+	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
+	return types.ResponsePrepareProposal{}
 }
 
 //---------------------------------------------
