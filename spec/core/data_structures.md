@@ -421,14 +421,14 @@ func SumTruncated(bz []byte) []byte {
 | block     | [BlockParams](#blockparams)         | Parameters limiting the size of a block and time between consecutive blocks.              | 1            |
 | evidence  | [EvidenceParams](#evidenceparams)   | Parameters limiting the validity of evidence of Byzantine behaviour.                      | 2            |
 | validator | [ValidatorParams](#validatorparams) | Parameters limiting the types of public keys validators can use.                          | 3            |
-| version   | [BlockParams](#blockparams)         | The ABCI application version.                                                             | 4            |
+| version   | [VersionParams](#versionparams)         | The ABCI application version.                                                             | 4            |
 | synchrony | [SynchronyParams](#synchronyparams) | Are used to define the validity of block timestamps.                               | 5            |
 | timeout   | [TimeoutParams](#timeoutparams)     | Configure the timings of the steps of the Tendermint consensus algorithm.   | 6            |
-| ABCI      | [ABCIParams](#abciparams)           | ABCIParams configure ABCI functionality specific to the Application Blockchain Interface. | 7            |
+| ABCI      | [ABCIParams](#abciparams)           | Configuration settings for checks on transactions along with vote extension validation Interface. | 7            |
 
 
 ### HashedParams
-Hashed Params is a subset of Consensus Params, it is amino encoded and hashed into the Header.ConsensusHash.
+Hashed Params is a subset of Consensus Params, it is proto encoded and hashed into the Header.ConsensusHash.
 
 | Name            | Type  | Description                                                                                                                                                                                                     | Field Number |
 |-----------------|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
@@ -467,7 +467,7 @@ Hashed Params is a subset of Consensus Params, it is amino encoded and hashed in
 | Name          | Type   | Description                   | Field Number |
 |---------------|--------|-------------------------------|--------------|
 | message_delay | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Maximum duration for a proposal message to reach all validators on a network | 1            |
-| precision     | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Bound for how skewed a proposer's clock may be from any validator on the network while still producing valid proposals. | 2            |
+| precision     | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | This sets a bound on how skewed a proposer's clock may be from any validator on the network while still producing valid proposals. | 2            |
 
 ### TimeoutParams
 
