@@ -104,7 +104,8 @@ func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepa
 }
 
 func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
-	return ResponseProcessProposal{}
+	return ResponseProcessProposal{
+		Result: ResponseProcessProposal_ACCEPT}
 }
 
 //-------------------------------------------------------
