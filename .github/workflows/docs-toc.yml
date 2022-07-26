@@ -1,0 +1,21 @@
+# TODO(thane): Re-enable once we've pulled in the ADRs and RFCs from master.
+# Verify that important design docs have ToC entries.
+#name: Check documentation ToC
+#on:
+#  pull_request:
+#    push:
+#      branches:
+#        - main
+#
+#jobs:
+#  check:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: technote-space/get-diff-action@v6
+#        with:
+#          PATTERNS: |
+#            docs/architecture/**
+#            docs/rfc/**
+#      - run: ./docs/presubmit.sh
+#        if: env.GIT_DIFF
