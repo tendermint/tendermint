@@ -39,7 +39,7 @@ func calcABCIResponsesKey(height int64) []byte {
 
 //----------------------
 
-//go:generate mockery --case underscore --name Store
+//go:generate ../scripts/mockery_generate.sh Store
 
 // Store defines the state store interface
 //
