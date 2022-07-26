@@ -101,7 +101,7 @@ func (q *Query) Conditions() ([]Condition, error) {
 	buffer, begin, end := q.parser.Buffer, 0, 0
 
 	// tokens must be in the following order: tag ("tx.gas") -> operator ("=") -> operand ("7")
-	for token := range q.parser.Tokens() {
+	for _, token := range q.parser.Tokens() {
 		switch token.pegRule {
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
@@ -213,7 +213,7 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 	// tokens must be in the following order:
 
 	// tag ("tx.gas") -> operator ("=") -> operand ("7")
-	for token := range q.parser.Tokens() {
+	for _, token := range q.parser.Tokens() {
 		switch token.pegRule {
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
