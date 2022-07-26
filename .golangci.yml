@@ -24,16 +24,16 @@ linters:
     - govet
     - ineffassign
     # - interfacer
-    - lll
+    # - lll
     # - maligned
-    # - misspell
+    - misspell
     - nakedret
     - nolintlint
     - prealloc
     - staticcheck
     - structcheck
     - stylecheck
-    # - typecheck
+    - typecheck
     - unconvert
     # - unparam
     - unused
@@ -46,25 +46,14 @@ issues:
     - path: _test\.go
       linters:
         - gosec
-    - linters:
-        - lll
-      source: "https://"
   max-same-issues: 50
 
 linters-settings:
   dogsled:
     max-blank-identifiers: 3
-  maligned:
-    suggest-new: true
-  # govet:
-  #   check-shadowing: true
-  revive:
+  golint:
     min-confidence: 0
   maligned:
     suggest-new: true
   misspell:
     locale: US
-    ignore-words:
-      - behaviour
-
-
