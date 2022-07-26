@@ -8,10 +8,9 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 )
 
-func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infra.TestnetInfra) error {
+func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet) error {
 	if len(testnet.Nodes) == 0 {
 		return fmt.Errorf("no nodes in testnet")
 	}
@@ -45,7 +44,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infr
 	for len(nodeQueue) > 0 && nodeQueue[0].StartAt == 0 {
 		node := nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
-		if err := ti.StartNode(ctx, node); err != nil {
+		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
 
@@ -59,7 +58,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infr
 			return err
 		}
 		node.HasStarted = true
-		logger.Info(fmt.Sprintf("Node %v up on http://%v:%v", node.IP, node.Name, node.ProxyPort))
+		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v", node.Name, node.ProxyPort))
 	}
 
 	networkHeight := testnet.InitialHeight
@@ -107,7 +106,7 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infr
 			}
 		}
 
-		if err := ti.StartNode(ctx, node); err != nil {
+		if err := execCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
 
@@ -129,8 +128,8 @@ func Start(ctx context.Context, logger log.Logger, testnet *e2e.Testnet, ti infr
 		} else {
 			lastNodeHeight = status.SyncInfo.LatestBlockHeight
 		}
-		logger.Info(fmt.Sprintf("Node %v up on http://%v:%v at height %v",
-			node.IP, node.Name, node.ProxyPort, lastNodeHeight))
+		logger.Info(fmt.Sprintf("Node %v up on http://127.0.0.1:%v at height %v",
+			node.Name, node.ProxyPort, lastNodeHeight))
 	}
 
 	return nil
