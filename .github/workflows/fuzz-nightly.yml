@@ -28,6 +28,16 @@ jobs:
         run: timeout -s SIGINT --preserve-status 10m make fuzz-mempool
         continue-on-error: true
 
+      - name: Fuzz p2p-addrbook
+        working-directory: test/fuzz
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-addrbook
+        continue-on-error: true
+
+      - name: Fuzz p2p-pex
+        working-directory: test/fuzz
+        run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-pex
+        continue-on-error: true
+
       - name: Fuzz p2p-sc
         working-directory: test/fuzz
         run: timeout -s SIGINT --preserve-status 10m make fuzz-p2p-sc
