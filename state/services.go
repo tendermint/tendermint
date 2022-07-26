@@ -12,7 +12,7 @@ import (
 //------------------------------------------------------
 // blockstore
 
-//go:generate mockery --case underscore --name BlockStore
+//go:generate ../scripts/mockery_generate.sh BlockStore
 
 // BlockStore defines the interface used by the ConsensusState.
 type BlockStore interface {
@@ -38,7 +38,7 @@ type BlockStore interface {
 //-----------------------------------------------------------------------------
 // evidence pool
 
-//go:generate mockery --case underscore --name EvidencePool
+//go:generate ../scripts/mockery_generate.sh EvidencePool
 
 // EvidencePool defines the EvidencePool interface used by State.
 type EvidencePool interface {
