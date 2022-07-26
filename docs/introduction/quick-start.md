@@ -84,7 +84,7 @@ and query the key:
 curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
-where the value is returned in hex.
+where the value is returned in base64.
 
 ## Cluster of Nodes
 
