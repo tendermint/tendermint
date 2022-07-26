@@ -222,7 +222,7 @@ func TestProcessProposal(t *testing.T) {
 		cc := proxy.NewLocalClientCreator(app)
 		proxyApp := proxy.NewAppConns(cc)
 		err := proxyApp.Start()
-		require.Nil(t, err)
+		require.NoError(t, err)
 		defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 		state, stateDB, _ := makeState(1, height)
@@ -234,7 +234,7 @@ func TestProcessProposal(t *testing.T) {
 		block := sf.MakeBlock(state, int64(height), new(types.Commit))
 		block.Txs = txs
 		acceptBlock, err := blockExec.ProcessProposal(block)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Equal(t, expectAccept, acceptBlock)
 	}
 	goodTxs := factory.MakeTenTxs(int64(height))
