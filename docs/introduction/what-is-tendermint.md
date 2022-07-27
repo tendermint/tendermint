@@ -103,9 +103,9 @@ Another example of a cryptocurrency application built on Tendermint is
 to Tendermint, but is more opinionated about how the state is managed,
 and requires that all application behaviour runs in potentially many
 docker containers, modules it calls "chaincode". It uses an
-implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf).
+implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf)
 from a team at IBM that is augmented to handle potentially non-deterministic
-chaincode It is possible to implement this docker-based behaviour as a ABCI app
+chaincode. It is possible to implement this docker-based behaviour as a ABCI app
 in Tendermint, though extending Tendermint to handle non-determinism remains
 for future work.
 

@@ -282,7 +282,9 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
-# Select the p2p internal queue
+# Select the p2p internal queue.
+# Options are: "fifo" and "simple-priority", and "priority",
+# with the default being "simple-priority".
 queue-type = "{{ .P2P.QueueType }}"
 
 # Address to listen for incoming connections
@@ -308,6 +310,10 @@ upnp = {{ .P2P.UPNP }}
 
 # Maximum number of connections (inbound and outbound).
 max-connections = {{ .P2P.MaxConnections }}
+
+# Maximum number of connections reserved for outgoing
+# connections. Must be less than max-connections
+max-outgoing-connections = {{ .P2P.MaxOutgoingConnections }}
 
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}

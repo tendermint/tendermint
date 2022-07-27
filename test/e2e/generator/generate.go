@@ -115,7 +115,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Nodes:            map[string]*e2e.ManifestNode{},
 		KeyType:          keyType.Choose(r).(string),
 		Evidence:         evidence.Choose(r).(int),
-		QueueType:        "priority",
+		QueueType:        "simple-priority",
 		TxSize:           opt["txSize"].(int),
 	}
 
