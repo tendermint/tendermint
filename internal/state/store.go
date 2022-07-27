@@ -452,8 +452,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // height that is given
 //
 // This is used for recovering from crashes where we called app.Commit and
-// before we called s.Save(). It can also be used to produce Merkle proofs of
-// the result of txs.
+// before we called s.Save()
 func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
 	bz, err := store.db.Get(lastABCIResponseKey)
 	if err != nil {
