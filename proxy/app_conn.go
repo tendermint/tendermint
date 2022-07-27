@@ -80,7 +80,8 @@ func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.R
 	return app.appConn.InitChainSync(req)
 }
 
-func (app *appConnConsensus) PrepareProposalSync(req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+func (app *appConnConsensus) PrepareProposalSync(
+	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	return app.appConn.PrepareProposalSync(req)
 }
 

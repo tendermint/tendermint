@@ -427,7 +427,8 @@ func (cli *grpcClient) ApplySnapshotChunkSync(
 	return cli.finishSyncCall(reqres).GetApplySnapshotChunk(), cli.Error()
 }
 
-func (cli *grpcClient) PrepareProposalSync(params types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+func (cli *grpcClient) PrepareProposalSync(
+	params types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
 	reqres := cli.PrepareProposalAsync(params)
 	return cli.finishSyncCall(reqres).GetPrepareProposal(), cli.Error()
 }
