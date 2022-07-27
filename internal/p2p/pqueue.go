@@ -208,13 +208,11 @@ func (s *pqScheduler) process(ctx context.Context) {
 							} else {
 								pqEnvTmpChIDStr := strconv.Itoa(int(pqEnvTmp.envelope.ChannelID))
 								s.metrics.PeerQueueDroppedMsgs.With("ch_id", pqEnvTmpChIDStr).Add(1)
-								s.logger.Debug(
-									"dropped envelope",
+								s.logger.Debug("dropped envelope",
 									"ch_id", pqEnvTmpChIDStr,
 									"priority", pqEnvTmp.priority,
 									"msg_size", pqEnvTmp.size,
-									"capacity", s.capacity,
-								)
+									"capacity", s.capacity)
 
 								s.metrics.PeerPendingSendBytes.With("peer_id", string(pqEnvTmp.envelope.To)).Add(float64(-pqEnvTmp.size))
 
@@ -238,13 +236,11 @@ func (s *pqScheduler) process(ctx context.Context) {
 					// There is not sufficient capacity to drop lower priority Envelopes,
 					// so we drop the incoming Envelope.
 					s.metrics.PeerQueueDroppedMsgs.With("ch_id", chIDStr).Add(1)
-					s.logger.Debug(
-						"dropped envelope",
+					s.logger.Debug("dropped envelope",
 						"ch_id", chIDStr,
 						"priority", pqEnv.priority,
 						"msg_size", pqEnv.size,
-						"capacity", s.capacity,
-					)
+						"capacity", s.capacity)
 				}
 			}
 

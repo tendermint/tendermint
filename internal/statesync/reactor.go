@@ -686,37 +686,31 @@ func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope *p2p.Envel
 func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope, chunkCh p2p.Channel) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ChunkRequest:
-		r.logger.Debug(
-			"received chunk request",
+		r.logger.Debug("received chunk request",
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From,
-		)
+			"peer", envelope.From)
 		resp, err := r.conn.LoadSnapshotChunk(ctx, &abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
 		})
 		if err != nil {
-			r.logger.Error(
-				"failed to load chunk",
+			r.logger.Error("failed to load chunk",
 				"height", msg.Height,
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From,
-			)
+				"peer", envelope.From)
 			return nil
 		}
 
-		r.logger.Debug(
-			"sending chunk",
+		r.logger.Debug("sending chunk",
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From,
-		)
+			"peer", envelope.From)
 		if err := chunkCh.Send(ctx, p2p.Envelope{
 			To: envelope.From,
 			Message: &ssproto.ChunkResponse{
@@ -739,13 +733,11 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 			return nil
 		}
 
-		r.logger.Debug(
-			"received chunk; adding to sync",
+		r.logger.Debug("received chunk; adding to sync",
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From,
-		)
+			"peer", envelope.From)
 		_, err := r.syncer.AddChunk(&chunk{
 			Height: msg.Height,
 			Format: msg.Format,
@@ -754,14 +746,12 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 			Sender: envelope.From,
 		})
 		if err != nil {
-			r.logger.Error(
-				"failed to add chunk",
+			r.logger.Error("failed to add chunk",
 				"height", msg.Height,
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From,
-			)
+				"peer", envelope.From)
 			return nil
 		}
 

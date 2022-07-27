@@ -10,6 +10,7 @@ import (
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -1113,7 +1114,7 @@ func (r *Reactor) handleDataMessage(ctx context.Context, envelope *p2p.Envelope,
 	}
 
 	if r.WaitSync() {
-		logger.Info("ignoring message received during sync", "msg", fmt.Sprintf("%T", msgI))
+		logger.Info("ignoring message received during sync", "msg", tmstrings.LazySprintf("%T", msgI))
 		return nil
 	}
 

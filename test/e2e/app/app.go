@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -484,7 +485,10 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 		time.Sleep(time.Duration(app.cfg.VoteExtensionDelayMS) * time.Millisecond)
 	}
 
-	app.logger.Info("generated vote extension", "num", num, "ext", fmt.Sprintf("%x", ext[:extLen]), "state.Height", app.state.Height)
+	app.logger.Info("generated vote extension",
+		"num", num,
+		"ext", tmstrings.LazySprintf("%x", ext[:extLen]),
+		"state.Height", app.state.Height)
 	return &abci.ResponseExtendVote{
 		VoteExtension: ext[:extLen],
 	}, nil
