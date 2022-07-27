@@ -7,7 +7,7 @@ name: Check generated code
 on:
   pull_request:
     branches:
-      - v0.34.x
+      - main
 
 permissions:
   contents: read
