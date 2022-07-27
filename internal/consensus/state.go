@@ -16,8 +16,15 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+<<<<<<< HEAD
 	"github.com/tendermint/tendermint/internal/libs/fail"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+=======
+	"github.com/tendermint/tendermint/internal/eventbus"
+	"github.com/tendermint/tendermint/internal/jsontypes"
+	"github.com/tendermint/tendermint/internal/libs/autofile"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 	sm "github.com/tendermint/tendermint/internal/state"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -666,11 +673,14 @@ func (cs *State) updateToState(state sm.State) {
 		// signal the new round step, because other services (eg. txNotifier)
 		// depend on having an up-to-date peer state!
 		if state.LastBlockHeight <= cs.state.LastBlockHeight {
+<<<<<<< HEAD
 			cs.Logger.Debug(
 				"ignoring updateToState()",
+=======
+			cs.logger.Debug("ignoring updateToState()",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 				"new_height", state.LastBlockHeight+1,
-				"old_height", cs.state.LastBlockHeight+1,
-			)
+				"old_height", cs.state.LastBlockHeight+1)
 			cs.newStep()
 			return
 		}
@@ -903,12 +913,15 @@ func (cs *State) handleMsg(mi msgInfo) {
 		}
 
 		if err != nil && msg.Round != cs.Round {
+<<<<<<< HEAD
 			cs.Logger.Debug(
 				"received block part from wrong round",
+=======
+			cs.logger.Debug("received block part from wrong round",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 				"height", cs.Height,
 				"cs_round", cs.Round,
-				"block_round", msg.Round,
-			)
+				"block_round", msg.Round)
 			err = nil
 		}
 
@@ -936,7 +949,11 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// We could make note of this and help filter in broadcastHasVoteMessage().
 
 	default:
+<<<<<<< HEAD
 		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
+=======
+		cs.logger.Error("unknown msg type", "type", tmstrings.LazySprintf("%T", msg))
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 		return
 	}
 
@@ -1041,10 +1058,10 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != cstypes.RoundStepNewHeight) {
-		logger.Debug(
-			"entering new round with invalid args",
-			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-		)
+		logger.Debug("entering new round with invalid args",
+			"height", cs.Height,
+			"round", cs.Round,
+			"step", cs.Step)
 		return
 	}
 
@@ -1052,7 +1069,10 @@ func (cs *State) enterNewRound(height int64, round int32) {
 		logger.Debug("need to set a buffer and log message here for sanity", "start_time", cs.StartTime, "now", now)
 	}
 
-	logger.Debug("entering new round", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering new round",
+		"height", cs.Height,
+		"round", cs.Round,
+		"step", cs.Step)
 
 	// increment validators if necessary
 	validators := cs.Validators
@@ -1120,14 +1140,31 @@ func (cs *State) enterPropose(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPropose <= cs.Step) {
-		logger.Debug(
-			"entering propose step with invalid args",
-			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-		)
+		logger.Debug("entering propose step with invalid args",
+			"height", cs.Height,
+			"round", cs.Round,
+			"step", cs.Step)
 		return
 	}
 
+<<<<<<< HEAD
 	logger.Debug("entering propose step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+=======
+	// If this validator is the proposer of this round, and the previous block time is later than
+	// our local clock time, wait to propose until our local clock time has passed the block time.
+	if cs.privValidatorPubKey != nil && cs.isProposer(cs.privValidatorPubKey.Address()) {
+		proposerWaitTime := proposerWaitTime(tmtime.DefaultSource{}, cs.state.LastBlockTime)
+		if proposerWaitTime > 0 {
+			cs.scheduleTimeout(proposerWaitTime, height, round, cstypes.RoundStepNewRound)
+			return
+		}
+	}
+
+	logger.Debug("entering propose step",
+		"height", cs.Height,
+		"round", cs.Round,
+		"step", cs.Step)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 
 	defer func() {
 		// Done enterPropose:
@@ -1168,18 +1205,22 @@ func (cs *State) enterPropose(height int64, round int32) {
 		return
 	}
 
+<<<<<<< HEAD
 	if cs.isProposer(address) {
 		logger.Debug(
 			"propose step; our turn to propose",
 			"proposer", address,
 		)
+=======
+	if cs.isProposer(addr) {
+		logger.Debug("propose step; our turn to propose",
+			"proposer", addr)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 
 		cs.decideProposal(height, round)
 	} else {
-		logger.Debug(
-			"propose step; not our turn to propose",
-			"proposer", cs.Validators.GetProposer().Address,
-		)
+		logger.Debug("propose step; not our turn to propose",
+			"proposer", cs.Validators.GetProposer().Address)
 	}
 }
 
@@ -1298,10 +1339,10 @@ func (cs *State) enterPrevote(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevote <= cs.Step) {
-		logger.Debug(
-			"entering prevote step with invalid args",
-			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-		)
+		logger.Debug("entering prevote step with invalid args",
+			"height", cs.Height,
+			"round", cs.Round,
+			"step", cs.Step)
 		return
 	}
 
@@ -1311,7 +1352,10 @@ func (cs *State) enterPrevote(height int64, round int32) {
 		cs.newStep()
 	}()
 
-	logger.Debug("entering prevote step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering prevote step",
+		"height", cs.Height,
+		"round", cs.Round,
+		"step", cs.Step)
 
 	// Sign and broadcast vote as necessary
 	cs.doPrevote(height, round)
@@ -1330,10 +1374,22 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
+<<<<<<< HEAD
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
 		logger.Debug("prevote step: ProposalBlock is nil")
 		cs.signAddVote(tmproto.PrevoteType, nil, types.PartSetHeader{})
+=======
+	sp := cs.state.ConsensusParams.Synchrony.SynchronyParamsOrDefaults()
+	//TODO: Remove this temporary fix when the complete solution is ready. See #8739
+	if !cs.replayMode && cs.Proposal.POLRound == -1 && cs.LockedRound == -1 && !cs.proposalIsTimely() {
+		logger.Debug("prevote step: Proposal is not timely; prevoting nil",
+			"proposed", tmtime.Canonical(cs.Proposal.Timestamp).Format(time.RFC3339Nano),
+			"received", tmtime.Canonical(cs.ProposalReceiveTime).Format(time.RFC3339Nano),
+			"msg_delay", sp.MessageDelay,
+			"precision", sp.Precision)
+		cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 		return
 	}
 
@@ -1346,11 +1402,75 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 		return
 	}
 
+<<<<<<< HEAD
 	// Prevote cs.ProposalBlock
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
 	logger.Debug("prevote step: ProposalBlock is valid")
 	cs.signAddVote(tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+=======
+	/*
+		22: upon <PROPOSAL, h_p, round_p, v, −1> from proposer(h_p, round_p) while step_p = propose do
+		23: if valid(v) && (lockedRound_p = −1 || lockedValue_p = v) then
+		24: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		Here, cs.Proposal.POLRound corresponds to the -1 in the above algorithm rule.
+		This means that the proposer is producing a new proposal that has not previously
+		seen a 2/3 majority by the network.
+
+		If we have already locked on a different value that is different from the proposed value,
+		we prevote nil since we are locked on a different value. Otherwise, if we're not locked on a block
+		or the proposal matches our locked block, we prevote the proposal.
+	*/
+	if cs.Proposal.POLRound == -1 {
+		if cs.LockedRound == -1 {
+			logger.Debug("prevote step: ProposalBlock is valid and there is no locked block; prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+	}
+
+	/*
+		28: upon <PROPOSAL, h_p, round_p, v, v_r> from proposer(h_p, round_p) AND 2f + 1 <PREVOTE, h_p, v_r, id(v)> while
+		step_p = propose && (v_r ≥ 0 && v_r < round_p) do
+		29: if valid(v) && (lockedRound_p ≤ v_r || lockedValue_p = v) then
+		30: broadcast <PREVOTE, h_p, round_p, id(v)>
+
+		This rule is a bit confusing but breaks down as follows:
+
+		If we see a proposal in the current round for value 'v' that lists its valid round as 'v_r'
+		AND this validator saw a 2/3 majority of the voting power prevote 'v' in round 'v_r', then we will
+		issue a prevote for 'v' in this round if 'v' is valid and either matches our locked value OR
+		'v_r' is a round greater than or equal to our current locked round.
+
+		'v_r' can be a round greater than to our current locked round if a 2/3 majority of
+		the network prevoted a value in round 'v_r' but we did not lock on it, possibly because we
+		missed the proposal in round 'v_r'.
+	*/
+	blockID, ok := cs.Votes.Prevotes(cs.Proposal.POLRound).TwoThirdsMajority()
+	if ok && cs.ProposalBlock.HashesTo(blockID.Hash) && cs.Proposal.POLRound >= 0 && cs.Proposal.POLRound < cs.Round {
+		if cs.LockedRound <= cs.Proposal.POLRound {
+			logger.Debug("prevote step: ProposalBlock is valid and received a 2/3 majority in a round later than the locked round",
+				"outcome", "prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+		if cs.ProposalBlock.HashesTo(cs.LockedBlock.Hash()) {
+			logger.Debug("prevote step: ProposalBlock is valid and matches our locked block; prevoting the proposal")
+			cs.signAddVote(ctx, tmproto.PrevoteType, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
+			return
+		}
+	}
+
+	logger.Debug("prevote step: ProposalBlock is valid but was not our locked block or did not receive a more recent majority",
+		"outcome", "prevoting nil")
+	cs.signAddVote(ctx, tmproto.PrevoteType, nil, types.PartSetHeader{})
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 }
 
 // Enter: any +2/3 prevotes at next round.
@@ -1358,10 +1478,10 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrevoteWait <= cs.Step) {
-		logger.Debug(
-			"entering prevote wait step with invalid args",
-			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-		)
+		logger.Debug("entering prevote wait step with invalid args",
+			"height", cs.Height,
+			"round", cs.Round,
+			"step", cs.Step)
 		return
 	}
 
@@ -1372,7 +1492,10 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 		))
 	}
 
-	logger.Debug("entering prevote wait step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering prevote wait step",
+		"height", cs.Height,
+		"round", cs.Round,
+		"step", cs.Step)
 
 	defer func() {
 		// Done enterPrevoteWait:
@@ -1390,18 +1513,27 @@ func (cs *State) enterPrevoteWait(height int64, round int32) {
 // Lock & precommit the ProposalBlock if we have enough prevotes for it (a POL in this round)
 // else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,
 // else, precommit nil otherwise.
+<<<<<<< HEAD
 func (cs *State) enterPrecommit(height int64, round int32) {
 	logger := cs.Logger.With("height", height, "round", round)
+=======
+func (cs *State) enterPrecommit(ctx context.Context, height int64, round int32) {
+	logger := cs.logger.With("new_height", height, "new_round", round)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cstypes.RoundStepPrecommit <= cs.Step) {
-		logger.Debug(
-			"entering precommit step with invalid args",
-			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-		)
+		logger.Debug("entering precommit step with invalid args",
+			"height", cs.Height,
+			"round", cs.Round,
+			"step", cs.Step)
+
 		return
 	}
 
-	logger.Debug("entering precommit step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering precommit step",
+		"height", cs.Height,
+		"round", cs.Round,
+		"step", cs.Step)
 
 	defer func() {
 		// Done enterPrecommit:
@@ -1514,14 +1646,17 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 
 // Enter: any +2/3 precommits for next round.
 func (cs *State) enterPrecommitWait(height int64, round int32) {
+<<<<<<< HEAD
 	logger := cs.Logger.With("height", height, "round", round)
+=======
+	logger := cs.logger.With("new_height", height, "new_round", round)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.TriggeredTimeoutPrecommit) {
-		logger.Debug(
-			"entering precommit wait step with invalid args",
+		logger.Debug("entering precommit wait step with invalid args",
 			"triggered_timeout", cs.TriggeredTimeoutPrecommit,
-			"current", fmt.Sprintf("%v/%v", cs.Height, cs.Round),
-		)
+			"height", cs.Height,
+			"round", cs.Round)
 		return
 	}
 
@@ -1532,7 +1667,10 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 		))
 	}
 
-	logger.Debug("entering precommit wait step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering precommit wait step",
+		"height", cs.Height,
+		"round", cs.Round,
+		"step", cs.Step)
 
 	defer func() {
 		// Done enterPrecommitWait:
@@ -1545,18 +1683,26 @@ func (cs *State) enterPrecommitWait(height int64, round int32) {
 }
 
 // Enter: +2/3 precommits for block
+<<<<<<< HEAD
 func (cs *State) enterCommit(height int64, commitRound int32) {
 	logger := cs.Logger.With("height", height, "commit_round", commitRound)
+=======
+func (cs *State) enterCommit(ctx context.Context, height int64, commitRound int32) {
+	logger := cs.logger.With("new_height", height, "commit_round", commitRound)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 
 	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
-		logger.Debug(
-			"entering commit step with invalid args",
-			"current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step),
-		)
+		logger.Debug("entering commit step with invalid args",
+			"height", cs.Height,
+			"round", cs.Round,
+			"step", cs.Step)
 		return
 	}
 
-	logger.Debug("entering commit step", "current", fmt.Sprintf("%v/%v/%v", cs.Height, cs.Round, cs.Step))
+	logger.Debug("entering commit step",
+		"height", cs.Height,
+		"round", cs.Round,
+		"step", cs.Step)
 
 	defer func() {
 		// Done enterCommit:
@@ -1609,12 +1755,18 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 }
 
 // If we have the block AND +2/3 commits for it, finalize.
+<<<<<<< HEAD
 func (cs *State) tryFinalizeCommit(height int64) {
 	logger := cs.Logger.With("height", height)
 
+=======
+func (cs *State) tryFinalizeCommit(ctx context.Context, height int64) {
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 	if cs.Height != height {
 		panic(fmt.Sprintf("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
 	}
+
+	logger := cs.logger.With("height", height)
 
 	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok || len(blockID.Hash) == 0 {
@@ -1625,9 +1777,8 @@ func (cs *State) tryFinalizeCommit(height int64) {
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
 		// TODO: ^^ wait, why does it matter that we're a validator?
-		logger.Debug(
-			"failed attempt to finalize commit; we do not have the commit block",
-			"proposal_block", cs.ProposalBlock.Hash(),
+		logger.Debug("failed attempt to finalize commit; we do not have the commit block",
+			"proposal_block", tmstrings.LazyBlockHash(cs.ProposalBlock),
 			"commit_block", blockID.Hash,
 		)
 		return
@@ -1669,11 +1820,10 @@ func (cs *State) finalizeCommit(height int64) {
 
 	logger.Info(
 		"finalizing commit of block",
-		"hash", block.Hash(),
+		"hash", tmstrings.LazyBlockHash(block),
 		"root", block.AppHash,
 		"num_txs", len(block.Txs),
 	)
-	logger.Debug(fmt.Sprintf("%v", block))
 
 	fail.Fail() // XXX
 
@@ -1777,8 +1927,16 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 			address    types.Address
 		)
 		if commitSize != valSetLen {
+<<<<<<< HEAD
 			cs.Logger.Error(fmt.Sprintf("commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, cs.LastValidators.Validators))
+=======
+			cs.logger.Error("commit size doesn't match valset",
+				"size", commitSize,
+				"valset_len", valSetLen,
+				"height", block.Height,
+				"extra", tmstrings.LazySprintf("\n%v\n\n%v", block.LastCommit.Signatures, cs.LastValidators.Validators))
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 			return
 		}
 
@@ -1907,8 +2065,12 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 		cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
 		// NOTE: this can happen when we've gone to a higher round and
 		// then receive parts from the previous round - not necessarily a bad peer.
+<<<<<<< HEAD
 		cs.Logger.Debug(
 			"received a block part when we are not expecting any",
+=======
+		cs.logger.Debug("received a block part when we are not expecting any",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 			"height", height,
 			"round", round,
 			"index", part.Index,
@@ -1968,11 +2130,14 @@ func (cs *State) handleCompleteProposal(blockHeight int64) {
 	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
 	if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
 		if cs.ProposalBlock.HashesTo(blockID.Hash) {
+<<<<<<< HEAD
 			cs.Logger.Debug(
 				"updating valid block to new proposal block",
+=======
+			cs.logger.Debug("updating valid block to new proposal block",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 				"valid_round", cs.Round,
-				"valid_block_hash", cs.ProposalBlock.Hash(),
-			)
+				"valid_block_hash", tmstrings.LazyBlockHash(cs.ProposalBlock))
 
 			cs.ValidRound = cs.Round
 			cs.ValidBlock = cs.ProposalBlock
@@ -2010,23 +2175,29 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error)
 			}
 
 			if bytes.Equal(vote.ValidatorAddress, cs.privValidatorPubKey.Address()) {
+<<<<<<< HEAD
 				cs.Logger.Error(
 					"found conflicting vote from ourselves; did you unsafe_reset a validator?",
+=======
+				cs.logger.Error("found conflicting vote from ourselves; did you unsafe_reset a validator?",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 					"height", vote.Height,
 					"round", vote.Round,
-					"type", vote.Type,
-				)
+					"type", vote.Type)
 
 				return added, err
 			}
 
 			// report conflicting votes to the evidence pool
 			cs.evpool.ReportConflictingVotes(voteErr.VoteA, voteErr.VoteB)
+<<<<<<< HEAD
 			cs.Logger.Debug(
 				"found and sent conflicting votes to the evidence pool",
+=======
+			cs.logger.Debug("found and sent conflicting votes to the evidence pool",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 				"vote_a", voteErr.VoteA,
-				"vote_b", voteErr.VoteB,
-			)
+				"vote_b", voteErr.VoteB)
 
 			return added, err
 		} else if errors.Is(err, types.ErrVoteNonDeterministicSignature) {
@@ -2045,14 +2216,22 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error)
 	return added, nil
 }
 
+<<<<<<< HEAD
 func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
 	cs.Logger.Debug(
 		"adding vote",
+=======
+func (cs *State) addVote(
+	ctx context.Context,
+	vote *types.Vote,
+	peerID types.NodeID,
+) (added bool, err error) {
+	cs.logger.Debug("adding vote",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 		"vote_height", vote.Height,
 		"vote_type", vote.Type,
 		"val_index", vote.ValidatorIndex,
-		"cs_height", cs.Height,
-	)
+		"cs_height", cs.Height)
 
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
@@ -2142,11 +2321,17 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 					cs.ValidBlock = cs.ProposalBlock
 					cs.ValidBlockParts = cs.ProposalBlockParts
 				} else {
+<<<<<<< HEAD
 					cs.Logger.Debug(
 						"valid block we do not know about; set ProposalBlock=nil",
 						"proposal", cs.ProposalBlock.Hash(),
 						"block_id", blockID.Hash,
 					)
+=======
+					cs.logger.Debug("valid block we do not know about; set ProposalBlock=nil",
+						"proposal", tmstrings.LazyBlockHash(cs.ProposalBlock),
+						"block_id", blockID.Hash)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 
 					// we're getting the wrong block
 					cs.ProposalBlock = nil

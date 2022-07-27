@@ -34,6 +34,7 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 		lastVerifiedHeader = primaryTrace[len(primaryTrace)-1].SignedHeader
 		witnessesToRemove  = make([]int, 0)
 	)
+<<<<<<< HEAD
 	c.logger.Debug("running detector against trace", "endBlockHeight", lastVerifiedHeader.Height,
 		"endBlockHash", lastVerifiedHeader.Hash, "length", len(primaryTrace))
 
@@ -43,6 +44,12 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 	if len(c.witnesses) == 0 {
 		return ErrNoWitnesses
 	}
+=======
+	c.logger.Debug("running detector against trace",
+		"finalizeBlockHeight", lastVerifiedHeader.Height,
+		"finalizeBlockHash", lastVerifiedHeader.Hash,
+		"length", len(primaryTrace))
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 
 	// launch one goroutine per witness to retrieve the light block of the target height
 	// and compare it with the header from the primary

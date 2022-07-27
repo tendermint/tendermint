@@ -369,7 +369,11 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
+<<<<<<< HEAD
 		c.Logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
+=======
+		c.logger.Error("Cannot send bytes to unknown channel", "channel", chID)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 		return false
 	}
 

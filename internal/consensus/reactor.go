@@ -7,6 +7,11 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+<<<<<<< HEAD
+=======
+	"github.com/tendermint/tendermint/internal/eventbus"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/bits"
@@ -1143,7 +1148,7 @@ func (r *Reactor) handleDataMessage(envelope p2p.Envelope, msgI Message) error {
 	}
 
 	if r.WaitSync() {
-		logger.Info("ignoring message received during sync", "msg", fmt.Sprintf("%T", msgI))
+		logger.Info("ignoring message received during sync", "msg", tmstrings.LazySprintf("%T", msgI))
 		return nil
 	}
 

@@ -57,10 +57,14 @@ func NewDefaultLogger(format, level string, trace bool) (Logger, error) {
 	// make the writer thread-safe
 	logWriter = newSyncWriter(logWriter)
 
+<<<<<<< HEAD
 	return defaultLogger{
 		Logger: zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger(),
 		trace:  trace,
 	}, nil
+=======
+	return &defaultLogger{Logger: zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger()}, nil
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 }
 
 // MustNewDefaultLogger delegates a call NewDefaultLogger where it panics on
@@ -92,8 +96,12 @@ func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
 }
 
 func (l defaultLogger) With(keyVals ...interface{}) Logger {
+<<<<<<< HEAD
 	return defaultLogger{
 		Logger: l.Logger.With().Fields(keyVals).Logger(),
 		trace:  l.trace,
 	}
+=======
+	return &defaultLogger{Logger: l.Logger.With().Fields(keyVals).Logger()}
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 }

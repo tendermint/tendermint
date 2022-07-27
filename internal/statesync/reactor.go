@@ -615,6 +615,7 @@ func (r *Reactor) handleSnapshotMessage(envelope p2p.Envelope) error {
 func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ChunkRequest:
+<<<<<<< HEAD
 		r.Logger.Debug(
 			"received chunk request",
 			"height", msg.Height,
@@ -623,22 +624,34 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"peer", envelope.From,
 		)
 		resp, err := r.conn.LoadSnapshotChunkSync(context.Background(), abci.RequestLoadSnapshotChunk{
+=======
+		r.logger.Debug("received chunk request",
+			"height", msg.Height,
+			"format", msg.Format,
+			"chunk", msg.Index,
+			"peer", envelope.From)
+		resp, err := r.conn.LoadSnapshotChunk(ctx, &abci.RequestLoadSnapshotChunk{
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
 		})
 		if err != nil {
+<<<<<<< HEAD
 			r.Logger.Error(
 				"failed to load chunk",
+=======
+			r.logger.Error("failed to load chunk",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 				"height", msg.Height,
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From,
-			)
+				"peer", envelope.From)
 			return nil
 		}
 
+<<<<<<< HEAD
 		r.Logger.Debug(
 			"sending chunk",
 			"height", msg.Height,
@@ -647,6 +660,14 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			"peer", envelope.From,
 		)
 		r.chunkCh.Out <- p2p.Envelope{
+=======
+		r.logger.Debug("sending chunk",
+			"height", msg.Height,
+			"format", msg.Format,
+			"chunk", msg.Index,
+			"peer", envelope.From)
+		if err := chunkCh.Send(ctx, p2p.Envelope{
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 			To: envelope.From,
 			Message: &ssproto.ChunkResponse{
 				Height:  msg.Height,
@@ -666,13 +687,16 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			return nil
 		}
 
+<<<<<<< HEAD
 		r.Logger.Debug(
 			"received chunk; adding to sync",
+=======
+		r.logger.Debug("received chunk; adding to sync",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From,
-		)
+			"peer", envelope.From)
 		_, err := r.syncer.AddChunk(&chunk{
 			Height: msg.Height,
 			Format: msg.Format,
@@ -681,14 +705,17 @@ func (r *Reactor) handleChunkMessage(envelope p2p.Envelope) error {
 			Sender: envelope.From,
 		})
 		if err != nil {
+<<<<<<< HEAD
 			r.Logger.Error(
 				"failed to add chunk",
+=======
+			r.logger.Error("failed to add chunk",
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 				"height", msg.Height,
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From,
-			)
+				"peer", envelope.From)
 			return nil
 		}
 

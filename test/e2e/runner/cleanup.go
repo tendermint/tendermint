@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -50,6 +49,7 @@ func cleanupDir(dir string) error {
 		return err
 	}
 
+<<<<<<< HEAD
 	logger.Info(fmt.Sprintf("Removing testnet directory %q", dir))
 
 	// On Linux, some local files in the volume will be owned by root since Tendermint
@@ -66,4 +66,8 @@ func cleanupDir(dir string) error {
 	}
 
 	return os.RemoveAll(dir)
+=======
+	logger.Info("Removing testnet", "directory", testnetDir)
+	return os.RemoveAll(testnetDir)
+>>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 }
