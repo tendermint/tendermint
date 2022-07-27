@@ -147,7 +147,7 @@ For more experimental "RCs," create a new, short-lived branch and tag that inste
 This minor release process assumes that this release was preceded by release candidates.
 If there were no release candidates, begin by creating a backport branch, as described above.
 
-Before performing these steps, be sure the [Release Checklist](#release-checklist) has been completed.
+Before performing these steps, be sure the [Minor Release Checklist](#minor-release-checklist) has been completed.
 
 1. Start on the backport branch (e.g. `v0.35.x`)
 2. Run integration tests (`make test_integrations`) and the e2e nightlies.
