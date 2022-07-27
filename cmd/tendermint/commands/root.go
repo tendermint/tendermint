@@ -36,9 +36,14 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 		return nil, err
 	}
 
-	home, err := cmd.Flags().GetString(cli.HomeFlag)
-	if err != nil {
-		return nil, err
+	var home string
+	if os.Getenv("TMHOME") != "" {
+		home = os.Getenv("TMHOME")
+	} else {
+		home, err = cmd.Flags().GetString(cli.HomeFlag)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	conf.RootDir = home
