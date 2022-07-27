@@ -14,6 +14,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 )
@@ -540,7 +541,7 @@ func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, checkTxRes *abci.Respon
 		}
 
 		txmp.logger.Debug("evicting lower-priority transactions",
-			"new_tx", fmt.Sprintf("%X", wtx.tx.Hash()),
+			"new_tx", tmstrings.LazySprintf("%X", wtx.tx.Hash()),
 			"new_priority", priority,
 		)
 
@@ -562,7 +563,7 @@ func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, checkTxRes *abci.Respon
 
 			txmp.logger.Debug(
 				"evicted valid existing transaction; mempool full",
-				"old_tx", fmt.Sprintf("%X", w.tx.Hash()),
+				"old_tx", tmstrings.LazySprintf("%X", w.tx.Hash()),
 				"old_priority", w.priority,
 			)
 			txmp.removeTxByElement(vic)
@@ -588,7 +589,7 @@ func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, checkTxRes *abci.Respon
 	txmp.logger.Debug(
 		"inserted new valid transaction",
 		"priority", wtx.Priority(),
-		"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
+		"tx", tmstrings.LazySprintf("%X", wtx.tx.Hash()),
 		"height", txmp.height,
 		"num_txs", txmp.Size(),
 	)
