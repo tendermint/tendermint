@@ -4,7 +4,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate mockery --case underscore --name BlockStore
+//go:generate ../scripts/mockery_generate.sh BlockStore
 
 type BlockStore interface {
 	LoadBlockMeta(height int64) *types.BlockMeta
