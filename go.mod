@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.3.3
-	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/bufbuild/buf v1.6.0
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
@@ -43,7 +42,7 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
-	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
+	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tm-db v0.6.6
 	github.com/vektra/mockery/v2 v2.14.0
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
