@@ -16,6 +16,7 @@ type AppConnConsensus interface {
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
+	PrepareProposalSync(types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
@@ -59,6 +60,8 @@ type appConnConsensus struct {
 	appConn abcicli.Client
 }
 
+var _ AppConnConsensus = (*appConnConsensus)(nil)
+
 func NewAppConnConsensus(appConn abcicli.Client) AppConnConsensus {
 	return &appConnConsensus{
 		appConn: appConn,
@@ -75,6 +78,11 @@ func (app *appConnConsensus) Error() error {
 
 func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	return app.appConn.InitChainSync(req)
+}
+
+func (app *appConnConsensus) PrepareProposalSync(
+	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	return app.appConn.PrepareProposalSync(req)
 }
 
 func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {

@@ -256,3 +256,8 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
 	return abci.ResponseCommit{Data: hash}
 }
+
+func (app *CounterApplication) PrepareProposal(
+	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
+	return abci.ResponsePrepareProposal{BlockData: req.BlockData}
+}

@@ -159,6 +159,12 @@ func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
 	}
 }
 
+func ToRequestPrepareProposal(req RequestPrepareProposal) *Request {
+	return &Request{
+		Value: &Request_PrepareProposal{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -254,5 +260,11 @@ func ToResponseLoadSnapshotChunk(res ResponseLoadSnapshotChunk) *Response {
 func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
 	return &Response{
 		Value: &Response_ApplySnapshotChunk{&res},
+	}
+}
+
+func ToResponsePrepareProposal(res ResponsePrepareProposal) *Response {
+	return &Response{
+		Value: &Response_PrepareProposal{&res},
 	}
 }
