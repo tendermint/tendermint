@@ -179,6 +179,10 @@ func (app *Application) PrepareProposal(
 
 func (app *Application) ProcessProposal(
 	req types.RequestProcessProposal) types.ResponseProcessProposal {
-	return types.ResponseProcessProposal{
-		Result: types.ResponseProcessProposal_ACCEPT}
+	for _, tx := range req.Txs {
+		if len(tx) == 0 {
+			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
+		}
+	}
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}
 }

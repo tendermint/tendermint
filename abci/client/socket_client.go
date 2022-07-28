@@ -520,6 +520,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
 	case *types.Request_PrepareProposal:
 		_, ok = res.Value.(*types.Response_PrepareProposal)
+	case *types.Request_ProcessProposal:
+		_, ok = res.Value.(*types.Response_ProcessProposal)
 	}
 	return ok
 }

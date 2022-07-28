@@ -140,13 +140,18 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 
 func (blockExec *BlockExecutor) ProcessProposal(
 	block *types.Block,
+	state State,
 ) (bool, error) {
-	req := abci.RequestProcessProposal{
-		Txs:    block.Data.Txs.ToSliceOfBytes(),
-		Header: *block.Header.ToProto(),
-	}
-
-	resp, err := blockExec.proxyApp.ProcessProposalSync(req)
+	resp, err := blockExec.proxyApp.ProcessProposalSync(abci.RequestProcessProposal{
+		Hash:               block.Header.Hash(),
+		Height:             block.Header.Height,
+		Time:               block.Header.Time,
+		Txs:                block.Data.Txs.ToSliceOfBytes(),
+		ProposedLastCommit: buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+		Misbehavior:        block.Evidence.Evidence.ToABCI(),
+		ProposerAddress:    block.ProposerAddress,
+		NextValidatorsHash: block.NextValidatorsHash,
+	})
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
@@ -334,7 +339,7 @@ func execBlockOnProxyApp(
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	commitInfo := getBeginBlockValidatorInfo(block, store, initialHeight)
+	commitInfo := buildLastCommitInfo(block, store, initialHeight)
 
 	byzVals := make([]abci.Evidence, 0)
 	for _, evidence := range block.Evidence.Evidence {
@@ -378,43 +383,44 @@ func execBlockOnProxyApp(
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, store Store,
-	initialHeight int64) abci.LastCommitInfo {
-	voteInfos := make([]abci.VoteInfo, block.LastCommit.Size())
-	// Initial block -> LastCommitInfo.Votes are empty.
-	// Remember that the first LastCommit is intentionally empty, so it makes
-	// sense for LastCommitInfo.Votes to also be empty.
-	if block.Height > initialHeight {
-		lastValSet, err := store.LoadValidators(block.Height - 1)
-		if err != nil {
-			panic(err)
-		}
+func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
+	if block.Height == initialHeight {
+		// there is no last commit for the initial height.
+		// return an empty value.
+		return abci.CommitInfo{}
+	}
 
-		// Sanity check that commit size matches validator set size - only applies
-		// after first block.
-		var (
-			commitSize = block.LastCommit.Size()
-			valSetLen  = len(lastValSet.Validators)
-		)
-		if commitSize != valSetLen {
-			panic(fmt.Sprintf(
-				"commit size (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
-				commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators,
-			))
-		}
+	lastValSet, err := store.LoadValidators(block.Height - 1)
+	if err != nil {
+		panic(fmt.Errorf("failed to load validator set at height %d: %w", block.Height-1, err))
+	}
 
-		for i, val := range lastValSet.Validators {
-			commitSig := block.LastCommit.Signatures[i]
-			voteInfos[i] = abci.VoteInfo{
-				Validator:       types.TM2PB.Validator(val),
-				SignedLastBlock: !commitSig.Absent(),
-			}
+	var (
+		commitSize = block.LastCommit.Size()
+		valSetLen  = len(lastValSet.Validators)
+	)
+
+	// ensure that the size of the validator set in the last commit matches
+	// the size of the validator set in the state store.
+	if commitSize != valSetLen {
+		panic(fmt.Sprintf(
+			"commit size (%d) doesn't match validator set length (%d) at height %d\n\n%v\n\n%v",
+			commitSize, valSetLen, block.Height, block.LastCommit.Signatures, lastValSet.Validators,
+		))
+	}
+
+	votes := make([]abci.VoteInfo, block.LastCommit.Size())
+	for i, val := range lastValSet.Validators {
+		commitSig := block.LastCommit.Signatures[i]
+		votes[i] = abci.VoteInfo{
+			Validator:       types.TM2PB.Validator(val),
+			SignedLastBlock: commitSig.BlockIDFlag != types.BlockIDFlagAbsent,
 		}
 	}
 
-	return abci.LastCommitInfo{
+	return abci.CommitInfo{
 		Round: block.LastCommit.Round,
-		Votes: voteInfos,
+		Votes: votes,
 	}
 }
 

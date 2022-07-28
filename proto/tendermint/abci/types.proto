@@ -77,10 +77,10 @@ message RequestQuery {
 }
 
 message RequestBeginBlock {
-  bytes                   hash             = 1;
-  tendermint.types.Header header           = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo          last_commit_info = 3 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators   = 4 [(gogoproto.nullable) = false];
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -136,11 +136,16 @@ message RequestPrepareProposal {
 }
 
 message RequestProcessProposal {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  repeated bytes          txs                  = 3;
-  LastCommitInfo          last_commit_info     = 4 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 5 [(gogoproto.nullable) = false];
+  repeated bytes    txs                  = 1;
+  CommitInfo        proposed_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Evidence misbehavior          = 3 [(gogoproto.nullable) = false];
+  // hash is the merkle root hash of the fields of the proposed block.
+  bytes                     hash                 = 4;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // address of the public key of the original proposer of the block.
+  bytes proposer_address = 8;
 }
 
 //----------------------------------------
@@ -255,7 +260,7 @@ message ResponseDeliverTx {
 }
 
 message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable) = false];
+  repeated ValidatorUpdate validator_updates       = 1 [(gogoproto.nullable) = false];
   ConsensusParams          consensus_param_updates = 2;
   repeated Event           events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
@@ -308,11 +313,13 @@ message ResponsePrepareProposal {
 }
 
 message ResponseProcessProposal {
-  bool                             accept                  = 1;
-  bytes                            app_hash                = 2;
-  repeated ExecTxResult            tx_results              = 3;
-  repeated ValidatorUpdate         validator_updates       = 4;
-  tendermint.types.ConsensusParams consensus_param_updates = 5;
+  ProposalStatus status = 1;
+
+  enum ProposalStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
 }
 
 //----------------------------------------
@@ -335,7 +342,7 @@ message BlockParams {
   int64 max_gas = 2;
 }
 
-message LastCommitInfo {
+message CommitInfo {
   int32             round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }

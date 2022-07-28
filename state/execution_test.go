@@ -233,7 +233,7 @@ func TestProcessProposal(t *testing.T) {
 
 		block := sf.MakeBlock(state, int64(height), new(types.Commit))
 		block.Txs = txs
-		acceptBlock, err := blockExec.ProcessProposal(block)
+		acceptBlock, err := blockExec.ProcessProposal(block, state)
 		require.NoError(t, err)
 		require.Equal(t, expectAccept, acceptBlock)
 	}

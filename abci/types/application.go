@@ -4,6 +4,8 @@ import (
 	context "golang.org/x/net/context"
 )
 
+//go:generate ../../scripts/mockery_generate.sh Application
+
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.
 // All methods take a RequestXxx argument and return a ResponseXxx argument,
@@ -105,7 +107,7 @@ func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepa
 
 func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
 	return ResponseProcessProposal{
-		Result: ResponseProcessProposal_ACCEPT}
+		Status: ResponseProcessProposal_ACCEPT}
 }
 
 //-------------------------------------------------------

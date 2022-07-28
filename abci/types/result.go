@@ -43,7 +43,7 @@ func (r ResponseQuery) IsErr() bool {
 
 // IsOK returns true if Code is OK
 func (r ResponseProcessProposal) IsOK() bool {
-	return r.Result == ResponseProcessProposal_ACCEPT
+	return r.Status == ResponseProcessProposal_ACCEPT
 }
 
 //---------------------------------------------------------------------------
