@@ -459,9 +459,9 @@ func (n Node) AddressRPC() string {
 	ip := n.IP.String()
 	if n.IP.To4() == nil {
 		// IPv6 addresses must be wrapped in [] to avoid conflict with : port separator
-		ip = fmt.Sprintf("[%v]", ip)
+		ip = fmt.Sprintf("[%s]:%d", ip, n.ProxyPort)
 	}
-	return fmt.Sprintf("%v:26657", ip)
+	return fmt.Sprintf("%s:%d", ip, n.ProxyPort)
 }
 
 // Client returns an RPC client for a node.
