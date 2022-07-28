@@ -1,13 +1,18 @@
 ---
-name: Bug Report
+name: Bug report
 about: Create a report to help us squash bugs!
 
 ---
 <!--
+
 Please fill in as much of the template below as you can.
 
-Be ready for followup questions, and please respond in a timely
-manner. We might ask you to provide additional logs and data (tendermint & app).
+If you have general questions, please rather create a new discussion:
+https://github.com/tendermint/tendermint/discussions
+
+Be ready for followup questions, and please respond in a timely manner. We might
+ask you to provide additional logs and data (tendermint & app).
+
 -->
 
 **Tendermint version** (use `tendermint version` or `git rev-parse --verify HEAD` if installed from source):
