@@ -77,26 +77,12 @@ func (cli *socketClient) OnStart() error {
 			if cli.mustConnect {
 				return err
 			}
-<<<<<<< HEAD
-			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
-				cli.addr, dialRetryIntervalSeconds), "err", err)
-			time.Sleep(time.Second * dialRetryIntervalSeconds)
-			continue
-=======
-
-			cli.logger.Error("abci.socketClient failed to connect, retrying after",
+			cli.Logger.Error("abci.socketClient failed to connect, retrying after",
 				"retry_after", dialRetryIntervalSeconds,
 				"target", cli.addr,
 				"err", err)
-
-			timer.Reset(time.Second * dialRetryIntervalSeconds)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-timer.C:
-				continue
-			}
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
+			time.Sleep(time.Second * dialRetryIntervalSeconds)
+			continue
 		}
 		cli.conn = conn
 

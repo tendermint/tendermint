@@ -2,11 +2,7 @@ package abciclient
 
 import (
 	"context"
-<<<<<<< HEAD
 	"fmt"
-=======
-	"errors"
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 	"net"
 	"sync"
 	"time"
@@ -105,20 +101,9 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			}
-<<<<<<< HEAD
-			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr), "err", err)
+			cli.Logger.Error("abci.grpcClient failed to connect,  Retrying...", "addr", cli.addr, "err", err)
 			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue RETRY_LOOP
-=======
-			cli.logger.Error("abci.grpcClient failed to connect,  Retrying...", "addr", cli.addr, "err", err)
-			timer.Reset(time.Second * dialRetryIntervalSeconds)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-timer.C:
-				continue RETRY_LOOP
-			}
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 		}
 
 		cli.Logger.Info("Dialed server. Waiting for echo.", "addr", cli.addr)

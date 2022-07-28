@@ -186,22 +186,10 @@ func (s *syncer) SyncAny(
 	defer timer.Stop()
 
 	if discoveryTime > 0 {
-<<<<<<< HEAD
 		requestSnapshots()
-		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
-		time.Sleep(discoveryTime)
-=======
-		if err := requestSnapshots(); err != nil {
-			return sm.State{}, nil, err
-		}
 		s.logger.Info("discovering snapshots",
 			"interval", discoveryTime)
-		select {
-		case <-ctx.Done():
-			return sm.State{}, nil, ctx.Err()
-		case <-timer.C:
-		}
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
+		time.Sleep(discoveryTime)
 	}
 
 	// The app may ask us to retry a snapshot restoration, in which case we need to reuse

@@ -465,17 +465,11 @@ func (r *ReactorV2) calculateNextRequestTime(added int) {
 
 	// If the peer store is nearly full, wait the maximum interval.
 	if ratio := r.peerManager.PeerRatio(); ratio >= 0.95 {
-<<<<<<< HEAD
 		r.Logger.Debug("Peer manager is nearly full",
-			"sleep_period", fullCapacityInterval, "ratio", ratio)
-		r.nextRequestInterval = fullCapacityInterval
-		return
-=======
-		r.logger.Debug("Peer manager is nearly full",
 			"sleep_period", fullCapacityInterval,
 			"ratio", ratio)
-		return fullCapacityInterval
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
+		r.nextRequestInterval = fullCapacityInterval
+		return
 	}
 
 	// If there are no available peers to query, poll less aggressively.

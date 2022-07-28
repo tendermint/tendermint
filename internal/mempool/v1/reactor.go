@@ -9,12 +9,9 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/internal/libs/clist"
-<<<<<<< HEAD:internal/mempool/v1/reactor.go
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
-=======
-	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898)):internal/mempool/reactor.go
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -374,15 +371,8 @@ func (r *Reactor) broadcastTxRoutine(peerID types.NodeID, closer *tmsync.Closer)
 					Txs: [][]byte{memTx.tx},
 				},
 			}
-<<<<<<< HEAD:internal/mempool/v1/reactor.go
-			r.Logger.Debug(
-				"gossiped tx to peer",
-				"tx", fmt.Sprintf("%X", memTx.tx.Hash()),
-=======
-
-			r.logger.Debug("gossiped tx to peer",
+			r.Logger.Debug("gossiped tx to peer",
 				"tx", tmstrings.LazySprintf("%X", memTx.tx.Hash()),
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898)):internal/mempool/reactor.go
 				"peer", peerID,
 			)
 		}

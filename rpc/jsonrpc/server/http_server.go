@@ -46,19 +46,12 @@ func DefaultConfig() *Config {
 }
 
 // Serve creates a http.Server and calls Serve with the given listener. It
-<<<<<<< HEAD
 // wraps handler with RecoverAndLogHandler and a handler, which limits the max
 // body size to config.MaxBodyBytes.
 //
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
-	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
-=======
-// wraps handler to recover panics and limit the request body size.
-func Serve(ctx context.Context, listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
 	logger.Info("Starting RPC HTTP server on", "addr", listener.Addr())
-	h := recoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
->>>>>>> 48147e1fb (logging: implement lazy sprinting (#8898))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
