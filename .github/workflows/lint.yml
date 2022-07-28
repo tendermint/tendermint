@@ -5,6 +5,8 @@ name: Golang Linter
 #
 # The `golangci` job will pass without running if no *.{go, mod, sum}
 # files have been modified.
+#
+# To run this locally, simply run `make lint` from the root of the repo.
 
 on:
   pull_request:
