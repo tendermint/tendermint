@@ -27,7 +27,7 @@ jobs:
       - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS: |
-            **/**.go
+            **/*.go
             "!test/"
             go.mod
             go.sum
@@ -48,7 +48,7 @@ jobs:
       - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS: |
-            **/**.go
+            **/*.go
             go.mod
             go.sum
       - name: install
@@ -70,7 +70,7 @@ jobs:
       - uses: technote-space/get-diff-action@v6
         with:
           PATTERNS: |
-            **/**.go
+            **/*.go
             go.mod
             go.sum
       - name: install
