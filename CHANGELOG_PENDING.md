@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.20
+## v0.34.21
 
 Special thanks to external contributors on this release:
 
@@ -19,6 +19,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Blockchain Protocol
 
 ### FEATURES
+
+- [#9083] backport cli command to reindex missed events (@cmwaters)
 
 ### IMPROVEMENTS
 
