@@ -60,7 +60,7 @@ Every node connects to a set of peers to whom it sends requests via the Switch.
 
 The PEX reactor ensures a node is connected to peers by running a routine to keep dialing peers in the background until a threshold of connected peers is reached (`MaxNumOutboundPeers`). This way, if a peers' address has been added via an incoming request, it will eventually be dialed. Peers to dial are chosen with some configurable bias for unvetted peers. The bias should be lower when we have fewer peers and can increase as we obtain more, ensuring that our first peers are more trustworthy, but always giving us the chance to discover new good peers. 
 
-As the number of outgoing peers is limited, the reactor will choose the number of addresses to dial taking into account the current number of outgoing connections and ongoing dialings. The addresses to dial will be picked with a bias towards new and vetted peers (TODO define ) addresses.
+As the number of outgoing peers is limited, the reactor will choose the number of addresses to dial taking into account the current number of outgoing connections and ongoing dialings. The addresses to dial will be picked with a bias towards new and vetted peers (TODO define ).
 
 Except for persistent peers, all other peers can be dialed at most `maxAttemptsToDial`. If a node is not connected by that time it is marked as bad. Otherwise, if the dial fails, the node will wait before the next dial. (exponential backoff mechanism). 
 
@@ -80,7 +80,7 @@ Once a peer is successfully dialed, we ask it to provide us with more peers.
 #### *Dialing failed*
 
 
-#### *Removing peers*
+### *Removing peers*
 
 Each reactor can call the `StopPeerForError` method of the switch with the ID of the peer that needs to be removed. Then the switch handles stopping the peer (closing the connection to it), and calls the `RemovePeer` method of all reactors registered to the switch.
 
