@@ -78,9 +78,54 @@ perhaps due to a significant configuration variation.
 The document has used the terms "long-lived" and "semi-permanent" somewhat interchangeably.
 The intent of the testnet being discussed in this RFC is to exist indefinitely;
 but there is a practical understanding that there will be testnet instances
-which will be retired due to being associated with a no-longer-maintained release of Tendermint.
-Alternatively, we may discover a good reason to destroy and recreate the `main` testnet
-(such as if we build a new application for running the testnet).
+which will be retired due to a variety of reasons.
+For instance, once a release branch is no longer supported,
+its corresponding testnet should be torn down.
+
+In general, new commits to branches with corresponding testnets
+should result in an in-place upgrade of all nodes in the testnet
+without any data loss and without requiring new configuration.
+The mechanism for achieving this is outside the scope of this RFC.
+
+However, it is also expected that there will be
+breaking changes during the development of the `main` branch.
+For instance, suppose there is an unreleased feature involving storage on disk,
+and the developers need to change the storage format.
+It should be at the developers' discretion whether it is feasible and worthwhile
+to introduce an intermediate commit that translates the old format to the new format,
+or if it would be preferable to just destroy the testnet and start from scratch
+without any data in the old format.
+
+Similarly, if a developer inadvertently pushed a breaking change to an unreleased feature,
+they are free to make a judgement call between reverting the change,
+adding a commit to allow a forward migration,
+or simply forcing the testnet to recreate.
+
+### Testnet maintenance investment
+
+While there is certainly engineering effort required to build the tooling and infrastructure
+to get the testnets up and running,
+the intent is that a running testnet requires no manual upkeep under normal conditions.
+
+It is expected that a subset of the Tendermint engineers are familiar with and engaged in
+writing the software to maintain and build the testnet infrastructure,
+but the rest of the team should not need any involvement in authoring that code.
+
+The testnets should be configured to send notifications for events requiring triage,
+such as a chain halt or a node OOMing.
+The time investment necessary to address the underlying issues for those kind of events
+is unpredictable.
+
+Aside from triaging exceptional events, an engineer may choose to spend some time
+collecting metrics or profiles from testnet nodes to check performance details
+before and after a particular change;
+or they may inspect logs associated with an expected behavior change.
+But during day-to-day work, engineers are not expected to spend any considerable time
+directly interacting with the testnets.
+
+If we discover that there are any routine actions engineers must take against the testnet
+that take any substantial focused time,
+those actions should be automated to a one-line command as much as is reasonable.
 
 ### Testnet MVP
 
@@ -90,10 +135,10 @@ The minimum viable testnet meets this set of features:
   (there are some omitted steps here, such as CI building appropriate binaries and
   somehow notifying the testnet that a new build is available)
 - The testnet runs the Tendermint KV store for MVP
-- The testnet operators are notified if any node's process exits for any reason other than
-  a restart for a new binary
-- The testnet operators are notified if any node stops updating blocks,
-  and by extension if a chain halt occurs
+- The testnet operators are notified if:
+    - Any node's process exits for any reason other than a restart for a new binary
+    - Any node stops updating blocks, and by extension if a chain halt occurs
+    - No other observability will be considered for MVP
 - The testnet has a minimum of 1 full node and 3 validators
 - The testnet has a reasonably low, constant throughput of transactions -- say 30 tx/min --
   and the testnet operators are notified if that throughput drops below 75% of target
@@ -124,10 +169,20 @@ These goals could realistically be roadmapped following the launch of the MVP te
   and others delaying up to perhaps 30-60 minutes
 - The team has published some form of dashboards that have served well for debugging,
   which external parties can copy/modify to their needs
+    - The dashboards must include metrics published by Tendermint nodes;
+      there should be both OS- or runtime-level metrics such as memory in use,
+      and application-level metrics related to the underlying blockchain
+    - "Published" in this context is more in the spirit of "shared with the community",
+      not "produced a supported open source tool" --
+      this could be published to GitHub with a warning that no support is offered,
+      or it could simply be a blog post detailing what has worked for the Tendermint developers
+    - The dashboards will likely be implemented on free and open source tooling,
+      but that is not a hard requirement if paid software is more appropriate
 - The team has produced a reference model of a log aggregation stack that external parties can use
+    - Similar to the "published" dashboards, this only needs to be "shared" rather than "supported"
 - Chaos engineering has begun being integrated into the testnets
-  (this could be periodic CPU limiting, deliberate network interference,
-  deliberate filesystem corruption, etc.)
+  (this could be periodic CPU limiting or deliberate network interference, etc.
+  but it probably would not be filesystem corruption)
 - Each testnet has at least one node running a build with the Go race detector enabled
 - The testnet contains some kind of generalized notification system built in:
     - Tendermint code grows "watchdog" systems built in to validate things like
@@ -181,6 +236,8 @@ There are some things we are explicitly not trying to achieve with long-lived te
   to try something out,
   a testnet comes with a considerable amount of "baggage", so end-to-end or integration tests
   are closer to the intent for "trying something to see what happens".
+  Direct interaction should be limited to standard blockchain operations,
+  _not_ modifying configuration of nodes.
 - Likewise, the purpose of the testnet is not to run specific "tests" per se,
   but rather to demonstrate that Tendermint blockchains as a whole are stable
   under a production load.
