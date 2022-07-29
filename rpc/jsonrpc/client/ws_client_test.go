@@ -65,6 +65,10 @@ func (h *myTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Cleanup(leaktest.Check(t))
 
 	// start server
@@ -97,6 +101,10 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 }
 
 func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Cleanup(leaktest.Check(t))
 
 	// start server
@@ -127,6 +135,10 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 }
 
 func TestWSClientReconnectFailure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Cleanup(leaktest.Check(t))
 
 	// start server

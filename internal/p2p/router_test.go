@@ -41,6 +41,10 @@ func echoReactor(ctx context.Context, channel p2p.Channel) {
 }
 
 func TestRouter_Network(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -162,6 +166,10 @@ func TestRouter_Channel_Basic(t *testing.T) {
 
 // Channel tests are hairy to mock, so we use an in-memory network instead.
 func TestRouter_Channel_SendReceive(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -224,6 +232,10 @@ func TestRouter_Channel_SendReceive(t *testing.T) {
 }
 
 func TestRouter_Channel_Broadcast(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Cleanup(leaktest.Check(t))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -255,6 +267,10 @@ func TestRouter_Channel_Broadcast(t *testing.T) {
 }
 
 func TestRouter_Channel_Wrapper(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Cleanup(leaktest.Check(t))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -443,6 +459,11 @@ func TestRouter_AcceptPeers(t *testing.T) {
 }
 
 func TestRouter_AcceptPeers_Errors(t *testing.T) {
+	if testing.Short() {
+		// Each subtest takes more than one second due to the time.Sleep call,
+		// so just skip from the parent test in short mode.
+		t.Skip("skipping test in short mode")
+	}
 
 	for _, err := range []error{io.EOF, context.Canceled, context.DeadlineExceeded} {
 		t.Run(err.Error(), func(t *testing.T) {
@@ -480,9 +501,7 @@ func TestRouter_AcceptPeers_Errors(t *testing.T) {
 			router.Stop()
 
 			mockTransport.AssertExpectations(t)
-
 		})
-
 	}
 }
 
@@ -811,6 +830,10 @@ func TestRouter_EvictPeers(t *testing.T) {
 }
 
 func TestRouter_ChannelCompatability(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Cleanup(leaktest.Check(t))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
