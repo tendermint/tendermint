@@ -115,12 +115,11 @@ type dbStore struct {
 
 type StoreOptions struct {
 
-// DiscardABCIResponses determines whether or not the store
-// retains all ABCIResponses. If DiscardABCiResponses is enabled,
-// the store will maintain only the response object from the latest
-// height.
-DiscardABCIResponses bool
-
+	// DiscardABCIResponses determines whether or not the store
+	// retains all ABCIResponses. If DiscardABCiResponses is enabled,
+	// the store will maintain only the response object from the latest
+	// height.
+	DiscardABCIResponses bool
 }
 
 var _ Store = (*dbStore)(nil)
@@ -514,8 +513,8 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		}
 	}
 
-	// We always save the last ABCI response incase we crash after app.Commit and before s.Save(.)
-	// This overwrites the previous saved ABCI Response
+	// We always save the last ABCI response for crash recovery.
+	// This overwrites the previous saved ABCI Response.
 	response := &tmstate.ABCIResponsesInfo{
 		AbciResponses: abciResponses,
 		Height:        height,
@@ -564,7 +563,8 @@ func (store dbStore) LoadValidators(height int64) (*types.ValidatorSet, error) {
 				fmt.Errorf("couldn't find validators at height %d (height %d was originally requested): %w",
 					lastStoredHeight,
 					height,
-					err)
+					err,
+				)
 		}
 
 		vs, err := types.ValidatorSetFromProto(valInfo2.ValidatorSet)
@@ -611,7 +611,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadValidators: Data has been corrupted or its spec has changed:
-                %v\n`, err))
+        %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 

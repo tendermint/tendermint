@@ -556,7 +556,7 @@ type RPCConfig struct {
 	PprofListenAddress string `mapstructure:"pprof-laddr"`
 
 	// Set to true to enable the /BlockResults query. Saving ABCI Responses is also necessary
-	// to reindex events used in the command line
+	// to reindex events used in the command line.
 	DiscardABCIResponses bool `mapstructure:"persist-abci-responses"`
 }
 
