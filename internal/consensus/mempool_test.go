@@ -126,7 +126,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	config := configSetup(t)
 
 	state, privVals := randGenesisState(config, 1, false, 10)
-	stateStore := sm.NewStore(dbm.NewMemDB(), false)
+	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{DiscardABCIResponses: false})
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockStore)
 	err := stateStore.Save(state)
@@ -153,7 +153,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 	state, privVals := randGenesisState(config, 1, false, 10)
 	app := NewCounterApplication()
-	stateStore := sm.NewStore(dbm.NewMemDB(), false)
+	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{DiscardABCIResponses: false})
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockStore)
 	err := stateStore.Save(state)

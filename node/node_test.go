@@ -232,7 +232,9 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	const height int64 = 1
 	state, stateDB, privVals := state(1, height)
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	maxBytes := 16384
 	const partSize uint32 = 256
 	maxEvidenceBytes := int64(maxBytes / 2)
@@ -325,7 +327,9 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 
 	const height int64 = 1
 	state, stateDB, _ := state(1, height)
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 16384
 	const partSize uint32 = 256
@@ -387,7 +391,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	logger := log.TestingLogger()
 
 	state, stateDB, _ := state(types.MaxVotesCount, int64(1))
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	const maxBytes int64 = 1024 * 1024 * 2
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -625,7 +631,9 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	if err := stateStore.Save(s); err != nil {
 		panic(err)
 	}
@@ -648,7 +656,9 @@ func loadStatefromGenesis(t *testing.T) sm.State {
 	t.Helper()
 
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	cfg, err := config.ResetTestRoot("load_state_from_genesis")
 	require.NoError(t, err)
 

@@ -157,7 +157,9 @@ func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, 
 	if err != nil {
 		return nil, nil, err
 	}
-	stateStore := state.NewStore(stateDB, cfg.RPC.DiscardABCIResponses)
+	stateStore := state.NewStore(stateDB, state.StoreOptions{
+		DiscardABCIResponses: cfg.RPC.DiscardABCIResponses,
+	})
 
 	return blockStore, stateStore, nil
 }

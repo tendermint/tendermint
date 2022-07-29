@@ -329,7 +329,9 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB, false)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, err := sm.MakeGenesisState(genDoc)
 		require.NoError(t, err)
 		thisConfig, err := ResetConfig(fmt.Sprintf("%s_%d", testName, i))

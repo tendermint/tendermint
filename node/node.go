@@ -139,7 +139,7 @@ func makeNode(cfg *config.Config,
 	}
 	closers = append(closers, dbCloser)
 
-	stateStore := sm.NewStore(stateDB, cfg.RPC.DiscardABCIResponses)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{DiscardABCIResponses: cfg.RPC.DiscardABCIResponses})
 
 	genDoc, err := genesisDocProvider()
 	if err != nil {
