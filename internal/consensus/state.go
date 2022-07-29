@@ -275,7 +275,11 @@ func (cs *State) GetValidators() (int64, []*types.Validator) {
 // SetPrivValidator sets the private validator account for signing votes. It
 // immediately requests pubkey and caches it.
 func (cs *State) SetPrivValidator(priv types.PrivValidator) {
+	// Doubtful
+
+	cs.Logger.Info("Set Priv Lock")
 	cs.mtx.Lock()
+	defer cs.Logger.Info("Set Priv Unlock")
 	defer cs.mtx.Unlock()
 
 	cs.privValidator = priv
@@ -308,6 +312,7 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for
 // testing.
 func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
+	// nope
 	cs.mtx.Lock()
 	cs.timeoutTicker = timeoutTicker
 	cs.mtx.Unlock()
@@ -862,7 +867,10 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
 func (cs *State) handleMsg(mi msgInfo) {
+	// feels likely
+	cs.Logger.Info("handlemsg Lock")
 	cs.mtx.Lock()
+	defer cs.Logger.Info("handlemsg Unlock")
 	defer cs.mtx.Unlock()
 	var (
 		added bool
@@ -962,7 +970,10 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 	}
 
 	// the timeout will now cause a state transition
+	// also possible
+	cs.Logger.Info("handletimeout Lock")
 	cs.mtx.Lock()
+	defer cs.Logger.Info("handletimeout unlock")
 	defer cs.mtx.Unlock()
 
 	switch ti.Step {

@@ -231,7 +231,6 @@ func (r *Reactor) OnStop() {
 	if !r.WaitSync() {
 		r.state.Wait()
 	}
-
 	r.mtx.Lock()
 	// Close and wait for each of the peers to shutdown.
 	// This is safe to perform with the lock since none of the peers require the
