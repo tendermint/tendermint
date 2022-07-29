@@ -1,5 +1,5 @@
 ---
-name: Protocol Change Proposal
+name: Protocol change proposal
 about: Create a proposal to request a change to the protocol
 
 ---
@@ -26,12 +26,3 @@ Are there any disadvantages of including this change? -->
 ## Proposal
 
 <!-- Detailed description of requirements of implementation -->
-
-____
-
-#### For Admin Use
-
-- [ ] Not duplicate issue
-- [ ] Appropriate labels applied
-- [ ] Appropriate contributors tagged
-- [ ] Contributor assigned/self-assigned

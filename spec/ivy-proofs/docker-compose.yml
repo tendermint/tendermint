@@ -5,4 +5,3 @@ services:
     volumes:
       - ./:/home/user/tendermint-proof:ro
       - ./output:/home/user/tendermint-proof/output:rw
-
