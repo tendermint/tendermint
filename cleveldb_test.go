@@ -1,3 +1,4 @@
+//go:build cleveldb
 // +build cleveldb
 
 package db
@@ -7,12 +8,24 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestWithClevelDB(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "cleveldb")
+
+	db, err := NewCLevelDB(path, "")
+	require.NoError(t, err)
+
+	t.Run("ClevelDB", func(t *testing.T) { Run(t, db) })
+}
+
+//nolint: errcheck
 func BenchmarkRandomReadsWrites2(b *testing.B) {
 	b.StopTimer()
 
@@ -36,9 +49,8 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 			idx := (int64(rand.Int()) % numItems)
 			internal[idx]++
 			val := internal[idx]
-			idxBytes := int642Bytes(int64(idx))
-			valBytes := int642Bytes(int64(val))
-			//fmt.Printf("Set %X -> %X\n", idxBytes, valBytes)
+			idxBytes := int642Bytes(idx)
+			valBytes := int642Bytes(val)
 			db.Set(
 				idxBytes,
 				valBytes,
@@ -48,12 +60,12 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 		{
 			idx := (int64(rand.Int()) % numItems)
 			val := internal[idx]
-			idxBytes := int642Bytes(int64(idx))
+			idxBytes := int642Bytes(idx)
 			valBytes, err := db.Get(idxBytes)
 			if err != nil {
 				b.Error(err)
 			}
-			//fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
+			// fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
 			if val == 0 {
 				if !bytes.Equal(valBytes, nil) {
 					b.Errorf("Expected %v for %v, got %X",

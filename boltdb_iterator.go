@@ -1,3 +1,4 @@
+//go:build boltdb
 // +build boltdb
 
 package db

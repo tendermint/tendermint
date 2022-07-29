@@ -1,3 +1,4 @@
+//go:build boltdb
 // +build boltdb
 
 package db
@@ -5,6 +6,7 @@ package db
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,6 +20,16 @@ func TestBoltDBNewBoltDB(t *testing.T) {
 	db, err := NewBoltDB(name, dir)
 	require.NoError(t, err)
 	db.Close()
+}
+
+func TestWithBoltDB(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "boltdb")
+
+	db, err := NewBoltDB(path, "")
+	require.NoError(t, err)
+
+	t.Run("BoltDB", func(t *testing.T) { Run(t, db) })
 }
 
 func BenchmarkBoltDBRandomReadsWrites(b *testing.B) {

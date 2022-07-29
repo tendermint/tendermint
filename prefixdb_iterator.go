@@ -91,7 +91,6 @@ func (itr *prefixDBIterator) Next() {
 
 	if !itr.source.Valid() || !bytes.HasPrefix(itr.source.Key(), itr.prefix) {
 		itr.valid = false
-
 	} else if bytes.Equal(itr.source.Key(), itr.prefix) {
 		// Empty keys are not allowed, so if a key exists in the database that exactly matches the
 		// prefix we need to skip it.
