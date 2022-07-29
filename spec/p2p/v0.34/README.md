@@ -48,6 +48,7 @@ Peers are discovered by adding addresses provided in the config file or triggeri
 When a node is started, it provides the list of persistent peers to the switch by calling `DialPeersAsync`.
 
 Depending on whether the node is a seed node or or not, the PEX reactor constantly runs either `crawlPeersRoutine` or `ensurePeers()` respectively. 
+
 If the node is a seed node, `crawlPeersRoutine` reads peer information randomly from the address book, tries to dial the peer and requests from them information on other peers.
 
 When a node receives information about other peers from a seed note, it sends another request to the node asking for more peers. 
@@ -56,9 +57,13 @@ A node also learns of other peers when they try to connect to it.
 
 ### Dialing peers
 
-Every node connects to a set of peers to whom it sends requests via the Switch. 
+Every node connects to a set of peers to whom it sends requests via the Switch. As described above, on startup the node dials peers providede to it by the node operator. Dialing the remaining peers is triggered by routines in the PEX reactor.
 
-The PEX reactor ensures a node is connected to peers by running a routine to keep dialing peers in the background until a threshold of connected peers is reached (`MaxNumOutboundPeers`). This way, if a peers' address has been added via an incoming request, it will eventually be dialed. Peers to dial are chosen with some configurable bias for unvetted peers. The bias should be lower when we have fewer peers and can increase as we obtain more, ensuring that our first peers are more trustworthy, but always giving us the chance to discover new good peers. 
+The PEX reactor ensures a node is connected to peers by running the `ensurePeers()`  which dials peers in the background until a threshold of connected peers is reached (`MaxNumOutboundPeers`). 
+
+When a peer is accepted, it is not immediately dialed, but it's address will eventually be picked up by this routing. Peers to dial are chosen with some configurable bias for unvetted peers. 
+
+The bias should be lower when we have fewer peers and can increase as we obtain more, ensuring that our first peers are more trustworthy, but always giving us the chance to discover new good peers. 
 
 As the number of outgoing peers is limited, the reactor will choose the number of addresses to dial taking into account the current number of outgoing connections and ongoing dialings. The addresses to dial will be picked with a bias towards new and vetted peers (TODO define ).
 
@@ -68,14 +73,12 @@ If a node needs more peers, the PEX reactor checks first whether peers marked as
 
 Once the addresses to dial are known, they are forwarded to the `DialPeersAsync` routine of the switch. Each address is then dialed in parallel and the corresponding peer is added to the `dialing` list. 
 
-**Note** When dialing a peer, the peers' address is not added into the address book as it had to be there in order for the node to dial it in the first place. 
-
 
 #### *Successful dialing*
 
-When a peer is successfully dialed, it is removed from the `dialing` list and added to the `peers` list. The switch then calls the `InitPeer` and `AddPeer` routines of all the reactors that have registered to it. 
+When a peer is successfully dialed, it is removed from the `dialing` list and added to the `peers` list. If the node has not reached a sufficient number of peers, it asks the newly connected peers for more peers. 
 
-Once a peer is successfully dialed, we ask it to provide us with more peers.
+The switch then calls the `InitPeer` and `AddPeer` routines of all the reactors that have registered to it. 
 
 #### *Dialing failed*
 
@@ -107,7 +110,7 @@ Dialing peers, either via the PEX reactor or dialing persistent peers on startup
 
 When the connection to a peer is established (either by dialing it or accepting an incoming connection from it), the peer address is added to the address book. (The address book is managed by the PEX reactor). 
 
-When a peer is added to the address book, it is marked as connected to and no further new connections are established between the node and this peer. 
+When a peer is added to the address book, it is marked as connected to and no further new connections are established between the node and this peer.  This is checked within `filterPeers` (called when adding a peer) and `IsDialingOrExistingAddress` (called when dialing a peer).
 
 The number of peers a node can connect to is set by `MaxNumInboundPeers` and `MaxNumOutboundPeers` respectively. 
 
@@ -115,14 +118,14 @@ The number of peers a node can connect to is set by `MaxNumInboundPeers` and `Ma
 
 The PEX reactor is responsible for peer discovery and providing other peers with information about peers a node is already connected to. The PEX reactor receive routine listens to two types of messages: `PexRequest` and `PexAddress`. 
 
-In case of `PexRequest` messages the reactor provides the requesting peer with known peer addresses. The reactor implements request rate limiting by counting the number of requests coming from a single peer. This operation can mark a peer good or bad for a certain amount of time. 
+In case of `PexRequest` messages the reactor provides the requesting peer with known peer addresses (addresses stored in the address book). The reactor implements request rate limiting by counting the number of requests coming from a single peer. This operation can mark a peer good or bad for a certain amount of time. 
 
 `PexAddress` messages are typically received after a successful request for addresses. Received addresses are added into the address book. Adding to the address book fails if:
 
 - Node is tryign to add self
 - The address is private 
 
-A node has a requests map where it stores all requets it issued to a peer asking it for more peer addresses. 
+A node has a requests map where it stores all requets it issued to a peer asking it for more peer addresses. If a `PexAddress` message returns an error, a node marks the sending peer as bad. 
 
 
 ## Notes on diff v0.35+ and v0.34
