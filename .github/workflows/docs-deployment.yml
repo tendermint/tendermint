@@ -1,0 +1,62 @@
+# Build and deploy the docs.tendermint.com website content.
+# The static content is published to GitHub Pages.
+#
+# For documentation build info, see docs/DOCS_README.md.
+name: Build static documentation site
+on:
+  workflow_dispatch:  # allow manual updates
+  push:
+    branches:
+      - main
+    paths:
+      - docs/**
+      - spec/**
+
+jobs:
+  # This is split into two jobs so that the build, which runs npm, does not
+  # have write access to anything. The deploy requires write access to publish
+  # to the branch used by GitHub Pages, however, so we can't just make the
+  # whole workflow read-only.
+  build:
+    name: VuePress build
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:latest
+    permissions:
+      contents: read
+    steps:
+      - name: Install generator dependencies
+        run: |
+          apk add --no-cache make bash git npm
+      - uses: actions/checkout@v3
+        with:
+          # We need to fetch full history so the backport branches for previous
+          # versions will be available for the build.
+          fetch-depth: 0
+      - name: Build documentation
+        run: |
+          git config --global --add safe.directory "$PWD"
+          make build-docs
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: ~/output/
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: build-output
+          path: ~/output
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: 'docs-tendermint-com'
+          folder: ~/output
+          single-commit: true
