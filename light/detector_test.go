@@ -235,6 +235,10 @@ func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 }
 
 func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// primary performs a lunatic attack but changes the time of the header to
 	// something in the future relative to the blockchain
 	var (
