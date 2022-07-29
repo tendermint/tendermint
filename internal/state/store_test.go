@@ -26,7 +26,9 @@ const (
 
 func TestStoreBootstrap(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
 	val3, _ := factory.RandValidator(true, 10)
@@ -52,7 +54,9 @@ func TestStoreBootstrap(t *testing.T) {
 
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	val, _ := factory.RandValidator(true, 10)
 	val2, _ := factory.RandValidator(true, 10)
 	val3, _ := factory.RandValidator(true, 10)
@@ -107,7 +111,9 @@ func BenchmarkLoadValidators(b *testing.B) {
 	dbType := dbm.BackendType(cfg.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, cfg.DBDir())
 	require.NoError(b, err)
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	if err != nil {
 		b.Fatal(err)
@@ -141,7 +147,9 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 func TestStoreLoadConsensusParams(t *testing.T) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	err := stateStore.Save(makeRandomStateFromConsensusParams(types.DefaultConsensusParams(), 1, 1))
 	require.NoError(t, err)
 	params, err := stateStore.LoadConsensusParams(1)
@@ -184,7 +192,9 @@ func TestPruneStates(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
 
-			stateStore := sm.NewStore(db, false)
+			stateStore := sm.NewStore(db, sm.StoreOptions{
+				DiscardABCIResponses: false,
+			})
 			pk := ed25519.GenPrivKey().PubKey()
 
 			// Generate a bunch of state data. Validators change for heights ending with 3, and
@@ -308,15 +318,16 @@ func TestABCIResponsesResultsHash(t *testing.T) {
 }
 
 func TestLastABCIResponses(t *testing.T) {
-	//if the state store is empty
+	// if the state store is empty
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB, false)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	responses, err := stateStore.LoadABCIResponses(1)
 	require.Error(t, err)
 	require.Nil(t, responses)
-	fmt.Println(responses)
 
-	//stub the abciresponses
+	// stub the abciresponses
 	response1 := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		DeliverTxs: []*abci.ResponseDeliverTx{
@@ -324,29 +335,29 @@ func TestLastABCIResponses(t *testing.T) {
 		},
 		EndBlock: &abci.ResponseEndBlock{},
 	}
-	//Create new db and state store and set discard abciresponses to false
+	// create new db and state store and set discard abciresponses to false
 	stateDB = dbm.NewMemDB()
-	stateStore = sm.NewStore(stateDB, false)
+	stateStore = sm.NewStore(stateDB, sm.StoreOptions{DiscardABCIResponses: false})
 	height := int64(10)
-	//save the last abci response
+	// save the last abci response
 	err = stateStore.SaveABCIResponses(height, response1)
 	require.NoError(t, err)
-	//search for the last abciresponse and check if it has saved
+	// search for the last abciresponse and check if it has saved
 	lastResponse, err := stateStore.LoadLastABCIResponse(height)
 	require.NoError(t, err)
-	//check to see if the saved response height is the same as the loaded height
+	// check to see if the saved response height is the same as the loaded height
 	assert.Equal(t, lastResponse, response1)
 
 	// use an incorret height to make sure the state store errors
 	_, err = stateStore.LoadLastABCIResponse(height + 1)
 	assert.Error(t, err)
 
-	//check if the abci response didnt save in the abciresponses
+	// check if the abci response didnt save in the abciresponses
 	responses, err = stateStore.LoadABCIResponses(height)
 	require.NoError(t, err, responses)
 	require.Equal(t, response1, responses)
 
-	//stub the second abciresponse
+	// stub the second abciresponse
 	response2 := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		DeliverTxs: []*abci.ResponseDeliverTx{
@@ -355,15 +366,17 @@ func TestLastABCIResponses(t *testing.T) {
 		EndBlock: &abci.ResponseEndBlock{},
 	}
 
-	//create a new statestore with the responses on
-	stateStore = sm.NewStore(stateDB, true)
+	// create a new statestore with the responses on
+	stateStore = sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: true,
+	})
 	// save an additional response
 	err = stateStore.SaveABCIResponses(height+1, response2)
 	require.NoError(t, err)
-	//check to see if the response saved by calling the last response
+	// check to see if the response saved by calling the last response
 	lastResponse2, err := stateStore.LoadLastABCIResponse(height + 1)
 	require.NoError(t, err)
-	//check to see if the saved response height is the same as the loaded height
+	// check to see if the saved response height is the same as the loaded height
 	assert.Equal(t, response2, lastResponse2)
 
 	// should error as we are no longer saving the response
