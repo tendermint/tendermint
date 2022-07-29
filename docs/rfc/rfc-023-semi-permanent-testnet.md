@@ -1,8 +1,9 @@
-# RFC 022: semi-permanent testnet
+# RFC 023: Semi-permanent testnet
 
 ## Changelog
 
 - 2022-07-28: Initial draft (@mark-rushakoff)
+- 2022-07-29: Renumber to 023, minor clarifications (@mark-rushakoff)
 
 ## Abstract
 
@@ -67,6 +68,8 @@ There should probably be one testnet per maintained branch of Tendermint,
 i.e. one for the `main` branch
 and one per `v0.N.x` branch that the authors maintain.
 
+There may also exist testnets for long-lived feature branches.
+
 We may eventually discover that there is good reason to run more than one testnet for a branch,
 perhaps due to a significant configuration variation.
 
@@ -74,7 +77,7 @@ perhaps due to a significant configuration variation.
 
 The document has used the terms "long-lived" and "semi-permanent" somewhat interchangeably.
 The intent of the testnet being discussed in this RFC is to exist indefinitely;
-but there is a practical understanding that there will be testnet instances 
+but there is a practical understanding that there will be testnet instances
 which will be retired due to being associated with a no-longer-maintained release of Tendermint.
 Alternatively, we may discover a good reason to destroy and recreate the `main` testnet
 (such as if we build a new application for running the testnet).
@@ -95,7 +98,8 @@ The minimum viable testnet meets this set of features:
 - The testnet has a reasonably low, constant throughput of transactions -- say 30 tx/min --
   and the testnet operators are notified if that throughput drops below 75% of target
   sustained over 5 minutes
-- The testnet only needs to run in a single datacenter/cloud-region for MVP
+- The testnet only needs to run in a single datacenter/cloud-region for MVP,
+  i.e. running in multiple datacenters is out of scope for MVP
 - The testnet is running directly on VMs or compute instances;
   while Kubernetes or other orchestration frameworks may offer many significant advantages,
   the Tendermint engineers should not be required to learn those tools in order to
@@ -107,7 +111,7 @@ The medium-term goals are intended to be achievable within the 6-12 month time r
 following the launch of MVP.
 These goals could realistically be roadmapped following the launch of the MVP testnet.
 
-- The `main` testnet has more than 20 nodes
+- The `main` testnet has more than 20 nodes (completely arbitrary -- 5x more than 1+3 at MVP)
 - In addition to the `main` testnet,
   there is at least one testnet associated with one release branch
 - The testnet no longer is simply running the Tendermint KV store;
@@ -153,10 +157,10 @@ and therefore they would not be part of initial planning.
 
 There are some things we are explicitly not trying to achieve with long-lived testnets:
 
-- The testnets will NOT be maintained with any kind of on-call schedule;
-  although all engineers directly working on Tendermint will be expected to contribute to
-  the ongoing monitoring and maintenance of the testnets,
-  they have no obligations to maintain the testnet in any fashion after working hours
+- The Tendermint engineers will NOT be responsible for the testnets' availability
+  outside of working hours; there will not be any kind of on-call schedule
+- As a result of the 8x5 support noted in the previous point,
+  there will be NO guarantee of uptime or availability for any testnet
 - The testnets will NOT be used to gate pull requests;
   that responsibility belongs to unit tests, end-to-end tests, and integration tests
 - Similarly, the testnet will NOT be used to automate any changes back into Tendermint source code;
@@ -178,7 +182,7 @@ There are some things we are explicitly not trying to achieve with long-lived te
   a testnet comes with a considerable amount of "baggage", so end-to-end or integration tests
   are closer to the intent for "trying something to see what happens".
 - Likewise, the purpose of the testnet is not to run specific "tests" per se,
-  but rather to demonstrate that Tendermint blockchains as a whole can be stable
+  but rather to demonstrate that Tendermint blockchains as a whole are stable
   under a production load.
   Of course we will inject faults periodically, but the intent is to observe and prove that
   the testnet is resilient to those faults.
