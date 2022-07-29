@@ -8,14 +8,7 @@ linters:
     - dupl
     - errcheck
     - exportloopref
-    # - funlen
-    # - gochecknoglobals
-    # - gochecknoinits
-    # - gocognit
     - goconst
-    # - gocritic
-    # - gocyclo
-    # - godox
     - gofmt
     - goimports
     - revive
@@ -23,9 +16,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    # - interfacer
-    # - lll
-    # - maligned
     - misspell
     - nakedret
     - nolintlint
@@ -35,11 +25,8 @@ linters:
     - stylecheck
     - typecheck
     - unconvert
-    # - unparam
     - unused
     - varcheck
-    # - whitespace
-    # - wsl
 
 issues:
   exclude-rules:
