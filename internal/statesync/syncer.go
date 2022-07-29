@@ -115,11 +115,9 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 		return false, err
 	}
 	if added {
-		s.logger.Debug("Added chunk to queue", "height", chunk.Height, "format", chunk.Format,
-			"chunk", chunk.Index)
+		s.logger.Debug("Added chunk to queue", "height", chunk.Height, "format", chunk.Format, "chunk", chunk.Index)
 	} else {
-		s.logger.Debug("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format,
-			"chunk", chunk.Index)
+		s.logger.Debug("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format, "chunk", chunk.Index)
 	}
 	return added, nil
 }
@@ -184,9 +182,13 @@ func (s *syncer) SyncAny(
 		discoveryTime = minimumDiscoveryTime
 	}
 
+	timer := time.NewTimer(discoveryTime)
+	defer timer.Stop()
+
 	if discoveryTime > 0 {
 		requestSnapshots()
-		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
+		s.logger.Info("discovering snapshots",
+			"interval", discoveryTime)
 		time.Sleep(discoveryTime)
 	}
 
@@ -196,8 +198,11 @@ func (s *syncer) SyncAny(
 		snapshot *snapshot
 		chunks   *chunkQueue
 		err      error
+		iters    int
 	)
+
 	for {
+		iters++
 		// If not nil, we're going to retry restoration of the same snapshot.
 		if snapshot == nil {
 			snapshot = s.snapshots.Best()
@@ -207,9 +212,16 @@ func (s *syncer) SyncAny(
 			if discoveryTime == 0 {
 				return sm.State{}, nil, errNoSnapshots
 			}
-			s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
-			time.Sleep(discoveryTime)
-			continue
+			s.logger.Info("discovering snapshots",
+				"iterations", iters,
+				"interval", discoveryTime)
+			timer.Reset(discoveryTime)
+			select {
+			case <-ctx.Done():
+				return sm.State{}, nil, ctx.Err()
+			case <-timer.C:
+				continue
+			}
 		}
 		if chunks == nil {
 			chunks, err = newChunkQueue(snapshot, s.tempDir)
@@ -537,13 +549,11 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		return
 	}
 
-	s.logger.Debug(
-		"Requesting snapshot chunk",
+	s.logger.Debug("Requesting snapshot chunk",
 		"height", snapshot.Height,
 		"format", snapshot.Format,
 		"chunk", chunk,
-		"peer", peer,
-	)
+		"peer", peer)
 
 	msg := p2p.Envelope{
 		To: peer,
