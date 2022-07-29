@@ -39,8 +39,10 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 		lastVerifiedHeader = primaryTrace[len(primaryTrace)-1].SignedHeader
 		witnessesToRemove  = make([]int, 0)
 	)
-	c.logger.Debug("running detector against trace", "finalizeBlockHeight", lastVerifiedHeader.Height,
-		"finalizeBlockHash", lastVerifiedHeader.Hash, "length", len(primaryTrace))
+	c.logger.Debug("running detector against trace",
+		"finalizeBlockHeight", lastVerifiedHeader.Height,
+		"finalizeBlockHash", lastVerifiedHeader.Hash,
+		"length", len(primaryTrace))
 
 	// launch one goroutine per witness to retrieve the light block of the target height
 	// and compare it with the header from the primary

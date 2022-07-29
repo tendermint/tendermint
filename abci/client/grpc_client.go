@@ -3,7 +3,6 @@ package abciclient
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -65,7 +64,7 @@ RETRY_LOOP:
 			if cli.mustConnect {
 				return err
 			}
-			cli.logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr), "err", err)
+			cli.logger.Error("abci.grpcClient failed to connect,  Retrying...", "addr", cli.addr, "err", err)
 			timer.Reset(time.Second * dialRetryIntervalSeconds)
 			select {
 			case <-ctx.Done():
