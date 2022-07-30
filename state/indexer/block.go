@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-//go:generate mockery --case underscore --name BlockIndexer
+//go:generate ../../scripts/mockery_generate.sh BlockIndexer
 
 // BlockIndexer defines an interface contract for indexing block events.
 type BlockIndexer interface {

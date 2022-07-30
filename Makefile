@@ -74,9 +74,9 @@ install:
 ###                                Mocks                                    ###
 ###############################################################################
 
-mockery: 
+mockery:
 	go generate -run="./scripts/mockery_generate.sh" ./...
-.PHONY: mockery 
+.PHONY: mockery
 
 ###############################################################################
 ###                                Protobuf                                 ###
