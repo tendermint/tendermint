@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "@vuepress/plugin-html-redirect": "^0.1.4",
-    "watchpack": "^2.3.1"
+    "watchpack": "^2.4.0"
   },
   "scripts": {
     "preserve": "./pre.sh",
