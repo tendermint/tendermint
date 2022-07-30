@@ -254,7 +254,9 @@ func (n *Network) MakeNode(t *testing.T, opts NodeOptions) *Node {
 		privKey,
 		peerManager,
 		[]p2p.Transport{transport},
-		p2p.RouterOptions{},
+		p2p.RouterOptions{
+			QueueType: "fifo",
+		},
 	)
 	require.NoError(t, err)
 	require.NoError(t, router.Start())
