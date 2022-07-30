@@ -25,3 +25,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- [#9103] fix unsafe-reset-all for working with home path (@rootwarp)
