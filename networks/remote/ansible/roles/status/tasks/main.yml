@@ -7,4 +7,3 @@
 
 - name: Result
   debug: var=status.stdout_lines
-

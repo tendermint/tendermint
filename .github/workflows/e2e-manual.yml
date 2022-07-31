@@ -1,4 +1,5 @@
-# Manually run randomly generated E2E testnets (as nightly).
+# Runs randomly generated E2E testnets nightly on main
+# manually run e2e tests
 name: e2e-manual
 on:
   workflow_dispatch:
@@ -28,7 +29,7 @@ jobs:
       - name: Generate testnets
         working-directory: test/e2e
         # When changing -g, also change the matrix groups above
-        run: ./build/generator -g 4 -d networks/nightly/
+        run: ./build/generator -g 5 -d networks/nightly/
 
       - name: Run ${{ matrix.p2p }} p2p testnets
         working-directory: test/e2e
