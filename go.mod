@@ -10,7 +10,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/bufbuild/buf v1.6.0
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
-	github.com/creachadair/atomicfile v0.2.6
+	github.com/creachadair/atomicfile v0.2.7
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/creachadair/tomledit v0.0.23
 	github.com/fortytw2/leaktest v1.3.0
