@@ -555,8 +555,9 @@ type RPCConfig struct {
 	// pprof listen address (https://golang.org/pkg/net/http/pprof)
 	PprofListenAddress string `mapstructure:"pprof-laddr"`
 
-	// Set to true to enable the /BlockResults query. Saving ABCI Responses is also necessary
-	// to reindex events used in the command line.
+	// Set false to ensure ABCI responses are persisted.
+	// ABCI responses are required for /BlockResults RPC queries, and
+	// to reindex events in the command-line tool.
 	DiscardABCIResponses bool `mapstructure:"persist-abci-responses"`
 }
 
