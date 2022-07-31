@@ -5,14 +5,15 @@ package protodb
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/protobuf/gogoproto"
-	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
-	github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-	proto "github.com/gogo/protobuf/proto"
 	math "math"
 	math_rand "math/rand"
 	testing "testing"
 	time "time"
+
+	_ "github.com/gogo/protobuf/gogoproto"
+	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
+	github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+	proto "github.com/gogo/protobuf/proto"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
