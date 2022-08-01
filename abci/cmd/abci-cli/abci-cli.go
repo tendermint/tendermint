@@ -138,7 +138,6 @@ func addCommands() {
 	RootCmd.AddCommand(consoleCmd)
 	RootCmd.AddCommand(echoCmd)
 	RootCmd.AddCommand(infoCmd)
-	RootCmd.AddCommand(setOptionCmd)
 	RootCmd.AddCommand(deliverTxCmd)
 	RootCmd.AddCommand(checkTxCmd)
 	RootCmd.AddCommand(commitCmd)
@@ -203,13 +202,6 @@ var infoCmd = &cobra.Command{
 	Long:  "get some info about the application",
 	Args:  cobra.ExactArgs(0),
 	RunE:  cmdInfo,
-}
-var setOptionCmd = &cobra.Command{
-	Use:   "set_option",
-	Short: "set an option on the application",
-	Long:  "set an option on the application",
-	Args:  cobra.ExactArgs(2),
-	RunE:  cmdSetOption,
 }
 
 var deliverTxCmd = &cobra.Command{
@@ -444,7 +436,6 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
 	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
 	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
-	fmt.Printf("%s: %s\n", setOptionCmd.Use, setOptionCmd.Short)
 	fmt.Println("Use \"[command] --help\" for more information about a command.")
 
 	return nil

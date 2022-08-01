@@ -24,7 +24,6 @@ message Request {
     RequestEcho               echo                 = 1;
     RequestFlush              flush                = 2;
     RequestInfo               info                 = 3;
-    RequestSetOption          set_option           = 4;
     RequestInitChain          init_chain           = 5;
     RequestQuery              query                = 6;
     RequestBeginBlock         begin_block          = 7;
@@ -39,6 +38,7 @@ message Request {
     RequestPrepareProposal    prepare_proposal     = 16;
     RequestProcessProposal    process_proposal     = 17;
   }
+  Reserve = 4;
 }
 
 message RequestEcho {
@@ -470,7 +470,6 @@ service ABCIApplication {
   rpc Echo(RequestEcho) returns (ResponseEcho);
   rpc Flush(RequestFlush) returns (ResponseFlush);
   rpc Info(RequestInfo) returns (ResponseInfo);
-  rpc SetOption(RequestSetOption) returns (ResponseSetOption);
   rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);

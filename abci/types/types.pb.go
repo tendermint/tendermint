@@ -290,9 +290,6 @@ type Request_Flush struct {
 type Request_Info struct {
 	Info *RequestInfo `protobuf:"bytes,3,opt,name=info,proto3,oneof" json:"info,omitempty"`
 }
-type Request_SetOption struct {
-	SetOption *RequestSetOption `protobuf:"bytes,4,opt,name=set_option,json=setOption,proto3,oneof" json:"set_option,omitempty"`
-}
 type Request_InitChain struct {
 	InitChain *RequestInitChain `protobuf:"bytes,5,opt,name=init_chain,json=initChain,proto3,oneof" json:"init_chain,omitempty"`
 }
@@ -1589,9 +1586,7 @@ type Response_Flush struct {
 type Response_Info struct {
 	Info *ResponseInfo `protobuf:"bytes,4,opt,name=info,proto3,oneof" json:"info,omitempty"`
 }
-type Response_SetOption struct {
-	SetOption *ResponseSetOption `protobuf:"bytes,5,opt,name=set_option,json=setOption,proto3,oneof" json:"set_option,omitempty"`
-}
+
 type Response_InitChain struct {
 	InitChain *ResponseInitChain `protobuf:"bytes,6,opt,name=init_chain,json=initChain,proto3,oneof" json:"init_chain,omitempty"`
 }
