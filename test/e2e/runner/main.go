@@ -71,14 +71,6 @@ func NewCLI() *CLI {
 				return err
 			}
 
-			if lastMisbehavior := cli.testnet.LastMisbehaviorHeight(); lastMisbehavior > 0 {
-				// wait for misbehaviors before starting perturbations. We do a separate
-				// wait for another 5 blocks, since the last misbehavior height may be
-				// in the past depending on network startup ordering.
-				if err := WaitUntil(cli.testnet, lastMisbehavior); err != nil {
-					return err
-				}
-			}
 			if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
 				return err
 			}
