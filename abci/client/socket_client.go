@@ -231,6 +231,10 @@ func (cli *socketClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	return cli.queueRequest(types.ToRequestInfo(req))
 }
 
+func (cli *socketClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
+	return cli.queueRequest(types.ToRequestSetOption(req))
+}
+
 func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) *ReqRes {
 	return cli.queueRequest(types.ToRequestDeliverTx(req))
 }
@@ -302,6 +306,15 @@ func (cli *socketClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, e
 	}
 
 	return reqres.Response.GetInfo(), cli.Error()
+}
+
+func (cli *socketClient) SetOptionSync(req types.RequestSetOption) (*types.ResponseSetOption, error) {
+	reqres := cli.queueRequest(types.ToRequestSetOption(req))
+	if err := cli.FlushSync(); err != nil {
+		return nil, err
+	}
+
+	return reqres.Response.GetSetOption(), cli.Error()
 }
 
 func (cli *socketClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
@@ -455,6 +468,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Flush)
 	case *types.Request_Info:
 		_, ok = res.Value.(*types.Response_Info)
+	case *types.Request_SetOption:
+		_, ok = res.Value.(*types.Response_SetOption)
 	case *types.Request_DeliverTx:
 		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:

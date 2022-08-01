@@ -165,6 +165,7 @@ type Request struct {
 	//	*Request_Echo
 	//	*Request_Flush
 	//	*Request_Info
+	//	*Request_SetOption
 	//	*Request_InitChain
 	//	*Request_Query
 	//	*Request_BeginBlock
@@ -264,6 +265,7 @@ type Request_ApplySnapshotChunk struct {
 func (*Request_Echo) isRequest_Value()               {}
 func (*Request_Flush) isRequest_Value()              {}
 func (*Request_Info) isRequest_Value()               {}
+func (*Request_SetOption) isRequest_Value()          {}
 func (*Request_InitChain) isRequest_Value()          {}
 func (*Request_Query) isRequest_Value()              {}
 func (*Request_BeginBlock) isRequest_Value()         {}
@@ -300,6 +302,13 @@ func (m *Request) GetFlush() *RequestFlush {
 func (m *Request) GetInfo() *RequestInfo {
 	if x, ok := m.GetValue().(*Request_Info); ok {
 		return x.Info
+	}
+	return nil
+}
+
+func (m *Request) GetSetOption() *RequestSetOption {
+	if x, ok := m.GetValue().(*Request_SetOption); ok {
+		return x.SetOption
 	}
 	return nil
 }
@@ -387,6 +396,7 @@ func (*Request) XXX_OneofWrappers() []interface{} {
 		(*Request_Echo)(nil),
 		(*Request_Flush)(nil),
 		(*Request_Info)(nil),
+		(*Request_SetOption)(nil),
 		(*Request_InitChain)(nil),
 		(*Request_Query)(nil),
 		(*Request_BeginBlock)(nil),
@@ -539,6 +549,59 @@ func (m *RequestInfo) GetP2PVersion() uint64 {
 		return m.P2PVersion
 	}
 	return 0
+}
+
+// nondeterministic
+type RequestSetOption struct {
+	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *RequestSetOption) Reset()         { *m = RequestSetOption{} }
+func (m *RequestSetOption) String() string { return proto.CompactTextString(m) }
+func (*RequestSetOption) ProtoMessage()    {}
+func (*RequestSetOption) Descriptor() ([]byte, []int) {
+	return fileDescriptor_252557cfdd89a31a, []int{4}
+}
+func (m *RequestSetOption) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RequestSetOption) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RequestSetOption.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RequestSetOption) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestSetOption.Merge(m, src)
+}
+func (m *RequestSetOption) XXX_Size() int {
+	return m.Size()
+}
+func (m *RequestSetOption) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestSetOption.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RequestSetOption proto.InternalMessageInfo
+
+func (m *RequestSetOption) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *RequestSetOption) GetValue() string {
+	if m != nil {
+		return m.Value
+	}
+	return ""
 }
 
 type RequestInitChain struct {
@@ -1155,6 +1218,7 @@ type Response struct {
 	//	*Response_Echo
 	//	*Response_Flush
 	//	*Response_Info
+	//	*Response_SetOption
 	//	*Response_InitChain
 	//	*Response_Query
 	//	*Response_BeginBlock
@@ -1259,6 +1323,7 @@ func (*Response_Exception) isResponse_Value()          {}
 func (*Response_Echo) isResponse_Value()               {}
 func (*Response_Flush) isResponse_Value()              {}
 func (*Response_Info) isResponse_Value()               {}
+func (*Response_SetOption) isResponse_Value()          {}
 func (*Response_InitChain) isResponse_Value()          {}
 func (*Response_Query) isResponse_Value()              {}
 func (*Response_BeginBlock) isResponse_Value()         {}
@@ -1302,6 +1367,13 @@ func (m *Response) GetFlush() *ResponseFlush {
 func (m *Response) GetInfo() *ResponseInfo {
 	if x, ok := m.GetValue().(*Response_Info); ok {
 		return x.Info
+	}
+	return nil
+}
+
+func (m *Response) GetSetOption() *ResponseSetOption {
+	if x, ok := m.GetValue().(*Response_SetOption); ok {
+		return x.SetOption
 	}
 	return nil
 }
@@ -1390,6 +1462,7 @@ func (*Response) XXX_OneofWrappers() []interface{} {
 		(*Response_Echo)(nil),
 		(*Response_Flush)(nil),
 		(*Response_Info)(nil),
+		(*Response_SetOption)(nil),
 		(*Response_InitChain)(nil),
 		(*Response_Query)(nil),
 		(*Response_BeginBlock)(nil),
@@ -1603,6 +1676,68 @@ func (m *ResponseInfo) GetLastBlockAppHash() []byte {
 		return m.LastBlockAppHash
 	}
 	return nil
+}
+
+// nondeterministic
+type ResponseSetOption struct {
+	Code uint32 `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
+	// bytes data = 2;
+	Log  string `protobuf:"bytes,3,opt,name=log,proto3" json:"log,omitempty"`
+	Info string `protobuf:"bytes,4,opt,name=info,proto3" json:"info,omitempty"`
+}
+
+func (m *ResponseSetOption) Reset()         { *m = ResponseSetOption{} }
+func (m *ResponseSetOption) String() string { return proto.CompactTextString(m) }
+func (*ResponseSetOption) ProtoMessage()    {}
+func (*ResponseSetOption) Descriptor() ([]byte, []int) {
+	return fileDescriptor_252557cfdd89a31a, []int{21}
+}
+func (m *ResponseSetOption) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ResponseSetOption) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ResponseSetOption.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ResponseSetOption) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseSetOption.Merge(m, src)
+}
+func (m *ResponseSetOption) XXX_Size() int {
+	return m.Size()
+}
+func (m *ResponseSetOption) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseSetOption.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseSetOption proto.InternalMessageInfo
+
+func (m *ResponseSetOption) GetCode() uint32 {
+	if m != nil {
+		return m.Code
+	}
+	return 0
+}
+
+func (m *ResponseSetOption) GetLog() string {
+	if m != nil {
+		return m.Log
+	}
+	return ""
+}
+
+func (m *ResponseSetOption) GetInfo() string {
+	if m != nil {
+		return m.Info
+	}
+	return ""
 }
 
 type ResponseInitChain struct {
@@ -3040,6 +3175,7 @@ func init() {
 	proto.RegisterType((*RequestEcho)(nil), "tendermint.abci.RequestEcho")
 	proto.RegisterType((*RequestFlush)(nil), "tendermint.abci.RequestFlush")
 	proto.RegisterType((*RequestInfo)(nil), "tendermint.abci.RequestInfo")
+	proto.RegisterType((*RequestSetOption)(nil), "tendermint.abci.RequestSetOption")
 	proto.RegisterType((*RequestInitChain)(nil), "tendermint.abci.RequestInitChain")
 	proto.RegisterType((*RequestQuery)(nil), "tendermint.abci.RequestQuery")
 	proto.RegisterType((*RequestBeginBlock)(nil), "tendermint.abci.RequestBeginBlock")
@@ -3056,6 +3192,7 @@ func init() {
 	proto.RegisterType((*ResponseEcho)(nil), "tendermint.abci.ResponseEcho")
 	proto.RegisterType((*ResponseFlush)(nil), "tendermint.abci.ResponseFlush")
 	proto.RegisterType((*ResponseInfo)(nil), "tendermint.abci.ResponseInfo")
+	proto.RegisterType((*ResponseSetOption)(nil), "tendermint.abci.ResponseSetOption")
 	proto.RegisterType((*ResponseInitChain)(nil), "tendermint.abci.ResponseInitChain")
 	proto.RegisterType((*ResponseQuery)(nil), "tendermint.abci.ResponseQuery")
 	proto.RegisterType((*ResponseBeginBlock)(nil), "tendermint.abci.ResponseBeginBlock")
@@ -3275,6 +3412,7 @@ type ABCIApplicationClient interface {
 	Echo(ctx context.Context, in *RequestEcho, opts ...grpc.CallOption) (*ResponseEcho, error)
 	Flush(ctx context.Context, in *RequestFlush, opts ...grpc.CallOption) (*ResponseFlush, error)
 	Info(ctx context.Context, in *RequestInfo, opts ...grpc.CallOption) (*ResponseInfo, error)
+	SetOption(ctx context.Context, in *RequestSetOption, opts ...grpc.CallOption) (*ResponseSetOption, error)
 	DeliverTx(ctx context.Context, in *RequestDeliverTx, opts ...grpc.CallOption) (*ResponseDeliverTx, error)
 	CheckTx(ctx context.Context, in *RequestCheckTx, opts ...grpc.CallOption) (*ResponseCheckTx, error)
 	Query(ctx context.Context, in *RequestQuery, opts ...grpc.CallOption) (*ResponseQuery, error)
@@ -3317,6 +3455,15 @@ func (c *aBCIApplicationClient) Flush(ctx context.Context, in *RequestFlush, opt
 func (c *aBCIApplicationClient) Info(ctx context.Context, in *RequestInfo, opts ...grpc.CallOption) (*ResponseInfo, error) {
 	out := new(ResponseInfo)
 	err := c.cc.Invoke(ctx, "/tendermint.abci.ABCIApplication/Info", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aBCIApplicationClient) SetOption(ctx context.Context, in *RequestSetOption, opts ...grpc.CallOption) (*ResponseSetOption, error) {
+	out := new(ResponseSetOption)
+	err := c.cc.Invoke(ctx, "/tendermint.abci.ABCIApplication/SetOption", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -3427,6 +3574,7 @@ type ABCIApplicationServer interface {
 	Echo(context.Context, *RequestEcho) (*ResponseEcho, error)
 	Flush(context.Context, *RequestFlush) (*ResponseFlush, error)
 	Info(context.Context, *RequestInfo) (*ResponseInfo, error)
+	SetOption(context.Context, *RequestSetOption) (*ResponseSetOption, error)
 	DeliverTx(context.Context, *RequestDeliverTx) (*ResponseDeliverTx, error)
 	CheckTx(context.Context, *RequestCheckTx) (*ResponseCheckTx, error)
 	Query(context.Context, *RequestQuery) (*ResponseQuery, error)
@@ -3452,6 +3600,9 @@ func (*UnimplementedABCIApplicationServer) Flush(ctx context.Context, req *Reque
 }
 func (*UnimplementedABCIApplicationServer) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Info not implemented")
+}
+func (*UnimplementedABCIApplicationServer) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetOption not implemented")
 }
 func (*UnimplementedABCIApplicationServer) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeliverTx not implemented")
@@ -3541,6 +3692,24 @@ func _ABCIApplication_Info_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ABCIApplicationServer).Info(ctx, req.(*RequestInfo))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ABCIApplication_SetOption_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestSetOption)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ABCIApplicationServer).SetOption(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/tendermint.abci.ABCIApplication/SetOption",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ABCIApplicationServer).SetOption(ctx, req.(*RequestSetOption))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3760,6 +3929,10 @@ var _ABCIApplication_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ABCIApplication_Info_Handler,
 		},
 		{
+			MethodName: "SetOption",
+			Handler:    _ABCIApplication_SetOption_Handler,
+		},
+		{
 			MethodName: "DeliverTx",
 			Handler:    _ABCIApplication_DeliverTx_Handler,
 		},
@@ -3903,7 +4076,27 @@ func (m *Request_Info) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
+func (m *Request_SetOption) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
 
+func (m *Request_SetOption) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SetOption != nil {
+		{
+			size, err := m.SetOption.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTypes(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	return len(dAtA) - i, nil
+}
 func (m *Request_InitChain) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
@@ -4222,6 +4415,43 @@ func (m *RequestInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i -= len(m.Version)
 		copy(dAtA[i:], m.Version)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.Version)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *RequestSetOption) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RequestSetOption) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RequestSetOption) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Key) > 0 {
+		i -= len(m.Key)
+		copy(dAtA[i:], m.Key)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Key)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -4797,7 +5027,27 @@ func (m *Response_Info) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	return len(dAtA) - i, nil
 }
+func (m *Response_SetOption) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
 
+func (m *Response_SetOption) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SetOption != nil {
+		{
+			size, err := m.SetOption.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTypes(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	return len(dAtA) - i, nil
+}
 func (m *Response_InitChain) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
@@ -5164,6 +5414,48 @@ func (m *ResponseInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.Data)))
 		i--
 		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ResponseSetOption) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ResponseSetOption) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ResponseSetOption) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Info) > 0 {
+		i -= len(m.Info)
+		copy(dAtA[i:], m.Info)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Info)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Log) > 0 {
+		i -= len(m.Log)
+		copy(dAtA[i:], m.Log)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Log)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.Code != 0 {
+		i = encodeVarintTypes(dAtA, i, uint64(m.Code))
+		i--
+		dAtA[i] = 0x8
 	}
 	return len(dAtA) - i, nil
 }
@@ -6343,7 +6635,18 @@ func (m *Request_Info) Size() (n int) {
 	}
 	return n
 }
-
+func (m *Request_SetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SetOption != nil {
+		l = m.SetOption.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
 func (m *Request_InitChain) Size() (n int) {
 	if m == nil {
 		return 0
@@ -6513,6 +6816,23 @@ func (m *RequestInfo) Size() (n int) {
 	}
 	if m.P2PVersion != 0 {
 		n += 1 + sovTypes(uint64(m.P2PVersion))
+	}
+	return n
+}
+
+func (m *RequestSetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
 	}
 	return n
 }
@@ -6769,7 +7089,18 @@ func (m *Response_Info) Size() (n int) {
 	}
 	return n
 }
-
+func (m *Response_SetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SetOption != nil {
+		l = m.SetOption.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
 func (m *Response_InitChain) Size() (n int) {
 	if m == nil {
 		return 0
@@ -6958,6 +7289,26 @@ func (m *ResponseInfo) Size() (n int) {
 		n += 1 + sovTypes(uint64(m.LastBlockHeight))
 	}
 	l = len(m.LastBlockAppHash)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *ResponseSetOption) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Code != 0 {
+		n += 1 + sovTypes(uint64(m.Code))
+	}
+	l = len(m.Log)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Info)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
@@ -7592,6 +7943,9 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			m.Value = &Request_Info{v}
 			iNdEx = postIndex
 		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SetOption", wireType)
+			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
@@ -7617,6 +7971,12 @@ func (m *Request) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
+			v := &RequestSetOption{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &Request_SetOption{v}
+			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field InitChain", wireType)
@@ -8254,6 +8614,120 @@ func (m *RequestInfo) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RequestSetOption) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RequestSetOption: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RequestSetOption: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipTypes(dAtA[iNdEx:])
@@ -9740,6 +10214,9 @@ func (m *Response) Unmarshal(dAtA []byte) error {
 			m.Value = &Response_Info{v}
 			iNdEx = postIndex
 		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SetOption", wireType)
+			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
@@ -9765,6 +10242,11 @@ func (m *Response) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
+			v := &ResponseSetOption{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &Response_SetOption{v}
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -10550,6 +11032,139 @@ func (m *ResponseInfo) Unmarshal(dAtA []byte) error {
 			if m.LastBlockAppHash == nil {
 				m.LastBlockAppHash = []byte{}
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ResponseSetOption) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ResponseSetOption: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ResponseSetOption: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Code", wireType)
+			}
+			m.Code = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Code |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Log", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Log = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Info", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Info = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

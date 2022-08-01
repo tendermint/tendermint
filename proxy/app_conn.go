@@ -39,6 +39,8 @@ type AppConnQuery interface {
 	EchoSync(string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
+
+	//	SetOptionSync(key string, value string) (res types.Result)
 }
 
 type AppConnSnapshot interface {

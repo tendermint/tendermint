@@ -52,6 +52,16 @@ var (
 	jsonpbUnmarshaller = jsonpb.Unmarshaler{}
 )
 
+func (r *ResponseSetOption) MarshalJSON() ([]byte, error) {
+	s, err := jsonpbMarshaller.MarshalToString(r)
+	return []byte(s), err
+}
+
+func (r *ResponseSetOption) UnmarshalJSON(b []byte) error {
+	reader := bytes.NewBuffer(b)
+	return jsonpbUnmarshaller.Unmarshal(reader, r)
+}
+
 func (r *ResponseCheckTx) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
@@ -116,5 +126,6 @@ var _ jsonRoundTripper = (*ResponseCommit)(nil)
 var _ jsonRoundTripper = (*ResponseQuery)(nil)
 var _ jsonRoundTripper = (*ResponseDeliverTx)(nil)
 var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
+var _ jsonRoundTripper = (*ResponseSetOption)(nil)
 
 var _ jsonRoundTripper = (*EventAttribute)(nil)
