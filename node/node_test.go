@@ -106,6 +106,10 @@ func getTestNode(ctx context.Context, t *testing.T, conf *config.Config, logger 
 }
 
 func TestNodeDelayedStart(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	cfg, err := config.ResetTestRoot(t.TempDir(), "node_delayed_start_test")
 	require.NoError(t, err)
 
@@ -195,6 +199,10 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 // address without a protocol must result in error
 func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -441,6 +449,10 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 }
 
 func TestMaxProposalBlockSize(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

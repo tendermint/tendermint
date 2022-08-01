@@ -132,6 +132,10 @@ func convertTex(in []testTx) types.Txs {
 }
 
 func TestTxMempool_TxsAvailable(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -540,6 +544,10 @@ func TestTxMempool_CheckTxSameSender(t *testing.T) {
 }
 
 func TestTxMempool_ConcurrentTxs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

@@ -197,6 +197,10 @@ func setup(
 }
 
 func TestReactor_Sync(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
@@ -618,6 +622,10 @@ func TestReactor_StateProviderP2P(t *testing.T) {
 }
 
 func TestReactor_Backfill(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -626,6 +634,10 @@ func TestReactor_Backfill(t *testing.T) {
 	for _, failureRate := range failureRates {
 		failureRate := failureRate
 		t.Run(fmt.Sprintf("failure rate: %d", failureRate), func(t *testing.T) {
+			if testing.Short() && failureRate > 0 {
+				t.Skip("skipping test in short mode")
+			}
+
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
