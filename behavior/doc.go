@@ -39,4 +39,6 @@ type blockPart struct {
 This message will request the peer be marked as good
 
 */
-package behaviour //nolint:misspell
+
+package behavior
+

@@ -77,7 +77,7 @@ Note the context/background should be written in the present tense.
 - [ADR-006: Trust-Metric](./adr-006-trust-metric.md)
 - [ADR-024: Sign-Bytes](./adr-024-sign-bytes.md)
 - [ADR-035: Documentation](./adr-035-documentation.md)
-- [ADR-039: Peer-Behaviour](./adr-039-peer-behaviour.md)
+- [ADR-039: Peer-Behaviour](./adr-039-peer-behavior.md)
 - [ADR-060: Go-API-Stability](./adr-060-go-api-stability.md)
 - [ADR-061: P2P-Refactor-Scope](./adr-061-p2p-refactor-scope.md)
 - [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)

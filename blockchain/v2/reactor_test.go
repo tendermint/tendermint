@@ -15,7 +15,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/behaviour" //nolint:misspell
+	"github.com/tendermint/tendermint/behavior"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -144,9 +144,9 @@ type testReactorParams struct {
 	mockA       bool
 }
 
-func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
-	store, state, _ := newReactorStore(t, p.genDoc, p.privVals, p.startHeight)
-	reporter := behaviour.NewMockReporter()
+func newTestReactor(p testReactorParams) *BlockchainReactor {
+	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
+	reporter := behavior.NewMockReporter()
 
 	var appl blockApplier
 

@@ -1,10 +1,10 @@
-package behaviour_test //nolint:misspell
+package behavior_test
 
 import (
 	"sync"
 	"testing"
 
-	bh "github.com/tendermint/tendermint/behaviour" //nolint:misspell
+	bh "github.com/tendermint/tendermint/behavior"
 	"github.com/tendermint/tendermint/p2p"
 )
 
@@ -35,14 +35,14 @@ func TestMockReporter(t *testing.T) {
 
 type scriptItem struct {
 	peerID   p2p.ID
-	behavior bh.PeerBehaviour
+	behavior bh.PeerBehavior
 }
 
-// equalBehaviours returns true if a and b contain the same PeerBehaviours with
+// equalBehaviours returns true if a and b contain the same PeerBehaviors with
 // the same freequencies and otherwise false.
-func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
-	aHistogram := map[bh.PeerBehaviour]int{}
-	bHistogram := map[bh.PeerBehaviour]int{}
+func equalBehaviours(a []bh.PeerBehavior, b []bh.PeerBehavior) bool {
+	aHistogram := map[bh.PeerBehavior]int{}
+	bHistogram := map[bh.PeerBehavior]int{}
 
 	for _, behavior := range a {
 		aHistogram[behavior]++
@@ -71,40 +71,40 @@ func equalBehaviours(a []bh.PeerBehaviour, b []bh.PeerBehaviour) bool {
 	return true
 }
 
-// TestEqualPeerBehaviours tests that equalBehaviours can tell that two slices
+// TestEqualPeerBehaviors tests that equalBehaviours can tell that two slices
 // of peer behaviors can be compared for the behaviors they contain and the
 // freequencies that those behaviors occur.
-func TestEqualPeerBehaviours(t *testing.T) {
+func TestEqualPeerBehaviors(t *testing.T) {
 	var (
 		peerID        p2p.ID = "MockPeer"
 		consensusVote        = bh.ConsensusVote(peerID, "voted")
 		blockPart            = bh.BlockPart(peerID, "blocked")
 		equals               = []struct {
-			left  []bh.PeerBehaviour
-			right []bh.PeerBehaviour
+			left  []bh.PeerBehavior
+			right []bh.PeerBehavior
 		}{
 			// Empty sets
-			{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{}},
+			{[]bh.PeerBehavior{}, []bh.PeerBehavior{}},
 			// Single behaviors
-			{[]bh.PeerBehaviour{consensusVote}, []bh.PeerBehaviour{consensusVote}},
+			{[]bh.PeerBehavior{consensusVote}, []bh.PeerBehavior{consensusVote}},
 			// Equal Frequencies
-			{[]bh.PeerBehaviour{consensusVote, consensusVote},
-				[]bh.PeerBehaviour{consensusVote, consensusVote}},
+			{[]bh.PeerBehavior{consensusVote, consensusVote},
+				[]bh.PeerBehavior{consensusVote, consensusVote}},
 			// Equal frequencies different orders
-			{[]bh.PeerBehaviour{consensusVote, blockPart},
-				[]bh.PeerBehaviour{blockPart, consensusVote}},
+			{[]bh.PeerBehavior{consensusVote, blockPart},
+				[]bh.PeerBehavior{blockPart, consensusVote}},
 		}
 		unequals = []struct {
-			left  []bh.PeerBehaviour
-			right []bh.PeerBehaviour
+			left  []bh.PeerBehavior
+			right []bh.PeerBehavior
 		}{
 			// Comparing empty sets to non empty sets
-			{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{consensusVote}},
+			{[]bh.PeerBehavior{}, []bh.PeerBehavior{consensusVote}},
 			// Different behaviors
-			{[]bh.PeerBehaviour{consensusVote}, []bh.PeerBehaviour{blockPart}},
+			{[]bh.PeerBehavior{consensusVote}, []bh.PeerBehavior{blockPart}},
 			// Same behavior with different frequencies
-			{[]bh.PeerBehaviour{consensusVote},
-				[]bh.PeerBehaviour{consensusVote, consensusVote}},
+			{[]bh.PeerBehavior{consensusVote},
+				[]bh.PeerBehavior{consensusVote, consensusVote}},
 		}
 	)
 
@@ -121,33 +121,33 @@ func TestEqualPeerBehaviours(t *testing.T) {
 	}
 }
 
-// TestPeerBehaviourConcurrency constructs a scenario in which
+// TestPeerBehaviorConcurrency constructs a scenario in which
 // multiple goroutines are using the same MockReporter instance.
 // This test reproduces the conditions in which MockReporter will
 // be used within a Reactor `Receive` method tests to ensure thread safety.
-func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
+func TestMockPeerBehaviorReporterConcurrency(t *testing.T) {
 	var (
-		behaviourScript = []struct {
+		behaviorScript = []struct {
 			peerID    p2p.ID
-			behaviors []bh.PeerBehaviour
+			behaviors []bh.PeerBehavior
 		}{
-			{"1", []bh.PeerBehaviour{bh.ConsensusVote("1", "")}},
-			{"2", []bh.PeerBehaviour{bh.ConsensusVote("2", ""), bh.ConsensusVote("2", ""), bh.ConsensusVote("2", "")}},
+			{"1", []bh.PeerBehavior{bh.ConsensusVote("1", "")}},
+			{"2", []bh.PeerBehavior{bh.ConsensusVote("2", ""), bh.ConsensusVote("2", ""), bh.ConsensusVote("2", "")}},
 			{
 				"3",
-				[]bh.PeerBehaviour{bh.BlockPart("3", ""),
+				[]bh.PeerBehavior{bh.BlockPart("3", ""),
 					bh.ConsensusVote("3", ""),
 					bh.BlockPart("3", ""),
 					bh.ConsensusVote("3", "")}},
 			{
 				"4",
-				[]bh.PeerBehaviour{bh.ConsensusVote("4", ""),
+				[]bh.PeerBehavior{bh.ConsensusVote("4", ""),
 					bh.ConsensusVote("4", ""),
 					bh.ConsensusVote("4", ""),
 					bh.ConsensusVote("4", "")}},
 			{
 				"5",
-				[]bh.PeerBehaviour{bh.BlockPart("5", ""),
+				[]bh.PeerBehavior{bh.BlockPart("5", ""),
 					bh.ConsensusVote("5", ""),
 					bh.BlockPart("5", ""),
 					bh.ConsensusVote("5", "")}},
@@ -180,7 +180,7 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	sendingWg.Add(1)
 	go func() {
 		defer sendingWg.Done()
-		for _, item := range behaviourScript {
+		for _, item := range behaviorScript {
 			for _, reason := range item.behaviors {
 				scriptItems <- scriptItem{item.peerID, reason}
 			}
@@ -195,7 +195,7 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 
 	receiveWg.Wait()
 
-	for _, items := range behaviourScript {
+	for _, items := range behaviorScript {
 		reported := pr.GetBehaviours(items.peerID)
 		if !equalBehaviours(reported, items.behaviors) {
 			t.Errorf("expected peer %s to have behaved \nExpected: %#v \nGot %#v \n",

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/behaviour" //nolint:misspell
+	"github.com/tendermint/tendermint/behavior"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -66,7 +66,7 @@ type BlockchainReactor struct {
 	// the switch.
 	eventsFromFSMCh chan bcFsmMessage
 
-	swReporter *behaviour.SwitchReporter
+	swReporter *behavior.SwitchReporter
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -138,7 +138,7 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 
 // OnStart implements service.Service.
 func (bcR *BlockchainReactor) OnStart() error {
-	bcR.swReporter = behaviour.NewSwitchReporter(bcR.BaseReactor.Switch)
+	bcR.swReporter = behavior.NewSwitchReporter(bcR.BaseReactor.Switch)
 	if bcR.fastSync {
 		go bcR.poolRoutine()
 	}
@@ -254,13 +254,13 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	msg, err := bc.DecodeMsg(msgBytes)
 	if err != nil {
 		bcR.Logger.Error("error decoding message", "src", src, "chId", chID, "err", err)
-		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		_ = bcR.swReporter.Report(behavior.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
 	if err = bc.ValidateMsg(msg); err != nil {
 		bcR.Logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+		_ = bcR.swReporter.Report(behavior.BadMessage(src.ID(), err.Error()))
 		return
 	}
 
@@ -451,7 +451,7 @@ ForLoop:
 func (bcR *BlockchainReactor) reportPeerErrorToSwitch(err error, peerID p2p.ID) {
 	peer := bcR.Switch.Peers().Get(peerID)
 	if peer != nil {
-		_ = bcR.swReporter.Report(behaviour.BadMessage(peerID, err.Error()))
+		_ = bcR.swReporter.Report(behavior.BadMessage(peerID, err.Error()))
 	}
 }
 

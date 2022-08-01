@@ -22,7 +22,7 @@ main chain - so called Fork-Lite. See the
 document for more details. For a sequential lite client, this can happen via
 equivocation or amnesia attacks. For a skipping lite client this can also happen
 via lunatic validator attacks. There must be some way for applications to punish
-all forms of misbehaviour.
+all forms of misbehavior.
 
 The essential question is whether Tendermint should manage the evidence
 verification, or whether it should treat evidence more like a transaction (ie.
@@ -52,7 +52,7 @@ Arguments in favor of leaving evidence handling in Tendermint:
   currently](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md)
   is via a centralized
   monitor service that is trusted for liveness to aggregate data from
-  current and past validators, but which produces a proof of misbehaviour (ie.
+  current and past validators, but which produces a proof of misbehavior (ie.
   via amnesia) that can be verified by anyone, including the blockchain.
   Validators must submit all the votes they saw for the relevant consensus
   height to justify their precommits. This is quite specific to the Tendermint
