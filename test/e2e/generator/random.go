@@ -56,28 +56,6 @@ func (uc uniformChoice) Choose(r *rand.Rand) interface{} {
 	return uc[r.Intn(len(uc))]
 }
 
-// weightedChoice chooses a single random key from a map of keys and weights.
-type weightedChoice map[interface{}]uint
-
-func (wc weightedChoice) Choose(r *rand.Rand) interface{} {
-	total := 0
-	choices := make([]interface{}, 0, len(wc))
-	for choice, weight := range wc {
-		total += int(weight)
-		choices = append(choices, choice)
-	}
-
-	rem := r.Intn(total)
-	for _, choice := range choices {
-		rem -= int(wc[choice])
-		if rem <= 0 {
-			return choice
-		}
-	}
-
-	return nil
-}
-
 // probSetChoice picks a set of strings based on each string's probability (0-1).
 type probSetChoice map[string]float64
 
