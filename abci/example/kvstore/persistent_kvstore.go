@@ -62,10 +62,6 @@ func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.Respo
 	return res
 }
 
-func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
-	return app.app.SetOption(req)
-}
-
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
 func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set

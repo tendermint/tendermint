@@ -649,45 +649,6 @@ func (_m *Client) SetLogger(_a0 log.Logger) {
 	_m.Called(_a0)
 }
 
-// SetOptionAsync provides a mock function with given fields: _a0
-func (_m *Client) SetOptionAsync(_a0 types.RequestSetOption) *abcicli.ReqRes {
-	ret := _m.Called(_a0)
-
-	var r0 *abcicli.ReqRes
-	if rf, ok := ret.Get(0).(func(types.RequestSetOption) *abcicli.ReqRes); ok {
-		r0 = rf(_a0)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abcicli.ReqRes)
-		}
-	}
-
-	return r0
-}
-
-// SetOptionSync provides a mock function with given fields: _a0
-func (_m *Client) SetOptionSync(_a0 types.RequestSetOption) (*types.ResponseSetOption, error) {
-	ret := _m.Called(_a0)
-
-	var r0 *types.ResponseSetOption
-	if rf, ok := ret.Get(0).(func(types.RequestSetOption) *types.ResponseSetOption); ok {
-		r0 = rf(_a0)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.ResponseSetOption)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestSetOption) error); ok {
-		r1 = rf(_a0)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // SetResponseCallback provides a mock function with given fields: _a0
 func (_m *Client) SetResponseCallback(_a0 abcicli.Callback) {
 	_m.Called(_a0)
