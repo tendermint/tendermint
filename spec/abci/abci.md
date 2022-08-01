@@ -161,8 +161,8 @@ Example:
 ## EvidenceType
 
 Tendermint's security model relies on the use of "evidence". Evidence is proof of
-malicious behaviour by a network participant. It is the responsibility of Tendermint
-to detect such malicious behaviour. When malicious behavior is detected, Tendermint
+malicious behavior by a network participant. It is the responsibility of Tendermint
+to detect such malicious behavior. When malicious behavior is detected, Tendermint
 will gossip evidence of the behavior to other nodes and commit the evidence to 
 the chain once it is verified by all validators. This evidence will then be 
 passed it on to the application through the ABCI. It is the responsibility of the
@@ -734,7 +734,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | Name      | Type                                                          | Description                                                                  | Field Number |
     |-----------|---------------------------------------------------------------|------------------------------------------------------------------------------|--------------|
     | block     | [BlockParams](../core/data_structures.md#blockparams)                                   | Parameters limiting the size of a block and time between consecutive blocks. | 1            |
-    | evidence  | [EvidenceParams](../core/data_structures.md#evidenceparams)   | Parameters limiting the validity of evidence of byzantine behaviour.         | 2            |
+    | evidence  | [EvidenceParams](../core/data_structures.md#evidenceparams)   | Parameters limiting the validity of evidence of byzantine behavior.         | 2            |
     | validator | [ValidatorParams](../core/data_structures.md#validatorparams) | Parameters limiting the types of public keys validators can use.             | 3            |
     | version   | [VersionsParams](../core/data_structures.md#versionparams)       | The ABCI application version.                                                | 4            |
 

@@ -21,7 +21,7 @@
 
  Byzantine processes can demonstrate arbitrary behavior, including
  no communication. We show that if agreement is violated, then the Byzantine
- processes demonstrate one of the two behaviours:
+ processes demonstrate one of the two behaviors:
 
    - Equivocation: a Byzantine process may send two different values
      in the same round.

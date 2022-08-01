@@ -20,7 +20,7 @@ const (
 	defaultHandshakeTimeout = 3 * time.Second
 )
 
-// IPResolver is a behaviour subset of net.Resolver.
+// IPResolver is a behavior subset of net.Resolver.
 type IPResolver interface {
 	LookupIPAddr(context.Context, string) ([]net.IPAddr, error)
 }
@@ -70,7 +70,7 @@ type Transport interface {
 }
 
 // transportLifecycle bundles the methods for callers to control start and stop
-// behaviour.
+// behavior.
 type transportLifecycle interface {
 	Close() error
 	Listen(NetAddress) error

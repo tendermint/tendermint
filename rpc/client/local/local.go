@@ -259,7 +259,7 @@ func (c *Local) eventsRoutine(
 				return
 			}
 
-			c.Logger.Error("subscription was cancelled, resubscribing...", "err", sub.Err(), "query", q.String())
+			c.Logger.Error("subscription was canceled, resubscribing...", "err", sub.Err(), "query", q.String())
 			sub = c.resubscribe(subscriber, q)
 			if sub == nil { // client was stopped
 				return

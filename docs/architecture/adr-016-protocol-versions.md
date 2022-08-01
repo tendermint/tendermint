@@ -75,14 +75,14 @@ to connect to peers with older version.
 
 ### P2PVersion
 
-- All p2p and reactor messaging (messages, detectable behaviour)
+- All p2p and reactor messaging (messages, detectable behavior)
 - Will change gradually as reactors evolve to improve performance and support new features - eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
 - It's easy to determine the version of a peer from its first serialized message/s
 - New versions must be compatible with at least one old version to allow gradual upgrades
 
 ### AppVersion
 
-- The ABCI state machine (txs, begin/endblock behaviour, commit hashing)
+- The ABCI state machine (txs, begin/endblock behavior, commit hashing)
 - Behaviour and message types will change abruptly in the course of the life of a chain
 - Need to minimize complexity of the code for supporting different AppVersions at different heights
 - Ideally, each version of the software supports only a _single_ AppVersion at one time
