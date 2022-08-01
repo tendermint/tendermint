@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/cosmos/cosmos-sdk/types/tx"
+	cosmostx "github.com/cosmos/cosmos-sdk/types/tx"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
@@ -434,6 +434,18 @@ func (mem *CListMempool) resCbFirstTime(
 				"height", memTx.height,
 				"total", mem.Size(),
 			)
+
+			// If this transaction is a `PlaceOrder` or `CancelOrder` transaction,
+			// don't call `notifyTxsAvailable()`. The `notifyTxsAvailable()` function
+			// uses a channel in the mempool called `txsAvailable` to signal to the
+			// consensus algorithm that transactions are available to be included in
+			// the next proposal. If no transactions are available for inclusion in
+			// the next proposal, the consensus algorithm will wait for `create_empty_blocks_interval`
+			// before proposing an empty block instead.
+			if mem.isClobOrderTransaction(memTx) {
+				return
+			}
+
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
@@ -448,6 +460,25 @@ func (mem *CListMempool) resCbFirstTime(
 	default:
 		// ignore other messages
 	}
+}
+
+// isClobOrderTransaction returns true if the provided `mempoolTx` is a
+// Cosmos transaction containing a `MsgPlaceOrder` or `MsgCancelOrder` message.
+func (mem *CListMempool) isClobOrderTransaction(memTx *mempoolTx) bool {
+	cosmosTx := &cosmostx.Tx{}
+	err := cosmosTx.Unmarshal(memTx.tx)
+	if err != nil {
+		mem.logger.Error("isClobOrderTransaction error. Invalid Cosmos Transaction.")
+		return false
+	}
+
+	if len(cosmosTx.Body.Messages) == 1 &&
+		(cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgPlaceOrder" ||
+			cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgCancelOrder") {
+		return true
+	}
+
+	return false
 }
 
 // callback, which is called after the app rechecked the tx.
@@ -529,16 +560,9 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
 
-		cosmosTx := &tx.Tx{}
-		err := cosmosTx.Unmarshal(memTx.tx)
-		if err != nil {
-			mem.logger.Error("ReapMaxBytesMaxGas error. Invalid Cosmos Transaction.")
-		}
-
-		if len(cosmosTx.Body.Messages) == 1 &&
-			(cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgPlaceOrder" ||
-				cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgCancelOrder") {
-			// Remove the transaction from the mempool
+		// If this transaction is Cosmos transaction containing a `PlaceOrder` or `CancelOrder` message,
+		// don't include it in the next proposed block. Instead, remove the transaction from the mempool.
+		if mem.isClobOrderTransaction(memTx) {
 			mem.removeTx(memTx.tx, e, false)
 			continue
 		}
