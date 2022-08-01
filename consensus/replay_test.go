@@ -1182,6 +1182,7 @@ func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain
 func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	return bs.chain[int64(len(bs.chain))-1]
 }
+func (bs *mockBlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta { return nil }
 func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
