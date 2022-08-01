@@ -24,7 +24,7 @@ In the following, I distilled what I considered relevant from
 | `Height` | (no epochs) | (epoch,height) pair in lexicographical order (`compare`) |
 | `Header` | ~signed header | validatorSet explicit (no hash); nextValidators missing |
 | `Evidence` | t.b.d. | definition unclear "which the light client would have considered valid". Data structure will need to change |
-| `verify` | `ValidAndVerified` | signature does not match perfectly (ClientState vs. LightBlock) + in `checkMisbehaviourAndUpdateState` it is unclear whether it uses traces or goes to h1 and h2 in one step |
+| `verify` | `ValidAndVerified` | signature does not match perfectly (ClientState vs. LightBlock) + in `checkMisbehaviorAndUpdateState` it is unclear whether it uses traces or goes to h1 and h2 in one step |
 
 #### Some IBC links
 
@@ -32,14 +32,14 @@ In the following, I distilled what I considered relevant from
   
 #### Required Changes in ICS 007
 
-- `assert(height > 0)` in definition of `initialise` doesn't match
+- `assert(height > 0)` in definition of `initialize` doesn't match
   definition of `Height` as *(epoch,height)* pair.
   
-- `initialise` needs to be updated to new data structures
+- `initialize` needs to be updated to new data structures
 
 - `clientState.frozenHeight` semantics seem not totally consistent in
   document. E.g., `min` needs to be defined over optional value in
-  `checkMisbehaviourAndUpdateState`. Also, if you are frozen, why do
+  `checkMisbehaviorAndUpdateState`. Also, if you are frozen, why do
   you accept more evidence.
 
 - `checkValidityAndUpdateState`
@@ -53,7 +53,7 @@ In the following, I distilled what I considered relevant from
     - clienstState needs to be updated according to complete data
       structure
 
-- `checkMisbehaviourAndUpdateState`: as evidence will contain a trace
+- `checkMisbehaviorAndUpdateState`: as evidence will contain a trace
   (or two), the assertion that uses verify will need to change.
 
 - ICS 002 states w.r.t. `queryChainConsensusState` that "Note that
@@ -68,7 +68,7 @@ In the following, I distilled what I considered relevant from
 - `upgradeClientState` what is the semantics (in particular what is
   `height` doing?).
   
-- `checkMisbehaviourAndUpdateState(cs: ClientState, PoF:
+- `checkMisbehaviorAndUpdateState(cs: ClientState, PoF:
   LightNodeProofOfFork)` needs to be adapted
 
 #### Handler
@@ -104,7 +104,7 @@ type checkValidityAndUpdateState = (Header) => Void
   will need to make precise eventually) to a handler
   
 ```go
-type checkMisbehaviourAndUpdateState = (bytes) => Void
+type checkMisbehaviorAndUpdateState = (bytes) => Void
 ```
 
   We have to design this, and the data that the handler can use to
@@ -126,7 +126,7 @@ type queryChainConsensusState = (height: uint64) => ConsensusState
 
 - the relayer send headers and data to the handler to invoke
   `checkValidityAndUpdateState` and
-  `checkMisbehaviourAndUpdateState`. It may also query
+  `checkMisbehaviorAndUpdateState`. It may also query
   `queryChainConsensusState`.
   
 - multiple relayers may talk to one handler. Some relayers might be
@@ -187,7 +187,7 @@ relayer can figure that out:
   headers (tagged as verified).
   
 - eventually, a handler should be informed
- (`checkMisbehaviourAndUpdateState`)
+ (`checkMisbehaviorAndUpdateState`)
  by some relayer that it has
   verified a header from a fork. Then the handler should do what is
  required by IBC in this case (stop?)

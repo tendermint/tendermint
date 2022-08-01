@@ -18,6 +18,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Go API
 
+    - [all] [#9144] Change spelling from British English to American (@cmwaters)
+        - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+
 - Blockchain Protocol
 
 ### FEATURES

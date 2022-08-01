@@ -10,8 +10,8 @@ As the node becomes well connected to the rest of the network, it can dial lesse
 quality peers and help assess their quality. Similarly, when queried for peers, a node should make
 sure they dont return low quality peers.
 
-Peer quality can be tracked using a trust metric that flags certain behaviours as good or bad. When enough
-bad behaviour accumulates, we can mark the peer as bad and disconnect.
+Peer quality can be tracked using a trust metric that flags certain behaviors as good or bad. When enough
+bad behavior accumulates, we can mark the peer as bad and disconnect.
 For example, when the PEXReactor makes a request for peers network addresses from an already known peer, and the returned network addresses are unreachable, this undesirable behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer for removal. The originally proposed approach and design document for the trust metric can be found in the [ADR 006](adr-006-trust-metric.md) document.
 
 The trust metric implementation allows a developer to obtain a peer's trust metric from a trust metric store, and track good and bad events relevant to a peer's behavior, and at any time, the peer's metric can be queried for a current trust value. The current trust value is calculated with a formula that utilizes current behavior, previous behavior, and change between the two. Current behavior is calculated as the percentage of good behavior within a time interval. The time interval is short; probably set between 30 seconds and 5 minutes. On the other hand, the historic data can estimate a peer's behavior over days worth of tracking. At the end of a time interval, the current behavior becomes part of the historic data, and a new time interval begins with the good and bad counters reset to zero.
@@ -77,7 +77,7 @@ When a peer receives a pexRequestMessage, it returns a random sample of high qua
 Peer quality is tracked in the connection and across the reactors by storing the TrustMetric in the peer's
 thread safe Data store.
 
-Peer behaviour is then defined as one of the following:
+Peer behavior is then defined as one of the following:
 
 - Fatal - something outright malicious that causes us to disconnect the peer and ban it from the address book for some amount of time
 - Bad - Any kind of timeout, messages that don't unmarshal, fail other validity checks, or messages we didn't ask for or aren't expecting (usually worth one bad event)
@@ -85,7 +85,7 @@ Peer behaviour is then defined as one of the following:
 - Correct - Normal correct behavior (worth one good event)
 - Good - some random majority of peers per reactor sending us useful messages (worth more than one good event).
 
-Note that Fatal behaviour causes us to remove the peer, and neutral behaviour does not affect the score.
+Note that Fatal behavior causes us to remove the peer, and neutral behavior does not affect the score.
 
 ## Status
 

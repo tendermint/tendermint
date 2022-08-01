@@ -146,7 +146,7 @@ subjectivity](https://github.com/tendermint/tendermint/pull/3795)) and
 can compare any subset of keys called a chunk against the merkle root.
 The advantage of light client validation is that the block headers are
 signed by validators which have something to lose for malicious
-behaviour. If a validator were to provide an invalid proof, they can be
+behavior. If a validator were to provide an invalid proof, they can be
 slashed.
 
 Majority of peer validation: A manifest file containing a list of chunks

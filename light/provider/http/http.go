@@ -193,7 +193,7 @@ func (p *http) signedHeader(ctx context.Context, height *int64) (*types.SignedHe
 			time.Sleep(backoffTimeout(uint16(attempt)))
 			continue
 
-		// either context was cancelled or connection refused.
+		// either context was canceled or connection refused.
 		default:
 			return nil, err
 		}

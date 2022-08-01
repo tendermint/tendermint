@@ -27,7 +27,7 @@ and hence to Tendermint.
   want to experiment with, make a fork and see how it works.
 
 * We will exclude you from interaction if you insult, demean or harass anyone.
-  That is not welcome behaviour. We interpret the term “harassment” as including
+  That is not welcome behavior. We interpret the term “harassment” as including
   the definition in the [Citizen Code of Conduct][ccoc]; if you have any lack of
   clarity about what might be included in that concept, please read their
   definition. In particular, we don’t tolerate behavior that excludes people in
@@ -40,7 +40,7 @@ and hence to Tendermint.
   making this community a safe place for you and we’ve got your back.
 
 * Likewise any spamming, trolling, flaming, baiting or other attention-stealing
-  behaviour is not welcome.
+  behavior is not welcome.
 
 ----
 

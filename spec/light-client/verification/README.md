@@ -323,8 +323,8 @@ from `trustedState` to `newTrustedState` happened during the trusted period of
 
 In case `VerifyHeaderAtHeight` returns with an error, then either (i) the full node we are talking to is faulty
 or (ii) the trusted header has expired (it is outside its trusted period). In case (i) the full node is faulty so
-light client should disconnect and reinitialise with new peer. In the case (ii) as the trusted header has expired,
-we need to reinitialise light client with a new trusted header (that is within its trusted period),
+light client should disconnect and reinitialize with new peer. In the case (ii) as the trusted header has expired,
+we need to reinitialize light client with a new trusted header (that is within its trusted period),
 but we don't necessarily need to disconnect from the full node we are talking to (as we haven't observed full node misbehavior in this case).
 
 **VerifyBisection.** The function `VerifyBisection` implements
@@ -459,10 +459,10 @@ We consider the following set-up:
 - the light client communicates with one full node
 - the light client locally stores all the headers that has passed basic verification and that are within light client trust period. In the pseudo code below we
 write *Store.Add(header)* for this. If a header failed to verify, then
-the full node we are talking to is faulty and we should disconnect from it and reinitialise with new peer.
+the full node we are talking to is faulty and we should disconnect from it and reinitialize with new peer.
 - If `CanTrust` returns *error*, then the light client has seen a forged header or the trusted header has expired (it is outside its trusted period).
-    - In case of forged header, the full node is faulty so light client should disconnect and reinitialise with new peer. If the trusted header has expired,
-  we need to reinitialise light client with new trusted header (that is within its trusted period), but we don't necessarily need to disconnect from the full node
+    - In case of forged header, the full node is faulty so light client should disconnect and reinitialize with new peer. If the trusted header has expired,
+  we need to reinitialize light client with new trusted header (that is within its trusted period), but we don't necessarily need to disconnect from the full node
   we are talking to (as we haven't observed full node misbehavior in this case).
 
 ## Correctness of the Light Client Protocols
