@@ -15,7 +15,7 @@ const (
 )
 
 var (
-	// P2PProtocol versions all p2p behaviour and msgs.
+	// P2PProtocol versions all p2p behavior and msgs.
 	// This includes proposer selection.
 	P2PProtocol uint64 = 8
 
