@@ -447,7 +447,7 @@ func createBlockchainReactor(config *cfg.Config,
 
 	switch config.FastSync.Version {
 	case "v0":
-		bcReactor = bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+		bcReactor = bc.NewReactor(state.Copy(), blockExec, blockStore, fastSync)
 	case "v1", "v2":
 		return nil, fmt.Errorf("fast sync version %s has been deprecated. Please use v0", config.FastSync.Version)
 	default:
