@@ -54,12 +54,6 @@ message RequestInfo {
   string abci_version = 4;
 }
 
-// nondeterministic
-message RequestSetOption {
-  string key   = 1;
-  string value = 2;
-}
-
 message RequestInitChain {
   google.protobuf.Timestamp time = 1
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
@@ -164,7 +158,6 @@ message Response {
     ResponseEcho               echo                 = 2;
     ResponseFlush              flush                = 3;
     ResponseInfo               info                 = 4;
-    ResponseSetOption          set_option           = 5;
     ResponseInitChain          init_chain           = 6;
     ResponseQuery              query                = 7;
     ResponseBeginBlock         begin_block          = 8;
@@ -179,6 +172,7 @@ message Response {
     ResponsePrepareProposal    prepare_proposal     = 17;
     ResponseProcessProposal    process_proposal     = 18;
   }
+  Reserve = 5;
 }
 
 // nondeterministic
@@ -200,14 +194,6 @@ message ResponseInfo {
 
   int64 last_block_height   = 4;
   bytes last_block_app_hash = 5;
-}
-
-// nondeterministic
-message ResponseSetOption {
-  uint32 code = 1;
-  // bytes data = 2;
-  string log  = 3;
-  string info = 4;
 }
 
 message ResponseInitChain {
