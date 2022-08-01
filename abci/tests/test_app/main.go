@@ -79,6 +79,7 @@ func testCounter() {
 		}
 	}()
 
+	setOption(client, "serial", "on")
 	commit(client, nil)
 	deliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil)
 	commit(client, nil)
