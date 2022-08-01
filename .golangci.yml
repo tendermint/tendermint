@@ -21,7 +21,7 @@ linters:
     - nolintlint
     - prealloc
     - staticcheck
-    - structcheck
+    # - structcheck // to be fixed by golangci-lint
     - stylecheck
     - typecheck
     - unconvert
