@@ -370,7 +370,7 @@ type RPCConfig struct {
 	//
 	// Enabling this parameter will cause the WebSocket connection to be closed
 	// instead if it cannot read fast enough, allowing for greater
-	// predictability in subscription behaviour.
+	// predictability in subscription behavior.
 	CloseOnSlowClient bool `mapstructure:"experimental_close_on_slow_client"`
 
 	// How long to wait for a tx to be committed during /broadcast_tx_commit

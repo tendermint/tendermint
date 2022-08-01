@@ -28,14 +28,14 @@ Due to the requirements of [Minimal Viable Plasma (MVP)](https://ethresear.ch/t/
 
    `exit` transactions may also be treated in a similar manner, wherein the
    input is the UTXO being exited on the Root Chain, and the output belongs to
-   a reserved "burn" address, e.g., `0x0`. In such cases, it is favourable for
+   a reserved "burn" address, e.g., `0x0`. In such cases, it is favorable for
    the containing block to only hold a single transaction that may receive
    special treatment.
 
 2. Other "internal" transactions on the child chain, which may be initiated
    unilaterally. The most basic example of is a coinbase transaction
    implementing validator node incentives, but may also be app-specific. In
-   these cases, it may be favourable for such transactions to
+   these cases, it may be favorable for such transactions to
    be ordered in a specific manner, e.g., coinbase transactions will always be
    at index 0. In general, such strategies increase the determinism and
    predictability of blockchain applications.

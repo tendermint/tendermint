@@ -138,7 +138,7 @@ type MempoolClient interface {
 }
 
 // EvidenceClient is used for submitting an evidence of the malicious
-// behaviour.
+// behavior.
 type EvidenceClient interface {
 	BroadcastEvidence(context.Context, types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 }
