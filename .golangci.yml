@@ -1,7 +1,6 @@
 linters:
   enable:
     - asciicheck
-    - bodyclose
     - deadcode
     - depguard
     - dogsled
@@ -21,7 +20,6 @@ linters:
     - nolintlint
     - prealloc
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
