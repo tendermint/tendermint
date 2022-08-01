@@ -6,20 +6,20 @@
 
 ## Context
 
-The responsibility for signaling and acting upon peer behaviour lacks a single 
+The responsibility for signaling and acting upon peer behavior lacks a single 
 owning component and is heavily coupled with the network stack[<sup>1</sup>](#references). Reactors
 maintain a reference to the `p2p.Switch` which they use to call 
 `switch.StopPeerForError(...)` when a peer misbehaves and 
 `switch.MarkAsGood(...)` when a peer contributes in some meaningful way. 
 While the switch handles `StopPeerForError` internally, the `MarkAsGood` 
 method delegates to another component, `p2p.AddrBook`. This scheme of delegation 
-across Switch obscures the responsibility for handling peer behaviour
+across Switch obscures the responsibility for handling peer behavior
 and ties up the reactors in a larger dependency graph when testing.
 
 ## Decision
 
 Introduce a `PeerBehaviour` interface and concrete implementations which
-provide methods for reactors to signal peer behaviour without direct
+provide methods for reactors to signal peer behavior without direct
 coupling `p2p.Switch`.  Introduce a ErrorBehaviourPeer to provide
 concrete reasons for stopping peers. Introduce GoodBehaviourPeer to provide
 concrete ways in which a peer contributes.
@@ -139,10 +139,10 @@ Accepted
 
 ### Positive
 
-    * De-couple signaling from acting upon peer behaviour.
+    * De-couple signaling from acting upon peer behavior.
     * Reduce the coupling of reactors and the Switch and the network
       stack
-    * The responsibility of managing peer behaviour can be migrated to
+    * The responsibility of managing peer behavior can be migrated to
       a single component instead of split between the switch and the
       address book.
 
