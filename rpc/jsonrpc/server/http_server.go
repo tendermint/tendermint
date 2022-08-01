@@ -55,6 +55,7 @@ func Serve(listener net.Listener, handler http.Handler, logger log.Logger, confi
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
@@ -80,6 +81,7 @@ func ServeTLS(
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
