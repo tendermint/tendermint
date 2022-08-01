@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/Workiva/go-datastructures v1.0.53
 	github.com/adlio/schema v1.3.3
-	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/bufbuild/buf v1.6.0
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
