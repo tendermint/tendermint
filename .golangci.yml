@@ -1,7 +1,7 @@
 linters:
   enable:
     - asciicheck
-    # - bodyclose // to be fixed by golangci-lint
+    - bodyclose
     - deadcode
     - depguard
     - dogsled
