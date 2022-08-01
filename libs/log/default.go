@@ -55,9 +55,7 @@ func NewDefaultLogger(format, level string) (Logger, error) {
 	// make the writer thread-safe
 	logWriter = newSyncWriter(logWriter)
 
-	return &defaultLogger{
-		Logger: zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger(),
-	}, nil
+	return &defaultLogger{Logger: zerolog.New(logWriter).Level(logLevel).With().Timestamp().Logger()}, nil
 }
 
 func (l defaultLogger) Info(msg string, keyVals ...interface{}) {
@@ -73,9 +71,7 @@ func (l defaultLogger) Debug(msg string, keyVals ...interface{}) {
 }
 
 func (l defaultLogger) With(keyVals ...interface{}) Logger {
-	return &defaultLogger{
-		Logger: l.Logger.With().Fields(keyVals).Logger(),
-	}
+	return &defaultLogger{Logger: l.Logger.With().Fields(keyVals).Logger()}
 }
 
 // OverrideWithNewLogger replaces an existing logger's internal with
