@@ -1,4 +1,4 @@
-# RFC 023: Semi-permanent testnet
+# RFC 023: Semi-permanent Testnet
 
 ## Changelog
 
