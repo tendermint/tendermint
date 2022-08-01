@@ -17,7 +17,7 @@ Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
 - `blockstore.db`: Keeps the entire blockchain - stores blocks,
   block commits, and block meta data, each indexed by height. Used to sync new
   peers.
-- `evidence.db`: Stores all verified evidence of misbehaviour.
+- `evidence.db`: Stores all verified evidence of misbehavior.
 - `state.db`: Stores the current blockchain state (ie. height, validators,
   consensus params). Only grows if consensus params or validators change. Also
   used to temporarily store intermediate results during block processing.

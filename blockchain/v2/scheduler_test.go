@@ -2225,7 +2225,7 @@ func TestScHandle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var sc *scheduler
 			for i, step := range tt.steps {
-				// First step must always initialise the currentState as state.
+				// First step must always initialize the currentState as state.
 				if step.currentSc != nil {
 					sc = newTestScheduler(*step.currentSc)
 				}

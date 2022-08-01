@@ -48,7 +48,7 @@ to the node.  Unlike the other methods of the service, for which each call is
 serviced by a short-lived HTTP round trip, subscription delivers a continuous
 stream of events to the client by hijacking the HTTP channel for a websocket.
 The stream (and hence the HTTP request) persists until either the subscription
-is explicitly cancelled, or the connection is closed.
+is explicitly canceled, or the connection is closed.
 
 There are several problems with this API:
 

@@ -56,7 +56,7 @@ func (cs *State) readReplayMessage(msg *tmcon.TimedWALMessage, newStepSub types.
 					return fmt.Errorf("roundState mismatch. Got %v; Expected %v", m2, m)
 				}
 			case <-newStepSub.Cancelled():
-				return fmt.Errorf("failed to read off newStepSub.Out(). newStepSub was cancelled")
+				return fmt.Errorf("failed to read off newStepSub.Out(). newStepSub was canceled")
 			case <-ticker:
 				return fmt.Errorf("failed to read off newStepSub.Out()")
 			}
