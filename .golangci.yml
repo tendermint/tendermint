@@ -1,6 +1,7 @@
 linters:
   enable:
     - asciicheck
+    # - bodyclose // to be fixed by golangci-lint
     - deadcode
     - depguard
     - dogsled
@@ -20,6 +21,7 @@ linters:
     - nolintlint
     - prealloc
     - staticcheck
+    # - structcheck // to be fixed by golangci-lint
     - stylecheck
     - typecheck
     - unconvert
