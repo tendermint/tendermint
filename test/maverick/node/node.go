@@ -1215,6 +1215,7 @@ func (n *Node) startPrometheusServer(addr string) *http.Server {
 				promhttp.HandlerOpts{MaxRequestsInFlight: n.config.Instrumentation.MaxOpenConnections},
 			),
 		),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
