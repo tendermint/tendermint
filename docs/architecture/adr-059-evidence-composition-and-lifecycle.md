@@ -189,7 +189,7 @@ After verification we persist the evidence with the key `height/hash` to the pen
 
 #### ABCI Evidence
 
-Both evidence structures contain data (such as timestamp) that are necessary to be passed to the application but do not strictly constitute evidence of misbehaviour. As such, these fields are verified last. If any of these fields are invalid to a node i.e. they don't correspond with their state, nodes will reconstruct a new evidence struct from the existing fields and repopulate the abci specific fields with their own state data.
+Both evidence structures contain data (such as timestamp) that are necessary to be passed to the application but do not strictly constitute evidence of misbehavior. As such, these fields are verified last. If any of these fields are invalid to a node i.e. they don't correspond with their state, nodes will reconstruct a new evidence struct from the existing fields and repopulate the abci specific fields with their own state data.
 
 #### Broadcasting and receiving evidence
 

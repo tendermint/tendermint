@@ -98,7 +98,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	select {
 	case <-newBlockSub.Out():
 	case <-newBlockSub.Cancelled():
-		t.Fatal("newBlockSub was cancelled")
+		t.Fatal("newBlockSub was canceled")
 	case <-time.After(120 * time.Second):
 		t.Fatal("Timed out waiting for new block (see trace above)")
 	}

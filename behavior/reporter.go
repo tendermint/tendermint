@@ -1,4 +1,4 @@
-package behaviour
+package behavior
 
 import (
 	"errors"
@@ -7,13 +7,13 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// Reporter provides an interface for reactors to report the behaviour
+// Reporter provides an interface for reactors to report the behavior
 // of peers synchronously to other components.
 type Reporter interface {
-	Report(behaviour PeerBehaviour) error
+	Report(behavior PeerBehavior) error
 }
 
-// SwitchReporter reports peer behaviour to an internal Switch.
+// SwitchReporter reports peer behavior to an internal Switch.
 type SwitchReporter struct {
 	sw *p2p.Switch
 }
@@ -25,14 +25,14 @@ func NewSwitchReporter(sw *p2p.Switch) *SwitchReporter {
 	}
 }
 
-// Report reports the behaviour of a peer to the Switch.
-func (spbr *SwitchReporter) Report(behaviour PeerBehaviour) error {
-	peer := spbr.sw.Peers().Get(behaviour.peerID)
+// Report reports the behavior of a peer to the Switch.
+func (spbr *SwitchReporter) Report(behavior PeerBehavior) error {
+	peer := spbr.sw.Peers().Get(behavior.peerID)
 	if peer == nil {
 		return errors.New("peer not found")
 	}
 
-	switch reason := behaviour.reason.(type) {
+	switch reason := behavior.reason.(type) {
 	case consensusVote, blockPart:
 		spbr.sw.MarkPeerAsGood(peer)
 	case badMessage:
@@ -48,39 +48,39 @@ func (spbr *SwitchReporter) Report(behaviour PeerBehaviour) error {
 
 // MockReporter is a concrete implementation of the Reporter
 // interface used in reactor tests to ensure reactors report the correct
-// behaviour in manufactured scenarios.
+// behavior in manufactured scenarios.
 type MockReporter struct {
 	mtx tmsync.RWMutex
-	pb  map[p2p.ID][]PeerBehaviour
+	pb  map[p2p.ID][]PeerBehavior
 }
 
 // NewMockReporter returns a Reporter which records all reported
-// behaviours in memory.
+// behaviors in memory.
 func NewMockReporter() *MockReporter {
 	return &MockReporter{
-		pb: map[p2p.ID][]PeerBehaviour{},
+		pb: map[p2p.ID][]PeerBehavior{},
 	}
 }
 
-// Report stores the PeerBehaviour produced by the peer identified by peerID.
-func (mpbr *MockReporter) Report(behaviour PeerBehaviour) error {
+// Report stores the PeerBehavior produced by the peer identified by peerID.
+func (mpbr *MockReporter) Report(behavior PeerBehavior) error {
 	mpbr.mtx.Lock()
 	defer mpbr.mtx.Unlock()
-	mpbr.pb[behaviour.peerID] = append(mpbr.pb[behaviour.peerID], behaviour)
+	mpbr.pb[behavior.peerID] = append(mpbr.pb[behavior.peerID], behavior)
 
 	return nil
 }
 
-// GetBehaviours returns all behaviours reported on the peer identified by peerID.
-func (mpbr *MockReporter) GetBehaviours(peerID p2p.ID) []PeerBehaviour {
+// GetBehaviours returns all behaviors reported on the peer identified by peerID.
+func (mpbr *MockReporter) GetBehaviours(peerID p2p.ID) []PeerBehavior {
 	mpbr.mtx.RLock()
 	defer mpbr.mtx.RUnlock()
 	if items, ok := mpbr.pb[peerID]; ok {
-		result := make([]PeerBehaviour, len(items))
+		result := make([]PeerBehavior, len(items))
 		copy(result, items)
 
 		return result
 	}
 
-	return []PeerBehaviour{}
+	return []PeerBehavior{}
 }

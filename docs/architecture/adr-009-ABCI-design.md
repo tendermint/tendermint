@@ -74,7 +74,7 @@ convenient to work with address information, and for it to be simple to do so.
 ### AbsentValidators
 
 Tendermint also provides a list of validators in BeginBlock who did not sign the
-last block. This allows applications to reflect availability behaviour in the
+last block. This allows applications to reflect availability behavior in the
 application, for instance by punishing validators for not having votes included
 in commits.
 
