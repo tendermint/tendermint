@@ -25,13 +25,6 @@ func startClient(abciType string) abcicli.Client {
 	return client
 }
 
-func setOption(client abcicli.Client, key, value string) {
-	_, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: value})
-	if err != nil {
-		panicf("setting %v=%v: \nerr: %v", key, value, err)
-	}
-}
-
 func commit(client abcicli.Client, hashExp []byte) {
 	res, err := client.CommitSync()
 	if err != nil {
