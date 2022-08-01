@@ -62,7 +62,7 @@ Tendermint Core. You can subscribe [here](http://eepurl.com/gZ5hQD).
 
 | Requirement | Notes             |
 |-------------|-------------------|
-| Go version  | Go 1.17 or higher |
+| Go version  | Go 1.18 or higher |
 
 ### Install
 
