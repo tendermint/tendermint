@@ -459,6 +459,16 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	return false
 }
 
+// ToABCI converts the evidence list to a slice of the ABCI protobuf messages
+// for use when communicating the evidence to an application.
+func (evl EvidenceList) ToABCI() []abci.Evidence {
+	var el []abci.Evidence
+	for _, e := range evl {
+		el = append(el, e.ABCI()...)
+	}
+	return el
+}
+
 //------------------------------------------ PROTO --------------------------------------
 
 // EvidenceToProto is a generalized function for encoding evidence that conforms to the
