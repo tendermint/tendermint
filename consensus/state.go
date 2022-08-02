@@ -1134,14 +1134,14 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		var err error
 		block, err = cs.createProposalBlock()
 		if err != nil {
-			cs.logger.Error("unable to create proposal block", "error", err)
+			cs.Logger.Error("unable to create proposal block", "error", err)
 			return
 		} else if block == nil {
 			return
 		}
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
 		if err != nil {
-			cs.logger.Error("unable to create proposal block part set", "error", err)
+			cs.Logger.Error("unable to create proposal block part set", "error", err)
 			return
 		}
 	}
