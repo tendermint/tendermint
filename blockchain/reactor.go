@@ -1,11 +1,10 @@
-package v0
+package blockchain
 
 import (
 	"fmt"
 	"reflect"
 	"time"
 
-	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
@@ -45,8 +44,8 @@ func (e peerError) Error() string {
 	return fmt.Sprintf("error with peer %v: %s", e.peerID, e.err.Error())
 }
 
-// BlockchainReactor handles long-term catchup syncing.
-type BlockchainReactor struct {
+// Reactor handles long-term catchup syncing.
+type Reactor struct {
 	p2p.BaseReactor
 
 	// immutable
@@ -61,9 +60,9 @@ type BlockchainReactor struct {
 	errorsCh   <-chan peerError
 }
 
-// NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
-	fastSync bool) *BlockchainReactor {
+// NewReactor returns new reactor instance.
+func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
+	fastSync bool) *Reactor {
 
 	if state.LastBlockHeight != store.Height() {
 		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
@@ -81,7 +80,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	}
 	pool := NewBlockPool(startHeight, requestsCh, errorsCh)
 
-	bcR := &BlockchainReactor{
+	bcR := &Reactor{
 		initialState: state,
 		blockExec:    blockExec,
 		store:        store,
@@ -90,18 +89,18 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 	}
-	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
+	bcR.BaseReactor = *p2p.NewBaseReactor("Reactor", bcR)
 	return bcR
 }
 
 // SetLogger implements service.Service by setting the logger on reactor and pool.
-func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
+func (bcR *Reactor) SetLogger(l log.Logger) {
 	bcR.BaseService.Logger = l
 	bcR.pool.Logger = l
 }
 
 // OnStart implements service.Service.
-func (bcR *BlockchainReactor) OnStart() error {
+func (bcR *Reactor) OnStart() error {
 	if bcR.fastSync {
 		err := bcR.pool.Start()
 		if err != nil {
@@ -113,7 +112,7 @@ func (bcR *BlockchainReactor) OnStart() error {
 }
 
 // SwitchToFastSync is called by the state sync reactor when switching to fast sync.
-func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
+func (bcR *Reactor) SwitchToFastSync(state sm.State) error {
 	bcR.fastSync = true
 	bcR.initialState = state
 
@@ -127,7 +126,7 @@ func (bcR *BlockchainReactor) SwitchToFastSync(state sm.State) error {
 }
 
 // OnStop implements service.Service.
-func (bcR *BlockchainReactor) OnStop() {
+func (bcR *Reactor) OnStop() {
 	if bcR.fastSync {
 		if err := bcR.pool.Stop(); err != nil {
 			bcR.Logger.Error("Error stopping pool", "err", err)
@@ -136,21 +135,21 @@ func (bcR *BlockchainReactor) OnStop() {
 }
 
 // GetChannels implements Reactor
-func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
+func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
 			ID:                  BlockchainChannel,
 			Priority:            5,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
-			RecvMessageCapacity: bc.MaxMsgSize,
+			RecvMessageCapacity: MaxMsgSize,
 		},
 	}
 }
 
 // AddPeer implements Reactor by sending our state to peer.
-func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{
+func (bcR *Reactor) AddPeer(peer p2p.Peer) {
+	msgBytes, err := EncodeMsg(&bcproto.StatusResponse{
 		Base:   bcR.store.Base(),
 		Height: bcR.store.Height()})
 	if err != nil {
@@ -166,13 +165,13 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
-func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+func (bcR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	bcR.pool.RemovePeer(peer.ID())
 }
 
 // respondToPeer loads a block and sends it to the requesting peer,
 // if we have it. Otherwise, we'll respond saying we don't have it.
-func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
+func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 	src p2p.Peer) (queued bool) {
 
 	block := bcR.store.LoadBlock(msg.Height)
@@ -183,7 +182,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
 			return false
 		}
 
-		msgBytes, err := bc.EncodeMsg(&bcproto.BlockResponse{Block: bl})
+		msgBytes, err := EncodeMsg(&bcproto.BlockResponse{Block: bl})
 		if err != nil {
 			bcR.Logger.Error("could not marshal msg", "err", err)
 			return false
@@ -194,7 +193,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	msgBytes, err := bc.EncodeMsg(&bcproto.NoBlockResponse{Height: msg.Height})
+	msgBytes, err := EncodeMsg(&bcproto.NoBlockResponse{Height: msg.Height})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 		return false
@@ -204,15 +203,15 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
-func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := bc.DecodeMsg(msgBytes)
+func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	msg, err := DecodeMsg(msgBytes)
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
 		bcR.Switch.StopPeerForError(src, err)
 		return
 	}
 
-	if err = bc.ValidateMsg(msg); err != nil {
+	if err = ValidateMsg(msg); err != nil {
 		bcR.Logger.Error("Peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
 		bcR.Switch.StopPeerForError(src, err)
 		return
@@ -232,7 +231,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), bi, len(msgBytes))
 	case *bcproto.StatusRequest:
 		// Send peer our state.
-		msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{
+		msgBytes, err := EncodeMsg(&bcproto.StatusResponse{
 			Height: bcR.store.Height(),
 			Base:   bcR.store.Base(),
 		})
@@ -253,7 +252,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
-func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
+func (bcR *Reactor) poolRoutine(stateSynced bool) {
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	defer trySyncTicker.Stop()
@@ -286,7 +285,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 				if peer == nil {
 					continue
 				}
-				msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: request.Height})
+				msgBytes, err := EncodeMsg(&bcproto.BlockRequest{Height: request.Height})
 				if err != nil {
 					bcR.Logger.Error("could not convert msg to proto", "err", err)
 					continue
@@ -382,14 +381,14 @@ FOR_LOOP:
 				if peer != nil {
 					// NOTE: we've already removed the peer's request, but we
 					// still need to clean up the rest.
-					bcR.Switch.StopPeerForError(peer, fmt.Errorf("blockchainReactor validation error: %v", err))
+					bcR.Switch.StopPeerForError(peer, fmt.Errorf("Reactor validation error: %v", err))
 				}
 				peerID2 := bcR.pool.RedoRequest(second.Height)
 				peer2 := bcR.Switch.Peers().Get(peerID2)
 				if peer2 != nil && peer2 != peer {
 					// NOTE: we've already removed the peer's request, but we
 					// still need to clean up the rest.
-					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("blockchainReactor validation error: %v", err))
+					bcR.Switch.StopPeerForError(peer2, fmt.Errorf("Reactor validation error: %v", err))
 				}
 				continue FOR_LOOP
 			}
@@ -424,8 +423,8 @@ FOR_LOOP:
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
-func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bm, err := bc.EncodeMsg(&bcproto.StatusRequest{})
+func (bcR *Reactor) BroadcastStatusRequest() error {
+	bm, err := EncodeMsg(&bcproto.StatusRequest{})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to proto", "err", err)
 		return fmt.Errorf("could not convert msg to proto: %w", err)
