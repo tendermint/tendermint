@@ -77,8 +77,10 @@ func (cli *socketClient) OnStart() error {
 			if cli.mustConnect {
 				return err
 			}
-			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying after %vs...",
-				cli.addr, dialRetryIntervalSeconds), "err", err)
+			cli.Logger.Error("abci.socketClient failed to connect, retrying after",
+				"retry_after", dialRetryIntervalSeconds,
+				"target", cli.addr,
+				"err", err)
 			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue
 		}
