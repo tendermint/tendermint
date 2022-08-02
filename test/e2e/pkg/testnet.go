@@ -72,7 +72,7 @@ type Node struct {
 	IP               net.IP
 	ProxyPort        uint32
 	StartAt          int64
-	FastSync         string
+	FastSync         bool
 	StateSync        bool
 	Mempool          string
 	Database         string
@@ -296,12 +296,6 @@ func (n Node) Validate(testnet Testnet) error {
 				return fmt.Errorf("peer %q also has local port %v", peer.Name, n.ProxyPort)
 			}
 		}
-	}
-	switch n.FastSync {
-	case "", "v0", "v1", "v2":
-	default:
-		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
-
 	}
 	switch n.Mempool {
 	case "", "v0", "v1":
