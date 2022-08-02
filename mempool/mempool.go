@@ -23,7 +23,7 @@ const (
 	MaxActiveIDs = math.MaxUint16
 )
 
-//go:generate ../../scripts/mockery_generate.sh Mempool
+//go:generate mockery --case underscore --name Mempool
 
 // Mempool defines the mempool interface.
 //
