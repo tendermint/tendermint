@@ -4,6 +4,7 @@ import (
 	context "golang.org/x/net/context"
 )
 
+//go:generate mockery --case underscore --name Application
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.
 // All methods take a RequestXxx argument and return a ResponseXxx argument,
