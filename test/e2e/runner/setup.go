@@ -168,9 +168,6 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
-{{- else if .Misbehaviors }}
-    entrypoint: /usr/bin/entrypoint-maverick
-    command: ["node", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
 {{- end }}
     init: true
     ports:
@@ -288,11 +285,7 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 		cfg.Mempool.Version = node.Mempool
 	}
 
-	if node.FastSync == "" {
-		cfg.FastSyncMode = false
-	} else {
-		cfg.FastSync.Version = node.FastSync
-	}
+	cfg.FastSyncMode = node.FastSync
 
 	if node.StateSync {
 		cfg.StateSync.Enable = true
@@ -368,12 +361,6 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 			return nil, fmt.Errorf("unexpected privval protocol setting %q", node.PrivvalProtocol)
 		}
 	}
-
-	misbehaviors := make(map[string]string)
-	for height, misbehavior := range node.Misbehaviors {
-		misbehaviors[strconv.Itoa(int(height))] = misbehavior
-	}
-	cfg["misbehaviors"] = misbehaviors
 
 	if len(node.Testnet.ValidatorUpdates) > 0 {
 		validatorUpdates := map[string]map[string]int64{}
