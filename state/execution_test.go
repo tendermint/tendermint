@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	abcimocks "github.com/tendermint/tendermint/abci/types/mocks"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
@@ -552,7 +553,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 	trs[1].Action = abci.TxRecord_REMOVED
 	mp.On("RemoveTxByKey", mock.Anything).Return(nil).Twice()
 
-	app := &testApp{}
+	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
 		ModifiedTx: true,
 		TxRecords:  trs,
@@ -600,13 +601,13 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	txs := factory.MakeTenTxs(height)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
-	mp.On("CheckTx", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
+	mp.On("CheckTx", mock.Anything, mock.Anything, mock.Anything).Return(nil).Twice()
 
 	trs := txsToTxRecords(types.Txs(txs))
 	trs[0].Action = abci.TxRecord_ADDED
 	trs[1].Action = abci.TxRecord_ADDED
 
-	app := &testApp{}
+	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
 		ModifiedTx: true,
 		TxRecords:  trs,
@@ -633,8 +634,8 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	require.Equal(t, txs[1], block.Data.Txs[1])
 
 	mp.AssertExpectations(t)
-	mp.AssertCalled(t, "CheckTx", mock.Anything, types.Tx(trs[0].Tx), mock.Anything, mock.Anything)
-	mp.AssertCalled(t, "CheckTx", mock.Anything, types.Tx(trs[1].Tx), mock.Anything, mock.Anything)
+	mp.AssertCalled(t, "CheckTx", types.Tx(trs[0].Tx), mock.Anything, mock.Anything)
+	mp.AssertCalled(t, "CheckTx", types.Tx(trs[1].Tx), mock.Anything, mock.Anything)
 }
 
 // TestPrepareProposalReorderTxs tests that CreateBlock produces a block with transactions
@@ -656,7 +657,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	trs = trs[2:]
 	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
 
-	app := &testApp{}
+	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
 		ModifiedTx: true,
 		TxRecords:  trs,
