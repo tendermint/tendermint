@@ -1,3 +1,4 @@
+//go:build !libsecp256k1
 // +build !libsecp256k1
 
 package secp256k1
@@ -6,7 +7,7 @@ import (
 	"math/big"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
-	ethCrypto "github.com/maticnetwork/bor/crypto"
+	ethCrypto "github.com/ethereum/go-ethereum/crypto"
 )
 
 // used to reject malleable signatures
