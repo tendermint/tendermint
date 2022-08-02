@@ -431,7 +431,9 @@ func newStateWithConfigAndBlockStore(
 
 	// Make State
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
 		panic(err)
 	}

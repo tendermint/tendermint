@@ -29,10 +29,11 @@ const (
 
 const (
 	// prefixes are unique across all tm db's
-	prefixValidators      = int64(5)
-	prefixConsensusParams = int64(6)
-	prefixABCIResponses   = int64(7)
-	prefixState           = int64(8)
+	prefixValidators       = int64(5)
+	prefixConsensusParams  = int64(6)
+	prefixAllABCIResponses = int64(7)
+	prefixState            = int64(8)
+	prefixLastABCIResponse = int64(13)
 )
 
 func encodeKey(prefix int64, height int64) []byte {
@@ -52,15 +53,21 @@ func consensusParamsKey(height int64) []byte {
 }
 
 func abciResponsesKey(height int64) []byte {
-	return encodeKey(prefixABCIResponses, height)
+	return encodeKey(prefixAllABCIResponses, height)
 }
 
 // stateKey should never change after being set in init()
 var stateKey []byte
+var lastABCIResponseKey []byte
 
 func init() {
 	var err error
 	stateKey, err = orderedcode.Append(nil, prefixState)
+	if err != nil {
+		panic(err)
+	}
+
+	lastABCIResponseKey, err = orderedcode.Append(nil, prefixLastABCIResponse)
 	if err != nil {
 		panic(err)
 	}
@@ -81,6 +88,8 @@ type Store interface {
 	LoadValidators(int64) (*types.ValidatorSet, error)
 	// LoadABCIResponses loads the abciResponse for a given height
 	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
+	// LoadLastABCIResponse loads the last abciResponse for a given height
+	LoadLastABCIResponse(int64) (*tmstate.ABCIResponses, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
@@ -100,13 +109,24 @@ type Store interface {
 // dbStore wraps a db (github.com/tendermint/tm-db)
 type dbStore struct {
 	db dbm.DB
+
+	StoreOptions
+}
+
+type StoreOptions struct {
+
+	// DiscardABCIResponses determines whether or not the store
+	// retains all ABCIResponses. If DiscardABCiResponses is enabled,
+	// the store will maintain only the response object from the latest
+	// height.
+	DiscardABCIResponses bool
 }
 
 var _ Store = (*dbStore)(nil)
 
 // NewStore creates the dbStore of the state pkg.
-func NewStore(db dbm.DB) Store {
-	return dbStore{db}
+func NewStore(db dbm.DB, options StoreOptions) Store {
+	return dbStore{db, options}
 }
 
 // LoadState loads the State from the database.
@@ -407,31 +427,62 @@ func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
 }
 
 // LoadABCIResponses loads the ABCIResponses for the given height from the
-// database. If not found, ErrNoABCIResponsesForHeight is returned.
-//
-// This is useful for recovering from crashes where we called app.Commit and
-// before we called s.Save(). It can also be used to produce Merkle proofs of
-// the result of txs.
+// database. If the node has DiscardABCIResponses set to true, ErrABCIResponsesNotPersisted
+// is persisted. If not found, ErrNoABCIResponsesForHeight is returned.
 func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
+	if store.DiscardABCIResponses {
+		return nil, ErrABCIResponsesNotPersisted
+	}
+
 	buf, err := store.db.Get(abciResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
-	if len(buf) == 0 {
 
+	if len(buf) == 0 {
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
-
 	abciResponses := new(tmstate.ABCIResponses)
 	err = abciResponses.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadABCIResponses: Data has been corrupted or its spec has
-                changed: %v\n`, err))
+		changed: %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 
 	return abciResponses, nil
+}
+
+// LoadLastABCIResponses loads the ABCIResponses from the most recent height.
+// The height parameter is used to ensure that the response corresponds to the latest height.
+// If not, an error is returned.
+//
+// This method is used for recovering in the case that we called the Commit ABCI
+// method on the application but crashed before persisting the results.
+func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
+	bz, err := store.db.Get(lastABCIResponseKey)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(bz) == 0 {
+		return nil, errors.New("value retrieved from db is empty")
+	}
+
+	abciResponse := new(tmstate.ABCIResponsesInfo)
+	err = abciResponse.Unmarshal(bz)
+	if err != nil {
+		tmos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has
+			changed: %v\n`, err))
+	}
+
+	// Here we validate the result by comparing its height to the expected height.
+	if height != abciResponse.GetHeight() {
+		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
+	}
+
+	return abciResponse.AbciResponses, nil
 }
 
 // SaveABCIResponses persists the ABCIResponses to the database.
@@ -439,12 +490,8 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // Responses are indexed by height so they can also be loaded later to produce
 // Merkle proofs.
 //
-// Exposed for testing.
+//CONTRACT: height must be monotonically increasing every time this is called.
 func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
-	return store.saveABCIResponses(height, abciResponses)
-}
-
-func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
 	// strip nil values,
 	for _, tx := range abciResponses.DeliverTxs {
@@ -452,15 +499,32 @@ func (store dbStore) saveABCIResponses(height int64, abciResponses *tmstate.ABCI
 			dtxs = append(dtxs, tx)
 		}
 	}
-
 	abciResponses.DeliverTxs = dtxs
 
-	bz, err := abciResponses.Marshal()
+	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
+	// query or to reindex an event using the command line.
+	if !store.DiscardABCIResponses {
+		bz, err := abciResponses.Marshal()
+		if err != nil {
+			return err
+		}
+		if err := store.db.Set(abciResponsesKey(height), bz); err != nil {
+			return err
+		}
+	}
+
+	// We always save the last ABCI response for crash recovery.
+	// This overwrites the previous saved ABCI Response.
+	response := &tmstate.ABCIResponsesInfo{
+		AbciResponses: abciResponses,
+		Height:        height,
+	}
+	bz, err := response.Marshal()
 	if err != nil {
 		return err
 	}
 
-	return store.db.SetSync(abciResponsesKey(height), bz)
+	return store.db.SetSync(lastABCIResponseKey, bz)
 }
 
 // SaveValidatorSets is used to save the validator set over multiple heights.
@@ -547,7 +611,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		tmos.Exit(fmt.Sprintf(`LoadValidators: Data has been corrupted or its spec has changed:
-                %v\n`, err))
+        %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 

@@ -103,7 +103,9 @@ func (rts *reactorTestSuite) addNode(t *testing.T,
 
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	blockStore := store.NewBlockStore(blockDB)
 
 	state, err := sm.MakeGenesisState(genDoc)

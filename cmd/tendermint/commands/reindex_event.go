@@ -37,6 +37,9 @@ replace the backend. The default start-height is 0, meaning the tooling will sta
 reindex from the base block height(inclusive); and the default end-height is 0, meaning 
 the tooling will reindex until the latest block height(inclusive). User can omit
 either or both arguments.
+
+Note: This operation requires ABCIResponses. Do not set DiscardABCIResponses to true if you
+want to use this command.
 	`,
 	Example: `
 	tendermint reindex-event
@@ -154,7 +157,9 @@ func loadStateAndBlockStore(cfg *tmcfg.Config) (*store.BlockStore, state.Store, 
 	if err != nil {
 		return nil, nil, err
 	}
-	stateStore := state.NewStore(stateDB)
+	stateStore := state.NewStore(stateDB, state.StoreOptions{
+		DiscardABCIResponses: cfg.RPC.DiscardABCIResponses,
+	})
 
 	return blockStore, stateStore, nil
 }

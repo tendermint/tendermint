@@ -77,7 +77,7 @@ func NewFromConfig(logger log.Logger, cfg *config.Config) (*Inspector, error) {
 	if err != nil {
 		return nil, err
 	}
-	ss := state.NewStore(sDB)
+	ss := state.NewStore(sDB, state.StoreOptions{DiscardABCIResponses: false})
 	return New(cfg.RPC, bs, ss, sinks, logger), nil
 }
 
