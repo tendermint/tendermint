@@ -405,6 +405,11 @@ type RPCConfig struct {
 
 	// pprof listen address (https://golang.org/pkg/net/http/pprof)
 	PprofListenAddress string `mapstructure:"pprof_laddr"`
+
+	// Set false to ensure ABCI responses are persisted.
+	// ABCI responses are required for /BlockResults RPC queries, and
+	// to reindex events in the command-line tool.
+	DiscardABCIResponses bool `mapstructure:"persist-abci-responses"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -429,8 +434,9 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
 
-		TLSCertFile: "",
-		TLSKeyFile:  "",
+		TLSCertFile:          "",
+		TLSKeyFile:           "",
+		DiscardABCIResponses: false,
 	}
 }
 

@@ -67,6 +67,7 @@ func (_m *Store) Load() (state.State, error) {
 	return r0, r1
 }
 
+
 // LoadABCIResponses provides a mock function with given fields: _a0
 func (_m *Store) LoadABCIResponses(_a0 int64) (*tendermintstate.ABCIResponses, error) {
 	ret := _m.Called(_a0)
