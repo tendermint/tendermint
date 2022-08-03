@@ -254,7 +254,7 @@ func (c *Local) eventsRoutine(
 					c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
 				}
 			}
-		case <-sub.Cancelled(): // nolint: misspell
+		case <-sub.Cancelled():
 			if sub.Err() == tmpubsub.ErrUnsubscribed {
 				return
 			}
