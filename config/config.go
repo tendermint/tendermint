@@ -409,7 +409,7 @@ type RPCConfig struct {
 	// Set false to ensure ABCI responses are persisted.
 	// ABCI responses are required for /BlockResults RPC queries, and
 	// to reindex events in the command-line tool.
-	DiscardABCIResponses bool `mapstructure:"persist-abci-responses"`
+	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
