@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
-	mempl "github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -35,7 +34,7 @@ type BlockExecutor struct {
 
 	// manage the mempool lock during commit
 	// and update both with block results after commit.
-	mempool mempl.Mempool
+	mempool mempool.Mempool
 	evpool  EvidencePool
 
 	logger log.Logger
@@ -57,7 +56,7 @@ func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
-	mempool mempl.Mempool,
+	mempool mempool.Mempool,
 	evpool EvidencePool,
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
