@@ -169,7 +169,7 @@ func NewState(
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
-		statsMsgQueue:    make(chan msgInfo, 5),
+		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
