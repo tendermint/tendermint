@@ -37,7 +37,6 @@ function testExample() {
 }
 
 testExample 1 tests/test_cli/ex1.abci abci-cli kvstore
-testExample 2 tests/test_cli/ex2.abci abci-cli counter
 
 echo ""
 echo "PASS"

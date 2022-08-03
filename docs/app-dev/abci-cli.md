@@ -31,7 +31,6 @@ Available Commands:
   check_tx    Validate a tx
   commit      Commit the application state and return the Merkle root hash
   console     Start an interactive abci console for multiple commands
-  counter     ABCI demo example
   deliver_tx  Deliver a new tx to the application
   kvstore     ABCI demo example
   echo        Have the application echo a message
@@ -214,137 +213,9 @@ we do `deliver_tx "abc=efg"` it will store `(abc, efg)`.
 Similarly, you could put the commands in a file and run
 `abci-cli --verbose batch < myfile`.
 
-## Counter - Another Example
-
-Now that we've got the hang of it, let's try another application, the
-"counter" app.
-
-Like the kvstore app, its code can be found
-[here](https://github.com/tendermint/tendermint/blob/v0.34.x/abci/cmd/abci-cli/abci-cli.go)
-and looks like:
-
-```go
-func cmdCounter(cmd *cobra.Command, args []string) error {
-
-    app := counter.NewCounterApplication(flagSerial)
-
-    logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-
-    // Start the listener
-    srv, err := server.NewServer(flagAddrC, flagAbci, app)
-    if err != nil {
-        return err
-    }
-    srv.SetLogger(logger.With("module", "abci-server"))
-    if err := srv.Start(); err != nil {
-        return err
-    }
-
-    // Stop upon receiving SIGTERM or CTRL-C.
-    tmos.TrapSignal(logger, func() {
-        // Cleanup
-        srv.Stop()
-    })
-
-    // Run forever.
-    select {}
-}
-```
-
-The counter app doesn't use a Merkle tree, it just counts how many times
-we've sent a transaction, asked for a hash, or committed the state. The
-result of `commit` is just the number of transactions sent.
-
-This application has two modes: `serial=off` and `serial=on`.
-
-When `serial=on`, transactions must be a big-endian encoded incrementing
-integer, starting at 0.
-
-If `serial=off`, there are no restrictions on transactions.
-
-We can toggle the value of `serial` using the `set_option` ABCI message.
-
-When `serial=on`, some transactions are invalid. In a live blockchain,
-transactions collect in memory before they are committed into blocks. To
-avoid wasting resources on invalid transactions, ABCI provides the
-`check_tx` message, which application developers can use to accept or
-reject transactions, before they are stored in memory or gossipped to
-other peers.
-
-In this instance of the counter app, `check_tx` only allows transactions
-whose integer is greater than the last committed one.
-
-Let's kill the console and the kvstore application, and start the
-counter app:
-
-```sh
-abci-cli counter
-```
-
-In another window, start the `abci-cli console`:
-
-```sh
-> set_option serial on
-> check_tx 0x00
--> code: OK
-
-> check_tx 0xff
--> code: OK
-
-> deliver_tx 0x00
--> code: OK
-
-> check_tx 0x00
--> code: BadNonce
--> log: Invalid nonce. Expected >= 1, got 0
-
-> deliver_tx 0x01
--> code: OK
-
-> deliver_tx 0x04
--> code: BadNonce
--> log: Invalid nonce. Expected 2, got 4
-
-> info
--> code: OK
--> data: {"hashes":0,"txs":2}
--> data.hex: 0x7B22686173686573223A302C22747873223A327D
-```
-
-This is a very simple application, but between `counter` and `kvstore`,
-its easy to see how you can build out arbitrary application states on
-top of the ABCI. [Hyperledger's
-Burrow](https://github.com/hyperledger/burrow) also runs atop ABCI,
-bringing with it Ethereum-like accounts, the Ethereum virtual-machine,
-Monax's permissioning scheme, and native contracts extensions.
-
-But the ultimate flexibility comes from being able to write the
-application easily in any language.
-
-We have implemented the counter in a number of languages [see the
-example directory](https://github.com/tendermint/tendermint/tree/master/abci/example).
-
-To run the Node.js version, fist download & install [the Javascript ABCI server](https://github.com/tendermint/js-abci):
-
-```sh
-git clone https://github.com/tendermint/js-abci.git
-cd js-abci
-npm install abci
-```
-
-Now you can start the app:
-
-```sh
-node example/counter.js
-```
-
-(you'll have to kill the other counter application process). In another
-window, run the console and those previous ABCI commands. You should get
-the same results as for the Go version.
-
 ## Bounties
 
-Want to write the counter app in your favorite language?! We'd be happy
+Want to write an app in your favorite language?! We'd be happy
 to add you to our [ecosystem](https://github.com/tendermint/awesome#ecosystem)!
 See [funding](https://github.com/interchainio/funding) opportunities from the
 [Interchain Foundation](https://interchain.io/) for implementations in new languages and more.
