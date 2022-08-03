@@ -312,9 +312,10 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for
 // testing.
 func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
-	// nope
+	cs.Logger.Info("Set TimeoutTicker Lock")
 	cs.mtx.Lock()
 	cs.timeoutTicker = timeoutTicker
+	cs.Logger.Info("Set TimeoutTicker Unlock")
 	cs.mtx.Unlock()
 }
 
@@ -904,8 +905,10 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// of RoundState and only locking when switching out State's copy of
 		// RoundState with the updated copy or by emitting RoundState events in
 		// more places for routines depending on it to listen for.
+		cs.Logger.Info("handlemsg Intermediate Unlock")
 		cs.mtx.Unlock()
 
+		cs.Logger.Info("handlemsg Intermediate Lock")
 		cs.mtx.Lock()
 		if added && cs.ProposalBlockParts.IsComplete() {
 			cs.handleCompleteProposal(msg.Height)
