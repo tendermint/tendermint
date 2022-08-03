@@ -1224,7 +1224,11 @@ func (cs *State) createProposalBlock() (*types.Block, error) {
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
+	ret, err := cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
+	if err != nil {
+		panic(err)
+	}
+	return ret, nil
 }
 
 // Enter: `timeoutPropose` after entering Propose.

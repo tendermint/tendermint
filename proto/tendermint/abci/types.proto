@@ -284,8 +284,7 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  bool                             modified_tx             = 1;
-  repeated TxRecord                tx_records              = 2;
+  repeated TxRecord                tx_records              = 1;
 }
 
 //----------------------------------------

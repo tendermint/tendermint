@@ -170,8 +170,3 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 
 	return resQuery
 }
-
-func (app *Application) PrepareProposal(
-	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	return types.ResponsePrepareProposal{}
-}

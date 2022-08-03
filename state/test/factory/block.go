@@ -42,7 +42,7 @@ func MakeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.B
 func MakeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
 	return state.MakeBlock(
 		height,
-		factory.MakeTenTxs(state.LastBlockHeight),
+		factory.MakeNTxs(state.LastBlockHeight, 10),
 		c,
 		nil,
 		state.Validators.GetProposer().Address,

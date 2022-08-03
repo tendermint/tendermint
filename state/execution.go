@@ -129,14 +129,10 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// transaction causing an error.
 		//
 		// Also, the App can simply skip any transaction that could cause any kind of trouble.
-		// Either way, we can not recover in a meaningful way, unless we skip proposing
-		// this block, repair what caused the error and try again. Hence, we panic on
-		// purpose for now.
-		panic(err)
-	}
-
-	if !rpp.ModifiedTx {
-		return block, nil
+		// Either way, we cannot recover in a meaningful way, unless we skip proposing
+		// this block, repair what caused the error and try again. Hence, we return an
+		// error for now (the production code calling this function is expected to panic).
+		return nil, err
 	}
 	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
@@ -147,11 +143,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	for _, rtx := range txrSet.RemovedTxs() {
 		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
 			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
-		}
-	}
-	for _, atx := range txrSet.AddedTxs() {
-		if err := blockExec.mempool.CheckTx(atx, nil, mempool.TxInfo{}); err != nil {
-			blockExec.logger.Error("error adding tx to the mempool", "error", err, "tx hash", atx.Hash())
 		}
 	}
 	itxs := txrSet.IncludedTxs()

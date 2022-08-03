@@ -172,11 +172,6 @@ func (t TxRecordSet) IncludedTxs() []Tx {
 	return t.included
 }
 
-// AddedTxs returns the transactions added by the application.
-func (t TxRecordSet) AddedTxs() []Tx {
-	return t.added
-}
-
 // RemovedTxs returns the transactions marked for removal by the application.
 func (t TxRecordSet) RemovedTxs() []Tx {
 	return t.removed
@@ -206,13 +201,7 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	// Only the slices are copied, the transaction contents are shared.
 	allCopy := sortedCopy(t.all)
 
-	var size int64
 	for i, cur := range allCopy {
-		size += int64(len(cur))
-		if size > maxSizeBytes {
-			return fmt.Errorf("transaction data size %d exceeds maximum %d", size, maxSizeBytes)
-		}
-
 		// allCopy is sorted, so any duplicated data will be adjacent.
 		if i+1 < len(allCopy) && bytes.Equal(cur, allCopy[i+1]) {
 			return fmt.Errorf("found duplicate transaction with hash: %x", cur.Hash())
@@ -224,6 +213,14 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	addedCopy := sortedCopy(t.added)
 	removedCopy := sortedCopy(t.removed)
 	unmodifiedCopy := sortedCopy(t.unmodified)
+
+	var size int64
+	for _, cur := range append(unmodifiedCopy, addedCopy...) {
+		size += int64(len(cur))
+		if size > maxSizeBytes {
+			return fmt.Errorf("transaction data size exceeds maximum %d", maxSizeBytes)
+		}
+	}
 
 	// make a defensive copy of otxs so that the order of
 	// the caller's data is not altered.
