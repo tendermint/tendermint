@@ -1,5 +1,9 @@
 # Router - WIP
 
+The router is the component of the *new* p2p layer
+responsible for establishing connection with peers,
+and for routing messages from reactors to peers and vice-versa.
+
 ## Dialing peers
 
 The router maintains a persistent routine `dialPeers()` consuming
