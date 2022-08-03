@@ -22,6 +22,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/proxy"
+	pmocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	sf "github.com/tendermint/tendermint/state/test/factory"
@@ -803,15 +804,14 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
 	cm := &abciclientmocks.Client{}
-	cm.On("IsRunning").Return(true)
-	cm.On("Error").Return(nil)
-	cm.On("Start", mock.Anything).Return(nil).Once()
-	cm.On("Wait").Return(nil).Once()
-	cm.On("PrepareProposal", mock.Anything, mock.Anything).Return(nil, errors.New("an injected error")).Once()
-
-	app := abcimocks.NewBaseMock()         // XXXXXX
-	cc := proxy.NewLocalClientCreator(app) //XXXXX
-	proxyApp := proxy.NewAppConns(cc)      // XXXXXXX --> cm
+	cm.On("SetLogger", mock.Anything).Return()
+	cm.On("Start").Return(nil)
+	cm.On("Quit").Return(nil)
+	cm.On("PrepareProposalSync", mock.Anything).Return(nil, errors.New("an injected error")).Once()
+	cm.On("Stop").Return(nil)
+	cc := &pmocks.ClientCreator{}
+	cc.On("NewABCIClient").Return(cm, nil)
+	proxyApp := proxy.NewAppConns(cc)
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
