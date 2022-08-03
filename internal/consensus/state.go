@@ -871,6 +871,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 	// feels likely
 	cs.Logger.Info("handlemsg Lock")
 	cs.mtx.Lock()
+	cs.Logger.Info("handlemsg Locked")
 	defer cs.Logger.Info("handlemsg Unlock")
 	defer cs.mtx.Unlock()
 	var (
