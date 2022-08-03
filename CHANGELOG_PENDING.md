@@ -28,3 +28,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+[docker] \#9073 enable cross platform build using docker buildx
