@@ -158,11 +158,12 @@ func (state *pcState) handle(event Event) (Event, error) {
 			return noOp, nil
 		}
 
-		var (
-			first, second = firstItem.block, secondItem.block
-			firstParts    = first.MakePartSet(types.BlockPartSizeBytes)
-			firstID       = types.BlockID{Hash: first.Hash(), PartSetHeader: firstParts.Header()}
-		)
+		first, second := firstItem.block, secondItem.block
+		firstParts, err := first.MakePartSet(types.BlockPartSizeBytes)
+		if err != nil {
+			panic(fmt.Sprintf("failed to make part set, height %d: %v ", first.Height, err.Error()))
+		}
+		firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstParts.Header()}
 
 		// verify if +second+ last commit "confirms" +first+ block
 		err = state.context.verifyCommit(tmState.ChainID, firstID, first.Height, second.LastCommit)

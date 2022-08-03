@@ -227,6 +227,9 @@ func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok
 }
 
 func (voteSet *VoteSet) GetVotes() []*Vote {
+	if voteSet == nil {
+		return nil
+	}
 	return voteSet.votes
 }
 
@@ -631,6 +634,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
 			commitSig = NewCommitSigAbsent()
 		}
+
 		commitSigs[i] = commitSig
 	}
 

@@ -70,7 +70,7 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	// make sure to unregister after the test is over
 	defer func() {
 		if deferErr := c.UnsubscribeAll(ctx, subscriber); deferErr != nil {
-			panic(err)
+			panic(deferErr)
 		}
 	}()
 
