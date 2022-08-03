@@ -1126,25 +1126,27 @@ func (m *PeerManager) Register(peerUpdates *PeerUpdates) {
 }
 
 func (m *PeerManager) processPeerEvent(pu PeerUpdate) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
+	/*
+		m.mtx.Lock()
+		defer m.mtx.Unlock()
 
-	if _, ok := m.store.peers[pu.NodeID]; !ok {
-		m.store.peers[pu.NodeID] = &peerInfo{}
-	}
+		if _, ok := m.store.peers[pu.NodeID]; !ok {
+			m.store.peers[pu.NodeID] = &peerInfo{}
+		}
 
-	switch pu.Status {
-	case PeerStatusBad:
-		if m.store.peers[pu.NodeID].MutableScore == math.MinInt16 {
-			return
+		switch pu.Status {
+		case PeerStatusBad:
+			if m.store.peers[pu.NodeID].MutableScore == math.MinInt16 {
+				return
+			}
+			m.store.peers[pu.NodeID].MutableScore--
+		case PeerStatusGood:
+			if m.store.peers[pu.NodeID].MutableScore == math.MaxInt16 {
+				return
+			}
+			m.store.peers[pu.NodeID].MutableScore++
 		}
-		m.store.peers[pu.NodeID].MutableScore--
-	case PeerStatusGood:
-		if m.store.peers[pu.NodeID].MutableScore == math.MaxInt16 {
-			return
-		}
-		m.store.peers[pu.NodeID].MutableScore++
-	}
+	*/
 }
 
 // broadcast broadcasts a peer update to all subscriptions. The caller must
