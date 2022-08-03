@@ -19,6 +19,8 @@ If follows a list of Go source files and their contents.
 `ConnSet` interface, a "lookup table for connections and their ips".
 Internal type `connSet` implements the `ConnSet` interface.
 
+Used by the [transport](./transport.md) to store connected peers.
+
 ## `errors.go`
 
 `ErrRejected` struct carries reasons for which a peer was rejected.
@@ -65,7 +67,9 @@ Documented in [switch.md](./switch.md).
 
 ## `transport.go`
 
-TODO:
+The `Transport` interface is implemented by `MultiplexTransport`.
+
+Documented in [transport.md](./transport.md).
 
 ## `types.go`
 
