@@ -16,7 +16,6 @@ import (
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
 	servertest "github.com/tendermint/tendermint/abci/tests/server"
@@ -44,9 +43,6 @@ var (
 	flagHeight int
 	flagProve  bool
 
-	// counter
-	flagSerial bool
-
 	// kvstore
 	flagPersist string
 )
@@ -58,9 +54,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		switch cmd.Use {
-		case "counter", "kvstore": // for the examples apps, don't pre-run
-			return nil
-		case "version": // skip running for version command
+		case "kvstore", "version":
 			return nil
 		}
 
@@ -135,10 +129,6 @@ func addQueryFlags() {
 		"whether or not to return a merkle proof of the query result")
 }
 
-func addCounterFlags() {
-	counterCmd.PersistentFlags().BoolVarP(&flagSerial, "serial", "", false, "enforce incrementing (serial) transactions")
-}
-
 func addKVStoreFlags() {
 	kvstoreCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
@@ -158,8 +148,6 @@ func addCommands() {
 	RootCmd.AddCommand(queryCmd)
 
 	// examples
-	addCounterFlags()
-	RootCmd.AddCommand(counterCmd)
 	addKVStoreFlags()
 	RootCmd.AddCommand(kvstoreCmd)
 }
@@ -265,14 +253,6 @@ var queryCmd = &cobra.Command{
 	Long:  "query the application state",
 	Args:  cobra.ExactArgs(1),
 	RunE:  cmdQuery,
-}
-
-var counterCmd = &cobra.Command{
-	Use:   "counter",
-	Short: "ABCI demo example",
-	Long:  "ABCI demo example",
-	Args:  cobra.ExactArgs(0),
-	RunE:  cmdCounter,
 }
 
 var kvstoreCmd = &cobra.Command{
@@ -623,32 +603,6 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		},
 	})
 	return nil
-}
-
-func cmdCounter(cmd *cobra.Command, args []string) error {
-	app := counter.NewApplication(flagSerial)
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-
-	// Start the listener
-	srv, err := server.NewServer(flagAddress, flagAbci, app)
-	if err != nil {
-		return err
-	}
-	srv.SetLogger(logger.With("module", "abci-server"))
-	if err := srv.Start(); err != nil {
-		return err
-	}
-
-	// Stop upon receiving SIGTERM or CTRL-C.
-	tmos.TrapSignal(logger, func() {
-		// Cleanup
-		if err := srv.Stop(); err != nil {
-			logger.Error("Error while stopping server", "err", err)
-		}
-	})
-
-	// Run forever.
-	select {}
 }
 
 func cmdKVStore(cmd *cobra.Command, args []string) error {
