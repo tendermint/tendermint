@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/tendermint/behaviour"
+	"github.com/tendermint/tendermint/behaviour" //nolint:misspell
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -100,7 +100,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *st
 	fsm := NewFSM(startHeight, bcR)
 	bcR.fsm = fsm
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
-	// bcR.swReporter = behaviour.NewSwitchReporter(bcR.BaseReactor.Switch)
+	// bcR.swReporter = behavior.NewSwitchReporter(bcR.BaseReactor.Switch)
 
 	return bcR
 }

@@ -97,6 +97,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
 	state State, commit *types.Commit,
 	proposerAddr []byte,
+	votes []*types.Vote,
 ) (*types.Block, *types.PartSet) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -110,7 +111,11 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 
 	preparedProposal, err := blockExec.proxyApp.PrepareProposalSync(
-		abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes(), BlockDataSize: maxDataBytes},
+		abci.RequestPrepareProposal{
+			BlockData:     txs.ToSliceOfBytes(),
+			BlockDataSize: maxDataBytes,
+			Votes:         types.VotesToProto(votes),
+		},
 	)
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable') transactions
