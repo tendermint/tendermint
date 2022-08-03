@@ -434,9 +434,11 @@ chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 [fastsync]
 
 # Fast Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v1" - refactor of v0 version for better testability
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
+# 
+# In v0.37, v1 and v2 of the fast sync protocol were deprecated.
+# Please use v0 instead.
+#
+#   1) "v0" - the default fast sync implementation
 version = "{{ .FastSync.Version }}"
 
 #######################################################

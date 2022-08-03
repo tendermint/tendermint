@@ -26,10 +26,9 @@ var (
 	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	ipv6          = uniformChoice{false, true}
 	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
-	// FIXME: v2 disabled due to flake
-	nodeFastSyncs         = uniformChoice{"v0"} // "v2"
+	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
+	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
+	nodeFastSyncs         = uniformChoice{false, true}
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodeMempools          = uniformChoice{"v0", "v1"}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
@@ -202,7 +201,7 @@ func generateNode(
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
-		FastSync:         nodeFastSyncs.Choose(r).(string),
+		FastSync:         nodeFastSyncs.Choose(r).(bool),
 		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
