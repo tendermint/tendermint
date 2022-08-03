@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/behaviour"
+	"github.com/tendermint/tendermint/behaviour" //nolint:misspell
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"

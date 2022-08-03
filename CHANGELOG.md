@@ -1283,7 +1283,7 @@ This release contains a minor enhancement to the ABCI and some breaking changes 
 
 - [p2p] [\#3338](https://github.com/tendermint/tendermint/issues/3338) Prevent "sent next PEX request too soon" errors by not calling
   ensurePeers outside of ensurePeersRoutine
-- [behaviour] [\3772](https://github.com/tendermint/tendermint/pull/3772) Return correct reason in MessageOutOfOrder (@jim380)
+- [behavior] [\3772](https://github.com/tendermint/tendermint/pull/3772) Return correct reason in MessageOutOfOrder (@jim380)
 - [config] [\#3723](https://github.com/tendermint/tendermint/issues/3723) Add consensus_params to testnet config generation; document time_iota_ms (@ashleyvega)
 
 
@@ -1603,7 +1603,7 @@ It brings back `NetAddress()` to `NodeInfo` and uses it instead of `SocketAddr` 
 Additionally, it improves response time on the `/validators` or `/status` RPC endpoints.
 As a side-effect it makes these RPC endpoint more difficult to DoS and fixes a performance degradation in `ExecCommitBlock`.
 Also, it contains an [ADR](https://github.com/tendermint/tendermint/pull/3539) that proposes decoupling the
-responsibility for peer behaviour from the `p2p.Switch` (by @brapse).
+responsibility for peer behavior from the `p2p.Switch` (by @brapse).
 
 Special thanks to external contributors on this release:
 @brapse, @guagualvcha, @mydring
@@ -2271,8 +2271,8 @@ Special thanks to external contributors on this release:
 - [blockchain] [\#2731](https://github.com/tendermint/tendermint/issues/2731) Retry both blocks if either is bad to avoid getting stuck during fast sync (@goolAdapter)
 - [consensus] [\#2893](https://github.com/tendermint/tendermint/issues/2893) Use genDoc.Validators instead of state.NextValidators on replay when appHeight==0 (@james-ray)
 - [log] [\#2868](https://github.com/tendermint/tendermint/issues/2868) Fix `module=main` setting overriding all others
-    - NOTE: this changes the default logging behaviour to be much less verbose.
-      Set `log_level="info"` to restore the previous behaviour.
+    - NOTE: this changes the default logging behavior to be much less verbose.
+      Set `log_level="info"` to restore the previous behavior.
 - [rpc] [\#2808](https://github.com/tendermint/tendermint/issues/2808) Fix `accum` field in `/validators` by calling `IncrementAccum` if necessary
 - [rpc] [\#2811](https://github.com/tendermint/tendermint/issues/2811) Allow integer IDs in JSON-RPC requests (@tomtau)
 - [txindex/kv] [\#2759](https://github.com/tendermint/tendermint/issues/2759) Fix tx.height range queries
@@ -2403,7 +2403,7 @@ increasing attention to backwards compatibility. Thanks for bearing with us!
   * [state] [\#2644](https://github.com/tendermint/tendermint/issues/2644) Add Version field to State, breaking the format of State as
     encoded on disk.
   * [rpc] [\#2298](https://github.com/tendermint/tendermint/issues/2298) `/abci_query` takes `prove` argument instead of `trusted` and switches the default
-    behaviour to `prove=false`
+    behavior to `prove=false`
   * [rpc] [\#2654](https://github.com/tendermint/tendermint/issues/2654) Remove all `node_info.other.*_version` fields in `/status` and
     `/net_info`
   * [rpc] [\#2636](https://github.com/tendermint/tendermint/issues/2636) Remove

@@ -16,7 +16,7 @@ func TestMockReporter(t *testing.T) {
 
 	behaviors := pr.GetBehaviours(peerID)
 	if len(behaviors) != 0 {
-		t.Error("Expected to have no behaviours reported")
+		t.Error("Expected to have no behaviors reported")
 	}
 
 	badMessage := bh.BadMessage(peerID, "bad message")
@@ -85,7 +85,7 @@ func TestEqualPeerBehaviours(t *testing.T) {
 		}{
 			// Empty sets
 			{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{}},
-			// Single behaviours
+			// Single behaviors
 			{[]bh.PeerBehaviour{consensusVote}, []bh.PeerBehaviour{consensusVote}},
 			// Equal Frequencies
 			{[]bh.PeerBehaviour{consensusVote, consensusVote},
@@ -100,7 +100,7 @@ func TestEqualPeerBehaviours(t *testing.T) {
 		}{
 			// Comparing empty sets to non empty sets
 			{[]bh.PeerBehaviour{}, []bh.PeerBehaviour{consensusVote}},
-			// Different behaviours
+			// Different behaviors
 			{[]bh.PeerBehaviour{consensusVote}, []bh.PeerBehaviour{blockPart}},
 			// Same behavior with different frequencies
 			{[]bh.PeerBehaviour{consensusVote},

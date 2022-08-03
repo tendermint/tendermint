@@ -14,7 +14,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/behaviour"
+	"github.com/tendermint/tendermint/behaviour" //nolint:misspell
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -301,7 +301,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 // 		t.Run(tt.name, func(t *testing.T) {
 // 			reactor := newTestReactor(params)
 // 			reactor.Start()
-// 			reactor.reporter = behaviour.NewMockReporter()
+// 			reactor.reporter = behavior.NewMockReporter()
 // 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 // 			reactor.io = mockSwitch
 // 			// time for go routines to start
