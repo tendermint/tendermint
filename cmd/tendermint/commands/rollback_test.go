@@ -15,6 +15,10 @@ import (
 )
 
 func TestRollbackIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	var height int64
 	dir := t.TempDir()
 	ctx, cancel := context.WithCancel(context.Background())

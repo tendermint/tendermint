@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -27,6 +26,6 @@ func Cleanup(ctx context.Context, logger log.Logger, testnetDir string, ti infra
 		return err
 	}
 
-	logger.Info(fmt.Sprintf("Removing testnet directory %q", testnetDir))
+	logger.Info("Removing testnet", "directory", testnetDir)
 	return os.RemoveAll(testnetDir)
 }

@@ -33,6 +33,10 @@ import (
 // Byzantine node sends two different prevotes (nil and blockID) to the same
 // validator.
 func TestByzantinePrevoteEquivocation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// empirically, this test either passes in <1s or hits some
 	// kind of deadlock and hit the larger timeout. This timeout
 	// can be extended a bunch if needed, but it's good to avoid

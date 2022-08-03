@@ -2,6 +2,18 @@
 
 Friendly reminder: We have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.35.9
+
+July 20, 2022
+
+This release fixes a deadlock that could occur in some cases when using the
+priority mempool with the ABCI socket client.
+
+### BUG FIXES
+
+- [mempool] [\#9030](https://github.com/tendermint/tendermint/pull/9030) rework lock discipline to mitigate callback deadlocks (@creachadair)
+
+
 ## v0.35.8
 
 July 12, 2022
@@ -735,7 +747,7 @@ Special thanks to external contributors on this release: @james-ray, @fedekunze,
   - [light] [\#5347](https://github.com/tendermint/tendermint/pull/5347) `NewClient`, `NewHTTPClient`, `VerifyHeader` and `VerifyLightBlockAtHeight` now accept `context.Context` as 1st param (@melekes)
   - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) `HashFromByteSlices` and `ProofsFromByteSlices` now return a hash for empty inputs, following RFC6962 (@erikgrinaker)
   - [proto] [\#5025](https://github.com/tendermint/tendermint/pull/5025) All proto files have been moved to `/proto` directory. (@marbar3778)
-    - Using the recommended the file layout from buf, [see here for more info](https://buf.build/docs/lint-checkers#file_layout)
+    - Using the recommended the file layout from buf, [see here for more info](https://docs.buf.build/lint/rules) <!-- markdown-link-check-disable-line -->
   - [rpc/client] [\#4947](https://github.com/tendermint/tendermint/pull/4947) `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
     - `UnconfirmedTxs` `limit` param is a pointer
   - [rpc/jsonrpc/server] [\#5141](https://github.com/tendermint/tendermint/pull/5141) Remove `WriteRPCResponseArrayHTTP` (use `WriteRPCResponseHTTP` instead) (@melekes)
