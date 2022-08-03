@@ -21,11 +21,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: '^1.15.4'
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: 'v0.34.x'
 
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack on failure
-        uses: rtCamp/action-slack-notify@e9db0ef
+        uses: rtCamp/action-slack-notify@f565a63638bd3615e76249bffab00fcb9dab90f7
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack on success
-        uses: rtCamp/action-slack-notify@ae4223259071871559b6e9d08b24a63d71b3f0c0
+        uses: rtCamp/action-slack-notify@f565a63638bd3615e76249bffab00fcb9dab90f7
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal

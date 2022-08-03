@@ -2,12 +2,14 @@ package commands
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	dbm "github.com/tendermint/tm-db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/os"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 )
@@ -55,12 +57,20 @@ func RollbackState(config *cfg.Config) (int64, []byte, error) {
 func loadStateAndBlockStore(config *cfg.Config) (*store.BlockStore, state.Store, error) {
 	dbType := dbm.BackendType(config.DBBackend)
 
+	if !os.FileExists(filepath.Join(config.DBDir(), "blockstore.db")) {
+		return nil, nil, fmt.Errorf("no blockstore found in %v", config.DBDir())
+	}
+
 	// Get BlockStore
 	blockStoreDB, err := dbm.NewDB("blockstore", dbType, config.DBDir())
 	if err != nil {
 		return nil, nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
+
+	if !os.FileExists(filepath.Join(config.DBDir(), "state.db")) {
+		return nil, nil, fmt.Errorf("no statestore found in %v", config.DBDir())
+	}
 
 	// Get StateStore
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())

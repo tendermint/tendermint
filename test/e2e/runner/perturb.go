@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -28,7 +29,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 	testnet := node.Testnet
 	switch perturbation {
 	case e2e.PerturbationDisconnect:
-		logger.Info(fmt.Sprintf("Disconnecting node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.NewLazySprintf("Disconnecting node %v...", node.Name))
 		if err := execDocker("network", "disconnect", testnet.Name+"_"+testnet.Name, node.Name); err != nil {
 			return nil, err
 		}
@@ -38,7 +39,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		}
 
 	case e2e.PerturbationKill:
-		logger.Info(fmt.Sprintf("Killing node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.NewLazySprintf("Killing node %v...", node.Name))
 		if err := execCompose(testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
 			return nil, err
 		}
@@ -47,7 +48,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		}
 
 	case e2e.PerturbationPause:
-		logger.Info(fmt.Sprintf("Pausing node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.NewLazySprintf("Pausing node %v...", node.Name))
 		if err := execCompose(testnet.Dir, "pause", node.Name); err != nil {
 			return nil, err
 		}
@@ -57,7 +58,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		}
 
 	case e2e.PerturbationRestart:
-		logger.Info(fmt.Sprintf("Restarting node %v...", node.Name))
+		logger.Info("perturb node", "msg", log.NewLazySprintf("Restarting node %v...", node.Name))
 		if err := execCompose(testnet.Dir, "restart", node.Name); err != nil {
 			return nil, err
 		}
@@ -70,6 +71,8 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 	if err != nil {
 		return nil, err
 	}
-	logger.Info(fmt.Sprintf("Node %v recovered at height %v", node.Name, status.SyncInfo.LatestBlockHeight))
+	logger.Info("perturb node",
+		"msg",
+		log.NewLazySprintf("Node %v recovered at height %v", node.Name, status.SyncInfo.LatestBlockHeight))
 	return status, nil
 }

@@ -29,12 +29,25 @@ func registerFlagsRootCmd(cmd *cobra.Command) {
 
 // ParseConfig retrieves the default environment configuration,
 // sets up the Tendermint root and ensures that the root exists
-func ParseConfig() (*cfg.Config, error) {
+func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 	conf := cfg.DefaultConfig()
 	err := viper.Unmarshal(conf)
 	if err != nil {
 		return nil, err
 	}
+
+	var home string
+	if os.Getenv("TMHOME") != "" {
+		home = os.Getenv("TMHOME")
+	} else {
+		home, err = cmd.Flags().GetString(cli.HomeFlag)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	conf.RootDir = home
+
 	conf.SetRoot(conf.RootDir)
 	cfg.EnsureRoot(conf.RootDir)
 	if err := conf.ValidateBasic(); err != nil {
@@ -52,7 +65,7 @@ var RootCmd = &cobra.Command{
 			return nil
 		}
 
-		config, err = ParseConfig()
+		config, err = ParseConfig(cmd)
 		if err != nil {
 			return err
 		}

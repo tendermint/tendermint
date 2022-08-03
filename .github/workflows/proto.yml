@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
       - name: lint
         run: make proto-lint
   proto-breakage:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
       - name: check-breakage
         run: make proto-check-breaking-ci

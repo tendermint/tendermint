@@ -1,0 +1,9 @@
+version: v1
+plugins:
+  - name: gogofaster
+    out: ./proto/
+    opt:
+      - Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types
+      - Mgoogle/protobuf/duration.proto=github.com/golang/protobuf/ptypes/duration
+      - plugins=grpc
+      - paths=source_relative

@@ -51,7 +51,7 @@ func DefaultConfig() *Config {
 //
 // NOTE: This function blocks - you may want to call it in a go-routine.
 func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
-	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
+	logger.Info("serve", "msg", log.NewLazySprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
 		ReadTimeout:    config.ReadTimeout,
@@ -75,7 +75,7 @@ func ServeTLS(
 	logger log.Logger,
 	config *Config,
 ) error {
-	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
+	logger.Info("serve tls", "msg", log.NewLazySprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
 		listener.Addr(), certFile, keyFile))
 	s := &http.Server{
 		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
