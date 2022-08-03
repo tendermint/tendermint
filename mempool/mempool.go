@@ -23,6 +23,8 @@ const (
 	MaxActiveIDs = math.MaxUint16
 )
 
+//go:generate mockery --case underscore --name Mempool
+
 // Mempool defines the mempool interface.
 //
 // Updates to the mempool need to be synchronized with committing a block so

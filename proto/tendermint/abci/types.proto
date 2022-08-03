@@ -120,15 +120,15 @@ message RequestApplySnapshotChunk {
 }
 
 message RequestPrepareProposal {
-  // block_data is an array of transactions that will be included in a block,
+  bytes                   hash   = 1;
+  tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
+  // txs is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
-  // applications can not exceed the size of the data passed to it.
-  repeated bytes block_data = 1;
-  // If an application decides to populate block_data with extra information, they can not exceed this value.
-  int64 block_data_size = 2;
-  // votes includes all votes from the previous block. This contains vote extension data that can be used in proposal
-  // preparation. The votes here will then form the last commit that gets sent in the proposed block.
-  repeated types.Vote votes = 3;
+  repeated bytes     txs                  = 3;
+  ExtendedCommitInfo local_last_commit    = 4 [(gogoproto.nullable) = false];
+  repeated Evidence  byzantine_validators = 5 [(gogoproto.nullable) = false];
+  // the modified transactions cannot exceed this size.
+  int64 max_tx_bytes = 6;
 }
 
 //----------------------------------------
@@ -284,7 +284,8 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  repeated bytes block_data = 1;
+  bool                             modified_tx             = 1;
+  repeated TxRecord                tx_records              = 2;
 }
 
 //----------------------------------------
@@ -310,6 +311,11 @@ message BlockParams {
 message LastCommitInfo {
   int32             round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
+}
+
+message ExtendedCommitInfo {
+  int32                     round = 1;
+  repeated ExtendedVoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
 // Event allows application developers to attach additional information to
@@ -340,6 +346,19 @@ message TxResult {
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
+message TxRecord {
+  TxAction action = 1;
+  bytes    tx     = 2;
+
+  // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
+  enum TxAction {
+    UNKNOWN    = 0;  // Unknown action
+    UNMODIFIED = 1;  // The Application did not modify this transaction.
+    ADDED      = 2;  // The Application added this transaction.
+    REMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
+  }
+}
+
 //----------------------------------------
 // Blockchain Types
 
@@ -360,6 +379,14 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
+  reserved 3;  // Placeholder for tendermint_signed_extension in v0.37
+  reserved 4;  // Placeholder for app_signed_extension in v0.37
+}
+
+message ExtendedVoteInfo {
+  Validator validator         = 1 [(gogoproto.nullable) = false];
+  bool      signed_last_block = 2;
+  bytes     vote_extension    = 3;  // Reserved for future use
 }
 
 enum EvidenceType {

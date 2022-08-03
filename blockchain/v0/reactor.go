@@ -360,14 +360,20 @@ FOR_LOOP:
 				didProcessCh <- struct{}{}
 			}
 
-			firstParts := first.MakePartSet(types.BlockPartSizeBytes)
+			firstParts, err := first.MakePartSet(types.BlockPartSizeBytes)
+			if err != nil {
+				bcR.Logger.Error("failed to make ",
+					"height", first.Height,
+					"err", err.Error())
+				break FOR_LOOP
+			}
 			firstPartSetHeader := firstParts.Header()
 			firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 			// Finally, verify the first block using the second's commit
 			// NOTE: we can probably make this more efficient, but note that calling
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
-			err := state.Validators.VerifyCommitLight(
+			err = state.Validators.VerifyCommitLight(
 				chainID, firstID, first.Height, second.LastCommit)
 
 			if err == nil {

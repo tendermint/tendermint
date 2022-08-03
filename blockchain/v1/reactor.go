@@ -465,7 +465,13 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	chainID := bcR.initialState.ChainID
 
-	firstParts := first.MakePartSet(types.BlockPartSizeBytes)
+	firstParts, err := first.MakePartSet(types.BlockPartSizeBytes)
+	if err != nil {
+		bcR.Logger.Error("failed to make ",
+			"height", first.Height,
+			"err", err.Error())
+		return err
+	}
 	firstPartSetHeader := firstParts.Header()
 	firstID := types.BlockID{Hash: first.Hash(), PartSetHeader: firstPartSetHeader}
 	// Finally, verify the first block using the second's commit

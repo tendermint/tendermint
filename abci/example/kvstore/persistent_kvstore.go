@@ -72,6 +72,10 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 		return app.execValidatorTx(req.Tx)
 	}
 
+	if isPrepareTx(req.Tx) {
+		return app.execPrepareTx(req.Tx)
+	}
+
 	// otherwise, update the key-value store
 	return app.app.DeliverTx(req)
 }
@@ -168,11 +172,7 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	if len(req.BlockData) > 1 && false { // this breaks TC: TestReactorValidatorSetChanges
-		req.BlockData[1] = []byte("modified tx")
-	}
-
-	return types.ResponsePrepareProposal{BlockData: req.BlockData}
+	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs)}
 }
 
 //---------------------------------------------
@@ -288,4 +288,47 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	app.ValUpdates = append(app.ValUpdates, v)
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+}
+
+// -----------------------------
+
+const PreparePrefix = "prepare"
+
+func isPrepareTx(tx []byte) bool {
+	return bytes.HasPrefix(tx, []byte(PreparePrefix))
+}
+
+// execPrepareTx is noop. tx data is considered as placeholder
+// and is substitute at the PrepareProposal.
+func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.ResponseDeliverTx {
+	// noop
+	return types.ResponseDeliverTx{}
+}
+
+// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
+// proposal for transactions with the prefix strips.
+// It marks all of the original transactions as 'REMOVED' so that
+// Tendermint will remove them from its mempool.
+func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte) []*types.TxRecord {
+	trs := make([]*types.TxRecord, len(blockData))
+	var removed []*types.TxRecord
+	for i, tx := range blockData {
+		if isPrepareTx(tx) {
+			removed = append(removed, &types.TxRecord{
+				Tx:     tx,
+				Action: types.TxRecord_REMOVED,
+			})
+			trs[i] = &types.TxRecord{
+				Tx:     bytes.TrimPrefix(tx, []byte(PreparePrefix)),
+				Action: types.TxRecord_ADDED,
+			}
+			continue
+		}
+		trs[i] = &types.TxRecord{
+			Tx:     tx,
+			Action: types.TxRecord_UNMODIFIED,
+		}
+	}
+
+	return append(trs, removed...)
 }
