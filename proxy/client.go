@@ -11,6 +11,8 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/app"
 )
 
+//go:generate mockery --case underscore --name ClientCreator
+
 // ClientCreator creates new ABCI clients.
 type ClientCreator interface {
 	// NewABCIClient returns a new ABCI client.

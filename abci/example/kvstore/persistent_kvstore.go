@@ -176,7 +176,7 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs)}
+	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs, req.MaxTxBytes)}
 }
 
 //---------------------------------------------
@@ -310,28 +310,32 @@ func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.Response
 }
 
 // substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
-// proposal for transactions with the prefix strips.
+// proposal for transactions with the prefix stripped.
 // It marks all of the original transactions as 'REMOVED' so that
 // Tendermint will remove them from its mempool.
-func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte) []*types.TxRecord {
-	trs := make([]*types.TxRecord, len(blockData))
+func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*types.TxRecord {
+	trs := make([]*types.TxRecord, 0, len(blockData))
 	var removed []*types.TxRecord
-	for i, tx := range blockData {
+	var totalBytes int64
+	for _, tx := range blockData {
+		txMod := tx
+		action := types.TxRecord_UNMODIFIED
 		if isPrepareTx(tx) {
 			removed = append(removed, &types.TxRecord{
 				Tx:     tx,
 				Action: types.TxRecord_REMOVED,
 			})
-			trs[i] = &types.TxRecord{
-				Tx:     bytes.TrimPrefix(tx, []byte(PreparePrefix)),
-				Action: types.TxRecord_ADDED,
-			}
-			continue
+			txMod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
+			action = types.TxRecord_ADDED
 		}
-		trs[i] = &types.TxRecord{
-			Tx:     tx,
-			Action: types.TxRecord_UNMODIFIED,
+		totalBytes += int64(len(txMod))
+		if totalBytes > maxTxBytes {
+			break
 		}
+		trs = append(trs, &types.TxRecord{
+			Tx:     txMod,
+			Action: action,
+		})
 	}
 
 	return append(trs, removed...)
