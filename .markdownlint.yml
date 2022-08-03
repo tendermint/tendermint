@@ -1,5 +1,12 @@
-default: true,
-MD007: { "indent": 4 }
+# markdownlint configuration
+# https://github.com/DavidAnson/markdownlint
+
+# Default state for all rules
+default: true
+
+# See https://github.com/DavidAnson/markdownlint#rules--aliases for rules
+MD001: false
+MD007: {indent: 4}
 MD013: false
 MD024: { siblings_only: true }
 MD025: false
