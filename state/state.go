@@ -17,10 +17,7 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// database keys
-var (
-	stateKey = []byte("stateKey")
-)
+// database key
 
 //-----------------------------------------------------------------------------
 

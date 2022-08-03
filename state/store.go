@@ -485,7 +485,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		if err != nil {
 			return err
 		}
-		if err := store.db.Set(ResponsesKey(height), bz); err != nil {
+		if err := store.db.Set(ABCIResponsesKey(height), bz); err != nil {
 			return err
 		}
 	}

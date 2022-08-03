@@ -85,8 +85,7 @@ func TestRollbackNoState(t *testing.T) {
 	stateStore := state.NewStore(dbm.NewMemDB(),
 		state.StoreOptions{
 			DiscardABCIResponses: false,
-		}
-	)
+		})
 	blockStore := &mocks.BlockStore{}
 
 	_, _, err := state.Rollback(blockStore, stateStore)
