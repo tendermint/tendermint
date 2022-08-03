@@ -329,7 +329,7 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		case o.IP.To4() != nil:
 			return Ipv4
 		case tunneled:
-			// only prioritise ipv6 if we aren't tunnelling it.
+			// only prioritize ipv6 if we aren't tunnelling it.
 			return Ipv6Weak
 		}
 		return Ipv6Strong
