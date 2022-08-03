@@ -224,7 +224,9 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	defer tearDown(t)
 	assert := assert.New(t)
 
-	statestore := sm.NewStore(stateDB)
+	statestore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 
 	// Can't load anything for height 0.
 	_, err := statestore.LoadValidators(0)

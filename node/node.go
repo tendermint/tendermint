@@ -429,7 +429,9 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 		return nil, nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB), blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	}), blockStore)
 	if err != nil {
 		return nil, nil, err
 	}
