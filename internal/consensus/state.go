@@ -2070,6 +2070,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error)
 }
 
 func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err error) {
+	cs.metrics.Locks.With("function", "addvote").Add(float64(1))
+	defer cs.metrics.Locks.With("function", "addvote").Add(float64(-1))
 	cs.Logger.Debug(
 		"adding vote",
 		"vote_height", vote.Height,
@@ -2123,10 +2125,15 @@ func (cs *State) addVote(vote *types.Vote, peerID types.NodeID) (added bool, err
 		return
 	}
 
+	cs.metrics.Locks.With("function", "addvote").Add(float64(1))
 	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
+		cs.metrics.Locks.With("function", "publisheventvote").Add(float64(-1))
 		return added, err
 	}
+	cs.metrics.Locks.With("function", "publisheventvote").Add(float64(-1))
+	cs.metrics.Locks.With("function", "fireeventvote").Add(float64(1))
 	cs.evsw.FireEvent(types.EventVoteValue, vote)
+	cs.metrics.Locks.With("function", "fireeventvote").Add(float64(-1))
 
 	switch vote.Type {
 	case tmproto.PrevoteType:
