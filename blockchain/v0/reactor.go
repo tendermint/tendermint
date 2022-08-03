@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"time"
 
-
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
