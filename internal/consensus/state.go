@@ -883,11 +883,15 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
+		cs.Logger.Info("set proposal")
 		err = cs.setProposal(msg.Proposal)
+		cs.Logger.Info("set proposal complete")
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
+		cs.Logger.Info("add proposal block part")
 		added, err = cs.addProposalBlockPart(msg, peerID)
+		cs.Logger.Info("add proposal block part complete")
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
 		// Previously, this code held the lock from the point at which the final block
@@ -923,7 +927,9 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
+		cs.Logger.Info("try add vote")
 		added, err = cs.tryAddVote(msg.Vote, peerID)
+		cs.Logger.Info("try add vote complete")
 		if added {
 			cs.statsMsgQueue <- mi
 		}
