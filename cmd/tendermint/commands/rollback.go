@@ -78,7 +78,7 @@ func loadStateAndBlockStore(config *cfg.Config) (*store.BlockStore, state.Store,
 		return nil, nil, err
 	}
 	stateStore := state.NewStore(stateDB, state.StoreOptions{
-		DiscardABCIResponses: cfg.RPC.DiscardABCIResponses,
+		DiscardABCIResponses: config.RPC.DiscardABCIResponses,
 	})
 
 	return blockStore, stateStore, nil

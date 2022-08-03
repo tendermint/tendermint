@@ -43,6 +43,6 @@ func ValidateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params tmproto
 // SaveValidatorsInfo is an alias for the private saveValidatorsInfo method in
 // store.go, exported exclusively and explicitly for testing.
 func SaveValidatorsInfo(db dbm.DB, height, lastHeightChanged int64, valSet *types.ValidatorSet) error {
-	stateStore := dbStore{db}
+	stateStore := dbStore{db, StoreOptions{DiscardABCIResponses: false}}
 	return stateStore.saveValidatorsInfo(height, lastHeightChanged, valSet)
 }
