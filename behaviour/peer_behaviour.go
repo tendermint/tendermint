@@ -1,12 +1,12 @@
-package behaviour
+package behaviour //nolint:misspell
 
 import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// PeerBehaviour is a struct describing a behaviour a peer performed.
+// PeerBehaviour is a struct describing a behavior a peer performed.
 // `peerID` identifies the peer and reason characterizes the specific
-// behaviour performed by the peer.
+// behavior performed by the peer.
 type PeerBehaviour struct {
 	peerID p2p.ID
 	reason interface{}

@@ -1,10 +1,10 @@
 /*
-Package Behaviour provides a mechanism for reactors to report behaviour of peers.
+Package Behavior provides a mechanism for reactors to report behavior of peers.
 
-Instead of a reactor calling the switch directly it will call the behaviour module which will
+Instead of a reactor calling the switch directly it will call the behavior module which will
 handle the stoping and marking peer as good on behalf of the reactor.
 
-There are four different behaviours a reactor can report.
+There are four different behaviors a reactor can report.
 
 1. bad message
 
@@ -39,4 +39,4 @@ type blockPart struct {
 This message will request the peer be marked as good
 
 */
-package behaviour
+package behaviour //nolint:misspell
