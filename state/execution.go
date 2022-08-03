@@ -6,7 +6,7 @@ import (
 	"time"
 	"os"
 	"runtime/pprof"
-	
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
@@ -134,21 +134,21 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
-	profile_path := os.Getenv("DAEMON_PROFILE_PATH")
+	profile_path := os.Getenv("PPROF_BLOCK_EXEC_PROFILE_PATH")
 	if _, err := os.Stat(profile_path); !os.IsNotExist(err) {
 		cpuprofile := fmt.Sprintf("%s/block_%d.prof", profile_path, block.Height)
 
 		f, err := os.Create(cpuprofile)
 		if err != nil {
-			panic(fmt.Sprintf("could not create CPU profile: ", err))
+			panic(fmt.Sprintf("could not create cpu profile: ", err))
 		}
 		defer f.Close()
 
 		if err := pprof.StartCPUProfile(f); err != nil {
-			panic(fmt.Sprintf("could not start CPU profile: ", err))
+			panic(fmt.Sprintf("could not start cpu profile: ", err))
 		}
 		defer pprof.StopCPUProfile()
-		blockExec.logger.Info("Created block profile %s", cpuprofile)
+		blockExec.logger.Info("Created cpu profile %s", cpuprofile)
 	}
 
 	if err := validateBlock(state, block); err != nil {
