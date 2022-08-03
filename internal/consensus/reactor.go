@@ -1435,7 +1435,9 @@ func (r *Reactor) peerStatsRoutine() {
 
 		select {
 		case msg := <-r.state.statsMsgQueue:
+			r.Metrics.Locks.With("function", "GetPeerState").Add(1)
 			ps, ok := r.GetPeerState(msg.PeerID)
+			r.Metrics.Locks.With("function", "GetPeerState").Add(-1)
 			if !ok || ps == nil {
 				r.Logger.Debug("attempt to update stats for non-existent peer", "peer", msg.PeerID)
 				continue
@@ -1443,19 +1445,29 @@ func (r *Reactor) peerStatsRoutine() {
 
 			switch msg.Msg.(type) {
 			case *VoteMessage:
-				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
+				r.Metrics.Locks.With("function", "RecordVote").Add(1)
+				numVotes := ps.RecordBlockPart()
+				r.Metrics.Locks.With("function", "RecordVote").Add(-1)
+				if numVotes%votesToContributeToBecomeGoodPeer == 0 {
+					r.Metrics.Locks.With("function", "SendUpdate").Add(1)
 					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
+					r.Metrics.Locks.With("function", "SendUpdate").Add(-1)
 				}
 
 			case *BlockPartMessage:
-				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
+				r.Metrics.Locks.With("function", "RecordBlockPart").Add(1)
+				numParts := ps.RecordBlockPart()
+				r.Metrics.Locks.With("function", "RecordBlockPart").Add(-1)
+				if numParts%blocksToContributeToBecomeGoodPeer == 0 {
+					r.Metrics.Locks.With("function", "SendUpdate").Add(1)
 					r.peerUpdates.SendUpdate(p2p.PeerUpdate{
 						NodeID: msg.PeerID,
 						Status: p2p.PeerStatusGood,
 					})
+					r.Metrics.Locks.With("function", "SendUpdate").Add(-1)
 				}
 			}
 		case <-r.closeCh:
