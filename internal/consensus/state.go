@@ -277,9 +277,9 @@ func (cs *State) GetValidators() (int64, []*types.Validator) {
 func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 	// Doubtful
 
-	cs.Logger.Info("Set Priv Lock")
+	cs.metrics.Locks.With("function", "SetPrivValidator").Add(float64(1))
 	cs.mtx.Lock()
-	defer cs.Logger.Info("Set Priv Unlock")
+	defer cs.metrics.Locks.With("function", "SetPrivValidator").Add(float64(-1))
 	defer cs.mtx.Unlock()
 
 	cs.privValidator = priv
@@ -312,10 +312,10 @@ func (cs *State) SetPrivValidator(priv types.PrivValidator) {
 // SetTimeoutTicker sets the local timer. It may be useful to overwrite for
 // testing.
 func (cs *State) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
-	cs.Logger.Info("Set TimeoutTicker Lock")
+	defer cs.metrics.Locks.With("function", "SetTimeoutTicker").Add(float64(1))
 	cs.mtx.Lock()
 	cs.timeoutTicker = timeoutTicker
-	cs.Logger.Info("Set TimeoutTicker Unlock")
+	defer cs.metrics.Locks.With("function", "SetTimeoutTicker").Add(float64(-1))
 	cs.mtx.Unlock()
 }
 
@@ -869,10 +869,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 // state transitions on complete-proposal, 2/3-any, 2/3-one
 func (cs *State) handleMsg(mi msgInfo) {
 	// feels likely
-	cs.Logger.Info("handlemsg Lock")
+	cs.metrics.Locks.With("function", "handlemsg").Add(float64(1))
 	cs.mtx.Lock()
-	cs.Logger.Info("handlemsg Locked")
-	defer cs.Logger.Info("handlemsg Unlock")
+	defer cs.metrics.Locks.With("function", "handlemsg").Add(float64(-1))
 	defer cs.mtx.Unlock()
 	var (
 		added bool
@@ -885,15 +884,11 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		cs.Logger.Info("set proposal")
 		err = cs.setProposal(msg.Proposal)
-		cs.Logger.Info("set proposal complete")
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		cs.Logger.Info("add proposal block part")
 		added, err = cs.addProposalBlockPart(msg, peerID)
-		cs.Logger.Info("add proposal block part complete")
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
 		// Previously, this code held the lock from the point at which the final block
@@ -906,10 +901,10 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// of RoundState and only locking when switching out State's copy of
 		// RoundState with the updated copy or by emitting RoundState events in
 		// more places for routines depending on it to listen for.
-		cs.Logger.Info("handlemsg Intermediate Unlock")
+		cs.metrics.Locks.With("function", "handlemsg_int").Add(float64(1))
 		cs.mtx.Unlock()
 
-		cs.Logger.Info("handlemsg Intermediate Lock")
+		cs.metrics.Locks.With("function", "handlemsg_int").Add(float64(-1))
 		cs.mtx.Lock()
 		if added && cs.ProposalBlockParts.IsComplete() {
 			cs.handleCompleteProposal(msg.Height)
@@ -931,11 +926,11 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		cs.Logger.Info("try add vote")
 		added, err = cs.tryAddVote(msg.Vote, peerID)
-		cs.Logger.Info("try add vote complete")
 		if added {
+			cs.metrics.Locks.With("function", "statsMsgQueue").Add(float64(1))
 			cs.statsMsgQueue <- mi
+			cs.metrics.Locks.With("function", "statsMsgQueue").Add(float64(-1))
 		}
 
 		// if err == ErrAddingVote {
@@ -981,9 +976,9 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 
 	// the timeout will now cause a state transition
 	// also possible
-	cs.Logger.Info("handletimeout Lock")
+	cs.metrics.Locks.With("function", "handleTimeout").Add(float64(1))
 	cs.mtx.Lock()
-	defer cs.Logger.Info("handletimeout unlock")
+	defer cs.metrics.Locks.With("function", "handleTimeout").Add(float64(-1))
 	defer cs.mtx.Unlock()
 
 	switch ti.Step {
@@ -1871,6 +1866,8 @@ func (cs *State) RecordMetrics(height int64, block *types.Block) {
 //-----------------------------------------------------------------------------
 
 func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
+	cs.metrics.Locks.With("function", "setProposal").Add(float64(1))
+	defer cs.metrics.Locks.With("function", "setProposal").Add(float64(-1))
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
@@ -1914,6 +1911,8 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
 // once we have the full block.
 func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID) (added bool, err error) {
+	cs.metrics.Locks.With("function", "addProposalBlockPart").Add(float64(1))
+	defer cs.metrics.Locks.With("function", "addProposalBlockPart").Add(float64(-1))
 	height, round, part := msg.Height, msg.Round, msg.Part
 
 	// Blocks might be reused, so round mismatch is OK
@@ -1984,6 +1983,8 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID types.NodeID
 }
 
 func (cs *State) handleCompleteProposal(blockHeight int64) {
+	cs.metrics.Locks.With("function", "handleCompleteProposal").Add(float64(1))
+	defer cs.metrics.Locks.With("function", "handleCompleteProposal").Add(float64(-1))
 	// Update Valid* if we can.
 	prevotes := cs.Votes.Prevotes(cs.Round)
 	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
@@ -2020,6 +2021,8 @@ func (cs *State) handleCompleteProposal(blockHeight int64) {
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
 func (cs *State) tryAddVote(vote *types.Vote, peerID types.NodeID) (bool, error) {
+	cs.metrics.Locks.With("function", "tryAddVote").Add(float64(1))
+	defer cs.metrics.Locks.With("function", "tryAddVote").Add(float64(-1))
 	added, err := cs.addVote(vote, peerID)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,

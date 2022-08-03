@@ -97,6 +97,8 @@ type Metrics struct {
 	// timestamp and the timestamp of the latest prevote in a round where 100%
 	// of the voting power on the network issued prevotes.
 	FullPrevoteMessageDelay metrics.Gauge
+
+	Locks metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -265,6 +267,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
 		}, labels).With(labelsAndValues...),
+		Locks: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "locks",
+			Help:      "lock debugging",
+		}, append(labels, "function")).With(labelsAndValues...),
 	}
 }
 
@@ -301,6 +309,7 @@ func NopMetrics() *Metrics {
 		BlockGossipPartsReceived:  discard.NewCounter(),
 		QuorumPrevoteMessageDelay: discard.NewGauge(),
 		FullPrevoteMessageDelay:   discard.NewGauge(),
+		Locks:                     discard.NewGauge(),
 	}
 }
 
