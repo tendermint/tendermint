@@ -1,5 +1,5 @@
 /*
-Package Behaviour provides a mechanism for reactors to report behavior of peers. //nolint:misspell
+Package Behavior provides a mechanism for reactors to report behavior of peers.
 
 Instead of a reactor calling the switch directly it will call the behavior module which will
 handle the stoping and marking peer as good on behalf of the reactor.

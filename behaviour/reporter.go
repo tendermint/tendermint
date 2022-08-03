@@ -26,13 +26,13 @@ func NewSwitchReporter(sw *p2p.Switch) *SwitchReporter {
 }
 
 // Report reports the behavior of a peer to the Switch.
-func (spbr *SwitchReporter) Report(behaviour PeerBehaviour) error {
-	peer := spbr.sw.Peers().Get(behaviour.peerID)
+func (spbr *SwitchReporter) Report(behavior PeerBehaviour) error {
+	peer := spbr.sw.Peers().Get(behavior.peerID)
 	if peer == nil {
 		return errors.New("peer not found")
 	}
 
-	switch reason := behaviour.reason.(type) {
+	switch reason := behavior.reason.(type) {
 	case consensusVote, blockPart:
 		spbr.sw.MarkPeerAsGood(peer)
 	case badMessage:
@@ -63,10 +63,10 @@ func NewMockReporter() *MockReporter {
 }
 
 // Report stores the PeerBehaviour produced by the peer identified by peerID.
-func (mpbr *MockReporter) Report(behaviour PeerBehaviour) error {
+func (mpbr *MockReporter) Report(behavior PeerBehaviour) error {
 	mpbr.mtx.Lock()
 	defer mpbr.mtx.Unlock()
-	mpbr.pb[behaviour.peerID] = append(mpbr.pb[behaviour.peerID], behaviour)
+	mpbr.pb[behavior.peerID] = append(mpbr.pb[behavior.peerID], behavior)
 
 	return nil
 }
