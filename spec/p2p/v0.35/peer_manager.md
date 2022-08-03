@@ -1,4 +1,4 @@
-# Peer manager
+# Peer manager - WIP
 
 The peer manager implements the connection policy for the node, based on the
 configuration provided by the operators, the current state of the connections

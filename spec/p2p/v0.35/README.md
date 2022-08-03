@@ -1,9 +1,9 @@
-# Peer-to-peer communication substrate
+# Peer-to-peer communication substrate - WIP
 
 This document details the operation of the [`p2p`][p2p-package] package of
 Tendermint, refactored in the `v0.35` release.
 
-**This is a work in progress** ([#8935][issue]).
+**This is a work in progress** ([#8935][issue]). The following files represent the current (unfinished) state of this documentation. It has been decided not to finish the documents at this point in time, but to publish them here in the current form for future reference.
 
 - [Peer manager](./peer_manager.md): determines when a node should connect to a
   new peer, and which peer is preferred for establishing connections.
