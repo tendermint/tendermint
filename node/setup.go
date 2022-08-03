@@ -420,6 +420,7 @@ func createConsensusReactor(
 	if cfg.P2P.UseLegacy {
 		channels = getChannelsFromShim(reactorShim)
 		peerUpdates = reactorShim.PeerUpdates
+		peerUpdates.Close()
 	} else {
 		channels = makeChannelsFromShims(router, consensus.ChannelShims)
 		peerUpdates = peerManager.Subscribe()
