@@ -128,8 +128,8 @@ func TestEqualPeerBehaviours(t *testing.T) {
 func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	var (
 		behaviourScript = []struct {
-			peerID     p2p.ID
-			behaviours []bh.PeerBehaviour
+			peerID    p2p.ID
+			behaviors []bh.PeerBehaviour
 		}{
 			{"1", []bh.PeerBehaviour{bh.ConsensusVote("1", "")}},
 			{"2", []bh.PeerBehaviour{bh.ConsensusVote("2", ""), bh.ConsensusVote("2", ""), bh.ConsensusVote("2", "")}},
@@ -181,7 +181,7 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 	go func() {
 		defer sendingWg.Done()
 		for _, item := range behaviourScript {
-			for _, reason := range item.behaviours {
+			for _, reason := range item.behaviors {
 				scriptItems <- scriptItem{item.peerID, reason}
 			}
 		}
@@ -197,9 +197,9 @@ func TestMockPeerBehaviourReporterConcurrency(t *testing.T) {
 
 	for _, items := range behaviourScript {
 		reported := pr.GetBehaviours(items.peerID)
-		if !equalBehaviours(reported, items.behaviours) {
+		if !equalBehaviours(reported, items.behaviors) {
 			t.Errorf("expected peer %s to have behaved \nExpected: %#v \nGot %#v \n",
-				items.peerID, items.behaviours, reported)
+				items.peerID, items.behaviors, reported)
 		}
 	}
 }

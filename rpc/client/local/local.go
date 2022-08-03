@@ -254,12 +254,12 @@ func (c *Local) eventsRoutine(
 					c.Logger.Error("wanted to publish ResultEvent, but out channel is full", "result", result, "query", result.Query)
 				}
 			}
-		case <-sub.Cancelled():
+		case <-sub.Cancelled(): // nolint: misspell
 			if sub.Err() == tmpubsub.ErrUnsubscribed {
 				return
 			}
 
-			c.Logger.Error("subscription was cancelled, resubscribing...", "err", sub.Err(), "query", q.String())
+			c.Logger.Error("subscription was canceled, resubscribing...", "err", sub.Err(), "query", q.String())
 			sub = c.resubscribe(subscriber, q)
 			if sub == nil { // client was stopped
 				return

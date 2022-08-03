@@ -139,7 +139,7 @@ func (r *BlockchainReactor) Start() error {
 	return nil
 }
 
-// startSync begins a fast sync, signalled by r.events being non-nil. If state is non-nil,
+// startSync begins a fast sync, signaled by r.events being non-nil. If state is non-nil,
 // the scheduler and processor is updated with this state on startup.
 func (r *BlockchainReactor) startSync(state *state.State) error {
 	r.mtx.Lock()

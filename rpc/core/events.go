@@ -66,7 +66,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 
 					if closeIfSlow {
 						var (
-							err  = errors.New("subscription was cancelled (reason: slow client)")
+							err  = errors.New("subscription was canceled (reason: slow client)")
 							resp = rpctypes.RPCServerError(subscriptionID, err)
 						)
 						if !ctx.WSConn.TryWriteRPCResponse(resp) {
@@ -76,7 +76,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 						return
 					}
 				}
-			case <-sub.Cancelled():
+			case <-sub.Cancelled(): // nolint: misspell
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
 					var reason string
 					if sub.Err() == nil {
@@ -85,7 +85,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 						reason = sub.Err().Error()
 					}
 					var (
-						err  = fmt.Errorf("subscription was cancelled (reason: %s)", reason)
+						err  = fmt.Errorf("subscription was canceled (reason: %s)", reason)
 						resp = rpctypes.RPCServerError(subscriptionID, err)
 					)
 					if !ctx.WSConn.TryWriteRPCResponse(resp) {

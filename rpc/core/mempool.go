@@ -121,14 +121,14 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 				Hash:      tx.Hash(),
 				Height:    deliverTxRes.Height,
 			}, nil
-		case <-deliverTxSub.Cancelled():
+		case <-deliverTxSub.Cancelled(): // nolint: misspell
 			var reason string
 			if deliverTxSub.Err() == nil {
 				reason = "Tendermint exited"
 			} else {
 				reason = deliverTxSub.Err().Error()
 			}
-			err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
+			err = fmt.Errorf("deliverTxSub was canceled (reason: %s)", reason)
 			env.Logger.Error("Error on broadcastTxCommit", "err", err)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:   *checkTxRes,

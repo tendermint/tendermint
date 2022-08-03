@@ -437,7 +437,7 @@ use `make build_c` / `make install_c` (full instructions can be found at
 
 ## v0.31.0
 
-This release contains a breaking change to the behavior of the pubsub system.
+This release contains a breaking change to the behaviour of the pubsub system.
 It also contains some minor breaking changes in the Go API and ABCI.
 There are no changes to the block or p2p protocols, so v0.31.0 should work fine
 with blockchains created from the v0.30 series.
@@ -636,7 +636,7 @@ to `timeout_propose = "3s"`.
 
 ### RPC Changes
 
-The default behavior of `/abci_query` has been changed to not return a proof,
+The default behaviour of `/abci_query` has been changed to not return a proof,
 and the name of the parameter that controls this has been changed from `trusted`
 to `prove`. To get proofs with your queries, ensure you set `prove=true`.
 
