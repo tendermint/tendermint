@@ -371,7 +371,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 func TestLoadBaseMeta(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	stateStore := sm.NewStore(dbm.NewMemDB(),sm.StoreOptions{
+	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
 		DiscardABCIResponses: false,
 	})
 	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())

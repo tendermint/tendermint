@@ -443,7 +443,7 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 		DiscardABCIResponses: config.RPC.DiscardABCIResponses,
 	})
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool, err := evidence.NewPool( evidenceDB, stateStore , blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	if err != nil {
 		return nil, nil, err
 	}
