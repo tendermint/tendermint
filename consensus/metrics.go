@@ -73,11 +73,6 @@ type Metrics struct {
 	StepDuration metrics.Histogram
 	stepStart    time.Time
 
-	// Histogram of time taken to receive a block in seconds, measured between when a new block is first
-	// discovered to when the block is completed.
-	BlockGossipReceiveLatency metrics.Histogram
-	blockGossipStart          time.Time
-
 	// Number of block parts received by the node, separated by whether the part
 	// was relevant to the block the node is trying to gather or not.
 	BlockGossipPartsReceived metrics.Counter
@@ -229,14 +224,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of blockparts transmitted by peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
-		BlockGossipReceiveLatency: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "block_gossip_receive_latency",
-			Help: "Difference in seconds between when the validator learns of a new block" +
-				"and when the validator receives the last piece of the block.",
-			Buckets: stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
-		}, labels).With(labelsAndValues...),
 		BlockGossipPartsReceived: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -297,7 +284,6 @@ func NopMetrics() *Metrics {
 		FastSyncing:               discard.NewGauge(),
 		StateSyncing:              discard.NewGauge(),
 		BlockParts:                discard.NewCounter(),
-		BlockGossipReceiveLatency: discard.NewHistogram(),
 		BlockGossipPartsReceived:  discard.NewCounter(),
 		QuorumPrevoteMessageDelay: discard.NewGauge(),
 		FullPrevoteMessageDelay:   discard.NewGauge(),
@@ -310,14 +296,6 @@ func (m *Metrics) RecordConsMetrics(block *types.Block) {
 	m.TotalTxs.Add(float64(len(block.Data.Txs)))
 	m.BlockSizeBytes.Set(float64(block.Size()))
 	m.CommittedHeight.Set(float64(block.Height))
-}
-
-func (m *Metrics) MarkBlockGossipStarted() {
-	m.blockGossipStart = time.Now()
-}
-
-func (m *Metrics) MarkBlockGossipComplete() {
-	m.BlockGossipReceiveLatency.Observe(time.Since(m.blockGossipStart).Seconds())
 }
 
 func (m *Metrics) MarkRound(r int32, st time.Time) {
