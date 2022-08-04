@@ -28,7 +28,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 
 	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil).Times(4)
 
-	appConns := NewAppConns(creator, NopMetrics())
+	appConns := NewAppConns(clientCreatorMock, NopMetrics())
 
 	err := appConns.Start()
 	require.NoError(t, err)
