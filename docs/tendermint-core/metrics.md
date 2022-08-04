@@ -19,8 +19,8 @@ Listen address can be changed in the config file (see
 The following metrics are available:
 
 | **Name**                               | **Type**  | **Tags**      | **Description**                                                        |
-| -------------------------------------- | --------- | ------------- | ---------------------------------------------------------------------- |
-| abci_connection_method_timing          | Histogram | method, type  | Timings for each of the ABCI methods                                   |
+|----------------------------------------|-----------|---------------|------------------------------------------------------------------------|
+| abci_connection_method_timing_seconds  | Histogram | method, type  | Timings for each of the ABCI methods                                   |
 | consensus_height                       | Gauge     |               | Height of the chain                                                    |
 | consensus_validators                   | Gauge     |               | Number of validators                                                   |
 | consensus_validators_power             | Gauge     |               | Total voting power of all validators                                   |
