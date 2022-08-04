@@ -32,7 +32,7 @@ type AppConns interface {
 }
 
 // NewAppConns calls NewMultiAppConn.
-func NewAppConns(clientCreator abciclient.Creator, metrics *Metrics) AppConns {
+func NewAppConns(clientCreator ClientCreator, metrics *Metrics) AppConns {
 	return NewMultiAppConn(clientCreator, metrics)
 }
 
