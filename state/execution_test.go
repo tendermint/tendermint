@@ -22,10 +22,12 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
 	sf "github.com/tendermint/tendermint/state/test/factory"
+	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/test/factory"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -216,33 +218,85 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 }
 
 func TestProcessProposal(t *testing.T) {
-	height := 1
-	runTest := func(txs types.Txs, expectAccept bool) {
-		app := &testApp{}
-		cc := proxy.NewLocalClientCreator(app)
-		proxyApp := proxy.NewAppConns(cc)
-		err := proxyApp.Start()
+	const height = 2
+	txs := factory.MakeNTxs(height, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	app := abcimocks.NewApplication(t)
+	logger := log.NewNopLogger()
+	cc := abciclient.NewLocalClient(logger, app)
+	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
+	err := proxyApp.Start(ctx)
+	require.NoError(t, err)
+
+	state, stateDB, privVals := makeState(1, height)
+	stateStore := sm.NewStore(stateDB)
+	blockStore := store.NewBlockStore(dbm.NewMemDB())
+
+	eventBus := eventbus.NewDefault(logger)
+	require.NoError(t, eventBus.Start(ctx))
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp,
+		new(mpmocks.Mempool),
+		sm.EmptyEvidencePool{},
+		blockStore,
+		eventBus,
+		sm.NopMetrics(),
+	)
+
+	block0 := sf.MakeBlock(state, height-1, new(types.Commit))
+	lastCommitSig := []types.CommitSig{}
+	partSet := block0.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block0.Hash(), PartSetHeader: partSet.Header()}
+	voteInfos := []abci.VoteInfo{}
+	for _, privVal := range privVals {
+		vote, err := factory.MakeVote(ctx, privVal, block0.Header.ChainID, 0, 0, 0, 2, blockID, time.Now())
 		require.NoError(t, err)
-		defer proxyApp.Stop() //nolint:errcheck // ignore for tests
-
-		state, stateDB, _ := makeState(1, height)
-		stateStore := sm.NewStore(stateDB)
-
-		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-			mmock.Mempool{}, sm.EmptyEvidencePool{})
-
-		block := sf.MakeBlock(state, int64(height), new(types.Commit))
-		block.Txs = txs
-		acceptBlock, err := blockExec.ProcessProposal(block, state)
+		pk, err := privVal.GetPubKey(ctx)
 		require.NoError(t, err)
-		require.Equal(t, expectAccept, acceptBlock)
+		addr := pk.Address()
+		voteInfos = append(voteInfos,
+			abci.VoteInfo{
+				SignedLastBlock: true,
+				Validator: abci.Validator{
+					Address: addr,
+					Power:   1000,
+				},
+			})
+		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
-	goodTxs := factory.MakeTenTxs(int64(height))
-	runTest(goodTxs, true)
-	// testApp has process proposal fail if any tx is 0-len
-	badTxs := factory.MakeTenTxs(int64(height))
-	badTxs[0] = types.Tx{}
-	runTest(badTxs, false)
+
+	block1 := sf.MakeBlock(state, height, &types.Commit{
+		Height:     height - 1,
+		Signatures: lastCommitSig,
+	})
+	block1.Txs = txs
+
+	expectedRpp := &abci.RequestProcessProposal{
+		Txs:         block1.Txs.ToSliceOfBytes(),
+		Hash:        block1.Hash(),
+		Height:      block1.Header.Height,
+		Time:        block1.Header.Time,
+		Misbehavior: block1.Evidence.ToABCI(),
+		ProposedLastCommit: abci.CommitInfo{
+			Round: 0,
+			Votes: voteInfos,
+		},
+		NextValidatorsHash: block1.NextValidatorsHash,
+		ProposerAddress:    block1.ProposerAddress,
+	}
+
+	app.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
+	acceptBlock, err := blockExec.ProcessProposal(ctx, block1, state)
+	require.NoError(t, err)
+	require.True(t, acceptBlock)
+	app.AssertExpectations(t)
+	app.AssertCalled(t, "ProcessProposal", ctx, expectedRpp)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
