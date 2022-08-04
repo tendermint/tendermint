@@ -30,3 +30,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
 
 ### BUG FIXES
+
+[docker] \#9073 enable cross platform build using docker buildx
