@@ -123,7 +123,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		RoundDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "round_duration",
+			Name:      "round_duration_seconds",
 			Help:      "Time spent in a round.",
 			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
 		}, labels).With(labelsAndValues...),
@@ -247,7 +247,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		StepDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "step_duration",
+			Name:      "step_duration_seconds",
 			Help:      "Time spent per step.",
 			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
 		}, append(labels, "step")).With(labelsAndValues...),
