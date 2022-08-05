@@ -58,14 +58,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":skull: Nightly E2E tests for `${{ github.ref_name }}` failed.",
+                    "text": ":skull: Nightly E2E tests for `${{ github.ref_name }}` failed."
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "See the <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|run details> and the <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|commit> that caused the failure.",
+                    "text": "See the <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|run details> and the <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|commit> that caused the failure."
                   }
                 }
               ]
@@ -76,7 +76,7 @@ jobs:
     if: ${{ success() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Slack on failure
+      - name: Notify Slack on success
         uses: slackapi/slack-github-action@v1.21.0
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
