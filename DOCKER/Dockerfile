@@ -1,11 +1,11 @@
 # stage 1 Generate Tendermint Binary
-FROM golang:1.15-alpine as builder
+FROM --platform=$BUILDPLATFORM golang:1.18-alpine as builder
 RUN apk update && \
     apk upgrade && \
     apk --no-cache add make
 COPY / /tendermint
 WORKDIR /tendermint
-RUN make build-linux
+RUN TARGETPLATFORM=$TARGETPLATFORM make build-linux
 
 # stage 2
 FROM golang:1.15-alpine
