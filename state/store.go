@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -24,51 +23,24 @@ const (
 	valSetCheckpointInterval = 100000
 )
 
-const (
-	prefixValidators       = int64(5)
-	prefixConsensusParams  = int64(6)
-	prefixAllABCIResponses = int64(7)
-	prefixState            = int64(8)
-	prefixLastABCIResponse = int64(13)
-)
 
 //------------------------------------------------------------------------
-func encodeKey(prefix int64, height int64) []byte {
-	res, err := orderedcode.Append(nil, prefix, height)
-	if err != nil {
-		panic(err)
-	}
-	return res
+
+func calcValidatorsKey(height int64) []byte {
+	return []byte(fmt.Sprintf("validatorsKey:%v", height))
 }
 
-func ValidatorsKey(height int64) []byte {
-	return encodeKey(prefixValidators, height)
-}
-func ConsensusParamsKey(height int64) []byte {
-	return encodeKey(prefixConsensusParams, height)
+func calcConsensusParamsKey(height int64) []byte {
+	return []byte(fmt.Sprintf("consensusParamsKey:%v", height))
 }
 
-func ABCIResponsesKey(height int64) []byte {
-	return encodeKey(prefixAllABCIResponses, height)
+func calcABCIResponsesKey(height int64) []byte {
+	return []byte(fmt.Sprintf("abciResponsesKey:%v", height))
 }
 
-// stateKey should never change after being set in init()
-var stateKey []byte
-var lastABCIResponseKey []byte
-
-func init() {
-	var err error
-	stateKey, err = orderedcode.Append(nil, prefixState)
-	if err != nil {
-		panic(err)
-	}
-
-	lastABCIResponseKey, err = orderedcode.Append(nil, prefixLastABCIResponse)
-	if err != nil {
-		panic(err)
-	}
+func calcLastABCIResponsesKey(height int64) []byte {
+	return []byte(fmt.Sprintf("lastABCIResponsesKey:%v", height))
 }
-
 //----------------------
 
 //go:generate ../scripts/mockery_generate.sh Store
@@ -324,13 +296,13 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 				if err != nil {
 					return err
 				}
-				err = batch.Set(ValidatorsKey(h), bz)
+				err = batch.Set(calcValidatorsKey(h), bz)
 				if err != nil {
 					return err
 				}
 			}
 		} else {
-			err = batch.Delete(ValidatorsKey(h))
+			err = batch.Delete(calcValidatorsKey(h))
 			if err != nil {
 				return err
 			}
@@ -354,19 +326,19 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 					return err
 				}
 
-				err = batch.Set(ConsensusParamsKey(h), bz)
+				err = batch.Set(calcConsensusParamsKey(h), bz)
 				if err != nil {
 					return err
 				}
 			}
 		} else {
-			err = batch.Delete(ConsensusParamsKey(h))
+			err = batch.Delete(calcConsensusParamsKey(h))
 			if err != nil {
 				return err
 			}
 		}
 
-		err = batch.Delete(ABCIResponsesKey(h))
+		err = batch.Delete(calcABCIResponsesKey(h))
 		if err != nil {
 			return err
 		}
@@ -410,7 +382,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 		return nil, ErrABCIResponsesNotPersisted
 	}
 
-	buf, err := store.db.Get(ABCIResponsesKey(height))
+	buf, err := store.db.Get(calcABCIResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
@@ -438,7 +410,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // This method is used for recovering in the case that we called the Commit ABCI
 // method on the application but crashed before persisting the results.
 func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
-	bz, err := store.db.Get(lastABCIResponseKey)
+	bz, err := store.db.Get(calcLastABCIResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
@@ -485,7 +457,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		if err != nil {
 			return err
 		}
-		if err := store.db.Set(ABCIResponsesKey(height), bz); err != nil {
+		if err := store.db.Set(calcABCIResponsesKey(height), bz); err != nil {
 			return err
 		}
 	}
@@ -501,7 +473,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		return err
 	}
 
-	return store.db.SetSync(lastABCIResponseKey, bz)
+	return store.db.SetSync(calcLastABCIResponsesKey(height), bz)
 }
 
 //-----------------------------------------------------------------------------
@@ -555,7 +527,7 @@ func lastStoredHeightFor(height, lastHeightChanged int64) int64 {
 
 // CONTRACT: Returned ValidatorsInfo can be mutated.
 func loadValidatorsInfo(db dbm.DB, height int64) (*tmstate.ValidatorsInfo, error) {
-	buf, err := db.Get(ValidatorsKey(height))
+	buf, err := db.Get(calcValidatorsKey(height))
 	if err != nil {
 		return nil, err
 	}
@@ -603,7 +575,7 @@ func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet 
 		return err
 	}
 
-	err = store.db.Set(ValidatorsKey(height), bz)
+	err = store.db.Set(calcValidatorsKey(height), bz)
 	if err != nil {
 		return err
 	}
@@ -642,7 +614,7 @@ func (store dbStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams,
 }
 
 func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusParamsInfo, error) {
-	buf, err := store.db.Get(ConsensusParamsKey(height))
+	buf, err := store.db.Get(calcConsensusParamsKey(height))
 	if err != nil {
 		return nil, err
 	}
@@ -678,7 +650,7 @@ func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, par
 		return err
 	}
 
-	err = store.db.Set(ConsensusParamsKey(nextHeight), bz)
+	err = store.db.Set(calcConsensusParamsKey(nextHeight), bz)
 	if err != nil {
 		return err
 	}
