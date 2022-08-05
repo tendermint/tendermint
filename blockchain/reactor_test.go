@@ -64,7 +64,7 @@ func newReactor(
 
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	if err != nil {
 		panic(fmt.Errorf("error start app: %w", err))
