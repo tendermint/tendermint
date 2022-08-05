@@ -23,7 +23,6 @@ const (
 	valSetCheckpointInterval = 100000
 )
 
-
 //------------------------------------------------------------------------
 
 func calcValidatorsKey(height int64) []byte {
@@ -41,6 +40,7 @@ func calcABCIResponsesKey(height int64) []byte {
 func calcLastABCIResponsesKey(height int64) []byte {
 	return []byte(fmt.Sprintf("lastABCIResponsesKey:%v", height))
 }
+
 //----------------------
 
 //go:generate ../scripts/mockery_generate.sh Store
