@@ -16,5 +16,5 @@ jobs:
           PATTERNS: |
             docs/architecture/**
             docs/rfc/**
-      - run: ./docs/presubmit.sh
+      - run: make check-docs-toc
         if: env.GIT_DIFF
