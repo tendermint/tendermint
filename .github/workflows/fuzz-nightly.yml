@@ -80,6 +80,9 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          BRANCH: ${{ github.ref_name }}
+          CRASHERS: ${{ needs.fuzz-nightly-test.outputs.crashers-count }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         with:
           payload: |
             {
@@ -88,14 +91,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":skull: Nightly fuzz tests for `${{ github.ref_name }}` failed.",
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "See the <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|run details> and the <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|commit> that caused the failure.",
+                    "text": ":skull: Nightly fuzz tests for `${{ env.BRANCH }}` failed with ${{ env.CRASHERS }} crasher(s). See the <${{ env.RUN_URL }}|run details>."
                   }
                 }
               ]
