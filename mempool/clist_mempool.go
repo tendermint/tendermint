@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/cosmos/cosmos-sdk/types/tx"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	auto "github.com/tendermint/tendermint/libs/autofile"
@@ -527,6 +528,20 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+
+		cosmosTx := &tx.Tx{}
+		err := cosmosTx.Unmarshal(memTx.tx)
+		if err != nil {
+			mem.logger.Error("ReapMaxBytesMaxGas error. Invalid Cosmos Transaction.")
+		}
+
+		if len(cosmosTx.Body.Messages) == 1 &&
+			(cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgPlaceOrder" ||
+				cosmosTx.Body.Messages[0].TypeUrl == "/dydxprotocol.clob.MsgCancelOrder") {
+			// Remove the transaction from the mempool
+			mem.removeTx(memTx.tx, e, false)
+			continue
+		}
 
 		dataSize := types.ComputeProtoSizeForTxs(append(txs, memTx.tx))
 
