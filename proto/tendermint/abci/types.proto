@@ -312,7 +312,7 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  repeated TxRecord                tx_records              = 1;
+  repeated TxRecord tx_records = 1;
 }
 
 message ResponseProcessProposal {

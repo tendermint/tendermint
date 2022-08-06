@@ -112,7 +112,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
 	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
-	localLastCommit := getBeginBlockValidatorInfo(block, blockExec.store, state.InitialHeight)
+	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	rpp, err := blockExec.proxyApp.PrepareProposalSync(
 		abci.RequestPrepareProposal{
 			Hash:                block.Hash(),
@@ -435,7 +435,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-func extendedCommitInfo(c abci.LastCommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
+func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
 		vs[i] = abci.ExtendedVoteInfo{

@@ -22,11 +22,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-const (
-	validationTestsStopHeight int64 = 10
-	chainID             = "execution_chain"
-)
-
+const validationTestsStopHeight int64 = 10
 
 func TestValidateBlockHeader(t *testing.T) {
 	proxyApp := newTestApp()
