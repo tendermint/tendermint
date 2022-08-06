@@ -24,8 +24,8 @@ func WriteMessage(msg proto.Message, w io.Writer) error {
 
 // ReadMessage reads a varint length-delimited protobuf message.
 func ReadMessage(r io.Reader, msg proto.Message) error {
-	reader := protoio.NewDelimitedReader(r, maxMsgSize)
-	return reader.ReadMsg(msg)
+	_, err := protoio.NewDelimitedReader(r, maxMsgSize).ReadMsg(msg)
+	return err
 }
 
 //----------------------------------------
