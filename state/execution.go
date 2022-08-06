@@ -283,6 +283,15 @@ func execBlockOnProxyApp(
 				logger.Debug("invalid tx", "code", txRes.Code, "log", txRes.Log)
 				invalidTxs++
 			}
+			logger.Debug(
+				"Temporary LastResultsHash debugging info",
+				"data",
+				txRes.Data,
+				"GasWanted",
+				txRes.GasWanted,
+				"GasUsed",
+				txRes.GasUsed,
+			)
 
 			abciResponses.DeliverTxs[txIndex] = txRes
 			txIndex++
