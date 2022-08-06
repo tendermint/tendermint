@@ -396,7 +396,7 @@ func (cs *State) addVote(
 	}
 
 	// Height mismatch is ignored.
-	// Not necessarily a bad peer, but not favourable behaviour.
+	// Not necessarily a bad peer, but not favorable behavior.
 	if vote.Height != cs.Height {
 		cs.Logger.Debug("vote ignored and not added", "voteHeight", vote.Height, "csHeight", cs.Height, "peerID", peerID)
 		return
@@ -1202,8 +1202,17 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
-		block, blockParts = cs.createProposalBlock()
-		if block == nil {
+		var err error
+		block, err = cs.createProposalBlock()
+		if err != nil {
+			cs.Logger.Error("unable to create proposal block", "error", err)
+			return
+		} else if block == nil {
+			return
+		}
+		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
+		if err != nil {
+			cs.Logger.Error("unable to create proposal block part set", "error", err)
 			return
 		}
 	}
@@ -1259,9 +1268,9 @@ func (cs *State) isProposalComplete() bool {
 //
 // NOTE: keep it side-effect free for clarity.
 // CONTRACT: cs.privValidator is not nil.
-func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
+func (cs *State) createProposalBlock() (*types.Block, error) {
 	if cs.privValidator == nil {
-		panic("entered createProposalBlock with privValidator being nil")
+		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
 	var commit *types.Commit
@@ -1274,19 +1283,19 @@ func (cs *State) createProposalBlock() (block *types.Block, blockParts *types.Pa
 		// Make the commit from LastCommit
 		commit = cs.LastCommit.MakeCommit()
 	default: // This shouldn't happen.
-		cs.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
-		return
+		cs.Logger.Error("propose step; cannot propose anything without commit for the previous block")
+		return nil, nil
 	}
 
 	if cs.privValidatorPubKey == nil {
 		// If this node is a validator & proposer in the current round, it will
 		// miss the opportunity to create a block.
-		cs.Logger.Error(fmt.Sprintf("enterPropose: %v", errPubKeyIsNotSet))
-		return
+		cs.Logger.Error("propose step; empty priv validator public key", "err", errPubKeyIsNotSet)
+		return nil, nil
 	}
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr)
+	return cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
 }
 
 // Enter: any +2/3 prevotes at next round.

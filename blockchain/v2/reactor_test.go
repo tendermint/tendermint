@@ -10,16 +10,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/behaviour"
+	"github.com/tendermint/tendermint/behaviour" //nolint:misspell
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/mempool/mock"
+	mpmocks "github.com/tendermint/tendermint/mempool/mocks"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
@@ -143,8 +144,8 @@ type testReactorParams struct {
 	mockA       bool
 }
 
-func newTestReactor(p testReactorParams) *BlockchainReactor {
-	store, state, _ := newReactorStore(p.genDoc, p.privVals, p.startHeight)
+func newTestReactor(t *testing.T, p testReactorParams) *BlockchainReactor {
+	store, state, _ := newReactorStore(t, p.genDoc, p.privVals, p.startHeight)
 	reporter := behaviour.NewMockReporter()
 
 	var appl blockApplier
@@ -152,6 +153,18 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 	if p.mockA {
 		appl = &mockBlockApplier{}
 	} else {
+		mp := &mpmocks.Mempool{}
+		mp.On("Lock").Return()
+		mp.On("Unlock").Return()
+		mp.On("FlushAppConn", mock.Anything).Return(nil)
+		mp.On("Update",
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything,
+			mock.Anything).Return(nil)
+
 		app := &testApp{}
 		cc := proxy.NewLocalClientCreator(app)
 		proxyApp := proxy.NewAppConns(cc)
@@ -161,7 +174,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 		}
 		db := dbm.NewMemDB()
 		stateStore := sm.NewStore(db)
-		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{})
+		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mp, sm.EmptyEvidencePool{})
 		if err = stateStore.Save(state); err != nil {
 			panic(err)
 		}
@@ -302,7 +315,7 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 // 		t.Run(tt.name, func(t *testing.T) {
 // 			reactor := newTestReactor(params)
 // 			reactor.Start()
-// 			reactor.reporter = behaviour.NewMockReporter()
+// 			reactor.reporter = behavior.NewMockReporter()
 // 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 // 			reactor.io = mockSwitch
 // 			// time for go routines to start
@@ -392,7 +405,7 @@ func TestReactorHelperMode(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			reactor := newTestReactor(params)
+			reactor := newTestReactor(t, params)
 			mockSwitch := &mockSwitchIo{switchedToConsensus: false}
 			reactor.io = mockSwitch
 			err := reactor.Start()
@@ -435,7 +448,7 @@ func TestReactorSetSwitchNil(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
 
-	reactor := newTestReactor(testReactorParams{
+	reactor := newTestReactor(t, testReactorParams{
 		logger:   log.TestingLogger(),
 		genDoc:   genDoc,
 		privVals: privVals,
@@ -474,6 +487,7 @@ func randGenesisDoc(chainID string, numValidators int, randPower bool, minPower 
 // Why are we importing the entire blockExecutor dependency graph here
 // when we have the facilities to
 func newReactorStore(
+	t *testing.T,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
 	maxBlockHeight int64) (*store.BlockStore, sm.State, *sm.BlockExecutor) {
@@ -496,10 +510,22 @@ func newReactorStore(
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+
 	db := dbm.NewMemDB()
 	stateStore = sm.NewStore(db)
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.EmptyEvidencePool{})
+		mp, sm.EmptyEvidencePool{})
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
@@ -527,7 +553,9 @@ func newReactorStore(
 
 		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
 
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		require.NoError(t, err)
+
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)

@@ -9,7 +9,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
-	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -34,7 +34,7 @@ type BlockExecutor struct {
 
 	// manage the mempool lock during commit
 	// and update both with block results after commit.
-	mempool mempl.Mempool
+	mempool mempool.Mempool
 	evpool  EvidencePool
 
 	logger log.Logger
@@ -56,7 +56,7 @@ func NewBlockExecutor(
 	stateStore Store,
 	logger log.Logger,
 	proxyApp proxy.AppConnConsensus,
-	mempool mempl.Mempool,
+	mempool mempool.Mempool,
 	evpool EvidencePool,
 	options ...BlockExecutorOption,
 ) *BlockExecutor {
@@ -95,9 +95,11 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // Contract: application will not return more bytes than are sent over the wire.
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
-	state State, commit *types.Commit,
+	state State,
+	commit *types.Commit,
 	proposerAddr []byte,
-) (*types.Block, *types.PartSet) {
+	votes []*types.Vote,
+) (*types.Block, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
@@ -108,9 +110,18 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
-	preparedProposal, err := blockExec.proxyApp.PrepareProposalSync(
-		abci.RequestPrepareProposal{BlockData: txs.ToSliceOfBytes(), BlockDataSize: maxDataBytes},
+	localLastCommit := getBeginBlockValidatorInfo(block, blockExec.store, state.InitialHeight)
+	rpp, err := blockExec.proxyApp.PrepareProposalSync(
+		abci.RequestPrepareProposal{
+			Hash:                block.Hash(),
+			Header:              *block.Header.ToProto(),
+			Txs:                 block.Txs.ToSliceOfBytes(),
+			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
+			ByzantineValidators: block.Evidence.Evidence.ToABCI(),
+			MaxTxBytes:          maxDataBytes,
+		},
 	)
 	if err != nil {
 		// The App MUST ensure that only valid (and hence 'processable') transactions
@@ -118,24 +129,24 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// transaction causing an error.
 		//
 		// Also, the App can simply skip any transaction that could cause any kind of trouble.
-		// Either way, we can not recover in a meaningful way, unless we skip proposing
-		// this block, repair what caused the error and try again. Hence, we panic on
-		// purpose for now.
-		panic(err)
+		// Either way, we cannot recover in a meaningful way, unless we skip proposing
+		// this block, repair what caused the error and try again. Hence, we return an
+		// error for now (the production code calling this function is expected to panic).
+		return nil, err
 	}
-	newTxs := preparedProposal.GetBlockData()
-	var txSize int
-	for _, tx := range newTxs {
-		txSize += len(tx)
+	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
-		if maxDataBytes < int64(txSize) {
-			panic("block data exceeds max amount of allowed bytes")
+	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
+		return nil, err
+	}
+
+	for _, rtx := range txrSet.RemovedTxs() {
+		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
+			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
 		}
 	}
-
-	modifiedTxs := types.ToTxs(preparedProposal.GetBlockData())
-
-	return state.MakeBlock(height, modifiedTxs, commit, evidence, proposerAddr)
+	itxs := txrSet.IncludedTxs()
+	return state.MakeBlock(height, itxs, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
@@ -421,6 +432,24 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	return abci.CommitInfo{
 		Round: block.LastCommit.Round,
 		Votes: votes,
+	}
+}
+
+func extendedCommitInfo(c abci.LastCommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
+	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
+	for i := range vs {
+		vs[i] = abci.ExtendedVoteInfo{
+			Validator:       c.Votes[i].Validator,
+			SignedLastBlock: c.Votes[i].SignedLastBlock,
+			/*
+				TODO: Include vote extensions information when implementing vote extensions.
+				VoteExtension:   []byte{},
+			*/
+		}
+	}
+	return abci.ExtendedCommitInfo{
+		Round: c.Round,
+		Votes: vs,
 	}
 }
 

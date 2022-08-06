@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/behaviour"
+	"github.com/tendermint/tendermint/behaviour" //nolint:misspell
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -139,7 +139,7 @@ func (r *BlockchainReactor) Start() error {
 	return nil
 }
 
-// startSync begins a fast sync, signalled by r.events being non-nil. If state is non-nil,
+// startSync begins a fast sync, signaled by r.events being non-nil. If state is non-nil,
 // the scheduler and processor is updated with this state on startup.
 func (r *BlockchainReactor) startSync(state *state.State) error {
 	r.mtx.Lock()

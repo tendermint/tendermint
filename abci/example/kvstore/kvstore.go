@@ -171,12 +171,6 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 	return resQuery
 }
 
-func (app *Application) PrepareProposal(
-	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	return types.ResponsePrepareProposal{
-		BlockData: req.BlockData}
-}
-
 func (app *Application) ProcessProposal(
 	req types.RequestProcessProposal) types.ResponseProcessProposal {
 	for _, tx := range req.Txs {
