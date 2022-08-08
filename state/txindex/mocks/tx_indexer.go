@@ -92,13 +92,13 @@ func (_m *TxIndexer) Search(ctx context.Context, q *query.Query) ([]*types.TxRes
 	return r0, r1
 }
 
-type NewTxIndexerT interface {
+type mockConstructorTestingTNewTxIndexer interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewTxIndexer creates a new instance of TxIndexer. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewTxIndexer(t NewTxIndexerT) *TxIndexer {
+func NewTxIndexer(t mockConstructorTestingTNewTxIndexer) *TxIndexer {
 	mock := &TxIndexer{}
 	mock.Mock.Test(t)
 

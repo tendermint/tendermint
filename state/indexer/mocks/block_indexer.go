@@ -75,13 +75,13 @@ func (_m *BlockIndexer) Search(ctx context.Context, q *query.Query) ([]int64, er
 	return r0, r1
 }
 
-type NewBlockIndexerT interface {
+type mockConstructorTestingTNewBlockIndexer interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewBlockIndexer creates a new instance of BlockIndexer. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewBlockIndexer(t NewBlockIndexerT) *BlockIndexer {
+func NewBlockIndexer(t mockConstructorTestingTNewBlockIndexer) *BlockIndexer {
 	mock := &BlockIndexer{}
 	mock.Mock.Test(t)
 
