@@ -54,6 +54,8 @@ require (
 	github.com/vektra/mockery/v2 v2.14.0
 )
 
+require github.com/prometheus/client_model v0.2.0
+
 require (
 	4d63.com/gochecknoglobals v0.1.0 // indirect
 	github.com/Antonboom/errname v0.1.7 // indirect
