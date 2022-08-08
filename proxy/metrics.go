@@ -15,5 +15,5 @@ const (
 // Metrics contains the prometheus metrics exposed by the proxy package.
 type Metrics struct {
 	// Timing for each ABCI method.
-	MethodTiming metrics.Histogram `metrics_bucketsizes:".0001,.0004,.002,.009,.02,.1,.65,2,6,25" metrics_labels:"method, type"`
+	MethodTimingSeconds metrics.Histogram `metrics_bucketsizes:".0001,.0004,.002,.009,.02,.1,.65,2,6,25" metrics_labels:"method, type"`
 }

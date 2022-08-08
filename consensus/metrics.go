@@ -29,7 +29,7 @@ type Metrics struct {
 	Rounds metrics.Gauge
 
 	// Histogram of round duration.
-	RoundDuration metrics.Histogram `metrics_buckettype:"exprange" metrics_bucketsizes:"0.1, 100, 8"`
+	RoundDurationSeconds metrics.Histogram `metrics_buckettype:"exprange" metrics_bucketsizes:"0.1, 100, 8"`
 
 	// Number of validators.
 	Validators metrics.Gauge
@@ -68,8 +68,8 @@ type Metrics struct {
 	BlockParts metrics.Counter `metrics_labels:"peer_id"`
 
 	// Histogram of durations for each step in the consensus protocol.
-	StepDuration metrics.Histogram `metrics_labels:"step" metrics_buckettype:"exprange" metrics_bucketsizes:"0.1, 100, 8"`
-	stepStart    time.Time
+	StepDurationSeconds metrics.Histogram `metrics_labels:"step" metrics_buckettype:"exprange" metrics_bucketsizes:"0.1, 100, 8"`
+	stepStart           time.Time
 
 	// Number of block parts received by the node, separated by whether the part
 	// was relevant to the block the node is trying to gather or not.
@@ -105,14 +105,14 @@ func (m *Metrics) RecordConsMetrics(block *types.Block) {
 func (m *Metrics) MarkRound(r int32, st time.Time) {
 	m.Rounds.Set(float64(r))
 	roundTime := time.Since(st).Seconds()
-	m.RoundDuration.Observe(roundTime)
+	m.RoundDurationSeconds.Observe(roundTime)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {
 	if !m.stepStart.IsZero() {
 		stepTime := time.Since(m.stepStart).Seconds()
 		stepName := strings.TrimPrefix(s.String(), "RoundStep")
-		m.StepDuration.With("step", stepName).Observe(stepTime)
+		m.StepDurationSeconds.With("step", stepName).Observe(stepTime)
 	}
 	m.stepStart = time.Now()
 }
