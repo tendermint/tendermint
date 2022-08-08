@@ -2323,12 +2323,12 @@ func (cs *State) calculatePrevoteMessageDelayMetrics() {
 		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
 		votingPowerSeen += val.VotingPower
 		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
-			cs.metrics.QuorumPrevoteMessageDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			cs.metrics.QuorumPrevoteDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 			break
 		}
 	}
 	if ps.HasAll() {
-		cs.metrics.FullPrevoteMessageDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+		cs.metrics.FullPrevoteDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 	}
 }
 
