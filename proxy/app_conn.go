@@ -79,27 +79,27 @@ func (app *appConnConsensus) Error() error {
 }
 
 func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "init_chain", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "init_chain", "type", "sync"))()
 	return app.appConn.InitChainSync(req)
 }
 
 func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "begin_block", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "begin_block", "type", "sync"))()
 	return app.appConn.BeginBlockSync(req)
 }
 
 func (app *appConnConsensus) DeliverTxAsync(req types.RequestDeliverTx) *abcicli.ReqRes {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "deliver_tx", "type", "async"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "deliver_tx", "type", "async"))()
 	return app.appConn.DeliverTxAsync(req)
 }
 
 func (app *appConnConsensus) EndBlockSync(req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "end_block", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "end_block", "type", "sync"))()
 	return app.appConn.EndBlockSync(req)
 }
 
 func (app *appConnConsensus) CommitSync() (*types.ResponseCommit, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "commit", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "commit", "type", "sync"))()
 	return app.appConn.CommitSync()
 }
 
@@ -127,22 +127,22 @@ func (app *appConnMempool) Error() error {
 }
 
 func (app *appConnMempool) FlushAsync() *abcicli.ReqRes {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "async"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "flush", "type", "async"))()
 	return app.appConn.FlushAsync()
 }
 
 func (app *appConnMempool) FlushSync() error {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "flush", "type", "sync"))()
 	return app.appConn.FlushSync()
 }
 
 func (app *appConnMempool) CheckTxAsync(req types.RequestCheckTx) *abcicli.ReqRes {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "check_tx", "type", "async"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "check_tx", "type", "async"))()
 	return app.appConn.CheckTxAsync(req)
 }
 
 func (app *appConnMempool) CheckTxSync(req types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "check_tx", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "check_tx", "type", "sync"))()
 	return app.appConn.CheckTxSync(req)
 }
 
@@ -166,17 +166,17 @@ func (app *appConnQuery) Error() error {
 }
 
 func (app *appConnQuery) EchoSync(msg string) (*types.ResponseEcho, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "echo", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "echo", "type", "sync"))()
 	return app.appConn.EchoSync(msg)
 }
 
 func (app *appConnQuery) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "info", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "info", "type", "sync"))()
 	return app.appConn.InfoSync(req)
 }
 
 func (app *appConnQuery) QuerySync(reqQuery types.RequestQuery) (*types.ResponseQuery, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "query", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "query", "type", "sync"))()
 	return app.appConn.QuerySync(reqQuery)
 }
 
@@ -200,24 +200,24 @@ func (app *appConnSnapshot) Error() error {
 }
 
 func (app *appConnSnapshot) ListSnapshotsSync(req types.RequestListSnapshots) (*types.ResponseListSnapshots, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "list_snapshots", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "list_snapshots", "type", "sync"))()
 	return app.appConn.ListSnapshotsSync(req)
 }
 
 func (app *appConnSnapshot) OfferSnapshotSync(req types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "offer_snapshot", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "offer_snapshot", "type", "sync"))()
 	return app.appConn.OfferSnapshotSync(req)
 }
 
 func (app *appConnSnapshot) LoadSnapshotChunkSync(
 	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "load_snapshot_chunk", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "load_snapshot_chunk", "type", "sync"))()
 	return app.appConn.LoadSnapshotChunkSync(req)
 }
 
 func (app *appConnSnapshot) ApplySnapshotChunkSync(
 	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "apply_snapshot_chunk", "type", "sync"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "apply_snapshot_chunk", "type", "sync"))()
 	return app.appConn.ApplySnapshotChunkSync(req)
 }
 
