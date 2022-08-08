@@ -20,7 +20,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_processing_time",
 			Help:      "Time between BeginBlock and EndBlock in ms.",
 
-			Buckets: []float64{1, 10, 10},
+			Buckets: stdprometheus.LinearBuckets(1, 10, 10),
 		}, labels).With(labelsAndValues...),
 	}
 }
