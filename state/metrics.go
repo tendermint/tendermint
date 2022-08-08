@@ -15,5 +15,5 @@ const (
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Time between BeginBlock and EndBlock in ms.
-	BlockProcessingTime metrics.Histogram `metrics_buckettype:"linear" metrics_bucketsizes:"1, 10, 10"`
+	BlockProcessingTime metrics.Histogram `metrics_buckettype:"lin" metrics_bucketsizes:"1, 10, 10"`
 }

@@ -32,10 +32,10 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "rounds",
 			Help:      "Number of rounds.",
 		}, labels).With(labelsAndValues...),
-		RoundDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		RoundDurationSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "round_duration",
+			Name:      "round_duration_seconds",
 			Help:      "Histogram of round duration.",
 
 			Buckets: stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
@@ -136,10 +136,10 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_parts",
 			Help:      "Number of block parts transmitted by each peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
-		StepDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		StepDurationSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "step_duration",
+			Name:      "step_duration_seconds",
 			Help:      "Histogram of durations for each step in the consensus protocol.",
 
 			Buckets: stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
@@ -170,7 +170,7 @@ func NopMetrics() *Metrics {
 		Height:                    discard.NewGauge(),
 		ValidatorLastSignedHeight: discard.NewGauge(),
 		Rounds:                    discard.NewGauge(),
-		RoundDuration:             discard.NewHistogram(),
+		RoundDurationSeconds:      discard.NewHistogram(),
 		Validators:                discard.NewGauge(),
 		ValidatorsPower:           discard.NewGauge(),
 		ValidatorPower:            discard.NewGauge(),
@@ -187,7 +187,7 @@ func NopMetrics() *Metrics {
 		FastSyncing:               discard.NewGauge(),
 		StateSyncing:              discard.NewGauge(),
 		BlockParts:                discard.NewCounter(),
-		StepDuration:              discard.NewHistogram(),
+		StepDurationSeconds:       discard.NewHistogram(),
 		BlockGossipPartsReceived:  discard.NewCounter(),
 		QuorumPrevoteDelay:        discard.NewGauge(),
 		FullPrevoteDelay:          discard.NewGauge(),
