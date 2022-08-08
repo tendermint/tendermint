@@ -121,22 +121,6 @@ func (_m *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	return r0
 }
 
-// LoadBlockPart provides a mock function with given fields: height, index
-func (_m *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
-	ret := _m.Called(height, index)
-
-	var r0 *types.Part
-	if rf, ok := ret.Get(0).(func(int64, int) *types.Part); ok {
-		r0 = rf(height, index)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Part)
-		}
-	}
-
-	return r0
-}
-
 // LoadBlockMetaByHash provides a mock function with given fields: hash
 func (_m *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
 	ret := _m.Called(hash)
@@ -147,6 +131,22 @@ func (_m *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.BlockMeta)
+		}
+	}
+
+	return r0
+}
+
+// LoadBlockPart provides a mock function with given fields: height, index
+func (_m *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
+	ret := _m.Called(height, index)
+
+	var r0 *types.Part
+	if rf, ok := ret.Get(0).(func(int64, int) *types.Part); ok {
+		r0 = rf(height, index)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Part)
 		}
 	}
 
@@ -209,13 +209,13 @@ func (_m *BlockStore) Size() int64 {
 	return r0
 }
 
-type NewBlockStoreT interface {
+type mockConstructorTestingTNewBlockStore interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewBlockStore creates a new instance of BlockStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewBlockStore(t NewBlockStoreT) *BlockStore {
+func NewBlockStore(t mockConstructorTestingTNewBlockStore) *BlockStore {
 	mock := &BlockStore{}
 	mock.Mock.Test(t)
 
