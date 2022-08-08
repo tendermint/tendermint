@@ -79,9 +79,9 @@ func TestTransportMultiplexConnFilter(t *testing.T) {
 	}
 
 	_, err = mt.Accept(peerConfig{})
-	if err, ok := err.(ErrRejected); ok {
-		if !err.IsFiltered() {
-			t.Errorf("expected peer to be filtered, got %v", err)
+	if e, ok := err.(ErrRejected); ok {
+		if !e.IsFiltered() {
+			t.Errorf("expected peer to be filtered, got %v", e)
 		}
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
@@ -386,9 +386,9 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 	}
 
 	_, err := mt.Accept(peerConfig{})
-	if err, ok := err.(ErrRejected); ok {
-		if !err.IsNodeInfoInvalid() {
-			t.Errorf("expected NodeInfo to be invalid, got %v", err)
+	if e, ok := err.(ErrRejected); ok {
+		if !e.IsNodeInfoInvalid() {
+			t.Errorf("expected NodeInfo to be invalid, got %v", e)
 		}
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
@@ -425,9 +425,9 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	}
 
 	_, err := mt.Accept(peerConfig{})
-	if err, ok := err.(ErrRejected); ok {
-		if !err.IsAuthFailure() {
-			t.Errorf("expected auth failure, got %v", err)
+	if e, ok := err.(ErrRejected); ok {
+		if !e.IsAuthFailure() {
+			t.Errorf("expected auth failure, got %v", e)
 		}
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
@@ -453,9 +453,9 @@ func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
 	_, err := dialer.Dial(*addr, peerConfig{})
 	if err != nil {
 		t.Logf("connection failed: %v", err)
-		if err, ok := err.(ErrRejected); ok {
-			if !err.IsAuthFailure() {
-				t.Errorf("expected auth failure, got %v", err)
+		if e, ok := err.(ErrRejected); ok {
+			if !e.IsAuthFailure() {
+				t.Errorf("expected auth failure, got %v", e)
 			}
 		} else {
 			t.Errorf("expected ErrRejected, got %v", err)
@@ -490,9 +490,9 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	}()
 
 	_, err := mt.Accept(peerConfig{})
-	if err, ok := err.(ErrRejected); ok {
-		if !err.IsIncompatible() {
-			t.Errorf("expected to reject incompatible, got %v", err)
+	if e, ok := err.(ErrRejected); ok {
+		if !e.IsIncompatible() {
+			t.Errorf("expected to reject incompatible, got %v", e)
 		}
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
@@ -517,9 +517,9 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	}()
 
 	if err := <-errc; err != nil {
-		if err, ok := err.(ErrRejected); ok {
-			if !err.IsSelf() {
-				t.Errorf("expected to reject self, got: %v", err)
+		if e, ok := err.(ErrRejected); ok {
+			if !e.IsSelf() {
+				t.Errorf("expected to reject self, got: %v", e)
 			}
 		} else {
 			t.Errorf("expected ErrRejected, got %v", err)
