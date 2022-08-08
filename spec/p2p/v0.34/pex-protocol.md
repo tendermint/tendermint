@@ -13,42 +13,45 @@ The PEX protocol uses two messages:
 While all nodes, with few exceptions, participate on the PEX protocol,
 a subset of nodes, configured as [seed nodes](#seed-nodes) have a particular
 role in the protocol.
-They crawl the network, connecting to random peers, in order to collect as many
-peer addresses as possible to offer to other nodes.
+They crawl the network, connecting to random peers, in order to learn as many
+peer addresses as possible to provide to other nodes.
 
 ## Requesting Addresses
 
-The node requests peer addresses by sending a `PexRequest` message to a peer.
+A node requests peer addresses by sending a `PexRequest` message to a peer.
 
-For regular nodes, a PEX request is sent in the following two situations,
-provided that the node *needs* peer addresses:
+For regular nodes, not operating in seed mode, a PEX request is sent when
+the node *needs* peers addresses, a condition checked:
 
-1. When a outbound peer is added, the node requests peer addresses to the new peer
-1. The `ensurePeersRoutine` periodically requests peer addresses to a randomly
-   selected peer to which the node is connected
+1. When an *outbound* peer is added, causing the node to request peer addresses
+   to the new peer
+1. Periodically, by the `ensurePeersRoutine`, causing the node to request peer
+   addresses to a randomly selected peer
 
 A node needs more peer addresses when its addresses book has less than 1000 records.
-So, it is reasonable to assume that, most of the time, a node needs more peer addresses,
-and PEX requests are sent whenever the above two situations happen.
+It is thus reasonable to assume that the common case is that a peer needs more
+peer addresses, so that PEX requests are sent whenever the above two situations happen.
 
-A PEX request is sent only to new outbound peers for two reasons.
-First, because peers that the node has dialed are considered more trustworthy
-than peers that were accepted because they dialed the node.
-Second, when a node is short of peer addresses (e.g., at initialization),
-it dials the configured seed nodes.
-Once connected to a seed node, the node immediately requests peer addresses.
+A PEX request is sent when a new *outbound* peer is added.
+The same does not happen with new inbound peers
+because outbound peers, that the node has dialed, are considered more trustworthy
+than inbound peers, that the node has accepted.
+Moreover, when a node is short of peer addresses, it dials the configured seed nodes;
+since they are added as outbound peers, the node can immediately request peer addresses.
 
-The `ensurePeersRoutine` instructs the switch to dial peers when the node does
-not have enough outbound peers.
-This condition is verified at regular intervals, every 30 seconds by default
-(`ensurePeersPeriod`).
-While this condition is not part of the Peer Exchange protocol,
-whenever it is observed, the node sends a PEX request to a random peer,
-from the peers that the switch reports as connected peers.
+The `ensurePeersRoutine` periodically checks, by default every 30 seconds (`ensurePeersPeriod`),
+whether the node has enough outbound peers.
+If it does not have, the node tries dialing some peer addresses stored in the Address Book.
+As part of this procedure, the node selects a peer at random,
+from the set of connected peers retrieved from the switch,
+and sends a PEX request to the selected peer.
 
-When a node receives a `PexAddrs` message from a peer,
-it adds all the peer addresses encoded in the message to the Address Book.
-The peer that sent the message is set as the source of the added peer addresses.
+### Responses
+
+After sending a PEX request is sent to a peer, the node expect to receive,
+as a response, a `PexAddrs` message from the peer.
+This message encodes a list of peer addresses, which are added to the node's
+Address Book, having the peer that sent the PEX response as their source.
 
 > TODO: what happens to added peers? if the peers are already in the Address Book?
 >
@@ -80,7 +83,7 @@ it replies with a `PexAddrs` message containing a list of peer addresses.
 The list of peer addresses provided to a peer is essentially a random selection
 of entries stored in the node's Address Book.
 It is composed by from `32` (`minGetSelection`) to `250` (`maxGetSelection`)
-peer addresses, with target length of `23%` (`getSelectionPercent`) of the
+peer addresses, with target size of `23%` (`getSelectionPercent`) of the
 number of entries in the address book.
 Of course, the length of the list cannot be greater than the size of the address book.
 
@@ -98,52 +101,71 @@ The node keeps a `lastReceivedRequests` map with the time of the last PEX
 request received from every peer.
 If the interval between successive requests is less than the minimum accepted
 one, the peer is disconnected and marked as a bad peer.
-An exception is made for the first pair of PEX requests received from a peer.
+An exception is made for the first two PEX requests received from a peer.
 
 > The probably reason is that, when a new peer is added, the two conditions for
-> a node request peer addresses can be triggered with an interval lower than
+> a node to request peer addresses can be triggered with an interval lower than
 > the minimum accepted interval.
 > Since this is a legit behavior, it should not be punished.
 
 ## Seed nodes
 
-The operation of nodes configured as seed nodes is different.
+A seed node is a node configured to operate in `SeedMode`.
 
-A seed node sends PEX requests in the following two situations:
+### Crawling peers
 
-1. When a outbound peer is added, and the node needs more peer addresses, the
-   node requests peer addresses to the new peer
-1. The `crawlPeersRoutine` periodically requests peer addresses to a set of
-   peers randomly selected from the Address Book
+Seed nodes crawl the network, connecting to random peers and sending PEX
+requests to them, in order to learn as many peer addresses as possible.
+More specifically, a node operating in seed mode sends PEX requests in two cases:
 
-The first situation is the same as for regular nodes.
-The second situation replaces the second situation for regular nodes, as a seed
-node does not run the `ensurePeersRoutine`, but runs the `crawlPeersRoutine`
-for discovering peer addresses that is not run by regular nodes.
+1. When a outbound peer is added, and the seed node needs more peer addresses,
+   it requests peer addresses to the new peer
+1. Periodically, the `crawlPeersRoutine` sends PEX requests to a random set of
+   peers, whose addresses are registered in the Address Book
 
-The `crawlPeersRoutine` periodically sends a round of PEX requests,
-every 30 seconds (`crawlPeerPeriod`).
-Requests are expected to be sent to an essentially random selection of peers
-present in the seed node's Address Book.
-This list is produced in the same way as in the random selection of peer
+The first case also applies for nodes not operating in seed mode.
+The second case replaces the second for regular nodes, as seed nodes do not
+run the `ensurePeersRoutine`, as regular nodes,
+but run the `crawlPeersRoutine`, which is not run by regular nodes.
+
+The `crawlPeersRoutine` periodically, every 30 seconds (`crawlPeerPeriod`),
+starts a new peer discovery round.
+First, the seed node retrieves a random selection of peer addresses from its
+Address Book.
+This selection is produced in the same way as in the random selection of peer
 addresses that are [provided](#provided-addresses) to a requesting peer.
-The seed node does not send PEX requests to all selected peers.
-In particular, it does not send requests to peers crawled recently, last than 2
-minutes ago (`minTimeBetweenCrawls`).
+Are removed from this selection peers that the seed node has crawled recently,
+last than 2 minutes ago (`minTimeBetweenCrawls`).
+The remaining peer addresses are registered in the `crawlPeerInfos` table.
 
-The seed node is not necessarily connected to the peers selected at each round
-of crawling.
-So, the seed node dials the selected peers, which is performed in foreground,
-one peer at a time.
-For each peer it succeeds dialing to, this include already connected peers,
-the seed node sends a PEX request.
-The failed attempts to connect to selected peers are, in they turn, registered
-by the seed node in its Address book.
-Peers with multiple failed connection attempts during a week are removed from
-the Address Book.
+The seed node is not necessarily connected to the peer whose address is
+selected for each round of crawling.
+So, the seed node dials the selected peer addresses.
+This is performed in foreground, one peer at a time.
+As a result, a round of crawling can take a substantial amount of time.
+For each selected peer it succeeds dialing to, this include already connected
+peers, the seed node sends a PEX request.
+
+Dialing a selected peer address can fail for multiple reasons.
+The seed node might have attempted to dial the peer too many times.
+In this case, the peer address is marked as bad in the address book.
+The seed node might have attempted to dial the peer recently, without success,
+and the exponential `backoffDuration` has not yet passed.
+Or the current connection attempt might fail, which is registered in the address book.
+
+Failures to dial to a peer address produce an information that is important for
+a seed node.
+They indicate that a peer is unreachable, or is not operating correctly, and
+therefore its address should not be provided to other nodes.
+This occurs when, due to multiple failed connection attempts or authentication
+failures, the peer address ends up being removed from the address book.
 As a result, the periodically crawling of selected peers not only enables the
 discovery of new peers, but also allows the seed node to stop providing
-addresses of peers that are probably offline.
+addresses of bad peers.
+
+### Offering addresses
+
+FIXME: do seed nodes run other protocols, in addition to the PEX protocol?
 
 TODO: seed node operation when providing peer addresses
 
