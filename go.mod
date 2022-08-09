@@ -47,10 +47,12 @@ require (
 	github.com/pointlander/peg v1.0.1
 	github.com/prometheus/common v0.37.0
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
-	github.com/vektra/mockery/v2 v2.14.0
 )
 
-require github.com/prometheus/client_model v0.2.0
+require (
+	github.com/prometheus/client_model v0.2.0
+	github.com/vektra/mockery/v2 v2.14.0
+)
 
 require (
 	4d63.com/gochecknoglobals v0.1.0 // indirect
@@ -111,7 +113,7 @@ require (
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/snappy v0.0.1 // indirect
+	github.com/golang/snappy v0.0.3 // indirect
 	github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2 // indirect
 	github.com/golangci/dupl v0.0.0-20180902072040-3e9179ac440a // indirect
 	github.com/golangci/go-misc v0.0.0-20220329215616-d24fe342adfe // indirect
