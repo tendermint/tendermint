@@ -14,10 +14,10 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		labels = append(labels, labelsAndValues[i])
 	}
 	return &Metrics{
-		MethodTiming: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		MethodTimingSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "method_timing",
+			Name:      "method_timing_seconds",
 			Help:      "Timing for each ABCI method.",
 
 			Buckets: []float64{.0001, .0004, .002, .009, .02, .1, .65, 2, 6, 25},
@@ -27,6 +27,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 
 func NopMetrics() *Metrics {
 	return &Metrics{
-		MethodTiming: discard.NewHistogram(),
+		MethodTimingSeconds: discard.NewHistogram(),
 	}
 }
