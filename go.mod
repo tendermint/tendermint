@@ -248,3 +248,11 @@ require (
 	mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b // indirect
 	mvdan.cc/unparam v0.0.0-20220706161116-678bad134442 // indirect
 )
+
+retract (
+	[v0.35.9, v0.35.8]
+	[v0.35.7, v0.35.6]
+	[v0.35.5, v0.35.4]
+	[v0.35.3, v0.35.2]
+	[v0.35.1, v0.35.0]
+)
