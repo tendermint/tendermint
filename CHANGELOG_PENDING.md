@@ -58,6 +58,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Go API
     - [all] \#9144 Change spelling from British English to American (@cmwaters)
         - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+    - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
 
 - Blockchain Protocol
 
@@ -71,6 +72,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [proto] \#9356 Migrate from `gogo/protobuf` to `cosmos/gogoproto` (@julienrbrt)
 - [rpc] \#9276 Added `header` and `header_by_hash` queries to the RPC client (@samricotta)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
+
+- [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
+- [crypto/ed25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `ed25519` signing and verification. (@Yawning)
+- [crypto/sr25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `sr25519` signing and verification. (@Yawning)
 
 ### BUG FIXES
 
