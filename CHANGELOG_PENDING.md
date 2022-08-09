@@ -12,6 +12,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - Apps
 
+  - [abci/counter] \#6684 Delete counter example app
+  - [txResults] \#9175 Remove `gas_used` & `gas_wanted` from being merkelized in the lastresulthash in the header
+
 - P2P Protocol
 
 - Go API
@@ -23,9 +26,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### FEATURES
 
-- [#9083] backport cli command to reindex missed events (@cmwaters)
-- [cli] \#9107 Add the `p2p.external-address` argument to set the node P2P external address (@amimart)
-
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+[docker] \#9073 enable cross platform build using docker buildx

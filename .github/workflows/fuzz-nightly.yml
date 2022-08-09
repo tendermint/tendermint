@@ -75,13 +75,24 @@ jobs:
     if: ${{ needs.fuzz-nightly-test.outputs.crashers-count != 0 }}
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Slack if any crashers
-        uses: rtCamp/action-slack-notify@12e36fc18b0689399306c2e0b3e0f2978b7f1ee7
+      - name: Notify Slack on failure
+        uses: slackapi/slack-github-action@v1.21.0
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_CHANNEL: tendermint-internal
-          SLACK_USERNAME: Nightly Fuzz Tests
-          SLACK_ICON_EMOJI: ':firecracker:'
-          SLACK_COLOR: danger
-          SLACK_MESSAGE: Crashers found in Nightly Fuzz tests
-          SLACK_FOOTER: ''
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          BRANCH: ${{ github.ref_name }}
+          CRASHERS: ${{ needs.fuzz-nightly-test.outputs.crashers-count }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":skull: Nightly fuzz tests for `${{ env.BRANCH }}` failed with ${{ env.CRASHERS }} crasher(s). See the <${{ env.RUN_URL }}|run details>."
+                  }
+                }
+              ]
+            }

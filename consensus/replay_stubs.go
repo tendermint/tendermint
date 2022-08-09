@@ -66,7 +66,7 @@ func newMockProxyApp(appHash []byte, abciResponses *tmstate.ABCIResponses) proxy
 	if err != nil {
 		panic(err)
 	}
-	return proxy.NewAppConnConsensus(cli)
+	return proxy.NewAppConnConsensus(cli, proxy.NopMetrics())
 }
 
 type mockProxyApp struct {

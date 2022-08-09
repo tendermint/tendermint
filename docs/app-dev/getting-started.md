@@ -37,8 +37,8 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 make install_abci
 ```
 
-Now you should have the `abci-cli` installed; you'll see a couple of
-commands (`counter` and `kvstore`) that are example applications written
+Now you should have the `abci-cli` installed; you'll notice the `kvstore`
+command, an example application written
 in Go. See below for an application written in JavaScript.
 
 Now, let's run some apps!
@@ -165,92 +165,6 @@ curl -s 'localhost:26657/abci_query?data="name"'
 Try some other transactions and queries to make sure everything is
 working!
 
-## Counter - Another Example
-
-Now that we've got the hang of it, let's try another application, the
-`counter` app.
-
-The counter app doesn't use a Merkle tree, it just counts how many times
-we've sent a transaction, or committed the state.
-
-This application has two modes: `serial=off` and `serial=on`.
-
-When `serial=on`, transactions must be a big-endian encoded incrementing
-integer, starting at 0.
-
-If `serial=off`, there are no restrictions on transactions.
-
-In a live blockchain, transactions collect in memory before they are
-committed into blocks. To avoid wasting resources on invalid
-transactions, ABCI provides the `CheckTx` message, which application
-developers can use to accept or reject transactions, before they are
-stored in memory or gossipped to other peers.
-
-In this instance of the counter app, with `serial=on`, `CheckTx` only
-allows transactions whose integer is greater than the last committed
-one.
-
-Let's kill the previous instance of `tendermint` and the `kvstore`
-application, and start the counter app. We can enable `serial=on` with a
-flag:
-
-```sh
-abci-cli counter --serial
-```
-
-In another window, reset then start Tendermint:
-
-```sh
-tendermint unsafe_reset_all
-tendermint node
-```
-
-Once again, you can see the blocks streaming by. Let's send some
-transactions. Since we have set `serial=on`, the first transaction must
-be the number `0`:
-
-```sh
-curl localhost:26657/broadcast_tx_commit?tx=0x00
-```
-
-Note the empty (hence successful) response. The next transaction must be
-the number `1`. If instead, we try to send a `5`, we get an error:
-
-```json
-> curl localhost:26657/broadcast_tx_commit?tx=0x05
-{
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "check_tx": {},
-    "deliver_tx": {
-      "code": 2,
-      "log": "Invalid nonce. Expected 1, got 5"
-    },
-    "hash": "33B93DFF98749B0D6996A70F64071347060DC19C",
-    "height": 34
-  }
-}
-```
-
-But if we send a `1`, it works again:
-
-```json
-> curl localhost:26657/broadcast_tx_commit?tx=0x01
-{
-  "jsonrpc": "2.0",
-  "id": "",
-  "result": {
-    "check_tx": {},
-    "deliver_tx": {},
-    "hash": "F17854A977F6FA7EEA1BD758E296710B86F72F3D",
-    "height": 60
-  }
-}
-```
-
-For more details on the `broadcast_tx` API, see [the guide on using
-Tendermint](../tendermint-core/using-tendermint.md).
 
 ## CounterJS - Example in Another Language
 
