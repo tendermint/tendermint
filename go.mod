@@ -250,9 +250,5 @@ require (
 )
 
 retract (
-	[v0.35.9, v0.35.8]
-	[v0.35.7, v0.35.6]
-	[v0.35.5, v0.35.4]
-	[v0.35.3, v0.35.2]
-	[v0.35.1, v0.35.0]
+	[v0.35.0,v0.35.9] // See https://github.com/tendermint/tendermint/discussions/9155
 )
