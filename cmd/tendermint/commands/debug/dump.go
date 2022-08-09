@@ -3,7 +3,6 @@ package debug
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -82,7 +81,7 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 func dumpDebugData(outDir string, conf *cfg.Config, rpc *rpchttp.HTTP) {
 	start := time.Now().UTC()
 
-	tmpDir, err := ioutil.TempDir(outDir, "tendermint_debug_tmp")
+	tmpDir, err := os.MkdirTemp(outDir, "tendermint_debug_tmp")
 	if err != nil {
 		logger.Error("failed to create temporary directory", "dir", tmpDir, "error", err)
 		return

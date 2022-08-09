@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -126,7 +126,7 @@ func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 
 // GenesisDocFromFile reads JSON data from a file and unmarshalls it into a GenesisDoc.
 func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
-	jsonBlob, err := ioutil.ReadFile(genDocFile)
+	jsonBlob, err := os.ReadFile(genDocFile)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't read GenesisDoc file: %w", err)
 	}

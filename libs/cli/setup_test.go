@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -55,7 +55,7 @@ func TestSetupEnv(t *testing.T) {
 }
 
 func tempDir() string {
-	cdir, err := ioutil.TempDir("", "test-cli")
+	cdir, err := os.MkdirTemp("", "test-cli")
 	if err != nil {
 		panic(err)
 	}
