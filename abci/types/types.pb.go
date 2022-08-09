@@ -7,6 +7,7 @@ import (
 	context "context"
 	fmt "fmt"
 	_ "github.com/gogo/protobuf/gogoproto"
+	grpc1 "github.com/gogo/protobuf/grpc"
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
@@ -3432,10 +3433,10 @@ type ABCIApplicationClient interface {
 }
 
 type aBCIApplicationClient struct {
-	cc *grpc.ClientConn
+	cc grpc1.ClientConn
 }
 
-func NewABCIApplicationClient(cc *grpc.ClientConn) ABCIApplicationClient {
+func NewABCIApplicationClient(cc grpc1.ClientConn) ABCIApplicationClient {
 	return &aBCIApplicationClient{cc}
 }
 
@@ -3643,7 +3644,7 @@ func (*UnimplementedABCIApplicationServer) ApplySnapshotChunk(ctx context.Contex
 	return nil, status.Errorf(codes.Unimplemented, "method ApplySnapshotChunk not implemented")
 }
 
-func RegisterABCIApplicationServer(s *grpc.Server, srv ABCIApplicationServer) {
+func RegisterABCIApplicationServer(s grpc1.Server, srv ABCIApplicationServer) {
 	s.RegisterService(&_ABCIApplication_serviceDesc, srv)
 }
 
