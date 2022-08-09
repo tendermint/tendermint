@@ -29,7 +29,6 @@ type BlockStore interface {
 	PruneBlocks(height int64) (uint64, error)
 
 	LoadBlockByHash(hash []byte) *types.Block
-	LoadBlockMetaByHash(hash []byte) *types.BlockMeta
 	LoadBlockPart(height int64, index int) *types.Part
 
 	LoadBlockCommit(height int64) *types.Commit

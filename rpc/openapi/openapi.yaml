@@ -500,7 +500,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /net_info:
     get:
-      summary: Network information
+      summary: Network informations
       operationId: net_info
       tags:
         - Info
