@@ -2,11 +2,12 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
-## Unreleased
+## v0.37 (Unreleased)
 
-### ABCI Changes
+This version requires a coordinated network upgrade. It alters the elements in the predigest of the `LastResultsHash` and thus
+all nodes must upgrade together (see #9175).
 
-* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
+NOTE: v0.35 was recalled and v0.36 was skipped
 
 ## v0.34.20
 

@@ -13,6 +13,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Apps
 
   - [abci/counter] \#6684 Delete counter example app
+  - [txResults] \#9175 Remove `gas_used` & `gas_wanted` from being merkelized in the lastresulthash in the header
 
 - P2P Protocol
 
