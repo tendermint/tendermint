@@ -7,6 +7,7 @@
 package tools
 
 import (
+	_ "mvdan.cc/gofumpt"
 	_ "github.com/bufbuild/buf/cmd/buf"
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
 	_ "github.com/pointlander/peg"
