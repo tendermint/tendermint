@@ -2,6 +2,14 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+
+## v0.37 (Unreleased)
+
+This version requires a coordinated network upgrade. It alters the elements in the predigest of the `LastResultsHash` and thus
+all nodes must upgrade together (see #9175).
+
+NOTE: v0.35 was recalled and v0.36 was skipped
+
 ## v0.34.20
 
 ### Feature: Priority Mempool
