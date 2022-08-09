@@ -1,9 +1,9 @@
 # Runs fuzzing nightly.
 name: Fuzz Tests
 on:
-  workflow_dispatch:  # allow running workflow manually
+  workflow_dispatch: # allow running workflow manually
   schedule:
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   pull_request:
     branches: [main]
     paths:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version: 1.19
 
       - uses: actions/checkout@v3
 
