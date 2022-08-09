@@ -7,7 +7,7 @@ Tendermint Core.
 
 This version requires a coordinated network upgrade. It alters the elements in
 the predigest of the `LastResultsHash` and thus all nodes must upgrade together
-(see #9175).
+(see [\#9175](https://github.com/tendermint/tendermint/pull/9175)).
 
 NOTE: v0.35 was recalled and v0.36 was skipped
 
