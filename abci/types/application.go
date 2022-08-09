@@ -4,7 +4,8 @@ import (
 	context "golang.org/x/net/context"
 )
 
-//go:generate mockery --case underscore --name Application
+//go:generate ../../scripts/mockery_generate.sh Application
+
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.
 // All methods take a RequestXxx argument and return a ResponseXxx argument,
@@ -20,6 +21,7 @@ type Application interface {
 	// Consensus Connection
 	InitChain(RequestInitChain) ResponseInitChain // Initialize blockchain w validators/other info from TendermintCore
 	PrepareProposal(RequestPrepareProposal) ResponsePrepareProposal
+	ProcessProposal(RequestProcessProposal) ResponseProcessProposal
 	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
 	DeliverTx(RequestDeliverTx) ResponseDeliverTx    // Deliver a tx for full processing
 	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
@@ -108,6 +110,11 @@ func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepa
 	return ResponsePrepareProposal{TxRecords: trs}
 }
 
+func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
+	return ResponseProcessProposal{
+		Status: ResponseProcessProposal_ACCEPT}
+}
+
 //-------------------------------------------------------
 
 // GRPCApplication is a GRPC wrapper for Application
@@ -194,5 +201,11 @@ func (app *GRPCApplication) ApplySnapshotChunk(
 func (app *GRPCApplication) PrepareProposal(
 	ctx context.Context, req *RequestPrepareProposal) (*ResponsePrepareProposal, error) {
 	res := app.app.PrepareProposal(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) ProcessProposal(
+	ctx context.Context, req *RequestProcessProposal) (*ResponseProcessProposal, error) {
+	res := app.app.ProcessProposal(*req)
 	return &res, nil
 }

@@ -36,6 +36,7 @@ message Request {
     RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
     RequestApplySnapshotChunk apply_snapshot_chunk = 15;
     RequestPrepareProposal    prepare_proposal     = 16;
+    RequestProcessProposal    process_proposal     = 17;
   }
   Reserve = 4;
 }
@@ -72,7 +73,7 @@ message RequestQuery {
 message RequestBeginBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
+  CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
@@ -131,6 +132,19 @@ message RequestPrepareProposal {
   int64 max_tx_bytes = 6;
 }
 
+message RequestProcessProposal {
+  repeated bytes    txs                  = 1;
+  CommitInfo        proposed_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Evidence misbehavior          = 3 [(gogoproto.nullable) = false];
+  // hash is the merkle root hash of the fields of the proposed block.
+  bytes                     hash                 = 4;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // address of the public key of the original proposer of the block.
+  bytes proposer_address = 8;
+}
+
 //----------------------------------------
 // Response types
 
@@ -152,7 +166,7 @@ message Response {
     ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
     ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
     ResponsePrepareProposal    prepare_proposal     = 17;
-
+    ResponseProcessProposal    process_proposal     = 18;
   }
   Reserve = 5;
 }
@@ -284,7 +298,17 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  repeated TxRecord                tx_records              = 1;
+  repeated TxRecord tx_records = 1;
+}
+
+message ResponseProcessProposal {
+  ProposalStatus status = 1;
+
+  enum ProposalStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    REJECT  = 2;
+  }
 }
 
 //----------------------------------------
@@ -307,7 +331,7 @@ message BlockParams {
   int64 max_gas = 2;
 }
 
-message LastCommitInfo {
+message CommitInfo {
   int32             round = 1;
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
@@ -441,4 +465,5 @@ service ABCIApplication {
   rpc ApplySnapshotChunk(RequestApplySnapshotChunk)
       returns (ResponseApplySnapshotChunk);
   rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
+  rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
 }

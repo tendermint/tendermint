@@ -245,6 +245,85 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	assert.Equal(t, abciEv, app.ByzantineValidators)
 }
 
+func TestProcessProposal(t *testing.T) {
+	const height = 2
+	txs := factory.MakeNTxs(height, 10)
+
+	logger := log.NewNopLogger()
+	app := abcimocks.NewBaseMock()
+	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc)
+	err := proxyApp.Start()
+	require.NoError(t, err)
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+	state, stateDB, privVals := makeState(1, height)
+	stateStore := sm.NewStore(stateDB)
+
+	eventBus := types.NewEventBus()
+	err = eventBus.Start()
+	require.NoError(t, err)
+
+	blockExec := sm.NewBlockExecutor(
+		stateStore,
+		logger,
+		proxyApp.Consensus(),
+		new(mpmocks.Mempool),
+		sm.EmptyEvidencePool{},
+	)
+
+	block0 := sf.MakeBlock(state, height-1, new(types.Commit))
+	lastCommitSig := []types.CommitSig{}
+	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(t, err)
+	blockID := types.BlockID{Hash: block0.Hash(), PartSetHeader: partSet.Header()}
+	voteInfos := []abci.VoteInfo{}
+	for _, privVal := range privVals {
+		vote, err := types.MakeVote(height, blockID, state.Validators, privVal, block0.Header.ChainID, time.Now())
+		require.NoError(t, err)
+		pk, err := privVal.GetPubKey()
+		require.NoError(t, err)
+		addr := pk.Address()
+		voteInfos = append(voteInfos,
+			abci.VoteInfo{
+				SignedLastBlock: true,
+				Validator: abci.Validator{
+					Address: addr,
+					Power:   1000,
+				},
+			})
+		lastCommitSig = append(lastCommitSig, vote.CommitSig())
+	}
+
+	block1 := sf.MakeBlock(state, height, &types.Commit{
+		Height:     height - 1,
+		Signatures: lastCommitSig,
+	})
+	block1.Txs = txs
+
+	expectedRpp := abci.RequestProcessProposal{
+		Txs:         block1.Txs.ToSliceOfBytes(),
+		Hash:        block1.Hash(),
+		Height:      block1.Header.Height,
+		Time:        block1.Header.Time,
+		Misbehavior: block1.Evidence.Evidence.ToABCI(),
+		ProposedLastCommit: abci.CommitInfo{
+			Round: 0,
+			Votes: voteInfos,
+		},
+		NextValidatorsHash: block1.NextValidatorsHash,
+		ProposerAddress:    block1.ProposerAddress,
+	}
+
+	acceptBlock, err := blockExec.ProcessProposal(block1, state)
+	require.NoError(t, err)
+	require.True(t, acceptBlock)
+	app.AssertExpectations(t)
+	app.AssertCalled(t, "ProcessProposal", expectedRpp)
+}
+
 func TestValidateValidatorUpdates(t *testing.T) {
 	pubkey1 := ed25519.GenPrivKey().PubKey()
 	pubkey2 := ed25519.GenPrivKey().PubKey()

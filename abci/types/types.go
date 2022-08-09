@@ -41,6 +41,16 @@ func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
 
+// IsAccepted returns true if Code is ACCEPT
+func (r ResponseProcessProposal) IsAccepted() bool {
+	return r.Status == ResponseProcessProposal_ACCEPT
+}
+
+// IsStatusUnknown returns true if Code is UNKNOWN
+func (r ResponseProcessProposal) IsStatusUnknown() bool {
+	return r.Status == ResponseProcessProposal_UNKNOWN
+}
+
 //---------------------------------------------------------------------------
 // override JSON marshaling so we emit defaults (ie. disable omitempty)
 

@@ -275,6 +275,18 @@ func (app *Application) PrepareProposal(
 	return abci.ResponsePrepareProposal{TxRecords: trs}
 }
 
+// ProcessProposal implements part of the Application interface.
+// It accepts any proposal that does not contain a malformed transaction.
+func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		_, _, err := parseTx(tx)
+		if err != nil {
+			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
+		}
+	}
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
+}
+
 func (app *Application) Rollback() error {
 	return app.state.Rollback()
 }

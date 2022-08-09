@@ -8,11 +8,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/counter"
+	abci "github.com/tendermint/tendermint/abci/types"
+	abcimocks "github.com/tendermint/tendermint/abci/types/mocks"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -1366,6 +1370,55 @@ func TestSetValidBlockOnDelayedProposal(t *testing.T) {
 	assert.True(t, bytes.Equal(rs.ValidBlock.Hash(), propBlockHash))
 	assert.True(t, rs.ValidBlockParts.Header().Equals(propBlockParts.Header()))
 	assert.True(t, rs.ValidRound == round)
+}
+
+func TestProcessProposalAccept(t *testing.T) {
+	for _, testCase := range []struct {
+		name               string
+		accept             bool
+		expectedNilPrevote bool
+	}{
+		{
+			name:               "accepted block is prevoted",
+			accept:             true,
+			expectedNilPrevote: false,
+		},
+		{
+			name:               "rejected block is not prevoted",
+			accept:             false,
+			expectedNilPrevote: true,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			m := abcimocks.NewApplication(t)
+			status := abci.ResponseProcessProposal_REJECT
+			if testCase.accept {
+				status = abci.ResponseProcessProposal_ACCEPT
+			}
+			m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: status})
+			m.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{}).Maybe()
+			cs1, _ := randStateWithApp(4, m)
+			height, round := cs1.Height, cs1.Round
+
+			proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+			newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+			pv1, err := cs1.privValidator.GetPubKey()
+			require.NoError(t, err)
+			addr := pv1.Address()
+			voteCh := subscribeToVoter(cs1, addr)
+
+			startTestRound(cs1, cs1.Height, round)
+			ensureNewRound(newRoundCh, height, round)
+
+			ensureNewProposal(proposalCh, height, round)
+			rs := cs1.GetRoundState()
+			var prevoteHash tmbytes.HexBytes
+			if !testCase.expectedNilPrevote {
+				prevoteHash = rs.ProposalBlock.Hash()
+			}
+			ensurePrevoteMatch(t, voteCh, height, round, prevoteHash)
+		})
+	}
 }
 
 // 4 vals, 3 Nil Precommits at P0

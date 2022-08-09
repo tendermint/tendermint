@@ -207,6 +207,17 @@ func (app *localClient) PrepareProposalAsync(req types.RequestPrepareProposal) *
 	)
 }
 
+func (app *localClient) ProcessProposalAsync(req types.RequestProcessProposal) *ReqRes {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ProcessProposal(req)
+	return app.callback(
+		types.ToRequestProcessProposal(req),
+		types.ToResponseProcessProposal(res),
+	)
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync() error {
@@ -320,6 +331,14 @@ func (app *localClient) PrepareProposalSync(req types.RequestPrepareProposal) (*
 	defer app.mtx.Unlock()
 
 	res := app.Application.PrepareProposal(req)
+	return &res, nil
+}
+
+func (app *localClient) ProcessProposalSync(req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res := app.Application.ProcessProposal(req)
 	return &res, nil
 }
 

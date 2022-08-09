@@ -170,7 +170,6 @@ func makeHeaderPartsResponsesValPowerChange(
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
 	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
-
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
@@ -264,4 +263,13 @@ func (app *testApp) Commit() abci.ResponseCommit {
 
 func (app *testApp) Query(reqQuery abci.RequestQuery) (resQuery abci.ResponseQuery) {
 	return
+}
+
+func (app *testApp) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		if len(tx) == 0 {
+			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
+		}
+	}
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }
