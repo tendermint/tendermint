@@ -13,9 +13,9 @@ NOTE: v0.35 was recalled and v0.36 was skipped
 
 ### ABCI Changes
 
-* In v0.34, messages on the wire used to be length-delimited with `int64`
-  values, which was inconsistent with the `uint64` length delimiters used in the
-  P2P layer. Both now consistently use `uint64` length delimiters.
+* In v0.34, messages on the wire used to be length-delimited with `int64` varint
+  values, which was inconsistent with the `uint64` varint length delimiters used
+  in the P2P layer. Both now consistently use `uint64` varint length delimiters.
 
 ## v0.34.20
 
