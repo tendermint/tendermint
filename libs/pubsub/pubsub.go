@@ -12,26 +12,25 @@
 //
 // Example:
 //
-//     q, err := query.New("account.name='John'")
-//     if err != nil {
-//         return err
-//     }
-//     ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
-//     defer cancel()
-//     subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q)
-//     if err != nil {
-//         return err
-//     }
+//	q, err := query.New("account.name='John'")
+//	if err != nil {
+//	    return err
+//	}
+//	ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+//	defer cancel()
+//	subscription, err := pubsub.Subscribe(ctx, "johns-transactions", q)
+//	if err != nil {
+//	    return err
+//	}
 //
-//     for {
-//         select {
-//         case msg <- subscription.Out():
-//             // handle msg.Data() and msg.Events()
-//         case <-subscription.Cancelled():
-//             return subscription.Err()
-//         }
-//     }
-//
+//	for {
+//	    select {
+//	    case msg <- subscription.Out():
+//	        // handle msg.Data() and msg.Events()
+//	    case <-subscription.Cancelled():
+//	        return subscription.Err()
+//	    }
+//	}
 package pubsub
 
 import (

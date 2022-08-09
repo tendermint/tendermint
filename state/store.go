@@ -439,7 +439,7 @@ func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses,
 // Responses are indexed by height so they can also be loaded later to produce
 // Merkle proofs.
 //
-//CONTRACT: height must be monotonically increasing every time this is called.
+// CONTRACT: height must be monotonically increasing every time this is called.
 func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
 	var dtxs []*abci.ResponseDeliverTx
 	// strip nil values,

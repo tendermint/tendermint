@@ -59,15 +59,15 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 }
 
 // --- FAIL: TestPEXReactorRunning (11.10s)
-// 				pex_reactor_test.go:411: expected all switches to be connected to at
-// 				least one peer (switches: 0 => {outbound: 1, inbound: 0}, 1 =>
-// 				{outbound: 0, inbound: 1}, 2 => {outbound: 0, inbound: 0}, )
+//
+//	pex_reactor_test.go:411: expected all switches to be connected to at
+//	least one peer (switches: 0 => {outbound: 1, inbound: 0}, 1 =>
+//	{outbound: 0, inbound: 1}, 2 => {outbound: 0, inbound: 0}, )
 //
 // EXPLANATION: peers are getting rejected because in switch#addPeer we check
 // if any peer (who we already connected to) has the same IP. Even though local
 // peers have different IP addresses, they all have the same underlying remote
 // IP: 127.0.0.1.
-//
 func TestPEXReactorRunning(t *testing.T) {
 	N := 3
 	switches := make([]*p2p.Switch, N)
