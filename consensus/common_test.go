@@ -692,11 +692,6 @@ func ensurePrevoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int
 	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrevoteType)
 }
 
-func ensurePrecommitMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
-	t.Helper()
-	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrecommitType)
-}
-
 func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte, voteType tmproto.SignedMsgType) {
 	t.Helper()
 	select {

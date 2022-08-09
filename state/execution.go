@@ -166,8 +166,11 @@ func (blockExec *BlockExecutor) ProcessProposal(
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
+	if resp.IsStatusUnknown() {
+		panic(fmt.Sprintf("ProcessProposal responded with status %s", resp.Status.String()))
+	}
 
-	return resp.IsOK(), nil
+	return resp.IsAccepted(), nil
 }
 
 // ValidateBlock validates the given block against the given state.
@@ -352,11 +355,6 @@ func execBlockOnProxyApp(
 
 	commitInfo := buildLastCommitInfo(block, store, initialHeight)
 
-	byzVals := make([]abci.Evidence, 0)
-	for _, evidence := range block.Evidence.Evidence {
-		byzVals = append(byzVals, evidence.ABCI()...)
-	}
-
 	// Begin block
 	var err error
 	pbh := block.Header.ToProto()
@@ -368,7 +366,7 @@ func execBlockOnProxyApp(
 		Hash:                block.Hash(),
 		Header:              *pbh,
 		LastCommitInfo:      commitInfo,
-		ByzantineValidators: byzVals,
+		ByzantineValidators: block.Evidence.Evidence.ToABCI(),
 	})
 	if err != nil {
 		logger.Error("error in proxyAppConn.BeginBlock", "err", err)
