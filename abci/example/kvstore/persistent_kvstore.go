@@ -151,22 +151,26 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 }
 
 func (app *PersistentKVStoreApplication) ListSnapshots(
-	req types.RequestListSnapshots) types.ResponseListSnapshots {
+	req types.RequestListSnapshots,
+) types.ResponseListSnapshots {
 	return types.ResponseListSnapshots{}
 }
 
 func (app *PersistentKVStoreApplication) LoadSnapshotChunk(
-	req types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
+	req types.RequestLoadSnapshotChunk,
+) types.ResponseLoadSnapshotChunk {
 	return types.ResponseLoadSnapshotChunk{}
 }
 
 func (app *PersistentKVStoreApplication) OfferSnapshot(
-	req types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
+	req types.RequestOfferSnapshot,
+) types.ResponseOfferSnapshot {
 	return types.ResponseOfferSnapshot{Result: types.ResponseOfferSnapshot_ABORT}
 }
 
 func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
-	req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
+	req types.RequestApplySnapshotChunk,
+) types.ResponseApplySnapshotChunk {
 	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
 }
 
@@ -217,7 +221,8 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	if len(pubKeyAndPower) != 2 {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)}
+			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower),
+		}
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 
@@ -226,7 +231,8 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	if err != nil {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
+			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS),
+		}
 	}
 
 	// decode the power
@@ -234,7 +240,8 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	if err != nil {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
+			Log:  fmt.Sprintf("Power (%s) is not an int", powerS),
+		}
 	}
 
 	// update
@@ -259,7 +266,8 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized,
-				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
+				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr),
+			}
 		}
 		if err = app.app.state.db.Delete(key); err != nil {
 			panic(err)
@@ -271,7 +279,8 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 		if err := types.WriteMessage(&v, value); err != nil {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeEncodingError,
-				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
+				Log:  fmt.Sprintf("Error encoding validator: %v", err),
+			}
 		}
 		if err = app.app.state.db.Set(key, value.Bytes()); err != nil {
 			panic(err)

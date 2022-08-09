@@ -482,8 +482,10 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = s.PublishWithEvents(ctx, "Gamora", map[string][]string{"abci.Account.Owner": {"Ivan"},
-			"abci.Invoices.Number": {"1"}})
+		err = s.PublishWithEvents(ctx, "Gamora", map[string][]string{
+			"abci.Account.Owner":   {"Ivan"},
+			"abci.Invoices.Number": {"1"},
+		})
 		require.NoError(b, err)
 	}
 }

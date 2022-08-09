@@ -26,7 +26,7 @@ func initCorpus(rootDir string) {
 	log.SetFlags(0)
 
 	corpusDir := filepath.Join(rootDir, "corpus")
-	if err := os.MkdirAll(corpusDir, 0755); err != nil {
+	if err := os.MkdirAll(corpusDir, 0o755); err != nil {
 		log.Fatalf("Creating %q err: %v", corpusDir, err)
 	}
 	sizes := []int{0, 1, 2, 17, 5, 31}
@@ -73,7 +73,7 @@ func initCorpus(rootDir string) {
 
 		filename := filepath.Join(rootDir, "corpus", fmt.Sprintf("%d", n))
 
-		if err := ioutil.WriteFile(filename, bz, 0644); err != nil {
+		if err := ioutil.WriteFile(filename, bz, 0o644); err != nil {
 			log.Fatalf("can't write %X to %q: %v", bz, filename, err)
 		}
 

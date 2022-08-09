@@ -39,24 +39,24 @@ the example for more details.
 
 Example:
 
-		c, err := New("http://192.168.1.10:26657", "/websocket")
-		if err != nil {
-			// handle error
-		}
+	c, err := New("http://192.168.1.10:26657", "/websocket")
+	if err != nil {
+		// handle error
+	}
 
-		// call Start/Stop if you're subscribing to events
-		err = c.Start()
-		if err != nil {
-			// handle error
-		}
-		defer c.Stop()
+	// call Start/Stop if you're subscribing to events
+	err = c.Start()
+	if err != nil {
+		// handle error
+	}
+	defer c.Stop()
 
-		res, err := c.Status()
-		if err != nil {
-			// handle error
-		}
+	res, err := c.Status()
+	if err != nil {
+		// handle error
+	}
 
-		// handle result
+	// handle result
 */
 type HTTP struct {
 	remote string
@@ -98,9 +98,11 @@ type baseRPCClient struct {
 	caller jsonrpcclient.Caller
 }
 
-var _ rpcClient = (*HTTP)(nil)
-var _ rpcClient = (*BatchHTTP)(nil)
-var _ rpcClient = (*baseRPCClient)(nil)
+var (
+	_ rpcClient = (*HTTP)(nil)
+	_ rpcClient = (*BatchHTTP)(nil)
+	_ rpcClient = (*baseRPCClient)(nil)
+)
 
 //-----------------------------------------------------------------------------
 // HTTP
@@ -233,7 +235,8 @@ func (c *baseRPCClient) ABCIQueryWithOptions(
 	ctx context.Context,
 	path string,
 	data bytes.HexBytes,
-	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	opts rpcclient.ABCIQueryOptions,
+) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.caller.Call(ctx, "abci_query",
 		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "prove": opts.Prove},
@@ -478,7 +481,6 @@ func (c *baseRPCClient) TxSearch(
 	perPage *int,
 	orderBy string,
 ) (*ctypes.ResultTxSearch, error) {
-
 	result := new(ctypes.ResultTxSearch)
 	params := map[string]interface{}{
 		"query":    query,
@@ -507,7 +509,6 @@ func (c *baseRPCClient) BlockSearch(
 	page, perPage *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
-
 	result := new(ctypes.ResultBlockSearch)
 	params := map[string]interface{}{
 		"query":    query,
@@ -628,8 +629,8 @@ func (w *WSEvents) OnStop() {
 //
 // It returns an error if WSEvents is not running.
 func (w *WSEvents) Subscribe(ctx context.Context, subscriber, query string,
-	outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
-
+	outCapacity ...int,
+) (out <-chan ctypes.ResultEvent, err error) {
 	if !w.IsRunning() {
 		return nil, errNotRunning
 	}

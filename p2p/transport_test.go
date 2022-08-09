@@ -319,13 +319,11 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 	go func() {
 		<-slowc
 
-		var (
-			dialer = newMultiplexTransport(
-				fastNodeInfo,
-				NodeKey{
-					PrivKey: fastNodePV,
-				},
-			)
+		dialer := newMultiplexTransport(
+			fastNodeInfo,
+			NodeKey{
+				PrivKey: fastNodePV,
+			},
 		)
 		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
@@ -588,10 +586,9 @@ func TestTransportHandshake(t *testing.T) {
 			}
 		}(c)
 		go func(c net.Conn) {
-			var (
-				// ni   DefaultNodeInfo
-				pbni tmp2p.DefaultNodeInfo
-			)
+
+			// ni   DefaultNodeInfo
+			var pbni tmp2p.DefaultNodeInfo
 
 			protoReader := protoio.NewDelimitedReader(c, MaxNodeInfoSize())
 			_, err := protoReader.ReadMsg(&pbni)

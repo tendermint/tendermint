@@ -7,7 +7,6 @@ import (
 )
 
 func TestParseFraction(t *testing.T) {
-
 	testCases := []struct {
 		f   string
 		exp Fraction
@@ -82,5 +81,4 @@ func TestParseFraction(t *testing.T) {
 		}
 		assert.Equal(t, tc.exp, output, idx)
 	}
-
 }

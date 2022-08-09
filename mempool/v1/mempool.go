@@ -65,7 +65,6 @@ func NewTxMempool(
 	height int64,
 	options ...TxMempoolOption,
 ) *TxMempool {
-
 	txmp := &TxMempool{
 		logger:       logger,
 		config:       cfg,
@@ -174,7 +173,6 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} { return txmp.txsAvailable
 // the size of tx, and adds tx instead. If no such transactions exist, tx is
 // discarded.
 func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
-
 	// During the initial phase of CheckTx, we do not need to modify any state.
 	// A transaction will not actually be added to the mempool until it survives
 	// a call to the ABCI CheckTx method and size constraint checks.
@@ -493,9 +491,8 @@ func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, checkTxRes *abci.Respon
 				"tx", fmt.Sprintf("%X", w.tx.Hash()),
 				"sender", sender,
 			)
-			checkTxRes.MempoolError =
-				fmt.Sprintf("rejected valid incoming transaction; tx already exists for sender %q (%X)",
-					sender, w.tx.Hash())
+			checkTxRes.MempoolError = fmt.Sprintf("rejected valid incoming transaction; tx already exists for sender %q (%X)",
+				sender, w.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}
@@ -528,9 +525,8 @@ func (txmp *TxMempool) addNewTransaction(wtx *WrappedTx, checkTxRes *abci.Respon
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err.Error(),
 			)
-			checkTxRes.MempoolError =
-				fmt.Sprintf("rejected valid incoming transaction; mempool is full (%X)",
-					wtx.tx.Hash())
+			checkTxRes.MempoolError = fmt.Sprintf("rejected valid incoming transaction; mempool is full (%X)",
+				wtx.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}

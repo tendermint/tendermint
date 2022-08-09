@@ -37,9 +37,7 @@ const (
 	testVal = "acbd"
 )
 
-var (
-	ctx = context.Background()
-)
+var ctx = context.Background()
 
 type ResultEcho struct {
 	Value string `json:"value"`
@@ -233,7 +231,6 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
 		return "", err
-
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
@@ -255,7 +252,6 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
 		return []byte{}, msg.Error
-
 	}
 	result := new(ResultEchoBytes)
 	err = json.Unmarshal(msg.Result, result)

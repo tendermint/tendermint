@@ -12,9 +12,7 @@ import (
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
-var (
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-)
+var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 func main() {
 	NewCLI().Run()

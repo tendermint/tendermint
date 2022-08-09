@@ -1,4 +1,4 @@
-//nolint: gosec
+// nolint: gosec
 package e2e
 
 import (
@@ -25,9 +25,11 @@ const (
 	networkIPv6           = "fd80:b10c::/48"
 )
 
-type Mode string
-type Protocol string
-type Perturbation string
+type (
+	Mode         string
+	Protocol     string
+	Perturbation string
+)
 
 const (
 	ModeValidator Mode = "validator"

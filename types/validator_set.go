@@ -411,14 +411,17 @@ func processChanges(origChanges []*Validator) (updates, removals []*Validator, e
 //
 // Inputs:
 // updates - a list of proper validator changes, i.e. they have been verified by processChanges for duplicates
-//   and invalid values.
+//
+//	and invalid values.
+//
 // vals - the original validator set. Note that vals is NOT modified by this function.
 // removedPower - the total voting power that will be removed after the updates are verified and applied.
 //
 // Returns:
 // tvpAfterUpdatesBeforeRemovals -  the new total voting power if these updates would be applied without the removals.
-//   Note that this will be < 2 * MaxTotalVotingPower in case high power validators are removed and
-//   validators are added/ updated with high power values.
+//
+//	Note that this will be < 2 * MaxTotalVotingPower in case high power validators are removed and
+//	validators are added/ updated with high power values.
 //
 // err - non-nil if the maximum allowed total voting power would be exceeded
 func verifyUpdates(
@@ -426,7 +429,6 @@ func verifyUpdates(
 	vals *ValidatorSet,
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
-
 	delta := func(update *Validator, vals *ValidatorSet) int64 {
 		_, val := vals.GetByAddress(update.Address)
 		if val != nil {
@@ -467,8 +469,9 @@ func numNewValidators(updates []*Validator, vals *ValidatorSet) int {
 // 'updates' parameter must be a list of unique validators to be added or updated.
 //
 // 'updatedTotalVotingPower' is the total voting power of a set where all updates would be applied but
-//   not the removals. It must be < 2*MaxTotalVotingPower and may be close to this limit if close to
-//   MaxTotalVotingPower will be removed. This is still safe from overflow since MaxTotalVotingPower is maxInt64/8.
+//
+//	not the removals. It must be < 2*MaxTotalVotingPower and may be close to this limit if close to
+//	MaxTotalVotingPower will be removed. This is still safe from overflow since MaxTotalVotingPower is maxInt64/8.
 //
 // No changes are made to the validator set 'vals'.
 func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotalVotingPower int64) {
@@ -489,7 +492,6 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 			valUpdate.ProposerPriority = val.ProposerPriority
 		}
 	}
-
 }
 
 // Merges the vals' validator list with the updates list.
@@ -638,14 +640,15 @@ func (vals *ValidatorSet) updateWithChangeSet(changes []*Validator, allowDeletes
 
 // UpdateWithChangeSet attempts to update the validator set with 'changes'.
 // It performs the following steps:
-// - validates the changes making sure there are no duplicates and splits them in updates and deletes
-// - verifies that applying the changes will not result in errors
-// - computes the total voting power BEFORE removals to ensure that in the next steps the priorities
-//   across old and newly added validators are fair
-// - computes the priorities of new validators against the final set
-// - applies the updates against the validator set
-// - applies the removals against the validator set
-// - performs scaling and centering of priority values
+//   - validates the changes making sure there are no duplicates and splits them in updates and deletes
+//   - verifies that applying the changes will not result in errors
+//   - computes the total voting power BEFORE removals to ensure that in the next steps the priorities
+//     across old and newly added validators are fair
+//   - computes the priorities of new validators against the final set
+//   - applies the updates against the validator set
+//   - applies the removals against the validator set
+//   - performs scaling and centering of priority values
+//
 // If an error is detected during verification steps, it is returned and the validator set
 // is not changed.
 func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
@@ -660,8 +663,8 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 // includes which validators signed. For instance, Gaia incentivizes proposers
 // with a bonus for including more than +2/3 of the signatures.
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
-	height int64, commit *Commit) error {
-
+	height int64, commit *Commit,
+) error {
 	if vals.Size() != len(commit.Signatures) {
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
 	}
@@ -715,8 +718,8 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 // This method is primarily used by the light client and does not check all the
 // signatures.
 func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
-	height int64, commit *Commit) error {
-
+	height int64, commit *Commit,
+) error {
 	if vals.Size() != len(commit.Signatures) {
 		return NewErrInvalidCommitSignatures(vals.Size(), len(commit.Signatures))
 	}
@@ -887,7 +890,6 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 		indent,
 		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)
-
 }
 
 //-------------------------------------

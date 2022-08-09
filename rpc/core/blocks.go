@@ -39,7 +39,8 @@ func BlockchainInfo(ctx *rpctypes.Context, minHeight, maxHeight int64) (*ctypes.
 
 	return &ctypes.ResultBlockchainInfo{
 		LastHeight: env.BlockStore.Height(),
-		BlockMetas: blockMetas}, nil
+		BlockMetas: blockMetas,
+	}, nil
 }
 
 // error if either min or max are negative or min > max
@@ -167,7 +168,6 @@ func BlockSearch(
 	pagePtr, perPagePtr *int,
 	orderBy string,
 ) (*ctypes.ResultBlockSearch, error) {
-
 	// skip if block indexing is disabled
 	if _, ok := env.BlockIndexer.(*blockidxnull.BlockerIndexer); ok {
 		return nil, errors.New("block indexing is disabled")

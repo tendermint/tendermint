@@ -282,6 +282,7 @@ func Size(size int) func(*QueryParser) error {
 		return nil
 	}
 }
+
 func (p *QueryParser) Init(options ...func(*QueryParser) error) error {
 	var (
 		max                  token32
