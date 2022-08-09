@@ -73,7 +73,6 @@ func newSyncer(
 	stateProvider StateProvider,
 	tempDir string,
 ) *syncer {
-
 	return &syncer{
 		logger:        logger,
 		stateProvider: stateProvider,

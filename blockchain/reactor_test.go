@@ -55,7 +55,8 @@ func newReactor(
 	logger log.Logger,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
-	maxBlockHeight int64) ReactorPair {
+	maxBlockHeight int64,
+) ReactorPair {
 	if len(privVals) != 1 {
 		panic("only support one validator")
 	}
@@ -146,7 +147,6 @@ func TestNoBlockResponse(t *testing.T) {
 	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
 		return s
-
 	}, p2p.Connect2Switches)
 
 	defer func() {
@@ -221,7 +221,6 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
 		return s
-
 	}, p2p.Connect2Switches)
 
 	defer func() {
@@ -260,7 +259,6 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
 		return s
-
 	}, p2p.Connect2Switches)...)
 
 	for i := 0; i < len(reactorPairs)-1; i++ {

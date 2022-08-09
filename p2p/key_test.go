@@ -60,7 +60,6 @@ func padBytes(bz []byte, targetBytes int) []byte {
 }
 
 func TestPoWTarget(t *testing.T) {
-
 	targetBytes := 20
 	cases := []struct {
 		difficulty uint

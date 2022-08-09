@@ -28,9 +28,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	ctx = context.Background()
-)
+var ctx = context.Background()
 
 func getHTTPClient() *rpchttp.HTTP {
 	rpcAddr := rpctest.GetConfig().RPC.ListenAddress

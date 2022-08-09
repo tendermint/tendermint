@@ -120,7 +120,6 @@ func (info DefaultNodeInfo) ID() ID {
 // url-encoding), and we just need to be careful with how we handle that in our
 // clients. (e.g. off by default).
 func (info DefaultNodeInfo) Validate() error {
-
 	// ID is already validated.
 
 	// Validate ListenAddr.
@@ -228,7 +227,6 @@ func (info DefaultNodeInfo) HasChannel(chID byte) bool {
 }
 
 func (info DefaultNodeInfo) ToProto() *tmp2p.DefaultNodeInfo {
-
 	dni := new(tmp2p.DefaultNodeInfo)
 	dni.ProtocolVersion = tmp2p.ProtocolVersion{
 		P2P:   info.ProtocolVersion.P2P,

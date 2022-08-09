@@ -47,7 +47,6 @@ func NewReactor(
 	connQuery proxy.AppConnQuery,
 	tempDir string,
 ) *Reactor {
-
 	r := &Reactor{
 		cfg:       cfg,
 		conn:      conn,

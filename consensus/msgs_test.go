@@ -133,7 +133,8 @@ func TestMsgToProto(t *testing.T) {
 					ProposalPolRound: 1,
 					ProposalPol:      *pbBits,
 				},
-			}}, false},
+			},
+		}, false},
 		{"successful ProposalMessage", &ProposalMessage{
 			Proposal: &proposal,
 		}, &tmcons.Message{
@@ -210,7 +211,6 @@ func TestMsgToProto(t *testing.T) {
 }
 
 func TestWALMsgProto(t *testing.T) {
-
 	parts := types.Part{
 		Index: 1,
 		Bytes: []byte("test"),
@@ -314,7 +314,7 @@ func TestWALMsgProto(t *testing.T) {
 	}
 }
 
-// nolint:lll //ignore line length for tests
+//nolint:lll //ignore line length for tests
 func TestConsMsgsVectors(t *testing.T) {
 	date := time.Date(2018, 8, 30, 12, 0, 0, 0, time.UTC)
 	psh := types.PartSetHeader{
@@ -385,34 +385,63 @@ func TestConsMsgsVectors(t *testing.T) {
 			SecondsSinceStartTime: math.MaxInt64,
 			LastCommitRound:       math.MaxInt32,
 		}}}, "0a2608ffffffffffffffff7f10ffffffff0718ffffffff0f20ffffffffffffffff7f28ffffffff07"},
-		{"NewValidBlock", &tmcons.Message{Sum: &tmcons.Message_NewValidBlock{
-			NewValidBlock: &tmcons.NewValidBlock{
-				Height: 1, Round: 1, BlockPartSetHeader: pbPsh, BlockParts: pbBits, IsCommit: false}}},
-			"1231080110011a24080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d22050801120100"},
-		{"Proposal", &tmcons.Message{Sum: &tmcons.Message_Proposal{Proposal: &tmcons.Proposal{Proposal: *pbProposal}}},
-			"1a720a7008201001180120012a480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d320608c0b89fdc053a146164645f6d6f72655f6578636c616d6174696f6e"},
-		{"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
-			ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1}}},
-			"2206080110011a00"},
-		{"BlockPart", &tmcons.Message{Sum: &tmcons.Message_BlockPart{
-			BlockPart: &tmcons.BlockPart{Height: 1, Round: 1, Part: *pbParts}}},
-			"2a36080110011a3008011204746573741a26080110011a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d"},
-		{"Vote", &tmcons.Message{Sum: &tmcons.Message_Vote{
-			Vote: &tmcons.Vote{Vote: vpb}}},
-			"32700a6e0802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a0608c0b89fdc0532146164645f6d6f72655f6578636c616d6174696f6e3801"},
-		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
-			HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
-			"3a080801100118012001"},
-		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
-			HasVote: &tmcons.HasVote{Height: math.MaxInt64, Round: math.MaxInt32,
-				Type: tmproto.PrevoteType, Index: math.MaxInt32}}},
-			"3a1808ffffffffffffffff7f10ffffffff07180120ffffffff07"},
-		{"VoteSetMaj23", &tmcons.Message{Sum: &tmcons.Message_VoteSetMaj23{
-			VoteSetMaj23: &tmcons.VoteSetMaj23{Height: 1, Round: 1, Type: tmproto.PrevoteType, BlockID: pbBi}}},
-			"425008011001180122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d"},
-		{"VoteSetBits", &tmcons.Message{Sum: &tmcons.Message_VoteSetBits{
-			VoteSetBits: &tmcons.VoteSetBits{Height: 1, Round: 1, Type: tmproto.PrevoteType, BlockID: pbBi, Votes: *pbBits}}},
-			"4a5708011001180122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a050801120100"},
+		{
+			"NewValidBlock", &tmcons.Message{Sum: &tmcons.Message_NewValidBlock{
+				NewValidBlock: &tmcons.NewValidBlock{
+					Height: 1, Round: 1, BlockPartSetHeader: pbPsh, BlockParts: pbBits, IsCommit: false,
+				},
+			}},
+			"1231080110011a24080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d22050801120100",
+		},
+		{
+			"Proposal", &tmcons.Message{Sum: &tmcons.Message_Proposal{Proposal: &tmcons.Proposal{Proposal: *pbProposal}}},
+			"1a720a7008201001180120012a480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d320608c0b89fdc053a146164645f6d6f72655f6578636c616d6174696f6e",
+		},
+		{
+			"ProposalPol", &tmcons.Message{Sum: &tmcons.Message_ProposalPol{
+				ProposalPol: &tmcons.ProposalPOL{Height: 1, ProposalPolRound: 1},
+			}},
+			"2206080110011a00",
+		},
+		{
+			"BlockPart", &tmcons.Message{Sum: &tmcons.Message_BlockPart{
+				BlockPart: &tmcons.BlockPart{Height: 1, Round: 1, Part: *pbParts},
+			}},
+			"2a36080110011a3008011204746573741a26080110011a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d",
+		},
+		{
+			"Vote", &tmcons.Message{Sum: &tmcons.Message_Vote{
+				Vote: &tmcons.Vote{Vote: vpb},
+			}},
+			"32700a6e0802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a0608c0b89fdc0532146164645f6d6f72655f6578636c616d6174696f6e3801",
+		},
+		{
+			"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
+				HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1},
+			}},
+			"3a080801100118012001",
+		},
+		{
+			"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
+				HasVote: &tmcons.HasVote{
+					Height: math.MaxInt64, Round: math.MaxInt32,
+					Type: tmproto.PrevoteType, Index: math.MaxInt32,
+				},
+			}},
+			"3a1808ffffffffffffffff7f10ffffffff07180120ffffffff07",
+		},
+		{
+			"VoteSetMaj23", &tmcons.Message{Sum: &tmcons.Message_VoteSetMaj23{
+				VoteSetMaj23: &tmcons.VoteSetMaj23{Height: 1, Round: 1, Type: tmproto.PrevoteType, BlockID: pbBi},
+			}},
+			"425008011001180122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d",
+		},
+		{
+			"VoteSetBits", &tmcons.Message{Sum: &tmcons.Message_VoteSetBits{
+				VoteSetBits: &tmcons.VoteSetBits{Height: 1, Round: 1, Type: tmproto.PrevoteType, BlockID: pbBi, Votes: *pbBits},
+			}},
+			"4a5708011001180122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a050801120100",
+		},
 	}
 
 	for _, tc := range testCases {

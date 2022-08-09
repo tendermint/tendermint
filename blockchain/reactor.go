@@ -62,8 +62,8 @@ type Reactor struct {
 
 // NewReactor returns new reactor instance.
 func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
-	fastSync bool) *Reactor {
-
+	fastSync bool,
+) *Reactor {
 	if state.LastBlockHeight != store.Height() {
 		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
 			store.Height()))
@@ -151,7 +151,8 @@ func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 func (bcR *Reactor) AddPeer(peer p2p.Peer) {
 	msgBytes, err := EncodeMsg(&bcproto.StatusResponse{
 		Base:   bcR.store.Base(),
-		Height: bcR.store.Height()})
+		Height: bcR.store.Height(),
+	})
 	if err != nil {
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 		return
@@ -172,8 +173,8 @@ func (bcR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // respondToPeer loads a block and sends it to the requesting peer,
 // if we have it. Otherwise, we'll respond saying we don't have it.
 func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
-	src p2p.Peer) (queued bool) {
-
+	src p2p.Peer,
+) (queued bool) {
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		bl, err := block.ToProto()
@@ -253,7 +254,6 @@ func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
 func (bcR *Reactor) poolRoutine(stateSynced bool) {
-
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	defer trySyncTicker.Stop()
 
@@ -303,7 +303,7 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 
 			case <-statusUpdateTicker.C:
 				// ask for status updates
-				go bcR.BroadcastStatusRequest() // nolint: errcheck
+				go bcR.BroadcastStatusRequest() //nolint: errcheck
 
 			}
 		}

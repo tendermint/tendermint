@@ -1,4 +1,4 @@
-// nolint: gosec
+//nolint: gosec
 package main
 
 import (
@@ -27,7 +27,7 @@ func initCorpus(baseDir string) {
 
 	// create "corpus" directory
 	corpusDir := filepath.Join(baseDir, "corpus")
-	if err := os.MkdirAll(corpusDir, 0755); err != nil {
+	if err := os.MkdirAll(corpusDir, 0o755); err != nil {
 		log.Fatalf("Creating %q err: %v", corpusDir, err)
 	}
 
@@ -49,7 +49,7 @@ func initCorpus(baseDir string) {
 			log.Fatalf("can't marshal %v: %v", addr, err)
 		}
 
-		if err := ioutil.WriteFile(filename, bz, 0644); err != nil {
+		if err := ioutil.WriteFile(filename, bz, 0o644); err != nil {
 			log.Fatalf("can't write %v to %q: %v", addr, filename, err)
 		}
 

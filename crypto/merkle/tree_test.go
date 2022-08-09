@@ -44,7 +44,6 @@ func TestHashFromByteSlices(t *testing.T) {
 }
 
 func TestProof(t *testing.T) {
-
 	// Try an empty proof first
 	rootHash, proofs := ProofsFromByteSlices([][]byte{})
 	require.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", hex.EncodeToString(rootHash))
@@ -102,7 +101,6 @@ func TestProof(t *testing.T) {
 }
 
 func TestHashAlternatives(t *testing.T) {
-
 	total := 100
 
 	items := make([][]byte, total)

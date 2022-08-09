@@ -39,7 +39,6 @@ func exampleVote() *types.Vote {
 }
 
 func exampleProposal() *types.Proposal {
-
 	return &types.Proposal{
 		Type:      tmproto.SignedMsgType(1),
 		Height:    3,
@@ -57,7 +56,7 @@ func exampleProposal() *types.Proposal {
 	}
 }
 
-// nolint:lll // ignore line length for tests
+//nolint:lll // ignore line length for tests
 func TestPrivvalVectors(t *testing.T) {
 	pk := ed25519.GenPrivKeyFromSecret([]byte("it's a secret")).PubKey()
 	ppk, err := cryptoenc.PubKeyToProto(pk)

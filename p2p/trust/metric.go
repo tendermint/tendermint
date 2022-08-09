@@ -279,7 +279,6 @@ func (tm *Metric) Copy() *Metric {
 		bad:                tm.bad,
 		paused:             tm.paused,
 	}
-
 }
 
 /* Private methods */

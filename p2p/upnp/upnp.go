@@ -202,7 +202,7 @@ func localIPv4() (net.IP, error) {
 }
 
 func getServiceURL(rootURL string) (url, urnDomain string, err error) {
-	r, err := http.Get(rootURL) // nolint: gosec
+	r, err := http.Get(rootURL) //nolint: gosec
 	if err != nil {
 		return
 	}
@@ -299,7 +299,6 @@ type statusInfo struct {
 }
 
 func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
-
 	message := "<u:GetExternalIPAddress xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"</u:GetExternalIPAddress>"
 
@@ -350,7 +349,8 @@ func (n *upnpNAT) AddPortMapping(
 	externalPort,
 	internalPort int,
 	description string,
-	timeout int) (mappedExternalPort int, err error) {
+	timeout int,
+) (mappedExternalPort int, err error) {
 	// A single concatenation would break ARM compilation.
 	message := "<u:AddPortMapping xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"<NewRemoteHost></NewRemoteHost><NewExternalPort>" + strconv.Itoa(externalPort)
@@ -382,7 +382,6 @@ func (n *upnpNAT) AddPortMapping(
 }
 
 func (n *upnpNAT) DeletePortMapping(protocol string, externalPort, internalPort int) (err error) {
-
 	message := "<u:DeletePortMapping xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"<NewRemoteHost></NewRemoteHost><NewExternalPort>" + strconv.Itoa(externalPort) +
 		"</NewExternalPort><NewProtocol>" + protocol + "</NewProtocol>" +

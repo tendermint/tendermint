@@ -9,7 +9,6 @@ import (
 )
 
 func TestNodeInfoValidate(t *testing.T) {
-
 	// empty fails
 	ni := DefaultNodeInfo{}
 	assert.Error(t, ni.Validate())
@@ -33,7 +32,7 @@ func TestNodeInfoValidate(t *testing.T) {
 	}{
 		{
 			"Too Many Channels",
-			func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, // nolint: gocritic
+			func(ni *DefaultNodeInfo) { ni.Channels = append(channels, byte(maxNumChannels)) }, //nolint: gocritic
 			true,
 		},
 		{"Duplicate Channel", func(ni *DefaultNodeInfo) { ni.Channels = dupChannels }, true},
@@ -85,11 +84,9 @@ func TestNodeInfoValidate(t *testing.T) {
 			assert.NoError(t, err, tc.testName)
 		}
 	}
-
 }
 
 func TestNodeInfoCompatible(t *testing.T) {
-
 	nodeKey1 := NodeKey{PrivKey: ed25519.GenPrivKey()}
 	nodeKey2 := NodeKey{PrivKey: ed25519.GenPrivKey()}
 	name := "testing"

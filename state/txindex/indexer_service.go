@@ -31,7 +31,6 @@ func NewIndexerService(
 	blockIdxr indexer.BlockIndexer,
 	eventBus *types.EventBus,
 ) *IndexerService {
-
 	is := &IndexerService{txIdxr: txIdxr, blockIdxr: blockIdxr, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
@@ -113,7 +112,7 @@ func DeduplicateBatch(ops []*abci.TxResult, txIdxr TxIndexer) ([]*abci.TxResult,
 	result := make([]*abci.TxResult, 0, len(ops))
 
 	// keep track of successful txs in this block in order to suppress latter ones being indexed.
-	var successfulTxsInThisBlock = make(map[string]struct{})
+	successfulTxsInThisBlock := make(map[string]struct{})
 
 	for _, txResult := range ops {
 		hash := types.Tx(txResult.Tx).Hash()
@@ -128,7 +127,6 @@ func DeduplicateBatch(ops []*abci.TxResult, txIdxr TxIndexer) ([]*abci.TxResult,
 
 			// check if this tx hash is already indexed
 			old, err := txIdxr.Get(hash)
-
 			// if db op errored
 			// Not found is not an error
 			if err != nil {

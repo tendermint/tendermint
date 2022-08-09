@@ -67,7 +67,7 @@ func copyConfig(home, dir string) error {
 func dumpProfile(dir, addr, profile string, debug int) error {
 	endpoint := fmt.Sprintf("%s/debug/pprof/%s?debug=%d", addr, profile, debug)
 
-	resp, err := http.Get(endpoint) // nolint: gosec
+	resp, err := http.Get(endpoint) //nolint: gosec
 	if err != nil {
 		return fmt.Errorf("failed to query for %s profile: %w", profile, err)
 	}

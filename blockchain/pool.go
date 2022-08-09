@@ -410,6 +410,7 @@ func (pool *BlockPool) sendError(err error, peerID p2p.ID) {
 }
 
 // for debugging purposes
+//
 //nolint:unused
 func (pool *BlockPool) debug() string {
 	pool.mtx.Lock()

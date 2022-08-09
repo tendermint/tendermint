@@ -407,13 +407,15 @@ func (cli *grpcClient) OfferSnapshotSync(params types.RequestOfferSnapshot) (*ty
 }
 
 func (cli *grpcClient) LoadSnapshotChunkSync(
-	params types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
+	params types.RequestLoadSnapshotChunk,
+) (*types.ResponseLoadSnapshotChunk, error) {
 	reqres := cli.LoadSnapshotChunkAsync(params)
 	return cli.finishSyncCall(reqres).GetLoadSnapshotChunk(), cli.Error()
 }
 
 func (cli *grpcClient) ApplySnapshotChunkSync(
-	params types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
+	params types.RequestApplySnapshotChunk,
+) (*types.ResponseApplySnapshotChunk, error) {
 	reqres := cli.ApplySnapshotChunkAsync(params)
 	return cli.finishSyncCall(reqres).GetApplySnapshotChunk(), cli.Error()
 }

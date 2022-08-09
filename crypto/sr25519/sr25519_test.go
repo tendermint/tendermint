@@ -11,7 +11,6 @@ import (
 )
 
 func TestSignAndValidateSr25519(t *testing.T) {
-
 	privKey := sr25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 

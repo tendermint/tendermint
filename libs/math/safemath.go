@@ -5,9 +5,11 @@ import (
 	"math"
 )
 
-var ErrOverflowInt32 = errors.New("int32 overflow")
-var ErrOverflowUint8 = errors.New("uint8 overflow")
-var ErrOverflowInt8 = errors.New("int8 overflow")
+var (
+	ErrOverflowInt32 = errors.New("int32 overflow")
+	ErrOverflowUint8 = errors.New("uint8 overflow")
+	ErrOverflowInt8  = errors.New("int8 overflow")
+)
 
 // SafeAddInt32 adds two int32 integers
 // If there is an overflow this will panic

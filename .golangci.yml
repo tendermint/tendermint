@@ -9,12 +9,11 @@ linters:
     - errcheck
     - exportloopref
     - goconst
-    - gofmt
-    - goimports
     - revive
     - gosec
     - gosimple
     - govet
+    - gofumpt
     - ineffassign
     - misspell
     - nakedret

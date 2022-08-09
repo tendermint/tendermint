@@ -13,8 +13,10 @@ import (
 	"sync"
 )
 
-const stateFileName = "app_state.json"
-const prevStateFileName = "prev_app_state.json"
+const (
+	stateFileName     = "app_state.json"
+	prevStateFileName = "prev_app_state.json"
+)
 
 // State is the application state.
 type State struct {
@@ -82,7 +84,7 @@ func (s *State) save() error {
 	// We write the state to a separate file and move it to the destination, to
 	// make it atomic.
 	newFile := fmt.Sprintf("%v.new", s.currentFile)
-	err = ioutil.WriteFile(newFile, bz, 0644)
+	err = ioutil.WriteFile(newFile, bz, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to write state to %q: %w", s.currentFile, err)
 	}

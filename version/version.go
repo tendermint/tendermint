@@ -1,8 +1,6 @@
 package version
 
-var (
-	TMCoreSemVer = TMVersionDefault
-)
+var TMCoreSemVer = TMVersionDefault
 
 const (
 	// TMVersionDefault is the used as the fallback version of Tendermint Core

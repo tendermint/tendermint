@@ -237,7 +237,8 @@ func evidenceLogger() log.Logger {
 
 // connect N evidence reactors through N switches
 func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) ([]*evidence.Reactor,
-	[]*evidence.Pool) {
+	[]*evidence.Pool,
+) {
 	N := len(stateStores)
 
 	reactors := make([]*evidence.Reactor, N)
@@ -263,7 +264,6 @@ func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) 
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("EVIDENCE", reactors[i])
 		return s
-
 	}, p2p.Connect2Switches)
 
 	return reactors, pools
@@ -345,7 +345,7 @@ func (ps peerState) GetHeight() int64 {
 }
 
 func exampleVote(t byte) *types.Vote {
-	var stamp, err = time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
+	stamp, err := time.Parse(types.TimeFormat, "2017-12-25T03:00:01.234Z")
 	if err != nil {
 		panic(err)
 	}
@@ -367,9 +367,8 @@ func exampleVote(t byte) *types.Vote {
 	}
 }
 
-// nolint:lll //ignore line length for tests
+//nolint:lll //ignore line length for tests
 func TestEvidenceVectors(t *testing.T) {
-
 	val := &types.Validator{
 		Address:     crypto.AddressHash([]byte("validator_address")),
 		VotingPower: 10,
@@ -412,5 +411,4 @@ func TestEvidenceVectors(t *testing.T) {
 		require.Equal(t, tc.expBytes, hex.EncodeToString(bz), tc.testName)
 
 	}
-
 }

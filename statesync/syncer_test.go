@@ -427,7 +427,8 @@ func TestSyncer_applyChunks_Results(t *testing.T) {
 				connSnapshot.On("ApplySnapshotChunkSync", abci.RequestApplySnapshotChunk{
 					Index: 0, Chunk: body,
 				}).Once().Return(&abci.ResponseApplySnapshotChunk{
-					Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil)
+					Result: abci.ResponseApplySnapshotChunk_ACCEPT,
+				}, nil)
 			}
 
 			err = syncer.applyChunks(chunks)
