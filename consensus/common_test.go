@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log/term"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"path"
@@ -462,12 +463,16 @@ func loadPrivValidator(config *cfg.Config) *privval.FilePV {
 }
 
 func randState(nValidators int) (*State, []*validatorStub) {
+	return randStateWithApp(nValidators, counter.NewApplication(true))
+}
+
+func randStateWithApp(nValidators int, app abci.Application) (*State, []*validatorStub) {
 	// Get State
 	state, privVals := randGenesisState(nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newState(state, privVals[0], counter.NewApplication(true))
+	cs := newState(state, privVals[0], app)
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -678,6 +683,33 @@ func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
 		}
 		if vote.Type != voteType {
 			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
+		}
+	}
+}
+
+func ensurePrevoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrevoteType)
+}
+
+func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte, voteType tmproto.SignedMsgType) {
+	t.Helper()
+	select {
+	case <-time.After(ensureTimeout):
+		t.Fatal("Timeout expired while waiting for NewVote event")
+	case msg := <-voteCh:
+		voteEvent, ok := msg.Data().(types.EventDataVote)
+		require.True(t, ok, "expected a EventDataVote, got %T. Wrong subscription channel?",
+			msg.Data())
+
+		vote := voteEvent.Vote
+		assert.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		assert.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		assert.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
+		if hash == nil {
+			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
+		} else {
+			require.True(t, bytes.Equal(vote.BlockID.Hash, hash), "Expected prevote to be for %X, got %X", hash, vote.BlockID.Hash)
 		}
 	}
 }

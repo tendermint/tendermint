@@ -179,6 +179,16 @@ func (app *PersistentKVStoreApplication) PrepareProposal(
 	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs, req.MaxTxBytes)}
 }
 
+func (app *PersistentKVStoreApplication) ProcessProposal(
+	req types.RequestProcessProposal) types.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		if len(tx) == 0 {
+			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
+		}
+	}
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}
+}
+
 //---------------------------------------------
 // update validators
 

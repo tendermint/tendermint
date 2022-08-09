@@ -274,3 +274,8 @@ func (app *CounterApplication) PrepareProposal(
 	}
 	return abci.ResponsePrepareProposal{TxRecords: trs}
 }
+
+func (app *CounterApplication) ProcessProposal(
+	req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
+}

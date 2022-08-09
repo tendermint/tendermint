@@ -170,3 +170,13 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 
 	return resQuery
 }
+
+func (app *Application) ProcessProposal(
+	req types.RequestProcessProposal) types.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		if len(tx) == 0 {
+			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
+		}
+	}
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}
+}
