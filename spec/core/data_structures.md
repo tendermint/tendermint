@@ -422,7 +422,7 @@ func SumTruncated(bz []byte) []byte {
 | evidence  | [EvidenceParams](#evidenceparams)   | Parameters limiting the validity of evidence of Byzantine behaviour.                      | 2            |
 | validator | [ValidatorParams](#validatorparams) | Parameters limiting the types of public keys validators can use.                          | 3            |
 | version   | [VersionParams](#versionparams)         | The ABCI application version.                                                             | 4            |
-| synchrony | [SynchronyParams](#synchronyparams) | Are used to define the validity of block timestamps.                               | 5            |
+| synchrony | [SynchronyParams](#synchronyparams) | Are used to define the validity of block timestamps. These parameters are used by the [Proposed-Based TimeStamp (PBTS) algorithm](https://github.com/tendermint/tendermint/tree/master/spec/consensus/proposer-based-timestamp)                               | 5            |
 | timeout   | [TimeoutParams](#timeoutparams)     | Configure the timings of the steps of the Tendermint consensus algorithm.   | 6            |
 | ABCI      | [ABCIParams](#abciparams)           | Configuration settings for checks on transactions along with vote extension validation Interface. | 7            |
 
@@ -467,7 +467,7 @@ Hashed Params is a subset of Consensus Params, it is proto encoded and hashed in
 | Name          | Type   | Description                   | Field Number |
 |---------------|--------|-------------------------------|--------------|
 | message_delay | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Maximum duration for a proposal message to reach all validators on a network | 1            |
-| precision     | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | This sets a bound on how skewed a proposer's clock may be from any validator on the network while still producing valid proposals. | 2            |
+| precision     | [google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration) | Upper bound on how skewed a proposer's clock may be from any validator on the network while still producing valid proposals. [More details](https://github.com/tendermint/tendermint/tree/master/spec/consensus/proposer-based-timestamp)  | 2            |
 
 ### TimeoutParams
 
