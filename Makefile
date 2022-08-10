@@ -131,6 +131,20 @@ install:
 	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 .PHONY: install
 
+###############################################################################
+###                               Metrics                                   ###
+###############################################################################
+
+metrics: testdata-metrics
+	go generate -run="scripts/metricsgen" ./...
+.PHONY: metrics
+
+# By convention, the go tool ignores subdirectories of directories named
+# 'testdata'. This command invokes the generate command on the folder directly
+# to avoid this.
+testdata-metrics:
+	ls ./scripts/metricsgen/testdata | xargs -I{} go generate -v -run="scripts/metricsgen" ./scripts/metricsgen/testdata/{}
+.PHONY: testdata-metrics
 
 ###############################################################################
 ###                                Mocks                                    ###
