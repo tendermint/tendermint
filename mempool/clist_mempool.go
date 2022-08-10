@@ -561,9 +561,8 @@ func (mem *CListMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 		memTx := e.Value.(*mempoolTx)
 
 		// If this transaction is Cosmos transaction containing a `PlaceOrder` or `CancelOrder` message,
-		// don't include it in the next proposed block. Instead, remove the transaction from the mempool.
+		// don't include it in the next proposed block.
 		if mem.isClobOrderTransaction(memTx) {
-			mem.removeTx(memTx.tx, e, false)
 			continue
 		}
 
@@ -672,6 +671,15 @@ func (mem *CListMempool) recheckTxs() {
 		panic("recheckTxs is called, but the mempool is empty")
 	}
 
+	for e := mem.txs.Front(); e != nil; e = e.Next() {
+		memTx := e.Value.(*mempoolTx)
+		// If this transaction is Cosmos transaction containing a `PlaceOrder` or `CancelOrder` message,
+		// remove it from the mempool instead of rechecking.
+		if mem.isClobOrderTransaction(memTx) {
+			mem.removeTx(memTx.tx, e, false)
+		}
+	}
+
 	mem.recheckCursor = mem.txs.Front()
 	mem.recheckEnd = mem.txs.Back()
 
@@ -679,6 +687,7 @@ func (mem *CListMempool) recheckTxs() {
 	// NOTE: globalCb may be called concurrently.
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
+
 		mem.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
 			Tx:   memTx.tx,
 			Type: abci.CheckTxType_Recheck,
