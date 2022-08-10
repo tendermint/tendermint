@@ -30,8 +30,13 @@ linters:
     - nakedret
     # - nolintlint
     - prealloc
+<<<<<<< HEAD
     # - staticcheck
     - structcheck
+=======
+    - staticcheck
+    # - structcheck // to be fixed by golangci-lint
+>>>>>>> b45ac172b (linter update and formatting updates)
     - stylecheck
     # - typecheck
     - unconvert
