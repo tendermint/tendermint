@@ -132,7 +132,7 @@ type ErrSwitchAuthenticationFailure struct {
 
 func (e ErrSwitchAuthenticationFailure) Error() string {
 	return fmt.Sprintf(
-		"failed to authenticate peer. Dialed %v, but got peer with ID %s",
+		"failed to authenticate beep peer. Dialed %v, but got peer with ID %s",
 		e.Dialed,
 		e.Got,
 	)
