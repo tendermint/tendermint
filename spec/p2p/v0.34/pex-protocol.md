@@ -53,10 +53,8 @@ as a response, a `PexAddrs` message from the peer.
 This message encodes a list of peer addresses, which are added to the node's
 Address Book, having the peer that sent the PEX response as their source.
 
-> TODO: what happens to added peers? if the peers are already in the Address Book?
->
-> This should be described in the Address Book implementation, as it has
-> nothing to do with the PEX protocol.
+**TODO**: short description of what happens with a peer address added to the
+[address book](./addressbook.md).
 
 ### Misbehavior
 
@@ -87,7 +85,8 @@ peer addresses, with target size of `23%` (`getSelectionPercent`) of the
 number of entries in the address book.
 Of course, the length of the list cannot be greater than the size of the address book.
 
-> FIXME: how really random the selected list of peer addresses is?
+**TODO**: discussion on how really random this is selection is, based on the
+[address book](./addressbook.md) documentation.
 
 ### Misbehavior
 
@@ -133,7 +132,7 @@ starts a new peer discovery round.
 First, the seed node retrieves a random selection of peer addresses from its
 Address Book.
 This selection is produced in the same way as in the random selection of peer
-addresses that are [provided](#provided-addresses) to a requesting peer.
+addresses that are [provided](#providing-addresses) to a requesting peer.
 Are removed from this selection peers that the seed node has crawled recently,
 last than 2 minutes ago (`minTimeBetweenCrawls`).
 The remaining peer addresses are registered in the `crawlPeerInfos` table.
@@ -165,12 +164,48 @@ addresses of bad peers.
 
 ### Offering addresses
 
-FIXME: do seed nodes run other protocols, in addition to the PEX protocol?
+Nodes operating in seed mode handle PEX requests differently than regular
+nodes, whose operation is described [here](#providing-addresses).
 
-TODO: seed node operation when providing peer addresses
+This distinction exists because nodes dial a seed node with the main, if not
+exclusive goal of retrieving peer addresses.
+In other words, nodes do not dial a seed node because they intend to have it as
+a peer in the multiple Tendermint protocols, but because they believe that a
+seed node is a good source of addresses of nodes to which they can establish
+connections and interact in the multiple Tendermint protocols.
 
-When a PEX request is accepted from an inbound peer, a PEX reply is sent even
-it the minimum accepted period between requests is observed.
-In addition, once the PEX reply is sent, the peer is disconnected.
-The rationale here is that the peer only connected to the seed node in order to
-get new peer addresses, and not to maintain a long-term connection.
+> FIXME: do seed nodes run other protocols, in addition to the PEX protocol?
+
+So, when a seed node receives a `PexRequest` message from an inbound peer,
+it sends a `PexAddrs` message, containing a selection of peer
+addresses, back to the peer and *disconnects* from it.
+Seed nodes therefore treat inbound connections from peers as a short-term
+connections, exclusively intended to retrieve peer addresses.
+Once the requested peer addresses are sent, the connection with the peer is closed.
+
+Moreover, the selection of peer addresses provided to inbound peers by a seed
+node, although still essentially random, has a bias toward *old* addresses.
+The selection bias is defined by `biasToSelectNewPeers`, hard-coded to `30%`,
+meaning that `70%` of the peer addresses provided by a seed node are expected
+to be old addresses.
+Although this nomenclature is not clear, *old* addresses are the addresses that
+survived the most in the address book, that is, are addresses that the seed
+node believe that belong to *good* peers (more details [here](./addressbook.md)).
+
+Another distinction is on the handling of potential [misbehavior](#misbehavior-1)
+of peers requesting addresses.
+A seed node does not enforce, a priori, a minimal interval between PEX requests
+from inbound peers.
+Instead, it does not reply to more than one PEX request per peer inbound
+connection, and, as above mentioned, it disconnects from incoming peers after
+responding to them.
+If the same peer dials again to the seed node and requests peer addresses, the
+seed node will reply to this peer like it was the first time it has requested
+peer addresses.
+
+> This is more an implementation restriction than a desired behavior.
+> The `lastReceivedRequests` map stores the last time a PEX request was
+> received from a peer, and the entry relative to a peer is removed from this
+> map when the peer is disconnected.
+>
+> It is debatable whether this approach indeed prevent abuse against seed nodes.
