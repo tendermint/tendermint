@@ -354,7 +354,10 @@ message CommitInfo {
 }
 
 message ExtendedCommitInfo {
-  int32                     round = 1;
+  // The round at which the block proposer decided in the previous height.
+  int32 round = 1;
+  // List of validators' addresses in the last validator set with their voting
+  // information, including vote extensions.
   repeated ExtendedVoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
@@ -419,8 +422,6 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
-  reserved 3;  // Placeholder for tendermint_signed_extension in v0.37
-  reserved 4;  // Placeholder for app_signed_extension in v0.37
 }
 
 message ExtendedVoteInfo {
@@ -428,7 +429,6 @@ message ExtendedVoteInfo {
   bool      signed_last_block = 2;
   bytes     vote_extension    = 3;  // Reserved for future use
 }
-
 
 enum MisbehaviorType {
   UNKNOWN             = 0;
