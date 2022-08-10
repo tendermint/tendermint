@@ -10,7 +10,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -312,7 +312,7 @@ func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
 		return
 	}
 	var envelope Envelope
-	data, err := ioutil.ReadAll(response.Body)
+	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		return
 	}
@@ -374,7 +374,7 @@ func (n *upnpNAT) AddPortMapping(
 	// TODO: check response to see if the port was forwarded
 	// log.Println(message, response)
 	// JAE:
-	// body, err := ioutil.ReadAll(response.Body)
+	// body, err := io.ReadAll(response.Body)
 	// fmt.Println(string(body), err)
 	mappedExternalPort = externalPort
 	_ = response
