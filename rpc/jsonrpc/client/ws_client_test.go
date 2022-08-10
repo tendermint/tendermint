@@ -72,7 +72,7 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	defer s.Close()
 
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop() // nolint:errcheck // ignore for tests
+	defer c.Stop() //nolint:errcheck // ignore for tests
 
 	wg.Add(1)
 	go callWgDoneOnResult(t, c, &wg)
@@ -104,7 +104,7 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop() // nolint:errcheck // ignore for tests
+	defer c.Stop() //nolint:errcheck // ignore for tests
 
 	wg.Add(2)
 	go callWgDoneOnResult(t, c, &wg)
@@ -132,7 +132,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	s := httptest.NewServer(h)
 
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	defer c.Stop() // nolint:errcheck // ignore for tests
+	defer c.Stop() //nolint:errcheck // ignore for tests
 
 	go func() {
 		for {
@@ -181,7 +181,7 @@ func TestNotBlockingOnStop(t *testing.T) {
 	timeout := 2 * time.Second
 	s := httptest.NewServer(&myHandler{})
 	c := startClient(t, "//"+s.Listener.Addr().String())
-	c.Call(context.Background(), "a", make(map[string]interface{})) // nolint:errcheck // ignore for tests
+	c.Call(context.Background(), "a", make(map[string]interface{})) //nolint:errcheck // ignore for tests
 	// Let the readRoutine get around to blocking
 	time.Sleep(time.Second)
 	passCh := make(chan struct{})

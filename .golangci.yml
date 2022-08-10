@@ -31,7 +31,7 @@ linters:
     - nolintlint
     - prealloc
     - staticcheck
-    - structcheck
+    # - structcheck // to be fixed by golangci-lint
     - stylecheck
     # - typecheck
     - unconvert
@@ -60,8 +60,6 @@ linters-settings:
   #   check-shadowing: true
   revive:
     min-confidence: 0
-  maligned:
-    suggest-new: true
   misspell:
     locale: US
     ignore-words:

@@ -8,35 +8,34 @@ There are four different behaviours a reactor can report.
 
 1. bad message
 
-type badMessage struct {
-	explanation string
-}
+	type badMessage struct {
+		explanation string
+	}
 
-This message will request the peer be stopped for an error
+# This message will request the peer be stopped for an error
 
 2. message out of order
 
-type messageOutOfOrder struct {
-	explanation string
-}
+	type messageOutOfOrder struct {
+		explanation string
+	}
 
-This message will request the peer be stopped for an error
+# This message will request the peer be stopped for an error
 
 3. consesnsus Vote
 
-type consensusVote struct {
-	explanation string
-}
+	type consensusVote struct {
+		explanation string
+	}
 
-This message will request the peer be marked as good
+# This message will request the peer be marked as good
 
 4. block part
 
-type blockPart struct {
-	explanation string
-}
+	type blockPart struct {
+		explanation string
+	}
 
 This message will request the peer be marked as good
-
 */
 package behaviour

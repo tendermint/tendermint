@@ -52,7 +52,7 @@ func (rt *Routine) setLogger(logger log.Logger) {
 	rt.logger = logger
 }
 
-// nolint:unused
+//nolint:unused
 func (rt *Routine) setMetrics(metrics *Metrics) {
 	rt.metrics = metrics
 }
