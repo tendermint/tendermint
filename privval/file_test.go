@@ -3,7 +3,6 @@ package privval
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -23,9 +22,9 @@ import (
 func TestGenLoadValidator(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -41,9 +40,9 @@ func TestGenLoadValidator(t *testing.T) {
 }
 
 func TestResetValidator(t *testing.T) {
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -72,9 +71,9 @@ func TestResetValidator(t *testing.T) {
 func TestLoadOrGenValidator(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	tempKeyFilePath := tempKeyFile.Name()
@@ -159,9 +158,9 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 func TestSignVote(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -212,9 +211,9 @@ func TestSignVote(t *testing.T) {
 func TestSignProposal(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -260,9 +259,9 @@ func TestSignProposal(t *testing.T) {
 }
 
 func TestDifferByTimestamp(t *testing.T) {
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
