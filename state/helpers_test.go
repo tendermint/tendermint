@@ -237,7 +237,7 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 
 func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	app.CommitVotes = req.LastCommitInfo.Votes
-	app.Misbehavior = req.Misbehavior
+	app.Misbehavior = req.ByzantineValidators
 	return abci.ResponseBeginBlock{}
 }
 

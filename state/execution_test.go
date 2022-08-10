@@ -242,7 +242,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	assert.EqualValues(t, retainHeight, 1)
 
 	// TODO check state and mempool
-	assert.Equal(t, abciMb, app.ByzantineValidators)
+	assert.Equal(t, abciMb, app.Misbehavior)
 }
 
 func TestProcessProposal(t *testing.T) {
