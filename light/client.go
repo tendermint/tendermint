@@ -284,16 +284,16 @@ func (c *Client) restoreTrustedLightBlock() error {
 
 // if options.Height:
 //
-//  1. ahead of trustedLightBlock.Height => fetch light blocks (same height as
+//  1) ahead of trustedLightBlock.Height => fetch light blocks (same height as
 //     trustedLightBlock) from primary provider and check it's hash matches the
 //     trustedLightBlock's hash (if not, remove trustedLightBlock and all the light blocks
 //     before)
 //
-//  2. equals trustedLightBlock.Height => check options.Hash matches the
+//  2) equals trustedLightBlock.Height => check options.Hash matches the
 //     trustedLightBlock's hash (if not, remove trustedLightBlock and all the light blocks
 //     before)
 //
-//  3. behind trustedLightBlock.Height => remove all the light blocks between
+//  3) behind trustedLightBlock.Height => remove all the light blocks between
 //     options.Height and trustedLightBlock.Height, update trustedLightBlock, then
 //     check options.Hash matches the trustedLightBlock's hash (if not, remove
 //     trustedLightBlock and all the light blocks before)

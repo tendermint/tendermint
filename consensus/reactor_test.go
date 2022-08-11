@@ -689,7 +689,7 @@ func capture() {
 // Ensure basic validation of structs is functioning
 
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
-	testCases := []struct { //nolint: maligned
+	testCases := []struct {
 		expectErr              bool
 		messageRound           int32
 		messageLastCommitRound int32

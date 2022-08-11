@@ -15,7 +15,6 @@ import (
 	tmjson "github.com/tendermint/tendermint/libs/json"
 )
 
-// -------------------------------------
 const (
 	PrivKeyName = "tendermint/PrivKeySecp256k1"
 	PubKeyName  = "tendermint/PubKeySecp256k1"

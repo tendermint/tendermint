@@ -1663,8 +1663,6 @@ func (valz validatorsByPriority) Swap(i, j int) {
 	valz[i], valz[j] = valz[j], valz[i]
 }
 
-//-------------------------------------
-
 type testValsByVotingPower []testVal
 
 func (tvals testValsByVotingPower) Len() int {
@@ -1682,7 +1680,6 @@ func (tvals testValsByVotingPower) Swap(i, j int) {
 	tvals[i], tvals[j] = tvals[j], tvals[i]
 }
 
-// -------------------------------------
 // Benchmark tests
 func BenchmarkUpdates(b *testing.B) {
 	const (
