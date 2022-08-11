@@ -1,7 +1,6 @@
 package statesync
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -36,20 +35,20 @@ func TestNewChunkQueue_TempDir(t *testing.T) {
 		Hash:     []byte{7},
 		Metadata: nil,
 	}
-	dir, err := ioutil.TempDir("", "newchunkqueue")
+	dir, err := os.MkdirTemp("", "newchunkqueue")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 	queue, err := newChunkQueue(snapshot, dir)
 	require.NoError(t, err)
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	require.NoError(t, err)
 	assert.Len(t, files, 1)
 
 	err = queue.Close()
 	require.NoError(t, err)
 
-	files, err = ioutil.ReadDir(dir)
+	files, err = os.ReadDir(dir)
 	require.NoError(t, err)
 	assert.Len(t, files, 0)
 }

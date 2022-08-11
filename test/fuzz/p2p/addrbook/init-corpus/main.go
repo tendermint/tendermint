@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -49,7 +48,7 @@ func initCorpus(baseDir string) {
 			log.Fatalf("can't marshal %v: %v", addr, err)
 		}
 
-		if err := ioutil.WriteFile(filename, bz, 0644); err != nil {
+		if err := os.WriteFile(filename, bz, 0644); err != nil {
 			log.Fatalf("can't write %v to %q: %v", addr, filename, err)
 		}
 
