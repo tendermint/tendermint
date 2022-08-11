@@ -140,6 +140,7 @@ func TestFastSyncConfigValidateBasic(t *testing.T) {
 	assert.Error(t, cfg.ValidateBasic())
 }
 
+// nolint: lll
 func TestConsensusConfig_ValidateBasic(t *testing.T) {
 	testcases := map[string]struct {
 		modify    func(*ConsensusConfig)
