@@ -165,6 +165,7 @@ func TestConsensusConfig_ValidateBasic(t *testing.T) {
 		"PeerQueryMaj23SleepDuration negative": {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
 		"DoubleSignCheckHeight negative":       {func(c *ConsensusConfig) { c.DoubleSignCheckHeight = -1 }, true},
 	}
+
 	for desc, tc := range testcases {
 		tc := tc // appease linter
 		t.Run(desc, func(t *testing.T) {

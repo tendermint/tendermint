@@ -2,7 +2,7 @@ linters:
   enable:
     - asciicheck
     - bodyclose
-    - deadcode
+    # - deadcode
     - depguard
     - dogsled
     - dupl
@@ -28,18 +28,22 @@ linters:
     # - maligned
     # - misspell
     - nakedret
-    - nolintlint
+    # - nolintlint
     - prealloc
-    - staticcheck
+    # - staticcheck
     - structcheck
     - stylecheck
     # - typecheck
     - unconvert
     # - unparam
-    - unused
+    # - unused
     - varcheck
     # - whitespace
     # - wsl
+  disable:
+    - unused
+    - deadcode
+    - nolintlint
 
 issues:
   exclude-rules:

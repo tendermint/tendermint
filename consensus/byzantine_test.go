@@ -420,7 +420,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait for someone in the big partition (B) to make a block
 	<-blocksSubs[ind2].Out()
 
-	t.Log("A block has been committed. Healing partition")
+	t.Logf("A block has been committed. Healing partition")
 	p2p.Connect2Switches(switches, ind0, ind1)
 	p2p.Connect2Switches(switches, ind0, ind2)
 
@@ -446,8 +446,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	case <-done:
 	case <-tick.C:
 		for i, reactor := range reactors {
-			t.Logf("Consensus Reactor %v", i))
-			t.Logf("%v", reactor))
+			t.Logf("Consensus Reactor %v", i)
+			t.Logf("%v", reactor)
 		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}
