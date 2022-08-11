@@ -35,13 +35,13 @@ func (_m *ClientCreator) NewABCIClient() (abcicli.Client, error) {
 	return r0, r1
 }
 
-type NewClientCreatorT interface {
+type mockConstructorTestingTNewClientCreator interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewClientCreator creates a new instance of ClientCreator. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewClientCreator(t NewClientCreatorT) *ClientCreator {
+func NewClientCreator(t mockConstructorTestingTNewClientCreator) *ClientCreator {
 	mock := &ClientCreator{}
 	mock.Mock.Test(t)
 

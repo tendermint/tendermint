@@ -159,7 +159,9 @@ LOOP:
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
 		stateDB := blockDB
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
@@ -290,7 +292,7 @@ func (w *crashingWAL) Start() error { return w.next.Start() }
 func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
 
-//------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
 type testSim struct {
 	GenesisState sm.State
 	Config       *cfg.Config
@@ -693,7 +695,9 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		stateDB, genesisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
 
 	}
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	store.chain = chain
 	store.commits = commits
 
@@ -712,7 +716,9 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2)
 		stateDB1 := dbm.NewMemDB()
-		stateStore := sm.NewStore(stateDB1)
+		stateStore := sm.NewStore(stateDB1, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
 		buildAppStateFromChain(proxyApp, stateStore, genesisState, chain, nBlocks, mode)
@@ -891,7 +897,9 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
@@ -1148,7 +1156,9 @@ func stateAndStore(
 	pubKey crypto.PubKey,
 	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	state.Version.Consensus.App = appVersion
 	store := newMockBlockStore(config, state.ConsensusParams)
@@ -1225,7 +1235,9 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
 	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 
 	oldValAddr := state.Validators.Validators[0].Address
 

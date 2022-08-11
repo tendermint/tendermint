@@ -428,7 +428,9 @@ func newStateWithConfigAndBlockStore(
 
 	// Make State
 	stateDB := blockDB
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
 		panic(err)
 	}
@@ -718,7 +720,9 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	configRootDirs := make([]string, 0, nValidators)
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -756,7 +760,9 @@ func randConsensusNetWithPeers(
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)

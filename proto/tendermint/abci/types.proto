@@ -75,10 +75,10 @@ message RequestQuery {
 }
 
 message RequestBeginBlock {
-  bytes                   hash             = 1;
-  tendermint.types.Header header           = 2 [(gogoproto.nullable) = false];
-  LastCommitInfo          last_commit_info = 3 [(gogoproto.nullable) = false];
-  repeated Evidence byzantine_validators   = 4 [(gogoproto.nullable) = false];
+  bytes                   hash                 = 1;
+  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
+  LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
+  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -234,7 +234,7 @@ message ResponseDeliverTx {
 }
 
 message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable) = false];
+  repeated ValidatorUpdate validator_updates       = 1 [(gogoproto.nullable) = false];
   ConsensusParams          consensus_param_updates = 2;
   repeated Event           events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
