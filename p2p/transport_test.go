@@ -529,8 +529,8 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	}
 
 	_, err := mt.Accept(peerConfig{})
-	if err, ok := err.(ErrRejected); ok {
-		if !err.IsSelf() {
+	if e, ok := err.(ErrRejected); ok {
+		if !e.IsSelf() {
 			t.Errorf("expected to reject self, got: %v", err)
 		}
 	} else {

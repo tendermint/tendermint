@@ -691,7 +691,7 @@ func capture() {
 // Ensure basic validation of structs is functioning
 
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
-	testCases := []struct { // nolint: maligned
+	testCases := []struct {
 		expectErr              bool
 		messageRound           int32
 		messageLastCommitRound int32
@@ -730,7 +730,7 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 
 func TestNewRoundStepMessageValidateHeight(t *testing.T) {
 	initialHeight := int64(10)
-	testCases := []struct { // nolint: maligned
+	testCases := []struct { //nolint: maligned
 		expectErr              bool
 		messageLastCommitRound int32
 		messageHeight          int64
@@ -880,7 +880,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
-	testCases := []struct { // nolint: maligned
+	testCases := []struct { //nolint: maligned
 		expectErr     bool
 		messageRound  int32
 		messageIndex  int32
@@ -925,7 +925,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		},
 	}
 
-	testCases := []struct { // nolint: maligned
+	testCases := []struct { //nolint: maligned
 		expectErr      bool
 		messageRound   int32
 		messageHeight  int64

@@ -2,7 +2,7 @@ linters:
   enable:
     - asciicheck
     - bodyclose
-    - deadcode
+    # - deadcode
     - depguard
     - dogsled
     - dupl
@@ -18,15 +18,17 @@ linters:
     - ineffassign
     - misspell
     - nakedret
-    - nolintlint
+    # - nolintlint
     - prealloc
     - staticcheck
     # - structcheck // to be fixed by golangci-lint
     - stylecheck
     - typecheck
     - unconvert
+  disable:
     - unused
-    - varcheck
+    - deadcode
+    - nolintlint
 
 issues:
   exclude-rules:
