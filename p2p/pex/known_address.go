@@ -94,17 +94,16 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
 }
 
 /*
-   An address is bad if the address in question is a New address, has not been tried in the last
-   minute, and meets one of the following criteria:
+An address is bad if the address in question is a New address, has not been tried in the last
+minute, and meets one of the following criteria:
 
-   1) It claims to be from the future
-   2) It hasn't been seen in over a week
-   3) It has failed at least three times and never succeeded
-   4) It has failed ten times in the last week
+1) It claims to be from the future
+2) It hasn't been seen in over a week
+3) It has failed at least three times and never succeeded
+4) It has failed ten times in the last week
 
-   All addresses that meet these criteria are assumed to be worthless and not
-   worth keeping hold of.
-
+All addresses that meet these criteria are assumed to be worthless and not
+worth keeping hold of.
 */
 func (ka *knownAddress) isBad() bool {
 	// Is Old --> good
