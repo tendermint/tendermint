@@ -80,7 +80,7 @@ message RequestBeginBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -127,21 +127,24 @@ message RequestApplySnapshotChunk {
 }
 
 message RequestPrepareProposal {
-  bytes                   hash   = 1;
-  tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
+  // the modified transactions cannot exceed this size.
+  int64 max_tx_bytes = 1;
   // txs is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
-  repeated bytes     txs                  = 3;
-  ExtendedCommitInfo local_last_commit    = 4 [(gogoproto.nullable) = false];
-  repeated Evidence  byzantine_validators = 5 [(gogoproto.nullable) = false];
-  // the modified transactions cannot exceed this size.
-  int64 max_tx_bytes = 6;
+  repeated bytes            txs                  = 2;
+  ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
+  repeated Misbehavior      misbehavior          = 4 [(gogoproto.nullable) = false];
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // address of the public key of the validator proposing the block.
+  bytes proposer_address = 8;
 }
 
 message RequestProcessProposal {
-  repeated bytes    txs                  = 1;
-  CommitInfo        proposed_last_commit = 2 [(gogoproto.nullable) = false];
-  repeated Evidence misbehavior          = 3 [(gogoproto.nullable) = false];
+  repeated bytes       txs                  = 1;
+  CommitInfo           proposed_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior misbehavior          = 3 [(gogoproto.nullable) = false];
   // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
@@ -351,7 +354,10 @@ message CommitInfo {
 }
 
 message ExtendedCommitInfo {
-  int32                     round = 1;
+  // The round at which the block proposer decided in the previous height.
+  int32 round = 1;
+  // List of validators' addresses in the last validator set with their voting
+  // information, including vote extensions.
   repeated ExtendedVoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
@@ -416,8 +422,6 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
-  reserved 3;  // Placeholder for tendermint_signed_extension in v0.37
-  reserved 4;  // Placeholder for app_signed_extension in v0.37
 }
 
 message ExtendedVoteInfo {
@@ -426,14 +430,14 @@ message ExtendedVoteInfo {
   bytes     vote_extension    = 3;  // Reserved for future use
 }
 
-enum EvidenceType {
+enum MisbehaviorType {
   UNKNOWN             = 0;
   DUPLICATE_VOTE      = 1;
   LIGHT_CLIENT_ATTACK = 2;
 }
 
-message Evidence {
-  EvidenceType type = 1;
+message Misbehavior {
+  MisbehaviorType type = 1;
   // The offending validator
   Validator validator = 2 [(gogoproto.nullable) = false];
   // The height when the offense occurred

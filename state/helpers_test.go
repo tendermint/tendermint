@@ -224,9 +224,9 @@ func randomGenesisDoc() *types.GenesisDoc {
 type testApp struct {
 	abci.BaseApplication
 
-	CommitVotes         []abci.VoteInfo
-	ByzantineValidators []abci.Evidence
-	ValidatorUpdates    []abci.ValidatorUpdate
+	CommitVotes      []abci.VoteInfo
+	Misbehavior      []abci.Misbehavior
+	ValidatorUpdates []abci.ValidatorUpdate
 }
 
 var _ abci.Application = (*testApp)(nil)
@@ -237,7 +237,7 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 
 func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	app.CommitVotes = req.LastCommitInfo.Votes
-	app.ByzantineValidators = req.ByzantineValidators
+	app.Misbehavior = req.ByzantineValidators
 	return abci.ResponseBeginBlock{}
 }
 
