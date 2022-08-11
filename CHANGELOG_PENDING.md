@@ -31,6 +31,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [config] \#9054 Flag added to overwrite abciresponses.
+
 ### BUG FIXES
 
 [docker] \#9073 enable cross platform build using docker buildx
