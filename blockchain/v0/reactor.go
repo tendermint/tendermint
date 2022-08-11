@@ -304,7 +304,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 
 			case <-statusUpdateTicker.C:
 				// ask for status updates
-				go bcR.BroadcastStatusRequest() // nolint: errcheck
+				go bcR.BroadcastStatusRequest() //nolint: errcheck
 
 			}
 		}

@@ -105,7 +105,7 @@ func killProc(pid uint64, dir string) error {
 	// pipe STDERR output from tailing the Tendermint process to a file
 	//
 	// NOTE: This will only work on UNIX systems.
-	cmd := exec.Command("tail", "-f", fmt.Sprintf("/proc/%d/fd/2", pid)) // nolint: gosec
+	cmd := exec.Command("tail", "-f", fmt.Sprintf("/proc/%d/fd/2", pid)) //nolint: gosec
 
 	outFile, err := os.Create(filepath.Join(dir, "stacktrace.out"))
 	if err != nil {
