@@ -314,7 +314,6 @@ func TestWALMsgProto(t *testing.T) {
 	}
 }
 
-//nolint:lll //ignore line length for tests
 func TestConsMsgsVectors(t *testing.T) {
 	date := time.Date(2018, 8, 30, 12, 0, 0, 0, time.UTC)
 	psh := types.PartSetHeader{

@@ -291,7 +291,6 @@ func (w *crashingWAL) Start() error { return w.next.Start() }
 func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
 
-// ------------------------------------------------------------------------------------------
 type testSim struct {
 	GenesisState sm.State
 	Config       *cfg.Config

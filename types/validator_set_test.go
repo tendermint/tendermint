@@ -1680,7 +1680,6 @@ func (tvals testValsByVotingPower) Swap(i, j int) {
 	tvals[i], tvals[j] = tvals[j], tvals[i]
 }
 
-// -------------------------------------
 // Benchmark tests
 func BenchmarkUpdates(b *testing.B) {
 	const (

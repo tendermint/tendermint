@@ -69,7 +69,6 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
-// ----------------------------------------------
 // Environment contains objects and interfaces used by the RPC. It is expected
 // to be setup once during startup.
 type Environment struct {

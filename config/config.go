@@ -1117,11 +1117,10 @@ func TestStorageConfig() *StorageConfig {
 	}
 }
 
-// -----------------------------------------------------------------------------
 // TxIndexConfig
 // Remember that Event has the following structure:
 // type: [
-//
+//	...
 //	key: value,
 //	...
 //

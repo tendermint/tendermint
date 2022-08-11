@@ -422,7 +422,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait for someone in the big partition (B) to make a block
 	<-blocksSubs[ind2].Out()
 
-	t.Logf("A block has been committed. Healing partition")
+	t.Log("A block has been committed. Healing partition")
 	p2p.Connect2Switches(switches, ind0, ind1)
 	p2p.Connect2Switches(switches, ind0, ind2)
 
