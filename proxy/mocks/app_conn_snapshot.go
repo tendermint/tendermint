@@ -119,13 +119,13 @@ func (_m *AppConnSnapshot) OfferSnapshotSync(_a0 types.RequestOfferSnapshot) (*t
 	return r0, r1
 }
 
-type NewAppConnSnapshotT interface {
+type mockConstructorTestingTNewAppConnSnapshot interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewAppConnSnapshot creates a new instance of AppConnSnapshot. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewAppConnSnapshot(t NewAppConnSnapshotT) *AppConnSnapshot {
+func NewAppConnSnapshot(t mockConstructorTestingTNewAppConnSnapshot) *AppConnSnapshot {
 	mock := &AppConnSnapshot{}
 	mock.Mock.Test(t)
 
