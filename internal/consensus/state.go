@@ -1110,7 +1110,7 @@ func (cs *State) handleTimeout(
 		cs.enterNewRound(ctx, ti.Height, 0)
 
 	case cstypes.RoundStepNewRound:
-		cs.enterPropose(ctx, ti.Height, 0)
+		cs.enterPropose(ctx, ti.Height, ti.Round)
 
 	case cstypes.RoundStepPropose:
 		if err := cs.eventBus.PublishEventTimeoutPropose(cs.RoundStateEvent()); err != nil {

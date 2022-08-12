@@ -101,4 +101,5 @@ Special thanks to external contributors on this release:
 - [cli] \#8276 scmigrate: ensure target key is correctly renamed. (@creachadair)
 - [cli] \#8294 keymigrate: ensure block hash keys are correctly translated. (@creachadair)
 - [cli] \#8352 keymigrate: ensure transaction hash keys are correctly translated. (@creachadair)
+- [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)
 - (indexer) \#8625 Fix overriding tx index of duplicated txs.
