@@ -14,7 +14,7 @@ const (
 	echoRetryIntervalSeconds = 1
 )
 
-//go:generate mockery --case underscore --name Client
+//go:generate ../../scripts/mockery_generate.sh Client
 
 // Client defines an interface for an ABCI client.
 // All `Async` methods return a `ReqRes` object.

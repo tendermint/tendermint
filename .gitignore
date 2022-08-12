@@ -1,5 +1,6 @@
 *.bak
 *.iml
+*.log
 *.swo
 *.swp
 */.glide
@@ -50,7 +51,6 @@ proto/spec/**/*.pb.go
 *.aux
 *.bbl
 *.blg
-*.log
 *.pdf
 *.gz
 *.dvi
