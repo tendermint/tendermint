@@ -431,7 +431,7 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	}
 	evidenceLogger := logger.With("module", "evidence")
 	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardABCIResponses: config.RPC.DiscardABCIResponses,
 	}), blockStore)
 	if err != nil {
 		return nil, nil, err
@@ -717,7 +717,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardABCIResponses: config.RPC.DiscardABCIResponses,
 	})
 
 	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
