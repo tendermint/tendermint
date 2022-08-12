@@ -88,9 +88,8 @@ type ManifestNode struct {
 	// runner will wait for the network to reach at least this block height.
 	StartAt int64 `toml:"start_at"`
 
-	// FastSync specifies the fast sync mode: "" (disable), "v0", "v1", or "v2".
-	// Defaults to disabled.
-	FastSync string `toml:"fast_sync"`
+	// FastSync specifies whether to enable the fast sync protocol.
+	FastSync bool `toml:"fast_sync"`
 
 	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
 	// This defaults to v0.
@@ -124,16 +123,6 @@ type ManifestNode struct {
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
-
-	// Misbehaviors sets how a validator behaves during consensus at a
-	// certain height. Multiple misbehaviors at different heights can be used
-	//
-	// An example of misbehaviors
-	//    { 10 = "double-prevote", 20 = "double-prevote"}
-	//
-	// For more information, look at the readme in the maverick folder.
-	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
-	Misbehaviors map[string]string `toml:"misbehaviors"`
 }
 
 // Save saves the testnet manifest to a file.

@@ -29,7 +29,7 @@ type paramsChangeTestCase struct {
 func newTestApp() proxy.AppConns {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	return proxy.NewAppConns(cc)
+	return proxy.NewAppConns(cc, proxy.NopMetrics())
 }
 
 func makeAndCommitGoodBlock(

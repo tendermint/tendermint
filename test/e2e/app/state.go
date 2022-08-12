@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -52,11 +51,11 @@ func NewState(dir string, persistInterval uint64) (*State, error) {
 // load loads state from disk. It does not take out a lock, since it is called
 // during construction.
 func (s *State) load() error {
-	bz, err := ioutil.ReadFile(s.currentFile)
+	bz, err := os.ReadFile(s.currentFile)
 	if err != nil {
 		// if the current state doesn't exist then we try recover from the previous state
 		if errors.Is(err, os.ErrNotExist) {
-			bz, err = ioutil.ReadFile(s.previousFile)
+			bz, err = os.ReadFile(s.previousFile)
 			if err != nil {
 				return fmt.Errorf("failed to read both current and previous state (%q): %w",
 					s.previousFile, err)
@@ -82,7 +81,7 @@ func (s *State) save() error {
 	// We write the state to a separate file and move it to the destination, to
 	// make it atomic.
 	newFile := fmt.Sprintf("%v.new", s.currentFile)
-	err = ioutil.WriteFile(newFile, bz, 0644)
+	err = os.WriteFile(newFile, bz, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write state to %q: %w", s.currentFile, err)
 	}
@@ -160,7 +159,7 @@ func (s *State) Commit() (uint64, []byte, error) {
 }
 
 func (s *State) Rollback() error {
-	bz, err := ioutil.ReadFile(s.previousFile)
+	bz, err := os.ReadFile(s.previousFile)
 	if err != nil {
 		return fmt.Errorf("failed to read state from %q: %w", s.previousFile, err)
 	}

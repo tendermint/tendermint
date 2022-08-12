@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -30,8 +29,6 @@ import (
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/test/e2e/app"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
-	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
-	maverick "github.com/tendermint/tendermint/test/maverick/node"
 )
 
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
@@ -75,14 +72,10 @@ func run(configFile string) error {
 	case "socket", "grpc":
 		err = startApp(cfg)
 	case "builtin":
-		if len(cfg.Misbehaviors) == 0 {
-			if cfg.Mode == string(e2e.ModeLight) {
-				err = startLightClient(cfg)
-			} else {
-				err = startNode(cfg)
-			}
+		if cfg.Mode == string(e2e.ModeLight) {
+			err = startLightClient(cfg)
 		} else {
-			err = startMaverick(cfg)
+			err = startNode(cfg)
 		}
 	default:
 		err = fmt.Errorf("invalid protocol %q", cfg.Protocol)
@@ -200,43 +193,6 @@ func startLightClient(cfg *Config) error {
 	}
 
 	return nil
-}
-
-// FIXME: Temporarily disconnected maverick until it is redesigned
-// startMaverick starts a Maverick node that runs the application directly. It assumes the Tendermint
-// configuration is in $TMHOME/config/tendermint.toml.
-func startMaverick(cfg *Config) error {
-	app, err := app.NewApplication(cfg.App())
-	if err != nil {
-		return err
-	}
-
-	tmcfg, logger, nodeKey, err := setupNode()
-	if err != nil {
-		return fmt.Errorf("failed to setup config: %w", err)
-	}
-
-	misbehaviors := make(map[int64]mcs.Misbehavior, len(cfg.Misbehaviors))
-	for heightString, misbehaviorString := range cfg.Misbehaviors {
-		height, _ := strconv.ParseInt(heightString, 10, 64)
-		misbehaviors[height] = mcs.MisbehaviorList[misbehaviorString]
-	}
-
-	n, err := maverick.NewNode(tmcfg,
-		maverick.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
-		nodeKey,
-		proxy.NewLocalClientCreator(app),
-		maverick.DefaultGenesisDocProviderFunc(tmcfg),
-		maverick.DefaultDBProvider,
-		maverick.DefaultMetricsProvider(tmcfg.Instrumentation),
-		logger,
-		misbehaviors,
-	)
-	if err != nil {
-		return err
-	}
-
-	return n.Start()
 }
 
 // startSigner starts a signer server connecting to the given endpoint.

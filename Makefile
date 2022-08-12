@@ -53,6 +53,67 @@ endif
 # allow users to pass additional flags via the conventional LDFLAGS variable
 LD_FLAGS += $(LDFLAGS)
 
+# Process Docker environment varible TARGETPLATFORM 
+# in order to build binary with correspondent ARCH
+# by default will always build for linux/amd64
+TARGETPLATFORM ?= 
+GOOS ?= linux
+GOARCH ?= amd64
+GOARM ?=
+
+ifeq (linux/arm,$(findstring linux/arm,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=arm
+	GOARM=7
+endif
+
+ifeq (linux/arm/v6,$(findstring linux/arm/v6,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=arm
+	GOARM=6
+endif
+
+ifeq (linux/arm64,$(findstring linux/arm64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=arm64
+	GOARM=7
+endif
+
+ifeq (linux/386,$(findstring linux/386,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=386
+endif
+
+ifeq (linux/amd64,$(findstring linux/amd64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=amd64
+endif
+
+ifeq (linux/mips,$(findstring linux/mips,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mips
+endif
+
+ifeq (linux/mipsle,$(findstring linux/mipsle,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mipsle
+endif
+
+ifeq (linux/mips64,$(findstring linux/mips64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mips64
+endif
+
+ifeq (linux/mips64le,$(findstring linux/mips64le,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mips64le
+endif
+
+ifeq (linux/riscv64,$(findstring linux/riscv64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=riscv64
+endif
+
 all: check build test install
 .PHONY: all
 
@@ -70,14 +131,28 @@ install:
 	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 .PHONY: install
 
+###############################################################################
+###                               Metrics                                   ###
+###############################################################################
+
+metrics: testdata-metrics
+	go generate -run="scripts/metricsgen" ./...
+.PHONY: metrics
+
+# By convention, the go tool ignores subdirectories of directories named
+# 'testdata'. This command invokes the generate command on the folder directly
+# to avoid this.
+testdata-metrics:
+	ls ./scripts/metricsgen/testdata | xargs -I{} go generate -v -run="scripts/metricsgen" ./scripts/metricsgen/testdata/{}
+.PHONY: testdata-metrics
 
 ###############################################################################
 ###                                Mocks                                    ###
 ###############################################################################
 
-mockery: 
+mockery:
 	go generate -run="./scripts/mockery_generate.sh" ./...
-.PHONY: mockery 
+.PHONY: mockery
 
 ###############################################################################
 ###                                Protobuf                                 ###
@@ -228,6 +303,11 @@ sync-docs:
 	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
 .PHONY: sync-docs
 
+# Verify that important design docs have ToC entries.
+check-docs-toc:
+	@./docs/presubmit.sh
+.PHONY: check-docs-toc
+
 ###############################################################################
 ###                            Docker image                                 ###
 ###############################################################################
@@ -244,7 +324,7 @@ build-docker: build-linux
 
 # Build linux binary on other platforms
 build-linux:
-	GOOS=linux GOARCH=amd64 $(MAKE) build
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) $(MAKE) build
 .PHONY: build-linux
 
 build-docker-localnode:

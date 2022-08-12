@@ -4,14 +4,13 @@ import (
 	"fmt"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/types"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	e2e "github.com/tendermint/tendermint/test/e2e/app"
 )
 
-//go:generate mockery --case underscore --name ClientCreator
+//go:generate ../scripts/mockery_generate.sh ClientCreator
 
 // ClientCreator creates new ABCI clients.
 type ClientCreator interface {
@@ -70,14 +69,10 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 }
 
 // DefaultClientCreator returns a default ClientCreator, which will create a
-// local client if addr is one of: 'counter', 'counter_serial', 'kvstore',
+// local client if addr is one of: 'kvstore',
 // 'persistent_kvstore' or 'noop', otherwise - a remote client.
 func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
-	case "counter":
-		return NewLocalClientCreator(counter.NewApplication(false))
-	case "counter_serial":
-		return NewLocalClientCreator(counter.NewApplication(true))
 	case "kvstore":
 		return NewLocalClientCreator(kvstore.NewApplication())
 	case "persistent_kvstore":

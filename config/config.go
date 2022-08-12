@@ -897,10 +897,8 @@ func (cfg *FastSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
 	case "v0":
 		return nil
-	case "v1":
-		return nil
-	case "v2":
-		return nil
+	case "v1", "v2":
+		return fmt.Errorf("fast sync version %s has been deprecated. Please use v0 instead", cfg.Version)
 	default:
 		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
 	}

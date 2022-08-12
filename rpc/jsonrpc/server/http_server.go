@@ -53,10 +53,11 @@ func DefaultConfig() *Config {
 func Serve(listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
 	logger.Info("serve", "msg", log.NewLazySprintf("Starting RPC HTTP server on %s", listener.Addr()))
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
-		ReadTimeout:    config.ReadTimeout,
-		WriteTimeout:   config.WriteTimeout,
-		MaxHeaderBytes: config.MaxHeaderBytes,
+		Handler:           RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
+		ReadTimeout:       config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadTimeout,
+		WriteTimeout:      config.WriteTimeout,
+		MaxHeaderBytes:    config.MaxHeaderBytes,
 	}
 	err := s.Serve(listener)
 	logger.Info("RPC HTTP server stopped", "err", err)
@@ -78,10 +79,11 @@ func ServeTLS(
 	logger.Info("serve tls", "msg", log.NewLazySprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)",
 		listener.Addr(), certFile, keyFile))
 	s := &http.Server{
-		Handler:        RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
-		ReadTimeout:    config.ReadTimeout,
-		WriteTimeout:   config.WriteTimeout,
-		MaxHeaderBytes: config.MaxHeaderBytes,
+		Handler:           RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
+		ReadTimeout:       config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadTimeout,
+		WriteTimeout:      config.WriteTimeout,
+		MaxHeaderBytes:    config.MaxHeaderBytes,
 	}
 	err := s.ServeTLS(listener, certFile, keyFile)
 
