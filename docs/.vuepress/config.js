@@ -33,10 +33,8 @@ module.exports = {
           title: 'Resources',
           children: [
             {
-              // TODO(creachadair): Figure out how to make this per-branch.
-              // See: https://github.com/tendermint/tendermint/issues/7908
               title: 'RPC',
-              path: 'https://docs.tendermint.com/v0.35/rpc/',
+              path: (process.env.VUEPRESS_BASE ? process.env.VUEPRESS_BASE : '/')+'rpc/',
               static: true
             },
           ]
