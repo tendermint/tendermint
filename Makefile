@@ -297,6 +297,7 @@ build-docs:
 		mkdir -p $(DOCS_OUTPUT)/$${path_prefix} ; \
 		cp -r .vuepress/dist/* $(DOCS_OUTPUT)/$${path_prefix}/ ; \
 		cp $(DOCS_OUTPUT)/$${path_prefix}/index.html $(DOCS_OUTPUT) ; \
+		cp $(DOCS_OUTPUT)/$${path_prefix}/404.html $(DOCS_OUTPUT) ; \
 	done < versions ;
 .PHONY: build-docs
 
