@@ -247,4 +247,4 @@ keep the list of new nodes it discovers, and when you need to establish
 connection to a peer, you'll look to address book and get some addresses from
 there. There's categorization/ranking of nodes there.
 
-[1]: https://docs.tendermint.com/master/spec/reactors/consensus/proposer-selection.html
+[1]: https://docs.tendermint.com/main/spec/reactors/consensus/proposer-selection.html

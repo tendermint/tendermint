@@ -10,7 +10,7 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://godoc.org/github.com/tendermint/tendermint)
 [![Go version](https://img.shields.io/badge/go-1.13-blue.svg)](https://github.com/moovweb/gvm)
 [![Discord](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)
-[![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/main/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
 | Branch | Tests                                                                                                                                                | Coverage                                                                                                                             |
@@ -53,7 +53,7 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 ## Documentation
 
-Complete documentation can be found on the [website](https://docs.tendermint.com/master/).
+Complete documentation can be found on the [website](https://docs.tendermint.com/main/).
 
 ### Install
 
@@ -77,7 +77,7 @@ To get more active, Join the wider community at [Discord](https://discord.gg/Aze
 
 Learn more by reading the code and the
 [specifications](https://github.com/tendermint/spec) or watch the [Developer Sessions](/docs/DEV_SESSIONS.md) and read up on the
-[Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
+[Architectural Decision Records](https://github.com/tendermint/tendermint/tree/main/docs/architecture).
 
 ## Versioning
 
@@ -135,10 +135,10 @@ in [UPGRADING.md](./UPGRADING.md).
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/master/spec/).
+[Tendermint specification](https://docs.tendermint.com/main/spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
-hosted at: https://docs.tendermint.com/master/
+hosted at: https://docs.tendermint.com/main/
 
 ### Tools
 

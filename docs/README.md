@@ -23,5 +23,5 @@ To find out about the Tendermint ecosystem you can go [here](https://github.com/
 
 ## Contribute
 
-To contribute to the documentation, see [this file](https://github.com/tendermint/tendermint/blob/master/docs/DOCS_README.md) for details of the build process and
+To contribute to the documentation, see [this file](https://github.com/tendermint/tendermint/blob/main/docs/DOCS_README.md) for details of the build process and
 considerations when making changes.

@@ -87,7 +87,7 @@ Hello, Tendermint Core
 
 Tendermint Core communicates with the application through the Application
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/main/abci/types/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
 
@@ -205,7 +205,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
+specification"](https://docs.tendermint.com/main/spec/abci/apps.html#gas).
 
 For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,
@@ -324,7 +324,7 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 ```
 
 The complete specification can be found
-[here](https://docs.tendermint.com/master/spec/abci/).
+[here](https://docs.tendermint.com/main/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instances
 
@@ -436,7 +436,7 @@ This should build the binary.
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
 Tendermint Core. Please refer to [the official
-guide](https://docs.tendermint.com/master/introduction/install.html). If you're
+guide](https://docs.tendermint.com/main/introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
 
 ```sh
@@ -450,7 +450,7 @@ I[2019-07-16|18:20:36.482] Generated genesis file                       module=m
 
 Feel free to explore the generated files, which can be found at
 `/tmp/example/config` directory. Documentation on the config can be found
-[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
+[here](https://docs.tendermint.com/main/tendermint-core/configuration.html).
 
 We are ready to start our application:
 
@@ -533,4 +533,4 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 I hope everything went smoothly and your first, but hopefully not the last,
 Tendermint Core application is up and running. If not, please [open an issue on
 Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://docs.tendermint.com/master/).
+deeper, read [the docs](https://docs.tendermint.com/main/).

@@ -52,9 +52,9 @@ open ABCI connection with the application, which hosts an ABCI server.
 Shown are the request and response types sent on each connection.
 
 Most of the examples below are from [kvstore
-application](https://github.com/tendermint/tendermint/blob/master/abci/example/kvstore/kvstore.go),
+application](https://github.com/tendermint/tendermint/blob/main/abci/example/kvstore/kvstore.go),
 which is a part of the abci repo. [persistent_kvstore
-application](https://github.com/tendermint/tendermint/blob/master/abci/example/kvstore/persistent_kvstore.go)
+application](https://github.com/tendermint/tendermint/blob/main/abci/example/kvstore/persistent_kvstore.go)
 is used to show `BeginBlock`, `EndBlock` and `InitChain` example
 implementations.
 

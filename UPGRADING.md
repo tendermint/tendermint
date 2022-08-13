@@ -54,7 +54,7 @@ You will need to generate a new config if you have used a prior version of tende
 ### RPC Changes
 
 - `/validators` is now paginated (default: 30 vals per page)
-- `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/master/rpc/#/Info/block_results)
+- `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/main/rpc/#/Info/block_results)
 - Event suffix has been removed from the ID in event responses
 - IDs are now integers not `json-client-XYZ`
 
