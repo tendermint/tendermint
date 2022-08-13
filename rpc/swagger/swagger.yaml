@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: RPC client for Tendermint
   description: A REST interface for state queries, transaction generation and broadcasting.
-  version: "Master"
+  version: "v0.33"
   license:
     name: Apache 2.0
     url: https://github.com/tendermint/tendermint/blob/master/LICENSE
