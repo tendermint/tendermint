@@ -51,7 +51,7 @@ info:
 
         ws ws://localhost:26657/websocket
         > { "jsonrpc": "2.0", "method": "subscribe", "params": ["tm.event='NewBlock'"], "id": 1 }
-  version: "Master"
+  version: "v0.34"
   license:
     name: Apache 2.0
     url: https://github.com/tendermint/tendermint/blob/master/LICENSE
