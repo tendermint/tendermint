@@ -222,7 +222,6 @@ INSERT INTO `+tableTxResults+` (block_id, index, created_at, tx_hash, tx_result)
 				return fmt.Errorf("indexing transaction events: %w", err)
 			}
 			return nil
-
 		}); err != nil {
 			return err
 		}

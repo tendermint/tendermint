@@ -42,7 +42,8 @@ func newMempoolWithAppMock(cc proxy.ClientCreator, client abciclient.Client) (*C
 
 func newMempoolWithAppAndConfigMock(cc proxy.ClientCreator,
 	cfg *config.Config,
-	client abciclient.Client) (*CListMempool, cleanupFunc) {
+	client abciclient.Client,
+) (*CListMempool, cleanupFunc) {
 	appConnMem := client
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	err := appConnMem.Start()
@@ -635,7 +636,6 @@ func TestMempoolTxsBytes(t *testing.T) {
 	assert.EqualValues(t, 9, mp.SizeBytes())
 	assert.NoError(t, mp.RemoveTxByKey(types.Tx([]byte{0x06}).Key()))
 	assert.EqualValues(t, 8, mp.SizeBytes())
-
 }
 
 // This will non-deterministically catch some concurrency failures like

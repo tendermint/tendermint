@@ -180,7 +180,6 @@ func MakeSwitch(
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
-
 	nodeKey := NodeKey{
 		PrivKey: ed25519.GenPrivKey(),
 	}
@@ -303,6 +302,7 @@ func (book *AddrBookMock) HasAddress(addr *NetAddress) bool {
 	_, ok := book.Addrs[addr.String()]
 	return ok
 }
+
 func (book *AddrBookMock) RemoveAddress(addr *NetAddress) {
 	delete(book.Addrs, addr.String())
 }

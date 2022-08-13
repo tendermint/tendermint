@@ -34,6 +34,7 @@ type sha256trunc struct {
 func (h sha256trunc) Write(p []byte) (n int, err error) {
 	return h.sha256.Write(p)
 }
+
 func (h sha256trunc) Sum(b []byte) []byte {
 	shasum := h.sha256.Sum(b)
 	return shasum[:TruncatedSize]

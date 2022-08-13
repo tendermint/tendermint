@@ -46,9 +46,11 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Zero(t, vset.Size())
 	assert.Equal(t, int64(0), vset.TotalVotingPower())
 	assert.Nil(t, vset.GetProposer())
-	assert.Equal(t, []byte{0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4,
+	assert.Equal(t, []byte{
+		0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4,
 		0xc8, 0x99, 0x6f, 0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95,
-		0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55}, vset.Hash())
+		0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55,
+	}, vset.Hash())
 	// add
 	val = randValidator(vset.TotalVotingPower())
 	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
@@ -75,7 +77,6 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}))
 	_, val = vset.GetByAddress(val.Address)
 	assert.Equal(t, proposerPriority, val.ProposerPriority)
-
 }
 
 func TestValidatorSetValidateBasic(t *testing.T) {
@@ -133,7 +134,6 @@ func TestValidatorSetValidateBasic(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
-
 }
 
 func TestCopy(t *testing.T) {
@@ -479,28 +479,39 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 		times int32
 		avg   int64
 	}{
-		0: {ValidatorSet{
-			Validators: []*Validator{
-				{Address: []byte("a"), ProposerPriority: 1},
-				{Address: []byte("b"), ProposerPriority: 2},
-				{Address: []byte("c"), ProposerPriority: 3}}},
-			1, 2},
-		1: {ValidatorSet{
-			Validators: []*Validator{
-				{Address: []byte("a"), ProposerPriority: 10},
-				{Address: []byte("b"), ProposerPriority: -10},
-				{Address: []byte("c"), ProposerPriority: 1}}},
+		0: {
+			ValidatorSet{
+				Validators: []*Validator{
+					{Address: []byte("a"), ProposerPriority: 1},
+					{Address: []byte("b"), ProposerPriority: 2},
+					{Address: []byte("c"), ProposerPriority: 3},
+				},
+			},
+			1, 2,
+		},
+		1: {
+			ValidatorSet{
+				Validators: []*Validator{
+					{Address: []byte("a"), ProposerPriority: 10},
+					{Address: []byte("b"), ProposerPriority: -10},
+					{Address: []byte("c"), ProposerPriority: 1},
+				},
+			},
 			// this should average twice but the average should be 0 after the first iteration
 			// (voting power is 0 -> no changes)
 			11,
 			0, // 1 / 3
 		},
-		2: {ValidatorSet{
-			Validators: []*Validator{
-				{Address: []byte("a"), ProposerPriority: 100},
-				{Address: []byte("b"), ProposerPriority: -10},
-				{Address: []byte("c"), ProposerPriority: 1}}},
-			1, 91 / 3},
+		2: {
+			ValidatorSet{
+				Validators: []*Validator{
+					{Address: []byte("a"), ProposerPriority: 100},
+					{Address: []byte("b"), ProposerPriority: -10},
+					{Address: []byte("c"), ProposerPriority: 1},
+				},
+			},
+			1, 91 / 3,
+		},
 	}
 	for i, tc := range tcs {
 		// work on copy to have the old ProposerPriorities:
@@ -524,103 +535,125 @@ func TestAveragingInIncrementProposerPriorityWithVotingPower(t *testing.T) {
 	vals := ValidatorSet{Validators: []*Validator{
 		{Address: []byte{0}, ProposerPriority: 0, VotingPower: vp0},
 		{Address: []byte{1}, ProposerPriority: 0, VotingPower: vp1},
-		{Address: []byte{2}, ProposerPriority: 0, VotingPower: vp2}}}
+		{Address: []byte{2}, ProposerPriority: 0, VotingPower: vp2},
+	}}
 	tcs := []struct {
 		vals                  *ValidatorSet
 		wantProposerPrioritys []int64
 		times                 int32
 		wantProposer          *Validator
 	}{
-
 		0: {
 			vals.Copy(),
 			[]int64{
 				// Acumm+VotingPower-Avg:
 				0 + vp0 - total - avg, // mostest will be subtracted by total voting power (12)
 				0 + vp1,
-				0 + vp2},
+				0 + vp2,
+			},
 			1,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 		1: {
 			vals.Copy(),
 			[]int64{
 				(0 + vp0 - total) + vp0 - total - avg, // this will be mostest on 2nd iter, too
 				(0 + vp1) + vp1,
-				(0 + vp2) + vp2},
+				(0 + vp2) + vp2,
+			},
 			2,
-			vals.Validators[0]}, // increment twice -> expect average to be subtracted twice
+			vals.Validators[0],
+		}, // increment twice -> expect average to be subtracted twice
 		2: {
 			vals.Copy(),
 			[]int64{
 				0 + 3*(vp0-total) - avg, // still mostest
 				0 + 3*vp1,
-				0 + 3*vp2},
+				0 + 3*vp2,
+			},
 			3,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 		3: {
 			vals.Copy(),
 			[]int64{
 				0 + 4*(vp0-total), // still mostest
 				0 + 4*vp1,
-				0 + 4*vp2},
+				0 + 4*vp2,
+			},
 			4,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 		4: {
 			vals.Copy(),
 			[]int64{
 				0 + 4*(vp0-total) + vp0, // 4 iters was mostest
 				0 + 5*vp1 - total,       // now this val is mostest for the 1st time (hence -12==totalVotingPower)
-				0 + 5*vp2},
+				0 + 5*vp2,
+			},
 			5,
-			vals.Validators[1]},
+			vals.Validators[1],
+		},
 		5: {
 			vals.Copy(),
 			[]int64{
 				0 + 6*vp0 - 5*total, // mostest again
 				0 + 6*vp1 - total,   // mostest once up to here
-				0 + 6*vp2},
+				0 + 6*vp2,
+			},
 			6,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 		6: {
 			vals.Copy(),
 			[]int64{
 				0 + 7*vp0 - 6*total, // in 7 iters this val is mostest 6 times
 				0 + 7*vp1 - total,   // in 7 iters this val is mostest 1 time
-				0 + 7*vp2},
+				0 + 7*vp2,
+			},
 			7,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 		7: {
 			vals.Copy(),
 			[]int64{
 				0 + 8*vp0 - 7*total, // mostest again
 				0 + 8*vp1 - total,
-				0 + 8*vp2},
+				0 + 8*vp2,
+			},
 			8,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 		8: {
 			vals.Copy(),
 			[]int64{
 				0 + 9*vp0 - 7*total,
 				0 + 9*vp1 - total,
-				0 + 9*vp2 - total}, // mostest
+				0 + 9*vp2 - total,
+			}, // mostest
 			9,
-			vals.Validators[2]},
+			vals.Validators[2],
+		},
 		9: {
 			vals.Copy(),
 			[]int64{
 				0 + 10*vp0 - 8*total, // after 10 iters this is mostest again
 				0 + 10*vp1 - total,   // after 6 iters this val is "mostest" once and not in between
-				0 + 10*vp2 - total},  // in between 10 iters this val is "mostest" once
+				0 + 10*vp2 - total,
+			}, // in between 10 iters this val is "mostest" once
 			10,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 		10: {
 			vals.Copy(),
 			[]int64{
 				0 + 11*vp0 - 9*total,
-				0 + 11*vp1 - total,  // after 6 iters this val is "mostest" once and not in between
-				0 + 11*vp2 - total}, // after 10 iters this val is "mostest" once
+				0 + 11*vp1 - total, // after 6 iters this val is "mostest" once and not in between
+				0 + 11*vp2 - total,
+			}, // after 10 iters this val is "mostest" once
 			11,
-			vals.Validators[0]},
+			vals.Validators[0],
+		},
 	}
 	for i, tc := range tcs {
 		tc.vals.IncrementProposerPriority(tc.times)
@@ -705,18 +738,26 @@ func TestValidatorSet_VerifyCommit_All(t *testing.T) {
 		{"wrong block ID", chainID, makeBlockIDRandom(), vote.Height, commit, true},
 		{"wrong height", chainID, vote.BlockID, vote.Height - 1, commit, true},
 
-		{"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{}), true},
+		{
+			"wrong set size: 1 vs 0", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{}), true,
+		},
 
-		{"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.Height,
+		{
+			"wrong set size: 1 vs 2", chainID, vote.BlockID, vote.Height,
 			NewCommit(vote.Height, vote.Round, vote.BlockID,
-				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}), true},
+				[]CommitSig{vote.CommitSig(), {BlockIDFlag: BlockIDFlagAbsent}}), true,
+		},
 
-		{"insufficient voting power: got 0, needed more than 666", chainID, vote.BlockID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}), true},
+		{
+			"insufficient voting power: got 0, needed more than 666", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{{BlockIDFlag: BlockIDFlagAbsent}}), true,
+		},
 
-		{"wrong signature (#0)", chainID, vote.BlockID, vote.Height,
-			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote2.CommitSig()}), true},
+		{
+			"wrong signature (#0)", chainID, vote.BlockID, vote.Height,
+			NewCommit(vote.Height, vote.Round, vote.BlockID, []CommitSig{vote2.CommitSig()}), true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -815,7 +856,6 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 }
 
 func TestEmptySet(t *testing.T) {
-
 	var valList []*Validator
 	valSet := NewValidatorSet(valList)
 	assert.Panics(t, func() { valSet.IncrementProposerPriority(1) })
@@ -839,11 +879,9 @@ func TestEmptySet(t *testing.T) {
 
 	// Attempt delete from empty set
 	assert.Error(t, valSet.UpdateWithChangeSet(delList))
-
 }
 
 func TestUpdatesForNewValidatorSet(t *testing.T) {
-
 	v1 := newValidator([]byte("v1"), 100)
 	v2 := newValidator([]byte("v2"), 100)
 	valList := []*Validator{v1, v2}
@@ -870,7 +908,6 @@ func TestUpdatesForNewValidatorSet(t *testing.T) {
 	v3 = newValidator([]byte("v3"), 30)
 	valList = []*Validator{v1, v2, v3}
 	assert.Panics(t, func() { NewValidatorSet(valList) })
-
 }
 
 type testVal struct {
@@ -1160,19 +1197,23 @@ func TestValSetUpdatesOrderIndependenceTestsExecute(t *testing.T) {
 	}{
 		0: { // order of changes should not matter, the final validator sets should be the same
 			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 10}, {"v1", 10}},
-			[]testVal{{"v4", 44}, {"v3", 33}, {"v2", 22}, {"v1", 11}}},
+			[]testVal{{"v4", 44}, {"v3", 33}, {"v2", 22}, {"v1", 11}},
+		},
 
 		1: { // order of additions should not matter
 			[]testVal{{"v2", 20}, {"v1", 10}},
-			[]testVal{{"v3", 30}, {"v4", 40}, {"v5", 50}, {"v6", 60}}},
+			[]testVal{{"v3", 30}, {"v4", 40}, {"v5", 50}, {"v6", 60}},
+		},
 
 		2: { // order of removals should not matter
 			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
-			[]testVal{{"v1", 0}, {"v3", 0}, {"v4", 0}}},
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v4", 0}},
+		},
 
 		3: { // order of mixed operations should not matter
 			[]testVal{{"v4", 40}, {"v3", 30}, {"v2", 20}, {"v1", 10}},
-			[]testVal{{"v1", 0}, {"v3", 0}, {"v2", 22}, {"v5", 50}, {"v4", 44}}},
+			[]testVal{{"v1", 0}, {"v3", 0}, {"v2", 22}, {"v5", 50}, {"v4", 44}},
+		},
 	}
 
 	for i, tt := range valSetUpdatesOrderTests {
@@ -1217,41 +1258,50 @@ func TestValSetApplyUpdatesTestsExecute(t *testing.T) {
 		0: { // prepend
 			[]testVal{{"v4", 44}, {"v5", 55}},
 			[]testVal{{"v1", 11}},
-			[]testVal{{"v1", 11}, {"v4", 44}, {"v5", 55}}},
+			[]testVal{{"v1", 11}, {"v4", 44}, {"v5", 55}},
+		},
 		1: { // append
 			[]testVal{{"v4", 44}, {"v5", 55}},
 			[]testVal{{"v6", 66}},
-			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}},
+		},
 		2: { // insert
 			[]testVal{{"v4", 44}, {"v6", 66}},
 			[]testVal{{"v5", 55}},
-			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}},
+		},
 		3: { // insert multi
 			[]testVal{{"v4", 44}, {"v6", 66}, {"v9", 99}},
 			[]testVal{{"v5", 55}, {"v7", 77}, {"v8", 88}},
-			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}, {"v7", 77}, {"v8", 88}, {"v9", 99}}},
+			[]testVal{{"v4", 44}, {"v5", 55}, {"v6", 66}, {"v7", 77}, {"v8", 88}, {"v9", 99}},
+		},
 		// changes
 		4: { // head
 			[]testVal{{"v1", 111}, {"v2", 22}},
 			[]testVal{{"v1", 11}},
-			[]testVal{{"v1", 11}, {"v2", 22}}},
+			[]testVal{{"v1", 11}, {"v2", 22}},
+		},
 		5: { // tail
 			[]testVal{{"v1", 11}, {"v2", 222}},
 			[]testVal{{"v2", 22}},
-			[]testVal{{"v1", 11}, {"v2", 22}}},
+			[]testVal{{"v1", 11}, {"v2", 22}},
+		},
 		6: { // middle
 			[]testVal{{"v1", 11}, {"v2", 222}, {"v3", 33}},
 			[]testVal{{"v2", 22}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}},
+		},
 		7: { // multi
 			[]testVal{{"v1", 111}, {"v2", 222}, {"v3", 333}},
 			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}},
+		},
 		// additions and changes
 		8: {
 			[]testVal{{"v1", 111}, {"v2", 22}},
 			[]testVal{{"v1", 11}, {"v3", 33}, {"v4", 44}},
-			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}}},
+			[]testVal{{"v1", 11}, {"v2", 22}, {"v3", 33}, {"v4", 44}},
+		},
 	}
 
 	for i, tt := range valSetUpdatesBasicTests {
@@ -1329,7 +1379,6 @@ func randTestVSetCfg(t *testing.T, nBase, nAddMax int) testVSetCfg {
 	sort.Sort(testValsByVotingPower(cfg.expectedVals))
 
 	return cfg
-
 }
 
 func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, valsLists ...[]testVal) {
@@ -1475,28 +1524,56 @@ func TestValSetUpdateOverflowRelated(t *testing.T) {
 		{
 			name: "4 no false overflow error messages for adds, updates and deletes",
 			startVals: []testVal{
-				{"v1", MaxTotalVotingPower / 4}, {"v2", MaxTotalVotingPower / 4},
-				{"v3", MaxTotalVotingPower / 4}, {"v4", MaxTotalVotingPower / 4}},
+				{"v1", MaxTotalVotingPower / 4},
+				{"v2", MaxTotalVotingPower / 4},
+				{"v3", MaxTotalVotingPower / 4},
+				{"v4", MaxTotalVotingPower / 4},
+			},
 			deletedVals: []testVal{{"v2", 0}},
 			updatedVals: []testVal{
-				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v4", 2}},
+				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v4", 2},
+			},
 			addedVals: []testVal{{"v5", 3}},
 			expectedVals: []testVal{
-				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v5", 3}, {"v4", 2}},
+				{"v1", MaxTotalVotingPower/2 - 2}, {"v3", MaxTotalVotingPower/2 - 3}, {"v5", 3}, {"v4", 2},
+			},
 			expErr: nil,
 		},
 		{
 			name: "5 check panic on overflow is prevented: update 8 validators with power int64(math.MaxInt64)/8",
 			startVals: []testVal{
-				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
-				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
+				{"v1", 1},
+				{"v2", 1},
+				{"v3", 1},
+				{"v4", 1},
+				{"v5", 1},
+				{"v6", 1},
+				{"v7", 1},
+				{"v8", 1},
+				{"v9", 1},
+			},
 			updatedVals: []testVal{
-				{"v1", MaxTotalVotingPower}, {"v2", MaxTotalVotingPower}, {"v3", MaxTotalVotingPower},
-				{"v4", MaxTotalVotingPower}, {"v5", MaxTotalVotingPower}, {"v6", MaxTotalVotingPower},
-				{"v7", MaxTotalVotingPower}, {"v8", MaxTotalVotingPower}, {"v9", 8}},
+				{"v1", MaxTotalVotingPower},
+				{"v2", MaxTotalVotingPower},
+				{"v3", MaxTotalVotingPower},
+				{"v4", MaxTotalVotingPower},
+				{"v5", MaxTotalVotingPower},
+				{"v6", MaxTotalVotingPower},
+				{"v7", MaxTotalVotingPower},
+				{"v8", MaxTotalVotingPower},
+				{"v9", 8},
+			},
 			expectedVals: []testVal{
-				{"v1", 1}, {"v2", 1}, {"v3", 1}, {"v4", 1}, {"v5", 1},
-				{"v6", 1}, {"v7", 1}, {"v8", 1}, {"v9", 1}},
+				{"v1", 1},
+				{"v2", 1},
+				{"v3", 1},
+				{"v4", 1},
+				{"v5", 1},
+				{"v6", 1},
+				{"v7", 1},
+				{"v8", 1},
+				{"v9", 1},
+			},
 			expErr: ErrTotalVotingPowerOverflow,
 		},
 	}
@@ -1641,7 +1718,7 @@ func TestValidatorSetProtoBuf(t *testing.T) {
 	}
 }
 
-//---------------------
+// ---------------------
 // Sort validators by priority and address
 type validatorsByPriority []*Validator
 
@@ -1682,9 +1759,8 @@ func (tvals testValsByVotingPower) Swap(i, j int) {
 	tvals[i], tvals[j] = tvals[j], tvals[i]
 }
 
-//-------------------------------------
+// -------------------------------------
 // Benchmark tests
-//
 func BenchmarkUpdates(b *testing.B) {
 	const (
 		n = 100

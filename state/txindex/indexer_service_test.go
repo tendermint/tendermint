@@ -81,7 +81,7 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 }
 
 func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
-	var mockTx = types.Tx("MOCK_TX_HASH")
+	mockTx := types.Tx("MOCK_TX_HASH")
 
 	testCases := []struct {
 		name    string
@@ -89,7 +89,8 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 		tx2     abci.TxResult
 		expSkip bool // do we expect the second tx to be skipped by tx indexer
 	}{
-		{"skip, previously successful",
+		{
+			"skip, previously successful",
 			abci.TxResult{
 				Height: 1,
 				Index:  0,
@@ -108,7 +109,8 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 			},
 			true,
 		},
-		{"not skip, previously unsuccessful",
+		{
+			"not skip, previously unsuccessful",
 			abci.TxResult{
 				Height: 1,
 				Index:  0,
@@ -127,7 +129,8 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 			},
 			false,
 		},
-		{"not skip, both successful",
+		{
+			"not skip, both successful",
 			abci.TxResult{
 				Height: 1,
 				Index:  0,
@@ -146,7 +149,8 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 			},
 			false,
 		},
-		{"not skip, both unsuccessful",
+		{
+			"not skip, both unsuccessful",
 			abci.TxResult{
 				Height: 1,
 				Index:  0,
@@ -165,7 +169,8 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 			},
 			false,
 		},
-		{"skip, same block, previously successful",
+		{
+			"skip, same block, previously successful",
 			abci.TxResult{
 				Height: 1,
 				Index:  0,
@@ -184,7 +189,8 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 			},
 			true,
 		},
-		{"not skip, same block, previously unsuccessful",
+		{
+			"not skip, same block, previously unsuccessful",
 			abci.TxResult{
 				Height: 1,
 				Index:  0,

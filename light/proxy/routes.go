@@ -259,8 +259,8 @@ type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string,
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
 	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes,
-		height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
-
+		height int64, prove bool,
+	) (*ctypes.ResultABCIQuery, error) {
 		return c.ABCIQueryWithOptions(ctx.Context(), path, data, rpcclient.ABCIQueryOptions{
 			Height: height,
 			Prove:  prove,

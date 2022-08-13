@@ -302,7 +302,6 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 
 	_, err = c.Update(ctx, bTime.Add(time.Duration(forgedHeight)*time.Minute))
 	assert.NoError(t, err)
-
 }
 
 // 1. Different nodes therefore a divergent header is produced.

@@ -188,7 +188,6 @@ func getMockEndpoints(
 	addr string,
 	socketDialer SocketDialer,
 ) (*SignerListenerEndpoint, *SignerDialerEndpoint) {
-
 	var (
 		logger           = log.TestingLogger()
 		endpointIsOpenCh = make(chan struct{})

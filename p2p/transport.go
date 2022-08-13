@@ -158,8 +158,10 @@ type MultiplexTransport struct {
 }
 
 // Test multiplexTransport for interface completeness.
-var _ Transport = (*MultiplexTransport)(nil)
-var _ transportLifecycle = (*MultiplexTransport)(nil)
+var (
+	_ Transport          = (*MultiplexTransport)(nil)
+	_ transportLifecycle = (*MultiplexTransport)(nil)
+)
 
 // NewMultiplexTransport returns a tcp connected multiplexed peer.
 func NewMultiplexTransport(
@@ -391,7 +393,6 @@ func (mt *MultiplexTransport) filterConn(c net.Conn) (err error) {
 		case <-time.After(mt.filterTimeout):
 			return ErrFilterTimeout{}
 		}
-
 	}
 
 	mt.conns.Set(c, ips)
@@ -494,7 +495,6 @@ func (mt *MultiplexTransport) wrapPeer(
 	cfg peerConfig,
 	socketAddr *NetAddress,
 ) Peer {
-
 	persistent := false
 	if cfg.isPersistent != nil {
 		if cfg.outbound {

@@ -155,8 +155,10 @@ func TestWriter(t *testing.T) {
 	}
 }
 
-const maxDeviationForDuration = 50 * time.Millisecond
-const maxDeviationForRate int64 = 50
+const (
+	maxDeviationForDuration       = 50 * time.Millisecond
+	maxDeviationForRate     int64 = 50
+)
 
 // statusesAreEqual returns true if s1 is equal to s2. Equality here means
 // general equality of fields except for the duration and rates, which can

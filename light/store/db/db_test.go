@@ -70,7 +70,6 @@ func Test_SaveLightBlock(t *testing.T) {
 	h, err = dbStore.LightBlock(1)
 	require.Error(t, err)
 	assert.Nil(t, h)
-
 }
 
 func Test_LightBlockBefore(t *testing.T) {

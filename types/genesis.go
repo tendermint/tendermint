@@ -52,7 +52,7 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 	if err != nil {
 		return err
 	}
-	return tmos.WriteFile(file, genDocBytes, 0644)
+	return tmos.WriteFile(file, genDocBytes, 0o644)
 }
 
 // ValidatorHash returns the hash of the validator set contained in the GenesisDoc

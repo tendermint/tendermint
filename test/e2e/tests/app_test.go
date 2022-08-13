@@ -92,6 +92,5 @@ func TestApp_Tx(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, key, string(abciResp.Response.Key))
 		assert.Equal(t, value, string(abciResp.Response.Value))
-
 	})
 }

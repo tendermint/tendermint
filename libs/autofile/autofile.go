@@ -35,7 +35,7 @@ if err != nil {
 
 const (
 	autoFileClosePeriod = 1000 * time.Millisecond
-	autoFilePerms       = os.FileMode(0600)
+	autoFilePerms       = os.FileMode(0o600)
 )
 
 // AutoFile automatically closes and re-opens file for writing. The file is

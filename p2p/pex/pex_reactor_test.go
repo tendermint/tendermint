@@ -19,9 +19,7 @@ import (
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
-var (
-	cfg *config.P2PConfig
-)
+var cfg *config.P2PConfig
 
 func init() {
 	cfg = config.DefaultP2PConfig()
@@ -58,15 +56,15 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 }
 
 // --- FAIL: TestPEXReactorRunning (11.10s)
-// 				pex_reactor_test.go:411: expected all switches to be connected to at
-// 				least one peer (switches: 0 => {outbound: 1, inbound: 0}, 1 =>
-// 				{outbound: 0, inbound: 1}, 2 => {outbound: 0, inbound: 0}, )
+//
+//	pex_reactor_test.go:411: expected all switches to be connected to at
+//	least one peer (switches: 0 => {outbound: 1, inbound: 0}, 1 =>
+//	{outbound: 0, inbound: 1}, 2 => {outbound: 0, inbound: 0}, )
 //
 // EXPLANATION: peers are getting rejected because in switch#addPeer we check
 // if any peer (who we already connected to) has the same IP. Even though local
 // peers have different IP addresses, they all have the same underlying remote
 // IP: 127.0.0.1.
-//
 func TestPEXReactorRunning(t *testing.T) {
 	N := 3
 	switches := make([]*p2p.Switch, N)
@@ -226,8 +224,10 @@ func TestCheckSeeds(t *testing.T) {
 
 	// 4. test create peer with all seeds having unresolvable DNS fails
 	badPeerConfig := &ReactorConfig{
-		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
-			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657"},
+		Seeds: []string{
+			"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
+			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657",
+		},
 	}
 	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
 	require.Error(t, peerSwitch.Start())
@@ -235,9 +235,11 @@ func TestCheckSeeds(t *testing.T) {
 
 	// 5. test create peer with one good seed address succeeds
 	badPeerConfig = &ReactorConfig{
-		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
+		Seeds: []string{
+			"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
 			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657",
-			seed.NetAddress().String()},
+			seed.NetAddress().String(),
+		},
 	}
 	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
 	require.Nil(t, peerSwitch.Start())
@@ -676,7 +678,6 @@ func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
 }
 
 func TestPexVectors(t *testing.T) {
-
 	addr := tmp2p.NetAddress{
 		ID:   "1",
 		IP:   "127.0.0.1",

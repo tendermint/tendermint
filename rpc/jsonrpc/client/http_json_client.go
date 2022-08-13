@@ -136,8 +136,10 @@ var _ HTTPClient = (*Client)(nil)
 
 // Both Client and RequestBatch can facilitate calls to the JSON
 // RPC endpoint.
-var _ Caller = (*Client)(nil)
-var _ Caller = (*RequestBatch)(nil)
+var (
+	_ Caller = (*Client)(nil)
+	_ Caller = (*RequestBatch)(nil)
+)
 
 // New returns a Client pointed at the given address.
 // An error is returned on invalid remote. The function panics when remote is nil.

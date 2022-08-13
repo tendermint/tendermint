@@ -268,18 +268,23 @@ func BenchmarkWalDecode512B(b *testing.B) {
 func BenchmarkWalDecode10KB(b *testing.B) {
 	benchmarkWalDecode(b, 10*1024)
 }
+
 func BenchmarkWalDecode100KB(b *testing.B) {
 	benchmarkWalDecode(b, 100*1024)
 }
+
 func BenchmarkWalDecode1MB(b *testing.B) {
 	benchmarkWalDecode(b, 1024*1024)
 }
+
 func BenchmarkWalDecode10MB(b *testing.B) {
 	benchmarkWalDecode(b, 10*1024*1024)
 }
+
 func BenchmarkWalDecode100MB(b *testing.B) {
 	benchmarkWalDecode(b, 100*1024*1024)
 }
+
 func BenchmarkWalDecode1GB(b *testing.B) {
 	benchmarkWalDecode(b, 1024*1024*1024)
 }

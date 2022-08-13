@@ -1,8 +1,7 @@
 package query
 
 // Empty query matches any set of events.
-type Empty struct {
-}
+type Empty struct{}
 
 // Matches always returns true.
 func (Empty) Matches(tags map[string][]string) (bool, error) {

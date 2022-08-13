@@ -26,7 +26,6 @@ func init() {
 	pexR.SetLogger(log.NewNopLogger())
 	peer := newFuzzPeer()
 	pexR.AddPeer(peer)
-
 }
 
 func Fuzz(data []byte) int {
@@ -55,18 +54,20 @@ func newFuzzPeer() *fuzzPeer {
 	return fp
 }
 
-var privKey = ed25519.GenPrivKey()
-var nodeID = p2p.PubKeyToID(privKey.PubKey())
-var defaultNodeInfo = p2p.DefaultNodeInfo{
-	ProtocolVersion: p2p.NewProtocolVersion(
-		version.P2PProtocol,
-		version.BlockProtocol,
-		0,
-	),
-	DefaultNodeID: nodeID,
-	ListenAddr:    "0.0.0.0:98992",
-	Moniker:       "foo1",
-}
+var (
+	privKey         = ed25519.GenPrivKey()
+	nodeID          = p2p.PubKeyToID(privKey.PubKey())
+	defaultNodeInfo = p2p.DefaultNodeInfo{
+		ProtocolVersion: p2p.NewProtocolVersion(
+			version.P2PProtocol,
+			version.BlockProtocol,
+			0,
+		),
+		DefaultNodeID: nodeID,
+		ListenAddr:    "0.0.0.0:98992",
+		Moniker:       "foo1",
+	}
+)
 
 func (fp *fuzzPeer) FlushStop()       {}
 func (fp *fuzzPeer) ID() p2p.ID       { return nodeID }

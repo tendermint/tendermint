@@ -20,7 +20,7 @@ func initCorpus(baseDir string) {
 	log.SetFlags(0)
 
 	corpusDir := filepath.Join(baseDir, "corpus")
-	if err := os.MkdirAll(corpusDir, 0755); err != nil {
+	if err := os.MkdirAll(corpusDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
 
@@ -38,7 +38,7 @@ func initCorpus(baseDir string) {
 	for i, datum := range data {
 		filename := filepath.Join(corpusDir, fmt.Sprintf("%d", i))
 
-		if err := os.WriteFile(filename, []byte(datum), 0644); err != nil {
+		if err := os.WriteFile(filename, []byte(datum), 0o644); err != nil {
 			log.Fatalf("can't write %v to %q: %v", datum, filename, err)
 		}
 

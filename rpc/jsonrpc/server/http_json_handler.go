@@ -128,7 +128,6 @@ func mapParamsToArgs(
 	params map[string]json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
-
 	values := make([]reflect.Value, len(rpcFunc.argNames))
 	for i, argName := range rpcFunc.argNames {
 		argType := rpcFunc.args[i+argsOffset]
@@ -153,7 +152,6 @@ func arrayParamsToArgs(
 	params []json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
-
 	if len(rpcFunc.argNames) != len(params) {
 		return nil, fmt.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
@@ -176,8 +174,9 @@ func arrayParamsToArgs(
 // array.
 //
 // Example:
-//   rpcFunc.args = [rpctypes.Context string]
-//   rpcFunc.argNames = ["arg"]
+//
+//	rpcFunc.args = [rpctypes.Context string]
+//	rpcFunc.argNames = ["arg"]
 func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte) ([]reflect.Value, error) {
 	const argsOffset = 1
 

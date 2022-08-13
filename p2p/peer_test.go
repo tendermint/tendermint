@@ -117,7 +117,6 @@ func testOutboundPeerConn(
 	persistent bool,
 	ourNodePrivKey crypto.PrivKey,
 ) (peerConn, error) {
-
 	var pc peerConn
 	conn, err := testDial(addr, config)
 	if err != nil {

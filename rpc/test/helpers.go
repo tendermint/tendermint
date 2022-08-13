@@ -29,11 +29,13 @@ type Options struct {
 	recreateConfig bool
 }
 
-var globalConfig *cfg.Config
-var defaultOptions = Options{
-	suppressStdout: false,
-	recreateConfig: false,
-}
+var (
+	globalConfig   *cfg.Config
+	defaultOptions = Options{
+		suppressStdout: false,
+		recreateConfig: false,
+	}
+)
 
 func waitForRPC() {
 	laddr := GetConfig().RPC.ListenAddress

@@ -9,10 +9,8 @@ import (
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
-var (
-	// cache caches struct info.
-	cache = newStructInfoCache()
-)
+// cache caches struct info.
+var cache = newStructInfoCache()
 
 // structCache is a cache of struct info.
 type structInfoCache struct {
