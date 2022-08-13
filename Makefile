@@ -285,13 +285,15 @@ DESTINATION = ./index.html.md
 ###                           Documentation                                 ###
 ###############################################################################
 
+DOCS_OUTPUT?=/tmp/tendermint-core-docs
+
 build-docs:
 	@cd docs && \
 	while read -r branch path_prefix; do \
 		(git checkout $${branch} && npm ci && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
-		mkdir -p ~/output/$${path_prefix} ; \
-		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
-		cp ~/output/$${path_prefix}/index.html ~/output ; \
+		mkdir -p $(DOCS_OUTPUT)/$${path_prefix} ; \
+		cp -r .vuepress/dist/* $(DOCS_OUTPUT)/$${path_prefix}/ ; \
+		cp $(DOCS_OUTPUT)/$${path_prefix}/index.html $(DOCS_OUTPUT) ; \
 	done < versions ;
 .PHONY: build-docs
 
