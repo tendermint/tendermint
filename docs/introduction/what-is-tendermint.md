@@ -188,7 +188,7 @@ core to the application. The application replies with corresponding
 response messages.
 
 The messages are specified here: [ABCI Message
-Types](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types).
+Types](https://github.com/tendermint/tendermint/blob/main/abci/README.md#message-types).
 
 The **DeliverTx** message is the work horse of the application. Each
 transaction in the blockchain is delivered with this message. The

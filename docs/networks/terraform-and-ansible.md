@@ -14,7 +14,7 @@ testnets on those servers.
 ## Install
 
 NOTE: see the [integration bash
-script](https://github.com/tendermint/tendermint/blob/master/networks/remote/integration.sh)
+script](https://github.com/tendermint/tendermint/blob/main/networks/remote/integration.sh)
 that can be run on a fresh DO droplet and will automatically spin up a 4
 node testnet. The script more or less does everything described below.
 
