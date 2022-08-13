@@ -39,7 +39,7 @@ tendermint testnet --help
 
 The `genesis.json` file in `$TMHOME/config/` defines the initial
 TendermintCore state upon genesis of the blockchain ([see
-definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.go)).
+definition](https://github.com/tendermint/tendermint/blob/main/types/genesis.go)).
 
 #### Fields
 
@@ -183,7 +183,7 @@ endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
 
-> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
+> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/main/rpc/)
 
 ### Formatting
 
