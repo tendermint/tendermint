@@ -12,6 +12,8 @@ vendor
 .vagrant
 test/p2p/data/
 test/logs
+test/fuzz
+test/e2e
 coverage.txt
 docs/_build
 docs/dist
