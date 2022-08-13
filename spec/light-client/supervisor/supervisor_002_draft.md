@@ -17,7 +17,7 @@ type LCInitData struct {
 
 where only one of the components must be provided. `GenesisDoc` is
 defined in the [Tendermint
-Types](https://github.com/tendermint/tendermint/blob/master/types/genesis.go).
+Types](https://github.com/tendermint/tendermint/blob/main/types/genesis.go).
 
 
 ### Initialization
