@@ -4,7 +4,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -39,7 +38,7 @@ func initCorpus(baseDir string) {
 	for i, datum := range data {
 		filename := filepath.Join(corpusDir, fmt.Sprintf("%d", i))
 
-		if err := ioutil.WriteFile(filename, []byte(datum), 0644); err != nil {
+		if err := os.WriteFile(filename, []byte(datum), 0644); err != nil {
 			log.Fatalf("can't write %v to %q: %v", datum, filename, err)
 		}
 

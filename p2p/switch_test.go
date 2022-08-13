@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -400,7 +400,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 		resp, err := http.Get(s.URL)
 		require.NoError(t, err)
 		defer resp.Body.Close()
-		buf, _ := ioutil.ReadAll(resp.Body)
+		buf, _ := io.ReadAll(resp.Body)
 		return string(buf)
 	}
 
