@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -168,5 +167,5 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return ioutil.WriteFile(cfile, []byte(data), 0600)
+	return os.WriteFile(cfile, []byte(data), 0600)
 }
