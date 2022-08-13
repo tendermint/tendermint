@@ -15,7 +15,7 @@ and gas cost).
 Operators can enable the priority mempool by setting `mempool.version` to
 `"v1"` in the `config.toml`. For more technical details about the priority
 mempool, see [ADR 067: Mempool
-Refactor](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-067-mempool-refactor.md).
+Refactor](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-067-mempool-refactor.md).
 
 ## v0.34.0
 
@@ -49,7 +49,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   Applications should be able to handle these evidence types
   (i.e., through slashing or other accountability measures).
 
-* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/crypto/keys.proto#L13-L15)
+* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/crypto/keys.proto#L13-L15)
   (used in ABCI as part of `ValidatorUpdate`) now uses a `oneof` protobuf type.
   Note that since Tendermint only supports ed25519 validator keys, there's only one
   option in the `oneof`.  For more, see "Protocol Buffers," below.
