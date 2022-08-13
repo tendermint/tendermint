@@ -300,6 +300,14 @@ build-docs:
 	done < versions ;
 .PHONY: build-docs
 
+# Build and serve the local version of the docs on the current branch from
+# http://0.0.0.0:8080
+serve-docs:
+	@cd docs && \
+		npm ci && \
+		npm run serve
+.PHONY: serve-docs
+
 sync-docs:
 	cd ~/output && \
 	echo "role_arn = ${DEPLOYMENT_ROLE_ARN}" >> /root/.aws/config ; \
