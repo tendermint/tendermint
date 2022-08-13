@@ -55,7 +55,7 @@ to notify you of vulnerabilities and fixes in Tendermint Core. You can subscribe
 
 ## Documentation
 
-Complete documentation can be found on the [website](https://docs.tendermint.com/master/).
+Complete documentation can be found on the [website](https://docs.tendermint.com/main/).
 
 ### Install
 
@@ -137,10 +137,10 @@ in [UPGRADING.md](./UPGRADING.md).
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/master/spec/).
+[Tendermint specification](https://docs.tendermint.com/main/spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
-hosted at: <https://docs.tendermint.com/master/>
+hosted at: <https://docs.tendermint.com/main/>
 
 ### Tools
 
