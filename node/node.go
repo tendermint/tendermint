@@ -128,11 +128,11 @@ type Option func(*Node)
 // WARNING: using any name from the below list of the existing reactors will
 // result in replacing it with the custom one.
 //
-//  - MEMPOOL
-//  - BLOCKCHAIN
-//  - CONSENSUS
-//  - EVIDENCE
-//  - PEX
+//   - MEMPOOL
+//   - BLOCKCHAIN
+//   - CONSENSUS
+//   - EVIDENCE
+//   - PEX
 func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	return func(n *Node) {
 		for name, reactor := range reactors {

@@ -17,7 +17,7 @@ for you, so you can just build nice applications.
 We design for clients who have no strong trust relationship with any Tendermint
 node, just the blockchain and validator set as a whole.
 
-SignedHeader
+# SignedHeader
 
 SignedHeader is a block header along with a commit -- enough validator
 precommit-vote signatures to prove its validity (> 2/3 of the voting power)
@@ -42,7 +42,7 @@ The FullCommit is also declared in this package as a convenience structure,
 which includes the SignedHeader along with the full current and next
 ValidatorSets.
 
-Verifier
+# Verifier
 
 A Verifier validates a new SignedHeader given the currently known state. There
 are two different types of Verifiers provided.
@@ -56,29 +56,29 @@ greater).
 DynamicVerifier - this Verifier implements an auto-update and persistence
 strategy to verify any SignedHeader of the blockchain.
 
-Provider and PersistentProvider
+# Provider and PersistentProvider
 
 A Provider allows us to store and retrieve the FullCommits.
 
-    type Provider interface {
-        // LatestFullCommit returns the latest commit with
-        // minHeight <= height <= maxHeight.
-        // If maxHeight is zero, returns the latest where
-        // minHeight <= height.
-        LatestFullCommit(chainID string, minHeight, maxHeight int64) (FullCommit, error)
-    }
+	type Provider interface {
+	    // LatestFullCommit returns the latest commit with
+	    // minHeight <= height <= maxHeight.
+	    // If maxHeight is zero, returns the latest where
+	    // minHeight <= height.
+	    LatestFullCommit(chainID string, minHeight, maxHeight int64) (FullCommit, error)
+	}
 
 * client.NewHTTPProvider - query Tendermint rpc.
 
 A PersistentProvider is a Provider that also allows for saving state.  This is
 used by the DynamicVerifier for persistence.
 
-    type PersistentProvider interface {
-        Provider
+	type PersistentProvider interface {
+	    Provider
 
-        // SaveFullCommit saves a FullCommit (without verification).
-        SaveFullCommit(fc FullCommit) error
-    }
+	    // SaveFullCommit saves a FullCommit (without verification).
+	    SaveFullCommit(fc FullCommit) error
+	}
 
 * DBProvider - persistence provider for use with any libs/DB.
 
@@ -89,8 +89,7 @@ getting new data (Source), and NewMultiProvider(NewDBProvider("label",
 dbm.NewMemDB()), NewDBProvider("label", db.NewFileDB(...))) to store confirmed
 full commits (Trusted)
 
-
-How We Track Validators
+# How We Track Validators
 
 Unless you want to blindly trust the node you talk with, you need to trace
 every response back to a hash in a block header and validate the commit
@@ -128,6 +127,5 @@ duration.  If the DynamicVerifier hasn't been updated in a while, you should
 manually verify the block headers using other sources.
 
 TODO: Update the software to handle cases around the unbonding period.
-
 */
 package lite
