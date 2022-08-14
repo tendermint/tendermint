@@ -61,7 +61,7 @@ func checkProvider(t *testing.T, p PersistentProvider, chainID, app string) {
 	}
 
 	// Check that provider is initially empty.
-	fc, err := p.LatestFullCommit(chainID, 1, 1<<63-1)
+	_, err := p.LatestFullCommit(chainID, 1, 1<<63-1)
 	require.NotNil(err)
 	assert.True(lerr.IsErrCommitNotFound(err))
 
@@ -78,7 +78,7 @@ func checkProvider(t *testing.T, p PersistentProvider, chainID, app string) {
 	}
 
 	// Make sure we get the last hash if we overstep.
-	fc, err = p.LatestFullCommit(chainID, 1, 5000)
+	fc, err := p.LatestFullCommit(chainID, 1, 5000)
 	if assert.Nil(err) {
 		assert.Equal(fcz[count-1].Height(), fc.Height())
 		assert.Equal(fcz[count-1], fc)
