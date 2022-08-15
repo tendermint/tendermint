@@ -1,19 +1,41 @@
 ---------------------- MODULE MC_n4_f2_amnesia -------------------------------
 EXTENDS Sequences
 
-CONSTANT Proposer \* the proposer function from 0..NRounds to 1..N
+CONSTANT 
+  \* @type: ROUND -> PROCESS;
+  Proposer
 
 \* the variables declared in TendermintAcc3
 VARIABLES
-  round, step, decision, lockedValue, lockedRound, validValue, validRound,
-  msgsPropose, msgsPrevote, msgsPrecommit, evidence, action
+  \* @type: PROCESS -> ROUND;
+  round,  
+  \* @type: PROCESS -> STEP;
+  step,   
+  \* @type: PROCESS -> VALUE;
+  decision,
+  \* @type: PROCESS -> VALUE;
+  lockedValue, 
+  \* @type: PROCESS -> ROUND;
+  lockedRound, 
+  \* @type: PROCESS -> VALUE;
+  validValue,  
+  \* @type: PROCESS -> ROUND;
+  validRound,   
+  \* @type: ROUND -> Set(PROPMESSAGE);
+  msgsPropose, 
+  \* @type: ROUND -> Set(PREMESSAGE);
+  msgsPrevote, 
+  \* @type: ROUND -> Set(PREMESSAGE);
+  msgsPrecommit, 
+  \* @type: Set(MESSAGE);
+  evidence, 
+  \* @type: ACTION;
+  action 
 
 \* the variable declared in TendermintAccTrace3
 VARIABLE
+  \* @type: TRACE;
   toReplay
-
-\* old apalache annotations, fix with the new release
-a <: b == a  
 
 INSTANCE TendermintAccTrace_004_draft WITH
   Corr <- {"c1", "c2"},
@@ -31,7 +53,7 @@ INSTANCE TendermintAccTrace_004_draft WITH
     "UponProposalInPropose",
     "UponProposalInPrevoteOrCommitAndPrevote",
     "UponProposalInPrecommitNoDecision"
-  >> <: Seq(STRING)
+  >>
 
 \* run Apalache with --cinit=ConstInit
 ConstInit == \* the proposer is arbitrary -- works for safety

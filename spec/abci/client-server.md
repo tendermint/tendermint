@@ -66,25 +66,28 @@ Note the length-prefixing used in the socket implementation (TSP) does not apply
 
 ### TSP
 
-Tendermint Socket Protocol is an asynchronous, raw socket server which provides ordered message passing over unix or tcp.
-Messages are serialized using Protobuf3 and length-prefixed with a [signed Varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#signed-integers)
+Tendermint Socket Protocol is an asynchronous, raw socket server which provides
+ordered message passing over unix or tcp. Messages are serialized using
+Protobuf3 and length-prefixed with an [unsigned
+varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#varints)
 
-If GRPC is not available in your language, or you require higher
-performance, or otherwise enjoy programming, you may implement your own
-ABCI server using the Tendermint Socket Protocol. The first step is still to auto-generate the relevant data
-types and codec in your language using `protoc`. In addition to being proto3 encoded, messages coming over
-the socket are length-prefixed to facilitate use as a streaming protocol. proto3 doesn't have an
-official length-prefix standard, so we use our own. The first byte in
-the prefix represents the length of the Big Endian encoded length. The
-remaining bytes in the prefix are the Big Endian encoded length.
+If GRPC is not available in your language, or you require higher performance, or
+otherwise enjoy programming, you may implement your own ABCI server using the
+Tendermint Socket Protocol. The first step is still to auto-generate the
+relevant data types and codec in your language using `protoc`. In addition to
+being proto3 encoded, messages coming over the socket are length-prefixed to
+facilitate use as a streaming protocol. proto3 doesn't have an official
+length-prefix standard, so we use our own. The first byte in the prefix
+represents the length of the Big Endian encoded length. The remaining bytes in
+the prefix are the Big Endian encoded length.
 
-For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
-bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
-encoded ABCI message is 65535 bytes long, the length-prefixed message
-would be like 0x02FFFF....
+For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4 bytes), the
+length-prefixed message is 0x0104DEADBEEF. If the proto3 encoded ABCI message is
+65535 bytes long, the length-prefixed message would be like 0x02FFFF....
 
-The benefit of using this `varint` encoding over the old version (where integers were encoded as `<len of len><big endian len>` is that
-it is the standard way to encode integers in Protobuf. It is also generally shorter.
+The benefit of using this `varint` encoding over the old version (where integers
+were encoded as `<len of len><big endian len>` is that it is the common way to
+encode integers in Protobuf. It is also generally shorter.
 
 As noted above, this prefixing does not apply for GRPC.
 

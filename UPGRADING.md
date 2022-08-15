@@ -1,6 +1,21 @@
 # Upgrading Tendermint Core
 
-This guide provides instructions for upgrading to specific versions of Tendermint Core.
+This guide provides instructions for upgrading to specific versions of
+Tendermint Core.
+
+## v0.37 (Unreleased)
+
+This version requires a coordinated network upgrade. It alters the elements in
+the predigest of the `LastResultsHash` and thus all nodes must upgrade together
+(see [\#9175](https://github.com/tendermint/tendermint/pull/9175)).
+
+NOTE: v0.35 was recalled and v0.36 was skipped
+
+### ABCI Changes
+
+* In v0.34, messages on the wire used to be length-delimited with `int64` varint
+  values, which was inconsistent with the `uint64` varint length delimiters used
+  in the P2P layer. Both now consistently use `uint64` varint length delimiters.
 
 ## v0.34.20
 
