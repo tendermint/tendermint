@@ -77,6 +77,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto/ed25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `ed25519` signing and verification. (@Yawning)
 - [crypto/sr25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `sr25519` signing and verification. (@Yawning)
 - [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778 & @Yawning)
+- [types] \#6120 use batch verification for verifying commits signatures. (@marbar3778 & @cmwaters & @Yawning)
+    - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature.
 
 ### BUG FIXES
 
