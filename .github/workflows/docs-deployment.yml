@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - v0.34.x
     paths:
       - docs/**
       - spec/**
