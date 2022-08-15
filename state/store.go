@@ -43,6 +43,10 @@ func calcLastABCIResponsesKey(height int64) []byte {
 
 //----------------------
 
+var (
+	lastABCIResponseKey = []byte("lastABCIResponseKey")
+)
+
 //go:generate ../scripts/mockery_generate.sh Store
 
 // Store defines the state store interface
@@ -410,7 +414,7 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 // This method is used for recovering in the case that we called the Commit ABCI
 // method on the application but crashed before persisting the results.
 func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
-	bz, err := store.db.Get(calcLastABCIResponsesKey(height))
+	bz, err := store.db.Get(lastABCIResponseKey)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +477,7 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 		return err
 	}
 
-	return store.db.SetSync(calcLastABCIResponsesKey(height), bz)
+	return store.db.SetSync(lastABCIResponseKey, bz)
 }
 
 //-----------------------------------------------------------------------------
