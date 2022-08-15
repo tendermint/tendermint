@@ -37,10 +37,6 @@ func calcABCIResponsesKey(height int64) []byte {
 	return []byte(fmt.Sprintf("abciResponsesKey:%v", height))
 }
 
-func calcLastABCIResponsesKey(height int64) []byte {
-	return []byte(fmt.Sprintf("lastABCIResponsesKey:%v", height))
-}
-
 //----------------------
 
 var (
