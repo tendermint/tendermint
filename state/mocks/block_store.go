@@ -27,6 +27,20 @@ func (_m *BlockStore) Base() int64 {
 	return r0
 }
 
+// DeleteLatestBlock provides a mock function with given fields:
+func (_m *BlockStore) DeleteLatestBlock() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // Height provides a mock function with given fields:
 func (_m *BlockStore) Height() int64 {
 	ret := _m.Called()
@@ -193,13 +207,13 @@ func (_m *BlockStore) Size() int64 {
 	return r0
 }
 
-type NewBlockStoreT interface {
+type mockConstructorTestingTNewBlockStore interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewBlockStore creates a new instance of BlockStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewBlockStore(t NewBlockStoreT) *BlockStore {
+func NewBlockStore(t mockConstructorTestingTNewBlockStore) *BlockStore {
 	mock := &BlockStore{}
 	mock.Mock.Test(t)
 

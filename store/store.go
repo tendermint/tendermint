@@ -513,8 +513,8 @@ func (bs *BlockStore) DeleteLatestBlock() error {
 	batch := bs.db.NewBatch()
 	defer batch.Close()
 
-  // delete what we can, skipping what's already missing, to ensure partial
-  // blocks get deleted fully.
+	// delete what we can, skipping what's already missing, to ensure partial
+	// blocks get deleted fully.
 	if meta := bs.LoadBlockMeta(targetHeight); meta != nil {
 		if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
 			return err

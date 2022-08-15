@@ -27,6 +27,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+[cli] \#9171 add `--hard` flag to rollback command. This will
+
 ### BUG FIXES
 
 [docker] \#9073 enable cross platform build using docker buildx
