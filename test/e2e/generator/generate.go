@@ -34,6 +34,7 @@ var (
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
 	nodeRetainBlocks      = uniformChoice{0, 1, 5}
+	abciDelays            = uniformChoice{"none", "small", "large"}
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
@@ -65,6 +66,17 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
+	}
+
+	switch abciDelays.Choose(r).(string) {
+	case "none":
+	case "small":
+		manifest.PrepareProposalDelayMS = 100
+		manifest.ProcessProposalDelayMS = 100
+	case "large":
+		manifest.PrepareProposalDelayMS = 200
+		manifest.ProcessProposalDelayMS = 200
+		manifest.CheckTxDelayMS = 20
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int

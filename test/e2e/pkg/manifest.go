@@ -56,6 +56,13 @@ type Manifest struct {
 	// builtin will build a complete Tendermint node into the application and
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelayMS uint64 `toml:"prepare_proposal_delay_ms"`
+	ProcessProposalDelayMS uint64 `toml:"process_proposal_delay_ms"`
+	CheckTxDelayMS         uint64 `toml:"check_tx_delay_ms"`
+	// TODO: add vote extension and finalize block delay (@cmwaters)
 }
 
 // ManifestNode represents a node in a testnet manifest.
