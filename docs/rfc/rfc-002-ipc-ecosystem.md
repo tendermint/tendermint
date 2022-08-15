@@ -408,8 +408,8 @@ discussed.
 ## References
 
 [abci]: https://github.com/tendermint/tendermint/tree/main/spec/abci
-[rpc-service]: https://docs.tendermint.com/main/rpc/
-[light-client]: https://docs.tendermint.com/main/tendermint-core/light-client.html
+[rpc-service]: https://docs.tendermint.com/latest/rpc/
+[light-client]: https://docs.tendermint.com/latest/tendermint-core/light-client.html
 [tm-cli]: https://github.com/tendermint/tendermint/tree/main/cmd/tendermint
 [cosmos-sdk]: https://github.com/cosmos/cosmos-sdk/
 [local-client]: https://github.com/tendermint/tendermint/blob/main/abci/client/local_client.go

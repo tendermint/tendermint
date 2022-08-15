@@ -339,7 +339,7 @@ something like this (subject to refinement):
 [adr065]: https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-065-custom-event-indexing.md
 [adr075]: https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-075-rpc-subscription.md
 [esink]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/state/indexer#EventSink
-[event-rpc]: https://docs.tendermint.com/main/rpc/#/Websocket/subscribe
+[event-rpc]: https://docs.tendermint.com/latest/rpc/#/Websocket/subscribe
 [i1161]: https://github.com/tendermint/tendermint/issues/1161
 [i7135]: https://github.com/tendermint/tendermint/issues/7135
 [i7247]: https://github.com/tendermint/tendermint/issues/7247

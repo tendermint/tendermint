@@ -118,7 +118,7 @@ as a wrapper, which verifies all the headers, using a light client connected to
 some other node.
 
 See
-https://docs.tendermint.com/main/tendermint-core/light-client-protocol.html
+https://docs.tendermint.com/latest/tendermint-core/light-client-protocol.html
 for usage example.
 Or see
 https://github.com/tendermint/spec/tree/master/spec/consensus/light-client

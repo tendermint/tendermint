@@ -48,7 +48,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
   new nodes are able to join a network in a matter of seconds.
-  Read [the spec](https://docs.tendermint.com/main/spec/abci/apps.html#state-sync)
+  Read [the spec](https://docs.tendermint.com/latest/spec/abci/apps.html#state-sync)
   if you want to learn more about State Sync, or if you'd like your application to use it.
   (If you don't want to support State Sync in your application, you can just implement these new
   ABCI methods as no-ops, leaving them empty.)
@@ -174,7 +174,7 @@ The `bech32` package has moved to the Cosmos SDK:
 ### CLI
 
 The `tendermint lite` command has been renamed to `tendermint light` and has a slightly different API.
-See [the docs](https://docs.tendermint.com/main/tendermint-core/light-client-protocol.html#http-proxy) for details.
+See [the docs](https://docs.tendermint.com/latest/tendermint-core/light-client-protocol.html#http-proxy) for details.
 
 ### Light Client
 
@@ -329,7 +329,7 @@ Evidence Params has been changed to include duration.
 ### RPC Changes
 
 * `/validators` is now paginated (default: 30 vals per page)
-* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/main/rpc/#/Info/block_results)
+* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/latest/rpc/#/Info/block_results)
 * Event suffix has been removed from the ID in event responses
 * IDs are now integers not `json-client-XYZ`
 

@@ -12,7 +12,7 @@ For any specific algorithm, use its specific module e.g.
 
 ## Binary encoding
 
-For Binary encoding, please refer to the [Tendermint encoding specification](https://docs.tendermint.com/main/spec/blockchain/encoding.html).
+For Binary encoding, please refer to the [Tendermint encoding specification](https://docs.tendermint.com/latest/spec/blockchain/encoding.html).
 
 ## JSON Encoding
 

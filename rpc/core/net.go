@@ -11,7 +11,7 @@ import (
 )
 
 // NetInfo returns network info.
-// More: https://docs.tendermint.com/main/rpc/#/Info/net_info
+// More: https://docs.tendermint.com/latest/rpc/#/Info/net_info
 func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 	peersList := env.P2PPeers.Peers().List()
 	peers := make([]ctypes.Peer, 0, len(peersList))
@@ -92,7 +92,7 @@ func UnsafeDialPeers(ctx *rpctypes.Context, peers []string, persistent, uncondit
 }
 
 // Genesis returns genesis file.
-// More: https://docs.tendermint.com/main/rpc/#/Info/genesis
+// More: https://docs.tendermint.com/latest/rpc/#/Info/genesis
 func Genesis(ctx *rpctypes.Context) (*ctypes.ResultGenesis, error) {
 	if len(env.genChunks) > 1 {
 		return nil, errors.New("genesis response is large, please use the genesis_chunked API instead")

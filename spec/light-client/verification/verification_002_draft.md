@@ -1033,7 +1033,7 @@ func Backwards (primary PeerID, root LightBlock, targetHeight Height)
 
 [[lightclient]] The light client ADR [77d2651 on Dec 27, 2019].
 
-[RPC]: https://docs.tendermint.com/main/rpc/
+[RPC]: https://docs.tendermint.com/latest/rpc/
 
 [block]: https://github.com/tendermint/spec/blob/d46cd7f573a2c6a2399fcab2cde981330aa63f37/spec/core/data_structures.md
 
