@@ -93,7 +93,6 @@ type Environment struct {
 	ConsensusReactor *consensus.Reactor
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool
-	BlockSyncReactor consensus.BlockSyncReactor
 
 	Logger log.Logger
 
