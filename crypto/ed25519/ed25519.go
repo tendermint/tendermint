@@ -3,6 +3,7 @@ package ed25519
 import (
 	"bytes"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"io"
 
@@ -17,7 +18,8 @@ import (
 //-------------------------------------
 
 var (
-	_ crypto.PrivKey = PrivKey{}
+	_ crypto.PrivKey       = PrivKey{}
+	_ crypto.BatchVerifier = &BatchVerifier{}
 
 	// curve25519-voi's Ed25519 implementation supports configurable
 	// verification behavior, and tendermint uses the ZIP-215 verification
@@ -186,4 +188,41 @@ func (pubKey PubKey) Equals(other crypto.PubKey) bool {
 	}
 
 	return false
+}
+
+//-------------------------------------
+
+// BatchVerifier implements batch verification for ed25519.
+type BatchVerifier struct {
+	*ed25519.BatchVerifier
+}
+
+func NewBatchVerifier() crypto.BatchVerifier {
+	return &BatchVerifier{ed25519.NewBatchVerifier()}
+}
+
+func (b *BatchVerifier) Add(key crypto.PubKey, msg, signature []byte) error {
+	pkEd, ok := key.(PubKey)
+	if !ok {
+		return fmt.Errorf("pubkey is not Ed25519")
+	}
+
+	pkBytes := pkEd.Bytes()
+
+	if l := len(pkBytes); l != PubKeySize {
+		return fmt.Errorf("pubkey size is incorrect; expected: %d, got %d", PubKeySize, l)
+	}
+
+	// check that the signature is the correct length
+	if len(signature) != SignatureSize {
+		return errors.New("invalid signature")
+	}
+
+	cachingVerifier.AddWithOptions(b.BatchVerifier, ed25519.PublicKey(pkBytes), msg, signature, verifyOptions)
+
+	return nil
+}
+
+func (b *BatchVerifier) Verify() (bool, []bool) {
+	return b.BatchVerifier.Verify(crypto.CReader())
 }
