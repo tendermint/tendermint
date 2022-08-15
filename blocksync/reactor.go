@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
-	BlockchainChannel = byte(0x40)
+	// BlocksyncChannel is a channel for blocks and status updates (`BlockStore` height)
+	BlocksyncChannel = byte(0x40)
 
 	trySyncIntervalMS = 10
 
@@ -138,7 +138,7 @@ func (bcR *Reactor) OnStop() {
 func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                  BlockchainChannel,
+			ID:                  BlocksyncChannel,
 			Priority:            5,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
@@ -157,7 +157,7 @@ func (bcR *Reactor) AddPeer(peer p2p.Peer) {
 		return
 	}
 
-	peer.Send(BlockchainChannel, msgBytes)
+	peer.Send(BlocksyncChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -188,7 +188,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 			return false
 		}
 
-		return src.TrySend(BlockchainChannel, msgBytes)
+		return src.TrySend(BlocksyncChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
@@ -199,7 +199,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 		return false
 	}
 
-	return src.TrySend(BlockchainChannel, msgBytes)
+	return src.TrySend(BlocksyncChannel, msgBytes)
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
@@ -239,7 +239,7 @@ func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			bcR.Logger.Error("could not convert msg to protobut", "err", err)
 			return
 		}
-		src.TrySend(BlockchainChannel, msgBytes)
+		src.TrySend(BlocksyncChannel, msgBytes)
 	case *bcproto.StatusResponse:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
@@ -291,7 +291,7 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 					continue
 				}
 
-				queued := peer.TrySend(BlockchainChannel, msgBytes)
+				queued := peer.TrySend(BlocksyncChannel, msgBytes)
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}
@@ -430,7 +430,7 @@ func (bcR *Reactor) BroadcastStatusRequest() error {
 		return fmt.Errorf("could not convert msg to proto: %w", err)
 	}
 
-	bcR.Switch.Broadcast(BlockchainChannel, bm)
+	bcR.Switch.Broadcast(BlocksyncChannel, bm)
 
 	return nil
 }
