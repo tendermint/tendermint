@@ -135,8 +135,8 @@ type Option func(*Node)
 
 // Temporary interface for switching to fast sync, we should get rid of v0 and v1 reactors.
 // See: https://github.com/tendermint/tendermint/issues/4595
-type fastSyncReactor interface {
-	SwitchToFastSync(sm.State) error
+type blockSyncReactor interface {
+	SwitchToBlockSync(sm.State) error
 }
 
 // CustomReactors allows you to add custom reactors (name -> p2p.Reactor) to
@@ -443,16 +443,16 @@ func createBlockchainReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
-	fastSync bool,
+	blockSync bool,
 	logger log.Logger) (bcReactor p2p.Reactor, err error) {
 
-	switch config.FastSync.Version {
+	switch config.BlockSync.Version {
 	case "v0":
-		bcReactor = bc.NewReactor(state.Copy(), blockExec, blockStore, fastSync)
+		bcReactor = bc.NewReactor(state.Copy(), blockExec, blockStore, blockSync)
 	case "v1", "v2":
-		return nil, fmt.Errorf("fast sync version %s has been deprecated. Please use v0", config.FastSync.Version)
+		return nil, fmt.Errorf("fast sync version %s has been deprecated. Please use v0", config.BlockSync.Version)
 	default:
-		return nil, fmt.Errorf("unknown fastsync version %s", config.FastSync.Version)
+		return nil, fmt.Errorf("unknown fastsync version %s", config.BlockSync.Version)
 	}
 
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
@@ -643,8 +643,8 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 }
 
 // startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
-func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reactor,
-	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, fastSync bool,
+func startStateSync(ssR *statesync.Reactor, bcR blockSyncReactor, conR *cs.Reactor,
+	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, blockSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
 	ssR.Logger.Info("Starting state sync")
 
@@ -682,11 +682,11 @@ func startStateSync(ssR *statesync.Reactor, bcR fastSyncReactor, conR *cs.Reacto
 			return
 		}
 
-		if fastSync {
+		if blockSync {
 			// FIXME Very ugly to have these metrics bleed through here.
 			conR.Metrics.StateSyncing.Set(0)
-			conR.Metrics.FastSyncing.Set(1)
-			err = bcR.SwitchToFastSync(state)
+			conR.Metrics.BlockSyncing.Set(1)
+			err = bcR.SwitchToBlockSync(state)
 			if err != nil {
 				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
 				return
@@ -785,7 +785,7 @@ func NewNode(config *cfg.Config,
 
 	// Determine whether we should do block sync. This must happen after the handshake, since the
 	// app may modify the validator set, specifying ourself as the only validator.
-	blockSync := config.FastSyncMode && !onlyValidatorIsUs(state, pubKey)
+	blockSync := config.BlockSyncMode && !onlyValidatorIsUs(state, pubKey)
 
 	logNodeStartupInfo(state, pubKey, logger, consensusLogger)
 
@@ -823,7 +823,7 @@ func NewNode(config *cfg.Config,
 	}
 	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
-		privValidator, csMetrics, stateSync || fastSync, eventBus, consensusLogger,
+		privValidator, csMetrics, stateSync || blockSync, eventBus, consensusLogger,
 	)
 
 	// Set up state sync reactor, and schedule a sync if requested.
@@ -987,7 +987,7 @@ func (n *Node) OnStart() error {
 			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
 		}
 		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
-			n.config.StateSync, n.config.FastSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
+			n.config.StateSync, n.config.BlockSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
 		}

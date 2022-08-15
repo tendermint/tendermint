@@ -121,7 +121,7 @@ func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	conR.mtx.Lock()
 	conR.waitSync = false
 	conR.mtx.Unlock()
-	conR.Metrics.FastSyncing.Set(0)
+	conR.Metrics.BlockSyncing.Set(0)
 	conR.Metrics.StateSyncing.Set(0)
 
 	if skipWAL {
