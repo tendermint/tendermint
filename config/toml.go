@@ -263,6 +263,9 @@ tls_key_file = "{{ .RPC.TLSKeyFile }}"
 # pprof listen address (https://golang.org/pkg/net/http/pprof)
 pprof_laddr = "{{ .RPC.PprofListenAddress }}"
 
+# Flag that enables discarding of abci responses
+discard_abci_responses = {{ .RPC.DiscardABCIResponses}}
+
 #######################################################
 ###           P2P Configuration Options             ###
 #######################################################
