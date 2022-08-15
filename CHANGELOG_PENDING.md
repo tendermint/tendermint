@@ -31,4 +31,5 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
-[docker] \#9073 enable cross platform build using docker buildx
+- [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)
+- [docker] \#9073 enable cross platform build using docker buildx
