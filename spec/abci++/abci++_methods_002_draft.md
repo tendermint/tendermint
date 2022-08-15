@@ -407,7 +407,7 @@ Note that, if _p_ has a non-`nil` _validValue_, Tendermint will use it as propos
     | height               | int64                                       | The height of the proposed block.                                                                              | 5            |
     | time                 | [google.protobuf.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp) | Timestamp included in the proposed block.  | 6            |
     | next_validators_hash | bytes                                       | Merkle root of the next validator set.                                                                         | 7            |
-    | proposer_pro_hx_hash | bytes                                       | [ProTxHash](../core/data_structures.md#protxhash) of the validator that created the proposal.                  | 8            |
+    | proposer_pro_tx_hash | bytes                                       | [ProTxHash](../core/data_structures.md#protxhash) of the validator that created the proposal.                  | 8            |
 
 * **Response**:
 
