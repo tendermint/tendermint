@@ -74,7 +74,7 @@ title: Methods
 * **Response**:
 
     | Name             | Type                                         | Description                                     | Field Number |
-------------------|------------------|----------------------------------------------|-------------------------------------------------|--------------|
+|------------------|----------------------------------------------|-------------------------------------------------|--------------|
     | consensus_params | [ConsensusParams](#consensusparams)          | Initial consensus-critical parameters (optional) | 1            |
     | validator_set    | [ValidatorSetUpdate](#validatorsetupdate) | Initial validator set (optional).                   | 2            |
     | app_hash         | bytes                                        | Initial application hash.                        | 3            |
