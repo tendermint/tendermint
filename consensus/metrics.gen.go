@@ -122,7 +122,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "block_syncing",
-			Help:      "Whether or not a node is fast syncing. 1 if yes, 0 if no.",
+			Help:      "Whether or not a node is block syncing. 1 if yes, 0 if no.",
 		}, labels).With(labelsAndValues...),
 		StateSyncing: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,

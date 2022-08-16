@@ -72,7 +72,7 @@ func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) 
 }
 
 // OnStart implements BaseService by subscribing to events, which later will be
-// broadcasted to other peers and starting state if we're not in fast sync.
+// broadcasted to other peers and starting state if we're not in block sync.
 func (conR *Reactor) OnStart() error {
 	conR.Logger.Info("Reactor ", "waitSync", conR.WaitSync())
 
@@ -104,8 +104,8 @@ func (conR *Reactor) OnStop() {
 	}
 }
 
-// SwitchToConsensus switches from fast_sync mode to consensus mode.
-// It resets the state, turns off fast_sync, and starts the consensus state-machine
+// SwitchToConsensus switches from block_sync mode to consensus mode.
+// It resets the state, turns off block_sync, and starts the consensus state-machine
 func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	conR.Logger.Info("SwitchToConsensus")
 
@@ -198,7 +198,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 	go conR.queryMaj23Routine(peer, peerState)
 
 	// Send our state to peer.
-	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
+	// If we're block_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
 	if !conR.WaitSync() {
 		conR.sendNewRoundStepMessage(peer)
 	}
@@ -218,7 +218,7 @@ func (conR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 }
 
 // Receive implements Reactor
-// NOTE: We process these messages even when we're fast_syncing.
+// NOTE: We process these messages even when we're block_syncing.
 // Messages affect either a peer state or the consensus state.
 // Peer state updates can happen in parallel, but processing of
 // proposals, block parts, and votes are ordered by the receiveRoutine
@@ -386,7 +386,7 @@ func (conR *Reactor) SetEventBus(b *types.EventBus) {
 	conR.conS.SetEventBus(b)
 }
 
-// WaitSync returns whether the consensus reactor is waiting for state/fast sync.
+// WaitSync returns whether the consensus reactor is waiting for state/block sync.
 func (conR *Reactor) WaitSync() bool {
 	conR.mtx.RLock()
 	defer conR.mtx.RUnlock()

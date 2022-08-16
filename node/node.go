@@ -133,7 +133,7 @@ func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
 // Option sets a parameter for the node.
 type Option func(*Node)
 
-// Temporary interface for switching to fast sync, we should get rid of v0 and v1 reactors.
+// Temporary interface for switching to block sync, we should get rid of v0 and v1 reactors.
 // See: https://github.com/tendermint/tendermint/issues/4595
 type blockSyncReactor interface {
 	SwitchToBlockSync(sm.State) error
@@ -450,7 +450,7 @@ func createBlockchainReactor(config *cfg.Config,
 	case "v0":
 		bcReactor = bc.NewReactor(state.Copy(), blockExec, blockStore, blockSync)
 	case "v1", "v2":
-		return nil, fmt.Errorf("fast sync version %s has been deprecated. Please use v0", config.BlockSync.Version)
+		return nil, fmt.Errorf("block sync version %s has been deprecated. Please use v0", config.BlockSync.Version)
 	default:
 		return nil, fmt.Errorf("unknown fastsync version %s", config.BlockSync.Version)
 	}
@@ -642,7 +642,7 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 	return pexReactor
 }
 
-// startStateSync starts an asynchronous state sync process, then switches to fast sync mode.
+// startStateSync starts an asynchronous state sync process, then switches to block sync mode.
 func startStateSync(ssR *statesync.Reactor, bcR blockSyncReactor, conR *cs.Reactor,
 	stateProvider statesync.StateProvider, config *cfg.StateSyncConfig, blockSync bool,
 	stateStore sm.Store, blockStore *store.BlockStore, state sm.State) error {
@@ -688,7 +688,7 @@ func startStateSync(ssR *statesync.Reactor, bcR blockSyncReactor, conR *cs.React
 			conR.Metrics.BlockSyncing.Set(1)
 			err = bcR.SwitchToBlockSync(state)
 			if err != nil {
-				ssR.Logger.Error("Failed to switch to fast sync", "err", err)
+				ssR.Logger.Error("Failed to switch to block sync", "err", err)
 				return
 			}
 		} else {
@@ -808,7 +808,7 @@ func NewNode(config *cfg.Config,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
-	// Make BlockchainReactor. Don't start fast sync if we're doing a state sync first.
+	// Make BlockchainReactor. Don't start block sync if we're doing a state sync first.
 	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, blockSync && !stateSync, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)

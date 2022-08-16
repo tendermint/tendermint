@@ -90,7 +90,7 @@ moniker = "{{ .BaseConfig.Moniker }}"
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast_sync = {{ .BaseConfig.FastSyncMode }}
+block_sync = {{ .BaseConfig.BlockSyncMode }}
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -431,15 +431,15 @@ chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 #######################################################
 ###       Block Sync Configuration Connections       ###
 #######################################################
-[fastsync]
+[blocksync]
 
 # Block Sync version to use:
 # 
 # In v0.37, v1 and v2 of the block sync protocols were deprecated.
 # Please use v0 instead.
 #
-#   1) "v0" - the default fast sync implementation
-version = "{{ .FastSync.Version }}"
+#   1) "v0" - the default block sync implementation
+version = "{{ .BlockSync.Version }}"
 
 #######################################################
 ###         Consensus Configuration Options         ###

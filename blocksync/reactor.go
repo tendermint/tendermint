@@ -30,7 +30,7 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and fast sync to
+	// for when we switch from blockchain reactor and block sync to
 	// the consensus machine
 	SwitchToConsensus(state sm.State, skipWAL bool)
 }
@@ -54,7 +54,7 @@ type Reactor struct {
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
 	pool      *BlockPool
-	fastSync  bool
+	blockSync bool
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
@@ -62,7 +62,7 @@ type Reactor struct {
 
 // NewReactor returns new reactor instance.
 func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
-	fastSync bool) *Reactor {
+	blockSync bool) *Reactor {
 
 	if state.LastBlockHeight != store.Height() {
 		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
@@ -85,7 +85,7 @@ func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockS
 		blockExec:    blockExec,
 		store:        store,
 		pool:         pool,
-		fastSync:     fastSync,
+		blockSync:    blockSync,
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 	}
@@ -101,7 +101,7 @@ func (bcR *Reactor) SetLogger(l log.Logger) {
 
 // OnStart implements service.Service.
 func (bcR *Reactor) OnStart() error {
-	if bcR.fastSync {
+	if bcR.blockSync {
 		err := bcR.pool.Start()
 		if err != nil {
 			return err
@@ -111,9 +111,9 @@ func (bcR *Reactor) OnStart() error {
 	return nil
 }
 
-// SwitchToFastSync is called by the state sync reactor when switching to fast sync.
-func (bcR *Reactor) SwitchToFastSync(state sm.State) error {
-	bcR.fastSync = true
+// SwitchToBlockSync is called by the state sync reactor when switching to block sync.
+func (bcR *Reactor) SwitchToBlockSync(state sm.State) error {
+	bcR.blockSync = true
 	bcR.initialState = state
 
 	bcR.pool.height = state.LastBlockHeight + 1
@@ -127,7 +127,7 @@ func (bcR *Reactor) SwitchToFastSync(state sm.State) error {
 
 // OnStop implements service.Service.
 func (bcR *Reactor) OnStop() {
-	if bcR.fastSync {
+	if bcR.blockSync {
 		if err := bcR.pool.Stop(); err != nil {
 			bcR.Logger.Error("Error stopping pool", "err", err)
 		}
@@ -409,7 +409,7 @@ FOR_LOOP:
 
 			if blocksSynced%100 == 0 {
 				lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
-				bcR.Logger.Info("Fast Sync Rate", "height", bcR.pool.height,
+				bcR.Logger.Info("Block Sync Rate", "height", bcR.pool.height,
 					"max_peer_height", bcR.pool.MaxPeerHeight(), "blocks/s", lastRate)
 				lastHundred = time.Now()
 			}
