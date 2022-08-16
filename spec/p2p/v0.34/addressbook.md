@@ -200,21 +200,94 @@ it is stored and from the `addrLookup` table.
 
 ## Pick address
 
-The `PickAddress` method
+The `PickAddress` method returns an address stored in the address book, chosen
+at random with a configurable bias toward new addresses.
 
-TODO:
+It is invoked by the PEX reactor to obtain a peer address to dial, as part of
+its `ensurePeers` routine.
+The bias starts from 10%, when the peer has no outbound peers, increasing by
+10% for each outbound peer the node has, up to 90%, when the node has at least
+8 outbound peers.
+
+The configured bias is a parameter that influences the probability of choosing
+an address from a bucket of new addresses or from a bucket of old addresses.
+A second parameter influencing this choice is the number of new and old
+addresses stored in the address book.
+In the absence of bias (i.e., if the configured bias is 50%), the probability
+of picking a new address is given by the square root of the number of new
+addresses divided by the sum of the square roots of the numbers of new and old
+addresses.
+By adding a bias toward new addresses (i.e., configured bias larger than 50%),
+the portion on the sample occupied by the square root of the number of new
+addresses increases, while the corresponding portion for old addresses decreases.
+As a result, it becomes more likely to pick a new address at random from this sample.
+
+> The use of the square roots softens the impact of disproportional numbers of
+> new and old addresses in the address book. This is actually the expected
+> scenario, as there are 4 times more buckets for new addresses than buckets
+> for old addresses.
+
+Once the type of address, new or old, is defined, a non-empty bucket of this
+type is selected at random.
+From the selected bucket, an address is chosen at random and returned.
+If all buckets of the selected type are empty, no address is returned.
 
 ## Random selection
 
-The `GetSelection` method
+The `GetSelection` method returns a selection of addresses stored in the
+address book, with no bias toward new or old addresses.
 
-TODO:
+It is invoked by the PEX protocol to obtain a list of peer addresses with two
+purposes:
+
+- To send to a peer in a PEX response, in the case of outbound peers or of
+  nodes not operating in seed mode
+- To crawl, in the case of nodes operating in seed mode, as part of every
+  interaction of the `crawlPeersRoutine`
+
+The selection is a random subset of the peer addresses stored in the
+`addrLookup` table, which stores that last address added for each peer ID.
+The target size of the selection is `23%` (`getSelectionPercent`) of the
+number of addresses stored in the address book, but it should not be lower than
+`32` (`minGetSelection`) --- if it is, all addresses in the book are returned
+--- nor greater than `250` (`maxGetSelection`).
+
+> The random selection is produced by:
+> - Retrieving all entries of the `addrLookup` map, which by definition are
+>   returned in random order.
+> - Randomly shuffling the retrieved list, using the Fisher-Yates algorithm
 
 ## Random selection with bias
 
-The `GetSelectionWithBias` method
+The `GetSelectionWithBias` method returns a selection of addresses stored in
+the address book, with bias toward new addresses.
 
-TODO:
+It is invoked by the PEX protocol to obtain a list of peer addresses to be sent
+to a peer in a PEX response.
+This method is only invoked by seed nodes, when replying to a PEX request
+received from an inbound peer (i.e., a peer that dialed the seed node).
+The bias used in this scenario is hard-coded to 30%, meaning that 70% of
+the returned addresses are expected to be old addresses.
+
+The number of addresses that compose the selection is computed in the same way
+as for then non-biased random selection.
+The bias toward new addresses is implemented by requiring that the configured
+bias, interpreted as a percentage, of the select addresses come from buckets of
+new addresses, while the remaining come from buckets of old addresses.
+Since the number of old addresses is typically lower than the number of new
+addresses, it is possible that the address book does not have enough old
+addresses to include in the selection.
+In this case, additional new addresses are included in the selection.
+Thus, the configured bias, in practice, is towards old addresses, not towards
+new addresses.
+
+To randomly select addresses of a type, the address book considers all
+addresses present in every bucket of that type.
+This list of all addresses of a type is randomly shuffled, and the requested
+number of addresses are retrieved from the tail of this list.
+The returned selection contains, at its beginning, a random selection of new
+addresses in random order, followed by a random selection of old addresses, in
+random order.
 
 ## Buckets
 
