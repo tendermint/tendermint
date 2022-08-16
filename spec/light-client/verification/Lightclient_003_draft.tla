@@ -6,38 +6,73 @@
  * https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/verification.md
  *) 
 
-EXTENDS Integers, FiniteSets
+EXTENDS Integers, FiniteSets, typedefs
 
 \* the parameters of Light Client
 CONSTANTS
+  \* an index of the block header that the light client trusts by social consensus
+  \*
+  \* @type: Int;
   TRUSTED_HEIGHT,
-    (* an index of the block header that the light client trusts by social consensus *)
+  \* an index of the block header that the light client tries to verify
+  \*
+  \* @type: Int;
   TARGET_HEIGHT,
-    (* an index of the block header that the light client tries to verify *)
+  \* the period within which the validators are trusted
+  \*
+  \* @type: Int;
   TRUSTING_PERIOD,
-    (* the period within which the validators are trusted *)
+  \* the assumed precision of the clock
+  \*
+  \* @type: Int;
   CLOCK_DRIFT,
-    (* the assumed precision of the clock *)
+  \* the actual clock drift, which under normal circumstances should not
+  \* be larger than CLOCK_DRIFT (otherwise, there will be a bug)
+  \*
+  \* @type: Int;
   REAL_CLOCK_DRIFT,
-    (* the actual clock drift, which under normal circumstances should not
-       be larger than CLOCK_DRIFT (otherwise, there will be a bug) *)
+  \* is primary correct?
+  \*
+  \* @type: Bool;
   IS_PRIMARY_CORRECT,
-    (* is primary correct? *)  
+  \* a pair <<a, b>> that limits that ratio of faulty validator in the blockchain
+  \* from above (exclusive). Tendermint security model prescribes 1 / 3.
+  \*
+  \* @type: <<Int, Int>>;
   FAULTY_RATIO
-    (* a pair <<a, b>> that limits that ratio of faulty validator in the blockchain
-       from above (exclusive). Tendermint security model prescribes 1 / 3. *)
 
-VARIABLES       (* see TypeOK below for the variable types *)
-  localClock,   (* the local clock of the light client *)
-  state,        (* the current state of the light client *)
-  nextHeight,   (* the next height to explore by the light client *)
-  nprobes       (* the lite client iteration, or the number of block tests *)
+VARIABLES
+  \* the local clock of the light client
+  \*
+  \* @type: Int;
+  localClock,
+  \* the current state of the light client
+  \*
+  \* @type: Str;
+  state,        
+  \* the next height to explore by the light client
+  \*
+  \* @type: Int;
+  nextHeight,   
+  \* the light client iteration, or the number of block tests
+  \*
+  \* @type: Int;
+  nprobes
   
 (* the light store *)
 VARIABLES  
-  fetchedLightBlocks, (* a function from heights to LightBlocks *)
-  lightBlockStatus,   (* a function from heights to block statuses *)
-  latestVerified      (* the latest verified block *)
+  \* a function from heights to LightBlocks
+  \*
+  \* @type: Int -> $lightBlock;
+  fetchedLightBlocks,
+  \* a function from heights to block statuses
+  \*
+  \* @type: Int -> Str;
+  lightBlockStatus,
+  \* the latest verified block
+  \*
+  \* @type: $lightBlock;
+  latestVerified
 
 (* the variables of the lite client *)
 lcvars == <<localClock, state, nextHeight,
@@ -45,9 +80,13 @@ lcvars == <<localClock, state, nextHeight,
 
 (* the light client previous state components, used for monitoring *)
 VARIABLES
+  \* @type: $lightBlock;
   prevVerified,
+  \* @type: $lightBlock;
   prevCurrent,
+  \* @type: Int;
   prevLocalClock,
+  \* @type: Str;
   prevVerdict
 
 InitMonitor(verified, current, pLocalClock, verdict) ==
@@ -67,11 +106,20 @@ NextMonitor(verified, current, pLocalClock, verdict) ==
 
 \* the parameters that are propagated into Blockchain
 CONSTANTS
-  AllNodes
-    (* a set of all nodes that can act as validators (correct and faulty) *)
+    \* A set of all nodes that can act as validators (correct and faulty).
+    \*
+    \* @type: Set(NODE);
+    AllNodes
+
 
 \* the state variables of Blockchain, see Blockchain.tla for the details
-VARIABLES refClock, blockchain, Faulty
+VARIABLES
+    \* @type: Int;
+    refClock,
+    \* @type: Int -> $blockHeader;
+    blockchain,
+    \* @type: Set(NODE);
+    Faulty
 
 \* All the variables of Blockchain. For some reason, BC!vars does not work
 bcvars == <<refClock, blockchain, Faulty>>
@@ -118,7 +166,12 @@ LCInit ==
         /\ latestVerified = trustedLightBlock
         /\ InitMonitor(trustedLightBlock, trustedLightBlock, localClock, "SUCCESS")
 
-\* block should contain a copy of the block from the reference chain, with a matching commit
+(*
+  Block should contain a copy of the block from the reference chain,
+  with a matching commit.
+
+  @type: ($lightBlock, Int) => Bool;
+ *)
 CopyLightBlockFromChain(block, height) ==
     LET ref == blockchain[height]
         lastCommit ==
@@ -141,6 +194,8 @@ FetchLightBlockInto(block, height) ==
 \* add a block into the light store    
 \*
 \* [LCV-FUNC-UPDATE.1::TLA.1]
+\*
+\* @type: ($lightBlockMap, $lightBlock) => $lightBlockMap;
 LightStoreUpdateBlocks(lightBlocks, block) ==
     LET ht == block.header.height IN    
     [h \in DOMAIN lightBlocks \union {ht} |->
@@ -149,6 +204,8 @@ LightStoreUpdateBlocks(lightBlocks, block) ==
 \* update the state of a light block      
 \*
 \* [LCV-FUNC-UPDATE.1::TLA.1]
+\*
+\* @type: ($lightBlockStatus, Int, Str) => $lightBlockStatus;
 LightStoreUpdateStates(statuses, ht, blockState) ==
     [h \in DOMAIN statuses \union {ht} |->
         IF h = ht THEN blockState ELSE statuses[h]]      
@@ -156,6 +213,8 @@ LightStoreUpdateStates(statuses, ht, blockState) ==
 \* Check, whether newHeight is a possible next height for the light client.
 \*
 \* [LCV-FUNC-SCHEDULE.1::TLA.1]
+\*
+\* @type: (Int, $lightBlock, Int, Int) => Bool;
 CanScheduleTo(newHeight, pLatestVerified, pNextHeight, pTargetHeight) ==
     LET ht == pLatestVerified.header.height IN
     \/ /\ ht = pNextHeight
