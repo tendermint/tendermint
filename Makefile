@@ -131,6 +131,20 @@ install:
 	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 .PHONY: install
 
+###############################################################################
+###                               Metrics                                   ###
+###############################################################################
+
+metrics: testdata-metrics
+	go generate -run="scripts/metricsgen" ./...
+.PHONY: metrics
+
+# By convention, the go tool ignores subdirectories of directories named
+# 'testdata'. This command invokes the generate command on the folder directly
+# to avoid this.
+testdata-metrics:
+	ls ./scripts/metricsgen/testdata | xargs -I{} go generate -v -run="scripts/metricsgen" ./scripts/metricsgen/testdata/{}
+.PHONY: testdata-metrics
 
 ###############################################################################
 ###                                Mocks                                    ###
@@ -288,6 +302,11 @@ sync-docs:
 	aws s3 sync . s3://${WEBSITE_BUCKET} --profile terraform --delete ; \
 	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
 .PHONY: sync-docs
+
+# Verify that important design docs have ToC entries.
+check-docs-toc:
+	@./docs/presubmit.sh
+.PHONY: check-docs-toc
 
 ###############################################################################
 ###                            Docker image                                 ###

@@ -37,31 +37,43 @@
  Zarko Milosevic, Igor Konnov, Informal Systems, 2019-2020.
  *)
 
-EXTENDS Integers, FiniteSets
+EXTENDS Integers, FiniteSets, typedefs
 
 (********************* PROTOCOL PARAMETERS **********************************)
 CONSTANTS
+  \* @type: Set(PROCESS);
     Corr,          \* the set of correct processes 
+  \* @type: Set(PROCESS);
     Faulty,        \* the set of Byzantine processes, may be empty
+  \* @type: Int;  
     N,             \* the total number of processes: correct, defective, and Byzantine
+  \* @type: Int;  
     T,             \* an upper bound on the number of Byzantine processes
+  \* @type: Set(VALUE);  
     ValidValues,   \* the set of valid values, proposed both by correct and faulty
+  \* @type: Set(VALUE);  
     InvalidValues, \* the set of invalid values, never proposed by the correct ones
+  \* @type: ROUND;    
     MaxRound,      \* the maximal round number
-    Proposer       \* the proposer function from 0..NRounds to 1..N
+  \* @type: ROUND -> PROCESS;
+    Proposer       \* the proposer function from Rounds to AllProcs
 
 ASSUME(N = Cardinality(Corr \union Faulty))
 
 (*************************** DEFINITIONS ************************************)
 AllProcs == Corr \union Faulty      \* the set of all processes
+\* @type: Set(ROUND);
 Rounds == 0..MaxRound               \* the set of potential rounds
+\* @type: ROUND;
 NilRound == -1   \* a special value to denote a nil round, outside of Rounds
 RoundsOrNil == Rounds \union {NilRound}
 Values == ValidValues \union InvalidValues \* the set of all values
+\* @type: VALUE;
 NilValue == "None"  \* a special value for a nil round, outside of Values
 ValuesOrNil == Values \union {NilValue}
 
 \* a value hash is modeled as identity
+\* @type: (t) => t;
 Id(v) == v
 
 \* The validity predicate
@@ -72,36 +84,39 @@ THRESHOLD1 == T + 1     \* at least one process is not faulty
 THRESHOLD2 == 2 * T + 1 \* a quorum when having N > 3 * T
 
 (********************* TYPE ANNOTATIONS FOR APALACHE **************************)
-\* the operator for type annotations
-a <: b == a
 
-\* the type of message records
-MT == [type |-> STRING, src |-> STRING, round |-> Int,
-       proposal |-> STRING, validRound |-> Int, id |-> STRING]
-       
-\* a type annotation for a message
-AsMsg(m) == m <: MT
-\* a type annotation for a set of messages
-SetOfMsgs(S) == S <: {MT}       
-\* a type annotation for an empty set of messages
-EmptyMsgSet == SetOfMsgs({})
+\* An empty set of messages
+\* @type: Set(MESSAGE);
+EmptyMsgSet == {}
 
 (********************* PROTOCOL STATE VARIABLES ******************************)
 VARIABLES
+  \* @type: PROCESS -> ROUND;
   round,    \* a process round number: Corr -> Rounds
+  \* @type: PROCESS -> STEP;
   step,     \* a process step: Corr -> { "PROPOSE", "PREVOTE", "PRECOMMIT", "DECIDED" }
+  \* @type: PROCESS -> VALUE;
   decision, \* process decision: Corr -> ValuesOrNil
+  \* @type: PROCESS -> VALUE;
   lockedValue,  \* a locked value: Corr -> ValuesOrNil
+  \* @type: PROCESS -> ROUND;
   lockedRound,  \* a locked round: Corr -> RoundsOrNil
+  \* @type: PROCESS -> VALUE;
   validValue,   \* a valid value: Corr -> ValuesOrNil
+  \* @type: PROCESS -> ROUND;
   validRound    \* a valid round: Corr -> RoundsOrNil
 
 \* book-keeping variables
 VARIABLES
+  \* @type: ROUND -> Set(PROPMESSAGE);
   msgsPropose,   \* PROPOSE messages broadcast in the system, Rounds -> Messages
+  \* @type: ROUND -> Set(PREMESSAGE);
   msgsPrevote,   \* PREVOTE messages broadcast in the system, Rounds -> Messages
+  \* @type: ROUND -> Set(PREMESSAGE);
   msgsPrecommit, \* PRECOMMIT messages broadcast in the system, Rounds -> Messages
+  \* @type: Set(MESSAGE);
   evidence, \* the messages that were used by the correct processes to make transitions
+  \* @type: ACTION;
   action        \* we use this variable to see which action was taken
 
 (* to see a type invariant, check TendermintAccInv3 *)  
@@ -111,26 +126,63 @@ vars == <<round, step, decision, lockedValue, lockedRound,
           validValue, validRound, evidence, msgsPropose, msgsPrevote, msgsPrecommit>>
 
 (********************* PROTOCOL INITIALIZATION ******************************)
+\* @type: (ROUND) => Set(PROPMESSAGE);
 FaultyProposals(r) ==
-    SetOfMsgs([type: {"PROPOSAL"}, src: Faulty,
-               round: {r}, proposal: Values, validRound: RoundsOrNil])
+  [
+    type      : {"PROPOSAL"}, 
+    src       : Faulty,
+    round     : {r}, 
+    proposal  : Values, 
+    validRound: RoundsOrNil
+  ]
 
+\* @type: Set(PROPMESSAGE);
 AllFaultyProposals ==
-    SetOfMsgs([type: {"PROPOSAL"}, src: Faulty,
-               round: Rounds, proposal: Values, validRound: RoundsOrNil])
+  [
+    type      : {"PROPOSAL"}, 
+    src       : Faulty,
+    round     : Rounds, 
+    proposal  : Values, 
+    validRound: RoundsOrNil
+  ]
 
+\* @type: (ROUND) => Set(PREMESSAGE);
 FaultyPrevotes(r) ==
-    SetOfMsgs([type: {"PREVOTE"}, src: Faulty, round: {r}, id: Values])
+  [
+    type : {"PREVOTE"}, 
+    src  : Faulty, 
+    round: {r}, 
+    id   : Values
+  ]
 
+\* @type: Set(PREMESSAGE);
 AllFaultyPrevotes ==    
-    SetOfMsgs([type: {"PREVOTE"}, src: Faulty, round: Rounds, id: Values])
+  [
+    type : {"PREVOTE"}, 
+    src  : Faulty, 
+    round: Rounds, 
+    id   : Values
+  ]
 
+\* @type: (ROUND) => Set(PREMESSAGE);
 FaultyPrecommits(r) ==
-    SetOfMsgs([type: {"PRECOMMIT"}, src: Faulty, round: {r}, id: Values])
+  [
+    type : {"PRECOMMIT"}, 
+    src  : Faulty, 
+    round: {r}, 
+    id   : Values
+  ]
 
+\* @type: Set(PREMESSAGE);
 AllFaultyPrecommits ==
-    SetOfMsgs([type: {"PRECOMMIT"}, src: Faulty, round: Rounds, id: Values])
-   
+  [
+    type : {"PRECOMMIT"}, 
+    src  : Faulty, 
+    round: Rounds, 
+    id   : Values
+  ]
+
+\* @type: (ROUND -> Set(MESSAGE)) => Bool;
 BenignRoundsInMessages(msgfun) ==
   \* the message function never contains a message for a wrong round
   \A r \in Rounds:
@@ -153,25 +205,49 @@ Init ==
     /\ BenignRoundsInMessages(msgsPrevote)
     /\ BenignRoundsInMessages(msgsPrecommit)
     /\ evidence = EmptyMsgSet
-    /\ action' = "Init"
+    /\ action = "Init"
 
 (************************ MESSAGE PASSING ********************************)
+\* @type: (PROCESS, ROUND, VALUE, ROUND) => Bool;
 BroadcastProposal(pSrc, pRound, pProposal, pValidRound) ==
-  LET newMsg ==
-    AsMsg([type |-> "PROPOSAL", src |-> pSrc, round |-> pRound,
-           proposal |-> pProposal, validRound |-> pValidRound])
+  LET
+    \* @type: PROPMESSAGE;
+    newMsg ==
+    [
+      type       |-> "PROPOSAL", 
+      src        |-> pSrc, 
+      round      |-> pRound,
+      proposal   |-> pProposal, 
+      validRound |-> pValidRound
+    ]
   IN
   msgsPropose' = [msgsPropose EXCEPT ![pRound] = msgsPropose[pRound] \union {newMsg}]
 
+\* @type: (PROCESS, ROUND, VALUE) => Bool;
 BroadcastPrevote(pSrc, pRound, pId) ==
-  LET newMsg == AsMsg([type |-> "PREVOTE",
-                       src |-> pSrc, round |-> pRound, id |-> pId])
+  LET 
+    \* @type: PREMESSAGE;
+    newMsg == 
+    [
+      type  |-> "PREVOTE",
+      src   |-> pSrc, 
+      round |-> pRound, 
+      id    |-> pId
+    ]
   IN
   msgsPrevote' = [msgsPrevote EXCEPT ![pRound] = msgsPrevote[pRound] \union {newMsg}]
 
+\* @type: (PROCESS, ROUND, VALUE) => Bool;
 BroadcastPrecommit(pSrc, pRound, pId) ==
-  LET newMsg == AsMsg([type |-> "PRECOMMIT",
-                       src |-> pSrc, round |-> pRound, id |-> pId])
+  LET
+    \* @type: PREMESSAGE; 
+    newMsg == 
+    [
+      type  |-> "PRECOMMIT",
+      src   |-> pSrc, 
+      round |-> pRound, 
+      id    |-> pId
+    ]
   IN
   msgsPrecommit' = [msgsPrecommit EXCEPT ![pRound] = msgsPrecommit[pRound] \union {newMsg}]
 
@@ -184,6 +260,7 @@ StartRound(p, r) ==
    /\ step' = [step EXCEPT ![p] = "PROPOSE"] 
 
 \* lines 14-19, a proposal may be sent later
+\* @type: (PROCESS) => Bool;
 InsertProposal(p) == 
   LET r == round[p] IN
   /\ p = Proposer[r]
@@ -192,8 +269,13 @@ InsertProposal(p) ==
     \* by the correct processes for the same round
   /\ \A m \in msgsPropose[r]: m.src /= p
   /\ \E v \in ValidValues: 
-      LET proposal == IF validValue[p] /= NilValue THEN validValue[p] ELSE v IN
-      BroadcastProposal(p, round[p], proposal, validRound[p])
+      LET 
+        \* @type: VALUE;
+        proposal == 
+          IF validValue[p] /= NilValue 
+          THEN validValue[p] 
+          ELSE v 
+      IN BroadcastProposal(p, round[p], proposal, validRound[p])
   /\ UNCHANGED <<evidence, round, decision, lockedValue, lockedRound,
                 validValue, step, validRound, msgsPrevote, msgsPrecommit>>
   /\ action' = "InsertProposal"
@@ -202,9 +284,17 @@ InsertProposal(p) ==
 UponProposalInPropose(p) ==
   \E v \in Values:
     /\ step[p] = "PROPOSE" (* line 22 *)
-    /\ LET msg ==
-        AsMsg([type |-> "PROPOSAL", src |-> Proposer[round[p]],
-               round |-> round[p], proposal |-> v, validRound |-> NilRound]) IN
+    /\ LET
+        \* @type: PROPMESSAGE; 
+        msg ==
+        [
+          type       |-> "PROPOSAL", 
+          src        |-> Proposer[round[p]],
+          round      |-> round[p], 
+          proposal   |-> v, 
+          validRound |-> NilRound
+        ] 
+       IN
       /\ msg \in msgsPropose[round[p]] \* line 22
       /\ evidence' = {msg} \union evidence
     /\ LET mid == (* line 23 *)
@@ -222,9 +312,16 @@ UponProposalInPropose(p) ==
 UponProposalInProposeAndPrevote(p) ==
   \E v \in Values, vr \in Rounds:
     /\ step[p] = "PROPOSE" /\ 0 <= vr /\ vr < round[p] \* line 28, the while part
-    /\ LET msg ==
-         AsMsg([type |-> "PROPOSAL", src |-> Proposer[round[p]],
-                round |-> round[p], proposal |-> v, validRound |-> vr])
+    /\ LET
+        \* @type: PROPMESSAGE; 
+        msg ==
+        [
+          type       |-> "PROPOSAL", 
+          src        |-> Proposer[round[p]],
+          round      |-> round[p], 
+          proposal   |-> v, 
+          validRound |-> vr
+        ]
        IN
        /\ msg \in msgsPropose[round[p]] \* line 28
        /\ LET PV == { m \in msgsPrevote[vr]: m.id = Id(v) } IN
@@ -260,9 +357,17 @@ UponQuorumOfPrevotesAny(p) ==
 UponProposalInPrevoteOrCommitAndPrevote(p) ==
   \E v \in ValidValues, vr \in RoundsOrNil:
     /\ step[p] \in {"PREVOTE", "PRECOMMIT"} \* line 36
-    /\ LET msg ==
-         AsMsg([type |-> "PROPOSAL", src |-> Proposer[round[p]],
-                round |-> round[p], proposal |-> v, validRound |-> vr]) IN
+    /\ LET
+        \* @type: PROPMESSAGE; 
+        msg ==
+        [
+          type       |-> "PROPOSAL", 
+          src        |-> Proposer[round[p]],
+          round      |-> round[p], 
+          proposal   |-> v, 
+          validRound |-> vr
+        ] 
+       IN
         /\ msg \in msgsPropose[round[p]] \* line 36
         /\ LET PV == { m \in msgsPrevote[round[p]]: m.id = Id(v) } IN
           /\ Cardinality(PV) >= THRESHOLD2 \* line 36
@@ -299,8 +404,17 @@ UponQuorumOfPrecommitsAny(p) ==
 UponProposalInPrecommitNoDecision(p) ==
   /\ decision[p] = NilValue \* line 49
   /\ \E v \in ValidValues (* line 50*) , r \in Rounds, vr \in RoundsOrNil:
-    /\ LET msg == AsMsg([type |-> "PROPOSAL", src |-> Proposer[r],
-                           round |-> r, proposal |-> v, validRound |-> vr]) IN
+    /\ LET
+        \* @type: PROPMESSAGE; 
+        msg == 
+        [
+          type       |-> "PROPOSAL", 
+          src        |-> Proposer[r],
+          round      |-> r, 
+          proposal   |-> v, 
+          validRound |-> vr
+        ] 
+       IN
      /\ msg \in msgsPropose[r] \* line 49
      /\ LET PV == { m \in msgsPrecommit[r]: m.id = Id(v) } IN
        /\ Cardinality(PV) >= THRESHOLD2 \* line 49
@@ -386,10 +500,18 @@ AmnesiaBy(p) ==
       /\ r1 < r2
       /\ \E v1, v2 \in ValidValues:
         /\ v1 /= v2
-        /\ AsMsg([type |-> "PRECOMMIT", src |-> p,
-                 round |-> r1, id |-> Id(v1)]) \in evidence
-        /\ AsMsg([type |-> "PREVOTE", src |-> p,
-                 round |-> r2, id |-> Id(v2)]) \in evidence
+        /\ [
+            type  |-> "PRECOMMIT", 
+            src   |-> p,
+            round |-> r1, 
+            id    |-> Id(v1)
+           ] \in evidence
+        /\ [
+            type  |-> "PREVOTE", 
+            src   |-> p,
+            round |-> r2, 
+            id    |-> Id(v2)
+           ] \in evidence
         /\ \A r \in { rnd \in Rounds: r1 <= rnd /\ rnd < r2 }:
             LET prevotes ==
                 { m \in evidence:
