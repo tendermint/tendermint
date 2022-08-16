@@ -60,6 +60,8 @@ The following metrics are available:
 | mempool_failed_txs                     | counter   |                 | number of failed transactions                                                                                                              |
 | mempool_recheck_times                  | counter   |                 | number of transactions rechecked in the mempool                                                                                            |
 | state_block_processing_time            | histogram |                 | time between BeginBlock and EndBlock in ms                                                                                                 |
+| state_consensus_param_updates          | Counter   |                 | number of consensus parameter updates returned by the application since process start                                                      |
+| state_validator_set_updates            | Counter   |                 | number of validator set updates returned by the application since process start                                                            |
 
 ## Useful queries
 
