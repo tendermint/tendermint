@@ -72,7 +72,7 @@ type Config struct {
 	P2P             *P2PConfig             `mapstructure:"p2p"`
 	Mempool         *MempoolConfig         `mapstructure:"mempool"`
 	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	BlockSync       *BlockSyncConfig       `mapstructure:"fastsync"`
+	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
 	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
 	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
 	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
@@ -137,7 +137,7 @@ func (cfg *Config) ValidateBasic() error {
 		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
 	if err := cfg.BlockSync.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [fastsync] section: %w", err)
+		return fmt.Errorf("error in [blocksync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [consensus] section: %w", err)
@@ -167,10 +167,10 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// If this node is many blocks behind the tip of the chain, FastSync
+	// If this node is many blocks behind the tip of the chain, Blocksync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
-	FastSyncMode bool `mapstructure:"fast_sync"`
+	Blocksync bool `mapstructure:"block_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -238,7 +238,7 @@ func DefaultBaseConfig() BaseConfig {
 		ABCI:               "socket",
 		LogLevel:           DefaultLogLevel,
 		LogFormat:          LogFormatPlain,
-		FastSyncMode:       true,
+		Blocksync:          true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
@@ -250,7 +250,7 @@ func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
 	cfg.ProxyApp = "kvstore"
-	cfg.FastSyncMode = false
+	cfg.Blocksync = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
