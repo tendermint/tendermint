@@ -60,6 +60,6 @@ sections.
 - [RFC-020: Onboarding Projects](./rfc-020-onboarding-projects.rst)
 - [RFC-021: The Future of the Socket Protocol](./rfc-021-socket-protocol.md)
 - [RFC-023: Semi-permanent Testnet](./rfc-023-semi-permanent-testnet.md)
-- [RFC-020: Block Structure Consolidation](./rfc-020-block-structure-consolidation.md)
+- [RFC-024: Block Structure Consolidation](./rfc-024-block-structure-consolidation.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->

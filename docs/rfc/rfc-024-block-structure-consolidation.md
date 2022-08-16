@@ -1,4 +1,4 @@
-# RFC 019: Block Structure Consolidation
+# RFC 024: Block Structure Consolidation
 
 ## Changelog
 
