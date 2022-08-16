@@ -13,6 +13,7 @@ EXTENDS TendermintAcc_004_draft
 
 (************************** TYPE INVARIANT ***********************************)
 (* first, we define the sets of all potential messages *)
+\* @type: Set($proposeMsg);
 AllProposals ==
   [type: {"PROPOSAL"},
    src: AllProcs,
@@ -20,12 +21,14 @@ AllProposals ==
    proposal: ValuesOrNil,
    validRound: RoundsOrNil]
 
+\* @type: Set($preMsg);
 AllPrevotes ==
   [type: {"PREVOTE"},
    src: AllProcs,
    round: Rounds,
    id: ValuesOrNil]
 
+\* @type: Set($preMsg);
 AllPrecommits ==
   [type: {"PRECOMMIT"},
    src: AllProcs,
@@ -278,12 +281,14 @@ Senders(M) == { m.src: m \in M }
 \* then in the future rounds there are less than 2T + 1 prevotes for another value
 PrecommitsLockValue ==
   \A r \in Rounds:
-    \A v \in ValidValues \union {NilValue}:
-      \/ LET Precommits ==  {m \in msgsPrecommit[r]: m.id = v}
-        IN
-        Cardinality(Senders(Precommits)) < THRESHOLD1
+    \A v \in ValidValues:
+      \/ LET Precommits == {
+            m \in msgsPrecommit[r]: m.id = v /\ m.src \in Corr
+         }
+         IN
+         Cardinality(Senders(Precommits)) < THRESHOLD1
       \/ \A fr \in { rr \in Rounds: rr > r }:  \* future rounds
-          \A w \in (ValuesOrNil) \ {v}:
+          \A w \in ValuesOrNil \ {v}:
             LET Prevotes == {m \in msgsPrevote[fr]: m.id = w}
             IN
             Cardinality(Senders(Prevotes)) < THRESHOLD2
