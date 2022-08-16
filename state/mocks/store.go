@@ -241,13 +241,13 @@ func (_m *Store) SaveABCIResponses(_a0 int64, _a1 *tendermintstate.ABCIResponses
 	return r0
 }
 
-type mockConstructorTestingTNewStore interface {
+type NewStoreT interface {
 	mock.TestingT
 	Cleanup(func())
 }
 
 // NewStore creates a new instance of Store. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewStore(t mockConstructorTestingTNewStore) *Store {
+func NewStore(t NewStoreT) *Store {
 	mock := &Store{}
 	mock.Mock.Test(t)
 

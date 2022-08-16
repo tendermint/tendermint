@@ -35,6 +35,7 @@ func (_m *ClientCreator) NewABCIClient() (abcicli.Client, error) {
 	return r0, r1
 }
 
+
 type mockConstructorTestingTNewClientCreator interface {
 	mock.TestingT
 	Cleanup(func())
