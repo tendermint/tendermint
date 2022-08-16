@@ -254,4 +254,14 @@ bucket when they belong to the same network group.
 
 ## Persistence
 
-TODO:
+The `loadFromFile` method, called when the address book is started, reads
+address book entries from a file, passed to the address book constructor.
+The file, at this point, does not need to exist.
+
+The `saveRoutine` is started when the address book is started.
+It saves the address book to the configured file every `dumpAddressInterval`,
+hard-coded to 2 minutes.
+It is also possible to save the content of the address book using the `Save`
+method.
+Saving the address book content to a file acquires the address book lock, also
+employed by all other public methods.
