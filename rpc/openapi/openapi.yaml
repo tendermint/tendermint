@@ -712,7 +712,8 @@ paths:
       tags:
         - Info
       description: |
-        Get block_results.
+        Get block_results. Note that if the `discard_abci_responses` RPC flag is
+        enabled, this endpoint will only be able to return the latest block.
       responses:
         "200":
           description: Block results.
