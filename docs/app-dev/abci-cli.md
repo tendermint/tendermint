@@ -37,7 +37,6 @@ Available Commands:
   help        Help about any command
   info        Get some info about the application
   query       Query the application state
-  set_option  Set an options on the application
 
 Flags:
       --abci string      socket or grpc (default "socket")
