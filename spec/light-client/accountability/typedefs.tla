@@ -1,35 +1,26 @@
 -------------------- MODULE typedefs ---------------------------
 (*
-  @typeAlias: PROCESS = Str;
-  @typeAlias: VALUE = Str;
-  @typeAlias: STEP = Str;
-  @typeAlias: ROUND = Int;
-  @typeAlias: ACTION = Str;
-  @typeAlias: TRACE = Seq(Str);
-  @typeAlias: PROPMESSAGE = 
-  [
-    type: STEP, 
-    src: PROCESS, 
-    round: ROUND,
-    proposal: VALUE, 
-    validRound: ROUND
-  ];
-  @typeAlias: PREMESSAGE = 
-  [
-    type: STEP, 
-    src: PROCESS, 
-    round: ROUND,
-    id: VALUE
-  ];
-  @typeAlias: MESSAGE = 
-  [
-    type: STEP, 
-    src: PROCESS, 
-    round: ROUND,
-    proposal: VALUE, 
-    validRound: ROUND,
-    id: VALUE
-  ];
+  @typeAlias: process = Str;
+  @typeAlias: value = Str;
+  @typeAlias: step = Str;
+  @typeAlias: round = Int;
+  @typeAlias: action = Str;
+  @typeAlias: trace = Seq(Str);
+  @typeAlias: proposeMsg =
+  {
+    type: $step,
+    src: $process,
+    round: $round,
+    proposal: $value,
+    validRound: $round
+  };
+  @typeAlias: preMsg =
+  {
+    type: $step,
+    src: $process,
+    round: $round,
+    id: $value
+  };
 *)
 TypeAliases == TRUE
 
