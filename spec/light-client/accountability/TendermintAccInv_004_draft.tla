@@ -13,7 +13,6 @@ EXTENDS TendermintAcc_004_draft
 
 (************************** TYPE INVARIANT ***********************************)
 (* first, we define the sets of all potential messages *)
-\* @type: Set($proposeMsg);
 AllProposals ==
   [type: {"PROPOSAL"},
    src: AllProcs,
@@ -21,14 +20,18 @@ AllProposals ==
    proposal: ValuesOrNil,
    validRound: RoundsOrNil]
 
-\* @type: Set($preMsg);
 AllPrevotes ==
   [type: {"PREVOTE"},
    src: AllProcs,
    round: Rounds,
    id: ValuesOrNil]
 
-\* @type: Set($preMsg);
+AllPrevotes ==
+  [type: {"PREVOTE"},
+   src: AllProcs,
+   round: Rounds,
+   id: ValuesOrNil]
+
 AllPrecommits ==
   [type: {"PRECOMMIT"},
    src: AllProcs,
