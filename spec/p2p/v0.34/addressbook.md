@@ -16,7 +16,7 @@ Addresses are added to the address book in the following situations:
 1. When a peer address is received via PEX protocol, the source is the sender
    of the PEX message
 1. When an inbound peer is added to the PEX reactor, in this case the peer
-   itself is set as the source
+   itself is set as the source of its address
 1. When the switch is instructed to dial addresses via the `DialPeersAsync`
    method, in this case the node itself is set as the source
 
@@ -31,21 +31,22 @@ An address contains a node ID and a network address (IP and port).
 The address book can keep multiple network addresses for the same node ID, but
 this number should be limited.
 A new address with a node ID that is already present in the address book is
-**not** added when:
+**not added** when:
 
-- The latest address added with the same node ID is stored in an old bucket
-- There are addresses for this node ID in `maxNewBucketsPerAddress = 4` buckets
-- Randomly, with an exponentially increasing probability as the number of
-  buckets in which there is an address with this node ID increases. If the
-  address is in one bucket, it is not added with 50% of probability. If it is
-  in two buckets, with 75% of probability, and so on.
-
-Addresses of nodes not yet tracked, i..e, whose node IDs that are not present
-in the address book, should always be added.
+- The last address added with the same node ID is stored in an old bucket, so
+  it is considered a "good" address
+- There are addresses associated to the same node ID stored in
+  `maxNewBucketsPerAddress = 4` distinct buckets
+- Randomly, with a probability that increases exponentially with the number of
+  buckets in which there is an address with the same node ID.
+  So, a new address for a node ID which is already present in one bucket is
+  added with 50% of probability; if the node ID is present in two buckets, the
+  probability decreases to 25%; and if it is present in three buckets, the
+  probability is 12.5%.
 
 Addresses are stored in [buckets](#buckets).
-The bucket to which a new address is added is computed based on the address and
-its source address.
+The bucket to which a new address is added is computed based on the address
+itself and its source address.
 An address is not added to a bucket if it is already present there.
 This should not happen with addresses with new node IDs, but it can happen with
 addresses with known node IDs.
@@ -53,10 +54,16 @@ In fact, as the mapping of buckets for new addresses is mainly determined by
 the network group of the source address, the same address can be present in
 more than one bucket provided that it was added with different source addresses.
 
-The new address is also added to the `addrLookup` table, which keeps the last
-address added for each node ID.
-This table is used by most of the address book methods (e.g., `HasAddress`,
-`IsGood`, `MarkGood`, `MarkAttempt`), as it provides a fast access to address entries.
+The new address is also added to the `addrLookup` table, which stores
+`knownAddress` entries indexed by their node IDs.
+If the new address is from an unknown peer, a new entry is added to the
+`addrLookup` table; otherwise, the existing entry is updated with the new
+address.
+Entries of this table contain, among other fields, the list of buckets where
+addresses of a peer are stored.
+The `addrLookup` table is used by most of the address book methods (e.g.,
+`HasAddress`, `IsGood`, `MarkGood`, `MarkAttempt`), as it provides fast access
+to addresses.
 
 ### Errors
 
@@ -89,14 +96,15 @@ messages received from a peer is a multiple of `10000`.
 Vote and block part messages are considered for this number, they must be valid
 and not be duplicated messages to be considered useful.
 
-> The `SwitchReporter` type also invokes this method for reasons that appear to
-> be the same mentioned above.
-> No reactor, however, use this method with those reasons.
+> The `SwitchReporter` type of `behaviour` package also invokes the `MarkGood`
+> method when a "reason" associated with consensus votes and block parts is
+> reported.
+> No reactor, however, currently provides these "reasons" to the `SwitchReporter`.
 
-The effect of this action is that the address registered for the peer ID in the
+The effect of this action is that the address registered for the peer's ID in the
 `addrLookup` table, which is the last address added with that ID, is marked as
 good and moved to a bucket of old addresses.
-An address marked as good has its failed to connect counter and timestamps reset.
+An address marked as good has its failed to connect counter and timestamp reset.
 If the destination bucket of old addresses is full, the oldest address in the
 bucket is moved (downgraded) to a bucket of new addresses.
 
@@ -112,57 +120,69 @@ It is invoked by the PEX reactor, with banning time of 24 hours, in the followin
 - When PEX requests are received too often from a peer
 - When an invalid PEX response is received from a peer
 - When an unsolicited PEX response is received from a peer
-- When the `maxAttemptsToDial` a peer limit (`16`) is reached
+- When the `maxAttemptsToDial` a limit (`16`) is reached for a peer
 - If an `ErrSwitchAuthenticationFailure` error is returned when dialing a peer
 
-The effect of this action is that the address registered for the peer ID in the
+The effect of this action is that the address registered for the peer's ID in the
 `addrLookup` table, which is the last address added with that ID, is banned for
-the provided period of time.
+a period of time.
 The banned peer is removed from the `addrLookup` table and from all buckets
 where its addresses are stored.
-The banned entries, however, are not discarded, but kept in the `badPeers` map,
-indexed by peer ID.
-This allows them to be [reinstated](#reinstating-addresses), i.e., to be added
+
+The information about banned peers, however, is not discarded.
+It is maintained in the `badPeers` map, indexed by peer ID.
+This allows, in particular, addresses of banned peers to be
+[reinstated](#reinstating-addresses), i.e., to be added
 back to the address book, when their ban period expires.
 
 ## Dial Attempts
 
-The `MarkAttempt` method registers a failed attempt to connect to an address. 
+The `MarkAttempt` method records a failed attempt to connect to an address. 
 
-It is invoked by the PEX reactor when it fails dialing a peer, but the returned
-error is not an `ErrSwitchAuthenticationFailure` error, which in its turn
-causes the peer to be marked as a bad peer.
+It is invoked by the PEX reactor when it fails dialing a peer, but the failure
+is not in the authentication step (`ErrSwitchAuthenticationFailure` error).
+In case of authentication errors, the peer is instead marked as a [bad peer](#bad-peers).
 
-The failed connection attempt is registered in the entry associated to the
-address ID in the `addrLookup` table.
-Its counter of failed `Attempts` is increased and the failure time is
-registered in `LastAttempt`.
-The possible effect of multiple failed connect attempts is to turn the address
-into a *bad* address (do not confuse with banned addresses).
-An address becomes bad if it is a new address and when connections attempts:
+The failed connection attempt is recorded in the address registered for the
+peer's ID in the `addrLookup` table, which is the last address added with that ID.
+The known address' counter of failed `Attempts` is increased and the failure
+time is registered in `LastAttempt`.
+
+The possible effect of recording multiple failed connect attempts to a peer is
+to turn its address into a *bad* address (do not confuse with banned addresses).
+A known address becomes bad if it is stored in buckets of new addresses, and
+when connections attempts:
 
 - Have not been made over a week, i.e., `LastAttempt` is older than a week
 - Have failed 3 times and never succeeded, i.e., `LastSucess` field is unset
 - Have failed 10 times in the last week, i.e., `LastSucess` is older than a week
 
-Address marked as *bad* are the first removed from a bucket of new addresses
-when the bucket becomes full.
+Addresses marked as *bad* are the first candidates to be removed from a bucket of
+new addresses when the bucket becomes full.
+
+> Note that failed connection attempts are reported for a peer address, but in
+> fact the address book records them for a peer.
+>
+> More precisely, failed connection attempts are recorded in the entry of  the
+> `addrLookup` table with reported peer ID, which contains the last address
+> added for that node ID, which is not necessarily the reported peer address.
 
 ## Reinstating addresses
 
 The `ReinstateBadPeers` method attempts to re-add banned addresses to the address book.
 
-It is invoked by the PEX reactor when dialing new peers, provided that more
-peer addresses are needed.
+It is invoked by the PEX reactor when dialing new peers.
+This action is taken before requesting additional addresses to peers,
+in the case that the node needs more peer addresses.
 
 The set of banned peer addresses is retrieved from the `badPeers` map.
-If the address should not be banned anymore, i.e., its banned time has expired,
-the address is added to a bucket of new addresses and removed from the list of
-banned addresses.
+Addresses that are not any longer banned, i.e., which banned period has expired,
+are added back to the address book as new addresses, while the corresponding
+node IDs are removed from the `badPeers` map.
 
 ## Removing addresses
 
-The `RemoveAddress` method remove an address from the address book.
+The `RemoveAddress` method removes an address from the address book.
 
 It is invoked by the switch when it dials a peer or accepts a connection from a
 peer that end ups being the node itself (`IsSelf` error).
@@ -171,7 +191,12 @@ as a local address, via the `AddOurAddress` method.
 
 The entry registered with the peer ID of the address in the `addrLookup` table,
 which is the last address added with that ID, is removed from all buckets where
-it is registered and from the `addrLookup` table.
+it is stored and from the `addrLookup` table.
+
+> FIXME: is it possible that addresses with the same ID as the removed address,
+> but with distinct network addresses, are kept in buckets of the address book?
+> While they will not be accessible anymore, as there is no reference to them
+> in the `addrLookup`, they will still be there.
 
 ## Pick address
 
