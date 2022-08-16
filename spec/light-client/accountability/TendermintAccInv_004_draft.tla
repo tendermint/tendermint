@@ -26,12 +26,6 @@ AllPrevotes ==
    round: Rounds,
    id: ValuesOrNil]
 
-AllPrevotes ==
-  [type: {"PREVOTE"},
-   src: AllProcs,
-   round: Rounds,
-   id: ValuesOrNil]
-
 AllPrecommits ==
   [type: {"PRECOMMIT"},
    src: AllProcs,
