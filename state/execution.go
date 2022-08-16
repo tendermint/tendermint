@@ -233,10 +233,6 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
-		blockExec.metrics.ValidatorSetUpdates.Add(1)
-	}
-	if finalizeBlockResponse.ConsensusParamUpdates != nil {
-		blockExec.metrics.ConsensusParamUpdates.Add(1)
 	}
 
 	// Update the state with the block and responses.

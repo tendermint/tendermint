@@ -123,6 +123,14 @@ func (m *Metrics) RecordConsMetrics(block *types.Block) {
 	m.CommittedHeight.Set(float64(block.Height))
 }
 
+func (m *Metrics) MarkProposalProcessed(accepted bool) {
+	status := "accepted"
+	if !accepted {
+		status = "rejected"
+	}
+	m.ProposalReceiveCount.With("status", status).Add(1)
+}
+
 func (m *Metrics) MarkVoteReceived(vt tmproto.SignedMsgType, power, totalPower int64) {
 	p := float64(power) / float64(totalPower)
 	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
@@ -133,6 +141,11 @@ func (m *Metrics) MarkRound(r int32, st time.Time) {
 	m.Rounds.Set(float64(r))
 	roundTime := time.Since(st).Seconds()
 	m.RoundDurationSeconds.Observe(roundTime)
+}
+
+func (m *Metrics) MarkLateVote(vt tmproto.SignedMsgType) {
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.LateVotes.With("vote_type", n).Add(1)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {
