@@ -21,7 +21,7 @@
 
  Byzantine processes can demonstrate arbitrary behavior, including
  no communication. We show that if agreement is violated, then the Byzantine
- processes demonstrate one of the two behaviors:
+ processes demonstrate one of the two behaviours:
 
    - Equivocation: a Byzantine process may send two different values
      in the same round.
@@ -29,6 +29,7 @@
    - Amnesia: a Byzantine process may lock a value without unlocking
      the previous value that it has locked in the past.
 
+ * Version 5. Refactor evidence, migrate to Apalache Type System 1.2.
  * Version 4. Remove defective processes, fix bugs, collect global evidence.
  * Version 3. Modular and parameterized definitions.
  * Version 2. Bugfixes in the spec and an inductive invariant.
@@ -41,34 +42,34 @@ EXTENDS Integers, FiniteSets, typedefs
 
 (********************* PROTOCOL PARAMETERS **********************************)
 CONSTANTS
-  \* @type: Set(PROCESS);
-    Corr,          \* the set of correct processes 
-  \* @type: Set(PROCESS);
+  \* @type: Set($process);
+    Corr,          \* the set of correct processes
+  \* @type: Set($process);
     Faulty,        \* the set of Byzantine processes, may be empty
-  \* @type: Int;  
+  \* @type: Int;
     N,             \* the total number of processes: correct, defective, and Byzantine
-  \* @type: Int;  
+  \* @type: Int;
     T,             \* an upper bound on the number of Byzantine processes
-  \* @type: Set(VALUE);  
+  \* @type: Set($value);
     ValidValues,   \* the set of valid values, proposed both by correct and faulty
-  \* @type: Set(VALUE);  
+  \* @type: Set($value);
     InvalidValues, \* the set of invalid values, never proposed by the correct ones
-  \* @type: ROUND;    
+  \* @type: $round;
     MaxRound,      \* the maximal round number
-  \* @type: ROUND -> PROCESS;
+  \* @type: $round -> $process;
     Proposer       \* the proposer function from Rounds to AllProcs
 
 ASSUME(N = Cardinality(Corr \union Faulty))
 
 (*************************** DEFINITIONS ************************************)
 AllProcs == Corr \union Faulty      \* the set of all processes
-\* @type: Set(ROUND);
+\* @type: Set($round);
 Rounds == 0..MaxRound               \* the set of potential rounds
-\* @type: ROUND;
+\* @type: $round;
 NilRound == -1   \* a special value to denote a nil round, outside of Rounds
 RoundsOrNil == Rounds \union {NilRound}
 Values == ValidValues \union InvalidValues \* the set of all values
-\* @type: VALUE;
+\* @type: $value;
 NilValue == "None"  \* a special value for a nil round, outside of Values
 ValuesOrNil == Values \union {NilValue}
 
@@ -83,106 +84,105 @@ IsValid(v) == v \in ValidValues
 THRESHOLD1 == T + 1     \* at least one process is not faulty
 THRESHOLD2 == 2 * T + 1 \* a quorum when having N > 3 * T
 
-(********************* TYPE ANNOTATIONS FOR APALACHE **************************)
-
-\* An empty set of messages
-\* @type: Set(MESSAGE);
-EmptyMsgSet == {}
-
 (********************* PROTOCOL STATE VARIABLES ******************************)
 VARIABLES
-  \* @type: PROCESS -> ROUND;
+  \* @type: $process -> $round;
   round,    \* a process round number: Corr -> Rounds
-  \* @type: PROCESS -> STEP;
+  \* @type: $process -> $step;
   step,     \* a process step: Corr -> { "PROPOSE", "PREVOTE", "PRECOMMIT", "DECIDED" }
-  \* @type: PROCESS -> VALUE;
+  \* @type: $process -> $value;
   decision, \* process decision: Corr -> ValuesOrNil
-  \* @type: PROCESS -> VALUE;
+  \* @type: $process -> $value;
   lockedValue,  \* a locked value: Corr -> ValuesOrNil
-  \* @type: PROCESS -> ROUND;
+  \* @type: $process -> $round;
   lockedRound,  \* a locked round: Corr -> RoundsOrNil
-  \* @type: PROCESS -> VALUE;
+  \* @type: $process -> $value;
   validValue,   \* a valid value: Corr -> ValuesOrNil
-  \* @type: PROCESS -> ROUND;
+  \* @type: $process -> $round;
   validRound    \* a valid round: Corr -> RoundsOrNil
 
 \* book-keeping variables
 VARIABLES
-  \* @type: ROUND -> Set(PROPMESSAGE);
+  \* @type: $round -> Set($proposeMsg);
   msgsPropose,   \* PROPOSE messages broadcast in the system, Rounds -> Messages
-  \* @type: ROUND -> Set(PREMESSAGE);
+  \* @type: $round -> Set($preMsg);
   msgsPrevote,   \* PREVOTE messages broadcast in the system, Rounds -> Messages
-  \* @type: ROUND -> Set(PREMESSAGE);
+  \* @type: $round -> Set($preMsg);
   msgsPrecommit, \* PRECOMMIT messages broadcast in the system, Rounds -> Messages
-  \* @type: Set(MESSAGE);
-  evidence, \* the messages that were used by the correct processes to make transitions
-  \* @type: ACTION;
+  \* @type: Set($proposeMsg);
+  evidencePropose, \* the PROPOSE messages used by some correct processes to make transitions
+  \* @type: Set($preMsg);
+  evidencePrevote, \* the PREVOTE messages used by some correct processes to make transitions
+  \* @type: Set($preMsg);
+  evidencePrecommit, \* the PRECOMMIT messages used by some correct processes to make transitions
+  \* @type: $action;
   action        \* we use this variable to see which action was taken
 
-(* to see a type invariant, check TendermintAccInv3 *)  
- 
+(* to see a type invariant, check TendermintAccInv3 *)
+
 \* a handy definition used in UNCHANGED
 vars == <<round, step, decision, lockedValue, lockedRound,
-          validValue, validRound, evidence, msgsPropose, msgsPrevote, msgsPrecommit>>
+          validValue, validRound, msgsPropose, msgsPrevote, msgsPrecommit,
+          evidencePropose, evidencePrevote, evidencePrecommit>>
 
 (********************* PROTOCOL INITIALIZATION ******************************)
-\* @type: (ROUND) => Set(PROPMESSAGE);
+\* @type: ($round) => Set($proposeMsg);
 FaultyProposals(r) ==
   [
-    type      : {"PROPOSAL"}, 
+    type      : {"PROPOSAL"},
     src       : Faulty,
-    round     : {r}, 
-    proposal  : Values, 
+    round     : {r},
+    proposal  : Values,
     validRound: RoundsOrNil
   ]
 
-\* @type: Set(PROPMESSAGE);
+\* @type: Set($proposeMsg);
 AllFaultyProposals ==
   [
-    type      : {"PROPOSAL"}, 
+    type      : {"PROPOSAL"},
     src       : Faulty,
-    round     : Rounds, 
-    proposal  : Values, 
+    round     : Rounds,
+    proposal  : Values,
     validRound: RoundsOrNil
   ]
 
-\* @type: (ROUND) => Set(PREMESSAGE);
+\* @type: ($round) => Set($preMsg);
 FaultyPrevotes(r) ==
   [
-    type : {"PREVOTE"}, 
-    src  : Faulty, 
-    round: {r}, 
+    type : {"PREVOTE"},
+    src  : Faulty,
+    round: {r},
     id   : Values
   ]
 
-\* @type: Set(PREMESSAGE);
-AllFaultyPrevotes ==    
+\* @type: Set($preMsg);
+AllFaultyPrevotes ==
   [
-    type : {"PREVOTE"}, 
-    src  : Faulty, 
-    round: Rounds, 
+    type : {"PREVOTE"},
+    src  : Faulty,
+    round: Rounds,
     id   : Values
   ]
 
-\* @type: (ROUND) => Set(PREMESSAGE);
+\* @type: ($round) => Set($preMsg);
 FaultyPrecommits(r) ==
   [
-    type : {"PRECOMMIT"}, 
-    src  : Faulty, 
-    round: {r}, 
+    type : {"PRECOMMIT"},
+    src  : Faulty,
+    round: {r},
     id   : Values
   ]
 
-\* @type: Set(PREMESSAGE);
+\* @type: Set($preMsg);
 AllFaultyPrecommits ==
   [
-    type : {"PRECOMMIT"}, 
-    src  : Faulty, 
-    round: Rounds, 
+    type : {"PRECOMMIT"},
+    src  : Faulty,
+    round: Rounds,
     id   : Values
   ]
 
-\* @type: (ROUND -> Set(MESSAGE)) => Bool;
+\* @type: ($round -> Set({ round: Int, a })) => Bool;
 BenignRoundsInMessages(msgfun) ==
   \* the message function never contains a message for a wrong round
   \A r \in Rounds:
@@ -204,50 +204,43 @@ Init ==
     /\ BenignRoundsInMessages(msgsPropose)
     /\ BenignRoundsInMessages(msgsPrevote)
     /\ BenignRoundsInMessages(msgsPrecommit)
-    /\ evidence = EmptyMsgSet
+    /\ evidencePropose = {}
+    /\ evidencePrevote = {}
+    /\ evidencePrecommit = {}
     /\ action = "Init"
 
 (************************ MESSAGE PASSING ********************************)
-\* @type: (PROCESS, ROUND, VALUE, ROUND) => Bool;
+\* @type: ($process, $round, $value, $round) => Bool;
 BroadcastProposal(pSrc, pRound, pProposal, pValidRound) ==
-  LET
-    \* @type: PROPMESSAGE;
-    newMsg ==
-    [
-      type       |-> "PROPOSAL", 
-      src        |-> pSrc, 
+  LET newMsg == [
+      type       |-> "PROPOSAL",
+      src        |-> pSrc,
       round      |-> pRound,
-      proposal   |-> pProposal, 
+      proposal   |-> pProposal,
       validRound |-> pValidRound
-    ]
+  ]
   IN
   msgsPropose' = [msgsPropose EXCEPT ![pRound] = msgsPropose[pRound] \union {newMsg}]
 
-\* @type: (PROCESS, ROUND, VALUE) => Bool;
+\* @type: ($process, $round, $value) => Bool;
 BroadcastPrevote(pSrc, pRound, pId) ==
-  LET 
-    \* @type: PREMESSAGE;
-    newMsg == 
-    [
+  LET newMsg == [
       type  |-> "PREVOTE",
-      src   |-> pSrc, 
-      round |-> pRound, 
+      src   |-> pSrc,
+      round |-> pRound,
       id    |-> pId
-    ]
+  ]
   IN
   msgsPrevote' = [msgsPrevote EXCEPT ![pRound] = msgsPrevote[pRound] \union {newMsg}]
 
-\* @type: (PROCESS, ROUND, VALUE) => Bool;
+\* @type: ($process, $round, $value) => Bool;
 BroadcastPrecommit(pSrc, pRound, pId) ==
-  LET
-    \* @type: PREMESSAGE; 
-    newMsg == 
-    [
+  LET newMsg == [
       type  |-> "PRECOMMIT",
-      src   |-> pSrc, 
-      round |-> pRound, 
+      src   |-> pSrc,
+      round |-> pRound,
       id    |-> pId
-    ]
+  ]
   IN
   msgsPrecommit' = [msgsPrecommit EXCEPT ![pRound] = msgsPrecommit[pRound] \union {newMsg}]
 
@@ -257,46 +250,42 @@ BroadcastPrecommit(pSrc, pRound, pId) ==
 StartRound(p, r) ==
    /\ step[p] /= "DECIDED" \* a decided process does not participate in consensus
    /\ round' = [round EXCEPT ![p] = r]
-   /\ step' = [step EXCEPT ![p] = "PROPOSE"] 
+   /\ step' = [step EXCEPT ![p] = "PROPOSE"]
 
 \* lines 14-19, a proposal may be sent later
-\* @type: (PROCESS) => Bool;
-InsertProposal(p) == 
+\* @type: $process => Bool;
+InsertProposal(p) ==
   LET r == round[p] IN
   /\ p = Proposer[r]
   /\ step[p] = "PROPOSE"
     \* if the proposer is sending a proposal, then there are no other proposals
     \* by the correct processes for the same round
   /\ \A m \in msgsPropose[r]: m.src /= p
-  /\ \E v \in ValidValues: 
-      LET 
-        \* @type: VALUE;
-        proposal == 
-          IF validValue[p] /= NilValue 
-          THEN validValue[p] 
-          ELSE v 
+  /\ \E v \in ValidValues:
+      LET proposal ==
+          IF validValue[p] /= NilValue
+          THEN validValue[p]
+          ELSE v
       IN BroadcastProposal(p, round[p], proposal, validRound[p])
-  /\ UNCHANGED <<evidence, round, decision, lockedValue, lockedRound,
-                validValue, step, validRound, msgsPrevote, msgsPrecommit>>
+  /\ UNCHANGED <<round, decision, lockedValue, lockedRound,
+                 validValue, step, validRound, msgsPrevote, msgsPrecommit,
+                 evidencePropose, evidencePrevote, evidencePrecommit>>
   /\ action' = "InsertProposal"
 
 \* lines 22-27
 UponProposalInPropose(p) ==
   \E v \in Values:
     /\ step[p] = "PROPOSE" (* line 22 *)
-    /\ LET
-        \* @type: PROPMESSAGE; 
-        msg ==
-        [
-          type       |-> "PROPOSAL", 
+    /\ LET msg == [
+          type       |-> "PROPOSAL",
           src        |-> Proposer[round[p]],
-          round      |-> round[p], 
-          proposal   |-> v, 
+          round      |-> round[p],
+          proposal   |-> v,
           validRound |-> NilRound
-        ] 
+       ]
        IN
       /\ msg \in msgsPropose[round[p]] \* line 22
-      /\ evidence' = {msg} \union evidence
+      /\ evidencePropose' = {msg} \union evidencePropose
     /\ LET mid == (* line 23 *)
          IF IsValid(v) /\ (lockedRound[p] = NilRound \/ lockedValue[p] = v)
          THEN Id(v)
@@ -305,28 +294,27 @@ UponProposalInPropose(p) ==
        BroadcastPrevote(p, round[p], mid) \* lines 24-26
     /\ step' = [step EXCEPT ![p] = "PREVOTE"]
     /\ UNCHANGED <<round, decision, lockedValue, lockedRound,
-                   validValue, validRound, msgsPropose, msgsPrecommit>>
+                   validValue, validRound, msgsPropose, msgsPrecommit,
+                   evidencePrevote, evidencePrecommit>>
     /\ action' = "UponProposalInPropose"
 
-\* lines 28-33        
+\* lines 28-33
 UponProposalInProposeAndPrevote(p) ==
   \E v \in Values, vr \in Rounds:
     /\ step[p] = "PROPOSE" /\ 0 <= vr /\ vr < round[p] \* line 28, the while part
-    /\ LET
-        \* @type: PROPMESSAGE; 
-        msg ==
-        [
-          type       |-> "PROPOSAL", 
+    /\ LET msg == [
+          type       |-> "PROPOSAL",
           src        |-> Proposer[round[p]],
-          round      |-> round[p], 
-          proposal   |-> v, 
+          round      |-> round[p],
+          proposal   |-> v,
           validRound |-> vr
-        ]
+       ]
        IN
        /\ msg \in msgsPropose[round[p]] \* line 28
        /\ LET PV == { m \in msgsPrevote[vr]: m.id = Id(v) } IN
           /\ Cardinality(PV) >= THRESHOLD2 \* line 28
-          /\ evidence' = PV \union {msg} \union evidence
+          /\ evidencePropose' = {msg} \union evidencePropose
+          /\ evidencePrevote' = PV \union evidencePrevote
     /\ LET mid == (* line 29 *)
          IF IsValid(v) /\ (lockedRound[p] <= vr \/ lockedValue[p] = v)
          THEN Id(v)
@@ -335,9 +323,10 @@ UponProposalInProposeAndPrevote(p) ==
        BroadcastPrevote(p, round[p], mid) \* lines 24-26
     /\ step' = [step EXCEPT ![p] = "PREVOTE"]
     /\ UNCHANGED <<round, decision, lockedValue, lockedRound,
-                   validValue, validRound, msgsPropose, msgsPrecommit>>
+                   validValue, validRound, msgsPropose, msgsPrecommit,
+                   evidencePrecommit>>
     /\ action' = "UponProposalInProposeAndPrevote"
-                     
+
  \* lines 34-35 + lines 61-64 (onTimeoutPrevote)
 UponQuorumOfPrevotesAny(p) ==
   /\ step[p] = "PREVOTE" \* line 34 and 61
@@ -346,32 +335,31 @@ UponQuorumOfPrevotesAny(p) ==
       LET Voters == { m.src: m \in MyEvidence } IN
       \* compare the number of the unique voters against the threshold
       /\ Cardinality(Voters) >= THRESHOLD2 \* line 34
-      /\ evidence' = MyEvidence \union evidence
+      /\ evidencePrevote' = MyEvidence \union evidencePrevote
       /\ BroadcastPrecommit(p, round[p], NilValue)
       /\ step' = [step EXCEPT ![p] = "PRECOMMIT"]
       /\ UNCHANGED <<round, decision, lockedValue, lockedRound,
-                    validValue, validRound, msgsPropose, msgsPrevote>>
+                     validValue, validRound, msgsPropose, msgsPrevote,
+                     evidencePropose, evidencePrecommit>>
       /\ action' = "UponQuorumOfPrevotesAny"
-                     
+
 \* lines 36-46
 UponProposalInPrevoteOrCommitAndPrevote(p) ==
   \E v \in ValidValues, vr \in RoundsOrNil:
     /\ step[p] \in {"PREVOTE", "PRECOMMIT"} \* line 36
-    /\ LET
-        \* @type: PROPMESSAGE; 
-        msg ==
-        [
-          type       |-> "PROPOSAL", 
+    /\ LET msg == [
+          type       |-> "PROPOSAL",
           src        |-> Proposer[round[p]],
-          round      |-> round[p], 
-          proposal   |-> v, 
+          round      |-> round[p],
+          proposal   |-> v,
           validRound |-> vr
-        ] 
+       ]
        IN
         /\ msg \in msgsPropose[round[p]] \* line 36
         /\ LET PV == { m \in msgsPrevote[round[p]]: m.id = Id(v) } IN
           /\ Cardinality(PV) >= THRESHOLD2 \* line 36
-          /\ evidence' = PV \union {msg} \union evidence
+          /\ evidencePrevote' = PV \union evidencePrevote
+          /\ evidencePropose' = {msg} \union evidencePropose
     /\  IF step[p] = "PREVOTE"
         THEN \* lines 38-41:
           /\ lockedValue' = [lockedValue EXCEPT ![p] = v]
@@ -383,7 +371,8 @@ UponProposalInPrevoteOrCommitAndPrevote(p) ==
       \* lines 42-43
     /\ validValue' = [validValue EXCEPT ![p] = v]
     /\ validRound' = [validRound EXCEPT ![p] = round[p]]
-    /\ UNCHANGED <<round, decision, msgsPropose, msgsPrevote>>
+    /\ UNCHANGED <<round, decision, msgsPropose, msgsPrevote,
+                   evidencePrecommit>>
     /\ action' = "UponProposalInPrevoteOrCommitAndPrevote"
 
 \* lines 47-48 + 65-67 (onTimeoutPrecommit)
@@ -393,40 +382,40 @@ UponQuorumOfPrecommitsAny(p) ==
       LET Committers == { m.src: m \in MyEvidence } IN
       \* compare the number of the unique committers against the threshold
       /\ Cardinality(Committers) >= THRESHOLD2 \* line 47
-      /\ evidence' = MyEvidence \union evidence
+      /\ evidencePrecommit' = MyEvidence \union evidencePrecommit
       /\ round[p] + 1 \in Rounds
-      /\ StartRound(p, round[p] + 1)   
+      /\ StartRound(p, round[p] + 1)
       /\ UNCHANGED <<decision, lockedValue, lockedRound, validValue,
-                    validRound, msgsPropose, msgsPrevote, msgsPrecommit>>
+                     validRound, msgsPropose, msgsPrevote, msgsPrecommit,
+                     evidencePropose, evidencePrevote>>
       /\ action' = "UponQuorumOfPrecommitsAny"
-                     
-\* lines 49-54        
+
+\* lines 49-54
 UponProposalInPrecommitNoDecision(p) ==
   /\ decision[p] = NilValue \* line 49
   /\ \E v \in ValidValues (* line 50*) , r \in Rounds, vr \in RoundsOrNil:
-    /\ LET
-        \* @type: PROPMESSAGE; 
-        msg == 
-        [
-          type       |-> "PROPOSAL", 
+    /\ LET msg == [
+          type       |-> "PROPOSAL",
           src        |-> Proposer[r],
-          round      |-> r, 
-          proposal   |-> v, 
+          round      |-> r,
+          proposal   |-> v,
           validRound |-> vr
-        ] 
+       ]
        IN
      /\ msg \in msgsPropose[r] \* line 49
      /\ LET PV == { m \in msgsPrecommit[r]: m.id = Id(v) } IN
        /\ Cardinality(PV) >= THRESHOLD2 \* line 49
-       /\ evidence' = PV \union {msg} \union evidence
+       /\ evidencePrecommit' = PV \union evidencePrecommit
+       /\ evidencePropose' = evidencePropose \union { msg }
        /\ decision' = [decision EXCEPT ![p] = v] \* update the decision, line 51
     \* The original algorithm does not have 'DECIDED', but it increments the height.
     \* We introduced 'DECIDED' here to prevent the process from changing its decision.
        /\ step' = [step EXCEPT ![p] = "DECIDED"]
        /\ UNCHANGED <<round, lockedValue, lockedRound, validValue,
-                     validRound, msgsPropose, msgsPrevote, msgsPrecommit>>
+                      validRound, msgsPropose, msgsPrevote, msgsPrecommit,
+                      evidencePrevote>>
        /\ action' = "UponProposalInPrecommitNoDecision"
-                                                          
+
 \* the actions below are not essential for safety, but added for completeness
 
 \* lines 20-21 + 57-60
@@ -436,7 +425,8 @@ OnTimeoutPropose(p) ==
   /\ BroadcastPrevote(p, round[p], NilValue)
   /\ step' = [step EXCEPT ![p] = "PREVOTE"]
   /\ UNCHANGED <<round, lockedValue, lockedRound, validValue,
-                validRound, decision, evidence, msgsPropose, msgsPrecommit>>
+                 validRound, decision, msgsPropose, msgsPrecommit,
+                 evidencePropose, evidencePrevote, evidencePrecommit>>
   /\ action' = "OnTimeoutPropose"
 
 \* lines 44-46
@@ -444,21 +434,30 @@ OnQuorumOfNilPrevotes(p) ==
   /\ step[p] = "PREVOTE"
   /\ LET PV == { m \in msgsPrevote[round[p]]: m.id = Id(NilValue) } IN
     /\ Cardinality(PV) >= THRESHOLD2 \* line 36
-    /\ evidence' = PV \union evidence
+    /\ evidencePrevote' = PV \union evidencePrevote
     /\ BroadcastPrecommit(p, round[p], Id(NilValue))
     /\ step' = [step EXCEPT ![p] = "PRECOMMIT"]
     /\ UNCHANGED <<round, lockedValue, lockedRound, validValue,
-                  validRound, decision, msgsPropose, msgsPrevote>>
+                   validRound, decision, msgsPropose, msgsPrevote,
+                   evidencePropose, evidencePrecommit>>
     /\ action' = "OnQuorumOfNilPrevotes"
 
 \* lines 55-56
 OnRoundCatchup(p) ==
   \E r \in {rr \in Rounds: rr > round[p]}:
-    LET RoundMsgs == msgsPropose[r] \union msgsPrevote[r] \union msgsPrecommit[r] IN
-    \E MyEvidence \in SUBSET RoundMsgs:
-        LET Faster == { m.src: m \in MyEvidence } IN
+    \E EvPropose \in SUBSET msgsPropose[r],
+          EvPrevote \in SUBSET msgsPrevote[r],
+          EvPrecommit \in SUBSET msgsPrecommit[r]:
+        LET \* @type: Set({ src: $process, a }) => Set($process);
+            Src(E) == { m.src: m \in E }
+        IN
+        LET Faster ==
+            Src(EvPropose) \union Src(EvPrevote) \union Src(EvPrecommit)
+        IN
         /\ Cardinality(Faster) >= THRESHOLD1
-        /\ evidence' = MyEvidence \union evidence
+        /\ evidencePropose' = EvPropose \union evidencePropose
+        /\ evidencePrevote' = EvPrevote \union evidencePrevote
+        /\ evidencePrecommit' = EvPrecommit \union evidencePrecommit
         /\ StartRound(p, r)
         /\ UNCHANGED <<decision, lockedValue, lockedRound, validValue,
                       validRound, msgsPropose, msgsPrevote, msgsPrecommit>>
@@ -482,17 +481,24 @@ Next ==
     \/ OnQuorumOfNilPrevotes(p)
     \/ OnRoundCatchup(p)
 
-  
+
 (**************************** FORK SCENARIOS  ***************************)
 
 \* equivocation by a process p
 EquivocationBy(p) ==
-   \E m1, m2 \in evidence:
-    /\ m1 /= m2
-    /\ m1.src = p
-    /\ m2.src = p
-    /\ m1.round = m2.round
-    /\ m1.type = m2.type
+    LET
+        \* @type: Set({ src: $process, a }) => Bool;
+        EquivocationIn(S) ==
+            \E m1, m2 \in S:
+              /\ m1 /= m2
+              /\ m1.src = p
+              /\ m2.src = p
+              /\ m1.round = m2.round
+              /\ m1.type = m2.type
+    IN
+    \/ EquivocationIn(evidencePropose)
+    \/ EquivocationIn(evidencePrevote)
+    \/ EquivocationIn(evidencePrecommit)
 
 \* amnesic behavior by a process p
 AmnesiaBy(p) ==
@@ -501,21 +507,20 @@ AmnesiaBy(p) ==
       /\ \E v1, v2 \in ValidValues:
         /\ v1 /= v2
         /\ [
-            type  |-> "PRECOMMIT", 
+            type  |-> "PRECOMMIT",
             src   |-> p,
-            round |-> r1, 
+            round |-> r1,
             id    |-> Id(v1)
-           ] \in evidence
+           ] \in evidencePrecommit
         /\ [
-            type  |-> "PREVOTE", 
+            type  |-> "PREVOTE",
             src   |-> p,
-            round |-> r2, 
+            round |-> r2,
             id    |-> Id(v2)
-           ] \in evidence
+           ] \in evidencePrevote
         /\ \A r \in { rnd \in Rounds: r1 <= rnd /\ rnd < r2 }:
             LET prevotes ==
-                { m \in evidence:
-                    m.type = "PREVOTE" /\ m.round = r /\ m.id = Id(v2) }
+                { m \in evidencePrevote: m.round = r /\ m.id = Id(v2) }
             IN
             Cardinality(prevotes) < THRESHOLD2
 
@@ -545,7 +550,7 @@ Accountability ==
             EquivocationBy(p) \/ AmnesiaBy(p)
 
 (****************** FALSE INVARIANTS TO PRODUCE EXAMPLES ***********************)
- 
+
 \* This property is violated. You can check it to see how amnesic behavior
 \* appears in the evidence variable.
 NoAmnesia ==
@@ -562,12 +567,12 @@ NoAgreement ==
   \A p, q \in Corr:
     (p /= q /\ decision[p] /= NilValue /\ decision[q] /= NilValue)
         => decision[p] /= decision[q]
- 
+
 \* Either agreement holds, or the faulty processes indeed demonstrate amnesia.
 \* This property is violated. A counterexample should demonstrate equivocation.
 AgreementOrAmnesia ==
     Agreement \/ (\A p \in Faulty: AmnesiaBy(p))
- 
+
 \* We expect this property to be violated. It shows us a protocol run,
 \* where one faulty process demonstrates amnesia without equivocation.
 \* However, the absence of amnesia
@@ -584,7 +589,7 @@ AmnesiaImpliesEquivocation ==
 
 (*
   This property is violated. You can check it to see that all correct processes
-  may reach MaxRound without making a decision. 
+  may reach MaxRound without making a decision.
  *)
 NeverUndecidedInMaxRound ==
     LET AllInMax == \A p \in Corr: round[p] = MaxRound
@@ -592,5 +597,5 @@ NeverUndecidedInMaxRound ==
     IN
     AllInMax => AllDecided
 
-=============================================================================    
- 
+=============================================================================
+
