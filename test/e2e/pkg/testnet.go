@@ -298,7 +298,7 @@ func (n Node) Validate(testnet Testnet) error {
 		}
 	}
 	switch n.BlockSync {
-	case "v0":
+	case "", "v0":
 	default:
 		return fmt.Errorf("invalid block sync setting %q", n.BlockSync)
 	}
