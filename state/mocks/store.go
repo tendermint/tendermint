@@ -153,6 +153,29 @@ func (_m *Store) LoadFromDBOrGenesisFile(_a0 string) (state.State, error) {
 	return r0, r1
 }
 
+// LoadLastABCIResponse provides a mock function with given fields: _a0
+func (_m *Store) LoadLastABCIResponse(_a0 int64) (*tendermintstate.ABCIResponses, error) {
+	ret := _m.Called(_a0)
+
+	var r0 *tendermintstate.ABCIResponses
+	if rf, ok := ret.Get(0).(func(int64) *tendermintstate.ABCIResponses); ok {
+		r0 = rf(_a0)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*tendermintstate.ABCIResponses)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(_a0)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // LoadValidators provides a mock function with given fields: _a0
 func (_m *Store) LoadValidators(_a0 int64) (*tenderminttypes.ValidatorSet, error) {
 	ret := _m.Called(_a0)

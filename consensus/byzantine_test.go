@@ -50,7 +50,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		logger := consensusLogger().With("test", "byzantine", "validator", i)
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
@@ -420,7 +422,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait for someone in the big partition (B) to make a block
 	<-blocksSubs[ind2].Out()
 
-	t.Log("A block has been committed. Healing partition")
+	t.Logf("A block has been committed. Healing partition")
 	p2p.Connect2Switches(switches, ind0, ind1)
 	p2p.Connect2Switches(switches, ind0, ind2)
 
@@ -446,8 +448,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	case <-done:
 	case <-tick.C:
 		for i, reactor := range reactors {
-			t.Log(fmt.Sprintf("Consensus Reactor %v", i))
-			t.Log(fmt.Sprintf("%v", reactor))
+			t.Logf(fmt.Sprintf("Consensus Reactor %v", i))
+			t.Logf(fmt.Sprintf("%v", reactor))
 		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}

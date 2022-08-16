@@ -59,22 +59,18 @@ func (mp mockPeer) TrySend(byte, []byte) bool { return true }
 func (mp mockPeer) Set(string, interface{}) {}
 func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
-// nolint:unused // ignore
 type mockBlockStore struct {
 	blocks map[int64]*types.Block
 }
 
-// nolint:unused // ignore
 func (ml *mockBlockStore) Height() int64 {
 	return int64(len(ml.blocks))
 }
 
-// nolint:unused // ignore
 func (ml *mockBlockStore) LoadBlock(height int64) *types.Block {
 	return ml.blocks[height]
 }
 
-// nolint:unused // ignore
 func (ml *mockBlockStore) SaveBlock(block *types.Block, part *types.PartSet, commit *types.Commit) {
 	ml.blocks[block.Height] = block
 }
@@ -159,7 +155,9 @@ func newTestReactor(p testReactorParams) *BlockchainReactor {
 			panic(fmt.Errorf("error start app: %w", err))
 		}
 		db := dbm.NewMemDB()
-		stateStore := sm.NewStore(db)
+		stateStore := sm.NewStore(db, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		appl = sm.NewBlockExecutor(stateStore, p.logger, proxyApp.Consensus(), mock.Mempool{}, sm.EmptyEvidencePool{})
 		if err = stateStore.Save(state); err != nil {
 			panic(err)
@@ -504,14 +502,18 @@ func newReactorStore(
 
 	stateDB := dbm.NewMemDB()
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
 	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db)
+	stateStore = sm.NewStore(db, sm.StoreOptions{
+		DiscardABCIResponses: false},
+	)
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mock.Mempool{}, sm.EmptyEvidencePool{})
 	if err = stateStore.Save(state); err != nil {

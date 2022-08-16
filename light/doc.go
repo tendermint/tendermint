@@ -63,31 +63,31 @@ This package provides three major things:
 
 Example usage:
 
-		db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
-		if err != nil {
-			// handle error
-		}
+	db, err := dbm.NewGoLevelDB("light-client-db", dbDir)
+	if err != nil {
+		// handle error
+	}
 
-		c, err := NewHTTPClient(
-			chainID,
-			TrustOptions{
-				Period: 504 * time.Hour, // 21 days
-				Height: 100,
-				Hash:   header.Hash(),
-			},
-			"http://localhost:26657",
-			[]string{"http://witness1:26657"},
-			dbs.New(db, ""),
-		)
-		if err != nil {
-			// handle error
-		}
+	c, err := NewHTTPClient(
+		chainID,
+		TrustOptions{
+			Period: 504 * time.Hour, // 21 days
+			Height: 100,
+			Hash:   header.Hash(),
+		},
+		"http://localhost:26657",
+		[]string{"http://witness1:26657"},
+		dbs.New(db, ""),
+	)
+	if err != nil {
+		// handle error
+	}
 
-		h, err := c.TrustedHeader(100)
-		if err != nil {
-			// handle error
-		}
-		fmt.Println("header", h)
+	h, err := c.TrustedHeader(100)
+	if err != nil {
+		// handle error
+	}
+	fmt.Println("header", h)
 
 Check out other examples in example_test.go
 

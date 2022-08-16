@@ -23,7 +23,7 @@ type EventBusSubscriber interface {
 
 type Subscription interface {
 	Out() <-chan tmpubsub.Message
-	Cancelled() <-chan struct{} // nolint: misspell
+	Cancelled() <-chan struct{} //nolint: misspell
 	Err() error
 }
 
@@ -227,7 +227,7 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 	return b.Publish(EventValidatorSetUpdates, data)
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 type NopEventBus struct{}
 
 func (NopEventBus) Subscribe(
