@@ -208,20 +208,6 @@ func (_m *Application) Query(_a0 types.RequestQuery) types.ResponseQuery {
 	return r0
 }
 
-// SetOption provides a mock function with given fields: _a0
-func (_m *Application) SetOption(_a0 types.RequestSetOption) types.ResponseSetOption {
-	ret := _m.Called(_a0)
-
-	var r0 types.ResponseSetOption
-	if rf, ok := ret.Get(0).(func(types.RequestSetOption) types.ResponseSetOption); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Get(0).(types.ResponseSetOption)
-	}
-
-	return r0
-}
-
 type mockConstructorTestingTNewApplication interface {
 	mock.TestingT
 	Cleanup(func())

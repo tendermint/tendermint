@@ -48,12 +48,6 @@ func ToRequestInfo(req RequestInfo) *Request {
 	}
 }
 
-func ToRequestSetOption(req RequestSetOption) *Request {
-	return &Request{
-		Value: &Request_SetOption{&req},
-	}
-}
-
 func ToRequestDeliverTx(req RequestDeliverTx) *Request {
 	return &Request{
 		Value: &Request_DeliverTx{&req},
@@ -155,12 +149,6 @@ func ToResponseFlush() *Response {
 func ToResponseInfo(res ResponseInfo) *Response {
 	return &Response{
 		Value: &Response_Info{&res},
-	}
-}
-
-func ToResponseSetOption(res ResponseSetOption) *Response {
-	return &Response{
-		Value: &Response_SetOption{&res},
 	}
 }
 
