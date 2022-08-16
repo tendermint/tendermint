@@ -42,4 +42,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### BUG FIXES
 
+- [mempool] \#9033 Rework lock discipline to mitigate callback deadlocks in the
+  priority mempool
 - [#9103] fix unsafe-reset-all for working with home path (@rootwarp)
