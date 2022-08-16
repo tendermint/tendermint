@@ -38,7 +38,7 @@ message Request {
     RequestPrepareProposal    prepare_proposal     = 16;
     RequestProcessProposal    process_proposal     = 17;
   }
-  Reserve = 4;
+  reserved 4;
 }
 
 message RequestEcho {
@@ -172,7 +172,7 @@ message Response {
     ResponsePrepareProposal    prepare_proposal     = 17;
     ResponseProcessProposal    process_proposal     = 18;
   }
-  Reserve = 5;
+  reserved 5;
 }
 
 // nondeterministic
