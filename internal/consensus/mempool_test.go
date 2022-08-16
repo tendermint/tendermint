@@ -35,7 +35,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	defer cancel()
 
 	baseConfig := configSetup(t)
-	for proofBlockRange := int64(1); proofBlockRange <= 3; proofBlockRange++ {
+	for proofBlockRange := int64(0); proofBlockRange <= 3; proofBlockRange++ {
 		t.Logf("Checking proof block range %d", proofBlockRange)
 		config, err := ResetConfig(t.TempDir(), "consensus_mempool_txs_available_test")
 		require.NoError(t, err)
