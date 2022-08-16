@@ -34,13 +34,16 @@ other than v0 have been deprecated in favor of the simplest and most well unders
 
 ```toml
 #######################################################
-###       Block Sync Configuration Connections       ###
+###       Block Sync Configuration Options          ###
 #######################################################
 [blocksync]
 
 # Block Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
-#   All other versions have been deprecated and will error if used.
+# 
+# In v0.37, v1 and v2 of the block sync protocols were deprecated.
+# Please use v0 instead.
+#
+#   1) "v0" - the default block sync implementation
 version = "v0"
 ```
 

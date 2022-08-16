@@ -87,7 +87,7 @@ proxy_app = "{{ .BaseConfig.ProxyApp }}"
 # A custom human readable name for this node
 moniker = "{{ .BaseConfig.Moniker }}"
 
-# If this node is many blocks behind the tip of the chain, FastSync
+# If this node is many blocks behind the tip of the chain, BlockSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
 block_sync = {{ .BaseConfig.BlockSyncMode }}
@@ -429,7 +429,7 @@ chunk_request_timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 
 #######################################################
-###       Block Sync Configuration Connections       ###
+###       Block Sync Configuration Options          ###
 #######################################################
 [blocksync]
 

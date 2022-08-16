@@ -319,16 +319,16 @@ trust_period = "0s"
 temp_dir = ""
 
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       Block Sync Configuration Options          ###
 #######################################################
-[fastsync]
+[blocksync]
 
-# Fast Sync version to use:
-#
-# In v0.37, the v1 and v2 fast sync protocols were deprecated.
+# Block Sync version to use:
+# 
+# In v0.37, v1 and v2 of the block sync protocols were deprecated.
 # Please use v0 instead.
 #
-#   1) "v0" (default) - the legacy fast sync implementation
+#   1) "v0" - the default block sync implementation
 version = "v0"
 
 #######################################################
