@@ -153,10 +153,12 @@ If you are a VS Code user, you may want to add the following to your `.vscode/se
 Every fix, improvement, feature, or breaking change should be made in a
 pull-request that includes an update to the `CHANGELOG_PENDING.md` file.
 
-Changelog entries should be formatted as follows:
+Changelog entries should answer the question: "what is important about this
+change for users to know?" and should not simply be a reiteration of the title
+of the associated PR. Changelog entries should be formatted as follows:
 
 ```md
-- [module] \#xxx Some description about the change (@contributor)
+- [module] \#xxx Some description of the change (@contributor)
 ```
 
 Here, `module` is the part of the code that changed (typically a
