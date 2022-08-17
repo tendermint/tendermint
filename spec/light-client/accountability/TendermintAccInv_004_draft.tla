@@ -3,6 +3,8 @@
  An inductive invariant for TendermintAcc3, which capture the forked
  and non-forked cases.
 
+ * Version 4. Fix the inductive invariant,
+ *            as violations were found by Apalache v0.27.
  * Version 3. Modular and parameterized definitions.
  * Version 2. Bugfixes in the spec and an inductive invariant.
 
@@ -69,8 +71,8 @@ TypeOK ==
 
 (************************** INDUCTIVE INVARIANT *******************************)
 EvidenceContainsMessages ==
-    \* evidence contains only the messages from:
-    \* msgsPropose, msgsPrevote, and msgsPrecommit
+  \* evidence contains only the messages from:
+  \* msgsPropose, msgsPrevote, and msgsPrecommit
   /\ \A m \in evidencePropose:
        m \in msgsPropose[m.round]
   /\ \A m \in evidencePrevote:
@@ -167,19 +169,32 @@ TwoThirdsPrevotes(vr, v) ==
   Cardinality(PV) >= THRESHOLD2
 
 \* if a process sends a PREVOTE, then there are three possibilities:
-\* 1) the process is faulty, 2) the PREVOTE cotains Nil,
-\* 3) there is a proposal in an earlier (valid) round and two thirds of PREVOTES
+\* 1) the process is faulty,
+\* 2) the PREVOTE contains Nil,
+\* 3) a) there is a proposal in an earlier (valid) round,
+\*    b) there are two thirds of PREVOTES in that round,
+\*    c) there is no precommit message on another value in between the rounds.
 IfSentPrevoteThenReceivedProposalOrTwoThirds(r) ==
   \A mpv \in msgsPrevote[r]:
+    \* case 1
     \/ mpv.src \in Faulty
-      \* lockedRound and lockedValue is beyond my comprehension
+    \* case 2
     \/ mpv.id = NilValue
+    \* case 3
     \//\ mpv.src \in Corr
       /\ mpv.id /= NilValue
       /\ \/ ProposalInRound(r, mpv.id, NilRound)
-         \/ \E vr \in { rr \in Rounds: rr < r }:
+         \/ \E vr \in Rounds:
+            \* condition 3a
+            /\ vr < r
             /\ ProposalInRound(r, mpv.id, vr)
+            \* condition 3b
             /\ TwoThirdsPrevotes(vr, mpv.id)
+            \* condition 3c
+            /\ \A mr \in Rounds:
+                 \/ ~(vr <= mr /\ mr <= r)
+                 \/ \A m \in msgsPrecommit[mr]:
+                      m.src = mpv.src => m.id \in { NilValue, mpv.id }
 
 AllIfSentPrevoteThenReceivedProposalOrTwoThirds ==
   \A r \in Rounds:
@@ -249,6 +264,7 @@ AllLatestPrecommitHasLockedRound ==
 \* Every correct process sends only one value or NilValue.
 \* This test has quantifier alternation -- a threat to all decision procedures.
 \* Luckily, the sets Corr and ValidValues are small.
+\*
 \* @type: ($round, $round -> Set($preMsg)) => Bool;
 NoEquivocationByCorrect(r, msgs) ==
   \A p \in Corr:
@@ -276,9 +292,9 @@ AllNoEquivocationByCorrect ==
 \* @type: (Set({ src: $process, a })) => Set($process);
 Senders(M) == { m.src: m \in M }
 
-\* The final piece by Josef Widder:
-\* if T + 1 processes precommit on the same value in a round,
-\* then in the future rounds there are less than 2T + 1 prevotes for another value
+\* A crucial lemma by Josef Widder:
+\* If T + 1 processes precommit on the same value in a round, then in the future
+\* rounds there are less than 2T + 1 prevotes for another value
 PrecommitsLockValue ==
   \A r \in Rounds:
     \A v \in ValidValues:
@@ -287,11 +303,28 @@ PrecommitsLockValue ==
          }
          IN
          Cardinality(Senders(Precommits)) < THRESHOLD1
-      \/ \A fr \in { rr \in Rounds: rr > r }:  \* future rounds
-          \A w \in ValuesOrNil \ {v}:
-            LET Prevotes == {m \in msgsPrevote[fr]: m.id = w}
-            IN
-            Cardinality(Senders(Prevotes)) < THRESHOLD2
+      \/ \A fr \in Rounds, w \in Values:
+          LET Prevotes == { m \in msgsPrevote[fr]: m.id = w } IN
+          (fr > r /\ w /= v) => (Cardinality(Senders(Prevotes)) < THRESHOLD2)
+
+\* Another lemma by Josef Widder:
+\* If a correct process precommits and locks a value,
+\* it can later prevote on another value, only if it has seen 2T + 1 prevotes.
+RelockValueIfEnoughPrevotes ==
+  \A r1, r2 \in Rounds, p \in Corr, v1, v2 \in ValidValues:
+    LET m1 == [ type |-> "PRECOMMIT", src |-> p, id |-> v1, round |-> r1 ] IN
+    LET m2 == [ type |-> "PREVOTE", src |-> p, id |-> v2, round |-> r2 ] IN
+      LET RelockedValue ==
+        /\ r1 < r2
+        /\ v1 /= v2
+        /\ m1 \in msgsPrecommit[r1]
+        /\ m2 \in msgsPrevote[r2]
+      IN
+      LET EnoughPrevotesLater ==
+        LET Prevotes == { m \in msgsPrevote[r2]: m.id = v2 /\ m.src /= p } IN
+        Cardinality(Prevotes) >= THRESHOLD2
+      IN
+      RelockedValue => EnoughPrevotesLater
 
 \* a combination of all lemmas
 Inv ==
@@ -310,6 +343,7 @@ Inv ==
     /\ IfSentPrecommitThenReceivedTwoThirds
     /\ AllNoEquivocationByCorrect
     /\ PrecommitsLockValue
+    /\ RelockValueIfEnoughPrevotes
 
 \* this is the inductive invariant we like to check
 TypedInv == TypeOK /\ Inv
@@ -346,7 +380,7 @@ IfValidRoundThenProposal(p) ==
 AllIfValidRoundThenProposal ==
   \A p \in Corr: IfValidRoundThenProposal(p)
 
-(******************************** THEOREMS ***************************************)
+(******************************** THEOREMS ************************************)
 (* Under this condition, the faulty processes can decide alone *)
 FaultyQuorum == Cardinality(Faulty) >= THRESHOLD2
 
