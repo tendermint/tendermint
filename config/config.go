@@ -68,14 +68,17 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
-	RPC             *RPCConfig             `mapstructure:"rpc"`
-	P2P             *P2PConfig             `mapstructure:"p2p"`
-	Mempool         *MempoolConfig         `mapstructure:"mempool"`
-	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
-	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
-	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
-	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
+	RPC       *RPCConfig       `mapstructure:"rpc"`
+	P2P       *P2PConfig       `mapstructure:"p2p"`
+	Mempool   *MempoolConfig   `mapstructure:"mempool"`
+	StateSync *StateSyncConfig `mapstructure:"statesync"`
+	BlockSync *BlockSyncConfig `mapstructure:"blocksync"`
+	//TODO(williambanfield): remove this field once v0.37 is released.
+	// https://github.com/tendermint/tendermint/issues/9279
+	DeprecatedFastSyncConfig map[interface{}]interface{} `mapstructure:"fastsync"`
+	Consensus                *ConsensusConfig            `mapstructure:"consensus"`
+	TxIndex                  *TxIndexConfig              `mapstructure:"tx_index"`
+	Instrumentation          *InstrumentationConfig      `mapstructure:"instrumentation"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -148,6 +151,16 @@ func (cfg *Config) ValidateBasic() error {
 	return nil
 }
 
+func (cfg *Config) CheckDeprecated() error {
+	if cfg.DeprecatedFastSyncConfig != nil {
+		return errors.New("[fastsync] table detected. This section has been renamed to [blocksync]. The values in this deprecated section will be disregarded.")
+	}
+	if cfg.BaseConfig.DeprecatedFastSyncMode != nil {
+		return errors.New("fast_sync key detected. This key has been renamed to block_sync. The value of this deprecated key will be disregarded.")
+	}
+	return nil
+}
+
 //-----------------------------------------------------------------------------
 // BaseConfig
 
@@ -171,6 +184,10 @@ type BaseConfig struct { //nolint: maligned
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
 	BlockSyncMode bool `mapstructure:"block_sync"`
+
+	//TODO(williambanfield): remove this field once v0.37 is released.
+	// https://github.com/tendermint/tendermint/issues/9279
+	DeprecatedFastSyncMode interface{} `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
