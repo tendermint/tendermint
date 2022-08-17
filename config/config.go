@@ -151,14 +151,15 @@ func (cfg *Config) ValidateBasic() error {
 	return nil
 }
 
-func (cfg *Config) CheckDeprecated() error {
+func (cfg *Config) CheckDeprecated() []string {
+	var warnings []string
 	if cfg.DeprecatedFastSyncConfig != nil {
-		return errors.New("[fastsync] table detected. This section has been renamed to [blocksync]. The values in this deprecated section will be disregarded.")
+		warnings = append(warnings, "[fastsync] table detected. This section has been renamed to [blocksync]. The values in this deprecated section will be disregarded.")
 	}
 	if cfg.BaseConfig.DeprecatedFastSyncMode != nil {
-		return errors.New("fast_sync key detected. This key has been renamed to block_sync. The value of this deprecated key will be disregarded.")
+		warnings = append(warnings, "fast_sync key detected. This key has been renamed to block_sync. The value of this deprecated key will be disregarded.")
 	}
-	return nil
+	return warnings
 }
 
 //-----------------------------------------------------------------------------

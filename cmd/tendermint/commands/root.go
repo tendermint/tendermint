@@ -53,9 +53,10 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 	if err := conf.ValidateBasic(); err != nil {
 		return nil, fmt.Errorf("error in config file: %v", err)
 	}
-	err = conf.CheckDeprecated()
-	if err != nil {
-		logger.Info("deprecated usage found in configuration file", "error", err)
+	if warnings := conf.CheckDeprecated(); len(warnings) > 0 {
+		for _, warning := range warnings {
+			logger.Info("deprecated usage found in configuration file", "usage", warning)
+		}
 	}
 	return conf, nil
 }
