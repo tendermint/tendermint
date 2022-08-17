@@ -302,7 +302,7 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  repeated TxRecord tx_records = 1;
+  repeated bytes txs = 1;
 }
 
 message ResponseProcessProposal {
@@ -374,19 +374,6 @@ message TxResult {
   uint32            index  = 2;
   bytes             tx     = 3;
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
-}
-
-message TxRecord {
-  TxAction action = 1;
-  bytes    tx     = 2;
-
-  // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
-  enum TxAction {
-    UNKNOWN    = 0;  // Unknown action
-    UNMODIFIED = 1;  // The Application did not modify this transaction.
-    ADDED      = 2;  // The Application added this transaction.
-    REMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
-  }
 }
 
 //----------------------------------------
