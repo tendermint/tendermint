@@ -21,7 +21,8 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For protocol details, see [the specification](https://github.com/tendermint/spec).
+For protocol details, see [the
+specification](https://github.com/tendermint/tendermint/tree/v0.34.x/spec).
 
 For detailed analysis of the consensus protocol, including safety and liveness proofs,
 see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
@@ -72,11 +73,12 @@ See the [install instructions](/docs/introduction/install.md).
 
 Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 
-Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
-and the [style guide](STYLE_GUIDE.md). You may also find it helpful to read the
-[specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md), 
-and familiarize yourself with our
-[Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
+Before contributing to the project, please take a look at the [contributing
+guidelines](CONTRIBUTING.md) and the [style guide](STYLE_GUIDE.md). You may also
+find it helpful to read the [specifications](./spec/), watch the [Developer
+Sessions](/docs/DEV_SESSIONS.md), and familiarize yourself with our
+[Architectural Decision
+Records](https://github.com/tendermint/tendermint/tree/main/docs/architecture).
 
 ## Versioning
 

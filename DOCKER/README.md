@@ -37,7 +37,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app
 
 ## Local cluster
 
-To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/main/Makefile) and run:
+To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/v0.34.x/Makefile) and run:
 
 ```sh
 make build-linux

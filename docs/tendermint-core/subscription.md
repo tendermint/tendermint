@@ -43,7 +43,7 @@ transactions](./indexing-transactions.md) for details.
 When validator set changes, ValidatorSetUpdates event is published. The
 event carries a list of pubkey/power pairs. The list is the same
 Tendermint receives from ABCI application (see [EndBlock
-section](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock) in
+section](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/abci.md#endblock) in
 the ABCI spec).
 
 Response:

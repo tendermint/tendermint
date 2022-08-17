@@ -26,7 +26,7 @@ will indicate their support with a heartfelt emoji.
 
 If the issue would benefit from thorough discussion, maintainers may
 request that you create a [Request For
-Comment](https://github.com/tendermint/spec/tree/master/rfc). Discussion
+Comment](https://github.com/tendermint/tendermint/tree/main/rfc). Discussion
 at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
 

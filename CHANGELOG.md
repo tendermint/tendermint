@@ -863,7 +863,7 @@ and a validator address plus a timestamp. Note we may remove the validator
 address & timestamp fields in the future (see ADR-25).
 
 `lite2` package has been added to solve `lite` issues and introduce weak
-subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md) for complete details.
+subjectivity interface. Refer to the [spec](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/consensus/light-client.md) for complete details.
 `lite` package is now deprecated and will be removed in v0.34 release.
 
 ### BREAKING CHANGES:
@@ -1224,7 +1224,7 @@ Special thanks to external contributors on this release: @jon-certik, @gracenoah
 *August 28, 2019*
 
 @climber73 wrote the [Writing a Tendermint Core application in Java
-(gRPC)](https://github.com/tendermint/tendermint/blob/main/docs/guides/java.md)
+(gRPC)](https://github.com/tendermint/tendermint/blob/v0.32.x/docs/guides/java.md)
 guide.
 
 Special thanks to external contributors on this release:
@@ -1257,7 +1257,7 @@ Special thanks to external contributors on this release:
 
 ### FEATURES:
 
-- [blockchain] [\#3561](https://github.com/tendermint/tendermint/issues/3561) Add early version of the new blockchain reactor, which is supposed to be more modular and testable compared to the old version. To try it, you'll have to change `version` in the config file, [here](https://github.com/tendermint/tendermint/blob/main/config/toml.go#L303) NOTE: It's not ready for a production yet. For further information, see [ADR-40](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-043-blockchain-riri-org.md)
+- [blockchain] [\#3561](https://github.com/tendermint/tendermint/issues/3561) Add early version of the new blockchain reactor, which is supposed to be more modular and testable compared to the old version. To try it, you'll have to change `version` in the config file, [here](https://github.com/tendermint/tendermint/blob/v0.34.x/config/toml.go#L303) NOTE: It's not ready for a production yet. For further information, see [ADR-40](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-040-blockchain-reactor-refactor.md) & [ADR-43](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-043-blockchain-riri-org.md)
 - [mempool] [\#3826](https://github.com/tendermint/tendermint/issues/3826) Make `max_msg_bytes` configurable(@bluele)
 - [node] [\#3846](https://github.com/tendermint/tendermint/pull/3846) Allow replacing existing p2p.Reactor(s) using [`CustomReactors`
   option](https://godoc.org/github.com/tendermint/tendermint/node#CustomReactors).
@@ -3463,7 +3463,7 @@ Also includes the Grand Repo-Merge of 2017.
 BREAKING CHANGES:
 
 - Config and Flags:
-  - The `config` map is replaced with a [`Config` struct](https://github.com/tendermint/tendermint/blob/main/config/config.go#L11),
+  - The `config` map is replaced with a [`Config` struct](https://github.com/tendermint/tendermint/blob/v0.10.0/config/config.go#L11),
 containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusConfig`, `RPCConfig`
   - This affects the following flags:
     - `--seeds` is now `--p2p.seeds`

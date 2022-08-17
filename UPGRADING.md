@@ -49,7 +49,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   Applications should be able to handle these evidence types
   (i.e., through slashing or other accountability measures).
 
-* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/crypto/keys.proto#L13-L15)
+* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/v0.34.x/proto/tendermint/crypto/keys.proto#L13-L15)
   (used in ABCI as part of `ValidatorUpdate`) now uses a `oneof` protobuf type.
   Note that since Tendermint only supports ed25519 validator keys, there's only one
   option in the `oneof`.  For more, see "Protocol Buffers," below.
@@ -508,14 +508,14 @@ due to changes in how various data structures are hashed.
 Any implementations of Tendermint blockchain verification, including lite clients,
 will need to be updated. For specific details:
 
-* [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
-* [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
+* [Merkle tree](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/blockchain/encoding.md#merkle-trees)
+* [ConsensusParams](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/blockchain/state.md#consensusparams)
 
 There was also a small change to field ordering in the vote struct. Any
 implementations of an out-of-process validator (like a Key-Management Server)
 will need to be updated. For specific details:
 
-* [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
+* [Vote](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/consensus/signing.md#votes)
 
 Finally, the proposer selection algorithm continues to evolve. See the
 [work-in-progress

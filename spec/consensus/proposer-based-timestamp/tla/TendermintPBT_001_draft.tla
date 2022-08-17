@@ -3,7 +3,7 @@
  A TLA+ specification of a simplified Tendermint consensus, with added clocks 
  and proposer-based timestamps. This TLA+ specification extends and modifies 
  the Tendermint TLA+ specification for fork accountability: 
-    https://github.com/tendermint/spec/blob/master/spec/light-client/accountability/TendermintAcc_004_draft.tla
+    https://github.com/tendermint/tendermint/blob/v0.34.x/spec/light-client/accountability/TendermintAcc_004_draft.tla
  
  * Version 1. A preliminary specification.
 

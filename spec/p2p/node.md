@@ -12,7 +12,7 @@ Seeds should operate full nodes with the PEX reactor in a "crawler" mode
 that continuously explores to validate the availability of peers.
 
 Seeds should only respond with some top percentile of the best peers it knows about.
-See [the peer-exchange docs](https://github.com/tendermint/spec/blob/master/spec/reactors/pex/pex.md) for
+See [the peer-exchange docs](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/reactors/pex/pex.md) for
  details on peer quality.
 
 ## New Full Node
