@@ -29,6 +29,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+[abci/rpc] \#9276 `header` and `header_by_hash` queries to the RPC client
+
 ### BUG FIXES
 
 [docker] \#9073 enable cross platform build using docker buildx
