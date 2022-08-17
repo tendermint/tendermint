@@ -170,7 +170,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
-	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID)
+	dve, err := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID)
+	require.NoError(t, err)
 	dve.ValidatorPower = 1000
 	lcae := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{

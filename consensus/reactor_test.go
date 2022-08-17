@@ -188,7 +188,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		// mock the evidence pool
 		// everyone includes evidence of another double signing
 		vIdx := (i + 1) % nValidators
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultTestTime, privVals[vIdx], config.ChainID())
+		require.NoError(t, err)
 		evpool := &statemocks.EvidencePool{}
 		evpool.On("CheckEvidence", mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
@@ -205,7 +206,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		eventBus := types.NewEventBus()
 		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
-		err := eventBus.Start()
+		err = eventBus.Start()
 		require.NoError(t, err)
 		cs.SetEventBus(eventBus)
 

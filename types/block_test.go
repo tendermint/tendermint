@@ -41,7 +41,8 @@ func TestBlockAddEvidence(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, txs, commit, evList)
@@ -61,7 +62,8 @@ func TestBlockValidateBasic(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	testCases := []struct {
@@ -132,7 +134,8 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
@@ -151,7 +154,8 @@ func TestBlockHashesTo(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	ev := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
+	require.NoError(t, err)
 	evList := []Evidence{ev}
 
 	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
@@ -642,7 +646,8 @@ func TestBlockProtoBuf(t *testing.T) {
 	b2 := MakeBlock(h, []Tx{Tx([]byte{1})}, c1, []Evidence{})
 	b2.ProposerAddress = tmrand.Bytes(crypto.AddressSize)
 	evidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
-	evi := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain")
+	evi, err := NewMockDuplicateVoteEvidence(h, evidenceTime, "block-test-chain")
+	require.NoError(t, err)
 	b2.Evidence = EvidenceData{Evidence: EvidenceList{evi}}
 	b2.EvidenceHash = b2.Evidence.Hash()
 
@@ -706,7 +711,8 @@ func TestDataProtoBuf(t *testing.T) {
 // TestEvidenceDataProtoBuf ensures parity in converting to and from proto.
 func TestEvidenceDataProtoBuf(t *testing.T) {
 	const chainID = "mychain"
-	ev := NewMockDuplicateVoteEvidence(math.MaxInt64, time.Now(), chainID)
+	ev, err := NewMockDuplicateVoteEvidence(math.MaxInt64, time.Now(), chainID)
+	require.NoError(t, err)
 	data := &EvidenceData{Evidence: EvidenceList{ev}}
 	_ = data.ByteSize()
 	testCases := []struct {
