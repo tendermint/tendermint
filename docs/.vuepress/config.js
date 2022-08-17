@@ -15,6 +15,10 @@ module.exports = {
     },
     versions: [
       {
+        "label": "main (unstable)",
+        "key": "main"
+      },
+      {
         "label": "v0.33",
         "key": "v0.33"
       },
