@@ -3,6 +3,7 @@
 
 ipv6 = true
 initial_height = 1000
+evidence = 5
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
 
 [validators]
@@ -27,11 +28,7 @@ validator05 = 50
 
 [node.seed01]
 mode = "seed"
-seeds = ["seed02"]
-
-[node.seed02]
-mode = "seed"
-seeds = ["seed01"]
+perturb = ["restart"]
 
 [node.validator01]
 seeds = ["seed01"]
@@ -39,7 +36,7 @@ snapshot_interval = 5
 perturb = ["disconnect"]
 
 [node.validator02]
-seeds = ["seed02"]
+seeds = ["seed01"]
 database = "boltdb"
 abci_protocol = "tcp"
 privval_protocol = "tcp"
@@ -53,7 +50,7 @@ database = "badgerdb"
 #abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
-retain_blocks = 3
+retain_blocks = 10
 perturb = ["kill"]
 
 [node.validator04]
@@ -64,7 +61,7 @@ perturb = ["pause"]
 
 [node.validator05]
 start_at = 1005 # Becomes part of the validator set at 1010
-seeds = ["seed02"]
+persistent_peers = ["validator01", "full01"]
 database = "cleveldb"
 fast_sync = true
 mempool_version = "v1"
@@ -78,7 +75,7 @@ start_at = 1010
 mode = "full"
 fast_sync = true
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
-retain_blocks = 1
+retain_blocks = 10
 perturb = ["restart"]
 
 [node.full02]

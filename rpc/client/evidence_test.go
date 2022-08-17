@@ -45,7 +45,9 @@ func newEvidence(t *testing.T, val *privval.FilePV,
 	validator := types.NewValidator(val.Key.PubKey, 10)
 	valSet := types.NewValidatorSet([]*types.Validator{validator})
 
-	return types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
+	ev, err := types.NewDuplicateVoteEvidence(vote, vote2, defaultTestTime, valSet)
+	require.NoError(t, err)
+	return ev
 }
 
 func makeEvidences(

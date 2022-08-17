@@ -61,7 +61,8 @@ func TestEvidencePoolBasic(t *testing.T) {
 	assert.Equal(t, 0, len(evs))
 	assert.Zero(t, size)
 
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID)
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime, privVals[0], evidenceChainID)
+	require.NoError(t, err)
 
 	// good evidence
 	evAdded := make(chan struct{})
@@ -133,8 +134,9 @@ func TestAddExpiredEvidence(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.evDescription, func(t *testing.T) {
-			ev := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID)
-			err := pool.AddEvidence(ev)
+			ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(tc.evHeight, tc.evTime, val, evidenceChainID)
+			require.NoError(t, err)
+			err = pool.AddEvidence(ev)
 			if tc.expErr {
 				assert.Error(t, err)
 			} else {
@@ -149,7 +151,8 @@ func TestReportConflictingVotes(t *testing.T) {
 
 	pool, pv := defaultTestPool(height)
 	val := types.NewValidator(pv.PrivKey.PubKey(), 10)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID)
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height+1, defaultEvidenceTime, pv, evidenceChainID)
+	require.NoError(t, err)
 
 	pool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 
@@ -185,12 +188,14 @@ func TestEvidencePoolUpdate(t *testing.T) {
 	state := pool.State()
 
 	// create new block (no need to save it to blockStore)
-	prunedEv := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultEvidenceTime.Add(1*time.Minute),
+	prunedEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(1, defaultEvidenceTime.Add(1*time.Minute),
 		val, evidenceChainID)
-	err := pool.AddEvidence(prunedEv)
 	require.NoError(t, err)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute),
+	err = pool.AddEvidence(prunedEv)
+	require.NoError(t, err)
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(21*time.Minute),
 		val, evidenceChainID)
+	require.NoError(t, err)
 	lastCommit := makeCommit(height, val.PrivKey.PubKey().Address())
 	block := types.MakeBlock(height+1, []types.Tx{}, lastCommit, []types.Evidence{ev})
 	// update state (partially)
@@ -215,9 +220,10 @@ func TestEvidencePoolUpdate(t *testing.T) {
 func TestVerifyPendingEvidencePasses(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
 		val, evidenceChainID)
-	err := pool.AddEvidence(ev)
+	require.NoError(t, err)
+	err = pool.AddEvidence(ev)
 	require.NoError(t, err)
 
 	err = pool.CheckEvidence(types.EvidenceList{ev})
@@ -227,9 +233,10 @@ func TestVerifyPendingEvidencePasses(t *testing.T) {
 func TestVerifyDuplicatedEvidenceFails(t *testing.T) {
 	var height int64 = 1
 	pool, val := defaultTestPool(height)
-	ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
+	ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, defaultEvidenceTime.Add(1*time.Minute),
 		val, evidenceChainID)
-	err := pool.CheckEvidence(types.EvidenceList{ev, ev})
+	require.NoError(t, err)
+	err = pool.CheckEvidence(types.EvidenceList{ev, ev})
 	if assert.Error(t, err) {
 		assert.Equal(t, "duplicate evidence", err.(*types.ErrInvalidEvidence).Reason.Error())
 	}
@@ -311,10 +318,12 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	pool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	require.NoError(t, err)
 	pool.SetLogger(log.TestingLogger())
-	goodEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(height,
+	goodEvidence, err := types.NewMockDuplicateVoteEvidenceWithValidator(height,
 		defaultEvidenceTime.Add(10*time.Minute), val, evidenceChainID)
-	expiredEvidence := types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
+	require.NoError(t, err)
+	expiredEvidence, err := types.NewMockDuplicateVoteEvidenceWithValidator(int64(1),
 		defaultEvidenceTime.Add(1*time.Minute), val, evidenceChainID)
+	require.NoError(t, err)
 	err = pool.AddEvidence(goodEvidence)
 	require.NoError(t, err)
 	err = pool.AddEvidence(expiredEvidence)

@@ -43,7 +43,8 @@ func randomDuplicateVoteEvidence(t *testing.T) *DuplicateVoteEvidence {
 
 func TestDuplicateVoteEvidence(t *testing.T) {
 	const height = int64(13)
-	ev := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
+	ev, err := NewMockDuplicateVoteEvidence(height, time.Now(), "mock-chain-id")
+	require.NoError(t, err)
 	assert.Equal(t, ev.Hash(), tmhash.Sum(ev.Bytes()))
 	assert.NotNil(t, ev.String())
 	assert.Equal(t, ev.Height(), height)
@@ -82,7 +83,8 @@ func TestDuplicateVoteEvidenceValidation(t *testing.T) {
 			vote1 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID, defaultVoteTime)
 			vote2 := makeVote(t, val, chainID, math.MaxInt32, math.MaxInt64, math.MaxInt32, 0x02, blockID2, defaultVoteTime)
 			valSet := NewValidatorSet([]*Validator{val.ExtractIntoValidator(10)})
-			ev := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
+			ev, err := NewDuplicateVoteEvidence(vote1, vote2, defaultVoteTime, valSet)
+			require.NoError(t, err)
 			tc.malleateEvidence(ev)
 			assert.Equal(t, tc.expectErr, ev.ValidateBasic() != nil, "Validate Basic had an unexpected result")
 		})
@@ -224,7 +226,8 @@ func TestLightClientAttackEvidenceValidation(t *testing.T) {
 }
 
 func TestMockEvidenceValidateBasic(t *testing.T) {
-	goodEvidence := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
+	goodEvidence, err := NewMockDuplicateVoteEvidence(int64(1), time.Now(), "mock-chain-id")
+	require.NoError(t, err)
 	assert.Nil(t, goodEvidence.ValidateBasic())
 }
 
