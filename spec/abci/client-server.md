@@ -30,7 +30,7 @@ responses.
 To use ABCI in your programming language of choice, there must be a ABCI
 server in that language. Tendermint supports three implementations of the ABCI, written in Go:
 
-- In-process ([Golang](https://github.com/tendermint/tendermint/tree/master/abci), [Rust](https://github.com/tendermint/rust-abci))
+- In-process ([Golang](https://github.com/tendermint/tendermint/tree/main/abci), [Rust](https://github.com/tendermint/rust-abci))
 - ABCI-socket
 - GRPC
 
@@ -38,7 +38,7 @@ The latter two can be tested using the `abci-cli` by setting the `--abci` flag
 appropriately (ie. to `socket` or `grpc`).
 
 See examples, in various stages of maintenance, in
-[Go](https://github.com/tendermint/tendermint/tree/master/abci/server),
+[Go](https://github.com/tendermint/tendermint/tree/main/abci/server),
 [JavaScript](https://github.com/tendermint/js-abci),
 [C++](https://github.com/mdyring/cpp-tmsp), and
 [Java](https://github.com/jTendermint/jabci).
@@ -113,4 +113,4 @@ received or a block is committed.
 
 It is unlikely that you will need to implement a client. For details of
 our client, see
-[here](https://github.com/tendermint/tendermint/tree/master/abci/client).
+[here](https://github.com/tendermint/tendermint/tree/main/abci/client).
