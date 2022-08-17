@@ -31,7 +31,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 		"socket address to listen on for connections from external priv_validator process")
 
 	// node flags
-	cmd.Flags().Bool("fast_sync", config.FastSyncMode, "fast blockchain syncing")
+	cmd.Flags().Bool("block_sync", config.BlockSyncMode, "sync the block chain using the blocksync algorithm")
 	cmd.Flags().BytesHexVar(
 		&genesisHash,
 		"genesis_hash",
