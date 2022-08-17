@@ -1,47 +1,51 @@
 # PEX Reactor
 
-The PEX reactor has multiple roles in the p2p layer:
+The PEX reactor is one of the reactors running in a Tendermint node.
 
-1. It manages the Address Book, which stores information about known peers
-1. It implements the [Peer Exchange protocol](./pex-protocol.md), used by nodes
-   to exchange peer addresses
-1. It acts as Peer Manager, defining when the node should dial peers and which
-   peers it should dial
+Its implementation is located in the `p2p/pex` package, and it is considered
+part of the implementation of the p2p layer.
 
-The roles of PEX reactor, however, are intertwined:
+This document overviews the implementation of the PEX reactor, describing how
+the methods from the `Reactor` interface are implemented.
 
-- The peer addresses retrieved by the Peer Exchange protocol are added to the
-  Address Book, from which the Peer Exchange protocol also retrieves the peer
-  addresses it provides to other nodes.
-- The peer addresses to which a node dials are retrieved from the Address Book,
-  while the information about incoming peers, accepted by the switch, is added
-  to the Address Book.
-- In order to discover peer addresses, the Peer Exchange protocol may require
-  the node to dial certain nodes. No other protocol (reactor) has this
-  prerogative of establishing connections with peers.
+The actual operation of the PEX reactor is presented in documents describing
+the roles played by the PEX reactor in the p2p layer:
 
-## Start
+- [Address Book](./addressbook.md): stores known peer addresses and information
+  about peers to which the node is connected or has attempted to connect
+- [Peer Manager](./peermanager.md): manages connections established with peers,
+  defining when a node should dial peers and which peers it should dial
+- [Peer Exchange protocol](./pex-protocol.md): enables nodes to exchange peer
+  addresses, thus implementing a peer discovery service
 
-The `OnStart` method starts the PEX reactor.
+## OnStart
 
-The reactors address book is started.
+The `OnStart` method implements `BaseService` and starts the PEX reactor.
+
+The [address book](./addressbook.md), which is a `Service` is started.
 This loads the address book content from disk,
 and starts a routine that periodically persists the address book content to disk.
 
 The PEX reactor is configured with the address of a number of seed nodes,
 the `Seeds` parameter of the `ReactorConfig`.
-The seed nodes' addresses are parsed into `NetAddress` instances and resolved into IP addresses.
-Valid seed node addresses are stored in the `seedAddr` field of the reactor.
-If no valid seed node address is found, and the address book is empty,
-the PEX reactor is not started and an error is returned.
+The addresses of seed nodes are parsed into `NetAddress` instances and resolved
+into IP addresses, which is implemented by the `checkSeeds` method.
+Valid seed node addresses are stored in the `seedAddrs` field,
+and are used by the `dialSeeds` method to contact the configured seed nodes.
 
-The remaining operation of the reactor is determined by the `SeedMode` configuration parameter.
-If the node is configured to operate in seed mode, the `crawlPeersRoutine` is started.
-Otherwise, the `ensurePeersRoutine` is started.
+The last action is to start one of the following persistent routines, based on
+the `SeedMode` configuration parameter:
+
+- Regular nodes run the `ensurePeersRoutine` to check whether the node has
+  enough outbound peers, dialing peers when necessary
+- Seed nodes run the `crawlPeersRoutine` to periodically start a new round
+  of [crawling](./pex-protocol.md#Crawling-peers) to discover as much peer
+  addresses as possible
 
 ### Errors
 
-Errors encountered when starting the address book are returned.
+Errors encountered when loading the address book from disk are returned,
+and prevent the reactor from being started.
 An exception is made for the `service.ErrAlreadyStarted` error, which is ignored.
 
 Errors encountered when parsing the configured addresses of seed nodes
@@ -49,64 +53,59 @@ are returned and cause the reactor startup to fail.
 An exception is made for DNS resolution `ErrNetAddressLookup` errors,
 which are not deemed fatal and are only logged as invalid addresses.
 
-## Stop
+If none of the configured seed node adresses is valid, and the loaded address
+book is empty, the reactor is not started and an error is returned.
 
-The `OnStop` method stops the PEX reactor.
+## OnStop
 
-The reactors address book is stopped.
+The `OnStop` method implements `BaseService` and stops the PEX reactor.
+
+The address book routine that periodically saves its content to disk is stopped.
 
 ## GetChannels
 
-The `GetChannels` method returns the descriptor of the channel used by the PEX protocol.
+The `GetChannels` method, from the `Reactor` interface, returns the descriptor
+of the channel used by the PEX protocol.
 
-The channel ID is `PexChannel` (0),
-Its priority is set to `1`,
-the send queue capacity is set to `10`,
-and the maximum message size is configured to `64000` bytes.
+The channel ID is `PexChannel` (0), with priority `1`, send queue capacity of
+`10`, and maximum message size of `64000` bytes.
 
 ## AddPeer
 
-The `AddPeer` method adds a new peer to the PEX protocol.
+The `AddPeer` method, from the `Reactor` interface,
+adds a new peer to the PEX protocol.
 
-If the new peer is an inbound peer, i.e., if the node accepted a connection from the peer,
-the peer's address is added to the address book.
+If the new peer is an **inbound peer**, i.e., if the peer has dialed the node,
+the peer's address is [added to the address book](./addressbook.md#new-addresses).
 Since the peer was authenticated when establishing a secret connection with it,
 the source of the peer address is trusted, and its source is set by the peer itself.
 In the case of an outbound peer, the node should already have its address in
 the address book, as the switch has dialed the peer.
 
-If the peer is an outbound peer, i.e., if the node has dialed the peer,
+If the peer is an **outbound peer**, i.e., if the node has dialed the peer,
 and the PEX protocol needs more addresses,
-the node sends a PEX request to the peer.
+the node [sends a PEX request](./pex-protocol.md#Requesting-Addresses) to the peer.
 The same is not done when inbound peers are added because they are deemed least
 trustworthy than outbound peers.
 
-> TODO: this is part of the operation of the PEX protocol, link to it.
-
 ## RemovePeer
 
-The `RemovePeer` method removes a peer from the PEX protocol.
+The `RemovePeer` method, from the `Reactor` interface,
+removes a peer from the PEX protocol.
 
-The peer's ID is removed from the tables of requests send but not yet replied,
-and of received requests.
+The peer's ID is removed from the tables tracking PEX requests 
+[sent](./pex-protocol.md#misbehavior) but not yet replied
+and PEX requests [received](./pex-protocol.md#misbehavior-1).
 
 ## Receive
 
-> TODO: handle messages exchanged by the PEX protocol
+The `Receive` method, from the `Reactor` interface,
+handles a message received by the PEX protocol.
 
-When peer addresses are received from a seed node,
-the node immediately attempts to dial the provided peer addresses.
+A node receives two type of messages as part of the PEX protocol:
 
-> This behavior was introduced by https://github.com/tendermint/tendermint/issues/2093
+- `PexRequest`: a request for addresses received from a peer, handled as
+  described [here](./pex-protocol.md#providing-addresses) 
+- `PexAddrs`: a list of addresses received from a peer, as a reponse to a PEX
+  request sent by the node, as described [here](./pex-protocol.md#responses) 
 
-## ensurePeersRoutine
-
-TODO:
-
-## dialSeeds
-
-TODO:
-
-## dialPeer
-
-TODO:
