@@ -1,4 +1,4 @@
-package blockchain
+package blocksync_test
 
 import (
 	"encoding/hex"
@@ -9,7 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	"github.com/tendermint/tendermint/blocksync"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -28,7 +29,7 @@ func TestBcBlockRequestMessageValidateBasic(t *testing.T) {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			request := bcproto.BlockRequest{Height: tc.requestHeight}
-			assert.Equal(t, tc.expectErr, ValidateMsg(&request) != nil, "Validate Basic had an unexpected result")
+			assert.Equal(t, tc.expectErr, blocksync.ValidateMsg(&request) != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }
@@ -48,14 +49,14 @@ func TestBcNoBlockResponseMessageValidateBasic(t *testing.T) {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			nonResponse := bcproto.NoBlockResponse{Height: tc.nonResponseHeight}
-			assert.Equal(t, tc.expectErr, ValidateMsg(&nonResponse) != nil, "Validate Basic had an unexpected result")
+			assert.Equal(t, tc.expectErr, blocksync.ValidateMsg(&nonResponse) != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }
 
 func TestBcStatusRequestMessageValidateBasic(t *testing.T) {
 	request := bcproto.StatusRequest{}
-	assert.NoError(t, ValidateMsg(&request))
+	assert.NoError(t, blocksync.ValidateMsg(&request))
 }
 
 func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
@@ -73,7 +74,7 @@ func TestBcStatusResponseMessageValidateBasic(t *testing.T) {
 		tc := tc
 		t.Run(tc.testName, func(t *testing.T) {
 			response := bcproto.StatusResponse{Height: tc.responseHeight}
-			assert.Equal(t, tc.expectErr, ValidateMsg(&response) != nil, "Validate Basic had an unexpected result")
+			assert.Equal(t, tc.expectErr, blocksync.ValidateMsg(&response) != nil, "Validate Basic had an unexpected result")
 		})
 	}
 }

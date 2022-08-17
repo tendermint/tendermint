@@ -1,4 +1,4 @@
-package blockchain
+package blocksync
 
 import (
 	"fmt"
@@ -7,15 +7,15 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
-	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
+	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
 
 const (
-	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
-	BlockchainChannel = byte(0x40)
+	// BlocksyncChannel is a channel for blocks and status updates (`BlockStore` height)
+	BlocksyncChannel = byte(0x40)
 
 	trySyncIntervalMS = 10
 
@@ -30,7 +30,7 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and fast sync to
+	// for when we switch from blockchain reactor and block sync to
 	// the consensus machine
 	SwitchToConsensus(state sm.State, skipWAL bool)
 }
@@ -54,7 +54,7 @@ type Reactor struct {
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
 	pool      *BlockPool
-	fastSync  bool
+	blockSync bool
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
@@ -62,7 +62,7 @@ type Reactor struct {
 
 // NewReactor returns new reactor instance.
 func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
-	fastSync bool) *Reactor {
+	blockSync bool) *Reactor {
 
 	if state.LastBlockHeight != store.Height() {
 		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
@@ -85,7 +85,7 @@ func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockS
 		blockExec:    blockExec,
 		store:        store,
 		pool:         pool,
-		fastSync:     fastSync,
+		blockSync:    blockSync,
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
 	}
@@ -101,7 +101,7 @@ func (bcR *Reactor) SetLogger(l log.Logger) {
 
 // OnStart implements service.Service.
 func (bcR *Reactor) OnStart() error {
-	if bcR.fastSync {
+	if bcR.blockSync {
 		err := bcR.pool.Start()
 		if err != nil {
 			return err
@@ -111,9 +111,9 @@ func (bcR *Reactor) OnStart() error {
 	return nil
 }
 
-// SwitchToFastSync is called by the state sync reactor when switching to fast sync.
-func (bcR *Reactor) SwitchToFastSync(state sm.State) error {
-	bcR.fastSync = true
+// SwitchToBlockSync is called by the state sync reactor when switching to block sync.
+func (bcR *Reactor) SwitchToBlockSync(state sm.State) error {
+	bcR.blockSync = true
 	bcR.initialState = state
 
 	bcR.pool.height = state.LastBlockHeight + 1
@@ -127,7 +127,7 @@ func (bcR *Reactor) SwitchToFastSync(state sm.State) error {
 
 // OnStop implements service.Service.
 func (bcR *Reactor) OnStop() {
-	if bcR.fastSync {
+	if bcR.blockSync {
 		if err := bcR.pool.Stop(); err != nil {
 			bcR.Logger.Error("Error stopping pool", "err", err)
 		}
@@ -138,7 +138,7 @@ func (bcR *Reactor) OnStop() {
 func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                  BlockchainChannel,
+			ID:                  BlocksyncChannel,
 			Priority:            5,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
@@ -157,7 +157,7 @@ func (bcR *Reactor) AddPeer(peer p2p.Peer) {
 		return
 	}
 
-	peer.Send(BlockchainChannel, msgBytes)
+	peer.Send(BlocksyncChannel, msgBytes)
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -188,7 +188,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 			return false
 		}
 
-		return src.TrySend(BlockchainChannel, msgBytes)
+		return src.TrySend(BlocksyncChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
@@ -199,7 +199,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 		return false
 	}
 
-	return src.TrySend(BlockchainChannel, msgBytes)
+	return src.TrySend(BlocksyncChannel, msgBytes)
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
@@ -239,7 +239,7 @@ func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			bcR.Logger.Error("could not convert msg to protobut", "err", err)
 			return
 		}
-		src.TrySend(BlockchainChannel, msgBytes)
+		src.TrySend(BlocksyncChannel, msgBytes)
 	case *bcproto.StatusResponse:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
@@ -291,7 +291,7 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 					continue
 				}
 
-				queued := peer.TrySend(BlockchainChannel, msgBytes)
+				queued := peer.TrySend(BlocksyncChannel, msgBytes)
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}
@@ -415,7 +415,7 @@ FOR_LOOP:
 
 			if blocksSynced%100 == 0 {
 				lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
-				bcR.Logger.Info("Fast Sync Rate", "height", bcR.pool.height,
+				bcR.Logger.Info("Block Sync Rate", "height", bcR.pool.height,
 					"max_peer_height", bcR.pool.MaxPeerHeight(), "blocks/s", lastRate)
 				lastHundred = time.Now()
 			}
@@ -436,7 +436,7 @@ func (bcR *Reactor) BroadcastStatusRequest() error {
 		return fmt.Errorf("could not convert msg to proto: %w", err)
 	}
 
-	bcR.Switch.Broadcast(BlockchainChannel, bm)
+	bcR.Switch.Broadcast(BlocksyncChannel, bm)
 
 	return nil
 }

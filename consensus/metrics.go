@@ -60,8 +60,8 @@ type Metrics struct {
 	TotalTxs metrics.Gauge
 	// The latest block height.
 	CommittedHeight metrics.Gauge `metrics_name:"latest_block_height"`
-	// Whether or not a node is fast syncing. 1 if yes, 0 if no.
-	FastSyncing metrics.Gauge
+	// Whether or not a node is block syncing. 1 if yes, 0 if no.
+	BlockSyncing metrics.Gauge
 	// Whether or not a node is state syncing. 1 if yes, 0 if no.
 	StateSyncing metrics.Gauge
 
