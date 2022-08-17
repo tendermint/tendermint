@@ -77,6 +77,7 @@ type Config struct {
 	// https://github.com/tendermint/tendermint/issues/9279
 	DeprecatedFastSyncConfig map[interface{}]interface{} `mapstructure:"fastsync"`
 	Consensus                *ConsensusConfig            `mapstructure:"consensus"`
+	Storage                  *StorageConfig              `mapstructure:"storage"`
 	TxIndex                  *TxIndexConfig              `mapstructure:"tx_index"`
 	Instrumentation          *InstrumentationConfig      `mapstructure:"instrumentation"`
 }
@@ -91,6 +92,7 @@ func DefaultConfig() *Config {
 		StateSync:       DefaultStateSyncConfig(),
 		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
+		Storage:         DefaultStorageConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
 	}
@@ -106,6 +108,7 @@ func TestConfig() *Config {
 		StateSync:       TestStateSyncConfig(),
 		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
+		Storage:         TestStorageConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
 	}
@@ -423,11 +426,6 @@ type RPCConfig struct {
 
 	// pprof listen address (https://golang.org/pkg/net/http/pprof)
 	PprofListenAddress string `mapstructure:"pprof_laddr"`
-
-	// Set false to ensure ABCI responses are persisted.
-	// ABCI responses are required for /BlockResults RPC queries, and
-	// to reindex events in the command-line tool.
-	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
@@ -452,9 +450,8 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxBodyBytes:   int64(1000000), // 1MB
 		MaxHeaderBytes: 1 << 20,        // same as the net/http default
 
-		TLSCertFile:          "",
-		TLSKeyFile:           "",
-		DiscardABCIResponses: false,
+		TLSCertFile: "",
+		TLSKeyFile:  "",
 	}
 }
 
@@ -1090,6 +1087,34 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 		return errors.New("double_sign_check_height can't be negative")
 	}
 	return nil
+}
+
+//-----------------------------------------------------------------------------
+// StorageConfig
+
+// StorageConfig allows more fine-grained control over certain storage-related
+// behavior.
+type StorageConfig struct {
+	// Set to false to ensure ABCI responses are persisted. ABCI responses are
+	// required for `/block_results` RPC queries, and to reindex events in the
+	// command-line tool.
+	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
+}
+
+// DefaultStorageConfig returns the default configuration options relating to
+// Tendermint storage optimization.
+func DefaultStorageConfig() *StorageConfig {
+	return &StorageConfig{
+		DiscardABCIResponses: false,
+	}
+}
+
+// TestStorageConfig returns storage configuration that can be used for
+// testing.
+func TestStorageConfig() *StorageConfig {
+	return &StorageConfig{
+		DiscardABCIResponses: false,
+	}
 }
 
 // -----------------------------------------------------------------------------
