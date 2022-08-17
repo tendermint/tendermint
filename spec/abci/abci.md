@@ -643,7 +643,7 @@ the blockchain's `AppHash` which is verified via [light client verification](../
     `Snapshot.Metadata` and/or incrementally verifying contents against `AppHash`.
     * When all chunks have been accepted, Tendermint will make an ABCI `Info` call to verify that
     `LastBlockAppHash` and `LastBlockHeight` matches the expected values, and record the
-    `AppVersion` in the node state. It then switches to fast sync or consensus and joins the
+    `AppVersion` in the node state. It then switches to block sync or consensus and joins the
     network.
     * If Tendermint is unable to retrieve the next chunk after some time (e.g. because no suitable
     peers are available), it will reject the snapshot and try a different one via `OfferSnapshot`.

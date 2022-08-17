@@ -1,4 +1,4 @@
-package blockchain
+package blocksync
 
 import (
 	"errors"
@@ -58,7 +58,7 @@ var peerTimeout = 15 * time.Second // not const so we can override with tests
 	are not at peer limits, we can probably switch to consensus reactor
 */
 
-// BlockPool keeps track of the fast sync peers, block requests and block responses.
+// BlockPool keeps track of the block sync peers, block requests and block responses.
 type BlockPool struct {
 	service.BaseService
 	startTime time.Time

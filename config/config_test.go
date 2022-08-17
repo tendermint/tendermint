@@ -128,8 +128,8 @@ func TestStateSyncConfigValidateBasic(t *testing.T) {
 	require.NoError(t, cfg.ValidateBasic())
 }
 
-func TestFastSyncConfigValidateBasic(t *testing.T) {
-	cfg := TestFastSyncConfig()
+func TestBlockSyncConfigValidateBasic(t *testing.T) {
+	cfg := TestBlockSyncConfig()
 	assert.NoError(t, cfg.ValidateBasic())
 
 	// tamper with version

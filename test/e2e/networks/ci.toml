@@ -63,10 +63,10 @@ abci_protocol = "builtin"
 perturb = ["pause"]
 
 [node.validator05]
+block_sync = "v0" 
 start_at = 1005 # Becomes part of the validator set at 1010
 seeds = ["seed02"]
 database = "cleveldb"
-fast_sync = true
 mempool_version = "v1"
 # FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
 #abci_protocol = "grpc"
@@ -76,7 +76,7 @@ perturb = ["kill", "pause", "disconnect", "restart"]
 [node.full01]
 start_at = 1010
 mode = "full"
-fast_sync = true
+block_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
 retain_blocks = 1
 perturb = ["restart"]
@@ -84,7 +84,7 @@ perturb = ["restart"]
 [node.full02]
 start_at = 1015
 mode = "full"
-fast_sync = true
+block_sync = "v0"
 state_sync = true
 seeds = ["seed01"]
 perturb = ["restart"]
