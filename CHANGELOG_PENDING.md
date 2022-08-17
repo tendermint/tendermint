@@ -38,8 +38,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [config] \#9054 `discard_abci_responses` flag added to discard all ABCI
   responses except the last in order to save on storage space in the state
   store (@samricotta)
-- [config] \#9275 Move the `discard_abci_responses` flag into a new `[storage]`
-  section.
 
 ### BUG FIXES
 
