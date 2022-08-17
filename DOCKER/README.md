@@ -6,7 +6,7 @@ DockerHub tags for official releases are [here](https://hub.docker.com/r/tenderm
 
 Official releases can be found [here](https://github.com/tendermint/tendermint/releases).
 
-The Dockerfile for tendermint is not expected to change in the near future. The master file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/main/DOCKER/Dockerfile).
+The Dockerfile for Tendermint is not expected to change in the near future. The main file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/main/DOCKER/Dockerfile).
 
 Respective versioned files can be found <https://raw.githubusercontent.com/tendermint/tendermint/vX.XX.XX/DOCKER/Dockerfile> (replace the Xs with the version number).
 
@@ -20,9 +20,9 @@ Respective versioned files can be found <https://raw.githubusercontent.com/tende
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
-For more background, see the [the docs](https://docs.tendermint.com/latest/introduction/#quick-start).
+For more background, see the [the docs](https://docs.tendermint.com/main/introduction/#quick-start).
 
-To get started developing applications, see the [application developers guide](https://docs.tendermint.com/latest/introduction/quick-start.html).
+To get started developing applications, see the [application developers guide](https://docs.tendermint.com/main/introduction/quick-start.html).
 
 ## How to use this image
 

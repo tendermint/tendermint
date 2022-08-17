@@ -2,10 +2,9 @@
 
 The documentation for Tendermint Core is hosted at:
 
-- <https://docs.tendermint.com/latest/>
+- <https://docs.tendermint.com>
 
-built from the files in this (`/docs`) directory for
-[main](https://github.com/tendermint/tendermint/tree/main/docs) respectively.
+built from the files in this (`/docs`) directory.
 
 ## How It Works
 
