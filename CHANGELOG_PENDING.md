@@ -38,6 +38,8 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
 
+[rpc] \#9276 `header` and `header_by_hash` queries to the RPC client
+
 ### BUG FIXES
 
 - [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)
