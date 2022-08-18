@@ -27,13 +27,27 @@ This RFC discusses possible changes that should be considered to Tendermint to b
 
 Rename to GossipList
 
-### Start Gossiping
+### Delivering gossiped transactions to the application
 
-* Transactions still arrive _at_ Tendermint and are passed to the app via `checktx` or similar.
+* Transactions still arrive _at_ Tendermint and are passed to the app via `CheckTx` or similar.
 
-### Stop Gossiping
+#### Not all transactions delivered to Tendermint
 
-* Need way for application to tell tendermint what to stop gossiping
+* Transactions that are already in the gossip list are assumed to have already
+* been delivered to the application.
+
+#### Remove cache responsibility from Tendermint
+
+* GossipList no longer caches transactions.
+* This is a responsibility of the Tendermint 'mempool'. The decision over whether
+* or not to cache a transaction is too complicated. Tendermint cannot make it well and
+* should therefore not do it (FIND PULL REQUESTS RELATED TO THIS!)
+
+#### Adding a transaction to the GossipList
+
+### Stop gossiping
+
+* Need way for application to tell Tendermint when to stop gossiping
 * current mechanism is recheck tx.
 
 ### Replace
@@ -57,6 +71,14 @@ Rename to GossipList
 * gossiping. This does mean that, if the application wants to save transactions it
 * needs to hand them all back to Tendermint when it starts back up again. Again,
 * light weight in memory only data structure.
+
+### Removing transactions after block execution
+
+* At the moment this is handled by the Update call in Finalize block.
+* State evolution + arbitrary Tx inclusion in block means that the transactions
+* contained in the block may not match what's in the gossip list very closely.
+* The application needs to consistently update the contents of the gossip list
+* after block execution to ensure transactions that are no longer relevant are removed.
 
 > This section contains the core of the discussion.
 >
