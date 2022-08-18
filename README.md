@@ -10,12 +10,11 @@
 [![Go version][go-badge]][go-url]
 [![Discord chat][discord-badge]][discord-url]
 [![License][license-badge]][license-url]
-[![tendermint/tendermint][loc-badge]][loc-url]
 [![Sourcegraph][sg-badge]][sg-url]
 
-| Branch | Tests                 | Coverage                                 | Linting             |
-|--------|-----------------------|------------------------------------------|---------------------|
-| main   | ![Tests][tests-badge] | [![codecov][codecov-badge]][codecov-url] | ![Lint][lint-badge] |
+| Branch | Tests                              | Coverage                                 | Linting             |
+|--------|------------------------------------|------------------------------------------|---------------------|
+| main   | [![Tests][tests-badge]][tests-url] | [![codecov][codecov-badge]][codecov-url] | ![Lint][lint-badge] |
 
 Tendermint Core is a Byzantine Fault Tolerant (BFT) middleware that takes a
 state transition machine - written in any programming language - and securely
@@ -155,7 +154,6 @@ Funding for Tendermint Core development comes primarily from the
 Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the
 for-profit entity that also maintains [tendermint.com](https://tendermint.com).
 
-
 [bft]: https://en.wikipedia.org/wiki/Byzantine_fault_tolerance
 [smr]: https://en.wikipedia.org/wiki/State_machine_replication
 [Blockchain]: https://en.wikipedia.org/wiki/Blockchain
@@ -163,17 +161,16 @@ for-profit entity that also maintains [tendermint.com](https://tendermint.com).
 [version-url]: https://github.com/tendermint/tendermint/releases/latest
 [api-badge]: https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 [api-url]: https://pkg.go.dev/github.com/tendermint/tendermint
-[go-badge]: https://img.shields.io/badge/go-1.17-blue.svg
+[go-badge]: https://img.shields.io/badge/go-1.18-blue.svg
 [go-url]: https://github.com/moovweb/gvm
 [discord-badge]: https://img.shields.io/discord/669268347736686612.svg
 [discord-url]: https://discord.gg/cosmosnetwork
 [license-badge]: https://img.shields.io/github/license/tendermint/tendermint.svg
 [license-url]: https://github.com/tendermint/tendermint/blob/main/LICENSE
-[loc-badge]: https://tokei.rs/b1/github/tendermint/tendermint?category=lines
-[loc-url]: https://github.com/tendermint/tendermint
 [sg-badge]: https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg
 [sg-url]: https://sourcegraph.com/github.com/tendermint/tendermint?badge
-[tests-badge]: https://github.com/tendermint/tendermint/workflows/Tests/badge.svg?branch=main
+[tests-url]: https://github.com/tendermint/tendermint/actions/workflows/tests.yml
+[tests-badge]: https://github.com/tendermint/tendermint/actions/workflows/tests.yml/badge.svg?branch=main
 [codecov-badge]: https://codecov.io/gh/tendermint/tendermint/branch/main/graph/badge.svg
 [codecov-url]: https://codecov.io/gh/tendermint/tendermint
 [lint-badge]: https://github.com/tendermint/tendermint/workflows/Lint/badge.svg
