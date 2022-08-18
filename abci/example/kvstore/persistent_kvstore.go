@@ -124,7 +124,6 @@ func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) t
 
 // Track the block hash and header information
 func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
-	app.app.txToRemove = map[string]struct{}{}
 	// reset valset changes
 	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 
@@ -146,7 +145,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 		}
 	}
 
-	return app.BeginBlock(req)
+	return app.app.BeginBlock(req)
 }
 
 // Update the validator set
