@@ -614,9 +614,9 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPrepareProposalAddedTxsIncluded tests that any transactions included in
+// TestPrepareProposalTxsAllIncluded tests that any transactions included in
 // the prepare proposal response are included in the block.
-func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
+func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 	const height = 2
 
 	state, stateDB, privVals := makeState(1, height)
@@ -652,8 +652,9 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
 
-	require.Equal(t, txs[0], block.Data.Txs[0])
-	require.Equal(t, txs[1], block.Data.Txs[1])
+	for i, tx := range block.Data.Txs {
+		require.Equal(t, txs[i], tx)
+	}
 
 	mp.AssertExpectations(t)
 }
