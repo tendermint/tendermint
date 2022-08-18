@@ -27,7 +27,7 @@
 //         select {
 //         case msg <- subscription.Out():
 //             // handle msg.Data() and msg.Events()
-//         case <-subscription.Canceled():
+//         case <-subscription.Cancelled():
 //             return subscription.Err()
 //         }
 //     }

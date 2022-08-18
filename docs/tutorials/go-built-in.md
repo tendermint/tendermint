@@ -109,10 +109,6 @@ func (KVStoreApplication) Info(req abcitypes.RequestInfo) abcitypes.ResponseInfo
 	return abcitypes.ResponseInfo{}
 }
 
-func (KVStoreApplication) SetOption(req abcitypes.RequestSetOption) abcitypes.ResponseSetOption {
-	return abcitypes.ResponseSetOption{}
-}
-
 func (KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
 	return abcitypes.ResponseDeliverTx{Code: 0}
 }
