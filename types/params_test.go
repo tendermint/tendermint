@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -59,17 +58,17 @@ func makeParams(
 	pubkeyTypes []string,
 ) tmproto.ConsensusParams {
 	return tmproto.ConsensusParams{
-		Block: tmproto.BlockParams{
+		Block: &tmproto.BlockParams{
 			MaxBytes:   blockBytes,
 			MaxGas:     blockGas,
 			TimeIotaMs: blockTimeIotaMs,
 		},
-		Evidence: tmproto.EvidenceParams{
+		Evidence: &tmproto.EvidenceParams{
 			MaxAgeNumBlocks: evidenceAge,
 			MaxAgeDuration:  time.Duration(evidenceAge),
 			MaxBytes:        maxEvidenceBytes,
 		},
-		Validator: tmproto.ValidatorParams{
+		Validator: &tmproto.ValidatorParams{
 			PubKeyTypes: pubkeyTypes,
 		},
 	}
@@ -105,20 +104,20 @@ func TestConsensusParamsHash(t *testing.T) {
 func TestConsensusParamsUpdate(t *testing.T) {
 	testCases := []struct {
 		params        tmproto.ConsensusParams
-		updates       *abci.ConsensusParams
+		updates       *tmproto.ConsensusParams
 		updatedParams tmproto.ConsensusParams
 	}{
 		// empty updates
 		{
 			makeParams(1, 2, 10, 3, 0, valEd25519),
-			&abci.ConsensusParams{},
+			&tmproto.ConsensusParams{},
 			makeParams(1, 2, 10, 3, 0, valEd25519),
 		},
 		// fine updates
 		{
 			makeParams(1, 2, 10, 3, 0, valEd25519),
-			&abci.ConsensusParams{
-				Block: &abci.BlockParams{
+			&tmproto.ConsensusParams{
+				Block: &tmproto.BlockParams{
 					MaxBytes: 100,
 					MaxGas:   200,
 				},
@@ -145,7 +144,7 @@ func TestConsensusParamsUpdate_AppVersion(t *testing.T) {
 	assert.EqualValues(t, 0, params.Version.AppVersion)
 
 	updated := UpdateConsensusParams(params,
-		&abci.ConsensusParams{Version: &tmproto.VersionParams{AppVersion: 1}})
+		&tmproto.ConsensusParams{Version: &tmproto.VersionParams{AppVersion: 1}})
 
 	assert.EqualValues(t, 1, updated.Version.AppVersion)
 }

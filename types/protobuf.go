@@ -97,17 +97,6 @@ func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
 	return validators
 }
 
-func (tm2pb) ConsensusParams(params *tmproto.ConsensusParams) *abci.ConsensusParams {
-	return &abci.ConsensusParams{
-		Block: &abci.BlockParams{
-			MaxBytes: params.Block.MaxBytes,
-			MaxGas:   params.Block.MaxGas,
-		},
-		Evidence:  &params.Evidence,
-		Validator: &params.Validator,
-	}
-}
-
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) NewValidatorUpdate(pubkey crypto.PubKey, power int64) abci.ValidatorUpdate {
 	pubkeyABCI, err := cryptoenc.PubKeyToProto(pubkey)

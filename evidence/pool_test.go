@@ -328,11 +328,11 @@ func TestRecoverPendingEvidence(t *testing.T) {
 		LastBlockTime:   defaultEvidenceTime.Add(25 * time.Minute),
 		LastBlockHeight: height + 15,
 		ConsensusParams: tmproto.ConsensusParams{
-			Block: tmproto.BlockParams{
+			Block: &tmproto.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: tmproto.EvidenceParams{
+			Evidence: &tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        defaultEvidenceMaxBytes,
@@ -361,11 +361,11 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) s
 		LastValidators:              valSet,
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: tmproto.ConsensusParams{
-			Block: tmproto.BlockParams{
+			Block: &tmproto.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: tmproto.EvidenceParams{
+			Evidence: &tmproto.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        1000,

@@ -52,7 +52,7 @@ type ResultBlockResults struct {
 	BeginBlockEvents      []abci.Event              `json:"begin_block_events"`
 	EndBlockEvents        []abci.Event              `json:"end_block_events"`
 	ValidatorUpdates      []abci.ValidatorUpdate    `json:"validator_updates"`
-	ConsensusParamUpdates *abci.ConsensusParams     `json:"consensus_param_updates"`
+	ConsensusParamUpdates *tmproto.ConsensusParams  `json:"consensus_param_updates"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with

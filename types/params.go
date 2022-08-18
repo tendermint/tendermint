@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -32,8 +31,8 @@ func DefaultConsensusParams() *tmproto.ConsensusParams {
 }
 
 // DefaultBlockParams returns a default BlockParams.
-func DefaultBlockParams() tmproto.BlockParams {
-	return tmproto.BlockParams{
+func DefaultBlockParams() *tmproto.BlockParams {
+	return &tmproto.BlockParams{
 		MaxBytes:   22020096, // 21MB
 		MaxGas:     -1,
 		TimeIotaMs: 1000, // 1s
@@ -41,8 +40,8 @@ func DefaultBlockParams() tmproto.BlockParams {
 }
 
 // DefaultEvidenceParams returns a default EvidenceParams.
-func DefaultEvidenceParams() tmproto.EvidenceParams {
-	return tmproto.EvidenceParams{
+func DefaultEvidenceParams() *tmproto.EvidenceParams {
+	return &tmproto.EvidenceParams{
 		MaxAgeNumBlocks: 100000, // 27.8 hrs at 1block/s
 		MaxAgeDuration:  48 * time.Hour,
 		MaxBytes:        1048576, // 1MB
@@ -51,14 +50,14 @@ func DefaultEvidenceParams() tmproto.EvidenceParams {
 
 // DefaultValidatorParams returns a default ValidatorParams, which allows
 // only ed25519 pubkeys.
-func DefaultValidatorParams() tmproto.ValidatorParams {
-	return tmproto.ValidatorParams{
+func DefaultValidatorParams() *tmproto.ValidatorParams {
+	return &tmproto.ValidatorParams{
 		PubKeyTypes: []string{ABCIPubKeyTypeEd25519},
 	}
 }
 
-func DefaultVersionParams() tmproto.VersionParams {
-	return tmproto.VersionParams{
+func DefaultVersionParams() *tmproto.VersionParams {
+	return &tmproto.VersionParams{
 		AppVersion: 0,
 	}
 }
@@ -156,7 +155,7 @@ func HashConsensusParams(params tmproto.ConsensusParams) []byte {
 
 // Update returns a copy of the params with updates from the non-zero fields of p2.
 // NOTE: note: must not modify the original
-func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *abci.ConsensusParams) tmproto.ConsensusParams {
+func UpdateConsensusParams(params tmproto.ConsensusParams, params2 *tmproto.ConsensusParams) tmproto.ConsensusParams {
 	res := params // explicit copy
 
 	if params2 == nil {

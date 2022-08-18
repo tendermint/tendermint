@@ -51,17 +51,17 @@ message RequestInfo {
   string version       = 1;
   uint64 block_version = 2;
   uint64 p2p_version   = 3;
-  string abci_version = 4;
+  string abci_version  = 4;
 }
 
 message RequestInitChain {
   google.protobuf.Timestamp time = 1
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  string                   chain_id         = 2;
-  tendermint.types.ConsensusParams          consensus_params = 3;
-  repeated ValidatorUpdate validators       = 4 [(gogoproto.nullable) = false];
-  bytes                    app_state_bytes  = 5;
-  int64                    initial_height   = 6;
+  string                           chain_id         = 2;
+  tendermint.types.ConsensusParams consensus_params = 3;
+  repeated ValidatorUpdate         validators       = 4 [(gogoproto.nullable) = false];
+  bytes                            app_state_bytes  = 5;
+  int64                            initial_height   = 6;
 }
 
 message RequestQuery {
@@ -197,9 +197,9 @@ message ResponseInfo {
 }
 
 message ResponseInitChain {
-  tendermint.types.ConsensusParams          consensus_params = 1;
-  repeated ValidatorUpdate validators       = 2 [(gogoproto.nullable) = false];
-  bytes                    app_hash         = 3;
+  tendermint.types.ConsensusParams consensus_params = 1;
+  repeated ValidatorUpdate         validators       = 2 [(gogoproto.nullable) = false];
+  bytes                            app_hash         = 3;
 }
 
 message ResponseQuery {
@@ -253,9 +253,9 @@ message ResponseDeliverTx {
 }
 
 message ResponseEndBlock {
-  repeated ValidatorUpdate validator_updates       = 1 [(gogoproto.nullable) = false];
-  tendermint.types.ConsensusParams          consensus_param_updates = 2;
-  repeated Event           events                  = 3
+  repeated ValidatorUpdate         validator_updates       = 1 [(gogoproto.nullable) = false];
+  tendermint.types.ConsensusParams consensus_param_updates = 2;
+  repeated Event                   events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
 }
 
