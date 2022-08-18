@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -45,7 +44,7 @@ func (s *SnapshotStore) loadMetadata() error {
 	file := filepath.Join(s.dir, "metadata.json")
 	metadata := []abci.Snapshot{}
 
-	bz, err := ioutil.ReadFile(file)
+	bz, err := os.ReadFile(file)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
 	case err != nil:
@@ -72,7 +71,7 @@ func (s *SnapshotStore) saveMetadata() error {
 	// save the file to a new file and move it to make saving atomic.
 	newFile := filepath.Join(s.dir, "metadata.json.new")
 	file := filepath.Join(s.dir, "metadata.json")
-	err = ioutil.WriteFile(newFile, bz, 0644) // nolint: gosec
+	err = os.WriteFile(newFile, bz, 0644) // nolint: gosec
 	if err != nil {
 		return err
 	}
@@ -93,7 +92,7 @@ func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
 		Hash:   hashItems(state.Values),
 		Chunks: byteChunks(bz),
 	}
-	err = ioutil.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0644)
+	err = os.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0644)
 	if err != nil {
 		return abci.Snapshot{}, err
 	}
@@ -122,7 +121,7 @@ func (s *SnapshotStore) LoadChunk(height uint64, format uint32, chunk uint32) ([
 	defer s.RUnlock()
 	for _, snapshot := range s.metadata {
 		if snapshot.Height == height && snapshot.Format == format {
-			bz, err := ioutil.ReadFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", height)))
+			bz, err := os.ReadFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", height)))
 			if err != nil {
 				return nil, err
 			}

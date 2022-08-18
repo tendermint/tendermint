@@ -1,6 +1,27 @@
 # Upgrading Tendermint Core
 
-This guide provides instructions for upgrading to specific versions of Tendermint Core.
+This guide provides instructions for upgrading to specific versions of
+Tendermint Core.
+
+## v0.37 (Unreleased)
+
+This version requires a coordinated network upgrade. It alters the elements in
+the predigest of the `LastResultsHash` and thus all nodes must upgrade together
+(see [\#9175](https://github.com/tendermint/tendermint/pull/9175)).
+
+NOTE: v0.35 was recalled and v0.36 was skipped
+
+### ABCI Changes
+
+* In v0.34, messages on the wire used to be length-delimited with `int64` varint
+  values, which was inconsistent with the `uint64` varint length delimiters used
+  in the P2P layer. Both now consistently use `uint64` varint length delimiters.
+
+## Unreleased
+
+### ABCI Changes
+
+* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
 
 ## v0.34.20
 
@@ -437,7 +458,7 @@ use `make build_c` / `make install_c` (full instructions can be found at
 
 ## v0.31.0
 
-This release contains a breaking change to the behaviour of the pubsub system.
+This release contains a breaking change to the behavior of the pubsub system.
 It also contains some minor breaking changes in the Go API and ABCI.
 There are no changes to the block or p2p protocols, so v0.31.0 should work fine
 with blockchains created from the v0.30 series.
@@ -455,7 +476,7 @@ In this case, the WS client will receive an error with description:
   "error": {
     "code": -32000,
     "msg": "Server error",
-    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+    "data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
   }
 }
 
@@ -636,7 +657,7 @@ to `timeout_propose = "3s"`.
 
 ### RPC Changes
 
-The default behaviour of `/abci_query` has been changed to not return a proof,
+The default behavior of `/abci_query` has been changed to not return a proof,
 and the name of the parameter that controls this has been changed from `trusted`
 to `prove`. To get proofs with your queries, ensure you set `prove=true`.
 

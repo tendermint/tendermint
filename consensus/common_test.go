@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -21,7 +20,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -463,7 +461,7 @@ func loadPrivValidator(config *cfg.Config) *privval.FilePV {
 }
 
 func randState(nValidators int) (*State, []*validatorStub) {
-	return randStateWithApp(nValidators, counter.NewApplication(true))
+	return randStateWithApp(nValidators, kvstore.NewApplication())
 }
 
 func randStateWithApp(nValidators int, app abci.Application) (*State, []*validatorStub) {
@@ -804,11 +802,11 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+			tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 			if err != nil {
 				panic(err)
 			}
-			tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+			tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 			if err != nil {
 				panic(err)
 			}
@@ -923,18 +921,16 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 func (*mockTicker) SetLogger(log.Logger) {}
 
-//------------------------------------
-
-func newCounter() abci.Application {
-	return counter.NewApplication(true)
-}
-
 func newPersistentKVStore() abci.Application {
-	dir, err := ioutil.TempDir("", "persistent-kvstore")
+	dir, err := os.MkdirTemp("", "persistent-kvstore")
 	if err != nil {
 		panic(err)
 	}
 	return kvstore.NewPersistentKVStoreApplication(dir)
+}
+
+func newKVStore() abci.Application {
+	return kvstore.NewApplication()
 }
 
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {

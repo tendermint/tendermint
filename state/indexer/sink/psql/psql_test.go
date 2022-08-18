@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -227,7 +226,7 @@ func newTestBlockHeader() types.EventDataNewBlockHeader {
 // readSchema loads the indexing database schema file
 func readSchema() ([]*schema.Migration, error) {
 	const filename = "schema.sql"
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read sql file from '%s': %w", filename, err)
 	}

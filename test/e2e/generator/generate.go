@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
-	"strconv"
 	"strings"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -27,10 +26,9 @@ var (
 	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	ipv6          = uniformChoice{false, true}
 	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
-	nodeABCIProtocols    = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
-	nodePrivvalProtocols = uniformChoice{"file", "unix", "tcp"}
-	// FIXME: v2 disabled due to flake
-	nodeFastSyncs         = uniformChoice{"v0"} // "v2"
+	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
+	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
+	nodeFastSyncs         = uniformChoice{false, true}
 	nodeStateSyncs        = uniformChoice{false, true}
 	nodeMempools          = uniformChoice{"v0", "v1"}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
@@ -41,13 +39,6 @@ var (
 		"pause":      0.1,
 		"kill":       0.1,
 		"restart":    0.1,
-	}
-	nodeMisbehaviors = weightedChoice{
-		// FIXME: evidence disabled due to node panicing when not
-		// having sufficient block history to process evidence.
-		// https://github.com/tendermint/tendermint/issues/5617
-		// misbehaviorOption{"double-prevote"}: 1,
-		misbehaviorOption{}: 9,
 	}
 )
 
@@ -210,7 +201,7 @@ func generateNode(
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
-		FastSync:         nodeFastSyncs.Choose(r).(string),
+		FastSync:         nodeFastSyncs.Choose(r).(bool),
 		Mempool:          nodeMempools.Choose(r).(string),
 		StateSync:        nodeStateSyncs.Choose(r).(bool) && startAt > 0,
 		PersistInterval:  ptrUint64(uint64(nodePersistIntervals.Choose(r).(int))),
@@ -224,17 +215,6 @@ func generateNode(
 	if forceArchive {
 		node.RetainBlocks = 0
 		node.SnapshotInterval = 3
-	}
-
-	if node.Mode == string(e2e.ModeValidator) {
-		misbehaveAt := startAt + 5 + int64(r.Intn(10))
-		if startAt == 0 {
-			misbehaveAt += initialHeight - 1
-		}
-		node.Misbehaviors = nodeMisbehaviors.Choose(r).(misbehaviorOption).atHeight(misbehaveAt)
-		if len(node.Misbehaviors) != 0 {
-			node.PrivvalProtocol = "file"
-		}
 	}
 
 	// If a node which does not persist state also does not retain blocks, randomly
@@ -273,17 +253,4 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 
 func ptrUint64(i uint64) *uint64 {
 	return &i
-}
-
-type misbehaviorOption struct {
-	misbehavior string
-}
-
-func (m misbehaviorOption) atHeight(height int64) map[string]string {
-	misbehaviorMap := make(map[string]string)
-	if m.misbehavior == "" {
-		return misbehaviorMap
-	}
-	misbehaviorMap[strconv.Itoa(int(height))] = m.misbehavior
-	return misbehaviorMap
 }

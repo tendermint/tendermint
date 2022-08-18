@@ -75,17 +75,6 @@ func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	)
 }
 
-func (app *localClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.SetOption(req)
-	return app.callback(
-		types.ToRequestSetOption(req),
-		types.ToResponseSetOption(res),
-	)
-}
-
 func (app *localClient) DeliverTxAsync(params types.RequestDeliverTx) *ReqRes {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
@@ -244,14 +233,6 @@ func (app *localClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, er
 	defer app.mtx.Unlock()
 
 	res := app.Application.Info(req)
-	return &res, nil
-}
-
-func (app *localClient) SetOptionSync(req types.RequestSetOption) (*types.ResponseSetOption, error) {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-
-	res := app.Application.SetOption(req)
 	return &res, nil
 }
 

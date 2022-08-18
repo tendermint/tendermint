@@ -59,7 +59,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 
 	blockStore := store.NewBlockStore(blockStoreDB)
 
-	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app))
+	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app), proxy.NopMetrics())
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return fmt.Errorf("failed to start proxy app connections: %w", err)

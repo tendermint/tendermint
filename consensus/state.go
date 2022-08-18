@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"runtime/debug"
 	"sort"
@@ -523,6 +523,14 @@ func (cs *State) updateHeight(height int64) {
 }
 
 func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
+	if !cs.replayMode {
+		if round != cs.Round || round == 0 && step == cstypes.RoundStepNewRound {
+			cs.metrics.MarkRound(cs.Round, cs.StartTime)
+		}
+		if cs.Step != step {
+			cs.metrics.MarkStep(cs.Step)
+		}
+	}
 	cs.Round = round
 	cs.Step = step
 }
@@ -1021,9 +1029,6 @@ func (cs *State) enterNewRound(height int64, round int32) {
 	if err := cs.eventBus.PublishEventNewRound(cs.NewRoundEvent()); err != nil {
 		cs.Logger.Error("failed publishing new round", "err", err)
 	}
-
-	cs.metrics.Rounds.Set(float64(round))
-
 	// Wait for txs to be available in the mempool
 	// before we enterPropose in round 0. If the last block changed the app hash,
 	// we may need an empty "proof" block, and enterPropose immediately.
@@ -1139,6 +1144,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 		} else if block == nil {
 			panic("Method createProposalBlock should not provide a nil block without errors")
 		}
+		cs.metrics.ProposalCreateCount.Add(1)
 		blockParts, err = block.MakePartSet(types.BlockPartSizeBytes)
 		if err != nil {
 			cs.Logger.Error("unable to create proposal block part set", "error", err)
@@ -1303,6 +1309,7 @@ func (cs *State) defaultDoPrevote(height int64, round int32) {
 			"state machine returned an error (%v) when calling ProcessProposal", err,
 		))
 	}
+	cs.metrics.MarkProposalProcessed(isAppValid)
 
 	// Vote nil if the Application rejected the block
 	if !isAppValid {
@@ -1890,11 +1897,13 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
 		cs.Logger.Debug("received block part from wrong height", "height", height, "round", round)
+		cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
 		return false, nil
 	}
 
 	// We're not expecting a block part.
 	if cs.ProposalBlockParts == nil {
+		cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
 		// NOTE: this can happen when we've gone to a higher round and
 		// then receive parts from the previous round - not necessarily a bad peer.
 		cs.Logger.Debug(
@@ -1909,15 +1918,21 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
+		if errors.Is(err, types.ErrPartSetInvalidProof) || errors.Is(err, types.ErrPartSetUnexpectedIndex) {
+			cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
+		}
 		return added, err
 	}
+
+	cs.metrics.BlockGossipPartsReceived.With("matches_current", "true").Add(1)
+
 	if cs.ProposalBlockParts.ByteSize() > cs.state.ConsensusParams.Block.MaxBytes {
 		return added, fmt.Errorf("total size of proposal block parts exceeds maximum block bytes (%d > %d)",
 			cs.ProposalBlockParts.ByteSize(), cs.state.ConsensusParams.Block.MaxBytes,
 		)
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
-		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
+		bz, err := io.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
 		}
@@ -2038,6 +2053,10 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 		"cs_height", cs.Height,
 	)
 
+	if vote.Height < cs.Height || (vote.Height == cs.Height && vote.Round < cs.Round) {
+		cs.metrics.MarkLateVote(vote.Type)
+	}
+
 	// A precommit for the previous height?
 	// These come in while we wait timeoutCommit
 	if vote.Height+1 == cs.Height && vote.Type == tmproto.PrecommitType {
@@ -2081,6 +2100,11 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 	if !added {
 		// Either duplicate, or error upon cs.Votes.AddByIndex()
 		return
+	}
+	if vote.Round == cs.Round {
+		vals := cs.state.Validators
+		_, val := vals.GetByIndex(vote.ValidatorIndex)
+		cs.metrics.MarkVoteReceived(vote.Type, val.VotingPower, vals.TotalVotingPower())
 	}
 
 	if err := cs.eventBus.PublishEventVote(types.EventDataVote{Vote: vote}); err != nil {
@@ -2346,12 +2370,12 @@ func (cs *State) calculatePrevoteMessageDelayMetrics() {
 		_, val := cs.Validators.GetByAddress(v.ValidatorAddress)
 		votingPowerSeen += val.VotingPower
 		if votingPowerSeen >= cs.Validators.TotalVotingPower()*2/3+1 {
-			cs.metrics.QuorumPrevoteMessageDelay.Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+			cs.metrics.QuorumPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(v.Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 			break
 		}
 	}
 	if ps.HasAll() {
-		cs.metrics.FullPrevoteMessageDelay.Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
+		cs.metrics.FullPrevoteDelay.With("proposer_address", cs.Validators.GetProposer().Address.String()).Set(pl[len(pl)-1].Timestamp.Sub(cs.Proposal.Timestamp).Seconds())
 	}
 }
 

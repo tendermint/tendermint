@@ -40,7 +40,7 @@ var (
 func TestApplyBlock(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -78,7 +78,7 @@ func TestApplyBlock(t *testing.T) {
 func TestBeginBlockValidators(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
@@ -141,7 +141,7 @@ func TestBeginBlockValidators(t *testing.T) {
 func TestBeginBlockByzantineValidators(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -193,16 +193,16 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	ev := []types.Evidence{dve, lcae}
 
-	abciEv := []abci.Evidence{
+	abciMb := []abci.Misbehavior{
 		{
-			Type:             abci.EvidenceType_DUPLICATE_VOTE,
+			Type:             abci.MisbehaviorType_DUPLICATE_VOTE,
 			Height:           3,
 			Time:             defaultEvidenceTime,
 			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
 			TotalVotingPower: 10,
 		},
 		{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+			Type:             abci.MisbehaviorType_LIGHT_CLIENT_ATTACK,
 			Height:           8,
 			Time:             defaultEvidenceTime,
 			Validator:        types.TM2PB.Validator(state.Validators.Validators[0]),
@@ -242,7 +242,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	assert.EqualValues(t, retainHeight, 1)
 
 	// TODO check state and mempool
-	assert.Equal(t, abciEv, app.ByzantineValidators)
+	assert.Equal(t, abciMb, app.Misbehavior)
 }
 
 func TestProcessProposal(t *testing.T) {
@@ -254,7 +254,7 @@ func TestProcessProposal(t *testing.T) {
 	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -458,7 +458,7 @@ func TestUpdateValidators(t *testing.T) {
 func TestEndBlockValidatorUpdates(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -543,7 +543,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -580,7 +580,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 
 	app := abcimocks.NewBaseMock()
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -643,7 +643,7 @@ func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
 	app.On("PrepareProposal", mock.Anything).Return(rpp)
 
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -691,7 +691,7 @@ func TestPrepareProposalRemoveTxs(t *testing.T) {
 		TxRecords: trs,
 	})
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -742,7 +742,7 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 		TxRecords: trs,
 	})
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -791,7 +791,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	})
 
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -844,7 +844,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	})
 
 	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -890,7 +890,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	cm.On("Stop").Return(nil)
 	cc := &pmocks.ClientCreator{}
 	cc.On("NewABCIClient").Return(cm, nil)
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests

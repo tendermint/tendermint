@@ -26,7 +26,8 @@ will indicate their support with a heartfelt emoji.
 
 If the issue would benefit from thorough discussion, maintainers may
 request that you create a [Request For
-Comment](https://github.com/tendermint/spec/tree/master/rfc). Discussion
+Comment](https://github.com/tendermint/spec/tree/master/rfc)
+in the Tendermint spec repo. Discussion
 at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
 
@@ -104,24 +105,47 @@ specify exactly the dependency you want to update, eg.
 
 ## Protobuf
 
-We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along with [gogoproto](https://github.com/gogo/protobuf) to generate code for use across Tendermint Core.
+We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along
+with [`gogoproto`](https://github.com/gogo/protobuf) to generate code for use
+across Tendermint Core.
 
-For linting and checking breaking changes, we use [buf](https://buf.build/). If you would like to run linting and check if the changes you have made are breaking then you will need to have docker running locally. Then the linting cmd will be `make proto-lint` and the breaking changes check will be `make proto-check-breaking`.
+To generate proto stubs, lint, and check protos for breaking changes, you will
+need to install [buf](https://buf.build/) and `gogoproto`. Then, from the root
+of the repository, run:
 
-We use [Docker](https://www.docker.com/) to generate the protobuf stubs. To generate the stubs yourself, make sure docker is running then run `make proto-gen`.
+```bash
+# Lint all of the .proto files in proto/tendermint
+make proto-lint
 
-## Vagrant
+# Check if any of your local changes (prior to committing to the Git repository)
+# are breaking
+make proto-check-breaking
 
-If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started
-hacking Tendermint with the commands below.
+# Generate Go code from the .proto files in proto/tendermint
+make proto-gen
+```
 
-NOTE: In case you installed Vagrant in 2017, you might need to run
-`vagrant box update` to upgrade to the latest `ubuntu/xenial64`.
+To automatically format `.proto` files, you will need
+[`clang-format`](https://clang.llvm.org/docs/ClangFormat.html) installed. Once
+installed, you can run:
 
-```sh
-vagrant up
-vagrant ssh
-make test
+```bash
+make proto-format
+```
+
+### Visual Studio Code
+
+If you are a VS Code user, you may want to add the following to your `.vscode/settings.json`:
+
+```json
+{
+  "protoc": {
+    "options": [
+      "--proto_path=${workspaceRoot}/proto",
+      "--proto_path=${workspaceRoot}/third_party/proto"
+    ]
+  }
+}
 ```
 
 ## Changelog
@@ -225,89 +249,6 @@ Fixes #nnnn
 
 Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
-### Release Procedure
-
-#### Major Release
-
-1. Start on `master`
-2. Run integration tests (see `test_integrations` in Makefile)
-3. Prepare release in a pull request against `master` (to be squash merged):
-   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`; if this release
-      had release candidates, squash all the RC updates into one
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
-     all issues
-   - run `bash ./scripts/authors.sh` to get a list of authors since the latest
-     release, and add the github aliases of external contributors to the top of
-     the changelog. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - Reset the `CHANGELOG_PENDING.md`
-   - Bump TMVersionDefault version in  `version.go`
-   - Bump P2P and block protocol versions in  `version.go`, if necessary
-   - Bump ABCI protocol version in `version.go`, if necessary
-   - Make sure all significant breaking changes are covered in `UPGRADING.md`
-   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Push a tag with prepared release details (this will trigger the release `vX.X.0`)
-   - `git tag -a vX.X.x -m 'Release vX.X.x'`
-   - `git push origin vX.X.x`
-5. Update the changelog.md file on master with the releases changelog.
-6. Delete any RC branches and tags for this release (if applicable)
-
-#### Minor Release
-
-Minor releases are done differently from major releases: They are built off of long-lived release candidate branches, rather than from master.
-
-1. Checkout the long-lived release candidate branch: `git checkout rcX/vX.X.X`
-2. Run integration tests: `make test_integrations`
-3. Prepare the release:
-   - copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-   - run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - reset the `CHANGELOG_PENDING.md`
-   - bump P2P and block protocol versions in  `version.go`, if necessary
-   - bump ABCI protocol version in `version.go`, if necessary
-   - make sure all significant breaking changes are covered in `UPGRADING.md`
-   - Add any release notes you would like to be added to the body of the release to `release_notes.md`.
-4. Create a release branch `release/vX.X.x` off the release candidate branch:
-   - `git checkout -b release/vX.X.x`
-   - `git push -u origin release/vX.X.x`
-   - Note that all branches prefixed with `release` are protected once pushed. You will need admin help to make any changes to the branch.
-5. Once the release branch has been approved, make sure to pull it locally, then push a tag.
-   - `git tag -a vX.X.x -m 'Release vX.X.x'`
-   - `git push origin vX.X.x`
-6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
-   - Remove all `R:minor` labels from the pull requests that were included in the release.
-   - Do not merge the release branch into master.
-7. Delete the former long lived release candidate branch once the release has been made.
-8. Create a new release candidate branch to be used for the next release.
-
-#### Backport Release
-
-1. start from the existing release branch you want to backport changes to (e.g. v0.30)
-   Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
-2. Cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
-3. Follow steps 2 and 3 from [Major Release](#major-release)
-4. Push changes to release/vX.X.X branch
-5. Open a PR against the existing vX.X branch
-
-#### Release Candidates
-
-Before creating an official release, especially a major release, we may want to create a
-release candidate (RC) for our friends and partners to test out. We use git tags to
-create RCs, and we build them off of RC branches. RC branches typically have names formatted
-like `RCX/vX.X.X` (or, concretely, `RC0/v0.34.0`), while the tags themselves follow
-the "standard" release naming conventions, with `-rcX` at the end (`vX.X.X-rcX`).
-
-(Note that branches and tags _cannot_ have the same names, so it's important that these branches
-have distinct names from the tags/release names.)
-
-1. Start from the RC branch (e.g. `RC0/v0.34.0`).
-2. Create the new tag, specifying a name and a tag "message":  
-   `git tag -a v0.34.0-rc0 -m "Release Candidate v0.34.0-rc0` 
-3. Push the tag back up to origin:  
-   `git push origin v0.34.0-rc4`  
-   Now the tag should be available on the repo's releases page. 
-4. Create a new release candidate branch for any possible updates to the RC:  
-   `git checkout -b RC1/v0.34.0; git push origin RC1/v0.34.0`
-
 ## Testing
 
 ### Unit tests
@@ -339,15 +280,6 @@ cd test/e2e && \
   make && \
   ./build/runner -f networks/ci.toml
 ```
-
-### Maverick
-
-**If you're changing the code in `consensus` package, please make sure to
-replicate all the changes in `./test/maverick/consensus`**. Maverick is a
-byzantine node used to assert that the validator gets punished for malicious
-behavior.
-
-See [README](./test/maverick/README.md) for details.
 
 ### Model-based tests (ADVANCED)
 
@@ -393,8 +325,10 @@ information.
 
 ### RPC Testing
 
-If you contribute to the RPC endpoints it's important to document your changes in the [Openapi file](./rpc/openapi/openapi.yaml)
-To test your changes you should install `nodejs` and run:
+**If you contribute to the RPC endpoints it's important to document your
+changes in the [Openapi file](./rpc/openapi/openapi.yaml)**.
+
+To test your changes you must install `nodejs` and run:
 
 ```bash
 npm i -g dredd

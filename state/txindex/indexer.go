@@ -10,7 +10,7 @@ import (
 
 // XXX/TODO: These types should be moved to the indexer package.
 
-//go:generate mockery --case underscore --name TxIndexer
+//go:generate ../../scripts/mockery_generate.sh TxIndexer
 
 // TxIndexer interface defines methods to index and search transactions.
 type TxIndexer interface {

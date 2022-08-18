@@ -1,7 +1,7 @@
 package v1_test
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,7 +26,7 @@ func TestMempoolTestdataCases(t *testing.T) {
 			}()
 			f, err := os.Open(filepath.Join(testdataCasesDir, entry.Name()))
 			require.NoError(t, err)
-			input, err := ioutil.ReadAll(f)
+			input, err := io.ReadAll(f)
 			require.NoError(t, err)
 			mempoolv1.Fuzz(input)
 		})

@@ -30,6 +30,8 @@ function testExample() {
 		cat "${INPUT}.out.new"
 		echo "Expected:"
 		cat "${INPUT}.out"
+		echo "Diff:"
+		diff "${INPUT}.out" "${INPUT}.out.new"
 		exit 1
 	fi
 
@@ -37,7 +39,7 @@ function testExample() {
 }
 
 testExample 1 tests/test_cli/ex1.abci abci-cli kvstore
-testExample 2 tests/test_cli/ex2.abci abci-cli counter
+testExample 2 tests/test_cli/ex2.abci abci-cli kvstore
 
 echo ""
 echo "PASS"

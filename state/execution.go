@@ -115,12 +115,14 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	rpp, err := blockExec.proxyApp.PrepareProposalSync(
 		abci.RequestPrepareProposal{
-			Hash:                block.Hash(),
-			Header:              *block.Header.ToProto(),
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     extendedCommitInfo(localLastCommit, votes),
-			ByzantineValidators: block.Evidence.Evidence.ToABCI(),
-			MaxTxBytes:          maxDataBytes,
+			MaxTxBytes:         maxDataBytes,
+			Txs:                block.Txs.ToSliceOfBytes(),
+			LocalLastCommit:    extendedCommitInfo(localLastCommit, votes),
+			Misbehavior:        block.Evidence.Evidence.ToABCI(),
+			Height:             block.Height,
+			Time:               block.Time,
+			NextValidatorsHash: block.NextValidatorsHash,
+			ProposerAddress:    block.ProposerAddress,
 		},
 	)
 	if err != nil {
@@ -231,6 +233,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
+		blockExec.metrics.ValidatorSetUpdates.Add(1)
+	}
+	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
+		blockExec.metrics.ConsensusParamUpdates.Add(1)
 	}
 
 	// Update the state with the block and responses.

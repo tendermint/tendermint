@@ -24,7 +24,6 @@ message Request {
     RequestEcho               echo                 = 1;
     RequestFlush              flush                = 2;
     RequestInfo               info                 = 3;
-    RequestSetOption          set_option           = 4;
     RequestInitChain          init_chain           = 5;
     RequestQuery              query                = 6;
     RequestBeginBlock         begin_block          = 7;
@@ -39,6 +38,7 @@ message Request {
     RequestPrepareProposal    prepare_proposal     = 16;
     RequestProcessProposal    process_proposal     = 17;
   }
+  reserved 4;
 }
 
 message RequestEcho {
@@ -51,12 +51,7 @@ message RequestInfo {
   string version       = 1;
   uint64 block_version = 2;
   uint64 p2p_version   = 3;
-}
-
-// nondeterministic
-message RequestSetOption {
-  string key   = 1;
-  string value = 2;
+  string abci_version = 4;
 }
 
 message RequestInitChain {
@@ -80,7 +75,7 @@ message RequestBeginBlock {
   bytes                   hash                 = 1;
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 enum CheckTxType {
@@ -127,21 +122,24 @@ message RequestApplySnapshotChunk {
 }
 
 message RequestPrepareProposal {
-  bytes                   hash   = 1;
-  tendermint.types.Header header = 2 [(gogoproto.nullable) = false];
+  // the modified transactions cannot exceed this size.
+  int64 max_tx_bytes = 1;
   // txs is an array of transactions that will be included in a block,
   // sent to the app for possible modifications.
-  repeated bytes     txs                  = 3;
-  ExtendedCommitInfo local_last_commit    = 4 [(gogoproto.nullable) = false];
-  repeated Evidence  byzantine_validators = 5 [(gogoproto.nullable) = false];
-  // the modified transactions cannot exceed this size.
-  int64 max_tx_bytes = 6;
+  repeated bytes            txs                  = 2;
+  ExtendedCommitInfo        local_last_commit    = 3 [(gogoproto.nullable) = false];
+  repeated Misbehavior      misbehavior          = 4 [(gogoproto.nullable) = false];
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // address of the public key of the validator proposing the block.
+  bytes proposer_address = 8;
 }
 
 message RequestProcessProposal {
-  repeated bytes    txs                  = 1;
-  CommitInfo        proposed_last_commit = 2 [(gogoproto.nullable) = false];
-  repeated Evidence misbehavior          = 3 [(gogoproto.nullable) = false];
+  repeated bytes       txs                  = 1;
+  CommitInfo           proposed_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior misbehavior          = 3 [(gogoproto.nullable) = false];
   // hash is the merkle root hash of the fields of the proposed block.
   bytes                     hash                 = 4;
   int64                     height               = 5;
@@ -160,7 +158,6 @@ message Response {
     ResponseEcho               echo                 = 2;
     ResponseFlush              flush                = 3;
     ResponseInfo               info                 = 4;
-    ResponseSetOption          set_option           = 5;
     ResponseInitChain          init_chain           = 6;
     ResponseQuery              query                = 7;
     ResponseBeginBlock         begin_block          = 8;
@@ -175,6 +172,7 @@ message Response {
     ResponsePrepareProposal    prepare_proposal     = 17;
     ResponseProcessProposal    process_proposal     = 18;
   }
+  reserved 5;
 }
 
 // nondeterministic
@@ -196,14 +194,6 @@ message ResponseInfo {
 
   int64 last_block_height   = 4;
   bytes last_block_app_hash = 5;
-}
-
-// nondeterministic
-message ResponseSetOption {
-  uint32 code = 1;
-  // bytes data = 2;
-  string log  = 3;
-  string info = 4;
 }
 
 message ResponseInitChain {
@@ -351,7 +341,10 @@ message CommitInfo {
 }
 
 message ExtendedCommitInfo {
-  int32                     round = 1;
+  // The round at which the block proposer decided in the previous height.
+  int32 round = 1;
+  // List of validators' addresses in the last validator set with their voting
+  // information, including vote extensions.
   repeated ExtendedVoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
@@ -416,8 +409,6 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator         = 1 [(gogoproto.nullable) = false];
   bool      signed_last_block = 2;
-  reserved 3;  // Placeholder for tendermint_signed_extension in v0.37
-  reserved 4;  // Placeholder for app_signed_extension in v0.37
 }
 
 message ExtendedVoteInfo {
@@ -426,14 +417,14 @@ message ExtendedVoteInfo {
   bytes     vote_extension    = 3;  // Reserved for future use
 }
 
-enum EvidenceType {
+enum MisbehaviorType {
   UNKNOWN             = 0;
   DUPLICATE_VOTE      = 1;
   LIGHT_CLIENT_ATTACK = 2;
 }
 
-message Evidence {
-  EvidenceType type = 1;
+message Misbehavior {
+  MisbehaviorType type = 1;
   // The offending validator
   Validator validator = 2 [(gogoproto.nullable) = false];
   // The height when the offense occurred
@@ -465,7 +456,6 @@ service ABCIApplication {
   rpc Echo(RequestEcho) returns (ResponseEcho);
   rpc Flush(RequestFlush) returns (ResponseFlush);
   rpc Info(RequestInfo) returns (ResponseInfo);
-  rpc SetOption(RequestSetOption) returns (ResponseSetOption);
   rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
