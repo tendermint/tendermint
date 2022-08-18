@@ -137,7 +137,6 @@ func (app *Application) Commit() types.ResponseCommit {
 	app.state.Height++
 
 	// empty out the set of transactions to remove via rechecktx
-	app.txToRemove = map[string]struct{}{}
 	saveState(app.state)
 
 	resp := types.ResponseCommit{Data: appHash}
@@ -181,6 +180,11 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 	resQuery.Height = app.state.Height
 
 	return resQuery
+}
+
+func (app *Application) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+	app.txToRemove = map[string]struct{}{}
+	return types.ResponseBeginBlock{}
 }
 
 func (app *Application) ProcessProposal(
