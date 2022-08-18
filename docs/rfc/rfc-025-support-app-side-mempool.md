@@ -29,7 +29,8 @@ Rename to GossipList
 
 ### Delivering gossiped transactions to the application
 
-* Transactions still arrive _at_ Tendermint and are passed to the app via `CheckTx` or similar.
+* Transactions still arrive _at_ Tendermint and are passed to the app via `CheckTx`.
+* This is the mechanism by which gossiped transactions are passed to the application.
 
 #### Not all transactions delivered to Tendermint
 
@@ -71,6 +72,12 @@ Rename to GossipList
 * gossiping. This does mean that, if the application wants to save transactions it
 * needs to hand them all back to Tendermint when it starts back up again. Again,
 * light weight in memory only data structure.
+
+#### Out of process application consideration
+
+##### TM crashes, application does not
+
+##### Application crashes, Tendermint does not
 
 ### Removing transactions after block execution
 
