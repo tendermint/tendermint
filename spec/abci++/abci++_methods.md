@@ -153,31 +153,117 @@ title: Methods
       to other nodes or included in a proposal block.
       Tendermint attributes no other value to the response code.
 
-### Commit
-
-#### Parameters and Types
+### BeginBlock
 
 * **Request**:
 
-    | Name   | Type  | Description | Field Number |
-    |--------|-------|-------------|--------------|
+    | Name                 | Type                                        | Description                                                                                                       | Field Number |
+    |----------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------|
+    | hash                 | bytes                                       | The block's hash. This can be derived from the block header.                                                      | 1            |
+    | header               | [Header](../core/data_structures.md#header) | The block header.                                                                                                 | 2            |
+    | last_commit_info     | [CommitInfo](#commitinfo)           | Info about the last commit, including the round, and the list of validators and which ones signed the last block. | 3            |
+    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                            | 4            |
+
+* **Response**:
+
+    | Name   | Type                      | Description                         | Field Number |
+    |--------|---------------------------|-------------------------------------|--------------|
+    | events | repeated [Event](#events) | type & Key-Value events for indexing | 1           |
+
+* **Usage**:
+    * Signals the beginning of a new block.
+    * Called prior to any `DeliverTx` method calls.
+    * The header contains the height, timestamp, and more - it exactly matches the
+    Tendermint block header. We may seek to generalize this in the future.
+    * The `CommitInfo` and `ByzantineValidators` can be used to determine
+    rewards and punishments for the validators.
+
+### DeliverTx
+
+* **Request**:
+
+    | Name | Type  | Description                    | Field Number |
+    |------|-------|--------------------------------|--------------|
+    | tx   | bytes | The request transaction bytes. | 1            |
+
+* **Response**:
+
+    | Name       | Type                      | Description                                                           | Field Number |
+    |------------|---------------------------|-----------------------------------------------------------------------|--------------|
+    | code       | uint32                    | Response code.                                                        | 1            |
+    | data       | bytes                     | Result bytes, if any.                                                 | 2            |
+    | log        | string                    | The output of the application's logger. **May be non-deterministic.** | 3            |
+    | info       | string                    | Additional information. **May be non-deterministic.**                 | 4            |
+    | gas_wanted | int64                     | Amount of gas requested for transaction.                              | 5            |
+    | gas_used   | int64                     | Amount of gas consumed by transaction.                                | 6            |
+    | events     | repeated [Event](#events) | Type & Key-Value events for indexing transactions (eg. by account).   | 7            |
+    | codespace  | string                    | Namespace for the `code`.                                             | 8            |
+
+* **Usage**:
+    * [**Required**] The core method of the application.
+    * When `DeliverTx` is called, the application must execute the transaction deterministically 
+    in full before returning control to Tendermint. Alternatively, it can apply the candidate state corresponding
+     to the same block previously executed via `PrepareProposal` or `ProcessProposal`. (ToDo @sergio-mena is this correct?)
+    * `ResponseDeliverTx.Code == 0` only if the transaction is fully valid.
+      
+
+### EndBlock
+
+* **Request**:
+
+    | Name   | Type  | Description                        | Field Number |
+    |--------|-------|------------------------------------|--------------|
+    | height | int64 | Height of the block just executed. | 1            |
+
+* **Response**:
+
+    | Name                    | Type                                         | Description                                                     | Field Number |
+    |-------------------------|----------------------------------------------|-----------------------------------------------------------------|--------------|
+    | validator_updates       | repeated [ValidatorUpdate](#validatorupdate) | Changes to validator set (set voting power to 0 to remove).     | 1            |
+    | consensus_param_updates | [ConsensusParams](#consensusparams)          | Changes to consensus-critical time, size, and other parameters. | 2            |
+    | events                  | repeated [Event](#events)                    | Type & Key-Value events for indexing                            | 3            |
+
+* **Usage**:
+    * Signals the end of a block.
+    * Called after all the transactions for the current block have been delivered, prior to the block's `Commit` message.
+    * Optional `validator_updates` triggered by block `H`. These updates affect validation
+      for blocks `H+1`, `H+2`, and `H+3`.
+    * Heights following a validator update are affected in the following way:
+        * `H+1`: `NextValidatorsHash` includes the new `validator_updates` value.
+        * `H+2`: The validator set change takes effect and `ValidatorsHash` is updated.
+        * `H+3`: `last_commit_info (BeginBlock)` is changed to include the altered validator set and `*_last_commit` fields in `PrepareProposal`, `ProcessProposal` now include the altered validator set.
+    * `consensus_param_updates` returned for block `H` apply to the consensus
+      params for block `H+1`. For more information on the consensus parameters,
+      see the [application spec entry on consensus parameters](./apps.md#consensus-parameters).
+    * `validator_updates` and `consensus_param_updates` may be empty. In this case, Tendermint will keep the current values. 
+
+### Commit
+
+* **Request**:
+
+    | Name   | Type  | Description                        | Field Number |
+    |--------|-------|------------------------------------|--------------|
 
     Commit signals the application to persist application state. It takes no parameters.
-
 * **Response**:
 
     | Name          | Type  | Description                                                            | Field Number |
     |---------------|-------|------------------------------------------------------------------------|--------------|
+    | data          | bytes | The Merkle root hash of the application state.                         | 2            |
     | retain_height | int64 | Blocks below this height may be removed. Defaults to `0` (retain all). | 3            |
 
 * **Usage**:
-
-    * Signal the Application to persist the application state.
-      Application is expected to persist its state at the end of this call, before calling `ResponseCommit`.
-    * Use `ResponseCommit.retain_height` with caution! If all nodes in the network remove historical
-      blocks then this data is permanently lost, and no new nodes will be able to join the network and
-      bootstrap. Historical blocks may also be required for other purposes, e.g. auditing, replay of
-      non-persisted heights, light client verification, and so on.
+    * Signal the application to persist the application state.
+    * Return an (optional) Merkle root hash of the application state
+    * `ResponseCommit.Data` is included as the `Header.AppHash` in the next block
+        * It may be empty or hard-coded, but MUST be **deterministic** - it must not be a function of anything that did not come from the parameters of the execution calls (` BeginBlock/DeliverTx/EndBlock methods`) and the previous committed state. 
+    * Later calls to `Query` can return proofs about the application state anchored
+    in this Merkle root hash
+    * Use `RetainHeight` with caution! If all nodes in the network remove historical
+    blocks then this data is permanently lost, and no new nodes will be able to
+    join the network and bootstrap. Historical blocks may also be required for
+    other purposes, e.g. auditing, replay of non-persisted heights, light client
+    verification, and so on.
 
 ### ListSnapshots
 
@@ -369,7 +455,7 @@ title: Methods
       `ADDED`.
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
-      `ResponseFinalizeBlock`.
+      `ResponseFinalizeBlock` (TODO  check where these events go).
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
       In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
         * There is a duplicate transaction in the list.
@@ -438,8 +524,7 @@ proposal and will not call `RequestPrepareProposal`.
 
 * **Usage**:
     * Contains all information on the proposed block needed to fully execute it.
-        * The Application may fully execute the block as though it was handling
-         `RequestFinalizeBlock`.
+        * The Application may fully execute the block as though it was handling the block execution calls(TODO rephrase this).
         * However, any resulting state changes must be kept as _candidate state_,
           and the Application should be ready to discard it in case another block is decided.
     * `RequestProcessProposal` is also called at the proposer of a round. The reason for this is to
@@ -480,7 +565,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
     3. If the returned value is
          * `ACCEPT`: Tendermint prevotes on this proposal for round _r_, height _h_.
          * `REJECT`: Tendermint prevotes `nil`.
-
+<!-->
 ### ExtendVote
 
 #### Parameters and Types
@@ -585,6 +670,8 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
      structure in calls to `RequestPrepareProposal`, in rounds of height _h + 1_ where _p_ is the proposer.
    * `REJECT`, _p_'s Tendermint will deem the Precommit message invalid and discard it.
 
+-->
+<!-->
 ### FinalizeBlock
 
 #### Parameters and Types
@@ -654,6 +741,8 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 
 #### When does Tendermint call `FinalizeBlock`?
 
+TODO check where to place this with regards to old calls
+
 When a node _p_ is in Tendermint consensus height _h_, and _p_ receives
 
 * the Proposal message with block _v_ for a round _r_, along with all its block parts, from _q_,
@@ -676,7 +765,7 @@ then _p_'s Tendermint decides block _v_ and finalizes consensus for height _h_ i
    against the newly persisted Application state.
 10. _p_'s Tendermint unlocks the mempool &mdash; newly received transactions can now be checked.
 11. _p_'s starts consensus for height _h+1_, round 0
-
+-->
 ## Data Types existing in ABCI
 
 Most of the data structures used in ABCI are shared [common data structures](../core/data_structures.md). In certain cases, ABCI uses different data structures which are documented here:
@@ -795,6 +884,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
     * This information is typically extracted from a proposed or decided block.
 
+<!-->
 ### ExtendedVoteInfo
 
 * **Fields**:
@@ -810,6 +900,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * This information is extracted from Tendermint's data structures in the local process.
     * `vote_extension` contains the sending validator's vote extension, which is signed by Tendermint. It can be empty
 
+-->
 ### CommitInfo
 
 * **Fields**:
@@ -819,6 +910,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | round | int32                          | Commit round. Reflects the round at which the block proposer decided in the previous height. | 1            |
     | votes | repeated [VoteInfo](#voteinfo) | List of validators' addresses in the last validator set with their voting information.       | 2            |
 
+<!-->
 ### ExtendedCommitInfo
 
 * **Fields**:
@@ -843,6 +935,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | events     | repeated [Event](abci++_basic_concepts.md#events)           | Type & Key-Value events for indexing transactions (e.g. by account).  | 7            |
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
+-->
 ### TxAction
 
 ```proto
