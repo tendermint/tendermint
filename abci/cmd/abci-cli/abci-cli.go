@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -605,16 +604,6 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		},
 	})
 	return nil
-}
-
-func inTxArray(txByteArray [][]byte, tx []byte) bool {
-	for _, txTmp := range txByteArray {
-		if bytes.Equal(txTmp, tx) {
-			return true
-		}
-
-	}
-	return false
 }
 
 func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
