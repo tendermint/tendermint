@@ -45,7 +45,10 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	state := loadState(db)
 
 	return &PersistentKVStoreApplication{
-		app:                &Application{state: state},
+		app: &Application{
+			state:      state,
+			txToRemove: map[string]struct{}{},
+		},
 		valAddrToPubKeyMap: make(map[string]pc.PublicKey),
 		logger:             log.NewNopLogger(),
 	}
@@ -302,10 +305,17 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 
 // -----------------------------
 
-const PreparePrefix = "prepare"
+const (
+	PreparePrefix = "prepare"
+	ReplacePrefix = "replace"
+)
 
 func isPrepareTx(tx []byte) bool {
 	return bytes.HasPrefix(tx, []byte(PreparePrefix))
+}
+
+func isReplacedTx(tx []byte) bool {
+	return bytes.HasPrefix(tx, []byte(ReplacePrefix))
 }
 
 // execPrepareTx is noop. tx data is considered as placeholder
@@ -323,7 +333,7 @@ func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte, maxT
 	for _, tx := range blockData {
 		txMod := tx
 		if isPrepareTx(tx) {
-			txMod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
+			txMod = bytes.Replace(tx, []byte(PreparePrefix), []byte(ReplacePrefix), 1)
 		}
 		totalBytes += int64(len(txMod))
 		if totalBytes > maxTxBytes {

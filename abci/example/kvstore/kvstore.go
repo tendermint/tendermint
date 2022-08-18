@@ -68,6 +68,7 @@ type Application struct {
 
 	state        State
 	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
+	txToRemove   map[string]struct{}
 }
 
 func NewApplication() *Application {
@@ -87,6 +88,9 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 
 // tx is either "key=value" or just arbitrary bytes
 func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+	if isReplacedTx(req.Tx) {
+		app.txToRemove[string(req.Tx)] = struct{}{}
+	}
 	var key, value []byte
 	parts := bytes.Split(req.Tx, []byte("="))
 	if len(parts) == 2 {
@@ -117,6 +121,11 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	if req.Type == types.CheckTxType_Recheck {
+		if _, ok := app.txToRemove[string(req.Tx)]; ok {
+			return types.ResponseCheckTx{Code: code.CodeTypeExecuted, GasWanted: 1}
+		}
+	}
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
@@ -126,6 +135,9 @@ func (app *Application) Commit() types.ResponseCommit {
 	binary.PutVarint(appHash, app.state.Size)
 	app.state.AppHash = appHash
 	app.state.Height++
+
+	// empty out the set of transactions to remove via rechecktx
+	app.txToRemove = map[string]struct{}{}
 	saveState(app.state)
 
 	resp := types.ResponseCommit{Data: appHash}
