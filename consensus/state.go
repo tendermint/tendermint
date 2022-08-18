@@ -918,7 +918,7 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 		cs.enterNewRound(ti.Height, 0)
 
 	case cstypes.RoundStepNewRound:
-		cs.enterPropose(ti.Height, 0)
+		cs.enterPropose(ti.Height, ti.Round)
 
 	case cstypes.RoundStepPropose:
 		if err := cs.eventBus.PublishEventTimeoutPropose(cs.RoundStateEvent()); err != nil {
