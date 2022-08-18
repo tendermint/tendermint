@@ -187,11 +187,16 @@ concurrent at all. This meant whether your app was compiled in-process with
 Tendermint using the `NewLocalClient`, or run out-of-process using the `SocketServer`,
 ABCI messages from all connections were received in sequence, one at a
 time.
-This is no longer the case starting from v0.36.0: the global locks have been removed and it is
+
+The existence of this global mutex means Go application developers can get thread safety for application state by routing all reads and writes through the ABCI system. Thus it may be unsafe to expose application state directly to an RPC interface, and unless explicit measures are taken, all queries should be routed through the ABCI Query method.
+
+<!--This is no longer the case starting from v0.36.0: the global locks have been removed and it is
 up to the Application to synchronize access to its state when handling
-ABCI++ methods on all connections.
+ABCI++ methods on all connections. -->
+
+<!-- TODO CHeck with Sergio whether this is still the case-->
 Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
-still received in sequence.
+still received in sequence. 
 
 #### BeginBlock - DeliverTx - EndBlock
 
