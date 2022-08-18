@@ -12,9 +12,9 @@
 [![License][license-badge]][license-url]
 [![Sourcegraph][sg-badge]][sg-url]
 
-| Branch | Tests                              | Coverage                                 | Linting             |
-|--------|------------------------------------|------------------------------------------|---------------------|
-| main   | [![Tests][tests-badge]][tests-url] | [![codecov][codecov-badge]][codecov-url] | ![Lint][lint-badge] |
+| Branch | Tests                              | Linting             |
+|--------|------------------------------------|---------------------|
+| main   | [![Tests][tests-badge]][tests-url] | ![Lint][lint-badge] |
 
 Tendermint Core is a Byzantine Fault Tolerant (BFT) middleware that takes a
 state transition machine - written in any programming language - and securely
@@ -171,6 +171,4 @@ for-profit entity that also maintains [tendermint.com](https://tendermint.com).
 [sg-url]: https://sourcegraph.com/github.com/tendermint/tendermint?badge
 [tests-url]: https://github.com/tendermint/tendermint/actions/workflows/tests.yml
 [tests-badge]: https://github.com/tendermint/tendermint/actions/workflows/tests.yml/badge.svg?branch=main
-[codecov-badge]: https://codecov.io/gh/tendermint/tendermint/branch/main/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/tendermint/tendermint
 [lint-badge]: https://github.com/tendermint/tendermint/workflows/Lint/badge.svg
