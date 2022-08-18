@@ -80,15 +80,17 @@ of `ProcessProposal`. As a general rule `ProcessProposal` SHOULD always accept t
 
 According to the Tendermint algorithm, a correct process can broadcast at most one precommit
 message in round *r*, height *h*.
-Since, as stated in the [Methods](./abci++_methods.md#extendvote) section, `ResponseExtendVote`
+
+<!-- Since, as stated in the [Methods](./abci++_methods.md#extendvote) section, `ResponseExtendVote`
 is only called when Tendermint
 is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension
 in round *r*, height *h*.
 Let *e<sup>r</sup><sub>p</sub>* be the vote extension that the Application of a correct process *p* returns via
 `ResponseExtendVote` in round *r*, height *h*.
 Let *w<sup>r</sup><sub>p</sub>* be the proposed block that *p*'s Tendermint passes to the Application via `RequestExtendVote`
-in round *r*, height *h*.
+in round *r*, height *h*. -->
 
+<!-->
 * Requirement 6 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two different correct
   processes *p* and *q*, if *q* receives *e<sup>r</sup><sub>p</sub>* from *p* in height *h*, *q*'s
   Application returns Accept in `ResponseVerifyVoteExtension`.
@@ -122,41 +124,44 @@ Requirements 7 and 8 can be violated by a bug inducing non-determinism in
 Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension`.
 As a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension.
 
+-->
 * Requirement 9 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
-  `RequestProcessProposal`, `RequestExtendVote`, and `RequestVerifyVoteExtension` at height *h* do
+  `RequestProcessProposal`, 
+  <!--`RequestExtendVote`, and `RequestVerifyVoteExtension` --> at height *h* do
   not modify *s<sub>p,h-1</sub>*.
 
-* Requirement 10 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process *p*,
+<!-- * Requirement 10 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process *p*,
 and any vote extension *e* that *p* received at height *h*, the computation of
 *s<sub>p,h</sub>* does not depend on *e*.
-
-The call to correct process *p*'s `RequestFinalizeBlock` at height *h*, with block *v<sub>p,h</sub>*
+-->
+The call to correct process *p*'s `BeginBlock - DeliverTx - EndBlock` sequence at height *h*, with block *v<sub>p,h</sub>*
 passed as parameter, creates state *s<sub>p,h</sub>*.
-Additionally, *p*'s `FinalizeBlock` creates a set of transaction results *T<sub>p,h</sub>*.
+Additionally, *p*'s `DeliverTx` on transactions creates a set of transaction results *T<sub>p,h</sub>*.
 
-* Requirement 11 [`FinalizeBlock`, determinism-1]: For any correct process *p*,
+* Requirement 11 [`BeginBlock - DeliverTx - EndBlock`, determinism-1]: For any correct process *p*,
   *s<sub>p,h</sub>* exclusively depends on *s<sub>p,h-1</sub>* and *v<sub>p,h</sub>*.
 
 * Requirement 12 [`FinalizeBlock`, determinism-2]: For any correct process *p*,
   the contents of *T<sub>p,h</sub>* exclusively depend on *s<sub>p,h-1</sub>* and *v<sub>p,h</sub>*.
 
-Note that Requirements 11 and 12, combined with Agreement property of consensus ensure
+Note that Requirements 11 and 12, combined with the Agreement property of consensus ensure
 state machine replication, i.e., the Application state evolves consistently at all correct processes.
 
-Finally, notice that neither `PrepareProposal` nor `ExtendVote` have determinism-related
+Finally, notice that neither `PrepareProposal` <!-- nor `ExtendVote` --> have determinism-related
 requirements associated.
 Indeed, `PrepareProposal` is not required to be deterministic:
 
 * *u<sub>p</sub>* may depend on *v<sub>p</sub>* and *s<sub>p,h-1</sub>*, but may also depend on other values or operations.
 * *v<sub>p</sub> = v<sub>q</sub> &#8655; u<sub>p</sub> = u<sub>q</sub>*.
 
+<!--
 Likewise, `ExtendVote` can also be non-deterministic:
 
 * *e<sup>r</sup><sub>p</sub>* may depend on *w<sup>r</sup><sub>p</sub>* and *s<sub>p,h-1</sub>*,
   but may also depend on other values or operations.
 * *w<sup>r</sup><sub>p</sub> = w<sup>r</sup><sub>q</sub> &#8655;
   e<sup>r</sup><sub>p</sub> = e<sup>r</sup><sub>q</sub>*
-
+-->
 ## Managing the Application state and related topics
 
 ### Connection State
@@ -188,9 +193,10 @@ ABCI++ methods on all connections.
 Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
 still received in sequence.
 
-#### FinalizeBlock
+#### BeginBlock - DeliverTx - EndBlock
 
-When the consensus algorithm decides on a block, Tendermint uses `FinalizeBlock` to send the
+When the consensus algorithm decides on a block, Tendermint uses the sequence of calls to
+`BeginBlock`, `DeliverTx` and `EndBlock` to send the
 decided block's data to the Application, which uses it to transition its state.
 
 The Application must remember the latest height from which it
@@ -222,7 +228,7 @@ Synchronous mempool-related calls must be avoided as part of the sequential logi
 Tendermint calls `PrepareProposal` when it is about to send a proposed block to the network.
 Likewise, Tendermint calls `ProcessProposal` upon reception of a proposed block from the
 network. In both cases, the proposed block's data
-is disclosed to the Application, in the same conditions as is done in `FinalizeBlock`.
+is disclosed to the Application, in the same conditions as is done in `BeginBlock - DeliverTx - EndBlock`.
 The block data disclosed the to Application by these three methods are the following:
 
 * the transaction list
@@ -240,17 +246,17 @@ or `ProcessProposal`). There are two main reasons why the Application may want t
   In order to be sure that the block does not contain *any* invalid transaction, there may be
   no way other than fully executing the transactions in the block as though it was the *decided*
   block.
-* *Quick `FinalizeBlock` execution*.
-  Upon reception of the decided block via `FinalizeBlock`, if that same block was executed
+* *Quick `BeginBlock-DeliverTx-EndBlock` execution*.
+  Upon reception of the decided block via `BeginBlock`, if that same block was executed
   upon `PrepareProposal` or `ProcessProposal` and the resulting state was kept in memory, the
   Application can simply apply that state (faster) to the main state, rather than reexecuting
   the decided block (slower).
 
 `PrepareProposal`/`ProcessProposal` can be called many times for a given height. Moreover,
 it is not possible to accurately predict which of the blocks proposed in a height will be decided,
-being delivered to the Application in that height's `FinalizeBlock`.
+being delivered to the Application in that height's block execution calls.
 Therefore, the state resulting from executing a proposed block, denoted a *candidate state*, should
-be kept in memory as a possible final state for that height. When `FinalizeBlock` is called, the Application should
+be kept in memory as a possible final state for that height. When the block execution functions are called, the Application should
 check if the decided block corresponds to one of its candidate states; if so, it will apply it as
 its *ExecuteTxState* (see [Consensus Connection](#consensus-connection) below),
 which will be persisted during the upcoming `Commit` call.
@@ -260,15 +266,15 @@ In this case, potentially many proposed blocks will be disclosed to the Applicat
 By the nature of Tendermint's consensus algorithm, the number of proposed blocks received by the Application
 for a particular height cannot be bound, so Application developers must act with care and use mechanisms
 to bound memory usage. As a general rule, the Application should be ready to discard candidate states
-before `FinalizeBlock`, even if one of them might end up corresponding to the
-decided block and thus have to be reexecuted upon `FinalizeBlock`.
+before block execution, even if one of them might end up corresponding to the
+decided block and thus have to be reexecuted upon `BeginBlock-DeliverTx-EndBlock`.
 
 ### States and ABCI++ Connections
-
+<!-- TODO Check with @sergio-mena whether this exists in code -->
 #### Consensus Connection
 
 The Consensus Connection should maintain an *ExecuteTxState* &mdash; the working state
-for block execution. It should be updated by the call to `FinalizeBlock`
+for block execution. It should be updated by the calls to the block execution functions
 during block execution and committed to disk as the "latest
 committed state" during `Commit`. Execution of a proposed block (via `PrepareProposal`/`ProcessProposal`)
 **must not** update the *ExecuteTxState*, but rather be kept as a separate candidate state until `FinalizeBlock`
@@ -341,11 +347,10 @@ For more information, see Section [State Sync](#state-sync).
 
 ### Transaction Results
 
-The Application is expected to return a list of
-[`ExecTxResult`](./abci%2B%2B_methods.md#exectxresult) in
-[`ResponseFinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock). The list of transaction
-results must respect the same order as the list of transactions delivered via
-[`RequestFinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock).
+The Application is expected to return a list of results within 
+[`ResponseDeliverTx`](./abci%2B%2B_methods.md#delivertx). 
+The list of transaction results must respect the same order as the list of transactions delivered via
+subsequent calls to [`RequestDeliverTx`](./abci%2B%2B_methods.md#delivertx).
 This section discusses the fields inside this structure, along with the fields in
 [`ResponseCheckTx`](./abci%2B%2B_methods.md#checktx),
 whose semantics are similar.
@@ -417,14 +422,15 @@ From v0.35.x on, there is a `Priority` field in `ResponseCheckTx` that can be
 used to explicitly prioritize transactions in the mempool for inclusion in a block
 proposal.
 
-#### Specifics of `ExecTxResult`
+#### Specifics of `ResponseDeliverTx`
 
-`FinalizeBlock` is the workhorse of the blockchain. Tendermint delivers the decided block,
+The `BeginBlock-DeliverTx-EndBlock` sequence is the workhorse of the blockchain. 
+`DeliverTx` Tendermint delivers the decided block,
 including the list of all its transactions synchronously to the Application.
 The block delivered (and thus the transaction order) is the same at all correct nodes as guaranteed
 by the Agreement property of Tendermint consensus.
 
-The `Data` field in `ExecTxResult` contains an array of bytes with the transaction result.
+The `Data` field contains an array of bytes with the transaction result.
 It must be deterministic (i.e., the same value must be returned at all nodes), but it can contain arbitrary
 data. Likewise, the value of `Code` must be deterministic.
 If `Code != 0`, the transaction will be marked invalid,
@@ -442,7 +448,7 @@ events took place during their execution.
 
 The application may set the validator set during
 [`InitChain`](./abci%2B%2B_methods.md#initchain), and may update it during
-[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock). In both cases, a structure of type
+[`EndBlock`](./abci%2B%2B_methods.md#endblock). In both cases, a structure of type <!-- TODO Check with Sergio-->
 [`ValidatorUpdate`](./abci%2B%2B_methods.md#validatorupdate) is returned.
 
 The `InitChain` method, used to initialize the Application, can return a list of validators.
@@ -486,7 +492,7 @@ They enforce certain limits in the blockchain, like the maximum size
 of blocks, amount of gas used in a block, and the maximum acceptable age of
 evidence. They can be set in
 [`InitChain`](./abci%2B%2B_methods.md#initchain), and updated in
-[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock).
+[`EndBlock`](./abci%2B%2B_methods.md#endblock).
 These parameters are deterministically set and/or updated by the Application, so
 all full nodes have the same value at a given height.
 
@@ -660,7 +666,7 @@ Must always be set to a future height. Once set to a value different from
 The application may set the `ConsensusParams` during
 [`InitChain`](./abci%2B%2B_methods.md#initchain),
 and update them during
-[`FinalizeBlock`](./abci%2B%2B_methods.md#finalizeblock).
+[`EndBlock`](./abci%2B%2B_methods.md#endblock).
 If the `ConsensusParams` is empty, it will be ignored. Each field
 that is not empty will be applied in full. For instance, if updating the
 `Block.MaxBytes`, applications must also set the other `Block` fields (like
@@ -675,9 +681,9 @@ file. If `ConsensusParams` is not `nil`, Tendermint will use it.
 This way the application can determine the initial consensus parameters for the
 blockchain.
 
-##### `FinalizeBlock`, `PrepareProposal`/`ProcessProposal`
+##### `EndBlock`, `PrepareProposal`/`ProcessProposal`
 
-`ResponseFinalizeBlock` accepts a `ConsensusParams` parameter.
+`ResponseEndBlock` accepts a `ConsensusParams` parameter.
 If `ConsensusParams` is `nil`, Tendermint will do nothing.
 If `ConsensusParams` is not `nil`, Tendermint will use it.
 This way the application can update the consensus parameters over time.
@@ -721,7 +727,7 @@ ABCI applications can take advantage of more efficient light-client proofs for
 their state as follows:
 
 * return the Merkle root of the deterministic application state in
-  `ResponseFinalizeBlock.Data`. This Merkle root will be included as the `AppHash` in the next block.
+  `Commit.Data`. This Merkle root will be included as the `AppHash` in the next block.
 * return efficient Merkle proofs about that application state in `ResponseQuery.Proof`
   that can be verified using the `AppHash` of the corresponding block.
 
