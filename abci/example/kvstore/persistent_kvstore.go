@@ -310,9 +310,7 @@ const (
 	ReplacePrefix = "replace"
 )
 
-func isPrepareTx(tx []byte) bool {
-	return bytes.HasPrefix(tx, []byte(PreparePrefix))
-}
+func isPrepareTx(tx []byte) bool { return bytes.HasPrefix(tx, []byte(PreparePrefix)) }
 
 func isReplacedTx(tx []byte) bool {
 	return bytes.HasPrefix(tx, []byte(ReplacePrefix))
@@ -339,7 +337,7 @@ func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte, maxT
 		if totalBytes > maxTxBytes {
 			break
 		}
-		txs = append(txs, tx)
+		txs = append(txs, txMod)
 	}
 	return txs
 }

@@ -11,7 +11,7 @@ deliver_tx "def=xyz"
 commit
 query "def"
 prepare_proposal "preparedef"
-process_proposal "def"
+process_proposal "replacedef"
 process_proposal "preparedef"
 prepare_proposal
 process_proposal

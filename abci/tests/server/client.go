@@ -65,13 +65,13 @@ func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []
 	return nil
 }
 
-func PrepareProposal(client abcicli.Client, txBytes [][]byte, codeExp []types.TxRecord_TxAction, dataExp []byte) error {
+func PrepareProposal(client abcicli.Client, txBytes [][]byte, txExpected [][]byte, dataExp []byte) error {
 	res, _ := client.PrepareProposalSync(types.RequestPrepareProposal{Txs: txBytes})
-	for i, tx := range res.TxRecords {
-		if tx.Action != codeExp[i] {
+	for i, tx := range res.Txs {
+		if !bytes.Equal(tx, txExpected[i]) {
 			fmt.Println("Failed test: PrepareProposal")
-			fmt.Printf("PrepareProposal response code was unexpected. Got %v expected %v.",
-				tx.Action, codeExp)
+			fmt.Printf("PrepareProposal transaction was unexpected. Got %x expected %x.",
+				tx, txExpected[i])
 			return errors.New("PrepareProposal error")
 		}
 	}

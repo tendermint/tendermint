@@ -332,9 +332,7 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 			func() error {
 				return servertest.PrepareProposal(client, [][]byte{
 					{0x01},
-				}, []types.TxRecord_TxAction{
-					types.TxRecord_UNMODIFIED,
-				}, nil)
+				}, [][]byte{{0x01}}, nil)
 			},
 			func() error {
 				return servertest.ProcessProposal(client, [][]byte{
@@ -638,22 +636,12 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resps := make([]response, 0, len(res.TxRecords)+1)
-	for _, tx := range res.TxRecords {
-		existingTx := inTxArray(txsBytesArray, tx.Tx)
-		if tx.Action == types.TxRecord_UNKNOWN ||
-			(existingTx && tx.Action == types.TxRecord_ADDED) ||
-			(!existingTx && (tx.Action == types.TxRecord_UNMODIFIED || tx.Action == types.TxRecord_REMOVED)) {
-			resps = append(resps, response{
-				Code: codeBad,
-				Log:  "Failed. Tx: " + string(tx.GetTx()) + " action: " + tx.Action.String(),
-			})
-		} else {
-			resps = append(resps, response{
-				Code: code.CodeTypeOK,
-				Log:  "Succeeded. Tx: " + string(tx.Tx) + " action: " + tx.Action.String(),
-			})
-		}
+	resps := make([]response, 0, len(res.Txs))
+	for _, tx := range res.Txs {
+		resps = append(resps, response{
+			Code: code.CodeTypeOK,
+			Log:  "Succeeded. Tx: " + string(tx),
+		})
 	}
 
 	printResponse(cmd, args, resps...)
