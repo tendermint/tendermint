@@ -2,7 +2,8 @@
 order: 10
 ---
 
-# Fast Sync
+# Block Sync
+*Formerly known as Fast Sync*
 
 In a proof of work blockchain, syncing with the chain is the same
 process as staying up-to-date with the consensus: download blocks, and
@@ -14,35 +15,37 @@ scratch can take a very long time. It's much faster to just download
 blocks and check the merkle tree of validators than to run the real-time
 consensus gossip protocol.
 
-## Using Fast Sync
+## Using Block Sync
 
-To support faster syncing, Tendermint offers a `fast-sync` mode, which
+To support faster syncing, Tendermint offers a `block-sync` mode, which
 is enabled by default, and can be toggled in the `config.toml` or via
-`--fast_sync=false`.
+`--block_sync=false`.
 
 In this mode, the Tendermint daemon will sync hundreds of times faster
 than if it used the real-time consensus process. Once caught up, the
-daemon will switch out of fast sync and into the normal consensus mode.
+daemon will switch out of Block Sync and into the normal consensus mode.
 After running for some time, the node is considered `caught up` if it
 has at least one peer and it's height is at least as high as the max
 reported peer height. See [the IsCaughtUp
 method](https://github.com/tendermint/tendermint/blob/b467515719e686e4678e6da4e102f32a491b85a0/blockchain/pool.go#L128).
 
-Note: There are three versions of fast sync. We recommend using v0 as v1 and v2 are still in beta. 
-  If you would like to use a different version you can do so by changing the version in the `config.toml`:
+Note: While there have historically been multiple versions of blocksync, v0, v1, and v2, all versions
+other than v0 have been deprecated in favor of the simplest and most well understood algorithm.
 
 ```toml
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       Block Sync Configuration Options          ###
 #######################################################
-[fastsync]
+[blocksync]
 
-# Fast Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v1" - refactor of v0 version for better testability
-#   2) "v2" - complete redesign of v0, optimized for testability & readability 
+# Block Sync version to use:
+# 
+# In v0.37, v1 and v2 of the block sync protocols were deprecated.
+# Please use v0 instead.
+#
+#   1) "v0" - the default block sync implementation
 version = "v0"
 ```
 
-If we're lagging sufficiently, we should go back to fast syncing, but
+If we're lagging sufficiently, we should go back to block syncing, but
 this is an [open issue](https://github.com/tendermint/tendermint/issues/129).

@@ -77,7 +77,7 @@ type Node struct {
 	IP               net.IP
 	ProxyPort        uint32
 	StartAt          int64
-	FastSync         bool
+	BlockSync        string
 	StateSync        bool
 	Mempool          string
 	Database         string
@@ -161,7 +161,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
-			FastSync:         nodeManifest.FastSync,
+			BlockSync:        nodeManifest.BlockSync,
 			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
@@ -302,6 +302,11 @@ func (n Node) Validate(testnet Testnet) error {
 				return fmt.Errorf("peer %q also has local port %v", peer.Name, n.ProxyPort)
 			}
 		}
+	}
+	switch n.BlockSync {
+	case "", "v0":
+	default:
+		return fmt.Errorf("invalid block sync setting %q", n.BlockSync)
 	}
 	switch n.Mempool {
 	case "", "v0", "v1":

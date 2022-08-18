@@ -36,10 +36,10 @@ proxy_app = "tcp://127.0.0.1:26658"
 # A custom human readable name for this node
 moniker = "anonymous"
 
-# If this node is many blocks behind the tip of the chain, FastSync
+# If this node is many blocks behind the tip of the chain, BlockSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast_sync = true
+block_sync = true
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -319,16 +319,16 @@ trust_period = "0s"
 temp_dir = ""
 
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       Block Sync Configuration Options          ###
 #######################################################
-[fastsync]
+[blocksync]
 
-# Fast Sync version to use:
-#
-# In v0.37, the v1 and v2 fast sync protocols were deprecated.
+# Block Sync version to use:
+# 
+# In v0.37, v1 and v2 of the block sync protocols were deprecated.
 # Please use v0 instead.
 #
-#   1) "v0" (default) - the legacy fast sync implementation
+#   1) "v0" - the default block sync implementation
 version = "v0"
 
 #######################################################
