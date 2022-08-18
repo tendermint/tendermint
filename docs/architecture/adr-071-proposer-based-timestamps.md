@@ -135,7 +135,7 @@ A validator will only Prevote a proposal if the proposal timestamp is considered
 A proposal timestamp is considered `timely` if it is within `PRECISION` and `MSGDELAY` of the Unix time known to the validator.
 More specifically, a proposal timestamp is `timely` if `proposalTimestamp - PRECISION ≤ validatorLocalTime ≤ proposalTimestamp + PRECISION + MSGDELAY`.
 
-Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/spec/blob/master/proto/tendermint/types/params.proto#L11) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
+Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/types/params.proto#L11) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
 
 The consensus parameters will be updated to include this `Synchrony` field as follows:
 
@@ -329,5 +329,5 @@ This skew will be bound by the `PRECISION` value, so it is unlikely to be too la
 ## References
 
 * [PBTS Spec](https://github.com/tendermint/tendermint/tree/main/spec/consensus/proposer-based-timestamp)
-* [BFTTime spec](https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md)
+* [BFTTime spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/bft-time.md)
 * [Issue 371](https://github.com/tendermint/spec/issues/371)

@@ -221,7 +221,7 @@ design.
 - [Tendermint ABCI gRPC client][grpc-client]
 - [Initial commit of gRPC client][abci-start]
 
-[abci]: https://github.com/tendermint/spec/tree/master/spec/abci
+[abci]: https://github.com/tendermint/tendermint/tree/main/spec/abci
 [socket-client]: https://github.com/tendermint/tendermint/blob/main/abci/client/socket_client.go
 [socket-server]: https://github.com/tendermint/tendermint/blob/main/abci/server/socket_server.go
 [grpc-client]: https://github.com/tendermint/tendermint/blob/main/abci/client/grpc_client.go
