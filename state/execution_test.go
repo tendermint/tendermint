@@ -614,113 +614,9 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPrepareProposalErrorOnNonExistingRemoved tests that the block creation logic returns
-// an error if the ResponsePrepareProposal returned from the application marks
-//  a transaction as REMOVED that was not present in the original proposal.
-func TestPrepareProposalErrorOnNonExistingRemoved(t *testing.T) {
-	const height = 2
-
-	state, stateDB, privVals := makeState(1, height)
-	stateStore := sm.NewStore(stateDB)
-
-	evpool := &mocks.EvidencePool{}
-	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
-
-	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs{})
-
-	// create an invalid ResponsePrepareProposal
-	rpp := abci.ResponsePrepareProposal{
-		TxRecords: []*abci.TxRecord{
-			{
-				Action: abci.TxRecord_REMOVED,
-				Tx:     []byte("new tx"),
-			},
-		},
-	}
-
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(rpp)
-
-	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
-	require.NoError(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		log.TestingLogger(),
-		proxyApp.Consensus(),
-		mp,
-		evpool,
-	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
-	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
-	require.Nil(t, block)
-	require.ErrorContains(t, err, "new transaction incorrectly marked as removed")
-
-	mp.AssertExpectations(t)
-}
-
-// TestPrepareProposalRemoveTxs tests that any transactions marked as REMOVED
-// are not included in the block produced by CreateProposalBlock. The test also
-// ensures that any transactions removed are also removed from the mempool.
-func TestPrepareProposalRemoveTxs(t *testing.T) {
-	const height = 2
-
-	state, stateDB, privVals := makeState(1, height)
-	stateStore := sm.NewStore(stateDB)
-
-	evpool := &mocks.EvidencePool{}
-	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
-
-	txs := factory.MakeNTxs(height, 10)
-	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
-
-	trs := txsToTxRecords(types.Txs(txs))
-	trs[0].Action = abci.TxRecord_REMOVED
-	trs[1].Action = abci.TxRecord_REMOVED
-	mp.On("RemoveTxByKey", mock.Anything).Return(nil).Twice()
-
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords: trs,
-	})
-	cc := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
-	err := proxyApp.Start()
-	require.NoError(t, err)
-	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
-
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		log.TestingLogger(),
-		proxyApp.Consensus(),
-		mp,
-		evpool,
-	)
-	pa, _ := state.Validators.GetByIndex(0)
-	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
-	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
-	require.NoError(t, err)
-	require.Len(t, block.Data.Txs.ToSliceOfBytes(), len(trs)-2)
-
-	require.Equal(t, -1, block.Data.Txs.Index(types.Tx(trs[0].Tx)))
-	require.Equal(t, -1, block.Data.Txs.Index(types.Tx(trs[1].Tx)))
-
-	mp.AssertCalled(t, "RemoveTxByKey", types.Tx(trs[0].Tx).Key())
-	mp.AssertCalled(t, "RemoveTxByKey", types.Tx(trs[1].Tx).Key())
-	mp.AssertExpectations(t)
-}
-
-// TestPrepareProposalAddedTxsIncluded tests that any transactions marked as ADDED
-// in the prepare proposal response are included in the block.
-func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
+// TestPrepareProposalTxsAllIncluded tests that any transactions included in
+// the prepare proposal response are included in the block.
+func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 	const height = 2
 
 	state, stateDB, privVals := makeState(1, height)
@@ -733,13 +629,9 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
 
-	trs := txsToTxRecords(types.Txs(txs))
-	trs[0].Action = abci.TxRecord_ADDED
-	trs[1].Action = abci.TxRecord_ADDED
-
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords: trs,
+		Txs: types.Txs(txs).ToSliceOfBytes(),
 	})
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -760,8 +652,9 @@ func TestPrepareProposalAddedTxsIncluded(t *testing.T) {
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
 
-	require.Equal(t, txs[0], block.Data.Txs[0])
-	require.Equal(t, txs[1], block.Data.Txs[1])
+	for i, tx := range block.Data.Txs {
+		require.Equal(t, txs[i], tx)
+	}
 
 	mp.AssertExpectations(t)
 }
@@ -781,13 +674,12 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
-	trs := txsToTxRecords(types.Txs(txs))
-	trs = trs[2:]
-	trs = append(trs[len(trs)/2:], trs[:len(trs)/2]...)
+	txs = txs[2:]
+	txs = append(txs[len(txs)/2:], txs[:len(txs)/2]...)
 
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords: trs,
+		Txs: types.Txs(txs).ToSliceOfBytes(),
 	})
 
 	cc := proxy.NewLocalClientCreator(app)
@@ -809,7 +701,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
-		require.Equal(t, types.Tx(trs[i].Tx), tx)
+		require.Equal(t, txs[i], tx)
 	}
 
 	mp.AssertExpectations(t)
@@ -836,11 +728,9 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
-	trs := txsToTxRecords(types.Txs(txs))
-
 	app := abcimocks.NewBaseMock()
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		TxRecords: trs,
+		Txs: types.Txs(txs).ToSliceOfBytes(),
 	})
 
 	cc := proxy.NewLocalClientCreator(app)
@@ -927,15 +817,4 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 			Hash:  psH,
 		},
 	}
-}
-
-func txsToTxRecords(txs []types.Tx) []*abci.TxRecord {
-	trs := make([]*abci.TxRecord, len(txs))
-	for i, tx := range txs {
-		trs[i] = &abci.TxRecord{
-			Action: abci.TxRecord_UNMODIFIED,
-			Tx:     tx,
-		}
-	}
-	return trs
 }
