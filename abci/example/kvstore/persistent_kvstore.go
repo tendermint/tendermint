@@ -178,7 +178,7 @@ func (app *PersistentKVStoreApplication) PrepareProposal(
 func (app *PersistentKVStoreApplication) ProcessProposal(
 	req types.RequestProcessProposal) types.ResponseProcessProposal {
 	for _, tx := range req.Txs {
-		if len(tx) == 0 {
+		if len(tx) == 0 || isPrepareTx(tx) {
 			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
 		}
 	}
