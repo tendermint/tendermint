@@ -12,18 +12,19 @@ var (
 	ErrNoValidTransition = errors.New("no valid transition")
 )
 
+var emptyTransition = func(types.RoundState) (types.RoundState, consensus.Message) {
+	return types.RoundState{}, &consensus.VoteMessage{}
+}
+
 type (
 	Transition func(types.RoundState) (types.RoundState, consensus.Message)
 	Predicate  func(types.RoundState) bool
 )
 
-var emptyTransition = func(types.RoundState) (types.RoundState, consensus.Message) {
-	return types.RoundState{}, &consensus.VoteMessage{}
-}
-
 type Operation struct {
-	P Predicate
-	T Transition
+	Name string
+	P    Predicate
+	T    Transition
 }
 
 type stepper struct {
