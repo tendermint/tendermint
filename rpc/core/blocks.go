@@ -133,6 +133,7 @@ func Commit(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCommit, erro
 
 // BlockResults gets ABCIResults at a given height.
 // If no height is provided, it will fetch results for the latest block.
+// When DiscardABCIResponses is enabled, an error will be returned.
 //
 // Results are for the height of the block containing the txs.
 // Thus response.results.deliver_tx[5] is the results of executing
