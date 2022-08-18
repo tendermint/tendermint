@@ -165,7 +165,7 @@ the argument name and use `_` as a placeholder.
 <!-- markdown-link-check-enable -->
 
 ::: tip
-Find the RPC Documentation [here](https://docs.tendermint.com/main/rpc/)
+Find the RPC Documentation [here](https://docs.tendermint.com/v0.33/rpc/)
 :::
 
 ### Formatting

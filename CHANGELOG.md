@@ -51,7 +51,7 @@ This security release fixes:
 Tendermint 0.33.0 and above allow block proposers to include signatures for the
 wrong block. This may happen naturally if you start a network, have it run for
 some time and restart it **without changing the chainID**. (It is a
-[misconfiguration](https://docs.tendermint.com/main/tendermint-core/using-tendermint.html)
+[misconfiguration](https://docs.tendermint.com/v0.33/tendermint-core/using-tendermint.html)
 to reuse chainIDs.) Correct block proposers will accidentally include signatures
 for the wrong block if they see these signatures, and then commits won't validate,
 making all proposed blocks invalid. A malicious validator (even with a minimal
@@ -362,7 +362,7 @@ and a validator address plus a timestamp. Note we may remove the validator
 address & timestamp fields in the future (see ADR-25).
 
 `lite2` package has been added to solve `lite` issues and introduce weak
-subjectivity interface. Refer to the [spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md) for complete details.
+subjectivity interface. Refer to the [spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client.md) for complete details.
 `lite` package is now deprecated and will be removed in v0.34 release.
 
 ### BREAKING CHANGES:
@@ -1100,7 +1100,7 @@ Special thanks to external contributors on this release:
 - [libs/db] [\#3611](https://github.com/tendermint/tendermint/issues/3611) Conditional compilation
   * Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
     use `make build_c` / `make install_c` (full instructions can be found at
-    https://docs.tendermint.com/main/introduction/install.html#compile-with-cleveldb-support)
+    <https://docs.tendermint.com>)
   * Use `boltdb` tag to compile Tendermint with bolt db
 - [node] [\#3362](https://github.com/tendermint/tendermint/issues/3362) Return an error if `persistent_peers` list is invalid (except
   when IP lookup fails)

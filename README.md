@@ -53,7 +53,7 @@ For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.
 
 ## Documentation
 
-Complete documentation can be found on the [website](https://docs.tendermint.com/main/).
+Complete documentation can be found on the [website](https://docs.tendermint.com/v0.33/).
 
 ### Install
 
@@ -135,10 +135,10 @@ in [UPGRADING.md](./UPGRADING.md).
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/main/spec/).
+[Tendermint specification](https://docs.tendermint.com/v0.33/spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
-hosted at: https://docs.tendermint.com/main/
+hosted at: https://docs.tendermint.com/v0.33/
 
 ### Tools
 

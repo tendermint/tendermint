@@ -67,7 +67,7 @@ Authenticated encryption is enabled by default.
 
 ## Specification
 
-The full p2p specification can be found [here](https://docs.tendermint.com/main/spec/p2p/).
+The full p2p specification can be found [here](https://docs.tendermint.com/v0.33/spec/p2p/).
 
 ## Additional Reading
 
