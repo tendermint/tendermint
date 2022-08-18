@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"time"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -71,12 +72,12 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	switch abciDelays.Choose(r).(string) {
 	case "none":
 	case "small":
-		manifest.PrepareProposalDelayMS = 100
-		manifest.ProcessProposalDelayMS = 100
+		manifest.PrepareProposalDelay = 100 * time.Millisecond
+		manifest.ProcessProposalDelay = 100 * time.Millisecond
 	case "large":
-		manifest.PrepareProposalDelayMS = 200
-		manifest.ProcessProposalDelayMS = 200
-		manifest.CheckTxDelayMS = 20
+		manifest.PrepareProposalDelay = 200 * time.Millisecond
+		manifest.ProcessProposalDelay = 200 * time.Millisecond
+		manifest.CheckTxDelay = 20 * time.Millisecond
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int

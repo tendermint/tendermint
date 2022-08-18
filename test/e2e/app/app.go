@@ -74,9 +74,9 @@ type Config struct {
 
 	// Add artificial delays to each of the main ABCI calls to mimic computation time
 	// of the application
-	PrepareProposalDelayMS uint64 `toml:"prepare_proposal_delay_ms"`
-	ProcessProposalDelayMS uint64 `toml:"process_proposal_delay_ms"`
-	CheckTxDelayMS         uint64 `toml:"check_tx_delay_ms"`
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
 	// TODO: add vote extension and finalize block delays once completed (@cmwaters)
 }
 
@@ -145,8 +145,8 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 		}
 	}
 
-	if app.cfg.CheckTxDelayMS != 0 {
-		time.Sleep(time.Duration(app.cfg.CheckTxDelayMS) * time.Millisecond)
+	if app.cfg.CheckTxDelay != 0 {
+		time.Sleep(app.cfg.CheckTxDelay)
 	}
 
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
@@ -286,8 +286,8 @@ func (app *Application) PrepareProposal(
 		})
 	}
 
-	if app.cfg.PrepareProposalDelayMS != 0 {
-		time.Sleep(time.Duration(app.cfg.PrepareProposalDelayMS) * time.Millisecond)
+	if app.cfg.PrepareProposalDelay != 0 {
+		time.Sleep(app.cfg.PrepareProposalDelay)
 	}
 
 	return abci.ResponsePrepareProposal{TxRecords: trs}
@@ -303,8 +303,8 @@ func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.Re
 		}
 	}
 
-	if app.cfg.ProcessProposalDelayMS != 0 {
-		time.Sleep(time.Duration(app.cfg.ProcessProposalDelayMS) * time.Millisecond)
+	if app.cfg.ProcessProposalDelay != 0 {
+		time.Sleep(app.cfg.ProcessProposalDelay)
 	}
 
 	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}

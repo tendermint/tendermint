@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -59,9 +60,9 @@ type Manifest struct {
 
 	// Add artificial delays to each of the main ABCI calls to mimic computation time
 	// of the application
-	PrepareProposalDelayMS uint64 `toml:"prepare_proposal_delay_ms"`
-	ProcessProposalDelayMS uint64 `toml:"process_proposal_delay_ms"`
-	CheckTxDelayMS         uint64 `toml:"check_tx_delay_ms"`
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
 	// TODO: add vote extension and finalize block delay (@cmwaters)
 }
 
