@@ -701,7 +701,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
-		require.Equal(t, types.Tx(txs[i]), tx)
+		require.Equal(t, txs[i], tx)
 	}
 
 	mp.AssertExpectations(t)
