@@ -15,12 +15,12 @@ module.exports = {
     },
     versions: [
       {
-        "label": "v0.33",
-        "key": "v0.33"
+        "label": "v0.34 (latest)",
+        "key": "v0.34"
       },
       {
-        "label": "v0.34",
-        "key": "v0.34"
+        "label": "v0.33",
+        "key": "v0.33"
       }
     ],
     topbar: {
