@@ -18,12 +18,15 @@ what will happen during a block height _h_ in these frequent, benign conditions:
 * `PrepareProposal` will be called exactly once at the proposer process of round 0, height _h_;
 * `ProcessProposal` will be called exactly once at all processes, and
   will return _accept_ in its `Response*`;
-* `ExtendVote` will be called exactly once at all processes;
+<!-- * `ExtendVote` will be called exactly once at all processes;
 * `VerifyVoteExtension` will be called exactly _n-1_ times at each validator process, where _n_ is
-  the number of validators, and will always return _accept_ in its `Response*`;
-* `FinalizeBlock` will be called exactly once at all processes, conveying the same prepared
+  the number of validators, and will always return _accept_ in its `Response*`; -->
+* `BeginBlock` will be called exactly once at all processes, conveying the same prepared
   block that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for
   height _h_; and
+* `DeliverTx` will be called exactly once for each transaction within the block. 
+* `EndBlock` will be called exactly once after `DeliverTx` has been executed for all transactions and marks 
+  the end of processing for a particular block. 
 * `Commit` will finally be called exactly once at all processes at the end of height _h_.
 
 However, the Application logic must be ready to cope with any possible run of Tendermint for a given
@@ -66,12 +69,14 @@ apply-chunk         = %s"<ApplySnapshotChunk>"
 info                = %s"<Info>"
 prepare-proposal    = %s"<PrepareProposal>"
 process-proposal    = %s"<ProcessProposal>"
-extend-vote         = %s"<ExtendVote>"
-got-vote            = %s"<VerifyVoteExtension>"
-decide              = %s"<FinalizeBlock>"
+begin-block         = %s"<BeginBlock>"
+deliver-txs         = %s"<DeliverTx>"
+end-block           = %s"<EndBlock>"
 commit              = %s"<Commit>"
 ```
-
+<!-- extend-vote         = %s"<ExtendVote>"
+got-vote            = %s"<VerifyVoteExtension>"
+decide              = %s"<FinalizeBlock>" -->
 We have kept some ABCI methods out of the grammar, in order to keep it as clear and concise as possible.
 A common reason for keeping all these methods out is that they all can be called at any point in a sequence defined
 by the grammar above. Other reasons depend on the method in question:
@@ -153,25 +158,28 @@ Let us now examine the grammar line by line, providing further details.
 >```
 
 * For every round, if the local process is the proposer of the current round, Tendermint starts by
-  calling `PrepareProposal`, followed by `ProcessProposal`. Then, optionally, the Application is
+  calling `PrepareProposal`, followed by `ProcessProposal`. 
+  <!-- Then, optionally, the Application is
   asked to extend its vote for that round. Calls to `VerifyVoteExtension` can come at any time: the
   local process may be slightly late in the current round, or votes may come from a future round
-  of this height.
+  of this height. --> 
 
 >```abnf
->proposer            = *got-vote prepare-proposal *got-vote process-proposal [extend]
->extend              = *got-vote extend-vote *got-vote
+>proposer            = *got-vote prepare-proposal *got-vote process-proposal 
+<!-- [extend] -->
+<!-->>extend              = *got-vote extend-vote *got-vote -->
 >```
 
 * Also for every round, if the local process is _not_ the proposer of the current round, Tendermint
-  will call `ProcessProposal` at most once. At most one call to `ExtendVote` may occur only after
+  will call `ProcessProposal` at most once. 
+  <!--At most one call to `ExtendVote` may occur only after
   `ProcessProposal` is called. A number of calls to `VerifyVoteExtension` can occur in any order
   with respect to `ProcessProposal` and `ExtendVote` throughout the round. The reasons are the same
   as above, namely, the process running slightly late in the current round, or votes from future
-  rounds of this height received.
+  rounds of this height received. -->
 
 >```abnf
->non-proposer        = *got-vote [process-proposal] [extend]
+>non-proposer        = *got-vote [process-proposal]
 >```
 
 * Finally, the grammar describes all its terminal symbols, which denote the different ABCI++ method calls that
@@ -184,9 +192,13 @@ Let us now examine the grammar line by line, providing further details.
 >info                = %s"<Info>"
 >prepare-proposal    = %s"<PrepareProposal>"
 >process-proposal    = %s"<ProcessProposal>"
->extend-vote         = %s"<ExtendVote>"
->got-vote            = %s"<VerifyVoteExtension>"
->decide              = %s"<FinalizeBlock>"
+>begin-block         = %s"<BeginBlock>" 
+>deliver-txs         = %s"<DeliverTx>"
+>end-block           = %s"<EndBlock>"
+<!-->>extend-vote         = %s"<ExtendVote>"
+>got-vote            = %s"<VerifyVoteExtension>" -->
+<!-- TODO Add BeginBlock etc. 
+>decide              = %s"<FinalizeBlock>" -->
 >commit              = %s"<Commit>"
 >```
 
@@ -198,8 +210,8 @@ to the existing implementation, but will keep the same guarantees already provid
 Here is how ABCI++ methods should be implemented.
 
 First of all, all the methods that did not change from ABCI to ABCI++, namely `Echo`, `Flush`, `Info`, `InitChain`,
-`Query`, `CheckTx`, `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, and `ApplySnapshotChunk`, do not need
-to undergo any changes in their implementation.
+`BeginBlock`, `DerliverTx`, `EndBlock`,`Query`, `CheckTx`, `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, 
+and `ApplySnapshotChunk`, do not need to undergo any changes in their implementation.
 
 As for the new methods:
 
@@ -210,14 +222,14 @@ As for the new methods:
   (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the
   end of the list until the total byte size is at or below the limit.
 * `ProcessProposal` must set `ResponseProcessProposal.accept` to _true_ and return.
-* `ExtendVote` is to set `ResponseExtendVote.extension` to an empty byte array and return.
+<!-- * `ExtendVote` is to set `ResponseExtendVote.extension` to an empty byte array and return.
 * `VerifyVoteExtension` must set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is
-  an empty byte array and _false_ otherwise, then return.
-* `FinalizeBlock` is to coalesce the implementation of methods `BeginBlock`, `DeliverTx`, and
+  an empty byte array and _false_ otherwise, then return. -->
+<!--* `FinalizeBlock` is to coalesce the implementation of methods `BeginBlock`, `DeliverTx`, and
   `EndBlock`. Legacy applications looking to reuse old code that implemented `DeliverTx` should
   wrap the legacy `DeliverTx` logic in a loop that executes one transaction iteration per
-  transaction in `RequestFinalizeBlock.tx`.
+  transaction in `RequestFinalizeBlock.tx`. -->
 
-Finally, `Commit`, which is kept in ABCI++, no longer returns the `AppHash`. It is now up to
+<!--Finally, `Commit`, which is kept in ABCI++, no longer returns the `AppHash`. It is now up to
 `FinalizeBlock` to do so. Thus, a slight refactoring of the old `Commit` implementation will be
-needed to move the return of `AppHash` to `FinalizeBlock`.
+needed to move the return of `AppHash` to `FinalizeBlock`. -->
