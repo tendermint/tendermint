@@ -9,7 +9,7 @@
 
 ## Context
 
-The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind. The goal of [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up in go-channels into pure `handle*` functions. While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there.
+The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind. The goal of [ADR-40](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up in go-channels into pure `handle*` functions. While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there.
 The following diagram illustrates the state of the [blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561) reactor which will be referred to as `v1`.
 
 ![v1 Blockchain Reactor Architecture
@@ -22,7 +22,7 @@ While `v1` of the blockchain reactor has shown significant improvements in terms
 - Peer communication is spread over multiple components creating complex dependency graph which must be mocked out during testing.
 - Timeouts modeled as stateful tickers introduce non-determinism in tests
 
-This ADR is meant to specify the missing components and control necessary to achieve [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md).
+This ADR is meant to specify the missing components and control necessary to achieve [ADR-40](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-040-blockchain-reactor-refactor.md).
 
 ## Decision
 
@@ -41,7 +41,7 @@ Diagram](https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b7
 
 ### Reactor changes in detail
 
-The reactor will include a demultiplexing routine which will send each message to each sub routine for independent processing. Each sub routine will then select the messages it's interested in and call the handle specific function specified in [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md). The demuxRoutine acts as "pacemaker" setting the time in which events are expected to be handled.
+The reactor will include a demultiplexing routine which will send each message to each sub routine for independent processing. Each sub routine will then select the messages it's interested in and call the handle specific function specified in [ADR-40](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-040-blockchain-reactor-refactor.md). The demuxRoutine acts as "pacemaker" setting the time in which events are expected to be handled.
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
@@ -400,5 +400,5 @@ Implemented
 
 ## References
 
-- [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
+- [ADR-40](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
 - [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561): The current blockchain reactor re-org implementation (v1)
