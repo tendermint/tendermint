@@ -237,6 +237,8 @@ title: Methods
       see the [application spec entry on consensus parameters](./apps.md#consensus-parameters).
     * `validator_updates` and `consensus_param_updates` may be empty. In this case, Tendermint will keep the current values. 
 
+
+
 ### Commit
 
 * **Request**:
@@ -455,7 +457,7 @@ title: Methods
       `ADDED`.
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
-      `ResponseFinalizeBlock` (TODO  check where these events go).
+      `EndBlock` (TODO @sergio-mena I believe they are all merged and returnd via endBlock?).
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
       In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
         * There is a duplicate transaction in the list.
@@ -524,7 +526,7 @@ proposal and will not call `RequestPrepareProposal`.
 
 * **Usage**:
     * Contains all information on the proposed block needed to fully execute it.
-        * The Application may fully execute the block as though it was handling the block execution calls(TODO rephrase this).
+        * The Application may fully execute the block as though it was handling the calls to `BeginBlock-DeliverTx-EndBlock`.
         * However, any resulting state changes must be kept as _candidate state_,
           and the Application should be ready to discard it in case another block is decided.
     * `RequestProcessProposal` is also called at the proposer of a round. The reason for this is to
@@ -742,6 +744,7 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
 #### When does Tendermint call `FinalizeBlock`?
 
 TODO check where to place this with regards to old calls
+@sergio-mena, do we want something similar for the BeginBlock sequence? 
 
 When a node _p_ is in Tendermint consensus height _h_, and _p_ receives
 
