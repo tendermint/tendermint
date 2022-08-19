@@ -477,7 +477,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
 * **Response**:
 
     | Name            | Type  | Description                                   | Field Number |
-|-------------------|-------|-----------------------------------------------|--------------|
+    |-------------------|-------|-----------------------------------------------|--------------|
     | vote_extensions | [ExtendVoteExtension](#extendvoteextension) | Optional information signed by Tendermint. | 1            |
 
 * **Usage**:
