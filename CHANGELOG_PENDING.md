@@ -31,7 +31,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- [config] \#9054 Flag added to overwrite abciresponses.
+- [config] \#9054 Configuration flag added to permit Tendermint to discard all ABCIResponses except for the most recent
 
 ### BUG FIXES
 
