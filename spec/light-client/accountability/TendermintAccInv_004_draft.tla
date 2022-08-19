@@ -172,8 +172,7 @@ TwoThirdsPrevotes(vr, v) ==
 \* 1) the process is faulty,
 \* 2) the PREVOTE contains Nil,
 \* 3) a) there is a proposal in an earlier (valid) round,
-\*    b) there are two thirds of PREVOTES in that round,
-\*    c) there is no precommit message on another value in between the rounds.
+\*    b) there are two thirds of PREVOTES in that round.
 IfSentPrevoteThenReceivedProposalOrTwoThirds(r) ==
   \A mpv \in msgsPrevote[r]:
     \* case 1
@@ -190,11 +189,6 @@ IfSentPrevoteThenReceivedProposalOrTwoThirds(r) ==
             /\ ProposalInRound(r, mpv.id, vr)
             \* condition 3b
             /\ TwoThirdsPrevotes(vr, mpv.id)
-            \* condition 3c
-            /\ \A mr \in Rounds:
-                 \/ ~(vr <= mr /\ mr <= r)
-                 \/ \A m \in msgsPrecommit[mr]:
-                      m.src = mpv.src => m.id \in { NilValue, mpv.id }
 
 AllIfSentPrevoteThenReceivedProposalOrTwoThirds ==
   \A r \in Rounds:
@@ -320,11 +314,16 @@ RelockValueIfEnoughPrevotes ==
         /\ m1 \in msgsPrecommit[r1]
         /\ m2 \in msgsPrevote[r2]
       IN
-      LET EnoughPrevotesLater ==
-        LET Prevotes == { m \in msgsPrevote[r2]: m.id = v2 /\ m.src /= p } IN
-        Cardinality(Prevotes) >= THRESHOLD2
+      LET EnoughPrevotesInMiddle ==
+        \E mr \in Rounds:
+          /\ r1 < mr /\ mr <= r2
+          \* count prevotes in the middle round, excluding p if mr = r2
+          /\ LET Prevotes == { m \in msgsPrevote[mr]:
+                                m.id = v2 /\ (m.src /= p \/ mr < r2) }
+             IN
+             Cardinality(Prevotes) >= THRESHOLD2
       IN
-      RelockedValue => EnoughPrevotesLater
+      RelockedValue => EnoughPrevotesInMiddle
 
 \* a combination of all lemmas
 Inv ==
