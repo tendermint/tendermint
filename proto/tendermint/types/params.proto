@@ -25,6 +25,8 @@ message BlockParams {
   // Max gas per block.
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
+
+  reserved 3;  // was TimeIotaMs see https://github.com/tendermint/tendermint/pull/5792
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
