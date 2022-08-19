@@ -24,7 +24,6 @@ message Request {
     RequestEcho               echo                 = 1;
     RequestFlush              flush                = 2;
     RequestInfo               info                 = 3;
-    RequestSetOption          set_option           = 4;
     RequestInitChain          init_chain           = 5;
     RequestQuery              query                = 6;
     RequestBeginBlock         begin_block          = 7;
@@ -39,6 +38,7 @@ message Request {
     RequestPrepareProposal    prepare_proposal     = 16;
     RequestProcessProposal    process_proposal     = 17;
   }
+  reserved 4;
 }
 
 message RequestEcho {
@@ -52,12 +52,6 @@ message RequestInfo {
   uint64 block_version = 2;
   uint64 p2p_version   = 3;
   string abci_version = 4;
-}
-
-// nondeterministic
-message RequestSetOption {
-  string key   = 1;
-  string value = 2;
 }
 
 message RequestInitChain {
@@ -164,7 +158,6 @@ message Response {
     ResponseEcho               echo                 = 2;
     ResponseFlush              flush                = 3;
     ResponseInfo               info                 = 4;
-    ResponseSetOption          set_option           = 5;
     ResponseInitChain          init_chain           = 6;
     ResponseQuery              query                = 7;
     ResponseBeginBlock         begin_block          = 8;
@@ -179,6 +172,7 @@ message Response {
     ResponsePrepareProposal    prepare_proposal     = 17;
     ResponseProcessProposal    process_proposal     = 18;
   }
+  reserved 5;
 }
 
 // nondeterministic
@@ -200,14 +194,6 @@ message ResponseInfo {
 
   int64 last_block_height   = 4;
   bytes last_block_app_hash = 5;
-}
-
-// nondeterministic
-message ResponseSetOption {
-  uint32 code = 1;
-  // bytes data = 2;
-  string log  = 3;
-  string info = 4;
 }
 
 message ResponseInitChain {
@@ -316,7 +302,7 @@ message ResponseApplySnapshotChunk {
 }
 
 message ResponsePrepareProposal {
-  repeated TxRecord tx_records = 1;
+  repeated bytes txs = 1;
 }
 
 message ResponseProcessProposal {
@@ -390,19 +376,6 @@ message TxResult {
   ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
 }
 
-message TxRecord {
-  TxAction action = 1;
-  bytes    tx     = 2;
-
-  // TxAction contains App-provided information on what to do with a transaction that is part of a raw proposal
-  enum TxAction {
-    UNKNOWN    = 0;  // Unknown action
-    UNMODIFIED = 1;  // The Application did not modify this transaction.
-    ADDED      = 2;  // The Application added this transaction.
-    REMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
-  }
-}
-
 //----------------------------------------
 // Blockchain Types
 
@@ -470,7 +443,6 @@ service ABCIApplication {
   rpc Echo(RequestEcho) returns (ResponseEcho);
   rpc Flush(RequestFlush) returns (ResponseFlush);
   rpc Info(RequestInfo) returns (ResponseInfo);
-  rpc SetOption(RequestSetOption) returns (ResponseSetOption);
   rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);

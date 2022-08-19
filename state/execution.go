@@ -136,19 +136,13 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// error for now (the production code calling this function is expected to panic).
 		return nil, err
 	}
-	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
-	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
+	txl := types.ToTxs(rpp.Txs)
+	if err := txl.Validate(maxDataBytes); err != nil {
 		return nil, err
 	}
 
-	for _, rtx := range txrSet.RemovedTxs() {
-		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
-			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
-		}
-	}
-	itxs := txrSet.IncludedTxs()
-	return state.MakeBlock(height, itxs, commit, evidence, proposerAddr), nil
+	return state.MakeBlock(height, txl, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
@@ -233,6 +227,10 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
+		blockExec.metrics.ValidatorSetUpdates.Add(1)
+	}
+	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
+		blockExec.metrics.ConsensusParamUpdates.Add(1)
 	}
 
 	// Update the state with the block and responses.
