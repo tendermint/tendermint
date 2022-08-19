@@ -136,7 +136,7 @@ in [UPGRADING.md](./UPGRADING.md).
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/v0.33/spec/).
+[Tendermint specification](./spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
 hosted at: https://docs.tendermint.com/v0.33/
