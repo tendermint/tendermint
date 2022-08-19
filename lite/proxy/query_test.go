@@ -43,6 +43,7 @@ func kvstoreTx(k, v []byte) []byte {
 
 // TODO: enable it after general proof format has been adapted
 // in abci/examples/kvstore.go
+//
 //nolint:unused,deadcode
 func _TestAppProofs(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)

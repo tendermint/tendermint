@@ -255,7 +255,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	compareWritesReads := func(writes []string, reads []string) {
 		for {
 			// Pop next write & corresponding reads
-			var read, write string = "", writes[0]
+			var read, write = "", writes[0]
 			var readCount = 0
 			for _, readChunk := range reads {
 				read += readChunk

@@ -274,16 +274,16 @@ func (c *Client) restoreTrustedHeaderAndVals() error {
 
 // if options.Height:
 //
-//     1) ahead of trustedHeader.Height => fetch header (same height as
+//  1. ahead of trustedHeader.Height => fetch header (same height as
 //     trustedHeader) from primary provider and check it's hash matches the
 //     trustedHeader's hash (if not, remove trustedHeader and all the headers
 //     before)
 //
-//     2) equals trustedHeader.Height => check options.Hash matches the
+//  2. equals trustedHeader.Height => check options.Hash matches the
 //     trustedHeader's hash (if not, remove trustedHeader and all the headers
 //     before)
 //
-//     3) behind trustedHeader.Height => remove all the headers between
+//  3. behind trustedHeader.Height => remove all the headers between
 //     options.Height and trustedHeader.Height, update trustedHeader, then
 //     check options.Hash matches the trustedHeader's hash (if not, remove
 //     trustedHeader and all the headers before)
@@ -405,10 +405,10 @@ func (c *Client) initializeWithTrustOptions(options TrustOptions) error {
 // height must be >= 0.
 //
 // It returns an error if:
-//  - there are some issues with the trusted store, although that should not
-//  happen normally;
-//  - negative height is passed;
-//  - header has not been verified yet and is therefore not in the store
+//   - there are some issues with the trusted store, although that should not
+//     happen normally;
+//   - negative height is passed;
+//   - header has not been verified yet and is therefore not in the store
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
@@ -430,10 +430,10 @@ func (c *Client) TrustedHeader(height int64) (*types.SignedHeader, error) {
 // option).
 //
 // Function returns an error if:
-//  - there are some issues with the trusted store, although that should not
-//  happen normally;
-//  - negative height is passed;
-//  - header signed by that validator set has not been verified yet
+//   - there are some issues with the trusted store, although that should not
+//     happen normally;
+//   - negative height is passed;
+//   - header signed by that validator set has not been verified yet
 //
 // Safe for concurrent use by multiple goroutines.
 func (c *Client) TrustedValidatorSet(height int64) (valSet *types.ValidatorSet, heightUsed int64, err error) {
@@ -512,12 +512,13 @@ func (c *Client) VerifyHeaderAtHeight(height int64, now time.Time) (*types.Signe
 // headers are not adjacent, bisection is performed and necessary (not all)
 // intermediate headers will be requested. See the specification for details.
 // Intermediate headers are not saved to database.
-// https://github.com/tendermint/spec/blob/master/spec/consensus/light-client.md
+// https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client.md
 //
 // If the header, which is older than the currently trusted header, is
 // requested and the light client does not have it, VerifyHeader will perform:
-//		a) bisection verification if nearest trusted header is found & not expired
-//		b) backwards verification in all other cases
+//
+//	a) bisection verification if nearest trusted header is found & not expired
+//	b) backwards verification in all other cases
 //
 // It returns ErrOldHeaderExpired if the latest trusted header expired.
 //
@@ -1103,7 +1104,8 @@ func (c *Client) validatorSetFromPrimary(height int64) (*types.ValidatorSet, err
 }
 
 // exponential backoff (with jitter)
-//		0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
+//
+//	0.5s -> 2s -> 4.5s -> 8s -> 12.5 with 1s variation
 func backoffTimeout(attempt uint16) time.Duration {
 	return time.Duration(500*attempt*attempt)*time.Millisecond + time.Duration(rand.Intn(1000))*time.Millisecond
 }

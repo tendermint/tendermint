@@ -221,7 +221,7 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 	return b.Publish(EventValidatorSetUpdates, data)
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 type NopEventBus struct{}
 
 func (NopEventBus) Subscribe(

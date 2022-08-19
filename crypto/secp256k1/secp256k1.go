@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 )
 
-//-------------------------------------
+// -------------------------------------
 const (
 	PrivKeyAminoName = "tendermint/PrivKeySecp256k1"
 	PubKeyAminoName  = "tendermint/PubKeySecp256k1"

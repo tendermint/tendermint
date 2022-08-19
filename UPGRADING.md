@@ -54,7 +54,7 @@ You will need to generate a new config if you have used a prior version of tende
 ### RPC Changes
 
 - `/validators` is now paginated (default: 30 vals per page)
-- `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/master/rpc/#/Info/block_results)
+- `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/v0.33/rpc/#/Info/block_results)
 - Event suffix has been removed from the ID in event responses
 - IDs are now integers not `json-client-XYZ`
 
@@ -248,14 +248,14 @@ due to changes in how various data structures are hashed.
 Any implementations of Tendermint blockchain verification, including lite clients,
 will need to be updated. For specific details:
 
-- [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
-- [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
+- [Merkle tree](https://github.com/tendermint/tendermint/blob/main/spec/blockchain/encoding.md#merkle-trees)
+- [ConsensusParams](https://github.com/tendermint/tendermint/blob/main/spec/blockchain/state.md#consensusparams)
 
 There was also a small change to field ordering in the vote struct. Any
 implementations of an out-of-process validator (like a Key-Management Server)
 will need to be updated. For specific details:
 
-- [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
+- [Vote](https://github.com/tendermint/tendermint/blob/main/spec/consensus/signing.md#votes)
 
 Finally, the proposer selection algorithm continues to evolve. See the
 [work-in-progress

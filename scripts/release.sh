@@ -27,7 +27,7 @@ sh -c "'$DIR/scripts/publish.sh'"
 
 # echo "==> Crafting a Github release"
 # today=$(date +"%B-%d-%Y")
-# ghr -b "https://github.com/tendermint/tendermint/blob/master/CHANGELOG.md#${VERSION//.}-${today,}" "v$VERSION" "$DIR/build/dist"
+# ghr -b "https://github.com/tendermint/tendermint/blob/main/CHANGELOG.md#${VERSION//.}-${today,}" "v$VERSION" "$DIR/build/dist"
 
 # Build and push Docker image
 

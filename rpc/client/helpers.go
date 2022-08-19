@@ -71,7 +71,7 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 
 	select {
 	case event := <-eventCh:
-		return event.Data.(types.TMEventData), nil
+		return event.Data, nil
 	case <-ctx.Done():
 		return nil, errors.New("timed out waiting for event")
 	}

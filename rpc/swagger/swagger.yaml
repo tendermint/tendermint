@@ -2,10 +2,10 @@ openapi: 3.0.0
 info:
   title: RPC client for Tendermint
   description: A REST interface for state queries, transaction generation and broadcasting.
-  version: "Master"
+  version: "v0.33"
   license:
     name: Apache 2.0
-    url: https://github.com/tendermint/tendermint/blob/master/LICENSE
+    url: https://github.com/tendermint/tendermint/blob/main/LICENSE
 servers:
   - url: https://rpc.cosmos.network
     description: Cosmos mainnet node to interact with the Tendermint RPC
@@ -32,7 +32,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/v0.33/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -44,7 +44,7 @@ paths:
 
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/v0.33/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -76,7 +76,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/v0.33/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -88,7 +88,7 @@ paths:
         3. node can be offline
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/v0.33/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -121,7 +121,7 @@ paths:
         IMPORTANT: use only for testing and development. In production, use
         BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
         result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/v0.33/app-dev/subscribing-to-events-via-websocket.html
 
         CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
         waiting for tx to commit.
@@ -130,7 +130,7 @@ paths:
         will contain a non-OK ABCI code.
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/v0.33/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query

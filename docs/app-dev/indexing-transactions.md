@@ -14,7 +14,7 @@ type, only the key-value pairs defined in `EndBlock` are used.
 
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
-details on `Events`, see the [ABCI]https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events) documentation.
+details on `Events`, see the [ABCI]https://github.com/tendermint/tendermint/blob/main/spec/abci/abci.md#events) documentation.
 
 An Event has a composite key associated with it. A `compositeKey` is constructed by its type and key separated by a dot.
 For example:
@@ -106,7 +106,7 @@ You can query the transaction results by calling `/tx_search` RPC endpoint:
 curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search) for more information
+Check out [API docs](https://docs.tendermint.com/v0.33/rpc/#/Info/tx_search) for more information
 on query syntax and other options.
 
 ## Subscribing to Transactions
@@ -125,5 +125,5 @@ a query to `/subscribe` RPC endpoint.
 }
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/#subscribe) for more information
+Check out [API docs](https://docs.tendermint.com/v0.33/rpc/#subscribe) for more information
 on query syntax and other options.

@@ -412,7 +412,7 @@ func TestAveragingInIncrementProposerPriority(t *testing.T) {
 				{Address: []byte("c"), ProposerPriority: 1}}},
 			// this should average twice but the average should be 0 after the first iteration
 			// (voting power is 0 -> no changes)
-			11, 1 / 3},
+			11, 0}, // 1 / 3 == 0
 		2: {ValidatorSet{
 			Validators: []*Validator{
 				{Address: []byte("a"), ProposerPriority: 100},
@@ -1534,7 +1534,7 @@ func TestValidatorSetProtoBuf(t *testing.T) {
 	}
 }
 
-//---------------------
+// ---------------------
 // Sort validators by priority and address
 type validatorsByPriority []*Validator
 
@@ -1556,7 +1556,7 @@ func (valz validatorsByPriority) Swap(i, j int) {
 	valz[i], valz[j] = valz[j], valz[i]
 }
 
-//-------------------------------------
+// -------------------------------------
 // Sort testVal-s by address.
 type testValsByAddress []testVal
 
@@ -1572,9 +1572,8 @@ func (tvals testValsByAddress) Swap(i, j int) {
 	tvals[i], tvals[j] = tvals[j], tvals[i]
 }
 
-//-------------------------------------
+// -------------------------------------
 // Benchmark tests
-//
 func BenchmarkUpdates(b *testing.B) {
 	const (
 		n = 100

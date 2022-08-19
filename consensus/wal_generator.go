@@ -105,7 +105,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	}
 }
 
-//WALWithNBlocks returns a WAL content with numBlocks.
+// WALWithNBlocks returns a WAL content with numBlocks.
 func WALWithNBlocks(t *testing.T, numBlocks int) (data []byte, err error) {
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)

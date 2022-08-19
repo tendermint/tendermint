@@ -181,8 +181,9 @@ func arrayParamsToArgs(
 // array.
 //
 // Example:
-//   rpcFunc.args = [rpctypes.Context string]
-//   rpcFunc.argNames = ["arg"]
+//
+//	rpcFunc.args = [rpctypes.Context string]
+//	rpcFunc.argNames = ["arg"]
 func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte) ([]reflect.Value, error) {
 	const argsOffset = 1
 

@@ -818,7 +818,9 @@ func (cs *State) handleTxsAvailable() {
 // Used internally by handleTimeout and handleMsg to make state transitions
 
 // Enter: `timeoutNewHeight` by startTime (commitTime+timeoutCommit),
-// 	or, if SkipTimeoutCommit==true, after receiving all precommits from (height,round-1)
+//
+//	or, if SkipTimeoutCommit==true, after receiving all precommits from (height,round-1)
+//
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
 // Enter: +2/3 precommits for nil at (height,round-1)
 // Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
@@ -901,7 +903,9 @@ func (cs *State) needProofBlock(height int64) bool {
 
 // Enter (CreateEmptyBlocks): from enterNewRound(height,round)
 // Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ):
-// 		after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
+//
+//	after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
+//
 // Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *State) enterPropose(height int64, round int) {
 	logger := cs.Logger.With("height", height, "round", round)
@@ -1953,10 +1957,11 @@ func (cs *State) voteTime() time.Time {
 	now := tmtime.Now()
 	minVoteTime := now
 	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
-	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
+	// even if cs.LockedBlock != nil. See https://github.com/tendermint/tendermint/tree/v0.33.x/spec/.
 	timeIota := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
 	if cs.LockedBlock != nil {
-		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
+		// See the BFT time spec
+		// https://github.com/tendermint/tendermint/blob/v0.33.x/spec/consensus/bft-time.md
 		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
 	} else if cs.ProposalBlock != nil {
 		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)
