@@ -325,9 +325,9 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 // SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
 // blockParts: Must be parts of the block
 // seenCommit: The +2/3 precommits that were seen which committed at height.
-//	If all the nodes restart after committing a block,
-//	we need this to reload the precommits to catch-up nodes to the
-//	most recent height.  Otherwise they'd stall at H-1.
+//             If all the nodes restart after committing a block,
+//             we need this to reload the precommits to catch-up nodes to the
+//             most recent height.  Otherwise they'd stall at H-1.
 func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 	if block == nil {
 		panic("BlockStore can only save a non-nil block")

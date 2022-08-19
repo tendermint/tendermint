@@ -108,7 +108,7 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 //     - the nodes trusted header at the same height as the conflicting header has a different hash
 //
 // CONTRACT: must run ValidateBasic() on the evidence before verifying
-//	must check that the evidence has not expired (i.e. is outside the maximum age threshold)
+//           must check that the evidence has not expired (i.e. is outside the maximum age threshold)
 func VerifyLightClientAttack(e *types.LightClientAttackEvidence, commonHeader, trustedHeader *types.SignedHeader,
 	commonVals *types.ValidatorSet, now time.Time, trustPeriod time.Duration) error {
 	// In the case of lunatic attack there will be a different commonHeader height. Therefore the node perform a single

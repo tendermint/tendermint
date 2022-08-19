@@ -24,6 +24,7 @@ https://bitcointalk.org/?topic=102395
             *       *       *       h6
            / \     / \     / \
           h0  h1  h2  h3  h4  h5
+
 TODO(ismail): add 2nd pre-image protection or clarify further on how we use this and why this secure.
 
 */

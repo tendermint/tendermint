@@ -31,8 +31,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
-- [config] \#9054 Configuration flag added to permit Tendermint to discard all ABCIResponses except for the most recent
-
 ### BUG FIXES
 
 - [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)

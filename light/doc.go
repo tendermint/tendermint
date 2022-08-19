@@ -67,6 +67,7 @@ Example usage:
 		if err != nil {
 			// handle error
 		}
+
 		c, err := NewHTTPClient(
 			chainID,
 			TrustOptions{
@@ -81,6 +82,7 @@ Example usage:
 		if err != nil {
 			// handle error
 		}
+
 		h, err := c.TrustedHeader(100)
 		if err != nil {
 			// handle error

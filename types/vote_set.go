@@ -44,7 +44,7 @@ type P2PID string
 	`.votesByBlock` keeps track of a list of votes for a particular block.  There
 	are two ways a &blockVotes{} gets created in `.votesByBlock`.
 	1. the first vote seen by a validator was for the particular block.
-	2. a peer claims to have seen 2/3 majority for the particular block..
+	2. a peer claims to have seen 2/3 majority for the particular block.
 
 	Since the first vote from a validator will always get added in `.votesByBlock`
 	, all votes in `.votes` will have a corresponding entry in `.votesByBlock`.

@@ -9,12 +9,12 @@
 //
 // As a GET request, it would have URI encoded parameters, and look like:
 //
-// curl 'http://localhost:8008/hello_world?name="my_world"&num=5'
+//   curl 'http://localhost:8008/hello_world?name="my_world"&num=5'
 //
 // Note the `'` around the url, which is just so bash doesn't ignore the quotes in `"my_world"`.
 // This should also work:
 //
-// curl http://localhost:8008/hello_world?name=\"my_world\"&num=5
+//   curl http://localhost:8008/hello_world?name=\"my_world\"&num=5
 //
 // A GET request to `/` returns a list of available endpoints.
 // For those which take arguments, the arguments will be listed in order, with `_` where the actual value should be.
@@ -35,7 +35,8 @@
 //
 // With the above saved in file `data.json`, we can make the request with
 //
-// curl --data @data.json http://localhost:8008
+//   curl --data @data.json http://localhost:8008
+//
 //
 // WebSocket (JSONRPC)
 //
@@ -47,32 +48,32 @@
 //
 // Define some types and routes:
 //
-//	type ResultStatus struct {
-//		Value string
-//	}
+//    type ResultStatus struct {
+//    	    Value string
+//    }
 //
 // Define some routes
 //
-//	var Routes = map[string]*rpcserver.RPCFunc{
-//		"status": rpcserver.NewRPCFunc(Status, "arg"),
-//	}
+//   var Routes = map[string]*rpcserver.RPCFunc{
+//	    "status": rpcserver.NewRPCFunc(Status, "arg"),
+//   }
 //
 // An rpc function:
 //
-//	func Status(v string) (*ResultStatus, error) {
-//		return &ResultStatus{v}, nil
-//	}
+//   func Status(v string) (*ResultStatus, error) {
+//	    return &ResultStatus{v}, nil
+//   }
 //
 // Now start the server:
 //
-// mux := http.NewServeMux()
-// rpcserver.RegisterRPCFuncs(mux, Routes)
-// wm := rpcserver.NewWebsocketManager(Routes)
-// mux.HandleFunc("/websocket", wm.WebsocketHandler)
-// logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-// listener, err := rpc.Listen("0.0.0.0:8080", rpcserver.Config{})
-// if err != nil { panic(err) }
-// go rpcserver.Serve(listener, mux, logger)
+//   mux := http.NewServeMux()
+//   rpcserver.RegisterRPCFuncs(mux, Routes)
+//   wm := rpcserver.NewWebsocketManager(Routes)
+//   mux.HandleFunc("/websocket", wm.WebsocketHandler)
+//   logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+//   listener, err := rpc.Listen("0.0.0.0:8080", rpcserver.Config{})
+//   if err != nil { panic(err) }
+//   go rpcserver.Serve(listener, mux, logger)
 //
 // Note that unix sockets are supported as well (eg. `/path/to/socket` instead of `0.0.0.0:8008`)
 // Now see all available endpoints by sending a GET request to `0.0.0.0:8008`.
