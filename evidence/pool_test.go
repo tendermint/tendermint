@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
 	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	sm "github.com/tendermint/tendermint/state"
 	smmocks "github.com/tendermint/tendermint/state/mocks"
@@ -327,12 +326,12 @@ func TestRecoverPendingEvidence(t *testing.T) {
 	newStateStore.On("Load").Return(sm.State{
 		LastBlockTime:   defaultEvidenceTime.Add(25 * time.Minute),
 		LastBlockHeight: height + 15,
-		ConsensusParams: tmproto.ConsensusParams{
-			Block: &tmproto.BlockParams{
+		ConsensusParams: types.ConsensusParams{
+			Block: types.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: &tmproto.EvidenceParams{
+			Evidence: types.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        defaultEvidenceMaxBytes,
@@ -360,12 +359,12 @@ func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) s
 		NextValidators:              valSet.CopyIncrementProposerPriority(1),
 		LastValidators:              valSet,
 		LastHeightValidatorsChanged: 1,
-		ConsensusParams: tmproto.ConsensusParams{
-			Block: &tmproto.BlockParams{
+		ConsensusParams: types.ConsensusParams{
+			Block: types.BlockParams{
 				MaxBytes: 22020096,
 				MaxGas:   -1,
 			},
-			Evidence: &tmproto.EvidenceParams{
+			Evidence: types.EvidenceParams{
 				MaxAgeNumBlocks: 20,
 				MaxAgeDuration:  20 * time.Minute,
 				MaxBytes:        1000,

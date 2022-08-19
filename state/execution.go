@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -222,7 +221,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// validate the validator updates and convert to tendermint types
 	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-	err = validateValidatorUpdates(abciValUpdates, *state.ConsensusParams.Validator)
+	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, 0, fmt.Errorf("error in validator updates: %v", err)
 	}
@@ -458,7 +457,7 @@ func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCom
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	params tmproto.ValidatorParams) error {
+	params types.ValidatorParams) error {
 	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
@@ -514,13 +513,13 @@ func updateState(
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
-		err := types.ValidateConsensusParams(nextParams)
+		nextParams = state.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
+		err := nextParams.ValidateBasic()
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}
 
-		state.Version.Consensus.App = nextParams.Version.AppVersion
+		state.Version.Consensus.App = nextParams.Version.App
 
 		// Change results from this height but only applies to the next height.
 		lastHeightParamsChanged = header.Height + 1

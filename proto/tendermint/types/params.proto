@@ -25,11 +25,6 @@ message BlockParams {
   // Max gas per block.
   // Note: must be greater or equal to -1
   int64 max_gas = 2;
-  // Minimum time increment between consecutive blocks (in milliseconds) If the
-  // block header timestamp is ahead of the system clock, decrease this value.
-  //
-  // Not exposed to the application.
-  int64 time_iota_ms = 3;
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
@@ -68,7 +63,7 @@ message VersionParams {
   option (gogoproto.populate) = true;
   option (gogoproto.equal)    = true;
 
-  uint64 app_version = 1;
+  uint64 app = 1;
 }
 
 // HashedParams is a subset of ConsensusParams.

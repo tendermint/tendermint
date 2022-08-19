@@ -23,7 +23,7 @@ import (
 
 type paramsChangeTestCase struct {
 	height int64
-	params tmproto.ConsensusParams
+	params types.ConsensusParams
 }
 
 func newTestApp() proxy.AppConns {
@@ -246,7 +246,7 @@ func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 		ValidatorUpdates: app.ValidatorUpdates,
 		ConsensusParamUpdates: &tmproto.ConsensusParams{
 			Version: &tmproto.VersionParams{
-				AppVersion: 1}}}
+				App: 1}}}
 }
 
 func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
