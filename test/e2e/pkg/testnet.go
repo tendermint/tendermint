@@ -63,6 +63,7 @@ type Testnet struct {
 	ValidatorUpdates map[int64]map[*Node]int64
 	Nodes            []*Node
 	KeyType          string
+	Evidence         int
 	ABCIProtocol     string
 	Evidence         int
 	PrepareProposalDelay time.Duration
