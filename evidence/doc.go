@@ -1,7 +1,7 @@
 /*
 Package evidence handles all evidence storage and gossiping from detection to block proposal.
 For the different types of evidence refer to the `evidence.go` file in the types package
-or https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md.
+or https://github.com/tendermint/tendermint/blob/v0.34.x/spec/consensus/light-client/accountability.md.
 
 # Gossiping
 

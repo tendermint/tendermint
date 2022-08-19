@@ -10,7 +10,7 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 [![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://pkg.go.dev/github.com/tendermint/tendermint)
 [![Go version](https://img.shields.io/badge/go-1.15-blue.svg)](https://github.com/moovweb/gvm)
 [![Discord chat](https://img.shields.io/discord/669268347736686612.svg)](https://discord.gg/AzefAFd)
-[![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/main/LICENSE)
 [![tendermint/tendermint](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 [![Sourcegraph](https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg)](https://sourcegraph.com/github.com/tendermint/tendermint?badge)
 
@@ -21,7 +21,8 @@ Or [Blockchain](<https://en.wikipedia.org/wiki/Blockchain_(database)>), for shor
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For protocol details, see [the specification](https://github.com/tendermint/spec).
+For protocol details, see [the
+specification](https://github.com/tendermint/tendermint/tree/v0.34.x/spec).
 
 For detailed analysis of the consensus protocol, including safety and liveness proofs,
 see our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
@@ -41,7 +42,7 @@ contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https
 ## Security
 
 To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/tendermint). 
+program](https://hackerone.com/tendermint).
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md)
 
 We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
@@ -55,7 +56,7 @@ to notify you of vulnerabilities and fixes in Tendermint Core. You can subscribe
 
 ## Documentation
 
-Complete documentation can be found on the [website](https://docs.tendermint.com/master/).
+Complete documentation can be found on the [website](https://docs.tendermint.com/v0.34/).
 
 ### Install
 
@@ -72,11 +73,12 @@ See the [install instructions](/docs/introduction/install.md).
 
 Please abide by the [Code of Conduct](CODE_OF_CONDUCT.md) in all interactions.
 
-Before contributing to the project, please take a look at the [contributing guidelines](CONTRIBUTING.md)
-and the [style guide](STYLE_GUIDE.md). You may also find it helpful to read the
-[specifications](https://github.com/tendermint/spec), watch the [Developer Sessions](/docs/DEV_SESSIONS.md), 
-and familiarize yourself with our
-[Architectural Decision Records](https://github.com/tendermint/tendermint/tree/master/docs/architecture).
+Before contributing to the project, please take a look at the [contributing
+guidelines](CONTRIBUTING.md) and the [style guide](STYLE_GUIDE.md). You may also
+find it helpful to read the [specifications](./spec/), watch the [Developer
+Sessions](/docs/DEV_SESSIONS.md), and familiarize yourself with our
+[Architectural Decision
+Records](https://github.com/tendermint/tendermint/tree/main/docs/architecture).
 
 ## Versioning
 
@@ -119,7 +121,7 @@ In an effort to avoid accumulating technical debt prior to 1.0.0,
 we do not guarantee that breaking changes (ie. bumps in the MINOR version)
 will work with existing Tendermint blockchains. In these cases you will
 have to start a new blockchain, or write something custom to get the old
-data into the new chain. However, any bump in the PATCH version should be 
+data into the new chain. However, any bump in the PATCH version should be
 compatible with existing blockchain histories.
 
 
@@ -137,10 +139,10 @@ in [UPGRADING.md](./UPGRADING.md).
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/master/spec/).
+[Tendermint specification](./spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
-hosted at: <https://docs.tendermint.com/master/>
+hosted at: <https://docs.tendermint.com/v0.34/>
 
 ### Tools
 

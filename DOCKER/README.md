@@ -6,7 +6,7 @@ DockerHub tags for official releases are [here](https://hub.docker.com/r/tenderm
 
 Official releases can be found [here](https://github.com/tendermint/tendermint/releases).
 
-The Dockerfile for tendermint is not expected to change in the near future. The master file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/master/DOCKER/Dockerfile).
+The Dockerfile for tendermint is not expected to change in the near future. The master file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/main/DOCKER/Dockerfile).
 
 Respective versioned files can be found <https://raw.githubusercontent.com/tendermint/tendermint/vX.XX.XX/DOCKER/Dockerfile> (replace the Xs with the version number).
 
@@ -20,9 +20,9 @@ Respective versioned files can be found <https://raw.githubusercontent.com/tende
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
-For more background, see the [the docs](https://docs.tendermint.com/master/introduction/#quick-start).
+For more background, see the [the docs](https://docs.tendermint.com/v0.34/introduction/#quick-start).
 
-To get started developing applications, see the [application developers guide](https://docs.tendermint.com/master/introduction/quick-start.html).
+To get started developing applications, see the [application developers guide](https://docs.tendermint.com/v0.34/introduction/quick-start.html).
 
 ## How to use this image
 
@@ -37,7 +37,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app
 
 ## Local cluster
 
-To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/master/Makefile) and run:
+To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/v0.34.x/Makefile) and run:
 
 ```sh
 make build-linux
@@ -49,8 +49,8 @@ Note that this will build and use a different image than the ones provided here.
 
 ## License
 
-- Tendermint's license is [Apache 2.0](https://github.com/tendermint/tendermint/blob/master/LICENSE).
+- Tendermint's license is [Apache 2.0](https://github.com/tendermint/tendermint/blob/main/LICENSE).
 
 ## Contributing
 
-Contributions are most welcome! See the [contributing file](https://github.com/tendermint/tendermint/blob/master/CONTRIBUTING.md) for more information.
+Contributions are most welcome! See the [contributing file](https://github.com/tendermint/tendermint/blob/main/CONTRIBUTING.md) for more information.

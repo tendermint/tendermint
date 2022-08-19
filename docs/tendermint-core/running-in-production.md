@@ -95,7 +95,7 @@ mechanisms.
 ### RPC
 
 Endpoints returning multiple entries are limited by default to return 30
-elements (100 max). See the [RPC Documentation](https://docs.tendermint.com/master/rpc/)
+elements (100 max). See the [RPC Documentation](https://docs.tendermint.com/v0.34/rpc/)
 for more information.
 
 Rate-limiting and authentication are another key aspects to help protect

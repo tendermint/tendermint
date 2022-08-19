@@ -22,6 +22,7 @@ docs/.vuepress/dist
 *.log
 abci-cli
 docs/node_modules/
+docs/.vuepress/public/rpc
 index.html.md
 
 scripts/wal2json/wal2json
