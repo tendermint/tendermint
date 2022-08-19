@@ -527,6 +527,7 @@ func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet 
 
 // ConsensusParamsInfo represents the latest consensus params, or the last height it changed
 
+// Allocate empty Consensus params at compile time to avoid multiple allocations during runtime
 var (
 	empty   = types.ConsensusParams{}
 	emptypb = tmproto.ConsensusParams{}

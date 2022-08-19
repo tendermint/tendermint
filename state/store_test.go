@@ -181,9 +181,10 @@ func TestPruneStates(t *testing.T) {
 				params, err := stateStore.LoadConsensusParams(h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
-					require.Empty(t, params)
+					require.NotEmpty(t, params)
 				} else {
 					require.Error(t, err, "params height %v", h)
+					require.Empty(t, params)
 				}
 
 				abci, err := stateStore.LoadABCIResponses(h)
