@@ -33,7 +33,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
   new nodes are able to join a network in a matter of seconds.
-  Read [the spec](https://docs.tendermint.com/v0.34/spec/abci/apps.html#state-sync)
+  Read [the spec](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/apps.md#state-sync)
   if you want to learn more about State Sync, or if you'd like your application to use it.
   (If you don't want to support State Sync in your application, you can just implement these new
   ABCI methods as no-ops, leaving them empty.)

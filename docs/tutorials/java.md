@@ -323,7 +323,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://docs.tendermint.com/v0.34/spec/abci/apps.html#gas).
+specification"](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/apps.md#gas).
 
 For the underlying key-value store we'll use
 [JetBrains Xodus](https://github.com/JetBrains/xodus), which is a transactional schema-less embedded high-performance database written in Java.
@@ -467,7 +467,7 @@ public void query(RequestQuery req, StreamObserver<ResponseQuery> responseObserv
 ```
 
 The complete specification can be found
-[here](https://docs.tendermint.com/v0.34/spec/abci/).
+[here](https://github.com/tendermint/tendermint/tree/v0.34.x/spec/abci/).
 
 ## 1.4 Starting an application and a Tendermint Core instances
 

@@ -42,7 +42,7 @@ contact us [over email](mailto:hello@interchain.berlin) or [join the chat](https
 ## Security
 
 To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/tendermint). 
+program](https://hackerone.com/tendermint).
 For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md)
 
 We also maintain a dedicated mailing list for security updates. We will only ever use this mailing list
@@ -121,7 +121,7 @@ In an effort to avoid accumulating technical debt prior to 1.0.0,
 we do not guarantee that breaking changes (ie. bumps in the MINOR version)
 will work with existing Tendermint blockchains. In these cases you will
 have to start a new blockchain, or write something custom to get the old
-data into the new chain. However, any bump in the PATCH version should be 
+data into the new chain. However, any bump in the PATCH version should be
 compatible with existing blockchain histories.
 
 
@@ -139,7 +139,7 @@ in [UPGRADING.md](./UPGRADING.md).
 ### Tendermint Core
 
 For details about the blockchain data structures and the p2p protocols, see the
-[Tendermint specification](https://docs.tendermint.com/v0.34/spec/).
+[Tendermint specification](./spec/).
 
 For details on using the software, see the [documentation](/docs/) which is also
 hosted at: <https://docs.tendermint.com/v0.34/>
