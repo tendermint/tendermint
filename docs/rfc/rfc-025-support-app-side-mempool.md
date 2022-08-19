@@ -74,13 +74,14 @@ validity beyond simple heuristics.
 With the understanding that Tendermint's responsibility is to gossip the set of
 transactions that the application currently considers valid and high priority,
 we can update its API and data structures accordingly. With the creation of
-`PrepareProposal`, the mempool no longer has a responsibility to attempt to
-select transactions for a block, it is primarily responsible for gossiping.
+`PrepareProposal`, the mempool may be able to drop its responsibility to select
+transactions for a block; It can be primarily responsible for gossiping and
+nothing else.
 
 #### Goodbye mempool, hello GossipList
 
 The mempool contains many structures to retain, order, and select the set of
-transactions to gossip and to propose. These mempool structures can be
+transactions to gossip and to propose. These mempool structures could be
 completely replaced with a single list that allows Tendermint to fulfill the
 previously stated responsibility. This proposed list, the `GossipList`, would
 simply contain the set of transactions that Tendermint is responsible for
