@@ -217,7 +217,7 @@ func (resp RPCResponse) String() string {
 // From the JSON-RPC 2.0 spec:
 //
 //	If there was an error in detecting the id in the Request object (e.g. Parse
-//	error/Invalid Request), it MUST be Null.
+//	 error/Invalid Request), it MUST be Null.
 func RPCParseError(err error) RPCResponse {
 	return NewRPCErrorResponse(nil, -32700, "Parse error. Invalid JSON", err.Error())
 }
@@ -225,7 +225,7 @@ func RPCParseError(err error) RPCResponse {
 // From the JSON-RPC 2.0 spec:
 //
 //	If there was an error in detecting the id in the Request object (e.g. Parse
-//	error/Invalid Request), it MUST be Null.
+//	 error/Invalid Request), it MUST be Null.
 func RPCInvalidRequestError(id jsonrpcid, err error) RPCResponse {
 	return NewRPCErrorResponse(id, -32600, "Invalid Request", err.Error())
 }
@@ -278,11 +278,8 @@ type Context struct {
 // RemoteAddr returns the remote address (usually a string "IP:port").
 // If neither HTTPReq nor WSConn is set, an empty string is returned.
 // HTTP:
-//
 //	http.Request#RemoteAddr
-//
 // WS:
-//
 //	result of GetRemoteAddr
 func (ctx *Context) RemoteAddr() string {
 	if ctx.HTTPReq != nil {
@@ -296,12 +293,9 @@ func (ctx *Context) RemoteAddr() string {
 // Context returns the request's context.
 // The returned context is always non-nil; it defaults to the background context.
 // HTTP:
-//
 //	The context is canceled when the client's connection closes, the request
 //	is canceled (with HTTP/2), or when the ServeHTTP method returns.
-//
 // WS:
-//
 //	The context is canceled when the client's connections closes.
 func (ctx *Context) Context() context.Context {
 	if ctx.HTTPReq != nil {
@@ -314,7 +308,7 @@ func (ctx *Context) Context() context.Context {
 
 //----------------------------------------
 // SOCKETS
-
+//
 // Determine if its a unix or tcp socket.
 // If tcp, must specify the port; `0.0.0.0` will return incorrectly as "unix" since there's no port
 // TODO: deprecate

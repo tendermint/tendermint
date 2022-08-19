@@ -39,9 +39,7 @@ func calcABCIResponsesKey(height int64) []byte {
 
 //----------------------
 
-var (
-	lastABCIResponseKey = []byte("lastABCIResponseKey")
-)
+var lastABCIResponseKey = []byte("lastABCIResponseKey")
 
 //go:generate ../scripts/mockery_generate.sh Store
 
