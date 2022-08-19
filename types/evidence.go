@@ -58,7 +58,7 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *V
 	}
 	idx, val := valSet.GetByAddress(vote1.ValidatorAddress)
 	if idx == -1 {
-		return nil, errors.New("validator not in validator set")
+		return nil, fmt.Errorf("validator %s not in validator set", vote1.ValidatorAddress.String())
 	}
 
 	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
