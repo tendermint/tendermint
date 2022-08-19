@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - v0.34.x
     paths:
       - docs/**
       - spec/**
@@ -40,7 +41,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: build-output
-          path: ~/output/
+          path: /tmp/tendermint-core-docs
 
   deploy:
     name: Deploy to GitHub Pages
