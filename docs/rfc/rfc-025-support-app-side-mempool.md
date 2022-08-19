@@ -67,7 +67,10 @@ current state of application. While Tendermint is clearly responsible for the
 action of gossiping the transaction, it cannot decide when to start or stop
 gossiping any given transaction. While only valid transactions should be
 gossiped, as stated, it cannot appropriately make decisions about transaction
-validity beyond simple heuristics.
+validity beyond simple heuristics. The application therefore should be
+responsible for defining pending transaction validity, determining when to start
+or stop gossiping a transaction, and for selecting which transaction should be
+contained within a block.
 
 ### How can Tendermint best be designed for this responsibility?
 
