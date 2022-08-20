@@ -137,7 +137,7 @@ response.
 
 The server may be generic for a particular language, and we provide a
 [reference implementation in
-Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
+Golang](https://github.com/tendermint/tendermint/tree/main/abci/server). See the
 [list of other ABCI implementations](https://github.com/tendermint/awesome#ecosystem) for servers in
 other languages.
 

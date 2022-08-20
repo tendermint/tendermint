@@ -59,7 +59,7 @@ Configurable Generator
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The nightly e2e suite is defined by the `testnet generator
-<https://github.com/tendermint/tendermint/blob/master/test/e2e/generator/generate.go#L13-L65>`_,
+<https://github.com/tendermint/tendermint/blob/main/test/e2e/generator/generate.go#L13-L65>`_,
 and it's difficult to add dimensions or change the focus of the test suite in
 any way without modifying the implementation of the generator. If the
 generator were more configurable, potentially via a file rather than in

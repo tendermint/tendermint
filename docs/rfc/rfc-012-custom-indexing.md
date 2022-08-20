@@ -336,17 +336,17 @@ something like this (subject to refinement):
 - [`EventSink` interface][esink]
 - [`tm-db` library][tmdb]
 
-[adr065]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-065-custom-event-indexing.md
-[adr075]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-075-rpc-subscription.md
+[adr065]: https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-065-custom-event-indexing.md
+[adr075]: https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-075-rpc-subscription.md
 [esink]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/state/indexer#EventSink
-[event-rpc]: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
+[event-rpc]: https://docs.tendermint.com/v0.34/rpc/#/Websocket/subscribe
 [i1161]: https://github.com/tendermint/tendermint/issues/1161
 [i7135]: https://github.com/tendermint/tendermint/issues/7135
 [i7247]: https://github.com/tendermint/tendermint/issues/7247
-[kv-index]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/tx/kv
+[kv-index]: https://github.com/tendermint/tendermint/blob/main/internal/state/indexer/tx/kv
 [postgres]: https://postgresql.org/
-[psql]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/sink/psql
-[psql]: https://github.com/tendermint/tendermint/blob/master/internal/state/indexer/sink/psql
+[psql]: https://github.com/tendermint/tendermint/blob/main/internal/state/indexer/sink/psql
+[psql]: https://github.com/tendermint/tendermint/blob/main/internal/state/indexer/sink/psql
 [query]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/pubsub/query/syntax
 [sdk]: https://github.com/cosmos/cosmos-sdk
 [tmdb]: https://pkg.go.dev/github.com/tendermint/tm-db#DB
