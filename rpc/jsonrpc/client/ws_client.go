@@ -473,7 +473,7 @@ func (c *WSClient) readRoutine() {
 		}
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			if !websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+			if e, ok := err.(*websocket.CloseError); ok && e.Code == websocket.CloseNormalClosure {
 				return
 			}
 
