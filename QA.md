@@ -6,6 +6,9 @@ against the approaches we use to ensure quality. It also attempts to capture the
 current state of our QA process and where there are still deficiencies to be
 addressed.
 
+There is a [special QA log section](#qa-log) at the end of this document where
+we can capture references to one-off QA efforts.
+
 ## Approaches
 
 We make use of the following approaches to ensure delivery of quality software,
@@ -164,3 +167,44 @@ Tendermint QA is split across the following concerns:
 #### Crash/recovery
 
 #### Upgrading
+
+## QA Log
+
+In this section, we aim to capture all of our one-off QA efforts. Links to the
+results of the following types of efforts can and should be added under the
+[Log](#log) section in chronological order, with the _most recent entries
+first_:
+
+- Audit results
+- One-off testnet executions
+- Model checker runs
+- Experiment results
+- Any other manual QA effort you feel is important to share with the community
+
+When capturing QA efforts, please use the following format:
+
+```markdown
+- YYYY-mm-dd: Descriptive title
+  - A description of the QA effort.
+  - References:
+    - [Link 1]
+    - [Link 2]
+    - ...
+```
+
+For example:
+
+```markdown
+- 2022-08-22: 20-node testnet
+  - A simple 20-validator testnet was run for 1 hour under a constant
+    transaction load from a single source into a single validator in order to
+    measure throughput. Associated Tendermint version: v0.34.21, with no
+    customizations.
+  - References:
+    - [GitHub issue](https://github.com/tendermint/tendermint/issues/9020)
+    - [Prometheus metrics database dump](https://informal-tendermint.fra1.digitaloceanspaces.com/testnets/2022-08-22/prometheus.zip)
+```
+
+### Log
+
+(No entries at present)
