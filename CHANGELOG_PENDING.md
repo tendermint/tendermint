@@ -41,6 +41,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
 
 ### IMPROVEMENTS
+- [scep256k1] \#9250 Update to use btcec v2 and the latest btcutil. (@wcsiu)
 
 - [proto] \#9356 Migrate from `gogo/protobuf` to `cosmos/gogoproto` (@julienrbrt)
 - [rpc] \#9276 Added `header` and `header_by_hash` queries to the RPC client (@samricotta)

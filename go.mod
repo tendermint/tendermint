@@ -6,12 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d
 	github.com/adlio/schema v1.3.3
-	github.com/btcsuite/btcd v0.22.1
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
-	github.com/bufbuild/buf v1.7.0
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
-	github.com/cosmos/gogoproto v1.4.1
-	github.com/creachadair/taskgroup v0.3.2
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.1
@@ -38,18 +33,26 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
-	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
+	github.com/tendermint/tm-db v0.6.6
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
+	golang.org/x/net v0.0.0-20220726230323-06994584191e
+	google.golang.org/grpc v1.49.0
 )
 
 require (
+	github.com/bufbuild/buf v1.7.0
+	github.com/creachadair/taskgroup v0.3.2
+	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
+)
+
+require (
+	github.com/btcsuite/btcd/btcec/v2 v2.2.1
+	github.com/btcsuite/btcd/btcutil v1.1.2
+	github.com/cosmos/gogoproto v1.4.1
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/google/uuid v1.3.0
-	github.com/tendermint/tm-db v0.6.6
 	github.com/vektra/mockery/v2 v2.14.0
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
-	golang.org/x/net v0.0.0-20220726230323-06994584191e
-	gonum.org/v1/gonum v0.12.0
-	google.golang.org/grpc v1.49.0
+	gonum.org/v1/gonum v0.8.2
 	google.golang.org/protobuf v1.28.1
 )
 
@@ -89,6 +92,7 @@ require (
 	github.com/curioswitch/go-reassign v0.1.2 // indirect
 	github.com/daixiang0/gci v0.6.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/denis-tingaikin/go-header v0.4.3 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de // indirect
@@ -121,7 +125,7 @@ require (
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2 // indirect
 	github.com/golangci/dupl v0.0.0-20180902072040-3e9179ac440a // indirect
 	github.com/golangci/go-misc v0.0.0-20220329215616-d24fe342adfe // indirect
