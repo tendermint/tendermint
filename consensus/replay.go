@@ -307,12 +307,12 @@ func (h *Handshaker) ReplayBlocks(
 		}
 		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
-		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
+		pbparams := h.genDoc.ConsensusParams.ToProto()
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			InitialHeight:   h.genDoc.InitialHeight,
-			ConsensusParams: csParams,
+			ConsensusParams: &pbparams,
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
@@ -344,8 +344,8 @@ func (h *Handshaker) ReplayBlocks(
 			}
 
 			if res.ConsensusParams != nil {
-				state.ConsensusParams = types.UpdateConsensusParams(state.ConsensusParams, res.ConsensusParams)
-				state.Version.Consensus.App = state.ConsensusParams.Version.AppVersion
+				state.ConsensusParams = state.ConsensusParams.Update(res.ConsensusParams)
+				state.Version.Consensus.App = state.ConsensusParams.Version.App
 			}
 			// We update the last results hash with the empty hash, to conform with RFC-6962.
 			state.LastResultsHash = merkle.HashFromByteSlices(nil)

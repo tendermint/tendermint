@@ -200,7 +200,7 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 		InitialHeight:   testnet.InitialHeight,
 	}
 	// set the app version to 1
-	genesis.ConsensusParams.Version.AppVersion = 1
+	genesis.ConsensusParams.Version.App = 1
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,
