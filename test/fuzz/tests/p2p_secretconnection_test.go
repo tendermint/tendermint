@@ -1,35 +1,63 @@
-package secretconnection
+//go:build gofuzz || go1.18
+
+package tests
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"log"
+	"testing"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/async"
 	sc "github.com/tendermint/tendermint/p2p/conn"
 )
 
-func Fuzz(data []byte) int {
+func FuzzP2PSecretConnection(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte) {
+		fuzz(data)
+	})
+}
+
+func fuzz(data []byte) {
 	if len(data) == 0 {
-		return -1
+		return
 	}
 
 	fooConn, barConn := makeSecretConnPair()
-	n, err := fooConn.Write(data)
-	if err != nil {
-		panic(err)
+
+	// Run Write in a separate goroutine because if data is greater than 1024
+	// bytes, each Write must be followed by Read (see io.Pipe documentation).
+	go func() {
+		// Copy data because Write modifies the slice.
+		dataToWrite := make([]byte, len(data))
+		copy(dataToWrite, data)
+
+		n, err := fooConn.Write(dataToWrite)
+		if err != nil {
+			panic(err)
+		}
+		if n < len(data) {
+			panic(fmt.Sprintf("wanted to write %d bytes, but %d was written", len(data), n))
+		}
+	}()
+
+	dataRead := make([]byte, len(data))
+	totalRead := 0
+	for totalRead < len(data) {
+		buf := make([]byte, len(data)-totalRead)
+		m, err := barConn.Read(buf)
+		if err != nil {
+			panic(err)
+		}
+		copy(dataRead[totalRead:], buf[:m])
+		totalRead += m
 	}
-	dataRead := make([]byte, n)
-	m, err := barConn.Read(dataRead)
-	if err != nil {
-		panic(err)
+
+	if !bytes.Equal(data, dataRead) {
+		panic("bytes written != read")
 	}
-	if !bytes.Equal(data[:n], dataRead[:m]) {
-		panic(fmt.Sprintf("bytes written %X != read %X", data[:n], dataRead[:m]))
-	}
-	return 1
 }
 
 type kvstoreConn struct {
