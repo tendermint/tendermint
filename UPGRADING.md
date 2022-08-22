@@ -17,6 +17,12 @@ NOTE: v0.35 was recalled and v0.36 was skipped
   values, which was inconsistent with the `uint64` varint length delimiters used
   in the P2P layer. Both now consistently use `uint64` varint length delimiters.
 
+## Unreleased
+
+### ABCI Changes
+
+* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
+
 ## v0.34.20
 
 ### Feature: Priority Mempool

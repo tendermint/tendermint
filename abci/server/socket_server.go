@@ -200,9 +200,6 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Info:
 		res := s.app.Info(*r.Info)
 		responses <- types.ToResponseInfo(res)
-	case *types.Request_SetOption:
-		res := s.app.SetOption(*r.SetOption)
-		responses <- types.ToResponseSetOption(res)
 	case *types.Request_DeliverTx:
 		res := s.app.DeliverTx(*r.DeliverTx)
 		responses <- types.ToResponseDeliverTx(res)
@@ -230,6 +227,12 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_OfferSnapshot:
 		res := s.app.OfferSnapshot(*r.OfferSnapshot)
 		responses <- types.ToResponseOfferSnapshot(res)
+	case *types.Request_PrepareProposal:
+		res := s.app.PrepareProposal(*r.PrepareProposal)
+		responses <- types.ToResponsePrepareProposal(res)
+	case *types.Request_ProcessProposal:
+		res := s.app.ProcessProposal(*r.ProcessProposal)
+		responses <- types.ToResponseProcessProposal(res)
 	case *types.Request_LoadSnapshotChunk:
 		res := s.app.LoadSnapshotChunk(*r.LoadSnapshotChunk)
 		responses <- types.ToResponseLoadSnapshotChunk(res)

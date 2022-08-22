@@ -162,6 +162,30 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "full_prevote_delay",
 			Help:      "Interval in seconds between the proposal timestamp and the timestamp of the latest prevote in a round where all validators voted.",
 		}, append(labels, "proposer_address")).With(labelsAndValues...),
+		ProposalReceiveCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "proposal_receive_count",
+			Help:      "ProposalReceiveCount is the total number of proposals received by this node since process start. The metric is annotated by the status of the proposal from the application, either 'accepted' or 'rejected'.",
+		}, append(labels, "status")).With(labelsAndValues...),
+		ProposalCreateCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "proposal_create_count",
+			Help:      "ProposalCreationCount is the total number of proposals created by this node since process start.",
+		}, labels).With(labelsAndValues...),
+		RoundVotingPowerPercent: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "round_voting_power_percent",
+			Help:      "RoundVotingPowerPercent is the percentage of the total voting power received with a round. The value begins at 0 for each round and approaches 1.0 as additional voting power is observed. The metric is labeled by vote type.",
+		}, labels).With(labelsAndValues...),
+		LateVotes: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "late_votes",
+			Help:      "LateVotes stores the number of votes that were received by this node that correspond to earlier heights and rounds than this node is currently in.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -191,5 +215,9 @@ func NopMetrics() *Metrics {
 		BlockGossipPartsReceived:  discard.NewCounter(),
 		QuorumPrevoteDelay:        discard.NewGauge(),
 		FullPrevoteDelay:          discard.NewGauge(),
+		ProposalReceiveCount:      discard.NewCounter(),
+		ProposalCreateCount:       discard.NewCounter(),
+		RoundVotingPowerPercent:   discard.NewGauge(),
+		LateVotes:                 discard.NewCounter(),
 	}
 }

@@ -29,7 +29,7 @@ func TestRollback(t *testing.T) {
 
 	// perform the rollback over a version bump
 	newParams := types.DefaultConsensusParams()
-	newParams.Version.AppVersion = 11
+	newParams.Version.App = 11
 	newParams.Block.MaxBytes = 1000
 	nextState := initialState.Copy()
 	nextState.LastBlockHeight = nextHeight
@@ -122,7 +122,7 @@ func setupStateStore(t *testing.T, height int64) state.Store {
 	valSet, _ := types.RandValidatorSet(5, 10)
 
 	params := types.DefaultConsensusParams()
-	params.Version.AppVersion = 10
+	params.Version.App = 10
 
 	initialState := state.State{
 		Version: tmstate.Version{

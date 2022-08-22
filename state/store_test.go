@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -139,8 +138,8 @@ func TestPruneStates(t *testing.T) {
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
 					NextValidators:  validatorSet,
-					ConsensusParams: tmproto.ConsensusParams{
-						Block: tmproto.BlockParams{MaxBytes: 10e6},
+					ConsensusParams: types.ConsensusParams{
+						Block: types.BlockParams{MaxBytes: 10e6},
 					},
 					LastHeightValidatorsChanged:      valsChanged,
 					LastHeightConsensusParamsChanged: paramsChanged,
@@ -188,9 +187,10 @@ func TestPruneStates(t *testing.T) {
 				params, err := stateStore.LoadConsensusParams(h)
 				if expectParams[h] {
 					require.NoError(t, err, "params height %v", h)
-					require.False(t, params.Equal(&tmproto.ConsensusParams{}))
+					require.NotEmpty(t, params)
 				} else {
 					require.Error(t, err, "params height %v", h)
+					require.Empty(t, params)
 				}
 
 				abci, err := stateStore.LoadABCIResponses(h)

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"time"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
@@ -34,6 +35,7 @@ var (
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
 	nodeRetainBlocks      = uniformChoice{0, 1, 5}
+	abciDelays            = uniformChoice{"none", "small", "large"}
 	nodePerturbations     = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
@@ -65,6 +67,17 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},
+	}
+
+	switch abciDelays.Choose(r).(string) {
+	case "none":
+	case "small":
+		manifest.PrepareProposalDelay = 100 * time.Millisecond
+		manifest.ProcessProposalDelay = 100 * time.Millisecond
+	case "large":
+		manifest.PrepareProposalDelay = 200 * time.Millisecond
+		manifest.ProcessProposalDelay = 200 * time.Millisecond
+		manifest.CheckTxDelay = 20 * time.Millisecond
 	}
 
 	var numSeeds, numValidators, numFulls, numLightClients int

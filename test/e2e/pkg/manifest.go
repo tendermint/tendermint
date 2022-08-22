@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -51,11 +52,22 @@ type Manifest struct {
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
 
+	// Evidence indicates the amount of evidence that will be injected into the
+	// testnet via the RPC endpoint of a random node. Default is 0
+	Evidence int `toml:"evidence"`
+
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
 	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
 	// builtin will build a complete Tendermint node into the application and
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
+	// TODO: add vote extension and finalize block delay (@cmwaters)
 }
 
 // ManifestNode represents a node in a testnet manifest.

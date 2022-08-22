@@ -51,7 +51,6 @@ proto/spec/**/*.pb.go
 *.aux
 *.bbl
 *.blg
-*.log
 *.pdf
 *.gz
 *.dvi
