@@ -84,7 +84,6 @@ type dbStore struct {
 }
 
 type StoreOptions struct {
-
 	// DiscardABCIResponses determines whether or not the store
 	// retains all ABCIResponses. If DiscardABCiResponses is enabled,
 	// the store will maintain only the response object from the latest
