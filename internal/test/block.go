@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
@@ -89,4 +90,34 @@ func MakeHeader(t *testing.T, h *types.Header) *types.Header {
 	require.NoError(t, h.ValidateBasic())
 
 	return h
+}
+
+func MakeBlock(state sm.State) *types.Block {
+	return state.MakeBlock(state.LastBlockHeight+1, MakeNTxs(state.LastBlockHeight+1, 10), new(types.Commit), nil, state.NextValidators.Proposer.Address)
+}
+
+func MakeBlocks(n int, state sm.State, privVals []types.PrivValidator) ([]*types.Block, error) {
+	blockID := MakeBlockID()
+	blocks := make([]*types.Block, n)
+
+	for i := 0; i < n; i++ {
+		height := state.LastBlockHeight + 1 + int64(i)
+		lastCommit, err := MakeCommit(blockID, height-1, 0, state.LastValidators, privVals, state.ChainID, state.LastBlockTime)
+		if err != nil {
+			return nil, err
+		}
+		block := state.MakeBlock(height, MakeNTxs(height, 10), lastCommit, nil, state.LastValidators.Proposer.Address)
+		blocks[i] = block
+		state.LastBlockID = blockID
+		state.LastBlockHeight = height
+		state.LastBlockTime = state.LastBlockTime.Add(1 * time.Second)
+		state.LastValidators = state.Validators.Copy()
+		state.Validators = state.NextValidators.Copy()
+		state.NextValidators = state.NextValidators.CopyIncrementProposerPriority(1)
+		state.AppHash = RandomHash()
+
+		blockID = MakeBlockIDWithHash(block.Hash())
+	}
+
+	return blocks, nil
 }

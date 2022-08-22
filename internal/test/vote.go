@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"time"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -9,7 +8,6 @@ import (
 )
 
 func MakeVote(
-	ctx context.Context,
 	val types.PrivValidator,
 	chainID string,
 	valIndex int32,
