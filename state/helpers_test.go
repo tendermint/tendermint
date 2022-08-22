@@ -22,7 +22,7 @@ import (
 
 type paramsChangeTestCase struct {
 	height int64
-	params tmproto.ConsensusParams
+	params types.ConsensusParams
 }
 
 func newTestApp() proxy.AppConns {
@@ -262,7 +262,7 @@ func makeHeaderPartsResponsesParams(
 	block := makeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
-		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
+		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &params},
 	}
 	return block.Header, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
@@ -309,9 +309,9 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	return abci.ResponseEndBlock{
 		ValidatorUpdates: app.ValidatorUpdates,
-		ConsensusParamUpdates: &abci.ConsensusParams{
+		ConsensusParamUpdates: &tmproto.ConsensusParams{
 			Version: &tmproto.VersionParams{
-				AppVersion: 1}}}
+				App: 1}}}
 }
 
 func (app *testApp) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
