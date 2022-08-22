@@ -4,7 +4,6 @@ import (
 	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -12,7 +11,7 @@ func GenesisDoc(
 	config *cfg.Config,
 	time time.Time,
 	validators []*types.Validator,
-	consensusParams *tmproto.ConsensusParams,
+	consensusParams *types.ConsensusParams,
 ) *types.GenesisDoc {
 
 	genesisValidators := make([]types.GenesisValidator, len(validators))
