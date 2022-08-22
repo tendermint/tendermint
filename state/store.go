@@ -298,8 +298,7 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 			}
 
 			if p.ConsensusParams.Equal(&tmproto.ConsensusParams{}) {
-				var params types.ConsensusParams
-				params, err = store.LoadConsensusParams(h)
+				params, err := store.LoadConsensusParams(h)
 				if err != nil {
 					return err
 				}
@@ -527,14 +526,12 @@ func (store dbStore) saveValidatorsInfo(height, lastHeightChanged int64, valSet 
 
 // ConsensusParamsInfo represents the latest consensus params, or the last height it changed
 
-// Allocate empty Consensus params at compile time to avoid multiple allocations during runtime
-var (
-	empty   = types.ConsensusParams{}
-	emptypb = tmproto.ConsensusParams{}
-)
-
 // LoadConsensusParams loads the ConsensusParams for a given height.
 func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, error) {
+	var (
+		empty   = types.ConsensusParams{}
+		emptypb = tmproto.ConsensusParams{}
+	)
 	paramsInfo, err := store.loadConsensusParamsInfo(height)
 	if err != nil {
 		return empty, fmt.Errorf("could not find consensus params for height #%d: %w", height, err)
