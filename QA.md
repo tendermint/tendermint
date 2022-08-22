@@ -14,16 +14,16 @@ we can capture references to one-off QA efforts.
 We make use of the following approaches to ensure delivery of quality software,
 with associated relative costs where applicable:
 
-| Approach                  | Implementation Cost | Execution Cost |
-|---------------------------|---------------------|----------------|
-| Code review               |                     | Moderate/High  |
-| Static analysis           | Low                 | Low            |
-| Unit testing              | Moderate            | Low            |
-| Fuzz testing              | Low/Moderate        | Low            |
-| Model-based testing (MBT) | High                | Low            |
-| End-to-end (E2E) testing  | High                | Low            |
-| Testnet testing           | High                | Moderate/High  |
-| Protocol audits           |                     | High           |
+| Approach                  | Setup Cost   | Per-Execution Cost |
+|---------------------------|--------------|--------------------|
+| Code review               |              | Moderate/High      |
+| Static analysis           | Low          | Low                |
+| Unit testing              | Moderate     | Low                |
+| Fuzz testing              | Low/Moderate | Low                |
+| Model-based testing (MBT) | High         | Low                |
+| End-to-end (E2E) testing  | High         | Low                |
+| Testnet testing           | High         | Moderate/High      |
+| Protocol audits           |              | High               |
 
 ## Concerns
 
