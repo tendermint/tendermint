@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	mpmocks "github.com/tendermint/tendermint/mempool/mocks"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -24,8 +25,6 @@ import (
 	pmocks "github.com/tendermint/tendermint/proxy/mocks"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/mocks"
-	sf "github.com/tendermint/tendermint/state/test/factory"
-	"github.com/tendermint/tendermint/test/factory"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
@@ -60,7 +59,7 @@ func TestApplyBlock(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mp, sm.EmptyEvidencePool{})
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
+	block := makeBlock(state, 1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -116,7 +115,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
 
 		// block for height 2
-		block := sf.MakeBlock(state, 2, lastCommit)
+		block := makeBlock(state, 2, lastCommit)
 
 		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
@@ -169,7 +168,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 
 	// we don't need to worry about validating the evidence as long as they pass validate basic
-	dve := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID)
+	dve, err := types.NewMockDuplicateVoteEvidenceWithValidator(3, defaultEvidenceTime, privVal, state.ChainID)
+	require.NoError(t, err)
 	dve.ValidatorPower = 1000
 	lcae := &types.LightClientAttackEvidence{
 		ConflictingBlock: &types.LightBlock{
@@ -228,7 +228,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mp, evpool)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
+	block := makeBlock(state, 1, new(types.Commit))
 	block.Evidence = types.EvidenceData{Evidence: ev}
 	block.Header.EvidenceHash = block.Evidence.Hash()
 	bps, err := block.MakePartSet(testPartSize)
@@ -246,7 +246,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 func TestProcessProposal(t *testing.T) {
 	const height = 2
-	txs := factory.MakeNTxs(height, 10)
+	txs := test.MakeNTxs(height, 10)
 
 	logger := log.NewNopLogger()
 	app := abcimocks.NewBaseMock()
@@ -273,16 +273,17 @@ func TestProcessProposal(t *testing.T) {
 		sm.EmptyEvidencePool{},
 	)
 
-	block0 := sf.MakeBlock(state, height-1, new(types.Commit))
+	block0 := makeBlock(state, height-1, new(types.Commit))
 	lastCommitSig := []types.CommitSig{}
 	partSet, err := block0.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block0.Hash(), PartSetHeader: partSet.Header()}
 	voteInfos := []abci.VoteInfo{}
 	for _, privVal := range privVals {
-		vote, err := types.MakeVote(height, blockID, state.Validators, privVal, block0.Header.ChainID, time.Now())
-		require.NoError(t, err)
 		pk, err := privVal.GetPubKey()
+		require.NoError(t, err)
+		idx, _ := state.Validators.GetByAddress(pk.Address())
+		vote, err := test.MakeVote(privVal, block0.Header.ChainID, idx, height-1, 0, 2, blockID, time.Now())
 		require.NoError(t, err)
 		addr := pk.Address()
 		voteInfos = append(voteInfos,
@@ -296,7 +297,7 @@ func TestProcessProposal(t *testing.T) {
 		lastCommitSig = append(lastCommitSig, vote.CommitSig())
 	}
 
-	block1 := sf.MakeBlock(state, height, &types.Commit{
+	block1 := makeBlock(state, height, &types.Commit{
 		Height:     height - 1,
 		Signatures: lastCommitSig,
 	})
@@ -499,7 +500,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
+	block := makeBlock(state, 1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -557,7 +558,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 		sm.EmptyEvidencePool{},
 	)
 
-	block := sf.MakeBlock(state, 1, new(types.Commit))
+	block := makeBlock(state, 1, new(types.Commit))
 	bps, err := block.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -624,7 +625,7 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	txs := factory.MakeNTxs(height, 10)
+	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
 
@@ -669,7 +670,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	txs := factory.MakeNTxs(height, 10)
+	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
@@ -723,7 +724,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	const nValidators = 1
 	var bytesPerTx int64 = 3
 	maxDataBytes := types.MaxDataBytes(state.ConsensusParams.Block.MaxBytes, 0, nValidators)
-	txs := factory.MakeNTxs(height, maxDataBytes/bytesPerTx+2) // +2 so that tx don't fit
+	txs := test.MakeNTxs(height, maxDataBytes/bytesPerTx+2) // +2 so that tx don't fit
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 
@@ -767,7 +768,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	evpool := &mocks.EvidencePool{}
 	evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, int64(0))
 
-	txs := factory.MakeNTxs(height, 10)
+	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
 

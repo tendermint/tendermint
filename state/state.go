@@ -234,20 +234,20 @@ func FromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 func (state State) MakeBlock(
 	height int64,
 	txs []types.Tx,
-	commit *types.Commit,
+	lastCommit *types.Commit,
 	evidence []types.Evidence,
 	proposerAddress []byte,
 ) *types.Block {
 
 	// Build base block with block data.
-	block := types.MakeBlock(height, txs, commit, evidence)
+	block := types.MakeBlock(height, txs, lastCommit, evidence)
 
 	// Set time.
 	var timestamp time.Time
 	if height == state.InitialHeight {
 		timestamp = state.LastBlockTime // genesis time
 	} else {
-		timestamp = MedianTime(commit, state.LastValidators)
+		timestamp = MedianTime(lastCommit, state.LastValidators)
 	}
 
 	// Fill rest of header with state data.

@@ -22,6 +22,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -30,7 +31,6 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -904,7 +904,7 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
-	blocks, err := sf.MakeBlocks(3, &state, privVal)
+	blocks, err := test.MakeBlocks(3, state, []types.PrivValidator{privVal})
 	require.NoError(t, err)
 
 	store.chain = blocks

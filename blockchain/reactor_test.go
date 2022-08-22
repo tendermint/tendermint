@@ -20,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	sf "github.com/tendermint/tendermint/state/test/factory"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
@@ -127,7 +126,7 @@ func newReactor(
 				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
-		thisBlock := sf.MakeBlock(state, blockHeight, lastCommit)
+		thisBlock := state.MakeBlock(blockHeight, nil, lastCommit, nil, state.Validators.Proposer.Address)
 
 		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)

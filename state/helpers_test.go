@@ -11,12 +11,11 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/test"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
-	sf "github.com/tendermint/tendermint/state/test/factory"
-	"github.com/tendermint/tendermint/test/factory"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
@@ -56,7 +55,7 @@ func makeAndCommitGoodBlock(
 
 func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
 	blockExec *sm.BlockExecutor, evidence []types.Evidence) (sm.State, types.BlockID, error) {
-	block := state.MakeBlock(height, factory.MakeNTxs(height, 10), lastCommit, evidence, proposerAddr)
+	block := state.MakeBlock(height, test.MakeNTxs(height, 10), lastCommit, evidence, proposerAddr)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	if err != nil {
 		return state, types.BlockID{}, err
@@ -72,6 +71,16 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 		return state, types.BlockID{}, err
 	}
 	return state, blockID, nil
+}
+
+func makeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
+	return state.MakeBlock(
+		height,
+		test.MakeNTxs(state.LastBlockHeight, 10),
+		c,
+		nil,
+		state.Validators.GetProposer().Address,
+	)
 }
 
 func makeValidCommit(
@@ -144,7 +153,7 @@ func makeHeaderPartsResponsesValPubKeyChange(
 	pubkey crypto.PubKey,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block := makeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
@@ -169,7 +178,7 @@ func makeHeaderPartsResponsesValPowerChange(
 	power int64,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block := makeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ValidatorUpdates: nil},
@@ -194,7 +203,7 @@ func makeHeaderPartsResponsesParams(
 	params tmproto.ConsensusParams,
 ) (types.Header, types.BlockID, *tmstate.ABCIResponses) {
 
-	block := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit))
+	block := makeBlock(state, state.LastBlockHeight+1, new(types.Commit))
 	abciResponses := &tmstate.ABCIResponses{
 		BeginBlock: &abci.ResponseBeginBlock{},
 		EndBlock:   &abci.ResponseEndBlock{ConsensusParamUpdates: &params},
