@@ -73,37 +73,6 @@ func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commi
 	return state, blockID, nil
 }
 
-func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) ([]*types.Block, error) {
-	blocks := make([]*types.Block, n)
-
-	var (
-		prevBlock     *types.Block
-		prevBlockMeta *types.BlockMeta
-	)
-
-	appHeight := byte(0x01)
-	for i := 0; i < n; i++ {
-		height := int64(i + 1)
-
-		block, parts, err := makeBlockAndPartSet(*state, prevBlock, prevBlockMeta, privVal, height)
-		if err != nil {
-			return nil, err
-		}
-
-		blocks[i] = block
-
-		prevBlock = block
-		prevBlockMeta = types.NewBlockMeta(block, parts)
-
-		// update state
-		state.AppHash = []byte{appHeight}
-		appHeight++
-		state.LastBlockHeight = height
-	}
-
-	return blocks, nil
-}
-
 func makeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
 	return state.MakeBlock(
 		height,
@@ -112,31 +81,6 @@ func makeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
 		nil,
 		state.Validators.GetProposer().Address,
 	)
-}
-
-func makeBlockAndPartSet(
-	state sm.State,
-	lastBlock *types.Block,
-	lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator,
-	height int64,
-) (*types.Block, *types.PartSet, error) {
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	if height > 1 {
-		vote, _ := types.MakeVote(
-			lastBlock.Header.Height,
-			lastBlockMeta.BlockID,
-			state.Validators,
-			privVal,
-			lastBlock.Header.ChainID,
-			time.Now())
-		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
-	}
-
-	block := state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
-	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
-	return block, partSet, err
 }
 
 func makeValidCommit(
