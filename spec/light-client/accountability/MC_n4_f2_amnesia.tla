@@ -1,5 +1,5 @@
 ---------------------- MODULE MC_n4_f2_amnesia -------------------------------
-EXTENDS Sequences
+EXTENDS Sequences, typedefs
 
 CONSTANT
   \* @type: $round -> $process;

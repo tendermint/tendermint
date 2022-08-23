@@ -494,7 +494,6 @@ EquivocationBy(p) ==
               /\ m1.src = p
               /\ m2.src = p
               /\ m1.round = m2.round
-              /\ m1.type = m2.type
     IN
     \/ EquivocationIn(evidencePropose)
     \/ EquivocationIn(evidencePrevote)
@@ -519,8 +518,12 @@ AmnesiaBy(p) ==
             id    |-> Id(v2)
            ] \in evidencePrevote
         /\ \A r \in { rnd \in Rounds: r1 <= rnd /\ rnd < r2 }:
-            LET prevotes ==
-                { m \in evidencePrevote: m.round = r /\ m.id = Id(v2) }
+            LET prevotes == {
+              m \in evidencePrevote:
+                /\ m.round = r
+                /\ m.id = Id(v2)
+                /\ m.src /= p
+            }
             IN
             Cardinality(prevotes) < THRESHOLD2
 

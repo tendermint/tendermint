@@ -23,7 +23,7 @@ VARIABLE
 
 TraceInit ==
     /\ toReplay = Trace
-    /\ action' := "Init"
+    /\ action = "Init"
     /\ Init
 
 TraceNext ==
@@ -31,7 +31,7 @@ TraceNext ==
     /\ toReplay' = Tail(toReplay)
     \* Here is the trick. We restrict the action to the expected one,
     \* so the other actions will be pruned
-    /\ action' := Head(toReplay)
+    /\ action' = Head(toReplay)
     /\ Next
 
 ================================================================================

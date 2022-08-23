@@ -8,7 +8,7 @@
  * Version 3. Modular and parameterized definitions.
  * Version 2. Bugfixes in the spec and an inductive invariant.
 
- Igor Konnov, 2020.
+ Igor Konnov, Josef Widder, 2020-2022.
  *)
 
 EXTENDS TendermintAcc_004_draft
@@ -159,7 +159,7 @@ AllIfInDecidedThenReceivedTwoThirds ==
 
 \* for a round r, there is proposal by the round proposer for a valid round vr
 ProposalInRound(r, proposedVal, vr) ==
-  \E m \in msgsPropose[r]:
+  \E m \in msgsPropose[r] \intersect evidencePropose:
     /\ m.src = Proposer[r]
     /\ m.proposal = proposedVal
     /\ m.validRound = vr
@@ -200,14 +200,14 @@ IfSentPrecommitThenReceivedTwoThirds ==
   \A r \in Rounds:
     \A mpc \in msgsPrecommit[r]:
       mpc.src \in Corr =>
-         \/ /\ mpc.id \in ValidValues
-            /\ LET PV == {
-                 m \in msgsPrevote[r] \intersect evidencePrevote: m.id = mpc.id
-               }
-               IN
-               Cardinality(PV) >= THRESHOLD2
-         \/ /\ mpc.id = NilValue
-            /\ Cardinality(msgsPrevote[r]) >= THRESHOLD2
+        \/ /\ mpc.id \in ValidValues
+           /\ LET PV == {
+                m \in msgsPrevote[r] \intersect evidencePrevote: m.id = mpc.id
+              }
+              IN
+              Cardinality(PV) >= THRESHOLD2
+        \/ /\ mpc.id = NilValue
+           /\ Cardinality(msgsPrevote[r] \intersect evidencePrevote) >= THRESHOLD2
 
 \* if a correct process has sent a precommit message in a round, it should
 \* have sent a prevote
@@ -239,15 +239,17 @@ AllIfLockedRoundThenSentCommit ==
 
 \* a process always locks the latest round, for which it has sent a PRECOMMIT
 LatestPrecommitHasLockedRound(p) ==
-  LET pPrecommits ==
-    {mm \in UNION { msgsPrecommit[r]: r \in Rounds }: mm.src = p /\ mm.id /= NilValue }
+  LET pPrecommits == {
+    mm \in UNION { msgsPrecommit[r]: r \in Rounds }:
+      mm.src = p /\ mm.id /= NilValue
+  }
   IN
   pPrecommits /= {}
     => LET latest ==
          CHOOSE m \in pPrecommits:
            \A m2 \in pPrecommits:
              m2.round <= m.round
-       IN
+      IN
        /\ lockedRound[p] = latest.round
        /\ lockedValue[p] = latest.id
 
@@ -316,14 +318,40 @@ RelockValueIfEnoughPrevotes ==
       IN
       LET EnoughPrevotesInMiddle ==
         \E mr \in Rounds:
-          /\ r1 < mr /\ mr <= r2
-          \* count prevotes in the middle round, excluding p if mr = r2
-          /\ LET Prevotes == { m \in msgsPrevote[mr]:
-                                m.id = v2 /\ (m.src /= p \/ mr < r2) }
+          /\ r1 <= mr /\ mr <= r2
+          \* count prevotes in the middle round, excluding p
+          /\ LET Prevotes == {
+               m \in msgsPrevote[mr] \intersect evidencePrevote:
+                 m.id = v2 /\ (m.src /= p \/ mr < r2)
+             }
              IN
              Cardinality(Prevotes) >= THRESHOLD2
       IN
       RelockedValue => EnoughPrevotesInMiddle
+
+\* if validRound is defined, then there are two-thirds of PREVOTEs
+AllIfValidRoundThenTwoThirds ==
+  \A p \in Corr:
+    LET vr == validRound[p] IN
+      \/ vr = NilRound /\ validValue[p] = NilValue
+      \/ LET PV == {
+           m \in msgsPrevote[vr] \intersect evidencePrevote:
+             m.id = validValue[p]
+         } IN
+         Cardinality(PV) >= THRESHOLD2
+    
+AllValidAndLocked ==
+  \A p \in Corr:
+    /\ validRound[p] >= lockedRound[p]
+    /\ validRound[p] /= NilRound <=> validValue[p] /= NilValue
+    /\ lockedValue[p] /= NilValue => validValue[p] /= NilValue
+
+\* a valid round can be only set to a valid value that was proposed earlier
+AllIfValidRoundThenProposal ==
+  \A p \in Corr:
+    \/ validRound[p] = NilRound
+    \/ \E m \in msgsPropose[validRound[p]] \intersect evidencePropose:
+         m.proposal = validValue[p]
 
 \* a combination of all lemmas
 Inv ==
@@ -343,41 +371,12 @@ Inv ==
     /\ AllNoEquivocationByCorrect
     /\ PrecommitsLockValue
     /\ RelockValueIfEnoughPrevotes
+    /\ AllIfValidRoundThenTwoThirds
+    /\ AllValidAndLocked
+    /\ AllIfValidRoundThenProposal
 
 \* this is the inductive invariant we like to check
 TypedInv == TypeOK /\ Inv
-
-\* UNUSED FOR SAFETY
-ValidRoundNotSmallerThanLockedRound(p) ==
-  validRound[p] >= lockedRound[p]
-
-\* UNUSED FOR SAFETY
-ValidRoundIffValidValue(p) ==
-  (validRound[p] = NilRound) <=> (validValue[p] = NilValue)
-
-\* UNUSED FOR SAFETY
-AllValidRoundIffValidValue ==
-  \A p \in Corr: ValidRoundIffValidValue(p)
-
-\* if validRound is defined, then there are two-thirds of PREVOTEs
-IfValidRoundThenTwoThirds(p) ==
-  \/ validRound[p] = NilRound
-  \/ LET PV == { m \in msgsPrevote[validRound[p]]: m.id = validValue[p] } IN
-     Cardinality(PV) >= THRESHOLD2
-
-\* UNUSED FOR SAFETY
-AllIfValidRoundThenTwoThirds ==
-  \A p \in Corr: IfValidRoundThenTwoThirds(p)
-
-\* a valid round can be only set to a valid value that was proposed earlier
-IfValidRoundThenProposal(p) ==
-  \/ validRound[p] = NilRound
-  \/ \E m \in msgsPropose[validRound[p]]:
-       m.proposal = validValue[p]
-
-\* UNUSED FOR SAFETY
-AllIfValidRoundThenProposal ==
-  \A p \in Corr: IfValidRoundThenProposal(p)
 
 (******************************** THEOREMS ************************************)
 (* Under this condition, the faulty processes can decide alone *)

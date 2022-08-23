@@ -306,3 +306,287 @@ Note that detecting this behavior require application knowledge. Detecting this 
 referring to the block before the one in which height happen.  
 
 **Q:** can we say that in this case a validator declines to check if a proposed value is valid before voting for it?
+
+## Specification and verification
+
+### Specification in TLA+
+
+We have written a specification of Tendermint consensus, following the
+pseudo-code of [BKM19][]. This specification is written for safety of
+consensus, e.g., for checking the safety property called [Agreement][], which
+says that no two processes can decide differently. As we were interested in
+accountability, we have extended the specification as follows:
+
+ - We have added ghost variables that keep track of the evidence collected by
+   the correct validators: `evidencePropose`, `evidencePrevote`, and
+   `evidencePrecommit`. Note that these evidence variables are global, so we
+   do not fix an algorithm for collecting evidence in the specification.
+
+ - We have added the safety property [Accountability][] that requires the
+   evidence to contain messages from at least `T + 1` validators, when
+   [Agreement][] is violated.
+
+The specification is organized in the following files:
+
+ - [TendermintAcc_004_draft.tla][] is the main file that contains the
+   protocol specification.
+
+ - [typedefs.tla][] contains auxiliary type definitions for [Apalache][].
+
+ - [TendermintAccInv_004_draft.tla][] contains an inductive invariant
+   for proving safety of unbounded executions with [Apalache][].
+
+ - [TendermintAccTrace_004_draft.tla][] contains an auxiliary module
+   that lets one execute a predefined sequence of actions (without specifying
+   concrete inputs for every action).
+
+
+### Model checking
+
+We have checked the safety properties [Agreement][] and [Accountability][]
+with the symbolic model checker [Apalache][] v0.27.0. As Apalache works on
+bounded data structures, we have introduced several instances of the
+specification:
+
+ - [MC_n4_f1.tla][], [MC_n4_f2.tla][], and [MC_n4_f3.tla][] define instances
+   of four validators, of which one, two, and three validators are faulty,
+   respectively.
+
+ - [MC_n5_f1.tla][] and [MC_n5_f2.tla][] define instances of five validators,
+   of which one and two validators are faulty, respectively.
+
+ - [MC_n6_f1.tla][] defines the instance of six validators, of which one is
+   faulty.
+
+ - [MC_n4_f2_amnesia.tla][] defines the instance of four validators, of which
+   two are faulty. This model demonstrates an execution, in which the faulty
+   validators exercise the amnesia attack.
+
+If you want to reproduce the model checking runs, check the [Installation][]
+and [Running Apalache][] pages first.
+
+#### Evidence of an amnesia attack
+
+In this run, we fix the trace of actions, in order to quickly violate
+`Agreement`. For details, check the [MC_n4_f2_amnesia.tla][] model.
+We ran Apalache as follows:
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit \
+  --init=TraceInit --next=TraceNext --inv=Agreement MC_n4_f2_amnesia.tla
+...
+Found 1 error(s)
+...
+Total time: 10.416 sec
+```
+
+The trace `violation1.tla` contains a concrete execution of the protocol
+that leads to `State7`, in which two validators decide differently
+(this is expected behavior for `N=4` and `F=2`):
+
+```tla
+State7 ==
+    ...
+    /\ decision = SetAsFun({ <<"c1", "v0">>, <<"c2", "v1">> })
+    ...
+    /\ step = SetAsFun({ <<"c1", "DECIDED">>, <<"c2", "DECIDED">> })
+    ...
+```
+
+By inspecting the evidence, we can see that the correct validators have
+collected an evidence of the amnesia attack by the two faulty processes:
+
+```tla
+State7 ==
+    ...
+    /\ evidencePrevote
+      = { [id |-> "v0", round |-> 2, src |-> "c1", type |-> "PREVOTE"],
+        [id |-> "v0", round |-> 2, src |-> "f3", type |-> "PREVOTE"],
+        [id |-> "v0", round |-> 2, src |-> "f4", type |-> "PREVOTE"],
+        [id |-> "v1", round |-> 0, src |-> "c2", type |-> "PREVOTE"],
+        [id |-> "v1", round |-> 0, src |-> "f3", type |-> "PREVOTE"],
+        [id |-> "v1", round |-> 0, src |-> "f4", type |-> "PREVOTE"] }
+    /\ evidencePrecommit
+      = { [id |-> "v0", round |-> 2, src |-> "c1", type |-> "PRECOMMIT"],
+        [id |-> "v0", round |-> 2, src |-> "f3", type |-> "PRECOMMIT"],
+        [id |-> "v0", round |-> 2, src |-> "f4", type |-> "PRECOMMIT"],
+        [id |-> "v1", round |-> 0, src |-> "c2", type |-> "PRECOMMIT"],
+        [id |-> "v1", round |-> 0, src |-> "f3", type |-> "PRECOMMIT"],
+        [id |-> "v1", round |-> 0, src |-> "f4", type |-> "PRECOMMIT"] }
+    ...
+```
+
+#### Violation of Agreement when 2 out of 4 validators are faulty
+
+To quickly get an example of `Agreement` violation for the case of two out of
+four validators being faulty (this is expected behavior), we run symbolic
+execution:
+
+```sh
+$ apalache-mc simulate --features=rows --cinit=ConstInit --no-deadlock \
+  --inv=Agreement --length=20 MC_n4_f2.tla
+...
+Found 1 error(s)
+...
+It took me 0 days  0 hours  3 min 43 sec
+```
+
+The trace `violation1.tla` contains a concrete execution of the protocol
+that leads to `State7`, in which two validators decide differently
+(this is expected behavior for `N=4` and `F=2`):
+
+```tla
+State18 ==
+    ...
+    /\ decision = SetAsFun({ <<"c1", "v1">>, <<"c2", "v0">> })
+    ...
+    /\ step = SetAsFun({ <<"c1", "DECIDED">>, <<"c2", "DECIDED">> })
+    ...
+```
+
+With symbolic execution, the run times may vary significantly, as Apalache
+is randomly choosing actions to try. To get an example for sure, we run
+bounded model checking:
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit \
+  --inv=Agreement MC_n4_f2.tla
+...
+Found 1 error(s)
+...
+It took me 0 days  0 hours 56 min 38 sec
+```
+
+This usually takes longer than simulation execution, as bounded model
+checking checks **all** symbolic executions up to the given length,
+as opposite to a **fixed number** of symbolic executions.
+
+#### Agreement holds true when 1 out of 4 validators is faulty
+
+In case when only one of the four validators is faulty, we expect `Agreement`
+to hold true. Before trying to prove it, we can quickly check that it does
+hold true for 100 symbolic executions, each having up to 10 steps:
+
+```sh
+$ apalache-mc simulate --features=rows --cinit=ConstInit --inv=Agreement \
+  --length=10 MC_n4_f1.tla
+...
+It took me 0 days  0 hours  2 min 54 sec
+```
+
+To get a better guarantee that `Agreement` holds true for all executions
+that contain up to 10 steps, we run bounded model checking:
+
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit \
+  --inv=Agreement --length=10 MC_n4_f1.tla
+...
+Checker reports no error up to computation length 10
+...
+It took me 0 days 21 hours  8 min 48 sec
+```
+
+Finally, to prove that `Agreement` holds true for arbitrarily long executions,
+we show that `TypedInv` is an inductive invariant of the specification. For
+details, see [Checking inductive invariants][].
+
+Proving that `TypedInv` is inductive and using it to show `Agreement` requires
+three steps.
+
+First, we check that the initial states satisfy `TypedInv` (the induction base):
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit --init=TypedInv \
+  --inv=Init MC_n4_f1.tla
+...
+The outcome is: NoError
+...
+It took me 0 days  0 hours  0 min  8 sec
+```
+
+Second, we show the inductive step:
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit \
+  --init=TypedInv --inv=TypedInv \
+  --length=1 MC_n4_f1.tla
+...
+The outcome is: NoError
+...
+It took me 0 days  3 hours 46 min 13 sec
+```
+
+Third, we show that `Agreement` holds in the states, where `TypedInv` holds
+true:
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit \
+  --init=TypedInv --inv=Agreement --length=0 MC_n4_f1.tla
+...
+The outcome is: NoError
+...
+It took me 0 days  0 hours  1 min  0 sec
+```
+
+Interestingly, this proof is faster (and more complete) than bounded model
+checking up to 10 steps. However, it requires an additional predicate
+`TypedInv`.
+
+#### Accountability holds true when 1 out of 4 validators is faulty
+
+As we have proven that `TypedInv` is inductive in the previous step, we use it
+to show that `Accountability` holds for arbitrarily long executions:
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit --init=TypedInv \
+  --inv=Accountability --length=0 MC_n4_f1.tla
+...
+The outcome is: NoError
+...
+It took me 0 days  0 hours  1 min  2 sec
+```
+
+#### Accountability holds true when 2 out of 4 validators are faulty
+
+As we have proven that `TypedInv` is inductive in the previous step, we use it
+to show that `Accountability` holds for arbitrarily long executions,
+even if the number of faults is over 1/3:
+
+```sh
+$ apalache-mc check --features=rows --cinit=ConstInit --init=TypedInv \
+  --inv=Accountability --length=0 MC_n4_f2.tla
+...
+The outcome is: NoError
+...
+It took me 0 days  0 hours  1 min  2 sec
+```
+
+#### Other instances
+
+The instances [MC_n4_f3.tla][], [MC_n5_f1.tla][], [MC_n5_f2.tla][],
+and [MC_n6_f1.tla][] were checked similar to how we did it
+for [MC_n4_f1.tla][] and [MC_n4_f2.tla][].
+
+
+
+
+
+[BKM19]: https://arxiv.org/abs/1807.04938
+[Apalache]: https://github.com/informalsystems/apalache
+[TendermintAcc_004_draft.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/TendermintAcc_004_draft.tla
+[typedefs.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/typedefs.tla
+[TendermintAccInv_004_draft.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/TendermintAccInv_004_draft.tla
+[TendermintAccTrace_004_draft.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/TendermintAccTrace_004_draft.tla
+[MC_n4_f1.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/MC_n4_f1.tla
+[MC_n4_f2.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/MC_n4_f2.tla
+[MC_n4_f2_amnesia.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/MC_n4_f2.tla
+[MC_n4_f3.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/MC_n4_f3.tla
+[MC_n5_f1.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/MC_n5_f1.tla
+[MC_n5_f2.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/MC_n5_f2.tla
+[MC_n6_f1.tla]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/accountability/MC_n6_f1.tla
+[Installation]: https://apalache.informal.systems/docs/apalache/installation/index.html
+[Running Apalache]: https://apalache.informal.systems/docs/apalache/running.html
+[Checking inductive invariants]: https://apalache.informal.systems/docs/apalache/running.html#15-checking-an-inductive-invariant
+[Accountability]: https://github.com/tendermint/tendermint/blob/c8302c5fcb7f1ffafdefc5014a26047df1d27c99/spec/light-client/accountability/TendermintAcc_004_draft.tla#L545-L550
+[Agreement]: https://github.com/tendermint/tendermint/blob/c8302c5fcb7f1ffafdefc5014a26047df1d27c99/spec/light-client/accountability/TendermintAcc_004_draft.tla#L530-L534
