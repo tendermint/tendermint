@@ -372,7 +372,7 @@ In this run, we fix the trace of actions, in order to quickly violate
 We ran Apalache as follows:
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit \
+$ apalache-mc check --cinit=ConstInit \
   --init=TraceInit --next=TraceNext --inv=Agreement MC_n4_f2_amnesia.tla
 ...
 Found 1 error(s)
@@ -423,7 +423,7 @@ four validators being faulty (this is expected behavior), we run symbolic
 execution:
 
 ```sh
-$ apalache-mc simulate --features=rows --cinit=ConstInit --no-deadlock \
+$ apalache-mc simulate --cinit=ConstInit --no-deadlock \
   --inv=Agreement --length=20 MC_n4_f2.tla
 ...
 Found 1 error(s)
@@ -449,7 +449,7 @@ is randomly choosing actions to try. To get an example for sure, we run
 bounded model checking:
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit \
+$ apalache-mc check --cinit=ConstInit \
   --inv=Agreement MC_n4_f2.tla
 ...
 Found 1 error(s)
@@ -457,9 +457,9 @@ Found 1 error(s)
 It took me 0 days  0 hours 56 min 38 sec
 ```
 
-This usually takes longer than simulation execution, as bounded model
-checking checks **all** symbolic executions up to the given length,
-as opposite to a **fixed number** of symbolic executions.
+This usually takes longer than randomized symbolic execution, as bounded model
+checking checks **all** symbolic executions up to the given length, as
+opposite to a **fixed number** of symbolic executions.
 
 #### Agreement holds true when 1 out of 4 validators is faulty
 
@@ -468,7 +468,7 @@ to hold true. Before trying to prove it, we can quickly check that it does
 hold true for 100 symbolic executions, each having up to 10 steps:
 
 ```sh
-$ apalache-mc simulate --features=rows --cinit=ConstInit --inv=Agreement \
+$ apalache-mc simulate --cinit=ConstInit --inv=Agreement \
   --length=10 MC_n4_f1.tla
 ...
 It took me 0 days  0 hours  2 min 54 sec
@@ -479,7 +479,7 @@ that contain up to 10 steps, we run bounded model checking:
 
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit \
+$ apalache-mc check --cinit=ConstInit \
   --inv=Agreement --length=10 MC_n4_f1.tla
 ...
 Checker reports no error up to computation length 10
@@ -497,7 +497,7 @@ three steps.
 First, we check that the initial states satisfy `TypedInv` (the induction base):
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit --init=TypedInv \
+$ apalache-mc check --cinit=ConstInit --init=TypedInv \
   --inv=Init MC_n4_f1.tla
 ...
 The outcome is: NoError
@@ -508,7 +508,7 @@ It took me 0 days  0 hours  0 min  8 sec
 Second, we show the inductive step:
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit \
+$ apalache-mc check --cinit=ConstInit \
   --init=TypedInv --inv=TypedInv \
   --length=1 MC_n4_f1.tla
 ...
@@ -521,12 +521,12 @@ Third, we show that `Agreement` holds in the states, where `TypedInv` holds
 true:
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit \
+$ apalache-mc check --cinit=ConstInit \
   --init=TypedInv --inv=Agreement --length=0 MC_n4_f1.tla
 ...
 The outcome is: NoError
 ...
-It took me 0 days  0 hours  1 min  0 sec
+It took me 0 days  0 hours  6 min  50 sec
 ```
 
 Interestingly, this proof is faster (and more complete) than bounded model
@@ -539,27 +539,46 @@ As we have proven that `TypedInv` is inductive in the previous step, we use it
 to show that `Accountability` holds for arbitrarily long executions:
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit --init=TypedInv \
+$ apalache-mc check --cinit=ConstInit --init=TypedInv \
   --inv=Accountability --length=0 MC_n4_f1.tla
 ...
 The outcome is: NoError
 ...
-It took me 0 days  0 hours  1 min  2 sec
+It took me 0 days  0 hours  7 min 49 sec
 ```
+
+This case of `Accountability` is not that interesting, as `Agreement` holds
+true, and `Agreement` is a part of accountability.
 
 #### Accountability holds true when 2 out of 4 validators are faulty
 
-As we have proven that `TypedInv` is inductive in the previous step, we use it
-to show that `Accountability` holds for arbitrarily long executions,
-even if the number of faults is over 1/3:
+Similar to how we have proven the inductiveness of `TypedInv` on
+`MC_n4_f1.tla`, we show that `TypedInv` is inductive on `MC_n4_f2.tla` too:
+
+```
+$ apalache-mc check --cinit=ConstInit --init=TypedInv \
+  --inv=Init MC_n4_f2.tla
+...
+The outcome is: NoError
+...
+$ apalache-mc check --cinit=ConstInit \
+  --init=TypedInv --inv=TypedInv --length=1 MC_n4_f2.tla
+...
+The outcome is: NoError
+...
+```
+
+As we have proven that `TypedInv` is inductive, we use it to show that
+`Accountability` holds for arbitrarily long executions, even if the number of
+faults is over $\frac{1}{3}$ (but below $\frac{2}{3}$):
 
 ```sh
-$ apalache-mc check --features=rows --cinit=ConstInit --init=TypedInv \
+$ apalache-mc check --cinit=ConstInit --init=TypedInv \
   --inv=Accountability --length=0 MC_n4_f2.tla
 ...
 The outcome is: NoError
 ...
-It took me 0 days  0 hours  1 min  2 sec
+It took me 0 days  0 hours 14 min 17 sec
 ```
 
 #### Other instances
