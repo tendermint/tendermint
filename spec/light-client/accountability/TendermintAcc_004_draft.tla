@@ -382,7 +382,8 @@ UponQuorumOfPrecommitsAny(p) ==
       LET Committers == { m.src: m \in MyEvidence } IN
       \* compare the number of the unique committers against the threshold
       /\ Cardinality(Committers) >= THRESHOLD2 \* line 47
-      /\ evidencePrecommit' = MyEvidence \union evidencePrecommit
+      \*/\ evidencePrecommit' = MyEvidence \union evidencePrecommit
+      /\ UNCHANGED evidencePrecommit
       /\ round[p] + 1 \in Rounds
       /\ StartRound(p, round[p] + 1)
       /\ UNCHANGED <<decision, lockedValue, lockedRound, validValue,
@@ -434,7 +435,8 @@ OnQuorumOfNilPrevotes(p) ==
   /\ step[p] = "PREVOTE"
   /\ LET PV == { m \in msgsPrevote[round[p]]: m.id = Id(NilValue) } IN
     /\ Cardinality(PV) >= THRESHOLD2 \* line 36
-    /\ evidencePrevote' = PV \union evidencePrevote
+    \*/\ evidencePrevote' = PV \union evidencePrevote
+    /\ UNCHANGED evidencePrevote
     /\ BroadcastPrecommit(p, round[p], Id(NilValue))
     /\ step' = [step EXCEPT ![p] = "PRECOMMIT"]
     /\ UNCHANGED <<round, lockedValue, lockedRound, validValue,
@@ -455,9 +457,10 @@ OnRoundCatchup(p) ==
             Src(EvPropose) \union Src(EvPrevote) \union Src(EvPrecommit)
         IN
         /\ Cardinality(Faster) >= THRESHOLD1
-        /\ evidencePropose' = EvPropose \union evidencePropose
-        /\ evidencePrevote' = EvPrevote \union evidencePrevote
-        /\ evidencePrecommit' = EvPrecommit \union evidencePrecommit
+        /\ UNCHANGED <<evidencePropose, evidencePrevote, evidencePrecommit>>
+        \*/\ evidencePropose' = EvPropose \union evidencePropose
+        \*/\ evidencePrevote' = EvPrevote \union evidencePrevote
+        \*/\ evidencePrecommit' = EvPrecommit \union evidencePrecommit
         /\ StartRound(p, r)
         /\ UNCHANGED <<decision, lockedValue, lockedRound, validValue,
                       validRound, msgsPropose, msgsPrevote, msgsPrecommit>>
@@ -495,6 +498,7 @@ EquivocationBy(p) ==
               /\ m2.src = p
               /\ m1.round = m2.round
     IN
+    \/ EquivocationIn(evidencePropose)
     \/ EquivocationIn(evidencePrevote)
     \/ EquivocationIn(evidencePrecommit)
 

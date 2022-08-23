@@ -295,12 +295,15 @@ PrecommitsLockValue ==
   \A r \in Rounds:
     \A v \in ValidValues:
       \/ LET Precommits == {
-            m \in msgsPrecommit[r]: m.id = v /\ m.src \in Corr
+            m \in msgsPrecommit[r] \intersect evidencePrecommit:
+              m.id = v /\ m.src \in Corr
          }
          IN
          Cardinality(Senders(Precommits)) < THRESHOLD1
       \/ \A fr \in Rounds, w \in Values:
-          LET Prevotes == { m \in msgsPrevote[fr]: m.id = w } IN
+          LET Prevotes == {
+            m \in msgsPrevote[fr] \intersect evidencePrevote: m.id = w
+          } IN
           (fr > r /\ w /= v) => (Cardinality(Senders(Prevotes)) < THRESHOLD2)
 
 \* Another lemma by Josef Widder:
