@@ -141,13 +141,13 @@ Additionally, *p*'s `DeliverTx` on transactions creates a set of transaction res
 * Requirement 11 [`BeginBlock - DeliverTx - EndBlock`, determinism-1]: For any correct process *p*,
   *s<sub>p,h</sub>* exclusively depends on *s<sub>p,h-1</sub>* and *v<sub>p,h</sub>*.
 
-* Requirement 12 [`FinalizeBlock`, determinism-2]: For any correct process *p*,
+* Requirement 12 [`BeginBlock - DeliverTx - EndBlock`, determinism-2]: For any correct process *p*,
   the contents of *T<sub>p,h</sub>* exclusively depend on *s<sub>p,h-1</sub>* and *v<sub>p,h</sub>*.
 
 Note that Requirements 11 and 12, combined with the Agreement property of consensus ensure
 state machine replication, i.e., the Application state evolves consistently at all correct processes.
 
-Finally, notice that neither `PrepareProposal` <!-- nor `ExtendVote` --> have determinism-related
+Finally, notice that `PrepareProposal` <!-- nor `ExtendVote` --> has determinism-related
 requirements associated.
 Indeed, `PrepareProposal` is not required to be deterministic:
 

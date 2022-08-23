@@ -410,7 +410,7 @@ title: Methods
 
     | Name                    | Type                                             | Description                                                                                 | Field Number |
     |-------------------------|--------------------------------------------------|---------------------------------------------------------------------------------------------|--------------|
-    | tx_records              | repeated [TxRecord](#txrecord)                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
+    | txs              | repeated bytes                   | Possibly modified list of transactions that have been picked as part of the proposed block. | 2            |
 
 * **Usage**:
     * `RequestPrepareProposal`'s parameters `txs`, `misbehavior`, `height`, `time`,
@@ -422,26 +422,25 @@ title: Methods
       proposed block.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint
       retrieved from the mempool, called _raw proposal_. The Application can modify this
-      set via `ResponsePrepareProposal.tx_records` (see [TxRecord](#txrecord)).
+      set and return a modified set of transactions via `ResponsePrepareProposal.txs` .
         * The Application _can_ modify the raw proposal: it can reorder, remove or add transactions.
-          Let `tx` be a transaction in `txs`:
+          Let `tx` be a transaction in `txs` (set of transactions within `RequestPrepareProposal`):
             * If the Application considers that `tx` should not be proposed in this block, e.g.,
               there are other transactions with higher priority, then it should not include it in
-              `tx_records`. In this case, Tendermint will not remove `tx` from the mempool. The
+              `ResponsePrepareProposal.txs`. However, Tendermint will not remove `tx` from the mempool. The
               Application should be extra-careful, as abusing this feature may cause transactions
               to stay much longer than needed in the mempool.
             * If the Application considers that `tx` should not be included in the proposal and
-              removed from the mempool, then the Application should include it in `tx_records` and
-              _mark_ it as `REMOVED`. In this case, Tendermint will remove `tx` from the mempool.
+              removed from the block, then the Application should include it in `ResponsePrepareProposal.txs`.            
             * If the Application wants to add a new transaction to the proposed block, then the
-              Application includes it in `tx_records` and _marks_ it as `ADDED`. In this case, Tendermint
+              Application includes it in `ResponsePrepareProposal.txs`. In this case, Tendermint
               will also add the transaction to the mempool.
         * The Application should be aware that removing and adding transactions may compromise
           _traceability_.
           > Consider the following example: the Application transforms a client-submitted
             transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint
-            to remove `t1` and add `t2` to the mempool. If a client wants to eventually check what
-            happened to `t1`, it will discover that `t1` is neither in the mempool nor in a
+            to remove `t1` from the block and add `t2` to the mempool. If a client wants to eventually check what
+            happened to `t1`, it will discover that `t1` is not in a
             committed block, getting the wrong idea that `t1` did not make it into a block. Note
             that `t2` _will be_ in a committed block, but unless the Application tracks this
             information, no component will be aware of it. Thus, if the Application wants
@@ -452,18 +451,14 @@ title: Methods
       size in bytes exceeds `RequestPrepareProposal.max_tx_bytes`.
       Therefore, if the size of `RequestPrepareProposal.txs` is greater than
       `RequestPrepareProposal.max_tx_bytes`, the Application MUST remove transactions to ensure
-      that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those transaction
-      records returned in `ResponsePrepareProposal.tx_records` that are marked as `UNMODIFIED` or
-      `ADDED`.
+      that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those transactions
+      returned in `ResponsePrepareProposal.txs` .
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
       The Application must keep those events until a block is decided and then pass them on to Tendermint via
       `EndBlock` (TODO @sergio-mena I believe they are all merged and returnd via endBlock?).
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
-      In particular, `ResponsePrepareProposal.tx_records` will be deemed invalid if
-        * There is a duplicate transaction in the list.
-        * A new transaction is marked as `UNMODIFIED` or `REMOVED`.
-        * An existing transaction is marked as `ADDED`.
-        * A transaction is marked as `UNKNOWN`.
+      In particular, `ResponsePrepareProposal.txs` will be deemed invalid if
+        * There is a duplicate transaction in the list. <!-- TODO Make sure check is there in code. >
     * If Tendermint fails to validate the `ResponsePrepareProposal`, Tendermint will assume the
       Application is faulty and crash.
     * The implementation of `PrepareProposal` can be non-deterministic.
@@ -485,13 +480,11 @@ and _p_'s _validValue_ is `nil`:
     * the Application MAY fully execute the block and produce a candidate state &mdash; immediate
       execution
     * the Application can manipulate transactions:
-        * leave transactions untouched - `TxAction = UNMODIFIED`
-        * add new transactions (not present initially) to the proposal - `TxAction = ADDED`
-        * remove (invalid) transactions from the proposal and from the mempool - `TxAction = REMOVED`
+        * leave transactions untouched
+        * add new transactions (not present initially) to the proposal
         * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
-          Application does not include the transaction in `ResponsePrepareProposal.tx_records`
-        * modify transactions (e.g. aggregate them) - `TxAction = ADDED` followed by
-          `TxAction = REMOVED`. As explained above, this compromises client traceability, unless
+          Application does not include the transaction in `ResponsePrepareProposal.txs`
+        * modify transactions (e.g. aggregate them). As explained above, this compromises client traceability, unless
           it is implemented at the Application level.
         * reorder transactions - the Application reorders transactions in the list
 4. The Application includes the transaction list (whether modified or not) in the return parameters
@@ -939,7 +932,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
 -->
-### TxAction
+<!-- ### TxAction
 
 ```proto
 enum TxAction {
@@ -966,6 +959,7 @@ enum TxAction {
     | action     | [TxAction](#txaction) | What should Tendermint do with this transaction?                 | 1            |
     | tx         | bytes                 | Transaction contents                                             | 2            |
 
+-->
 ### ProposalStatus
 
 ```proto
