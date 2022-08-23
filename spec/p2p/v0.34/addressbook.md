@@ -189,6 +189,9 @@ peer that end ups being the node itself (`IsSelf` error).
 In both cases, the address dialed or accepted is also added to the address book
 as a local address, via the `AddOurAddress` method.
 
+The same logic is also internally used by the address book for removing
+addresses of a peer that is [marked as a bad peer](#bad-peers).
+
 The entry registered with the peer ID of the address in the `addrLookup` table,
 which is the last address added with that ID, is removed from all buckets where
 it is stored and from the `addrLookup` table.

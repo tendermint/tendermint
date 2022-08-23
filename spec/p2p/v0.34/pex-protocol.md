@@ -23,8 +23,8 @@ A node requests peer addresses by sending a `PexRequest` message to a peer.
 For regular nodes, not operating in seed mode, a PEX request is sent when
 the node *needs* peers addresses, a condition checked:
 
-1. When an *outbound* peer is added, causing the node to request peer addresses
-   to the new peer
+1. When an *outbound* peer is added, causing the node to request addresses from
+   the new peer
 1. Periodically, by the `ensurePeersRoutine`, causing the node to request peer
    addresses to a randomly selected peer
 
@@ -52,14 +52,14 @@ the PEX reactor.
 
 ### Responses
 
-After sending a PEX request is sent to a peer, the node expect to receive,
+After a PEX request is sent to a peer, the node expects to receive,
 as a response, a `PexAddrs` message from the peer.
 This message encodes a list of peer addresses that are
 [added to address book](./addressbook.md#new-addresses),
 having the peer from which the PEX response was received as their source.
 
 Received PEX responses are handled by the `ReceiveAddrs` method of the PEX reactor.
-In the case that of a PEX response received from a peer which is configured as
+In the case of a PEX response received from a peer which is configured as
 a seed node, the PEX reactor attempts immediately to dial the provided peer
 addresses, as detailed [here](TODO).
 
@@ -83,7 +83,7 @@ This leads the peer to be disconnected and marked as a bad peer.
 ## Providing Addresses
 
 When a node receives a `PexRequest` message from a peer,
-it replies to peer with a `PexAddrs` message.
+it replies with a `PexAddrs` message.
 
 This message encodes a [random selection of peer addresses](./addressbook.md#random-selection) 
 retrieved from the address book.
@@ -136,8 +136,8 @@ First, the seed node retrieves a random selection of peer addresses from its
 Address Book.
 This selection is produced in the same way as in the random selection of peer
 addresses that are [provided](#providing-addresses) to a requesting peer.
-Are removed from this selection peers that the seed node has crawled recently,
-last than 2 minutes ago (`minTimeBetweenCrawls`).
+Peers that the seed node has crawled recently,
+less than 2 minutes ago (`minTimeBetweenCrawls`), are removed from this selection.
 The remaining peer addresses are registered in the `crawlPeerInfos` table.
 
 The seed node is not necessarily connected to the peer whose address is
@@ -192,7 +192,7 @@ meaning that `70%` of the peer addresses provided by a seed node are expected
 to be old addresses.
 Although this nomenclature is not clear, *old* addresses are the addresses that
 survived the most in the address book, that is, are addresses that the seed
-node believe that belong to *good* peers (more details [here](./addressbook.md#good-peers)).
+node believes being from *good* peers (more details [here](./addressbook.md#good-peers)).
 
 Another distinction is on the handling of potential [misbehavior](#misbehavior-1)
 of peers requesting addresses.
@@ -210,7 +210,7 @@ peer addresses.
 > received from a peer, and the entry relative to a peer is removed from this
 > map when the peer is disconnected.
 >
-> It is debatable whether this approach indeed prevent abuse against seed nodes.
+> It is debatable whether this approach indeed prevents abuse against seed nodes.
 
 ### Disconnecting from peers
 

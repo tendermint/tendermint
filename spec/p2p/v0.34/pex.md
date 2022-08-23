@@ -26,7 +26,7 @@ The [address book](./addressbook.md), which is a `Service` is started.
 This loads the address book content from disk,
 and starts a routine that periodically persists the address book content to disk.
 
-The PEX reactor is configured with the address of a number of seed nodes,
+The PEX reactor is configured with the addresses of a number of seed nodes,
 the `Seeds` parameter of the `ReactorConfig`.
 The addresses of seed nodes are parsed into `NetAddress` instances and resolved
 into IP addresses, which is implemented by the `checkSeeds` method.

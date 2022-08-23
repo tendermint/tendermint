@@ -26,8 +26,6 @@ Two reactors (in the same node) cannot share the same channel id.
 There is a call back to the reactor, in which the switch passes itself to the
 reactor.
 
-For some reason, the added reactor is returned by this method.
-
 ## RemoveReactor
 
 The reactor is disassociated from the set of channel ids it employs.
@@ -153,8 +151,9 @@ this same `DialPeerWithAddress` method for dialing peers.
 This method receives a list of peer addresses (strings) and dials all of
 them in parallel. 
 
-> TODO: who invokes this? Apparently, it is invoked at startup to dial all
-> configured persistent peers, and can also be invoked via unsafe-RPC.
+> TODO: detail where this method is invoked:
+>  - In the node setup, for every configured persistent peer
+>  - In the rpc package, not in production as it is an unsafe RPC method
 
 The list of peer address is parsed into `NetAddress` instances.
 In case of parsing errors, the method returns. An exception is made for
@@ -236,4 +235,7 @@ provided by each `Peer` instance with the provided message and channel ID.
 The return value (a boolean) of these calls are redirected to a channel that is
 returned by the method.
 
-> TODO: does anyone use this method? Check.
+> TODO: detail where this method is invocked:
+> - By the consensus protocol, in `broadcastNewRoundStepMessage`,
+>   `broadcastNewValidBlockMessage`, and `broadcastHasVoteMessage`
+> - By the state sync protocol
