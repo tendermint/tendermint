@@ -13,7 +13,7 @@ the roles played by the PEX reactor in the p2p layer:
 
 - [Address Book](./addressbook.md): stores known peer addresses and information
   about peers to which the node is connected or has attempted to connect
-- [Peer Manager](./peermanager.md): manages connections established with peers,
+- [Peer Manager](./peer_manager.md): manages connections established with peers,
   defining when a node should dial peers and which peers it should dial
 - [Peer Exchange protocol](./pex-protocol.md): enables nodes to exchange peer
   addresses, thus implementing a peer discovery service

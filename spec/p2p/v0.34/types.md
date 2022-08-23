@@ -123,7 +123,7 @@ instance, used by the [PEX reactor](#pex_reactorgo).
 
 Documented in [switch](./switch.md).
 
-The `Switch` implements the [peer manager](./peermanager.md) role for inbound peers.
+The `Switch` implements the [peer manager](./peer_manager.md) role for inbound peers.
 
 [`Reactor`](#base_reactorgo)s have access to the `Switch` and may invoke its methods.
 This includes the [PEX reactor](#pex_reactorgo).
@@ -219,7 +219,7 @@ Constants used by the [address book](#addrbookgo).
 Implementation of the [PEX reactor](./pex.md), which is a [`Reactor`](#base_reactorgo).
 
 This includes the implementation of the [PEX protocol](./pex-protocol.md)
-and of the [peer manager](./peermanager.md) role for outbound peers.
+and of the [peer manager](./peer_manager.md) role for outbound peers.
 
 The PEX reactor also manages an [address book](#addrbookgo) instance.
 

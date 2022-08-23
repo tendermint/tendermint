@@ -61,7 +61,7 @@ having the peer from which the PEX response was received as their source.
 Received PEX responses are handled by the `ReceiveAddrs` method of the PEX reactor.
 In the case of a PEX response received from a peer which is configured as
 a seed node, the PEX reactor attempts immediately to dial the provided peer
-addresses, as detailed [here](TODO).
+addresses, as detailed [here](./peer_manager.md#fast-dialing).
 
 ### Misbehavior
 
