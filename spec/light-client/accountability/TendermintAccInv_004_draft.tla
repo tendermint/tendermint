@@ -369,11 +369,11 @@ Inv ==
     /\ IfSentPrecommitThenSentPrevote
     /\ IfSentPrecommitThenReceivedTwoThirds
     /\ AllNoEquivocationByCorrect
-    /\ PrecommitsLockValue
     /\ RelockValueIfEnoughPrevotes
     /\ AllIfValidRoundThenTwoThirds
     /\ AllValidAndLocked
     /\ AllIfValidRoundThenProposal
+    \*/\ PrecommitsLockValue
 
 \* this is the inductive invariant we like to check
 TypedInv == TypeOK /\ Inv

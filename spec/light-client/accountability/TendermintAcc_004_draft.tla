@@ -495,7 +495,6 @@ EquivocationBy(p) ==
               /\ m2.src = p
               /\ m1.round = m2.round
     IN
-    \/ EquivocationIn(evidencePropose)
     \/ EquivocationIn(evidencePrevote)
     \/ EquivocationIn(evidencePrecommit)
 
