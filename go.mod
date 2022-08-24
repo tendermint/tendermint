@@ -245,3 +245,7 @@ require (
 	github.com/prometheus/common v0.37.0
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
 )
+
+retract (
+	[v0.35.0,v0.35.9] // See https://github.com/tendermint/tendermint/discussions/9155
+)
