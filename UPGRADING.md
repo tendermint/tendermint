@@ -11,8 +11,7 @@ Tendermint Core.
   values, which was inconsistent with the `uint64` varint length delimiters used
   in the P2P layer. Both now consistently use `uint64` varint length delimiters.
 * Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI
-  version they expect is being used in order to avoid unimplemented changes
-  errors.
+  version they expect is being used in order to ensure compatibility.
 
 ## v0.34.20
 
