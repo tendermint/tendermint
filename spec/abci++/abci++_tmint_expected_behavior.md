@@ -59,9 +59,8 @@ consensus-exec      = (inf)consensus-height
 consensus-height    = *consensus-round decide commit
 consensus-round     = proposer / non-proposer
 
-proposer            = *got-vote prepare-proposal *got-vote process-proposal [extend]
-extend              = *got-vote extend-vote *got-vote
-non-proposer        = *got-vote [process-proposal] [extend]
+proposer            = *got-vote prepare-proposal *got-vote process-proposal
+non-proposer        = *got-vote [process-proposal]
 
 init-chain          = %s"<InitChain>"
 offer-snapshot      = %s"<OfferSnapshot>"
@@ -148,7 +147,7 @@ Let us now examine the grammar line by line, providing further details.
 >```
 
 * A consensus height consists of zero or more rounds before deciding and executing via a call to
-  `FinalizeBlock`, followed by a call to `Commit`. In each round, the sequence of method calls
+  `BeginBlock-DeliverTx-EndBlock`, followed by a call to `Commit`. In each round, the sequence of method calls
   depends on whether the local process is the proposer or not. Note that, if a height contains zero
   rounds, this means the process is replaying an already decided value (catch-up mode).
 
@@ -166,8 +165,6 @@ Let us now examine the grammar line by line, providing further details.
 
 >```abnf
 >proposer            = *got-vote prepare-proposal *got-vote process-proposal 
-<!-- [extend] -->
-<!-->>extend              = *got-vote extend-vote *got-vote -->
 >```
 
 * Also for every round, if the local process is _not_ the proposer of the current round, Tendermint
@@ -195,10 +192,6 @@ Let us now examine the grammar line by line, providing further details.
 >begin-block         = %s"<BeginBlock>" 
 >deliver-txs         = %s"<DeliverTx>"
 >end-block           = %s"<EndBlock>"
-<!-->>extend-vote         = %s"<ExtendVote>"
->got-vote            = %s"<VerifyVoteExtension>" -->
-<!-- TODO Add BeginBlock etc. 
->decide              = %s"<FinalizeBlock>" -->
 >commit              = %s"<Commit>"
 >```
 
@@ -215,9 +208,8 @@ and `ApplySnapshotChunk`, do not need to undergo any changes in their implementa
 
 As for the new methods:
 
-* `PrepareProposal` must create a list of [TxRecord](./abci++_methods.md#txrecord) each containing
-  a transaction passed in `RequestPrepareProposal.txs`, in the same other. The field `action` must
-  be set to `UNMODIFIED` for all [TxRecord](./abci++_methods.md#txrecord) elements in the list.
+* `PrepareProposal` must create a list of [transactions](./abci++_methods.md#prepareproposal) each containing
+  a transaction passed in `RequestPrepareProposal.txs`, in the same order. 
   The Application must check whether the size of all transactions exceeds the byte limit
   (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the
   end of the list until the total byte size is at or below the limit.

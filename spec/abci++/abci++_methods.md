@@ -432,9 +432,7 @@ title: Methods
               there are other transactions with higher priority, then it should not include it in
               `ResponsePrepareProposal.txs`. However, Tendermint will not remove `tx` from the mempool. The
               Application should be extra-careful, as abusing this feature may cause transactions
-              to stay much longer than needed in the mempool.
-            * If the Application considers that `tx` should not be included in the proposal and
-              removed from the block, then the Application should include it in `ResponsePrepareProposal.txs`.            
+              to stay much longer than needed in the mempool.         
             * If the Application wants to add a new transaction to the proposed block, then the
               Application includes it in `ResponsePrepareProposal.txs`. In this case, Tendermint
               will also add the transaction to the mempool.
@@ -457,16 +455,16 @@ title: Methods
       that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those transactions
       returned in `ResponsePrepareProposal.txs` .
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
-      The Application must keep those events until a block is decided and then pass them on to Tendermint via
-      `EndBlock` (TODO @sergio-mena I believe they are all merged and returnd via endBlock?).
+      The Application must keep those events until a block is decided. It will then forward the events to the `BeginBlock-DeliverTx-EndBlock` functions depending on where each event should be placed. The events are then returned to Tendermint when the transactions are indeed executed.
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
-      In particular, `ResponsePrepareProposal.txs` will be deemed invalid if
-        * There is a duplicate transaction in the list. <!-- TODO Make sure check is there in code. >
+      In particular, `ResponsePrepareProposal.txs` will be deemed invalid if there are duplicate transactions in the list. <!-- ToDo  this is currenetly not implemented! -->
     * If Tendermint fails to validate the `ResponsePrepareProposal`, Tendermint will assume the
       Application is faulty and crash.
     * The implementation of `PrepareProposal` can be non-deterministic.
 
+
 #### When does Tendermint call `PrepareProposal`?
+
 
 When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _p_ is the proposer,
 and _p_'s _validValue_ is `nil`:
@@ -485,8 +483,8 @@ and _p_'s _validValue_ is `nil`:
     * the Application can manipulate transactions:
         * leave transactions untouched
         * add new transactions (not present initially) to the proposal
-        * remove transactions from the proposal but not from the mempool (effectively _delaying_ them) - the
-          Application does not include the transaction in `ResponsePrepareProposal.txs`
+        * remove transactions from the proposal (but not from the mempool thus effectively _delaying_ them) - the
+          Application does not include the transaction in `ResponsePrepareProposal.txs`.
         * modify transactions (e.g. aggregate them). As explained above, this compromises client traceability, unless
           it is implemented at the Application level.
         * reorder transactions - the Application reorders transactions in the list
@@ -563,7 +561,7 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
     3. If the returned value is
          * `ACCEPT`: Tendermint prevotes on this proposal for round _r_, height _h_.
          * `REJECT`: Tendermint prevotes `nil`.
-<!-->
+<!--
 ### ExtendVote
 
 #### Parameters and Types
@@ -669,7 +667,8 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
    * `REJECT`, _p_'s Tendermint will deem the Precommit message invalid and discard it.
 
 -->
-<!-->
+
+<!--
 ### FinalizeBlock
 
 #### Parameters and Types
@@ -880,7 +879,8 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
     * This information is typically extracted from a proposed or decided block.
 
-<!-->
+<!--
+
 ### ExtendedVoteInfo
 
 * **Fields**:
@@ -897,6 +897,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * `vote_extension` contains the sending validator's vote extension, which is signed by Tendermint. It can be empty
 
 -->
+
 ### CommitInfo
 
 * **Fields**:
@@ -906,7 +907,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | round | int32                          | Commit round. Reflects the round at which the block proposer decided in the previous height. | 1            |
     | votes | repeated [VoteInfo](#voteinfo) | List of validators' addresses in the last validator set with their voting information.       | 2            |
 
-<!-->
+<!--
 ### ExtendedCommitInfo
 
 * **Fields**:
@@ -992,7 +993,7 @@ enum VerifyStatus {
         * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
         * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
 
-
+<!--
 ### CanonicalVoteExtension
 
 >**TODO**: This protobuf message definition is not part of the ABCI++ interface, but rather belongs to the
@@ -1014,3 +1015,4 @@ enum VerifyStatus {
       Then it sends `extension` to the Application via `RequestVerifyVoteExtension` for verification.
 
 [protobuf-timestamp]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp
+-->

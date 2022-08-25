@@ -29,7 +29,7 @@ title: Overview and basic concepts
 [&uparrow; Back to Outline](#outline)
 
 The Application's main role is to execute blocks decided (a.k.a. finalized) by consensus. The
-decided blocks are the main consensus's ouput to the (replicated) Application. With ABCI, the
+decided blocks are the consensus's main ouput to the (replicated) Application. With ABCI, the
 application only interacts with consensus at *decision* time. This restricted mode of interaction
 prevents numerous features for the Application, including many scalability improvements that are
 now better understood than when ABCI was first written. For example, many ideas proposed to improve
@@ -50,7 +50,7 @@ and checks in a proposed block through the `ProcessProposal` method (b).
 simplified, efficient way to deliver a decided block to the Application. -->
 
 We plan to extend this to allow applications to intervene at the moment a (precommit) vote is sent/received. 
-The applications would require their validators to more than just validate blocks through the `ExtendVote` 
+The applications could then require their validators to more than just validate blocks through the `ExtendVote` 
 and `VerifyVoteExtension` methods.
 
 ## Method overview
@@ -64,8 +64,8 @@ Methods can be classified into four categories: *consensus*, *mempool*, *info*, 
 
 The first time a new blockchain is started, Tendermint calls `InitChain`. From then on, methods `BeginBlock`,
  `DeliverTx` and `EndBlock` are executed upon the decision of each block, resulting in an updated Application
-state. One DeliverTx is called for each transaction in the block. The result is an updated application state. 
-Cryptographic commitments to the results of DeliverTx, EndBlock, and Commit are included in the header of 
+state. One `DeliverTx` is called for each transaction in the block. The result is an updated application state. 
+Cryptographic commitments to the results of `DeliverTx, EndBlock`, and `Commit` are included in the header of 
 the next block. During the execution of an instance of consensus, which decides the block for a given
 height, and before method `BeginBlock` is called, methods `PrepareProposal` and `ProcessProposal`,
  may be called several times. See
@@ -80,7 +80,7 @@ call sequences of these methods.
   This enables, for instance, batch optimizations to a block, which has been empirically
   demonstrated to be a key component for improved performance. Method `PrepareProposal` is called
   every time Tendermint is about to broadcast a Proposal message, but no previous proposal has
-  been locked at the Tendermint level. Tendermint gathers outstanding transactions from the
+  been locked at Tendermint level. Tendermint gathers outstanding transactions from the
   mempool, generates a block header, and uses them to create a block to propose. Then, it calls
   `RequestPrepareProposal` with the newly created proposal, called *raw proposal*. The Application
   can make changes to the raw proposal, such as modifying transactions, and returns the
@@ -155,7 +155,7 @@ call sequences of these methods.
   transaction is discarded.
   Tendermint calls it when it receives a new transaction either coming from an external
   user (e.g., a client) or another node. Furthermore, Tendermint can be configured to call
-  re-`CheckTx` on all outstanding transactions in the mempool after calling `Commit`for a block.
+  re-`CheckTx` on all outstanding transactions in the mempool after calling `Commit` for a block.
 
 ### Info methods
 
@@ -294,7 +294,7 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 
 [&uparrow; Back to Outline](#outline)
 
-Methods `BeginBlock, DeliverTx and EndBlock ` include an `events` field at the top level in its
+Methods `BeginBlock, DeliverTx` and `EndBlock ` include an `events` field at the top level in its
 `Response*`, and one `events` field per transaction included in the block.
 Applications may respond to this ABCI++ method with an event list for each executed
 transaction, and a general event list for the block itself.
@@ -406,7 +406,7 @@ These methods also return a `Codespace` string to Tendermint. This field is
 used to disambiguate `Code` values returned by different domains of the
 Application. The `Codespace` is a namespace for the `Code`.
 
-Methods `Echo`, `Info`,`BeginBlock`, `EndBlock`, `Commit` and `InitChain` do not return errors.
+Methods `Echo`, `Info`, `BeginBlock`, `EndBlock`, `Commit` and `InitChain` do not return errors.
 An error in any of these methods represents a critical issue that Tendermint
 has no reasonable way to handle. If there is an error in one
 of these methods, the Application must crash to ensure that the error is safely
@@ -417,7 +417,7 @@ handled by an operator.
 these codes reports errors related to the transaction it is attached to.
 However, `FinalizeBlock` does not return errors at the top level, so the
 same considerations on critical issues made for `Echo`, `Info`, and
-`InitChain` also apply here. TODO check whether execTxResult exists in some form--> 
+`InitChain` also apply here. --> 
 
 The handling of non-zero response codes by Tendermint is described below.
 

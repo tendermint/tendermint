@@ -90,7 +90,7 @@ Let *e<sup>r</sup><sub>p</sub>* be the vote extension that the Application of a 
 Let *w<sup>r</sup><sub>p</sub>* be the proposed block that *p*'s Tendermint passes to the Application via `RequestExtendVote`
 in round *r*, height *h*. -->
 
-<!-->
+<!--
 * Requirement 6 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two different correct
   processes *p* and *q*, if *q* receives *e<sup>r</sup><sub>p</sub>* from *p* in height *h*, *q*'s
   Application returns Accept in `ResponseVerifyVoteExtension`.
@@ -195,8 +195,8 @@ up to the Application to synchronize access to its state when handling
 ABCI++ methods on all connections. -->
 
 <!-- TODO CHeck with Sergio whether this is still the case-->
-Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
-still received in sequence. 
+<!--Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
+still received in sequence. -->
 
 #### BeginBlock - DeliverTx - EndBlock
 
@@ -399,7 +399,7 @@ only in the mempool.
 This means it does not guarantee that committed blocks satisfy these rules.
 It is the application's responsibility to return non-zero response codes when gas limits are exceeded
 when executing the transactions of a block.
-Since the introduction of `PrepareProposal` and `ProcessProposal` in v.0.36.x, it is now possible
+Since the introduction of `PrepareProposal` and `ProcessProposal` in v.0.37.x, it is now possible
 for the Application to enforce that all blocks proposed (and voted for) in consensus &mdash; and thus all
 blocks decided &mdash; respect the `MaxGas` limits described above.
 
@@ -423,7 +423,7 @@ might have a different *CheckTxState* values when they receive it and check thei
 via `CheckTx`.
 Tendermint ignores this value in `ResponseCheckTx`.
 
-From v0.35.x on, there is a `Priority` field in `ResponseCheckTx` that can be
+From v0.37.x on, there is a `Priority` field in `ResponseCheckTx` that can be
 used to explicitly prioritize transactions in the mempool for inclusion in a block
 proposal.
 
@@ -453,7 +453,7 @@ events took place during their execution.
 
 The application may set the validator set during
 [`InitChain`](./abci%2B%2B_methods.md#initchain), and may update it during
-[`EndBlock`](./abci%2B%2B_methods.md#endblock). In both cases, a structure of type <!-- TODO Check with Sergio-->
+[`EndBlock`](./abci%2B%2B_methods.md#endblock). In both cases, a structure of type
 [`ValidatorUpdate`](./abci%2B%2B_methods.md#validatorupdate) is returned.
 
 The `InitChain` method, used to initialize the Application, can return a list of validators.
@@ -581,6 +581,7 @@ This parameter is part of the
 [proposer-based timestamps](../consensus/proposer-based-timestamp)
 (PBTS) algorithm.
 
+<!-- 
 ##### SynchronyParams.Precision
 
 This sets a bound on how skewed a proposer's clock may be from any validator
@@ -589,6 +590,7 @@ on the network while still producing valid proposals.
 This parameter is part of the
 [proposer-based timestamps](../consensus/proposer-based-timestamp)
 (PBTS) algorithm.
+-->
 
 ##### TimeoutParams.Propose
 
@@ -647,6 +649,7 @@ node has received all precommits for a block, forgoing the remaining commit time
 Setting this parameter to `false` (the default) causes Tendermint to wait
 for the full commit timeout configured in `TimeoutParams.Commit`.
 
+<!--
 ##### ABCIParams.VoteExtensionsEnableHeight
 
 This parameter is either 0 or a positive height at which vote extensions
@@ -665,7 +668,7 @@ include the vote extensions from height `H`. For all heights after `H`
 
 Must always be set to a future height. Once set to a value different from
 0, its value must not be changed.
-
+-->
 #### Updating Consensus Parameters
 
 The application may set the `ConsensusParams` during
