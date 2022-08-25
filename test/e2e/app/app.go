@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -70,6 +71,13 @@ type Config struct {
 	//
 	// height <-> pubkey <-> voting power
 	ValidatorUpdates map[string]map[string]uint8 `toml:"validator_update"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
+	// TODO: add vote extension and finalize block delays once completed (@cmwaters)
 }
 
 func DefaultConfig(dir string) *Config {
@@ -136,6 +144,11 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 			Log:  err.Error(),
 		}
 	}
+
+	if app.cfg.CheckTxDelay != 0 {
+		time.Sleep(app.cfg.CheckTxDelay)
+	}
+
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
@@ -259,20 +272,21 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 
 func (app *Application) PrepareProposal(
 	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	// None of the transactions are modified by this application.
-	trs := make([]*abci.TxRecord, 0, len(req.Txs))
+	txs := make([][]byte, 0, len(req.Txs))
 	var totalBytes int64
 	for _, tx := range req.Txs {
 		totalBytes += int64(len(tx))
 		if totalBytes > req.MaxTxBytes {
 			break
 		}
-		trs = append(trs, &abci.TxRecord{
-			Action: abci.TxRecord_UNMODIFIED,
-			Tx:     tx,
-		})
+		txs = append(txs, tx)
 	}
-	return abci.ResponsePrepareProposal{TxRecords: trs}
+
+	if app.cfg.PrepareProposalDelay != 0 {
+		time.Sleep(app.cfg.PrepareProposalDelay)
+	}
+
+	return abci.ResponsePrepareProposal{Txs: txs}
 }
 
 // ProcessProposal implements part of the Application interface.
@@ -284,6 +298,11 @@ func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.Re
 			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
 		}
 	}
+
+	if app.cfg.ProcessProposalDelay != 0 {
+		time.Sleep(app.cfg.ProcessProposalDelay)
+	}
+
 	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }
 

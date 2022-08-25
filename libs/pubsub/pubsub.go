@@ -31,7 +31,6 @@
 //             return subscription.Err()
 //         }
 //     }
-//
 package pubsub
 
 import (

@@ -1,19 +1,45 @@
 ---------------------- MODULE MC_n4_f2_amnesia -------------------------------
 EXTENDS Sequences
 
-CONSTANT Proposer \* the proposer function from 0..NRounds to 1..N
+CONSTANT
+  \* @type: $round -> $process;
+  Proposer
 
 \* the variables declared in TendermintAcc3
 VARIABLES
-  round, step, decision, lockedValue, lockedRound, validValue, validRound,
-  msgsPropose, msgsPrevote, msgsPrecommit, evidence, action
+  \* @type: $process -> $round;
+  round,    \* a process round number: Corr -> Rounds
+  \* @type: $process -> $step;
+  step,     \* a process step: Corr -> { "PROPOSE", "PREVOTE", "PRECOMMIT", "DECIDED" }
+  \* @type: $process -> $value;
+  decision, \* process decision: Corr -> ValuesOrNil
+  \* @type: $process -> $value;
+  lockedValue,  \* a locked value: Corr -> ValuesOrNil
+  \* @type: $process -> $round;
+  lockedRound,  \* a locked round: Corr -> RoundsOrNil
+  \* @type: $process -> $value;
+  validValue,   \* a valid value: Corr -> ValuesOrNil
+  \* @type: $process -> $round;
+  validRound,   \* a valid round: Corr -> RoundsOrNil
+  \* @type: $round -> Set($proposeMsg);
+  msgsPropose,   \* PROPOSE messages broadcast in the system, Rounds -> Messages
+  \* @type: $round -> Set($preMsg);
+  msgsPrevote,   \* PREVOTE messages broadcast in the system, Rounds -> Messages
+  \* @type: $round -> Set($preMsg);
+  msgsPrecommit, \* PRECOMMIT messages broadcast in the system, Rounds -> Messages
+  \* @type: Set($proposeMsg);
+  evidencePropose, \* the PROPOSE messages used by some correct processes to make transitions
+  \* @type: Set($preMsg);
+  evidencePrevote, \* the PREVOTE messages used by some correct processes to make transitions
+  \* @type: Set($preMsg);
+  evidencePrecommit, \* the PRECOMMIT messages used by some correct processes to make transitions
+  \* @type: $action;
+  action        \* we use this variable to see which action was taken
 
 \* the variable declared in TendermintAccTrace3
 VARIABLE
+  \* @type: $trace;
   toReplay
-
-\* old apalache annotations, fix with the new release
-a <: b == a  
 
 INSTANCE TendermintAccTrace_004_draft WITH
   Corr <- {"c1", "c2"},
@@ -27,14 +53,14 @@ INSTANCE TendermintAccTrace_004_draft WITH
     "UponProposalInPropose",
     "UponProposalInPrevoteOrCommitAndPrevote",
     "UponProposalInPrecommitNoDecision",
-    "OnRoundCatchup", 
+    "OnRoundCatchup",
     "UponProposalInPropose",
     "UponProposalInPrevoteOrCommitAndPrevote",
     "UponProposalInPrecommitNoDecision"
-  >> <: Seq(STRING)
+  >>
 
 \* run Apalache with --cinit=ConstInit
 ConstInit == \* the proposer is arbitrary -- works for safety
   Proposer \in [Rounds -> AllProcs]
 
-=============================================================================    
+=============================================================================

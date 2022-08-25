@@ -3,25 +3,15 @@
 This guide provides instructions for upgrading to specific versions of
 Tendermint Core.
 
-## v0.37 (Unreleased)
-
-This version requires a coordinated network upgrade. It alters the elements in
-the predigest of the `LastResultsHash` and thus all nodes must upgrade together
-(see [\#9175](https://github.com/tendermint/tendermint/pull/9175)).
-
-NOTE: v0.35 was recalled and v0.36 was skipped
+## Unreleased
 
 ### ABCI Changes
 
 * In v0.34, messages on the wire used to be length-delimited with `int64` varint
   values, which was inconsistent with the `uint64` varint length delimiters used
   in the P2P layer. Both now consistently use `uint64` varint length delimiters.
-
-## Unreleased
-
-### ABCI Changes
-
-* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI version they expect is being used in order to avoid unimplemented changes errors.
+* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI
+  version they expect is being used in order to ensure compatibility.
 
 ## v0.34.20
 
@@ -36,7 +26,7 @@ and gas cost).
 Operators can enable the priority mempool by setting `mempool.version` to
 `"v1"` in the `config.toml`. For more technical details about the priority
 mempool, see [ADR 067: Mempool
-Refactor](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-067-mempool-refactor.md).
+Refactor](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-067-mempool-refactor.md).
 
 ## v0.34.0
 
@@ -54,7 +44,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   were added to support the new State Sync feature.
   Previously, syncing a new node to a preexisting network could take days; but with State Sync,
   new nodes are able to join a network in a matter of seconds.
-  Read [the spec](https://docs.tendermint.com/master/spec/abci/apps.html#state-sync)
+  Read [the spec](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/apps.md#state-sync)
   if you want to learn more about State Sync, or if you'd like your application to use it.
   (If you don't want to support State Sync in your application, you can just implement these new
   ABCI methods as no-ops, leaving them empty.)
@@ -70,7 +60,7 @@ Note also that Tendermint 0.34 also requires Go 1.15 or higher.
   Applications should be able to handle these evidence types
   (i.e., through slashing or other accountability measures).
 
-* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/crypto/keys.proto#L13-L15)
+* The [`PublicKey` type](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/crypto/keys.proto#L13-L15)
   (used in ABCI as part of `ValidatorUpdate`) now uses a `oneof` protobuf type.
   Note that since Tendermint only supports ed25519 validator keys, there's only one
   option in the `oneof`.  For more, see "Protocol Buffers," below.
@@ -180,7 +170,7 @@ The `bech32` package has moved to the Cosmos SDK:
 ### CLI
 
 The `tendermint lite` command has been renamed to `tendermint light` and has a slightly different API.
-See [the docs](https://docs.tendermint.com/master/tendermint-core/light-client-protocol.html#http-proxy) for details.
+See [the docs](https://docs.tendermint.com/v0.33/tendermint-core/light-client-protocol.html#http-proxy) for details.
 
 ### Light Client
 
@@ -335,7 +325,7 @@ Evidence Params has been changed to include duration.
 ### RPC Changes
 
 * `/validators` is now paginated (default: 30 vals per page)
-* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/master/rpc/#/Info/block_results)
+* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/v0.33/rpc/#/Info/block_results)
 * Event suffix has been removed from the ID in event responses
 * IDs are now integers not `json-client-XYZ`
 
@@ -529,14 +519,14 @@ due to changes in how various data structures are hashed.
 Any implementations of Tendermint blockchain verification, including lite clients,
 will need to be updated. For specific details:
 
-* [Merkle tree](https://github.com/tendermint/spec/blob/master/spec/blockchain/encoding.md#merkle-trees)
-* [ConsensusParams](https://github.com/tendermint/spec/blob/master/spec/blockchain/state.md#consensusparams)
+* [Merkle tree](https://github.com/tendermint/tendermint/blob/main/spec/blockchain/encoding.md#merkle-trees)
+* [ConsensusParams](https://github.com/tendermint/tendermint/blob/main/spec/blockchain/state.md#consensusparams)
 
 There was also a small change to field ordering in the vote struct. Any
 implementations of an out-of-process validator (like a Key-Management Server)
 will need to be updated. For specific details:
 
-* [Vote](https://github.com/tendermint/spec/blob/master/spec/consensus/signing.md#votes)
+* [Vote](https://github.com/tendermint/tendermint/blob/main/spec/consensus/signing.md#votes)
 
 Finally, the proposer selection algorithm continues to evolve. See the
 [work-in-progress

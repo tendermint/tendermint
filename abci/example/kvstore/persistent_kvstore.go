@@ -45,7 +45,10 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	state := loadState(db)
 
 	return &PersistentKVStoreApplication{
-		app:                &Application{state: state},
+		app: &Application{
+			state:      state,
+			txToRemove: map[string]struct{}{},
+		},
 		valAddrToPubKeyMap: make(map[string]pc.PublicKey),
 		logger:             log.NewNopLogger(),
 	}
@@ -142,7 +145,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 		}
 	}
 
-	return types.ResponseBeginBlock{}
+	return app.app.BeginBlock(req)
 }
 
 // Update the validator set
@@ -172,7 +175,7 @@ func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 
 func (app *PersistentKVStoreApplication) PrepareProposal(
 	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	return types.ResponsePrepareProposal{TxRecords: app.substPrepareTx(req.Txs, req.MaxTxBytes)}
+	return types.ResponsePrepareProposal{Txs: app.substPrepareTx(req.Txs, req.MaxTxBytes)}
 }
 
 func (app *PersistentKVStoreApplication) ProcessProposal(
@@ -302,10 +305,15 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 
 // -----------------------------
 
-const PreparePrefix = "prepare"
+const (
+	PreparePrefix = "prepare"
+	ReplacePrefix = "replace"
+)
 
-func isPrepareTx(tx []byte) bool {
-	return bytes.HasPrefix(tx, []byte(PreparePrefix))
+func isPrepareTx(tx []byte) bool { return bytes.HasPrefix(tx, []byte(PreparePrefix)) }
+
+func isReplacedTx(tx []byte) bool {
+	return bytes.HasPrefix(tx, []byte(ReplacePrefix))
 }
 
 // execPrepareTx is noop. tx data is considered as placeholder
@@ -317,32 +325,19 @@ func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.Response
 
 // substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
 // proposal for transactions with the prefix stripped.
-// It marks all of the original transactions as 'REMOVED' so that
-// Tendermint will remove them from its mempool.
-func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*types.TxRecord {
-	trs := make([]*types.TxRecord, 0, len(blockData))
-	var removed []*types.TxRecord
+func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte, maxTxBytes int64) [][]byte {
+	txs := make([][]byte, 0, len(blockData))
 	var totalBytes int64
 	for _, tx := range blockData {
 		txMod := tx
-		action := types.TxRecord_UNMODIFIED
 		if isPrepareTx(tx) {
-			removed = append(removed, &types.TxRecord{
-				Tx:     tx,
-				Action: types.TxRecord_REMOVED,
-			})
-			txMod = bytes.TrimPrefix(tx, []byte(PreparePrefix))
-			action = types.TxRecord_ADDED
+			txMod = bytes.Replace(tx, []byte(PreparePrefix), []byte(ReplacePrefix), 1)
 		}
 		totalBytes += int64(len(txMod))
 		if totalBytes > maxTxBytes {
 			break
 		}
-		trs = append(trs, &types.TxRecord{
-			Tx:     txMod,
-			Action: action,
-		})
+		txs = append(txs, txMod)
 	}
-
-	return append(trs, removed...)
+	return txs
 }

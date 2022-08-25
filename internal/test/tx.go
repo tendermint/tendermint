@@ -1,4 +1,4 @@
-package factory
+package test
 
 import "github.com/tendermint/tendermint/types"
 

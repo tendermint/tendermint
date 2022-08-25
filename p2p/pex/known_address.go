@@ -104,7 +104,6 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
 
    All addresses that meet these criteria are assumed to be worthless and not
    worth keeping hold of.
-
 */
 func (ka *knownAddress) isBad() bool {
 	// Is Old --> good

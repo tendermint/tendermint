@@ -29,7 +29,7 @@ func TestRollback(t *testing.T) {
 
 	// perform the rollback over a version bump
 	newParams := types.DefaultConsensusParams()
-	newParams.Version.AppVersion = 11
+	newParams.Version.App = 11
 	newParams.Block.MaxBytes = 1000
 	nextState := initialState.Copy()
 	nextState.LastBlockHeight = nextHeight
@@ -82,7 +82,10 @@ func TestRollback(t *testing.T) {
 }
 
 func TestRollbackNoState(t *testing.T) {
-	stateStore := state.NewStore(dbm.NewMemDB())
+	stateStore := state.NewStore(dbm.NewMemDB(),
+		state.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 	blockStore := &mocks.BlockStore{}
 
 	_, _, err := state.Rollback(blockStore, stateStore)
@@ -115,11 +118,11 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 }
 
 func setupStateStore(t *testing.T, height int64) state.Store {
-	stateStore := state.NewStore(dbm.NewMemDB())
+	stateStore := state.NewStore(dbm.NewMemDB(), state.StoreOptions{DiscardABCIResponses: false})
 	valSet, _ := types.RandValidatorSet(5, 10)
 
 	params := types.DefaultConsensusParams()
-	params.Version.AppVersion = 10
+	params.Version.App = 10
 
 	initialState := state.State{
 		Version: tmstate.Version{

@@ -16,7 +16,7 @@ The messages exchanged between tendermint and a remote signer currently live in
 
 [privval/socket.go]: https://github.com/tendermint/tendermint/blob/d419fffe18531317c28c29a292ad7d253f6cafdf/privval/socket.go#L496-L502
 [issue#1622]: https://github.com/tendermint/tendermint/issues/1622
-[types]: https://github.com/tendermint/tendermint/tree/master/types
+[types]: https://github.com/tendermint/tendermint/tree/main/types
  
 
 ## Decision

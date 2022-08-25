@@ -26,7 +26,7 @@ will indicate their support with a heartfelt emoji.
 
 If the issue would benefit from thorough discussion, maintainers may
 request that you create a [Request For
-Comment](https://github.com/tendermint/spec/tree/master/rfc)
+Comment](https://github.com/tendermint/tendermint/tree/main/docs/rfc)
 in the Tendermint spec repo. Discussion
 at the RFC stage will build collective understanding of the dimensions
 of the problems and help structure conversations around trade-offs.
@@ -153,10 +153,44 @@ If you are a VS Code user, you may want to add the following to your `.vscode/se
 Every fix, improvement, feature, or breaking change should be made in a
 pull-request that includes an update to the `CHANGELOG_PENDING.md` file.
 
+### What does a good changelog entry look like?
+
+Changelog entries should answer the question: "what is important about this
+change for users to know?" or "what problem does this solve for users?". It
+should not simply be a reiteration of the title of the associated PR, unless the
+title of the PR _very_ clearly explains the benefit of a change to a user.
+
+Some good examples of changelog entry descriptions:
+
+```
+- [consensus] \#1111 Small transaction throughput improvement (approximately
+  3-5\% from preliminary tests) through refactoring the way we use channels
+- [mempool] \#1112 Refactor Go API to be able to easily swap out the current
+  mempool implementation in Tendermint forks
+- [p2p] \#1113 Automatically ban peers when their messages are unsolicited or
+  are received too frequently
+```
+
+Some bad examples of changelog entry descriptions:
+
+```
+- [consensus] \#1111 Refactor channel usage
+- [mempool] \#1112 Make API generic
+- [p2p] \#1113 Ban for PEX message abuse
+```
+
+For more on how to write good changelog entries, see:
+
+- <https://keepachangelog.com>
+- <https://docs.gitlab.com/ee/development/changelog.html#writing-good-changelog-entries>
+- <https://depfu.com/blog/what-makes-a-good-changelog>
+
+### Changelog entry format
+
 Changelog entries should be formatted as follows:
 
 ```md
-- [module] \#xxx Some description about the change (@contributor)
+- [module] \#xxx Some description of the change (@contributor)
 ```
 
 Here, `module` is the part of the code that changed (typically a

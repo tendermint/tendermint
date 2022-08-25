@@ -37,7 +37,7 @@ The following metrics are available:
 | consensus_total_txs                    | Gauge     |                 | Total number of transactions committed                                                                                                     |
 | consensus_block_parts                  | counter   | peer_id         | number of blockparts transmitted by peer                                                                                                   |
 | consensus_latest_block_height          | gauge     |                 | /status sync_info number                                                                                                                   |
-| consensus_fast_syncing                 | gauge     |                 | either 0 (not fast syncing) or 1 (syncing)                                                                                                 |
+| consensus_block_syncing                | gauge     |                 | either 0 (not block syncing) or 1 (syncing)                                                                                                 |
 | consensus_state_syncing                | gauge     |                 | either 0 (not state syncing) or 1 (syncing)                                                                                                |
 | consensus_block_size_bytes             | Gauge     |                 | Block size in bytes                                                                                                                        |
 | consensus_step_duration                | Histogram | step            | Histogram of durations for each step in the consensus protocol                                                                             |

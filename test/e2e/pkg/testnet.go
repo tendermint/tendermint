@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -45,21 +46,28 @@ const (
 	PerturbationKill       Perturbation = "kill"
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
+
+	EvidenceAgeHeight int64         = 7
+	EvidenceAgeTime   time.Duration = 500 * time.Millisecond
 )
 
 // Testnet represents a single testnet.
 type Testnet struct {
-	Name             string
-	File             string
-	Dir              string
-	IP               *net.IPNet
-	InitialHeight    int64
-	InitialState     map[string]string
-	Validators       map[*Node]int64
-	ValidatorUpdates map[int64]map[*Node]int64
-	Nodes            []*Node
-	KeyType          string
-	ABCIProtocol     string
+	Name                 string
+	File                 string
+	Dir                  string
+	IP                   *net.IPNet
+	InitialHeight        int64
+	InitialState         map[string]string
+	Validators           map[*Node]int64
+	ValidatorUpdates     map[int64]map[*Node]int64
+	Nodes                []*Node
+	KeyType              string
+	Evidence             int
+	ABCIProtocol         string
+	PrepareProposalDelay time.Duration
+	ProcessProposalDelay time.Duration
+	CheckTxDelay         time.Duration
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -72,7 +80,7 @@ type Node struct {
 	IP               net.IP
 	ProxyPort        uint32
 	StartAt          int64
-	FastSync         bool
+	BlockSync        string
 	StateSync        bool
 	Mempool          string
 	Database         string
@@ -113,16 +121,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	testnet := &Testnet{
-		Name:             filepath.Base(dir),
-		File:             file,
-		Dir:              dir,
-		IP:               ipGen.Network(),
-		InitialHeight:    1,
-		InitialState:     manifest.InitialState,
-		Validators:       map[*Node]int64{},
-		ValidatorUpdates: map[int64]map[*Node]int64{},
-		Nodes:            []*Node{},
-		ABCIProtocol:     manifest.ABCIProtocol,
+		Name:                 filepath.Base(dir),
+		File:                 file,
+		Dir:                  dir,
+		IP:                   ipGen.Network(),
+		InitialHeight:        1,
+		InitialState:         manifest.InitialState,
+		Validators:           map[*Node]int64{},
+		ValidatorUpdates:     map[int64]map[*Node]int64{},
+		Nodes:                []*Node{},
+		Evidence:             manifest.Evidence,
+		ABCIProtocol:         manifest.ABCIProtocol,
+		PrepareProposalDelay: manifest.PrepareProposalDelay,
+		ProcessProposalDelay: manifest.ProcessProposalDelay,
+		CheckTxDelay:         manifest.CheckTxDelay,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -155,7 +167,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
-			FastSync:         nodeManifest.FastSync,
+			BlockSync:        nodeManifest.BlockSync,
 			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
@@ -297,6 +309,11 @@ func (n Node) Validate(testnet Testnet) error {
 			}
 		}
 	}
+	switch n.BlockSync {
+	case "", "v0":
+	default:
+		return fmt.Errorf("invalid block sync setting %q", n.BlockSync)
+	}
 	switch n.Mempool {
 	case "", "v0", "v1":
 	default:
@@ -327,6 +344,10 @@ func (n Node) Validate(testnet Testnet) error {
 	}
 	if n.StateSync && n.StartAt == 0 {
 		return errors.New("state synced nodes cannot start at the initial height")
+	}
+	if n.RetainBlocks != 0 && n.RetainBlocks < uint64(EvidenceAgeHeight) {
+		return fmt.Errorf("retain_blocks must be greater or equal to max evidence age (%d)",
+			EvidenceAgeHeight)
 	}
 	if n.PersistInterval == 0 && n.RetainBlocks > 0 {
 		return errors.New("persist_interval=0 requires retain_blocks=0")

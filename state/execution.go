@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -136,19 +135,13 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		// error for now (the production code calling this function is expected to panic).
 		return nil, err
 	}
-	txrSet := types.NewTxRecordSet(rpp.TxRecords)
 
-	if err := txrSet.Validate(maxDataBytes, block.Txs); err != nil {
+	txl := types.ToTxs(rpp.Txs)
+	if err := txl.Validate(maxDataBytes); err != nil {
 		return nil, err
 	}
 
-	for _, rtx := range txrSet.RemovedTxs() {
-		if err := blockExec.mempool.RemoveTxByKey(rtx.Key()); err != nil {
-			blockExec.logger.Debug("error removing transaction from the mempool", "error", err, "tx hash", rtx.Hash())
-		}
-	}
-	itxs := txrSet.IncludedTxs()
-	return state.MakeBlock(height, itxs, commit, evidence, proposerAddr), nil
+	return state.MakeBlock(height, txl, commit, evidence, proposerAddr), nil
 }
 
 func (blockExec *BlockExecutor) ProcessProposal(
@@ -458,7 +451,7 @@ func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCom
 }
 
 func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	params tmproto.ValidatorParams) error {
+	params types.ValidatorParams) error {
 	for _, valUpdate := range abciUpdates {
 		if valUpdate.GetPower() < 0 {
 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
@@ -514,13 +507,13 @@ func updateState(
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = types.UpdateConsensusParams(state.ConsensusParams, abciResponses.EndBlock.ConsensusParamUpdates)
-		err := types.ValidateConsensusParams(nextParams)
+		nextParams = state.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
+		err := nextParams.ValidateBasic()
 		if err != nil {
 			return state, fmt.Errorf("error updating consensus params: %v", err)
 		}
 
-		state.Version.Consensus.App = nextParams.Version.AppVersion
+		state.Version.Consensus.App = nextParams.Version.App
 
 		// Change results from this height but only applies to the next height.
 		lastHeightParamsChanged = header.Height + 1
