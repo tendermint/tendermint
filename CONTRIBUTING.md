@@ -153,6 +153,9 @@ If you are a VS Code user, you may want to add the following to your `.vscode/se
 Every fix, improvement, feature, or breaking change should be made in a
 pull-request that includes an update to the `CHANGELOG_PENDING.md` file.
 
+A feature can also be worked on a feature branch, if its size and/or risk
+justifies it (see #branching-model-and-release) below.
+
 ### What does a good changelog entry look like?
 
 Changelog entries should answer the question: "what is important about this
@@ -162,7 +165,7 @@ title of the PR _very_ clearly explains the benefit of a change to a user.
 
 Some good examples of changelog entry descriptions:
 
-```
+```md
 - [consensus] \#1111 Small transaction throughput improvement (approximately
   3-5\% from preliminary tests) through refactoring the way we use channels
 - [mempool] \#1112 Refactor Go API to be able to easily swap out the current
@@ -173,7 +176,7 @@ Some good examples of changelog entry descriptions:
 
 Some bad examples of changelog entry descriptions:
 
-```
+```md
 - [consensus] \#1111 Refactor channel usage
 - [mempool] \#1112 Make API generic
 - [p2p] \#1113 Ban for PEX message abuse
@@ -223,6 +226,15 @@ The main development branch is `main`.
 Every release is maintained in a release branch named `vX.Y.Z`.
 
 Pending minor releases have long-lived release candidate ("RC") branches. Minor release changes should be merged to these long-lived RC branches at the same time that the changes are merged to `main`.
+
+If a feature's size is big and/or its risk is high, it can be implemented in a feature branch.
+While the feature work is in progress,
+pull requests are open and squash merged against the feature branch.
+Branch `main` is periodically merged (merge commit) into the feature branch,
+to reduce branch divergence.
+When the feature is complete, the feature branch is merged back (merge commit) into `main`.
+The moment of the final merge can be carefully chosen
+so as to land different features in different releases.
 
 Note all pull requests should be squash merged except for merging to a release branch (named `vX.Y`). This keeps the commit history clean and makes it
 easy to reference the pull request where a change was introduced.
