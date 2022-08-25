@@ -67,13 +67,36 @@ func Compile(ast syntax.Query) (*Query, error) {
 	return &Query{ast: ast, conds: conds}, nil
 }
 
+func expandEvents(flattenedEvents map[string][]string) []types.Event {
+	events := make([]types.Event, 0)
+
+	for composite, values := range flattenedEvents {
+		tokens := strings.Split(composite, ".")
+
+		attrs := make([]types.EventAttribute, len(values))
+		for i, v := range values {
+			attrs[i] = types.EventAttribute{
+				Key:   []byte(tokens[len(tokens)-1]),
+				Value: []byte(v),
+			}
+		}
+
+		events = append(events, types.Event{
+			Type:       strings.Join(tokens[:len(tokens)-1], "."),
+			Attributes: attrs,
+		})
+	}
+
+	return events
+}
+
 // Matches satisfies part of the pubsub.Query interface.  This implementation
 // never reports an error. A nil *Query matches all events.
-func (q *Query) Matches(events []types.Event) (bool, error) {
+func (q *Query) Matches(events map[string][]string) (bool, error) {
 	if q == nil {
 		return true, nil
 	}
-	return q.matchesEvents(events), nil
+	return q.matchesEvents(expandEvents(events)), nil
 }
 
 // String matches part of the pubsub.Query interface.
@@ -121,9 +144,9 @@ func (c condition) findAttr(event types.Event) ([]string, bool) {
 	}
 	var vals []string
 	for _, attr := range event.Attributes {
-		fullName := event.Type + "." + attr.Key
+		fullName := event.Type + "." + string(attr.Key)
 		if fullName == c.tag {
-			vals = append(vals, attr.Value)
+			vals = append(vals, string(attr.Value))
 		}
 	}
 	return vals, false
