@@ -7,11 +7,25 @@ Tendermint Core.
 
 ### ABCI Changes
 
+* The `ABCIVersion` is now `0.18.0`.
+
+* Added new ABCI methods `PrepareProposal` and `ProcessProposal`. For details,
+  please see the [spec](spec/abci/README.md). Applications upgrading to
+  v0.37.0 must implement these methods, at the very minimum, as described
+  [here](spec/abci/apps.md)
+* Deduplicated `ConsensusParams` and `BlockParams`.
+  In the v0.34 branch they are defined both in `abci/types.proto` and `types/params.proto`.
+  The definitions in `abci/types.proto` have been removed.
+  This in process applications should make sure they are not using the deleted
+  version of those structures.
 * In v0.34, messages on the wire used to be length-delimited with `int64` varint
   values, which was inconsistent with the `uint64` varint length delimiters used
   in the P2P layer. Both now consistently use `uint64` varint length delimiters.
-* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI
-  version they expect is being used in order to ensure compatibility.
+* Added `AbciVersion` to `RequestInfo`.
+  Applications should check that Tendermint's ABCI version matces the one they expect
+  in order to ensure compatibility.
+* The method `SetOption` has been removed from the ABCI.Client interface.
+  This feature was used in the early ABCI implementation's.
 
 ## v0.34.20
 
@@ -34,7 +48,7 @@ Refactor](https://github.com/tendermint/tendermint/blob/main/docs/architecture/a
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher.
+Note also that Tendermint 0.34 also requires Go 1.16 or higher.
 
 ### ABCI Changes
 
