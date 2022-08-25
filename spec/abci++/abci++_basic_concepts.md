@@ -305,9 +305,7 @@ and instead exist to power subscriptions and queries of Tendermint state.
 An `Event` contains a `type` and a list of `EventAttributes`, which are key-value
 string pairs denoting metadata about what happened during the method's (or transaction's)
 execution. `Event` values can be used to index transactions and blocks according to what
-happened during their execution.  Note that the set of events returned for a block from 
-`BeginBlock` and `EndBlock` are merged. In case both methods return the same key, only the 
-value defined in `EndBlock` is used. (TODO verify this in code)
+happened during their execution. 
 
 Each event has a `type` which is meant to categorize the event for a particular
 `Response*` or `Tx`. A `Response*` or `Tx` may contain multiple events with duplicate

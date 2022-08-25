@@ -201,9 +201,12 @@ title: Methods
 
 * **Usage**:
     * [**Required**] The core method of the application.
+    * `DeliverTx` is called once for each transaction in the block. 
     * When `DeliverTx` is called, the application must execute the transaction deterministically 
-    in full before returning control to Tendermint. Alternatively, it can apply the candidate state corresponding
-     to the same block previously executed via `PrepareProposal` or `ProcessProposal`. (ToDo @sergio-mena is this correct?)
+    in full before returning control to Tendermint. 
+    * Alternatively, the application can apply a candidate state corresponding
+     to the same block previously executed via `PrepareProposal` or `ProcessProposal` any time between the calls to `BeginBlock`, the various
+     calls to `DeliverTx` and `EndBlock`.
     * `ResponseDeliverTx.Code == 0` only if the transaction is fully valid.
       
 
@@ -735,9 +738,6 @@ message for round _r_, height _h_ from validator _q_ (_q_ &ne; _p_):
       already passed on to the Application via `RequestPrepareProposal` or `RequestProcessProposal`.
 
 #### When does Tendermint call `FinalizeBlock`?
-
-TODO check where to place this with regards to old calls
-@sergio-mena, do we want something similar for the BeginBlock sequence? 
 
 When a node _p_ is in Tendermint consensus height _h_, and _p_ receives
 

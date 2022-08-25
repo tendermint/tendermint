@@ -275,14 +275,14 @@ before block execution, even if one of them might end up corresponding to the
 decided block and thus have to be reexecuted upon `BeginBlock-DeliverTx-EndBlock`.
 
 ### States and ABCI++ Connections
-<!-- TODO Check with @sergio-mena whether this exists in code -->
+
 #### Consensus Connection
 
 The Consensus Connection should maintain an *ExecuteTxState* &mdash; the working state
 for block execution. It should be updated by the calls to the block execution functions
 during block execution and committed to disk as the "latest
 committed state" during `Commit`. Execution of a proposed block (via `PrepareProposal`/`ProcessProposal`)
-**must not** update the *ExecuteTxState*, but rather be kept as a separate candidate state until `FinalizeBlock`
+**must not** update the *ExecuteTxState*, but rather be kept as a separate candidate state until `BeginBlock-DeliverTx-EndBlock`
 confirms which of the candidate states (if any) can be used to update *ExecuteTxState*.
 
 #### Mempool Connection
