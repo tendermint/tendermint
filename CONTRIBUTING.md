@@ -7,7 +7,7 @@ support permissionless value-carrying networks. While all contributions are
 welcome, contributors should bear this goal in mind in deciding if they should
 target the main Tendermint project or a potential fork. When targeting the
 main Tendermint project, the following process leads to the best chance of
-landing changes in master.
+landing changes in `main`.
 
 All work on the code base should be motivated by a [Github
 Issue](https://github.com/tendermint/tendermint/issues).
@@ -46,7 +46,7 @@ Find the largest existing ADR number and bump it by 1.
 When the problem as well as proposed solution are well understood,
 changes should start with a [draft
 pull request](https://github.blog/2019-02-14-introducing-draft-pull-requests/)
-against master. The draft signals that work is underway. When the work
+against `main`. The draft signals that work is underway. When the work
 is ready for feedback, hitting "Ready for Review" will signal to the
 maintainers to take a look.
 
@@ -54,7 +54,7 @@ maintainers to take a look.
 
 Each stage of the process is aimed at creating feedback cycles which align contributors and maintainers to make sure:
 
-- Contributors don’t waste their time implementing/proposing features which won’t land in master.
+- Contributors don’t waste their time implementing/proposing features which won’t land in `main`.
 - Maintainers have the necessary context in order to support and review contributions.
 
 ## Forking
@@ -73,19 +73,19 @@ For instance, to create a fork and work on a branch of it, I would:
 - `git remote add origin git@github.com:ebuchman/basecoin.git`
 
 Now `origin` refers to my fork and `upstream` refers to the Tendermint version.
-So I can `git push -u origin master` to update my fork, and make pull requests to tendermint from there.
+So I can `git push -u origin main` to update my fork, and make pull requests to tendermint from there.
 Of course, replace `ebuchman` with your git handle.
 
 To pull in updates from the origin repo, run
 
 - `git fetch upstream`
-- `git rebase upstream/master` (or whatever branch you want)
+- `git rebase upstream/main` (or whatever branch you want)
 
 ## Dependencies
 
 We use [go modules](https://github.com/golang/go/wiki/Modules) to manage dependencies.
 
-That said, the master branch of every Tendermint repository should just build
+That said, the `main` branch of every Tendermint repository should just build
 with `go get`, which means they should be kept up-to-date with their
 dependencies so we can get away with telling people they can just `go get` our
 software.
@@ -153,6 +153,9 @@ If you are a VS Code user, you may want to add the following to your `.vscode/se
 Every fix, improvement, feature, or breaking change should be made in a
 pull-request that includes an update to the `CHANGELOG_PENDING.md` file.
 
+A feature can also be worked on a feature branch, if its size and/or risk
+justifies it (see #branching-model-and-release) below.
+
 ### What does a good changelog entry look like?
 
 Changelog entries should answer the question: "what is important about this
@@ -162,7 +165,7 @@ title of the PR _very_ clearly explains the benefit of a change to a user.
 
 Some good examples of changelog entry descriptions:
 
-```
+```md
 - [consensus] \#1111 Small transaction throughput improvement (approximately
   3-5\% from preliminary tests) through refactoring the way we use channels
 - [mempool] \#1112 Refactor Go API to be able to easily swap out the current
@@ -173,7 +176,7 @@ Some good examples of changelog entry descriptions:
 
 Some bad examples of changelog entry descriptions:
 
-```
+```md
 - [consensus] \#1111 Refactor channel usage
 - [mempool] \#1112 Make API generic
 - [p2p] \#1113 Ban for PEX message abuse
@@ -218,22 +221,31 @@ removed from the header in RPC responses as well.
 
 ## Branching Model and Release
 
-The main development branch is master.
+The main development branch is `main`.
 
 Every release is maintained in a release branch named `vX.Y.Z`.
 
-Pending minor releases have long-lived release candidate ("RC") branches. Minor release changes should be merged to these long-lived RC branches at the same time that the changes are merged to master.
+Pending minor releases have long-lived release candidate ("RC") branches. Minor release changes should be merged to these long-lived RC branches at the same time that the changes are merged to `main`.
+
+If a feature's size is big and/or its risk is high, it can be implemented in a feature branch.
+While the feature work is in progress,
+pull requests are open and squash merged against the feature branch.
+Branch `main` is periodically merged (merge commit) into the feature branch,
+to reduce branch divergence.
+When the feature is complete, the feature branch is merged back (merge commit) into `main`.
+The moment of the final merge can be carefully chosen
+so as to land different features in different releases.
 
 Note all pull requests should be squash merged except for merging to a release branch (named `vX.Y`). This keeps the commit history clean and makes it
 easy to reference the pull request where a change was introduced.
 
 ### Development Procedure
 
-The latest state of development is on `master`, which must never fail `make test`. _Never_ force push `master`, unless fixing broken git history (which we rarely do anyways).
+The latest state of development is on `main`, which must never fail `make test`. _Never_ force push `main`, unless fixing broken git history (which we rarely do anyways).
 
 To begin contributing, create a development branch either on `github.com/tendermint/tendermint`, or your fork (using `git remote add origin`).
 
-Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `master`. (Since pull requests are squash-merged, either is fine!)
+Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `main`. (Since pull requests are squash-merged, either is fine!)
 
 Update the `UPGRADING.md` if the change you've made is breaking and the
 instructions should be in place for a user on how he/she can upgrade it's
@@ -241,7 +253,7 @@ software (ABCI application, Tendermint-based blockchain, light client, wallet).
 
 Once you have submitted a pull request label the pull request with either `R:minor`, if the change should be included in the next minor release, or `R:major`, if the change is meant for a major release.
 
-Sometimes (often!) pull requests get out-of-date with master, as other people merge different pull requests to master. It is our convention that pull request authors are responsible for updating their branches with master. (This also means that you shouldn't update someone else's branch for them; even if it seems like you're doing them a favor, you may be interfering with their git flow in some way!)
+Sometimes (often!) pull requests get out-of-date with `main`, as other people merge different pull requests to `main`. It is our convention that pull request authors are responsible for updating their branches with `main`. (This also means that you shouldn't update someone else's branch for them; even if it seems like you're doing them a favor, you may be interfering with their git flow in some way!)
 
 #### Merging Pull Requests
 
@@ -249,20 +261,20 @@ It is also our convention that authors merge their own pull requests, when possi
 
 Before merging a pull request:
 
-- Ensure pull branch is up-to-date with a recent `master` (GitHub won't let you merge without this!)
+- Ensure pull branch is up-to-date with a recent `main` (GitHub won't let you merge without this!)
 - Run `make test` to ensure that all tests pass
 - [Squash](https://stackoverflow.com/questions/5189560/squash-my-last-x-commits-together-using-git) merge pull request
 
 #### Pull Requests for Minor Releases
 
-If your change should be included in a minor release, please also open a PR against the long-lived minor release candidate branch (e.g., `rc1/v0.33.5`) _immediately after your change has been merged to master_.
+If your change should be included in a minor release, please also open a PR against the long-lived minor release candidate branch (e.g., `rc1/v0.33.5`) _immediately after your change has been merged to main_.
 
-You can do this by cherry-picking your commit off master:
+You can do this by cherry-picking your commit off `main`:
 
 ```sh
 $ git checkout rc1/v0.33.5
 $ git checkout -b {new branch name}
-$ git cherry-pick {commit SHA from master}
+$ git cherry-pick {commit SHA from main}
 # may need to fix conflicts, and then use git add and git cherry-pick --continue
 $ git push origin {new branch name}
 ```
@@ -281,7 +293,7 @@ cmd/debug: execute p.Signal only when p is not nil
 Fixes #nnnn
 ```
 
-Each PR should have one commit once it lands on `master`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
+Each PR should have one commit once it lands on `main`; this can be accomplished by using the "squash and merge" button on Github. Be sure to edit your commit message, though!
 
 ## Testing
 

@@ -787,7 +787,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Validators. Validators are sorted by voting power.
+        Get Validators. Validators are sorted first by voting power (descending), then by address (ascending).
       responses:
         "200":
           description: Commit results.
