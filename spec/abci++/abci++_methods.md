@@ -430,9 +430,8 @@ title: Methods
           Let `tx` be a transaction in `txs` (set of transactions within `RequestPrepareProposal`):
             * If the Application considers that `tx` should not be proposed in this block, e.g.,
               there are other transactions with higher priority, then it should not include it in
-              `ResponsePrepareProposal.txs`. However, Tendermint will not remove `tx` from the mempool. The
-              Application should be extra-careful, as abusing this feature may cause transactions
-              to stay much longer than needed in the mempool.         
+              `ResponsePrepareProposal.txs`. However, Tendermint will not remove `tx` from the mempool. The Application should be aware that these transactions end up remaining in the mempool longer than needed, taking up space.
+              nevertheless, could lead to a transaction staying in the mempool longer than needed.         
             * If the Application wants to add a new transaction to the proposed block, then the
               Application includes it in `ResponsePrepareProposal.txs`. In this case, Tendermint
               will also add the transaction to the mempool.
