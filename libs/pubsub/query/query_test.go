@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
@@ -23,40 +22,40 @@ var _ pubsub.Query = (*query.Query)(nil)
 //   - Remove Index fields (not relevant to tests).
 //   - Add explicit balance values (to use in tests).
 //
-var apiEvents = []types.Event{
-	{
-		Type: "tm",
-		Attributes: []types.EventAttribute{
-			{Key: "event", Value: "Tx"},
-			{Key: "hash", Value: "XYZ"},
-			{Key: "height", Value: "5"},
-		},
+var apiEvents = map[string][]string{
+	"tm.event": {
+		"Tx",
 	},
-	{
-		Type: "rewards.withdraw",
-		Attributes: []types.EventAttribute{
-			{Key: "address", Value: "AddrA"},
-			{Key: "source", Value: "SrcX"},
-			{Key: "amount", Value: "100"},
-			{Key: "balance", Value: "1500"},
-		},
+	"tm.hash": {
+		"XYZ",
 	},
-	{
-		Type: "rewards.withdraw",
-		Attributes: []types.EventAttribute{
-			{Key: "address", Value: "AddrB"},
-			{Key: "source", Value: "SrcY"},
-			{Key: "amount", Value: "45"},
-			{Key: "balance", Value: "999"},
-		},
+	"tm.height": {
+		"5",
 	},
-	{
-		Type: "transfer",
-		Attributes: []types.EventAttribute{
-			{Key: "sender", Value: "AddrC"},
-			{Key: "recipient", Value: "AddrD"},
-			{Key: "amount", Value: "160"},
-		},
+	"rewards.withdraw.address": {
+		"AddrA",
+		"AddrB",
+	},
+	"rewards.withdraw.source": {
+		"SrcX",
+		"SrcY",
+	},
+	"rewards.withdraw.amount": {
+		"100",
+		"45",
+	},
+	"rewards.withdraw.balance": {
+		"1500",
+		"999",
+	},
+	"transfer.sender": {
+		"AddrC",
+	},
+	"transfer.recipient": {
+		"AddrD",
+	},
+	"transfer.amount": {
+		"160",
 	},
 }
 
@@ -69,7 +68,7 @@ func TestCompiledMatches(t *testing.T) {
 	//nolint:lll
 	testCases := []struct {
 		s       string
-		events  []types.Event
+		events  map[string][]string
 		matches bool
 	}{
 		{`tm.events.type='NewBlock'`,
@@ -231,41 +230,39 @@ func TestAllMatchesAll(t *testing.T) {
 		`Route|66=`,
 		`Rilly|Blue=`,
 	)
-	for i := 0; i < len(events); i++ {
-		match, err := query.All.Matches(events[:i])
+	keys := make([]string, 0)
+	for k := range events {
+		keys = append(keys, k)
+	}
+	for _, key := range keys {
+		delete(events, key)
+		match, err := query.All.Matches(events)
 		if err != nil {
 			t.Errorf("Matches failed: %v", err)
 		} else if !match {
-			t.Errorf("Did not match on %+v ", events[:i])
+			t.Errorf("Did not match on %+v ", events)
 		}
 	}
 }
 
 // newTestEvent constructs an Event message from a template string.
 // The format is "type|attr1=val1|attr2=val2|...".
-func newTestEvent(s string) types.Event {
-	var event types.Event
+func addNewTestEvent(events map[string][]string, s string) {
 	parts := strings.Split(s, "|")
-	event.Type = parts[0]
-	if len(parts) == 1 {
-		return event // type only, no attributes
-	}
+	key := parts[0]
 	for _, kv := range parts[1:] {
-		key, val := splitKV(kv)
-		event.Attributes = append(event.Attributes, types.EventAttribute{
-			Key:   key,
-			Value: val,
-		})
+		k, v := splitKV(kv)
+		k = key + "." + k
+		events[k] = append(events[k], v)
 	}
-	return event
 }
 
 // newTestEvents constructs a slice of Event messages by applying newTestEvent
 // to each element of ss.
-func newTestEvents(ss ...string) []types.Event {
-	events := make([]types.Event, len(ss))
-	for i, s := range ss {
-		events[i] = newTestEvent(s)
+func newTestEvents(ss ...string) map[string][]string {
+	events := make(map[string][]string)
+	for _, s := range ss {
+		addNewTestEvent(events, s)
 	}
 	return events
 }

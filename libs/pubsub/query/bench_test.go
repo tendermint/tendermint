@@ -3,33 +3,21 @@ package query_test
 import (
 	"testing"
 
-	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	oldquery "github.com/tendermint/tendermint/libs/pubsub/query/oldquery"
 )
 
 const testQuery = `tm.events.type='NewBlock' AND abci.account.name='Igor'`
 
-var testEvents = []types.Event{
-	{
-		Type: "tm.events",
-		Attributes: []types.EventAttribute{{
-			Key:   "index",
-			Value: "25",
-		}, {
-			Key:   "type",
-			Value: "NewBlock",
-		}},
+var testEvents = map[string][]string{
+	"tm.events.index": {
+		"25",
 	},
-	{
-		Type: "abci.account",
-		Attributes: []types.EventAttribute{{
-			Key:   "name",
-			Value: "Anya",
-		}, {
-			Key:   "name",
-			Value: "Igor",
-		}},
+	"tm.events.type": {
+		"NewBlock",
+	},
+	"abci.account.name": {
+		"Anya", "Igor",
 	},
 }
 
