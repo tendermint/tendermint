@@ -190,7 +190,7 @@ func TestPruneSize(t *testing.T) {
 
 // mustAdd adds a single event to lg. If Add reports an error other than for
 // pruning, the test fails; otherwise the error is returned.
-func mustAdd(t *testing.T, lg *eventlog.Log, etype string, data types.EventData) {
+func mustAdd(t *testing.T, lg *eventlog.Log, etype string, data types.TMEventData) {
 	t.Helper()
 	err := lg.Add(etype, data)
 	if err != nil && !errors.Is(err, eventlog.ErrLogPruned) {

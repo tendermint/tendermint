@@ -62,7 +62,7 @@ func New(opts LogSettings) (*Log, error) {
 //
 // Any error reported by Add arises from pruning; the new item was added to the
 // log regardless whether an error occurs.
-func (lg *Log) Add(etype string, data types.EventData) error {
+func (lg *Log) Add(etype string, data types.TMEventData) error {
 	lg.mu.Lock()
 	head := &logEntry{
 		item: newItem(lg.source.Cursor(), etype, data),
