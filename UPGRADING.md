@@ -16,16 +16,16 @@ Tendermint Core.
 * Deduplicated `ConsensusParams` and `BlockParams`.
   In the v0.34 branch they are defined both in `abci/types.proto` and `types/params.proto`.
   The definitions in `abci/types.proto` have been removed.
-  This in process applications should make sure they are not using the deleted
+  In-process applications should make sure they are not using the deleted
   version of those structures.
 * In v0.34, messages on the wire used to be length-delimited with `int64` varint
   values, which was inconsistent with the `uint64` varint length delimiters used
   in the P2P layer. Both now consistently use `uint64` varint length delimiters.
 * Added `AbciVersion` to `RequestInfo`.
-  Applications should check that Tendermint's ABCI version matces the one they expect
+  Applications should check that Tendermint's ABCI version matches the one they expect
   in order to ensure compatibility.
-* The method `SetOption` has been removed from the ABCI.Client interface.
-  This feature was used in the early ABCI implementation's.
+* The `SetOption` method has been removed from the ABCI `Client` interface.
+  The corresponding Protobuf types have been deprecated.
 
 ## v0.34.20
 
@@ -90,8 +90,8 @@ directory. For more, see "Protobuf," below.
 ### Blockchain Protocol
 
 * `Header#LastResultsHash`, which is the root hash of a Merkle tree built from
-`ResponseDeliverTx(Code, Data)` as of v0.34 also includes `GasWanted` and `GasUsed`
-fields.
+  `ResponseDeliverTx(Code, Data)` as of v0.34 also includes `GasWanted` and `GasUsed`
+  fields.
 
 * Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
   to conform with [RFC-6962](https://tools.ietf.org/html/rfc6962).
@@ -195,7 +195,7 @@ Other user-relevant changes include:
 * The `Verifier` was broken up into two pieces:
     * Core verification logic (pure `VerifyX` functions)
     * `Client` object, which represents the complete light client
-* The new light clients stores headers & validator sets as `LightBlock`s
+* The new light client stores headers and validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
 
