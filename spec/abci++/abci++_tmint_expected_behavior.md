@@ -59,8 +59,8 @@ consensus-exec      = (inf)consensus-height
 consensus-height    = *consensus-round decide commit
 consensus-round     = proposer / non-proposer
 
-proposer            = *got-vote prepare-proposal *got-vote process-proposal
-non-proposer        = *got-vote [process-proposal]
+proposer            =  prepare-proposal process-proposal
+non-proposer        = [process-proposal]
 
 init-chain          = %s"<InitChain>"
 offer-snapshot      = %s"<OfferSnapshot>"
@@ -72,6 +72,7 @@ begin-block         = %s"<BeginBlock>"
 deliver-txs         = %s"<DeliverTx>"
 end-block           = %s"<EndBlock>"
 commit              = %s"<Commit>"
+decide              = begin-block  *deliver-txs end-block
 ```
 <!-- extend-vote         = %s"<ExtendVote>"
 got-vote            = %s"<VerifyVoteExtension>"
@@ -164,7 +165,7 @@ Let us now examine the grammar line by line, providing further details.
   of this height. --> 
 
 >```abnf
->proposer            = *got-vote prepare-proposal *got-vote process-proposal 
+>proposer            = prepare-proposal process-proposal 
 >```
 
 * Also for every round, if the local process is _not_ the proposer of the current round, Tendermint
@@ -176,7 +177,7 @@ Let us now examine the grammar line by line, providing further details.
   rounds of this height received. -->
 
 >```abnf
->non-proposer        = *got-vote [process-proposal]
+>non-proposer        = [process-proposal]
 >```
 
 * Finally, the grammar describes all its terminal symbols, which denote the different ABCI++ method calls that

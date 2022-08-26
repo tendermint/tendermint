@@ -178,10 +178,10 @@ the state for each connection, which are synchronized upon `Commit` calls.
 
 In principle, each of the four ABCI++ connections operates concurrently with one
 another. This means applications need to ensure access to state is
-thread safe. Up to v0.35.x, both the
-[default in-process ABCI client](https://github.com/tendermint/tendermint/blob/v0.35.x/abci/client/local_client.go#L18)
+thread safe. Both the
+[default in-process ABCI client](https://github.com/tendermint/tendermint/blob/v0.34.x/abci/client/local_client.go#L18)
 and the
-[default Go ABCI server](https://github.com/tendermint/tendermint/blob/v0.35.x/abci/server/socket_server.go#L32)
+[default Go ABCI server](https://github.com/tendermint/tendermint/blob/v0.34.x/abci/server/socket_server.go#L32)
 used a global lock to guard the handling of events across all connections, so they were not
 concurrent at all. This meant whether your app was compiled in-process with
 Tendermint using the `NewLocalClient`, or run out-of-process using the `SocketServer`,
@@ -203,6 +203,8 @@ still received in sequence. -->
 When the consensus algorithm decides on a block, Tendermint uses the sequence of calls to
 `BeginBlock`, `DeliverTx` and `EndBlock` to send the
 decided block's data to the Application, which uses it to transition its state.
+
+The sequence of `DeliverTx` calls is asynchronous but all those calls are enclosed by calls to `BeginBlock` and `EndBlock` which are synchronous.
 
 The Application must remember the latest height from which it
 has run a successful `Commit` so that it can tell Tendermint where to
@@ -352,11 +354,11 @@ For more information, see Section [State Sync](#state-sync).
 
 ### Transaction Results
 
-The Application is expected to return a list of results within 
+For each transaction withing a block, the Application is expected to return a result within
 [`ResponseDeliverTx`](./abci%2B%2B_methods.md#delivertx). 
-The list of transaction results must respect the same order as the list of transactions delivered via
-subsequent calls to [`RequestDeliverTx`](./abci%2B%2B_methods.md#delivertx).
-This section discusses the fields inside this structure, along with the fields in
+<!--The list of transactions executed must respect the same order as the list of transactions delivered via
+subsequent calls to [`RequestDeliverTx`](./abci%2B%2B_methods.md#delivertx). -->
+This section discusses the fields inside `ResponseDeliverTx` along with the fields in
 [`ResponseCheckTx`](./abci%2B%2B_methods.md#checktx),
 whose semantics are similar.
 
@@ -423,7 +425,7 @@ might have a different *CheckTxState* values when they receive it and check thei
 via `CheckTx`.
 Tendermint ignores this value in `ResponseCheckTx`.
 
-From v0.37.x on, there is a `Priority` field in `ResponseCheckTx` that can be
+From v0.34.x on, there is a `Priority` field in `ResponseCheckTx` that can be
 used to explicitly prioritize transactions in the mempool for inclusion in a block
 proposal.
 
@@ -510,14 +512,17 @@ These are the current consensus parameters (as of v0.36.x):
 3. [EvidenceParams.MaxAgeDuration](#evidenceparamsmaxageduration)
 4. [EvidenceParams.MaxAgeNumBlocks](#evidenceparamsmaxagenumblocks)
 5. [EvidenceParams.MaxBytes](#evidenceparamsmaxbytes)
-6. [SynchronyParams.MessageDelay](#synchronyparamsmessagedelay)
+6. [ValidatorParams.PubKeyTypes](#validatorparamspubkeytypes)
+7. [VersionParams.App](#versionparamsapp)
+<!-- 6. [SynchronyParams.MessageDelay](#synchronyparamsmessagedelay)
 7. [SynchronyParams.Precision](#synchronyparamsprecision)
 8. [TimeoutParams.Propose](#timeoutparamspropose)
 9. [TimeoutParams.ProposeDelta](#timeoutparamsproposedelta)
 10. [TimeoutParams.Vote](#timeoutparamsvote)
 11. [TimeoutParams.VoteDelta](#timeoutparamsvotedelta)
 12. [TimeoutParams.Commit](#timeoutparamscommit)
-13. [TimeoutParams.BypassCommitTimeout](#timeoutparamsbypasscommittimeout)
+13. [TimeoutParams.BypassCommitTimeout](#timeoutparamsbypasscommittimeout) 
+14. -->
 
 ##### BlockParams.MaxBytes
 
@@ -572,6 +577,14 @@ a block minus its overhead ( ~ `BlockParams.MaxBytes`).
 
 Must have `MaxBytes > 0`.
 
+##### ValidatorParams.PubKeyTypes
+
+The parameter restricts the type of keys validators can use. The parameter uses ABCI pubkey naming, not Amino names. 
+
+##### VersionParams.App
+
+This is the version of the ABCI application.
+<!--
 ##### SynchronyParams.MessageDelay
 
 This sets a bound on how long a proposal message may take to reach all
@@ -581,7 +594,7 @@ This parameter is part of the
 [proposer-based timestamps](../consensus/proposer-based-timestamp)
 (PBTS) algorithm.
 
-<!-- 
+
 ##### SynchronyParams.Precision
 
 This sets a bound on how skewed a proposer's clock may be from any validator
@@ -590,7 +603,7 @@ on the network while still producing valid proposals.
 This parameter is part of the
 [proposer-based timestamps](../consensus/proposer-based-timestamp)
 (PBTS) algorithm.
--->
+
 
 ##### TimeoutParams.Propose
 
@@ -648,7 +661,7 @@ This configures the node to proceed immediately to the next height once the
 node has received all precommits for a block, forgoing the remaining commit timeout.
 Setting this parameter to `false` (the default) causes Tendermint to wait
 for the full commit timeout configured in `TimeoutParams.Commit`.
-
+-->
 <!--
 ##### ABCIParams.VoteExtensionsEnableHeight
 

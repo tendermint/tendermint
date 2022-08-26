@@ -933,34 +933,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | codespace  | string                                                      | Namespace for the `code`.                                             | 8            |
 
 -->
-<!-- ### TxAction
 
-```proto
-enum TxAction {
-  UNKNOWN    = 0;  // Unknown action
-  UNMODIFIED = 1;  // The Application did not modify this transaction.
-  ADDED      = 2;  // The Application added this transaction.
-  REMOVED    = 3;  // The Application wants this transaction removed from the proposal and the mempool.
-}
-```
-
-* **Usage**:
-    * If `Action` is `UNKNOWN`, a problem happened in the Application. Tendermint will assume the application is faulty and crash.
-    * If `Action` is `UNMODIFIED`, Tendermint includes the transaction in the proposal. Nothing to do on the mempool.
-    * If `Action` is `ADDED`, Tendermint includes the transaction in the proposal. The transaction is _not_ added to the mempool.
-    * If `Action` is `REMOVED`, Tendermint excludes the transaction from the proposal. The transaction is also removed from the mempool if it exists,
-      similar to `CheckTx` returning an error code.
-
-### TxRecord
-
-* **Fields**:
-
-    | Name       | Type                  | Description                                                      | Field Number |
-    |------------|-----------------------|------------------------------------------------------------------|--------------|
-    | action     | [TxAction](#txaction) | What should Tendermint do with this transaction?                 | 1            |
-    | tx         | bytes                 | Transaction contents                                             | 2            |
-
--->
 ### ProposalStatus
 
 ```proto
