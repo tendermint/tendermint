@@ -21,12 +21,12 @@ what will happen during a block height _h_ in these frequent, benign conditions:
 <!-- * `ExtendVote` will be called exactly once at all processes;
 * `VerifyVoteExtension` will be called exactly _n-1_ times at each validator process, where _n_ is
   the number of validators, and will always return _accept_ in its `Response*`; -->
-* `BeginBlock` will be called exactly once at all processes, conveying the same prepared
-  block that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for
+*  `BeginBlock` will be called exactly once at all processes, conveying the same prepared
+  block header that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for
   height _h_; and
 * `DeliverTx` will be called exactly once for each transaction within the block. 
 * `EndBlock` will be called exactly once after `DeliverTx` has been executed for all transactions and marks 
-  the end of processing for a particular block. 
+  the end of processing for the block. 
 * `Commit` will finally be called exactly once at all processes at the end of height _h_.
 
 However, the Application logic must be ready to cope with any possible run of Tendermint for a given
@@ -209,8 +209,9 @@ and `ApplySnapshotChunk`, do not need to undergo any changes in their implementa
 
 As for the new methods:
 
-* `PrepareProposal` must create a list of [transactions](./abci++_methods.md#prepareproposal) each containing
-  a transaction passed in `RequestPrepareProposal.txs`, in the same order. 
+* * `PrepareProposal` must create a list of [transactions](./abci++_methods.md#prepareproposal)
+  by copying over the transaction list passed in `RequestPrepareProposal.txs`, in the same order.
+  
   The Application must check whether the size of all transactions exceeds the byte limit
   (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the
   end of the list until the total byte size is at or below the limit.

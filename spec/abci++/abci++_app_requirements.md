@@ -432,8 +432,8 @@ proposal.
 #### Specifics of `ResponseDeliverTx`
 
 The `BeginBlock-DeliverTx-EndBlock` sequence is the workhorse of the blockchain. 
-`DeliverTx` Tendermint delivers the decided block,
-including the list of all its transactions synchronously to the Application.
+A sequence of `DeliverTx` calls delivers the decided block,
+one transaction at a time, to the Application.
 The block delivered (and thus the transaction order) is the same at all correct nodes as guaranteed
 by the Agreement property of Tendermint consensus.
 

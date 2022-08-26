@@ -50,7 +50,7 @@ and checks in a proposed block through the `ProcessProposal` method (b).
 simplified, efficient way to deliver a decided block to the Application. -->
 
 We plan to extend this to allow applications to intervene at the moment a (precommit) vote is sent/received. 
-The applications could then require their validators to more than just validate blocks through the `ExtendVote` 
+The applications could then require their validators to do more than just validating blocks through the `ExtendVote` 
 and `VerifyVoteExtension` methods.
 
 ## Method overview
@@ -101,7 +101,8 @@ call sequences of these methods.
 - [**BeginBlock:**](./abci++_methods.md#beginblock) Is called exactly once after a block has been decided 
   and executes once before all `DeliverTx` method calls.
 
-- [**DeliverTx**](./abci++_methods.md#delivertx) Upon completion of `BeginBlock`, `DeliverTx` is called
+- [**DeliverTx**](./abci++_methods.md#delivertx) Upon completion of `BeginBlock`, 
+`DeliverTx` is called once
   for each of the transactions within the block. The application defines further checks to confirm their
   validity - for example a key-value store might verify that the key does not already exist. Note that 
   even if a transaction does not pass the check in `DeliverTx`, it will still be part of the block as the 
@@ -110,7 +111,7 @@ call sequences of these methods.
 
 - [**EndBlock**](./abci++_methods.md#endblock) It is executed once all transactions have been processed via
  `DeliverTx` to inform the application that the block can now be committed and inform it of potential changes such
- as a new validator set to be proposed in the next round.  As with `DeliverTx`, the responses returned
+ as a new validator set to be proposed in the next round.  As with `DeliverTx`, cryptographic commitments of the responses returned
  are included in the header of the next block.
 <!-- - [**ExtendVote:**](./abci++_methods.md#extendvote) It allows applications to force their
   validators to do more than just validate within consensus. `ExtendVote` allows applications to
@@ -294,8 +295,8 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 
 [&uparrow; Back to Outline](#outline)
 
-Methods `BeginBlock, DeliverTx` and `EndBlock ` include an `events` field at the top level in its
-`Response*`, and one `events` field per transaction included in the block.
+Methods `BeginBlock, DeliverTx` and `EndBlock ` include an `events` field in their
+`Response*`.
 Applications may respond to this ABCI++ method with an event list for each executed
 transaction, and a general event list for the block itself.
 Events allow applications to associate metadata with transactions and blocks.
@@ -430,7 +431,7 @@ it is already included.
 ### `DeliverTx` 
 
 The `DeliverTx` ABCI method delivers transactions from Tendermint to the application. 
-When Tendermint recieves a `ResponseDeliverTx` with a non-zero `Code`, the response code is logged. 
+When Tendermint receives a `ResponseDeliverTx` with a non-zero `Code`, the response code is logged. 
 The transaction was already included in a block, so the `Code` does not influence Tendermint consensus.
 
 <!-- The `ExecTxResult` type delivers transaction results from the Application to Tendermint. When
