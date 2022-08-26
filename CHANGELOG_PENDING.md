@@ -19,8 +19,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
     - Remove `TimeIotaMs` and use a hard-coded 1 millisecond value to ensure monotonically increasing block times.
     - Rename `AppVersion` to `App` so as to not stutter.
   - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
-  - [abci] \#8656 Added cli command for `PrepareProposal`. (@jmalicevic)
-  - [abci] \#8901 Added cli command for `ProcessProposal`. (@hvanz)
+  - [abci] \#8656, \#8901 Added cli commands for `PrepareProposal` and `ProcessProposal`. (@jmalicevic, @hvanz)
 
 - P2P Protocol
 
