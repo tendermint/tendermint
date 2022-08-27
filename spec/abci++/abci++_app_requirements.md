@@ -29,7 +29,7 @@ Process *p*'s prepared proposal can differ in two different rounds where *p* is 
   (which would result in *q* prevoting `nil` in *r<sub>p</sub>*).
 
 Full execution of blocks at `PrepareProposal` time stands on Tendermint's critical path. Thus,
-Requirement 1 ensures the Application will set a value for `TimeoutPropose` such that the time it takes
+Requirement 1 ensures the Application or operator will set a value for `TimeoutPropose` such that the time it takes
 to fully execute blocks in `PrepareProposal` does not interfere with Tendermint's propose timer.
 Note that violation of Requirement 1 may just lead to further rounds, but will not compromise liveness.
 
@@ -182,10 +182,10 @@ thread safe. Both the
 [default in-process ABCI client](https://github.com/tendermint/tendermint/blob/v0.34.x/abci/client/local_client.go#L18)
 and the
 [default Go ABCI server](https://github.com/tendermint/tendermint/blob/v0.34.x/abci/server/socket_server.go#L32)
-used a global lock to guard the handling of events across all connections, so they were not
-concurrent at all. This meant whether your app was compiled in-process with
+use a global lock to guard the handling of events across all connections, so they are not
+concurrent at all. This means whether your app is compiled in-process with
 Tendermint using the `NewLocalClient`, or run out-of-process using the `SocketServer`,
-ABCI messages from all connections were received in sequence, one at a
+ABCI messages from all connections are received in sequence, one at a
 time.
 
 The existence of this global mutex means Go application developers can get thread safety for application state by routing all reads and writes through the ABCI system. Thus it may be unsafe to expose application state directly to an RPC interface, and unless explicit measures are taken, all queries should be routed through the ABCI Query method.
@@ -354,7 +354,7 @@ For more information, see Section [State Sync](#state-sync).
 
 ### Transaction Results
 
-For each transaction withing a block, the Application is expected to return a result within
+For each transaction within a block, the Application is expected to return a result within
 [`ResponseDeliverTx`](./abci%2B%2B_methods.md#delivertx). 
 <!--The list of transactions executed must respect the same order as the list of transactions delivered via
 subsequent calls to [`RequestDeliverTx`](./abci%2B%2B_methods.md#delivertx). -->
@@ -396,7 +396,7 @@ When `MaxGas > -1`, Tendermint enforces the following rules:
 
 If `MaxGas == -1`, no rules about gas are enforced.
 
-In v0.35.x and earlier versions, Tendermint does not enforce anything about Gas in consensus,
+In v0.34.x and earlier versions, Tendermint does not enforce anything about Gas in consensus,
 only in the mempool.
 This means it does not guarantee that committed blocks satisfy these rules.
 It is the application's responsibility to return non-zero response codes when gas limits are exceeded
@@ -441,7 +441,7 @@ The `Data` field contains an array of bytes with the transaction result.
 It must be deterministic (i.e., the same value must be returned at all nodes), but it can contain arbitrary
 data. Likewise, the value of `Code` must be deterministic.
 If `Code != 0`, the transaction will be marked invalid,
-though it is still included in the block. Invalid transaction are not indexed, as they are
+though it is still included in the block. Invalid transactions are not indexed, as they are
 considered analogous to those that failed `CheckTx`.
 
 Both the `Code` and `Data` are included in a structure that is hashed into the
