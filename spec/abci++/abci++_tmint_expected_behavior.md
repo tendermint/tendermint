@@ -33,7 +33,7 @@ However, the Application logic must be ready to cope with any possible run of Te
 height, including bad periods (byzantine proposers, network being asynchronous).
 In these cases, the sequence of calls to ABCI++ methods may not be so straighforward, but
 the Application should still be able to handle them, e.g., without crashing.
-The purpose of this section is to define what these sequences look like an a precise way.
+The purpose of this section is to define what these sequences look like in a precise way.
 
 As mentioned in the [Basic Concepts](./abci%2B%2B_basic_concepts.md) section, Tendermint
 acts as a client of ABCI++ and the Application acts as a server. Thus, it is up to Tendermint to
@@ -204,18 +204,18 @@ to the existing implementation, but will keep the same guarantees already provid
 Here is how ABCI++ methods should be implemented.
 
 First of all, all the methods that did not change from ABCI to ABCI++, namely `Echo`, `Flush`, `Info`, `InitChain`,
-`BeginBlock`, `DerliverTx`, `EndBlock`,`Query`, `CheckTx`, `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, 
+`BeginBlock`, `DerliverTx`, `EndBlock`, `Commit`, `Query`, `CheckTx`, `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, 
 and `ApplySnapshotChunk`, do not need to undergo any changes in their implementation.
 
 As for the new methods:
 
-* * `PrepareProposal` must create a list of [transactions](./abci++_methods.md#prepareproposal)
+* `PrepareProposal` must create a list of [transactions](./abci++_methods.md#prepareproposal)
   by copying over the transaction list passed in `RequestPrepareProposal.txs`, in the same order.
   
   The Application must check whether the size of all transactions exceeds the byte limit
   (`RequestPrepareProposal.max_tx_bytes`). If so, the Application must remove transactions at the
   end of the list until the total byte size is at or below the limit.
-* `ProcessProposal` must set `ResponseProcessProposal.accept` to _true_ and return.
+* `ProcessProposal` must set `ResponseProcessProposal.status` to _accept_ and return.
 <!-- * `ExtendVote` is to set `ResponseExtendVote.extension` to an empty byte array and return.
 * `VerifyVoteExtension` must set `ResponseVerifyVoteExtension.accept` to _true_ if the extension is
   an empty byte array and _false_ otherwise, then return. -->

@@ -417,10 +417,9 @@ title: Methods
 
 * **Usage**:
     * `RequestPrepareProposal`'s parameters `txs`, `misbehavior`, `height`, `time`,
-      `next_validators_hash`, and `proposer_address` are the same as in `RequestProcessProposal`
-      and `RequestFinalizeBlock`.
+      `next_validators_hash`, and `proposer_address` are the same as in `RequestProcessProposal`.
     * `RequestPrepareProposal.local_last_commit` is a set of the precommit votes that allowed the
-      decision of the previous block, together with their corresponding vote extensions.
+      decision of the previous block.
     * The `height`, `time`, and `proposer_address` values match the values from the header of the
       proposed block.
     * `RequestPrepareProposal` contains a preliminary set of transactions `txs` that Tendermint
@@ -431,7 +430,6 @@ title: Methods
             * If the Application considers that `tx` should not be proposed in this block, e.g.,
               there are other transactions with higher priority, then it should not include it in
               `ResponsePrepareProposal.txs`. However, Tendermint will not remove `tx` from the mempool. The Application should be aware that these transactions end up remaining in the mempool longer than needed, taking up space.
-              nevertheless, could lead to a transaction staying in the mempool longer than needed.         
             * If the Application wants to add a new transaction to the proposed block, then the
               Application includes it in `ResponsePrepareProposal.txs`. In this case, Tendermint
               will also add the transaction to the mempool.
@@ -439,9 +437,9 @@ title: Methods
           _traceability_.
           > Consider the following example: the Application transforms a client-submitted
             transaction `t1` into a second transaction `t2`, i.e., the Application asks Tendermint
-            to remove `t1` from the block and add `t2` to the mempool. If a client wants to eventually check what
+            to remove `t1` from the block and add `t2` to the block. If a client wants to eventually check what
             happened to `t1`, it will discover that `t1` is not in a
-            committed block, getting the wrong idea that `t1` did not make it into a block. Note
+            committed block (assuming a _re-CheckTx_ evited it from the mempool), getting the wrong idea that `t1` did not make it into a block. Note
             that `t2` _will be_ in a committed block, but unless the Application tracks this
             information, no component will be aware of it. Thus, if the Application wants
             traceability, it is its responsability to support it. For instance, the Application
@@ -454,7 +452,7 @@ title: Methods
       that the `RequestPrepareProposal.max_tx_bytes` limit is respected by those transactions
       returned in `ResponsePrepareProposal.txs` .
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
-      The Application must keep those events until a block is decided. It will then forward the events to the `BeginBlock-DeliverTx-EndBlock` functions depending on where each event should be placed. The events are then returned to Tendermint when the transactions are indeed executed.
+      The Application must keep those events until a block is decided. It will then forward the events to the `BeginBlock-DeliverTx-EndBlock` functions depending on where each event should be placed, thereby returning the events to Tendermint.
     * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
       In particular, `ResponsePrepareProposal.txs` will be deemed invalid if there are duplicate transactions in the list. <!-- ToDo  this is currenetly not implemented! -->
     * If Tendermint fails to validate the `ResponsePrepareProposal`, Tendermint will assume the
