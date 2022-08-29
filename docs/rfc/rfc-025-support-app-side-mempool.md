@@ -41,6 +41,42 @@ and by reducing and clarifying its scope of responsibilities.
 
 ## Discussion
 
+### The mempool is a leaky abstraction and handles too many concerns
+
+The current mempool is a leaky abstraction. Presently, Tendermint's mempool keeps
+track of a multitude of details that primarily service concerns of the application.
+
+#### Gas
+
+The mempool keeps track of Gas, a proxy for how computationally expensive it
+will be to execute a transaction. As discussed in [RFC-011](https://github.com/tendermint/tendermint/blob/2313f358003d0c4d9d0e7705b4632d819dfb0d92/docs/rfc/rfc-011-delete-gas.md), this metadata is
+not a concern of Tendermint's. Tendermint does not execute transactions. This
+data is stored within Tendermint's mempool along with the maximum gas the application
+will permit to be used in a block so that Tendermint's mempool can enforce
+transaction validity using it: transactions that exceed the configured maximum
+are rejected from the mempool. How much 'Gas' a transaction consumes and if that
+precludes it from execution by the application is a validity condition imposed
+by the application, not Tendermint. It is an application abstraction that leaks
+into the Tendermint mempool.
+
+#### Sender
+
+The Tendermint mempool stores a `sender` string metadata for each transaction
+it receives. The mempool only stores one transaction per sender at any time.
+The `sender` metadata is populated by the application during `CheckTx`.
+`Sender` uniqueness is enforced separately on each node's mempool. Nothing
+prevents multiple transactions with the same `sender` from existing in separate
+mempools on the network.
+
+While multiple transactions from the same sender on a network is a shortcoming
+of the `sender` abstraction, the issue posed by sender to the mempool is that
+`sender` uniqueness is a condition of transaction validity that is otherwise
+meaningless to Tendermint. The `sender` field allows the application to
+influence which transactions Tendermint will include next in a block. However,
+with the advent of `PrepareProposal`, the application can select directly and
+this `sender` field is of marginal benefit. Additionally, applications require
+much more expressive validity conditions than just `sender` uniqueness.
+
 ### Tendermint's scope of responsibility
 
 #### What should Tendermint be responsible for?
