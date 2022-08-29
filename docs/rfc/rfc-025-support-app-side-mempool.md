@@ -77,6 +77,19 @@ with the advent of `PrepareProposal`, the application can select directly and
 this `sender` field is of marginal benefit. Additionally, applications require
 much more expressive validity conditions than just `sender` uniqueness.
 
+#### Adding additional semantics to the mempool
+
+The Tendermint mempool is relied upon by every ABCI application. Changing its
+code to incorporate new features or update its behavior affects all of
+Tendermint's downstream consumers. New applications frequently need ways of
+sorting pending transactions and imposing transaction validity conditions. This
+data structure cannot change quickly to meet the shifting needs of new
+consumers while also maintaining a stable API for the applications that are
+already successfully running on top of Tendermint. New strategies for sorting
+and validating pending transactions would be best implemented outside of
+Tendermint, where creating new semantics does not risk disrupting the existing
+users.
+
 ### Tendermint's scope of responsibility
 
 #### What should Tendermint be responsible for?
