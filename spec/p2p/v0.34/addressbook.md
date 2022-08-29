@@ -111,6 +111,9 @@ bucket is moved (downgraded) to a bucket of new addresses.
 Moving the peer address to a bucket of old addresses has the effect of
 upgrading, or increasing the ranking of a peer in the address book.
 
+**Note** In v0.34 a peers is currently marked good only from the consensus reactor 
+whenever it delivers a correct consensus message.
+
 ## Bad peers
 
 The `MarkBad` method marks a peer as bad and bans it for a period of time.

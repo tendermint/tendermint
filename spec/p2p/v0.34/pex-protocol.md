@@ -122,7 +122,7 @@ More specifically, a node operating in seed mode sends PEX requests in two cases
 
 1. When a outbound peer is added, and the seed node needs more peer addresses,
    it requests peer addresses to the new peer
-1. Periodically, the `crawlPeersRoutine` sends PEX requests to a random set of
+2. Periodically, the `crawlPeersRoutine` sends PEX requests to a random set of
    peers, whose addresses are registered in the Address Book
 
 The first case also applies for nodes not operating in seed mode.

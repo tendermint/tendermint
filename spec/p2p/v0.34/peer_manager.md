@@ -1,5 +1,14 @@
 # Peer Manager
 
+## Dialing peers on startup
+
+The node configuration file can contain a list of *persistent peers*. Those peers
+have preferential treatment compared to regular peers and the node is always trying to 
+connect to them - they are not removed on errors. If, on startup, the list of empty peers 
+is not empty, the node immediately tries to dial them by calling the 
+[`DialPeersAsync`](switch.md#dialpeersasync)
+within the switch directly from its setup method. 
+
 ## Ensure peers
 
 The `ensurePeersRoutine` is a persistent routine intended to ensure that a node
@@ -113,3 +122,19 @@ TODO:
 ## AttemptsToDial - PEX reactor
 
 Not invoked in the code, except for tests.
+
+## Peer types
+
+Tendermint distignuishes between three types of peers:
+1. Regular peers
+2. Persistent peers
+3. Unconditional peers
+
+Unlike regular peers, persistent and unconditional peers are treated differently by the peer manager.
+
+*Persistent peers* are provided via the config file on startup and are considered more trustworthy. When 
+dialing these peers errors, or a reactor reports an error on this peer, Tendermint will always try to
+reconnect to a persistent peer. Regular peers will be removed and disconnected from.
+
+*Unconditional peers* are not subjected to the limits of maximum inbound and outbound connections and Tendermint
+always attempts to connect to them, even if the maximum number of connections is reached. 

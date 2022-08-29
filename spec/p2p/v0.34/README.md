@@ -2,7 +2,9 @@
 
 Within a Tendermint network, nodes can communicate with one another using a p2p protocol. The goal of this document is to specify the p2p layer in Tendermint v0.34 including: Peer discovery, peer management, connection handling and message types. 
 
+## Introduction 
 This documentation aims at separating the logical components on a protocol level from the implementation details of each protocol. 
+
 At a high level, the p2p layer in Tendermint has the following main functionalities:
 1. Peer management: peer discovery and peer ranking
 2. Peer connection handling: dialing and accepting connections
@@ -13,32 +15,52 @@ The implementation of these three functionalities is split between different Ten
 ToDo Check that the split in tables corresponds to what is actually in the files. 
 -->
 
-### **Peer communication** 
+#### **Peer communication** 
 | [Peer discovery](peer_manager.md) | [Peer dialing](switch.md#dialing-peers) | [Accepting connections from peers](switch.md#accepting-peers) | Connection management (processing msgs) |
 | ---| ---| ---| --- | 
 | PEX / config | PEX / Switch | Reactors / Switch | Reactors| 
 
 
-### **Peer management**
+#### **Peer management**
 | [Peer ranking](addressbook.md#pick-address) | Connection upgrading | [Evicting](pex-protocol.md#misbehavior)| 
 | --- | --- | --- |
 | PEX / reactors (only marking peers as good/bad); address book (actual ranking)| - | PEX reactor| 
 
 
-## Peer lifecycle
+### Peer lifecycle
 
-A Node can pass through various states before becoming the peer of another node as demonstrated below in the example of an outbound peer:
+A Node can pass through various states before becoming the peer of another node as demonstrated below on the example of an outbound peer:
 <img src="img/p2p_state.png" width="50%" title="Outgoing peers lifecycle">Outgoing peers lifecycle</img>
 
-A node can thus be in the following states before connecting to its peer:
+A node can be in the following states before connecting to its peer:
 - 'Candidate': peers that we have not connected to yet but are discovered. (no explicit list)
 - ['Dialing'](switch.md#dialing-peers) : peers who are currently being dialed. ( I did not see where this is of particular use. )
-- 'Peers' : Connected peers (effectivley a connected state)
-- ['Reconnecting'](switch.md#reconnect-to-peer): Peers to whom a node is currently reconnecting. The node is trying to establosh a connectiong to these peers and is failing to do so. After a certain amount of time, the peer is simply dropped to be discovered again by the PEX reactor. 
-- 'BadPeers' : This is the only list not kept by the switch. It is stored within the [address](addressbook.md#bad-peers) book of the PEX reactor. 
+- 'Peers' : Connected peers (effectivley a connected state). Peers who a node has successfully dialed or from whom it has [accepted a connection](switch.md#accepting-peers).
+- ['Reconnecting'](switch.md#reconnect-to-peer): Peers to whom a node is currently reconnecting. The node is trying to establish a connection to these peers and is failing to do so. After a certain amount of time, the peer is simply dropped to be discovered again by the PEX reactor. 
+- ['BadPeers'](addressbook.md#bad-peers) : This is the only list not kept by the switch. It is stored within the addressbook of the PEX reactor. It contains the list of peers that were marked as bad due to exhibited [misbehavior](pex-protocol.md#misbehavior). Peers can be reinstated after being marked as bad. 
 
-This specification explains the conditions that need to be satisfied for a node to transition into between these state.
+This specification explains the conditions that need to be satisfied for a node to transition between these state.
 
+
+
+### Node types
+
+From a p2p perspective, within a network, Tendermint distinguishes between regular and [seed nodes](pex-protocol.md#seed-nodes). 
+While regular nodes try to form connections between one another, the main role of a seed node is to provide other nodes with addresses. 
+
+
+## Documentation overview
+
+We organize this specification as follows:
+
+1. [Peer manager](peer_manager.md) describes the high level functionality that a peer manager should provide. It contains pointers to the implementation of relevant functions and their descriptions. 
+2. Peer discovery is implemented within the [Pex reactor](pex.md), but we explain the main functionalities abstracted away from the implementation as the [Pex protocol](pex-protocol.md).
+3. The [Switch](switch.md) is a service that handles peer connections and exposes an API to receive incoming messages 
+on `Reactors`.
+4. Tendermint uses an [Address book](addressbook.md) to store peer information and can be viewed as a database. However, the address book also provides the implementation of additional funcationality: peer ranking, peer selection and persistence of peer addresses. 
+5. [Transport](transport.md) describes the functions called by other p2p components to actually establishe secure and authenticated connections with peers.
+6. Finally, [Types](types.md) and [Configuration](configuration.md) provide a list of existing types and configuration parameters used by the Tendermint p2p layer. 
+ 
 <!--
 ToDo check if smething can be moved to existing sections Daniel wrote, otherwise delete
 ### Peer discovery
