@@ -320,15 +320,21 @@ RelockValueIfEnoughPrevotes ==
         /\ m2 \in msgsPrevote[r2]
       IN
       LET EnoughPrevotesInMiddle ==
-        \E mr \in Rounds:
-          /\ r1 <= mr /\ mr <= r2
+        \E vr \in Rounds:
+          /\ r1 <= vr /\ vr <= r2
           \* count prevotes in the middle round, excluding p
           /\ LET Prevotes == {
-               m \in msgsPrevote[mr] \intersect evidencePrevote:
-                 m.id = v2 /\ (m.src /= p \/ mr < r2)
+               m \in msgsPrevote[vr] \intersect evidencePrevote:
+                 m.id = v2 /\ (m.src /= p \/ vr < r2)
              }
              IN
-             Cardinality(Prevotes) >= THRESHOLD2
+             /\ Cardinality(Prevotes) >= THRESHOLD2
+             \* this majority must be backed by a proposal!
+             /\ LET proposal == [
+                    type |-> "PROPOSE", src |-> Proposer[r2], round |-> r2,
+                    proposal |-> v2, validRound |-> vr
+                ] IN
+                proposal \in msgsPropose[r2]
       IN
       RelockedValue => EnoughPrevotesInMiddle
 
@@ -376,7 +382,7 @@ Inv ==
     /\ AllIfValidRoundThenTwoThirds
     /\ AllValidAndLocked
     /\ AllIfValidRoundThenProposal
-    \*/\ PrecommitsLockValue
+    /\ PrecommitsLockValue
 
 \* this is the inductive invariant we like to check
 TypedInv == TypeOK /\ Inv
