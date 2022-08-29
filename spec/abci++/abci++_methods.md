@@ -429,7 +429,7 @@ title: Methods
           Let `tx` be a transaction in `txs` (set of transactions within `RequestPrepareProposal`):
             * If the Application considers that `tx` should not be proposed in this block, e.g.,
               there are other transactions with higher priority, then it should not include it in
-              `ResponsePrepareProposal.txs`. However, Tendermint will not remove `tx` from the mempool. The Application should be aware that these transactions end up remaining in the mempool longer than needed, taking up space.
+              `ResponsePrepareProposal.txs`. However, this will not remove `tx` from the mempool.
             * If the Application wants to add a new transaction to the proposed block, then the
               Application includes it in `ResponsePrepareProposal.txs`. In this case, Tendermint
               will also add the transaction to the mempool.
@@ -947,6 +947,7 @@ enum ProposalStatus {
         * If `Status` is `ACCEPT`, Tendermint accepts the proposal and will issue a Prevote message for it.
         * If `Status` is `REJECT`, Tendermint rejects the proposal and will issue a Prevote for `nil` instead.
 
+<!-- 
 ### VerifyStatus
 
 ```proto
@@ -963,7 +964,7 @@ enum VerifyStatus {
         * If `Status` is `ACCEPT`, Tendermint will accept the vote as valid.
         * If `Status` is `REJECT`, Tendermint will reject the vote as invalid.
 
-<!--
+
 ### CanonicalVoteExtension
 
 >**TODO**: This protobuf message definition is not part of the ABCI++ interface, but rather belongs to the
@@ -984,5 +985,7 @@ enum VerifyStatus {
     * Upon reception, Tendermint validates the sender's signature and sanity-checks the values of `height`, `round`, and `chain_id`.
       Then it sends `extension` to the Application via `RequestVerifyVoteExtension` for verification.
 
-[protobuf-timestamp]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp
+
 -->
+
+[protobuf-timestamp]: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Timestamp

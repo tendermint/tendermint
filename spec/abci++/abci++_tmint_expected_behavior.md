@@ -61,6 +61,7 @@ consensus-round     = proposer / non-proposer
 
 proposer            =  prepare-proposal process-proposal
 non-proposer        = [process-proposal]
+decide              = begin-block  *deliver-txs end-block
 
 init-chain          = %s"<InitChain>"
 offer-snapshot      = %s"<OfferSnapshot>"
@@ -72,7 +73,6 @@ begin-block         = %s"<BeginBlock>"
 deliver-txs         = %s"<DeliverTx>"
 end-block           = %s"<EndBlock>"
 commit              = %s"<Commit>"
-decide              = begin-block  *deliver-txs end-block
 ```
 <!-- extend-vote         = %s"<ExtendVote>"
 got-vote            = %s"<VerifyVoteExtension>"

@@ -228,10 +228,9 @@ executing the block, the default value of *TimeoutPropose* might not be sufficie
 to accommodate the long block execution time and non-proposer nodes might time
 out and prevote `nil`. The proposal, in this case, will probably be rejected and a new round will be necessary.
 
-The Application is the best suited to provide a value for *TimeoutPropose* so
-that the block execution time upon `PrepareProposal` fits well in the propose
-timeout interval. Thus, the Application can adapt the value of *TimeoutPropose* at every height via
-`TimeoutParams.Propose`, contained in `ConsensusParams`.
+
+Operators will need to adjust the default value of *TimeoutPropose* in Tendermint's configuration file, 
+in order to suit the needs of the particular application being deployed.
 
 ## Deterministic State-Machine Replication
 

@@ -234,9 +234,8 @@ Synchronous mempool-related calls must be avoided as part of the sequential logi
 
 Tendermint calls `PrepareProposal` when it is about to send a proposed block to the network.
 Likewise, Tendermint calls `ProcessProposal` upon reception of a proposed block from the
-network. In both cases, the proposed block's data
-is disclosed to the Application, in the same conditions as is done in `BeginBlock - DeliverTx - EndBlock`.
-The block data disclosed the to Application by these three methods are the following:
+network. The proposed block's data
+that is disclosed to the Application by these two methods is the following:
 
 * the transaction list
 * the `LastCommit` referring to the previous block
