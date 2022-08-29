@@ -25,7 +25,7 @@ the node *needs* peers addresses, a condition checked:
 
 1. When an *outbound* peer is added, causing the node to request addresses from
    the new peer
-1. Periodically, by the `ensurePeersRoutine`, causing the node to request peer
+2. Periodically, by the `ensurePeersRoutine`, causing the node to request peer
    addresses to a randomly selected peer
 
 A node needs more peer addresses when its addresses book has

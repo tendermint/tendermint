@@ -1,6 +1,6 @@
 # v0.34 P2P Communicaton layer
 
-Within a Tendermint network, nodes can communicate with one another using a p2p protocol. The goal of this document is to specify the the p2p layer in Tendermint v0.34 including: Peer discovery, peer management, connection handling and message types. 
+Within a Tendermint network, nodes can communicate with one another using a p2p protocol. The goal of this document is to specify the p2p layer in Tendermint v0.34 including: Peer discovery, peer management, connection handling and message types. 
 
 This documentation aims at separating the logical components on a protocol level from the implementation details of each protocol. 
 At a high level, the p2p layer in Tendermint has the following main functionalities:

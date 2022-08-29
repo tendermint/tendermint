@@ -82,7 +82,7 @@ received from a peer that is locally configured as a seed node.
 
 > FIXME: The current logic was introduced in [#3762](https://github.com/tendermint/tendermint/pull/3762).
 > Although it fix the issue, the delay between receiving an address and dialing
-> the peer, it does not impose ant limit on how many addresses are dialed in this
+> the peer, it does not impose and limit on how many addresses are dialed in this
 > scenario.
 > So, all addresses received from a seed node are dialed, regardless of the
 > current number of outbound peers, the number of dialing routines, or the
