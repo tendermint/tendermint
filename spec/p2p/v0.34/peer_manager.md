@@ -1,5 +1,14 @@
 # Peer Manager
 
+## Dialing peers on startup
+
+The node configuration file can contain a list of *persistent peers*. Those peers
+have preferential treatment compared to regular peers and the node is always trying to 
+connect to them - they are not removed on errors. If, on startup, the list of empty peers 
+is not empty, the node immediately tries to dial them by calling the 
+[`DialPeersAsync`](switch.md#dialpeersasync)
+within the switch directly from its setup method. 
+
 ## Ensure peers
 
 The `ensurePeersRoutine` is a persistent routine intended to ensure that a node
@@ -82,7 +91,7 @@ received from a peer that is locally configured as a seed node.
 
 > FIXME: The current logic was introduced in [#3762](https://github.com/tendermint/tendermint/pull/3762).
 > Although it fix the issue, the delay between receiving an address and dialing
-> the peer, it does not impose ant limit on how many addresses are dialed in this
+> the peer, it does not impose and limit on how many addresses are dialed in this
 > scenario.
 > So, all addresses received from a seed node are dialed, regardless of the
 > current number of outbound peers, the number of dialing routines, or the
@@ -113,3 +122,19 @@ TODO:
 ## AttemptsToDial - PEX reactor
 
 Not invoked in the code, except for tests.
+
+## Peer types
+
+Tendermint distignuishes between three types of peers:
+1. Regular peers
+2. Persistent peers
+3. Unconditional peers
+
+Unlike regular peers, persistent and unconditional peers are treated differently by the peer manager.
+
+*Persistent peers* are provided via the config file on startup and are considered more trustworthy. When 
+dialing these peers errors, or a reactor reports an error on this peer, Tendermint will always try to
+reconnect to a persistent peer. Regular peers will be removed and disconnected from.
+
+*Unconditional peers* are not subjected to the limits of maximum inbound and outbound connections and Tendermint
+always attempts to connect to them, even if the maximum number of connections is reached. 

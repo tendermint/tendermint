@@ -1,46 +1,68 @@
 # v0.34 P2P Communicaton layer
 
-## Intro
+Within a Tendermint network, nodes can communicate with one another using a p2p protocol. The goal of this document is to specify the p2p layer in Tendermint v0.34 including: Peer discovery, peer management, connection handling and message types. 
 
-The goal of this document is to specify the behaviour of the p2p layer in Tenderming v0.34. The existing documents aiming to describe the p2p layer are:
+## Introduction 
+This documentation aims at separating the logical components on a protocol level from the implementation details of each protocol. 
 
-- https://github.com/tendermint/tendermint/tree/master/spec/p2p : Peer information (handshake and addresses); Mconn package;
-Tendermint nodes can connect and communicate via p2p to one another. The main high level responsibilities of the p2p layer are  1) establishing and maintaining connections between peers and 2) managing the state of peers. 
-- https://github.com/tendermint/tendermint/tree/master/docs/tendermint-core/pex : PEX reactor (*Note* I am not sure that the peer exchange section is valid anymore)
+At a high level, the p2p layer in Tendermint has the following main functionalities:
+1. Peer management: peer discovery and peer ranking
+2. Peer connection handling: dialing and accepting connections
+3. Message transfer
+   
+The implementation of these three functionalities is split between different Tendermint components as shown in the tables below. 
+<!--
+ToDo Check that the split in tables corresponds to what is actually in the files. 
+-->
 
-## p2p main concepts
-The main components that manage these two broad categories are:
-- The Switch
-- The PEX reactor 
-- Transport
-- Different reactors in Tendermint implementing p2p reactor interface
-
-The tables below gives a high level overview of the main functionalities provided by the p2p implementation of Tendermint and the components responsible for each functionality. 
-
-### **Peer communication** 
-| Peer discovery | Peer dialing | Accepting connections from peers | Connection management (processing msgs) |
+#### **Peer communication** 
+| [Peer discovery](peer_manager.md) | [Peer dialing](switch.md#dialing-peers) | [Accepting connections from peers](switch.md#accepting-peers) | Connection management (processing msgs) |
 | ---| ---| ---| --- | 
 | PEX / config | PEX / Switch | Reactors / Switch | Reactors| 
 
 
-### **Peer management**
-| Peer ranking | Connection upgrading | Evicting| 
+#### **Peer management**
+| [Peer ranking](addressbook.md#pick-address) | Connection upgrading | [Evicting](pex-protocol.md#misbehavior)| 
 | --- | --- | --- |
-| PEX / reactors (only marking peers as good/bad) | - | Switch| 
+| PEX / reactors (only marking peers as good/bad); address book (actual ranking)| - | PEX reactor| 
 
 
-The main states a node can be in are:
-- 'Candidate': peers that we have not connected to yet but are discovered. (no explicit list)
-- 'Dialing' : peers who are currently being dialed. ( I did not see where this is of particular use. )
-- 'Peers' : Connected peers (effectivley a connected state)
-- 'Reconnecting': Peers to whom a node is currently reconnecting. The node is trying to establosh a connectiong to these peers and is failing to do so. After a certain amount of time, the peer is simply dropped to be discovered again by the PEX reactor. 
-- 'BadPeers' : This is the only list not kept by the switch. It is stored within the address book of the PEX reactor. 
+### Peer lifecycle
 
-The diagram below shows the lifecycle of an outbound peer:
-
+A Node can pass through various states before becoming the peer of another node as demonstrated below on the example of an outbound peer:
 <img src="img/p2p_state.png" width="50%" title="Outgoing peers lifecycle">Outgoing peers lifecycle</img>
 
+A node can be in the following states before connecting to its peer:
+- 'Candidate': peers that we have not connected to yet but are discovered. (no explicit list)
+- ['Dialing'](switch.md#dialing-peers) : peers who are currently being dialed. ( I did not see where this is of particular use. )
+- 'Peers' : Connected peers (effectivley a connected state). Peers who a node has successfully dialed or from whom it has [accepted a connection](switch.md#accepting-peers).
+- ['Reconnecting'](switch.md#reconnect-to-peer): Peers to whom a node is currently reconnecting. The node is trying to establish a connection to these peers and is failing to do so. After a certain amount of time, the peer is simply dropped to be discovered again by the PEX reactor. 
+- ['BadPeers'](addressbook.md#bad-peers) : This is the only list not kept by the switch. It is stored within the addressbook of the PEX reactor. It contains the list of peers that were marked as bad due to exhibited [misbehavior](pex-protocol.md#misbehavior). Peers can be reinstated after being marked as bad. 
 
+This specification explains the conditions that need to be satisfied for a node to transition between these state.
+
+
+
+### Node types
+
+From a p2p perspective, within a network, Tendermint distinguishes between regular and [seed nodes](pex-protocol.md#seed-nodes). 
+While regular nodes try to form connections between one another, the main role of a seed node is to provide other nodes with addresses. 
+
+
+## Documentation overview
+
+We organize this specification as follows:
+
+1. [Peer manager](peer_manager.md) describes the high level functionality that a peer manager should provide. It contains pointers to the implementation of relevant functions and their descriptions. 
+2. Peer discovery is implemented within the [Pex reactor](pex.md), but we explain the main functionalities abstracted away from the implementation as the [Pex protocol](pex-protocol.md).
+3. The [Switch](switch.md) is a service that handles peer connections and exposes an API to receive incoming messages 
+on `Reactors`.
+4. Tendermint uses an [Address book](addressbook.md) to store peer information and can be viewed as a database. However, the address book also provides the implementation of additional funcationality: peer ranking, peer selection and persistence of peer addresses. 
+5. [Transport](transport.md) describes the functions called by other p2p components to actually establishe secure and authenticated connections with peers.
+6. Finally, [Types](types.md) and [Configuration](configuration.md) provide a list of existing types and configuration parameters used by the Tendermint p2p layer. 
+ 
+<!--
+ToDo check if smething can be moved to existing sections Daniel wrote, otherwise delete
 ### Peer discovery
 
 Peers are discovered by adding addresses provided in the config file or triggering dials to seed nodes or nodes in the address book. 
@@ -126,7 +148,15 @@ In case of `PexRequest` messages the reactor provides the requesting peer with k
 - The address is private 
 
 A node has a requests map where it stores all requets it issued to a peer asking it for more peer addresses. If a `PexAddress` message returns an error, a node marks the sending peer as bad. 
+-->
+## References 
 
+Documents that describe some of the functionality of the p2p layer prior to this specification:
+
+- https://github.com/tendermint/tendermint/tree/master/spec/p2p : Peer information (handshake and addresses); Mconn package;
+Tendermint nodes can connect and communicate via p2p to one another. The main high level responsibilities of the p2p layer are  1) establishing and maintaining connections between peers and 2) managing the state of peers. 
+- https://github.com/tendermint/tendermint/tree/master/docs/tendermint-core/pex : PEX reactor (*Note* I am not sure that the peer exchange section is valid anymore)
+- 
 
 ## Notes on diff v0.35+ and v0.34
 
@@ -141,3 +171,5 @@ A node has a requests map where it stores all requets it issued to a peer asking
 *Bug v0.36* p2p router l722 - this increment hgappens twice (once for in and once for out )
 
 *v0.36 p2p statesync* If the statesyncing node has only two peers and one of those does not have the requested light block (has not created a snapshot yet for example), statesync will not look for additional peers but will fail to initialize the `StateProvider` and halt. 
+
+

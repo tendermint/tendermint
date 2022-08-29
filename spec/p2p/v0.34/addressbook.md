@@ -111,11 +111,14 @@ bucket is moved (downgraded) to a bucket of new addresses.
 Moving the peer address to a bucket of old addresses has the effect of
 upgrading, or increasing the ranking of a peer in the address book.
 
+**Note** In v0.34 a peers is currently marked good only from the consensus reactor 
+whenever it delivers a correct consensus message.
+
 ## Bad peers
 
 The `MarkBad` method marks a peer as bad and bans it for a period of time.
 
-It is invoked by the PEX reactor, with banning time of 24 hours, in the following cases:
+It is invoked by the [PEX reactor](pex-protocol.md#misbehavior), with banning time of 24 hours, in the following cases:
 
 - When PEX requests are received too often from a peer
 - When an invalid PEX response is received from a peer

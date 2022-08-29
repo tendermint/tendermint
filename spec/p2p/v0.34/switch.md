@@ -218,7 +218,7 @@ reactor (`InitPeer` method).
 Next, the peer's sending and receiving routines are started, and the peer is
 added to set of connected peers.
 These two operations can fail, causing `addPeer` to return an error.
-Then, in the absence of previous errors, the peer is added to every reactor (`AdPeer` method).
+Then, in the absence of previous errors, the peer is added to every reactor (`AddPeer` method).
 
 > Adding the peer to the peer set returns a `ErrSwitchDuplicatePeerID` error
 > when a peer with the same ID is already presented.
