@@ -25,7 +25,7 @@ the node *needs* peers addresses, a condition checked:
 
 1. When an *outbound* peer is added, causing the node to request addresses from
    the new peer
-1. Periodically, by the `ensurePeersRoutine`, causing the node to request peer
+2. Periodically, by the `ensurePeersRoutine`, causing the node to request peer
    addresses to a randomly selected peer
 
 A node needs more peer addresses when its addresses book has
@@ -78,7 +78,7 @@ Sending a PEX response to a peer that has not requested peer addresses
 is also considered a misbehavior.
 So, if a PEX response is received from a peer that is not registered in
 the `requestsSent` set, a `ErrUnsolicitedList` error is produced.
-This leads the peer to be disconnected and marked as a bad peer.
+This leads the peer to be disconnected and [marked as a bad peer](addressbook.md#bad-peers).
 
 ## Providing Addresses
 
@@ -102,7 +102,7 @@ The `receiveRequest` method is responsible for verifying this condition.
 The node keeps a `lastReceivedRequests` map with the time of the last PEX
 request received from every peer.
 If the interval between successive requests is less than the minimum accepted
-one, the peer is disconnected and marked as a bad peer.
+one, the peer is disconnected and [marked as a bad peer](addressbook.md#bad-peers).
 An exception is made for the first two PEX requests received from a peer.
 
 > The probably reason is that, when a new peer is added, the two conditions for
@@ -122,7 +122,7 @@ More specifically, a node operating in seed mode sends PEX requests in two cases
 
 1. When a outbound peer is added, and the seed node needs more peer addresses,
    it requests peer addresses to the new peer
-1. Periodically, the `crawlPeersRoutine` sends PEX requests to a random set of
+2. Periodically, the `crawlPeersRoutine` sends PEX requests to a random set of
    peers, whose addresses are registered in the Address Book
 
 The first case also applies for nodes not operating in seed mode.
@@ -150,7 +150,7 @@ peers, the seed node sends a PEX request.
 
 Dialing a selected peer address can fail for multiple reasons.
 The seed node might have attempted to dial the peer too many times.
-In this case, the peer address is marked as bad in the address book.
+In this case, the peer address is marked as [bad in the address book](addressbook.md#bad-peers).
 The seed node might have attempted to dial the peer recently, without success,
 and the exponential `backoffDuration` has not yet passed.
 Or the current connection attempt might fail, which is registered in the address book.
