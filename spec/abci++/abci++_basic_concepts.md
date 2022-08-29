@@ -65,8 +65,7 @@ Methods can be classified into four categories: *consensus*, *mempool*, *info*, 
 The first time a new blockchain is started, Tendermint calls `InitChain`. From then on, methods `BeginBlock`,
  `DeliverTx` and `EndBlock` are executed upon the decision of each block, resulting in an updated Application
 state. One `DeliverTx` is called for each transaction in the block. The result is an updated application state. 
-Cryptographic commitments to the results of `DeliverTx, EndBlock`, and `Commit` are included in the header of 
-the next block. During the execution of an instance of consensus, which decides the block for a given
+Cryptographic commitments to the results of `DeliverTx`, and an application-provided hash in `Commit` are included in the header of the next block. During the execution of an instance of consensus, which decides the block for a given
 height, and before method `BeginBlock` is called, methods `PrepareProposal` and `ProcessProposal`,
  may be called several times. See
 [Tendermint's expected behavior](abci++_tmint_expected_behavior.md) for details on the possible
