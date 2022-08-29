@@ -7,11 +7,25 @@ Tendermint Core.
 
 ### ABCI Changes
 
+* The `ABCIVersion` is now `0.18.0`.
+
+* Added new ABCI methods `PrepareProposal` and `ProcessProposal`. For details,
+  please see the [spec](spec/abci/README.md). Applications upgrading to
+  v0.37.0 must implement these methods, at the very minimum, as described
+  [here](spec/abci/apps.md)
+* Deduplicated `ConsensusParams` and `BlockParams`.
+  In the v0.34 branch they are defined both in `abci/types.proto` and `types/params.proto`.
+  The definitions in `abci/types.proto` have been removed.
+  In-process applications should make sure they are not using the deleted
+  version of those structures.
 * In v0.34, messages on the wire used to be length-delimited with `int64` varint
   values, which was inconsistent with the `uint64` varint length delimiters used
   in the P2P layer. Both now consistently use `uint64` varint length delimiters.
-* Added `AbciVersion` to `RequestInfo`. Applications should check that the ABCI
-  version they expect is being used in order to ensure compatibility.
+* Added `AbciVersion` to `RequestInfo`.
+  Applications should check that Tendermint's ABCI version matches the one they expect
+  in order to ensure compatibility.
+* The `SetOption` method has been removed from the ABCI `Client` interface.
+  The corresponding Protobuf types have been deprecated.
 
 ## v0.34.20
 
@@ -34,7 +48,7 @@ Refactor](https://github.com/tendermint/tendermint/blob/main/docs/architecture/a
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher.
+Note also that Tendermint 0.34 also requires Go 1.16 or higher.
 
 ### ABCI Changes
 
@@ -75,12 +89,9 @@ directory. For more, see "Protobuf," below.
 
 ### Blockchain Protocol
 
-* `Header#LastResultsHash` previously was the root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data)` responses.
-  As of 0.34,`Header#LastResultsHash` is now the root hash of a Merkle tree built from:
-    * `BeginBlock#Events`
-    * Root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
-      GasWanted, GasUsed, Events)` responses
-    * `BeginBlock#Events`
+* `Header#LastResultsHash`, which is the root hash of a Merkle tree built from
+  `ResponseDeliverTx(Code, Data)` as of v0.34 also includes `GasWanted` and `GasUsed`
+  fields.
 
 * Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
   to conform with [RFC-6962](https://tools.ietf.org/html/rfc6962).
@@ -184,6 +195,7 @@ Other user-relevant changes include:
 * The `Verifier` was broken up into two pieces:
     * Core verification logic (pure `VerifyX` functions)
     * `Client` object, which represents the complete light client
+* The new light client stores headers and validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
 
@@ -444,7 +456,7 @@ the compilation tag:
 
 Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
 use `make build_c` / `make install_c` (full instructions can be found at
-<https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support>)
+<https://docs.tendermint.com/v0.33/introduction/install.html#compile-with-cleveldb-support>)
 
 ## v0.31.0
 
