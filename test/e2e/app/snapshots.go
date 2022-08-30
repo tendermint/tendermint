@@ -1,4 +1,3 @@
-// nolint: gosec
 package app
 
 import (
@@ -29,7 +28,7 @@ type SnapshotStore struct {
 // NewSnapshotStore creates a new snapshot store.
 func NewSnapshotStore(dir string) (*SnapshotStore, error) {
 	store := &SnapshotStore{dir: dir}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
 	if err := store.loadMetadata(); err != nil {
@@ -71,7 +70,7 @@ func (s *SnapshotStore) saveMetadata() error {
 	// save the file to a new file and move it to make saving atomic.
 	newFile := filepath.Join(s.dir, "metadata.json.new")
 	file := filepath.Join(s.dir, "metadata.json")
-	err = os.WriteFile(newFile, bz, 0644) // nolint: gosec
+	err = os.WriteFile(newFile, bz, 0o644) //nolint: gosec
 	if err != nil {
 		return err
 	}
@@ -92,7 +91,7 @@ func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
 		Hash:   hashItems(state.Values),
 		Chunks: byteChunks(bz),
 	}
-	err = os.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0644)
+	err = os.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0o644) //nolint:gosec
 	if err != nil {
 		return abci.Snapshot{}, err
 	}

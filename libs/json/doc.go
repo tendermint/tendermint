@@ -13,12 +13,12 @@
 // compatibility with e.g. Javascript (which uses 64-bit floats for numbers, having 53-bit
 // precision):
 //
-// 	int32(32)  // Output: 32
-// 	uint32(32) // Output: 32
-// 	int64(64)  // Output: "64"
-// 	uint64(64) // Output: "64"
-// 	int(64)    // Output: "64"
-// 	uint(64)   // Output: "64"
+//	int32(32)  // Output: 32
+//	uint32(32) // Output: 32
+//	int64(64)  // Output: "64"
+//	uint64(64) // Output: "64"
+//	int(64)    // Output: "64"
+//	uint(64)   // Output: "64"
 //
 // Encoding of other scalars follows encoding/json:
 //
@@ -50,7 +50,7 @@
 // Times are encoded as encoding/json, in RFC3339Nano format, but requiring UTC time zone (with zero
 // times emitted as "0001-01-01T00:00:00Z" as with encoding/json):
 //
-// 	time.Date(2020, 6, 8, 16, 21, 28, 123, time.FixedZone("UTC+2", 2*60*60))
+//	time.Date(2020, 6, 8, 16, 21, 28, 123, time.FixedZone("UTC+2", 2*60*60))
 //	// Output: "2020-06-08T14:21:28.000000123Z"
 //	time.Time{}       // Output: "0001-01-01T00:00:00Z"
 //	(*time.Time)(nil) // Output: null
@@ -95,5 +95,4 @@
 //
 //	Struct{Car: &Car{Wheels: 4}, Vehicle: &Car{Wheels: 4}}
 //	// Output: {"Car": {"Wheels: 4"}, "Vehicle": {"type":"vehicle/car","value":{"Wheels":4}}}
-//
 package json

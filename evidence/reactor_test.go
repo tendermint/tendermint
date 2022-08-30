@@ -369,7 +369,7 @@ func exampleVote(t byte) *types.Vote {
 	}
 }
 
-// nolint:lll //ignore line length for tests
+//nolint:lll //ignore line length for tests
 func TestEvidenceVectors(t *testing.T) {
 
 	val := &types.Validator{
