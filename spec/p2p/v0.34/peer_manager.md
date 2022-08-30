@@ -18,8 +18,7 @@ multiple attempts to dial them.
 
 On startup, the node immediately tries to dial the configured persistent peers
 by calling the switch's [`DialPeersAsync`](./switch.md#dialpeersasync) method.
-
-within the switch directly from its setup method. 
+This is not done at the p2p package, but in the methods to set up a node.
 
 ## Ensure peers
 
