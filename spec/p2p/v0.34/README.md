@@ -2,6 +2,22 @@
 
 Within a Tendermint network, nodes can communicate with one another using a p2p protocol. The goal of this document is to specify the p2p layer in Tendermint v0.34 including: Peer discovery, peer management, connection handling and message types. 
 
+## Overview
+
+A Tendermint network is composed by multiple Tendermint instances, thereafter
+called **nodes**, that interact by exchanging messages.
+
+Tendermint assumes a partially-connected network model.
+This means that a node is not assumed to be directly connected to every other
+node in the network.
+Instead, each node is directly connected to a subset of other nodes in the
+network, thereafter called its **peers**.
+
+The peer-to-peer (p2p) communication layer is responsible for establishing
+connections between nodes in a Tendermint network,
+for managing the communication between a node and its peers,
+and for intermediating the exchange of messages between peers in Tendermint protocols.
+
 ## Introduction 
 This documentation aims at separating the logical components on a protocol level from the implementation details of each protocol. 
 
