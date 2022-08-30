@@ -2,16 +2,16 @@
 
 The transport establishes secure and authenticated connections with peers.
 
-It [`Dial`](#dialing-peers) peers to establish outbound connections,
-and [`Listen`](#listen) in a configured network address
-to [`Accept`](#accepting-peers) inbound connections from peers.
+The transport [`Dial`](#dial)s peer addresses to establish outbound connections,
+and [`Listen`](#listen)s in a configured network address
+to [`Accept`](#accept) inbound connections from peers.
 
 The transport establishes raw TCP connections with peers
 and [upgrade](#connection-upgrade) them into authenticated secret connections.
 The established secret connection is then wrapped into `Peer` instance, which
 is returned to the caller, typically the [switch](./switch.md).
 
-## Dialing peers
+## Dial
 
 The `Dial` method is used by the switch to establish an outbound connection with a peer.
 It is a synchronous method, which blocks until a connection is established or an error occurs.
@@ -33,7 +33,22 @@ and the information about the peer (`NodeInfo` record) retrieved and verified
 during the version handshake,
 are wrapped into an outbound `Peer` instance and returned to the switch.
 
-## Accepting peers
+## Listen
+
+The `Listen` method produces a TCP listener instance for the provided network
+address, and spawns an `acceptPeers` routine to handle the raw connections
+accepted by the listener.
+The `NetAddress` method exports the listen address configured for the transport.
+
+The maximum number of simultaneous incoming connections accepted by the listener
+is bound to `MaxNumInboundPeer` plus the configured number of unconditional peers,
+using the `MultiplexTransportMaxIncomingConnections` option,
+in the node [initialization](https://github.com/tendermint/tendermint/blob/29c5a062d23aaef653f11195db55c45cd9e02715/node/node.go#L563).
+
+This method is called when a node is [started](https://github.com/tendermint/tendermint/blob/29c5a062d23aaef653f11195db55c45cd9e02715/node/node.go#L972).
+In case of errors, the `acceptPeers` routine is not started and the error is returned.
+
+## Accept
 
 The `Accept` method returns to the switch inbound connections established with a peer.
 It is a synchronous method, which blocks until a connection is accepted or an error occurs.
@@ -105,7 +120,7 @@ an `ErrFilterTimeout` error is returned.
 The `upgrade` method is invoked for every new raw connection established by the
 transport, that was not [filtered out](#filtering-connections).
 It upgrades an established raw TCP connection into a secret authenticated
-connection, and validate the information provided by the peer.
+connection, and validates the information provided by the peer.
 
 This is a complex procedure, that can be summarized by the following three
 message exchanges between the node and the new peer:
@@ -171,21 +186,6 @@ If it reports a node ID equals to the local node ID,
 an `ErrRejected` error with reason `isSelf` is returned.
 If it is not compatible with the local `NodeInfo`,
 an `ErrRejected` error with reason `isIncompatible` is returned.
-
-## Listen
-
-The `Listen` method produces a TCP listener instance for the provided network address,
-and spawns an `acceptPeers` routine to handle the connections [accepted](#accepting-peers)
-by the listener.
-The `NetAddress` method exports the listen address configured for the transport.
-
-The maximum number of simultaneous incoming connections accepted by the listener
-is bound to `MaxNumInboundPeer` plus the configured number of unconditional peers,
-using the `MultiplexTransportMaxIncomingConnections` option,
-in the node [initialization](https://github.com/tendermint/tendermint/blob/46badfabd9d5491c78283a0ecdeb695e21785508/node/node.go#L559).
-
-This method is called when a node is [started](https://github.com/tendermint/tendermint/blob/46badfabd9d5491c78283a0ecdeb695e21785508/node/node.go#L966).
-In case of errors, the `acceptPeers` routine is not started and the error is returned.
 
 ## Close
 
