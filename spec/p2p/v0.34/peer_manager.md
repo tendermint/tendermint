@@ -68,7 +68,7 @@ Then, the node randomly selects a connected peer, which can be either an
 inbound or outbound peer, to [requests addresses](./pex-protocol.md#Requesting-Addresses)
 using the PEX protocol.
 Last, and this action is only performed if the node could not retrieve any new
-address to dial from the address book, the node [dials the configured seed nodes](#dialSeeds)
+address to dial from the address book, the node dials the configured seed nodes
 in order to establish a connection to at least one of them.
 
 ### Fast dialing
@@ -112,22 +112,6 @@ peers, either inbound or outbound peers, or is dialing some addresses, the
 first invocation of `ensurePeers` is delayed by a random amount of time from 0
 to `ensurePeersPeriod`.
 
-## dialSeeds - PEX reactor
-
-TODO:
-
-## dialPeer - PEX reactor
-
-The actual dialing is performed by the [switch](./switch.md#dialing-peers).
-
-includes `dialAttemptsInfo`, `maxBackoffDurationForPeer` methods.
-
-TODO:
-
-## AttemptsToDial - PEX reactor
-
-Not invoked in the code, except for tests.
-
 ## Peer types
 
 Tendermint distignuishes between three types of peers:
@@ -143,3 +127,10 @@ reconnect to a persistent peer. Regular peers will be removed and disconnected f
 
 *Unconditional peers* are not subjected to the limits of maximum inbound and outbound connections and Tendermint
 always attempts to connect to them, even if the maximum number of connections is reached. 
+
+## Pending of documentation
+
+The `dialSeeds` method of the PEX reactor.
+
+The `dialPeer` method of the PEX reactor.
+This includes `dialAttemptsInfo`, `maxBackoffDurationForPeer` methods.
