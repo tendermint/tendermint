@@ -1,11 +1,15 @@
 package query_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
@@ -56,6 +60,115 @@ var apiEvents = map[string][]string{
 	},
 	"transfer.amount": {
 		"160",
+	},
+}
+
+var apiTypeEvents = []types.Event{
+	{
+		Type: "tm",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("event"),
+				Value: []byte("Tx"),
+			},
+		},
+	},
+	{
+		Type: "tm",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("hash"),
+				Value: []byte("XYZ"),
+			},
+		},
+	},
+	{
+		Type: "tm",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("height"),
+				Value: []byte("5"),
+			},
+		},
+	},
+	{
+		Type: "rewards.withdraw",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("address"),
+				Value: []byte("AddrA"),
+			},
+			{
+				Key:   []byte("address"),
+				Value: []byte("AddrB"),
+			},
+		},
+	},
+	{
+		Type: "rewards.withdraw",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("source"),
+				Value: []byte("SrcX"),
+			},
+			{
+				Key:   []byte("source"),
+				Value: []byte("SrcY"),
+			},
+		},
+	},
+	{
+		Type: "rewards.withdraw",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("amount"),
+				Value: []byte("100"),
+			},
+			{
+				Key:   []byte("amount"),
+				Value: []byte("45"),
+			},
+		},
+	},
+	{
+		Type: "rewards.withdraw",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("balance"),
+				Value: []byte("1500"),
+			},
+			{
+				Key:   []byte("balance"),
+				Value: []byte("999"),
+			},
+		},
+	},
+	{
+		Type: "transfer",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("sender"),
+				Value: []byte("AddrC"),
+			},
+		},
+	},
+	{
+		Type: "transfer",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("recipient"),
+				Value: []byte("AddrD"),
+			},
+		},
+	},
+	{
+		Type: "transfer",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   []byte("amount"),
+				Value: []byte("160"),
+			},
+		},
 	},
 }
 
@@ -220,6 +333,27 @@ func TestCompiledMatches(t *testing.T) {
 					tc.s, tc.events, got, tc.matches)
 			}
 		})
+	}
+}
+
+func sortEvents(events []types.Event) []types.Event {
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].Type == events[j].Type {
+			return string(events[i].Attributes[0].Key) < string(events[j].Attributes[0].Key)
+		}
+		return events[i].Type < events[j].Type
+	})
+	return events
+}
+
+func TestExpandEvents(t *testing.T) {
+	expanded := query.ExpandEvents(apiEvents)
+	bz, err := json.Marshal(sortEvents(expanded))
+	require.NoError(t, err)
+	bz2, err := json.Marshal(sortEvents(apiTypeEvents))
+	require.NoError(t, err)
+	if string(bz) != string(bz2) {
+		t.Errorf("got %s, want %v", string(bz), string(bz2))
 	}
 }
 
