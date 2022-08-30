@@ -1,5 +1,11 @@
 # Peer Manager
 
+The peer manager is responsible for establishing connections with peers.
+It defines when a node should dial peers and which peers it should dial.
+
+The peer manager is not an implementation abstraction of the p2p layer,
+but a role that is played by the [PEX reactor](./pex.md).
+
 ## Dialing peers on startup
 
 The node configuration file can contain a list of *persistent peers*. Those peers
