@@ -126,13 +126,13 @@ would probably be overly-abstract at this stage.
 ## Detailed Design
 
 The [current
-nodeImpl](https://github.com/tendermint/tendermint/blob/main/node/node.go#L47)
+nodeImpl](https://github.com/tendermint/tendermint/blob/v0.37.x/node/node.go#L47)
 includes direct references to the implementations of each of the
 reactors, which should be replaced by references to `service.Service`
 objects. This will require moving construction of the [rpc
-service](https://github.com/tendermint/tendermint/blob/main/node/node.go#L771)
+service](https://github.com/tendermint/tendermint/blob/v0.37.x/node/node.go#L771)
 into the constructor of
-[makeNode](https://github.com/tendermint/tendermint/blob/main/node/node.go#L126). One
+[makeNode](https://github.com/tendermint/tendermint/blob/v0.37.x/node/node.go#L126). One
 possible implementation of this would be to eliminate the current
 `ConfigureRPC` method on the node package and instead [configure it
 here](https://github.com/tendermint/tendermint/pull/6798/files#diff-375d57e386f20eaa5f09f02bb9d28bfc48ac3dca18d0325f59492208219e5618R441).

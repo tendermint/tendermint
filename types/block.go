@@ -321,7 +321,7 @@ func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
 // NOTE: changes to the Header should be duplicated in:
 // - header.Hash()
 // - abci.Header
-// - https://github.com/tendermint/tendermint/blob/main/spec/blockchain/blockchain.md
+// - https://github.com/tendermint/tendermint/blob/v0.37.x/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
 	Version tmversion.Consensus `json:"version"`
@@ -722,7 +722,6 @@ func (cs *CommitSig) ToProto() *tmproto.CommitSig {
 // FromProto sets a protobuf CommitSig to the given pointer.
 // It returns an error if the CommitSig is invalid.
 func (cs *CommitSig) FromProto(csp tmproto.CommitSig) error {
-
 	cs.BlockIDFlag = BlockIDFlag(csp.BlockIdFlag)
 	cs.ValidatorAddress = csp.ValidatorAddress
 	cs.Timestamp = csp.Timestamp
@@ -963,9 +962,7 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 		return nil, errors.New("nil Commit")
 	}
 
-	var (
-		commit = new(Commit)
-	)
+	commit := new(Commit)
 
 	bi, err := BlockIDFromProto(&cp.BlockID)
 	if err != nil {
@@ -991,7 +988,6 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 
 // Data contains the set of transactions included in the block
 type Data struct {
-
 	// Txs that will be applied by state @ block.Height+1.
 	// NOTE: not all txs here are valid.  We're just agreeing on the order first.
 	// This means that block.AppHash does not include these txs.

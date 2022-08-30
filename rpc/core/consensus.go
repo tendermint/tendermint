@@ -14,7 +14,7 @@ import (
 // validators are sorted by their voting power - this is the canonical order
 // for the validators in the set as used in computing their Merkle root.
 //
-// More: https://docs.tendermint.com/main/rpc/#/Info/validators
+// More: https://docs.tendermint.com/v0.37/rpc/#/Info/validators
 func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	// The latest validator that we know is the NextValidator of the last block.
 	height, err := getHeight(latestUncommittedHeight(), heightPtr)
@@ -42,12 +42,13 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *in
 		BlockHeight: height,
 		Validators:  v,
 		Count:       len(v),
-		Total:       totalCount}, nil
+		Total:       totalCount,
+	}, nil
 }
 
 // DumpConsensusState dumps consensus state.
 // UNSTABLE
-// More: https://docs.tendermint.com/main/rpc/#/Info/dump_consensus_state
+// More: https://docs.tendermint.com/v0.37/rpc/#/Info/dump_consensus_state
 func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState, error) {
 	// Get Peer consensus states.
 	peers := env.P2PPeers.Peers().List()
@@ -75,12 +76,13 @@ func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState
 	}
 	return &ctypes.ResultDumpConsensusState{
 		RoundState: roundState,
-		Peers:      peerStates}, nil
+		Peers:      peerStates,
+	}, nil
 }
 
 // ConsensusState returns a concise summary of the consensus state.
 // UNSTABLE
-// More: https://docs.tendermint.com/main/rpc/#/Info/consensus_state
+// More: https://docs.tendermint.com/v0.37/rpc/#/Info/consensus_state
 func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error) {
 	// Get self round state.
 	bz, err := env.ConsensusState.GetRoundStateSimpleJSON()
@@ -89,7 +91,7 @@ func ConsensusState(ctx *rpctypes.Context) (*ctypes.ResultConsensusState, error)
 
 // ConsensusParams gets the consensus parameters at the given block height.
 // If no height is provided, it will fetch the latest consensus params.
-// More: https://docs.tendermint.com/main/rpc/#/Info/consensus_params
+// More: https://docs.tendermint.com/v0.37/rpc/#/Info/consensus_params
 func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultConsensusParams, error) {
 	// The latest consensus params that we know is the consensus params after the
 	// last block.
@@ -104,5 +106,6 @@ func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCon
 	}
 	return &ctypes.ResultConsensusParams{
 		BlockHeight:     height,
-		ConsensusParams: consensusParams}, nil
+		ConsensusParams: consensusParams,
+	}, nil
 }

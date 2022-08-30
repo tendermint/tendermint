@@ -12,7 +12,7 @@ Accepted
 
 The advent of state sync and block pruning gave rise to the opportunity for full nodes to participate in consensus without needing complete block history. This also introduced a problem with respect to evidence handling. Nodes that didn't have all the blocks within the evidence age were incapable of validating evidence, thus halting if that evidence was committed on chain.
 
-[ADR 068](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-068-reverse-sync.md) was published in response to this problem and modified the spec to add a minimum block history invariant. This predominantly sought to extend state sync so that it was capable of fetching and storing the `Header`, `Commit` and `ValidatorSet` (essentially a `LightBlock`) of the last `n` heights, where `n` was calculated based from the evidence age.
+[ADR 068](https://github.com/tendermint/tendermint/blob/v0.37.x/docs/architecture/adr-068-reverse-sync.md) was published in response to this problem and modified the spec to add a minimum block history invariant. This predominantly sought to extend state sync so that it was capable of fetching and storing the `Header`, `Commit` and `ValidatorSet` (essentially a `LightBlock`) of the last `n` heights, where `n` was calculated based from the evidence age.
 
 This ADR sets out to describe the design of this state sync extension as well as modifications to the light client provider and the merging of tm store.
 
@@ -93,5 +93,5 @@ This ADR tries to remain within the scope of extending state sync, however the c
 
 ## References
 
-- [Reverse Sync RFC](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-068-reverse-sync.md)
+- [Reverse Sync RFC](https://github.com/tendermint/tendermint/blob/v0.37.x/docs/architecture/adr-068-reverse-sync.md)
 - [Original Issue](https://github.com/tendermint/tendermint/issues/5617)

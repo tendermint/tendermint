@@ -1049,13 +1049,13 @@ func Backwards (primary PeerID, root LightBlock, targetHeight Height)
 
 [lightclient]: https://github.com/interchainio/tendermint-rs/blob/e2cb9aca0b95430fca2eac154edddc9588038982/docs/architecture/adr-002-lite-client.md
 [attack-detector]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_001_reviewed.md
-[fullnode]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/fullnode.md
+[fullnode]: https://github.com/tendermint/tendermint/blob/v0.37.x/spec/blockchain/fullnode.md
 
 [ibc-rs]:https://github.com/informalsystems/ibc-rs
 
-[blockchain-validator-set]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/blockchain.md#data-structures
-[fullnode-data-structures]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/fullnode.md#data-structures
+[blockchain-validator-set]: https://github.com/tendermint/tendermint/blob/v0.37.x/spec/blockchain/blockchain.md#data-structures
+[fullnode-data-structures]: https://github.com/tendermint/tendermint/blob/v0.37.x/spec/blockchain/fullnode.md#data-structures
 
-[FN-ManifestFaulty-link]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/fullnode.md#fn-manifestfaulty
+[FN-ManifestFaulty-link]: https://github.com/tendermint/tendermint/blob/v0.37.x/spec/blockchain/fullnode.md#fn-manifestfaulty
 
 [arXiv]: https://arxiv.org/abs/1807.04938

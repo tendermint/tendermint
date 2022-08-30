@@ -20,9 +20,9 @@ Respective versioned files can be found <https://raw.githubusercontent.com/tende
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
-For more background, see the [the docs](https://docs.tendermint.com/main/introduction/#quick-start).
+For more background, see the [the docs](https://docs.tendermint.com/v0.37/introduction/#quick-start).
 
-To get started developing applications, see the [application developers guide](https://docs.tendermint.com/main/introduction/quick-start.html).
+To get started developing applications, see the [application developers guide](https://docs.tendermint.com/v0.37/introduction/quick-start.html).
 
 ## How to use this image
 
@@ -37,7 +37,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app
 
 ## Local cluster
 
-To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/main/Makefile) and run:
+To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/blob/v0.37.x/Makefile) and run:
 
 ```sh
 make build-linux
@@ -53,4 +53,4 @@ Note that this will build and use a different image than the ones provided here.
 
 ## Contributing
 
-Contributions are most welcome! See the [contributing file](https://github.com/tendermint/tendermint/blob/main/CONTRIBUTING.md) for more information.
+Contributions are most welcome! See the [contributing file](https://github.com/tendermint/tendermint/blob/v0.37.x/CONTRIBUTING.md) for more information.
