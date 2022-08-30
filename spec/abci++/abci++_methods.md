@@ -453,7 +453,7 @@ title: Methods
       returned in `ResponsePrepareProposal.txs` .
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
       The Application must keep those events until a block is decided. It will then forward the events to the `BeginBlock-DeliverTx-EndBlock` functions depending on where each event should be placed, thereby returning the events to Tendermint.
-    * Tendermint does NOT provide any additional validity checks (sucha s checking for duplicate 
+    * Tendermint does NOT provide any additional validity checks (such as checking for duplicate 
       transactions).
       <!--
       As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
