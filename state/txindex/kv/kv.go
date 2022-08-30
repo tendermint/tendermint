@@ -256,6 +256,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	}
 
 	results := make([]*abci.TxResult, 0, len(filteredHashes))
+results_loop:
 	for _, h := range filteredHashes {
 		res, err := txi.Get(h)
 		if err != nil {
@@ -266,7 +267,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
-			break
+			break results_loop
 		default:
 		}
 	}
