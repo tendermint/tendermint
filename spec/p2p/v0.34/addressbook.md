@@ -1,15 +1,33 @@
 # Address Book
 
-Implemented as part of the `pex` package.
+The address book tracks information about other nodes in the network.
 
-> // AddrBook is an address book used for tracking peers
-> // so we can gossip about them to others and select
-> // peers to dial.
+The primary information about a node is its peer address,
+composed by a network address and an ID.
+Addresses can be manually configured (e.g., as persistent peers),
+can be learned when a peer attempts to connect to the node,
+or can be retrieved via the [Peer Exchange protocol](./pex-protocol.md).
 
-`AddrBook` is an interface, it extends `service.Service`.
-`addrBook` is the (only) implementation of this interface.
+The [Peer Manager](./peer_manager.md) retrieves from the address book peer
+addresses to dial, so to establish outbound connections.
+It also records in the address book failed attempts to connect to a peer.
 
-The address book stores `knownAddress` instances.
+The [Peer Exchange protocol](./pex-protocol.md) feds the address book with
+addresses received from peers, and retrieves from the address book random
+selection of addresses it provides to peers.
+
+Once the node is connected to a peer, it uses the address book to record
+information about the quality of the peer.
+The quality of a peer is currently restricted to the definition of
+[good](#good-peers) or [bad](#bad-peers) peers.
+It influences, in particular, the selection of candidate peers to dial.
+
+## New addresses
+
+The `AddAddress` method adds a new address to the address book.
+
+The added address is associated to a *source* address, which identifies the
+node from which the address was learned.
 
 Addresses are added to the address book in the following situations:
 
@@ -19,13 +37,6 @@ Addresses are added to the address book in the following situations:
    itself is set as the source of its address
 1. When the switch is instructed to dial addresses via the `DialPeersAsync`
    method, in this case the node itself is set as the source
-
-## New addresses
-
-The `AddAddress` method adds a new address to the address book.
-
-The added address is associated to a *source* address, which identifies the
-node from which the address was learned.
 
 An address contains a node ID and a network address (IP and port).
 The address book can keep multiple network addresses for the same node ID, but
@@ -86,123 +97,6 @@ to a new outbound peer or to a randomly selected connected peer.
 
 The address book needs more addresses when it has less than `1000` addresses
 registered, counting all buckets for new and old addresses.
-
-## Good peers
-
-The `MarkGood` method marks a peer ID as good.
-
-It is invoked by the consensus reactor, via switch, when the number of useful
-messages received from a peer is a multiple of `10000`.
-Vote and block part messages are considered for this number, they must be valid
-and not be duplicated messages to be considered useful.
-
-> The `SwitchReporter` type of `behaviour` package also invokes the `MarkGood`
-> method when a "reason" associated with consensus votes and block parts is
-> reported.
-> No reactor, however, currently provides these "reasons" to the `SwitchReporter`.
-
-The effect of this action is that the address registered for the peer's ID in the
-`addrLookup` table, which is the last address added with that ID, is marked as
-good and moved to a bucket of old addresses.
-An address marked as good has its failed to connect counter and timestamp reset.
-If the destination bucket of old addresses is full, the oldest address in the
-bucket is moved (downgraded) to a bucket of new addresses.
-
-Moving the peer address to a bucket of old addresses has the effect of
-upgrading, or increasing the ranking of a peer in the address book.
-
-**Note** In v0.34 a peers is currently marked good only from the consensus reactor 
-whenever it delivers a correct consensus message.
-
-## Bad peers
-
-The `MarkBad` method marks a peer as bad and bans it for a period of time.
-
-It is invoked by the [PEX reactor](pex-protocol.md#misbehavior), with banning time of 24 hours, in the following cases:
-
-- When PEX requests are received too often from a peer
-- When an invalid PEX response is received from a peer
-- When an unsolicited PEX response is received from a peer
-- When the `maxAttemptsToDial` a limit (`16`) is reached for a peer
-- If an `ErrSwitchAuthenticationFailure` error is returned when dialing a peer
-
-The effect of this action is that the address registered for the peer's ID in the
-`addrLookup` table, which is the last address added with that ID, is banned for
-a period of time.
-The banned peer is removed from the `addrLookup` table and from all buckets
-where its addresses are stored.
-
-The information about banned peers, however, is not discarded.
-It is maintained in the `badPeers` map, indexed by peer ID.
-This allows, in particular, addresses of banned peers to be
-[reinstated](#reinstating-addresses), i.e., to be added
-back to the address book, when their ban period expires.
-
-## Dial Attempts
-
-The `MarkAttempt` method records a failed attempt to connect to an address. 
-
-It is invoked by the PEX reactor when it fails dialing a peer, but the failure
-is not in the authentication step (`ErrSwitchAuthenticationFailure` error).
-In case of authentication errors, the peer is instead marked as a [bad peer](#bad-peers).
-
-The failed connection attempt is recorded in the address registered for the
-peer's ID in the `addrLookup` table, which is the last address added with that ID.
-The known address' counter of failed `Attempts` is increased and the failure
-time is registered in `LastAttempt`.
-
-The possible effect of recording multiple failed connect attempts to a peer is
-to turn its address into a *bad* address (do not confuse with banned addresses).
-A known address becomes bad if it is stored in buckets of new addresses, and
-when connections attempts:
-
-- Have not been made over a week, i.e., `LastAttempt` is older than a week
-- Have failed 3 times and never succeeded, i.e., `LastSucess` field is unset
-- Have failed 10 times in the last week, i.e., `LastSucess` is older than a week
-
-Addresses marked as *bad* are the first candidates to be removed from a bucket of
-new addresses when the bucket becomes full.
-
-> Note that failed connection attempts are reported for a peer address, but in
-> fact the address book records them for a peer.
->
-> More precisely, failed connection attempts are recorded in the entry of  the
-> `addrLookup` table with reported peer ID, which contains the last address
-> added for that node ID, which is not necessarily the reported peer address.
-
-## Reinstating addresses
-
-The `ReinstateBadPeers` method attempts to re-add banned addresses to the address book.
-
-It is invoked by the PEX reactor when dialing new peers.
-This action is taken before requesting additional addresses to peers,
-in the case that the node needs more peer addresses.
-
-The set of banned peer addresses is retrieved from the `badPeers` map.
-Addresses that are not any longer banned, i.e., which banned period has expired,
-are added back to the address book as new addresses, while the corresponding
-node IDs are removed from the `badPeers` map.
-
-## Removing addresses
-
-The `RemoveAddress` method removes an address from the address book.
-
-It is invoked by the switch when it dials a peer or accepts a connection from a
-peer that end ups being the node itself (`IsSelf` error).
-In both cases, the address dialed or accepted is also added to the address book
-as a local address, via the `AddOurAddress` method.
-
-The same logic is also internally used by the address book for removing
-addresses of a peer that is [marked as a bad peer](#bad-peers).
-
-The entry registered with the peer ID of the address in the `addrLookup` table,
-which is the last address added with that ID, is removed from all buckets where
-it is stored and from the `addrLookup` table.
-
-> FIXME: is it possible that addresses with the same ID as the removed address,
-> but with distinct network addresses, are kept in buckets of the address book?
-> While they will not be accessible anymore, as there is no reference to them
-> in the `addrLookup`, they will still be there.
 
 ## Pick address
 
@@ -295,6 +189,124 @@ The returned selection contains, at its beginning, a random selection of new
 addresses in random order, followed by a random selection of old addresses, in
 random order.
 
+## Dial Attempts
+
+The `MarkAttempt` method records a failed attempt to connect to an address. 
+
+It is invoked by the PEX reactor when it fails dialing a peer, but the failure
+is not in the authentication step (`ErrSwitchAuthenticationFailure` error).
+In case of authentication errors, the peer is instead marked as a [bad peer](#bad-peers).
+
+The failed connection attempt is recorded in the address registered for the
+peer's ID in the `addrLookup` table, which is the last address added with that ID.
+The known address' counter of failed `Attempts` is increased and the failure
+time is registered in `LastAttempt`.
+
+The possible effect of recording multiple failed connect attempts to a peer is
+to turn its address into a *bad* address (do not confuse with banned addresses).
+A known address becomes bad if it is stored in buckets of new addresses, and
+when connections attempts:
+
+- Have not been made over a week, i.e., `LastAttempt` is older than a week
+- Have failed 3 times and never succeeded, i.e., `LastSucess` field is unset
+- Have failed 10 times in the last week, i.e., `LastSucess` is older than a week
+
+Addresses marked as *bad* are the first candidates to be removed from a bucket of
+new addresses when the bucket becomes full.
+
+> Note that failed connection attempts are reported for a peer address, but in
+> fact the address book records them for a peer.
+>
+> More precisely, failed connection attempts are recorded in the entry of  the
+> `addrLookup` table with reported peer ID, which contains the last address
+> added for that node ID, which is not necessarily the reported peer address.
+
+
+## Good peers
+
+The `MarkGood` method marks a peer ID as good.
+
+It is invoked by the consensus reactor, via switch, when the number of useful
+messages received from a peer is a multiple of `10000`.
+Vote and block part messages are considered for this number, they must be valid
+and not be duplicated messages to be considered useful.
+
+> The `SwitchReporter` type of `behaviour` package also invokes the `MarkGood`
+> method when a "reason" associated with consensus votes and block parts is
+> reported.
+> No reactor, however, currently provides these "reasons" to the `SwitchReporter`.
+
+The effect of this action is that the address registered for the peer's ID in the
+`addrLookup` table, which is the last address added with that ID, is marked as
+good and moved to a bucket of old addresses.
+An address marked as good has its failed to connect counter and timestamp reset.
+If the destination bucket of old addresses is full, the oldest address in the
+bucket is moved (downgraded) to a bucket of new addresses.
+
+Moving the peer address to a bucket of old addresses has the effect of
+upgrading, or increasing the ranking of a peer in the address book.
+
+**Note** In v0.34 a peers is currently marked good only from the consensus reactor 
+whenever it delivers a correct consensus message.
+
+## Bad peers
+
+The `MarkBad` method marks a peer as bad and bans it for a period of time.
+
+It is invoked by the [PEX reactor](pex-protocol.md#misbehavior), with banning time of 24 hours, in the following cases:
+
+- When PEX requests are received too often from a peer
+- When an invalid PEX response is received from a peer
+- When an unsolicited PEX response is received from a peer
+- When the `maxAttemptsToDial` a limit (`16`) is reached for a peer
+- If an `ErrSwitchAuthenticationFailure` error is returned when dialing a peer
+
+The effect of this action is that the address registered for the peer's ID in the
+`addrLookup` table, which is the last address added with that ID, is banned for
+a period of time.
+The banned peer is removed from the `addrLookup` table and from all buckets
+where its addresses are stored.
+
+The information about banned peers, however, is not discarded.
+It is maintained in the `badPeers` map, indexed by peer ID.
+This allows, in particular, addresses of banned peers to be
+[reinstated](#reinstating-addresses), i.e., to be added
+back to the address book, when their ban period expires.
+
+## Reinstating addresses
+
+The `ReinstateBadPeers` method attempts to re-add banned addresses to the address book.
+
+It is invoked by the PEX reactor when dialing new peers.
+This action is taken before requesting additional addresses to peers,
+in the case that the node needs more peer addresses.
+
+The set of banned peer addresses is retrieved from the `badPeers` map.
+Addresses that are not any longer banned, i.e., which banned period has expired,
+are added back to the address book as new addresses, while the corresponding
+node IDs are removed from the `badPeers` map.
+
+## Removing addresses
+
+The `RemoveAddress` method removes an address from the address book.
+
+It is invoked by the switch when it dials a peer or accepts a connection from a
+peer that end ups being the node itself (`IsSelf` error).
+In both cases, the address dialed or accepted is also added to the address book
+as a local address, via the `AddOurAddress` method.
+
+The same logic is also internally used by the address book for removing
+addresses of a peer that is [marked as a bad peer](#bad-peers).
+
+The entry registered with the peer ID of the address in the `addrLookup` table,
+which is the last address added with that ID, is removed from all buckets where
+it is stored and from the `addrLookup` table.
+
+> FIXME: is it possible that addresses with the same ID as the removed address,
+> but with distinct network addresses, are kept in buckets of the address book?
+> While they will not be accessible anymore, as there is no reference to them
+> in the `addrLookup`, they will still be there.
+
 ## Buckets
 
 Addresses are stored into buckets.
@@ -344,3 +356,13 @@ It is also possible to save the content of the address book using the `Save`
 method.
 Saving the address book content to a file acquires the address book lock, also
 employed by all other public methods.
+
+## Implementation details
+
+`AddrBook` is an interface, extending `service.Service`, declared in the `p2p/pex` package:
+
+> // AddrBook is an address book used for tracking peers so we can gossip about them to others and select peers to dial.
+
+Type `addrBook` is the (only) implementation of the `AddrBook` interface.
+
+The address book stores peer addresses and information using `knownAddress` instances.
