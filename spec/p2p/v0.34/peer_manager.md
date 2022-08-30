@@ -9,11 +9,16 @@ but a role that is played by the [PEX reactor](./pex.md).
 
 The node configuration can contain a list of *persistent peers*.
 Those peers have preferential treatment compared to regular peers and the node
-is always trying to connect to them -- they are not removed on errors.
+is always trying to connect to them.
+Moreover, these peers are not removed from the address book in the case of
+multiple attempts to dial them.
 
- If, on startup, the list of empty peers 
-is not empty, the node immediately tries to dial them by calling the 
-[`DialPeersAsync`](switch.md#dialpeersasync)
+> FIXME: are persistent peers removed from the address book in case of
+> authentication failures?
+
+On startup, the node immediately tries to dial the configured persistent peers
+by calling the switch's [`DialPeersAsync`](./switch.md#dialpeersasync) method.
+
 within the switch directly from its setup method. 
 
 ## Ensure peers
