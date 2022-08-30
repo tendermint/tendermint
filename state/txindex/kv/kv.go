@@ -256,7 +256,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	}
 
 	results := make([]*abci.TxResult, 0, len(filteredHashes))
-results_loop:
+RESULTS_LOOP:
 	for _, h := range filteredHashes {
 		res, err := txi.Get(h)
 		if err != nil {
@@ -267,7 +267,7 @@ results_loop:
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
-			break results_loop
+			break RESULTS_LOOP
 		default:
 		}
 	}
@@ -323,13 +323,14 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	EQ_LOOP:
 		for ; it.Valid(); it.Next() {
 			tmpHashes[string(it.Value())] = it.Value()
 
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break EQ_LOOP
 			default:
 			}
 		}
@@ -346,13 +347,14 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	EXISTS_LOOP:
 		for ; it.Valid(); it.Next() {
 			tmpHashes[string(it.Value())] = it.Value()
 
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break EXISTS_LOOP
 			default:
 			}
 		}
@@ -370,6 +372,7 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	CONTAINS_LOOP:
 		for ; it.Valid(); it.Next() {
 			if !isTagKey(it.Key()) {
 				continue
@@ -382,7 +385,7 @@ func (txi *TxIndex) match(
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break CONTAINS_LOOP
 			default:
 			}
 		}
@@ -406,6 +409,7 @@ func (txi *TxIndex) match(
 
 	// Remove/reduce matches in filteredHashes that were not found in this
 	// match (tmpHashes).
+REMOVE_LOOP:
 	for k := range filteredHashes {
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
@@ -413,7 +417,7 @@ func (txi *TxIndex) match(
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break REMOVE_LOOP
 			default:
 			}
 		}
@@ -486,7 +490,7 @@ LOOP:
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
-			break
+			break LOOP
 		default:
 		}
 	}
@@ -507,6 +511,7 @@ LOOP:
 
 	// Remove/reduce matches in filteredHashes that were not found in this
 	// match (tmpHashes).
+REMOVE_LOOP:
 	for k := range filteredHashes {
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
@@ -514,7 +519,7 @@ LOOP:
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break REMOVE_LOOP
 			default:
 			}
 		}
