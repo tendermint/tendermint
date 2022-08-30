@@ -112,7 +112,9 @@ call sequences of these methods.
  `DeliverTx` to inform the application that the block can now be committed and inform it of potential changes such
  as a new validator set to be proposed in the next round.  As with `DeliverTx`, cryptographic commitments of the responses returned
  are included in the header of the next block.
-<!-- - [**ExtendVote:**](./abci++_methods.md#extendvote) It allows applications to force their
+<!-- 
+
+- [**ExtendVote:**](./abci++_methods.md#extendvote) It allows applications to force their
   validators to do more than just validate within consensus. `ExtendVote` allows applications to
   include non-deterministic data, opaque to Tendermint, to precommit messages (the final round of
   voting). The data, called *vote extension*, will be broadcast and received together with the
@@ -134,7 +136,8 @@ call sequences of these methods.
   a process receives a precommit message with a (possibly empty) vote extension.
 -->
 
-<!--- - [**FinalizeBlock:**](./abci++_methods.md#finalizeblock) It delivers a decided block to the
+<!--- 
+- [**FinalizeBlock:**](./abci++_methods.md#finalizeblock) It delivers a decided block to the
   Application. The Application must execute the transactions in the block deterministically and
   update its state accordingly. Cryptographic commitments to the block and transaction results,
   returned via the corresponding parameters in `ResponseFinalizeBlock`, are included in the header
@@ -256,7 +259,8 @@ validate (via `ProcessProposal`). However, the state changes caused by processin
 proposed blocks must never replace the previous state until the block execution calls confirm
 the block decided.
 
-<!--Additionally, vote extensions or the validation thereof (via `ExtendVote` or
+<!--
+Additionally, vote extensions or the validation thereof (via `ExtendVote` or
 `VerifyVoteExtension`) must *never* have side effects on the current state.
 They can only be used when their data is provided in a `RequestPrepareProposal` call.
 -->
@@ -411,12 +415,14 @@ has no reasonable way to handle. If there is an error in one
 of these methods, the Application must crash to ensure that the error is safely
 handled by an operator.
 
-<!--Method `FinalizeBlock` is a special case. It contains a number of
+<!--
+Method `FinalizeBlock` is a special case. It contains a number of
 `Code` and `Codespace` fields as part of type `ExecTxResult`. Each of
 these codes reports errors related to the transaction it is attached to.
 However, `FinalizeBlock` does not return errors at the top level, so the
 same considerations on critical issues made for `Echo`, `Info`, and
-`InitChain` also apply here. --> 
+`InitChain` also apply here. 
+--> 
 
 The handling of non-zero response codes by Tendermint is described below.
 
@@ -432,10 +438,12 @@ The `DeliverTx` ABCI method delivers transactions from Tendermint to the applica
 When Tendermint receives a `ResponseDeliverTx` with a non-zero `Code`, the response code is logged. 
 The transaction was already included in a block, so the `Code` does not influence Tendermint consensus.
 
-<!-- The `ExecTxResult` type delivers transaction results from the Application to Tendermint. When
+<!-- 
+The `ExecTxResult` type delivers transaction results from the Application to Tendermint. When
 Tendermint receives a `ResponseFinalizeBlock` containing an `ExecTxResult` with a non-zero `Code`,
 the response code is logged. Past `Code` values can be queried by clients. As the transaction was
-part of a decided block, the `Code` does not influence Tendermint consensus. -->
+part of a decided block, the `Code` does not influence Tendermint consensus. 
+-->
 
 ### `Query`
 

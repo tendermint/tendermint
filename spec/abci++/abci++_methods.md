@@ -453,8 +453,12 @@ title: Methods
       returned in `ResponsePrepareProposal.txs` .
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
       The Application must keep those events until a block is decided. It will then forward the events to the `BeginBlock-DeliverTx-EndBlock` functions depending on where each event should be placed, thereby returning the events to Tendermint.
-    * As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
-      In particular, `ResponsePrepareProposal.txs` will be deemed invalid if there are duplicate transactions in the list. <!-- ToDo  this is currenetly not implemented! -->
+    * Tendermint does NOT provide any additional validity checks (sucha s checking for duplicate 
+      transactions).
+      <!--
+      As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
+      In particular, `ResponsePrepareProposal.txs` will be deemed invalid if there are duplicate transactions in the list. 
+       -->
     * If Tendermint fails to validate the `ResponsePrepareProposal`, Tendermint will assume the
       Application is faulty and crash.
     * The implementation of `PrepareProposal` can be non-deterministic.

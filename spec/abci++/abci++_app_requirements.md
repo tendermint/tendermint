@@ -81,14 +81,16 @@ of `ProcessProposal`. As a general rule `ProcessProposal` SHOULD always accept t
 According to the Tendermint algorithm, a correct process can broadcast at most one precommit
 message in round *r*, height *h*.
 
-<!-- Since, as stated in the [Methods](./abci++_methods.md#extendvote) section, `ResponseExtendVote`
+<!-- 
+Since, as stated in the [Methods](./abci++_methods.md#extendvote) section, `ResponseExtendVote`
 is only called when Tendermint
 is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension
 in round *r*, height *h*.
 Let *e<sup>r</sup><sub>p</sub>* be the vote extension that the Application of a correct process *p* returns via
 `ResponseExtendVote` in round *r*, height *h*.
 Let *w<sup>r</sup><sub>p</sub>* be the proposed block that *p*'s Tendermint passes to the Application via `RequestExtendVote`
-in round *r*, height *h*. -->
+in round *r*, height *h*. 
+-->
 
 <!--
 * Requirement 6 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two different correct
@@ -127,10 +129,14 @@ As a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension
 -->
 * Requirement 9 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
   `RequestProcessProposal`, 
-  <!--`RequestExtendVote`, and `RequestVerifyVoteExtension` --> at height *h* do
+  <!--
+  `RequestExtendVote`, and `RequestVerifyVoteExtension` 
+  --> 
+  at height *h* do
   not modify *s<sub>p,h-1</sub>*.
 
-<!-- * Requirement 10 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process *p*,
+<!-- 
+* Requirement 10 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process *p*,
 and any vote extension *e* that *p* received at height *h*, the computation of
 *s<sub>p,h</sub>* does not depend on *e*.
 -->
@@ -190,13 +196,19 @@ time.
 
 The existence of this global mutex means Go application developers can get thread safety for application state by routing all reads and writes through the ABCI system. Thus it may be unsafe to expose application state directly to an RPC interface, and unless explicit measures are taken, all queries should be routed through the ABCI Query method.
 
-<!--This is no longer the case starting from v0.36.0: the global locks have been removed and it is
+<!--
+This is no longer the case starting from v0.36.0: the global locks have been removed and it is
 up to the Application to synchronize access to its state when handling
-ABCI++ methods on all connections. -->
+ABCI++ methods on all connections.
+ -->
 
-<!-- TODO CHeck with Sergio whether this is still the case-->
-<!--Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
-still received in sequence. -->
+<!--
+ TODO CHeck with Sergio whether this is still the case
+ -->
+<!--
+Nevertheless, as all ABCI calls are now synchronous, ABCI messages using the same connection are
+still received in sequence.
+ -->
 
 #### BeginBlock - DeliverTx - EndBlock
 
@@ -355,8 +367,10 @@ For more information, see Section [State Sync](#state-sync).
 
 For each transaction within a block, the Application is expected to return a result within
 [`ResponseDeliverTx`](./abci%2B%2B_methods.md#delivertx). 
-<!--The list of transactions executed must respect the same order as the list of transactions delivered via
-subsequent calls to [`RequestDeliverTx`](./abci%2B%2B_methods.md#delivertx). -->
+<!--
+The list of transactions executed must respect the same order as the list of transactions delivered via
+subsequent calls to [`RequestDeliverTx`](./abci%2B%2B_methods.md#delivertx). 
+-->
 This section discusses the fields inside `ResponseDeliverTx` along with the fields in
 [`ResponseCheckTx`](./abci%2B%2B_methods.md#checktx),
 whose semantics are similar.
@@ -513,7 +527,8 @@ These are the current consensus parameters (as of v0.36.x):
 5. [EvidenceParams.MaxBytes](#evidenceparamsmaxbytes)
 6. [ValidatorParams.PubKeyTypes](#validatorparamspubkeytypes)
 7. [VersionParams.App](#versionparamsapp)
-<!-- 6. [SynchronyParams.MessageDelay](#synchronyparamsmessagedelay)
+<!--
+ 6. [SynchronyParams.MessageDelay](#synchronyparamsmessagedelay)
 7. [SynchronyParams.Precision](#synchronyparamsprecision)
 8. [TimeoutParams.Propose](#timeoutparamspropose)
 9. [TimeoutParams.ProposeDelta](#timeoutparamsproposedelta)
@@ -521,7 +536,7 @@ These are the current consensus parameters (as of v0.36.x):
 11. [TimeoutParams.VoteDelta](#timeoutparamsvotedelta)
 12. [TimeoutParams.Commit](#timeoutparamscommit)
 13. [TimeoutParams.BypassCommitTimeout](#timeoutparamsbypasscommittimeout) 
-14. -->
+-->
 
 ##### BlockParams.MaxBytes
 
