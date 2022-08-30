@@ -5,11 +5,13 @@ It defines when a node should dial peers and which peers it should dial.
 The peer manager is not an implementation abstraction of the p2p layer,
 but a role that is played by the [PEX reactor](./pex.md).
 
-## Dialing peers on startup
+## Persistent peers
 
-The node configuration file can contain a list of *persistent peers*. Those peers
-have preferential treatment compared to regular peers and the node is always trying to 
-connect to them - they are not removed on errors. If, on startup, the list of empty peers 
+The node configuration can contain a list of *persistent peers*.
+Those peers have preferential treatment compared to regular peers and the node
+is always trying to connect to them -- they are not removed on errors.
+
+ If, on startup, the list of empty peers 
 is not empty, the node immediately tries to dial them by calling the 
 [`DialPeersAsync`](switch.md#dialpeersasync)
 within the switch directly from its setup method. 
