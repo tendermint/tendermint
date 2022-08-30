@@ -111,7 +111,7 @@ INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3)
 			if !attr.Index {
 				continue
 			}
-			compositeKey := evt.Type + "." + string(attr.Key)
+			compositeKey := evt.Type + "." + attr.Key
 			if _, err := dbtx.Exec(`
 INSERT INTO `+tableAttributes+` (event_id, key, composite_key, value)
   VALUES ($1, $2, $3, $4);
