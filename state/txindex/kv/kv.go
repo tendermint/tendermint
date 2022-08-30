@@ -315,8 +315,8 @@ func (txi *TxIndex) match(
 
 	tmpHashes := make(map[string][]byte)
 
-	switch {
-	case c.Op == query.OpEqual:
+	switch c.Op {
+	case query.OpEqual:
 		it, err := dbm.IteratePrefix(txi.store, startKeyBz)
 		if err != nil {
 			panic(err)
@@ -337,7 +337,7 @@ func (txi *TxIndex) match(
 			panic(err)
 		}
 
-	case c.Op == query.OpExists:
+	case query.OpExists:
 		// XXX: can't use startKeyBz here because c.Operand is nil
 		// (e.g. "account.owner/<nil>/" won't match w/ a single row)
 		it, err := dbm.IteratePrefix(txi.store, startKey(c.CompositeKey))
@@ -360,7 +360,7 @@ func (txi *TxIndex) match(
 			panic(err)
 		}
 
-	case c.Op == query.OpContains:
+	case query.OpContains:
 		// XXX: startKey does not apply here.
 		// For example, if startKey = "account.owner/an/" and search query = "account.owner CONTAINS an"
 		// we can't iterate with prefix "account.owner/an/" because we might miss keys like "account.owner/Ulan/"
