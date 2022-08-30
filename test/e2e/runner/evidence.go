@@ -5,8 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -234,7 +234,7 @@ func getRandomValidatorIndex(privVals []types.MockPV, vals *types.ValidatorSet) 
 }
 
 func readPrivKey(keyFilePath string) (crypto.PrivKey, error) {
-	keyJSONBytes, err := ioutil.ReadFile(keyFilePath)
+	keyJSONBytes, err := os.ReadFile(keyFilePath)
 	if err != nil {
 		return nil, err
 	}

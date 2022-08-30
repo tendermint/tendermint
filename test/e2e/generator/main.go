@@ -1,4 +1,3 @@
-// nolint: gosec
 package main
 
 import (
@@ -58,12 +57,12 @@ func NewCLI() *CLI {
 
 // generate generates manifests in a directory.
 func (cli *CLI) generate(dir string, groups int) error {
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)))
+	manifests, err := Generate(rand.New(rand.NewSource(randomSeed))) //nolint:gosec
 	if err != nil {
 		return err
 	}

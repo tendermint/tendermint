@@ -238,5 +238,5 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	buf.WriteString("</body></html>")
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
-	w.Write(buf.Bytes()) // nolint: errcheck
+	w.Write(buf.Bytes()) //nolint: errcheck
 }

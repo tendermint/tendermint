@@ -57,7 +57,7 @@ func NewCLI() *CLI {
 				return err
 			}
 
-			r := rand.New(rand.NewSource(randomSeed)) // nolint: gosec
+			r := rand.New(rand.NewSource(randomSeed)) //nolint: gosec
 
 			chLoadResult := make(chan error)
 			ctx, loadCancel := context.WithCancel(context.Background())
@@ -203,7 +203,7 @@ func NewCLI() *CLI {
 
 			return InjectEvidence(
 				cmd.Context(),
-				rand.New(rand.NewSource(randomSeed)), // nolint: gosec
+				rand.New(rand.NewSource(randomSeed)), //nolint: gosec
 				cli.testnet,
 				amount,
 			)
