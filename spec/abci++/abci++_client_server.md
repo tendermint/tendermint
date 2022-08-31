@@ -67,30 +67,21 @@ ABCI GRPC server.
 
 ### Socket
 
-Tendermint Socket Protocol is an asynchronous, raw socket server which provides ordered message passing over unix or tcp. Messages are serialized using  Protobuf3 and length-prefixed with an [unsigned
- varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#varints)
+The Tendermint Socket Protocol is an asynchronous, raw socket server protocol which provides ordered
+message passing over Unix or TCP sockets. Messages are serialized using Protobuf3 and length-prefixed
+with an [unsigned varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#varints)
 
- If GRPC is not available in your language, or you require higher performance, or
- otherwise enjoy programming, you may implement your own ABCI server using the
- Tendermint Socket Protocol. The first step is still to auto-generate the
- relevant data types and codec in your language using `protoc`. In addition to
- being proto3 encoded, messages coming over the socket are length-prefixed to
- facilitate use as a streaming protocol. proto3 doesn't have an official
- length-prefix standard, so we use our own. The first byte in the prefix
- represents the length of the Big Endian encoded length. The remaining bytes in
- the prefix are the Big Endian encoded length.
+If gRPC is not available in your language, or you require higher performance, or
+otherwise enjoy programming, you may implement your own ABCI server using the
+Tendermint Socket Protocol. The first step is still to auto-generate the
+relevant data types and codec in your language using `protoc`, and then you need to
+ensure you handle the unsigned `varint`-based message length encoding scheme
+when reading and writing messages to the socket.
 
- For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4 bytes), the
- length-prefixed message is 0x0104DEADBEEF. If the proto3 encoded ABCI message is
- 65535 bytes long, the length-prefixed message would be like 0x02FFFF....
+Note that our length prefixing scheme does not apply to gRPC.
 
- The benefit of using this `varint` encoding over the old version (where integers
- were encoded as `<len of len><big endian len>` is that it is the common way to
- encode integers in Protobuf. It is also generally shorter.
-
-Note that this length-prefixing scheme does not apply for GRPC.
-
-Note that your ABCI server must be able to support multiple connections, as Tendermint uses four connections.
+Also note that your ABCI server must be able to handle multiple connections,
+as Tendermint uses four connections.
 
 ## Client
 
