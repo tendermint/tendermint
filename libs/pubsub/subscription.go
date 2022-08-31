@@ -43,9 +43,10 @@ func (s *Subscription) Out() <-chan Message {
 	return s.out
 }
 
-// nolint: misspell
 // Cancelled returns a channel that's closed when the subscription is
 // terminated and supposed to be used in a select statement.
+//
+//nolint:misspell
 func (s *Subscription) Cancelled() <-chan struct{} {
 	return s.canceled
 }
@@ -54,7 +55,8 @@ func (s *Subscription) Cancelled() <-chan struct{} {
 // If the channel is closed, Err returns a non-nil error explaining why:
 //   - ErrUnsubscribed if the subscriber choose to unsubscribe,
 //   - ErrOutOfCapacity if the subscriber is not pulling messages fast enough
-//   and the channel returned by Out became full,
+//     and the channel returned by Out became full,
+//
 // After Err returns a non-nil error, successive calls to Err return the same
 // error.
 func (s *Subscription) Err() error {

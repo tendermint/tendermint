@@ -121,6 +121,11 @@ branch (see above). Otherwise:
 3. Prepare the changelog:
    - Move the changes included in `CHANGELOG_PENDING.md` into `CHANGELOG.md`. Each RC should have
      it's own changelog section. These will be squashed when the final candidate is released.
+   - Ensure that there is a "release highlights" or "release summary" paragraph
+     after the version heading describing what we feel are the most important
+     changes in this release from a user's perspective. This paragraph should
+     answer the question: "why should users upgrade to this version?", and with
+     specific reasons (not generic ones like "more bug fixes").
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
      all PRs
    - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes

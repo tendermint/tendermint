@@ -231,10 +231,6 @@ func (cli *socketClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	return cli.queueRequest(types.ToRequestInfo(req))
 }
 
-func (cli *socketClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
-	return cli.queueRequest(types.ToRequestSetOption(req))
-}
-
 func (cli *socketClient) DeliverTxAsync(req types.RequestDeliverTx) *ReqRes {
 	return cli.queueRequest(types.ToRequestDeliverTx(req))
 }
@@ -279,6 +275,14 @@ func (cli *socketClient) ApplySnapshotChunkAsync(req types.RequestApplySnapshotC
 	return cli.queueRequest(types.ToRequestApplySnapshotChunk(req))
 }
 
+func (cli *socketClient) PrepareProposalAsync(req types.RequestPrepareProposal) *ReqRes {
+	return cli.queueRequest(types.ToRequestPrepareProposal(req))
+}
+
+func (cli *socketClient) ProcessProposalAsync(req types.RequestProcessProposal) *ReqRes {
+	return cli.queueRequest(types.ToRequestProcessProposal(req))
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync() error {
@@ -306,15 +310,6 @@ func (cli *socketClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, e
 	}
 
 	return reqres.Response.GetInfo(), cli.Error()
-}
-
-func (cli *socketClient) SetOptionSync(req types.RequestSetOption) (*types.ResponseSetOption, error) {
-	reqres := cli.queueRequest(types.ToRequestSetOption(req))
-	if err := cli.FlushSync(); err != nil {
-		return nil, err
-	}
-
-	return reqres.Response.GetSetOption(), cli.Error()
 }
 
 func (cli *socketClient) DeliverTxSync(req types.RequestDeliverTx) (*types.ResponseDeliverTx, error) {
@@ -417,6 +412,24 @@ func (cli *socketClient) ApplySnapshotChunkSync(
 	return reqres.Response.GetApplySnapshotChunk(), cli.Error()
 }
 
+func (cli *socketClient) PrepareProposalSync(req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	reqres := cli.queueRequest(types.ToRequestPrepareProposal(req))
+	if err := cli.FlushSync(); err != nil {
+		return nil, err
+	}
+
+	return reqres.Response.GetPrepareProposal(), cli.Error()
+}
+
+func (cli *socketClient) ProcessProposalSync(req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	reqres := cli.queueRequest(types.ToRequestProcessProposal(req))
+	if err := cli.FlushSync(); err != nil {
+		return nil, err
+	}
+
+	return reqres.Response.GetProcessProposal(), cli.Error()
+}
+
 //----------------------------------------
 
 func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
@@ -468,8 +481,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Flush)
 	case *types.Request_Info:
 		_, ok = res.Value.(*types.Response_Info)
-	case *types.Request_SetOption:
-		_, ok = res.Value.(*types.Response_SetOption)
 	case *types.Request_DeliverTx:
 		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:
@@ -492,6 +503,10 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_ListSnapshots)
 	case *types.Request_OfferSnapshot:
 		_, ok = res.Value.(*types.Response_OfferSnapshot)
+	case *types.Request_PrepareProposal:
+		_, ok = res.Value.(*types.Response_PrepareProposal)
+	case *types.Request_ProcessProposal:
+		_, ok = res.Value.(*types.Response_ProcessProposal)
 	}
 	return ok
 }

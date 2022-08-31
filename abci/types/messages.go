@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/libs/protoio"
 )
 
@@ -45,12 +46,6 @@ func ToRequestFlush() *Request {
 func ToRequestInfo(req RequestInfo) *Request {
 	return &Request{
 		Value: &Request_Info{&req},
-	}
-}
-
-func ToRequestSetOption(req RequestSetOption) *Request {
-	return &Request{
-		Value: &Request_SetOption{&req},
 	}
 }
 
@@ -120,6 +115,18 @@ func ToRequestApplySnapshotChunk(req RequestApplySnapshotChunk) *Request {
 	}
 }
 
+func ToRequestPrepareProposal(req RequestPrepareProposal) *Request {
+	return &Request{
+		Value: &Request_PrepareProposal{&req},
+	}
+}
+
+func ToRequestProcessProposal(req RequestProcessProposal) *Request {
+	return &Request{
+		Value: &Request_ProcessProposal{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -143,12 +150,6 @@ func ToResponseFlush() *Response {
 func ToResponseInfo(res ResponseInfo) *Response {
 	return &Response{
 		Value: &Response_Info{&res},
-	}
-}
-
-func ToResponseSetOption(res ResponseSetOption) *Response {
-	return &Response{
-		Value: &Response_SetOption{&res},
 	}
 }
 
@@ -215,5 +216,17 @@ func ToResponseLoadSnapshotChunk(res ResponseLoadSnapshotChunk) *Response {
 func ToResponseApplySnapshotChunk(res ResponseApplySnapshotChunk) *Response {
 	return &Response{
 		Value: &Response_ApplySnapshotChunk{&res},
+	}
+}
+
+func ToResponsePrepareProposal(res ResponsePrepareProposal) *Response {
+	return &Response{
+		Value: &Response_PrepareProposal{&res},
+	}
+}
+
+func ToResponseProcessProposal(res ResponseProcessProposal) *Response {
+	return &Response{
+		Value: &Response_ProcessProposal{&res},
 	}
 }

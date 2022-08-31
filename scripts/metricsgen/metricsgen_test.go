@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	metricsgen "github.com/tendermint/tendermint/scripts/metricsgen"
 )
 

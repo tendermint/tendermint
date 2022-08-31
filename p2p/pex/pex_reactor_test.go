@@ -58,15 +58,15 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 }
 
 // --- FAIL: TestPEXReactorRunning (11.10s)
-// 				pex_reactor_test.go:411: expected all switches to be connected to at
-// 				least one peer (switches: 0 => {outbound: 1, inbound: 0}, 1 =>
-// 				{outbound: 0, inbound: 1}, 2 => {outbound: 0, inbound: 0}, )
+//
+//	pex_reactor_test.go:411: expected all switches to be connected to at
+//	least one peer (switches: 0 => {outbound: 1, inbound: 0}, 1 =>
+//	{outbound: 0, inbound: 1}, 2 => {outbound: 0, inbound: 0}, )
 //
 // EXPLANATION: peers are getting rejected because in switch#addPeer we check
 // if any peer (who we already connected to) has the same IP. Even though local
 // peers have different IP addresses, they all have the same underlying remote
 // IP: 127.0.0.1.
-//
 func TestPEXReactorRunning(t *testing.T) {
 	N := 3
 	switches := make([]*p2p.Switch, N)
@@ -214,7 +214,7 @@ func TestCheckSeeds(t *testing.T) {
 	// 1. test creating peer with no seeds works
 	peerSwitch := testCreateDefaultPeer(dir, 0)
 	require.Nil(t, peerSwitch.Start())
-	peerSwitch.Stop() // nolint:errcheck // ignore for tests
+	peerSwitch.Stop() //nolint:errcheck // ignore for tests
 
 	// 2. create seed
 	seed := testCreateSeed(dir, 1, []*p2p.NetAddress{}, []*p2p.NetAddress{})
@@ -222,7 +222,7 @@ func TestCheckSeeds(t *testing.T) {
 	// 3. test create peer with online seed works
 	peerSwitch = testCreatePeerWithSeed(dir, 2, seed)
 	require.Nil(t, peerSwitch.Start())
-	peerSwitch.Stop() // nolint:errcheck // ignore for tests
+	peerSwitch.Stop() //nolint:errcheck // ignore for tests
 
 	// 4. test create peer with all seeds having unresolvable DNS fails
 	badPeerConfig := &ReactorConfig{
@@ -231,7 +231,7 @@ func TestCheckSeeds(t *testing.T) {
 	}
 	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
 	require.Error(t, peerSwitch.Start())
-	peerSwitch.Stop() // nolint:errcheck // ignore for tests
+	peerSwitch.Stop() //nolint:errcheck // ignore for tests
 
 	// 5. test create peer with one good seed address succeeds
 	badPeerConfig = &ReactorConfig{
@@ -241,7 +241,7 @@ func TestCheckSeeds(t *testing.T) {
 	}
 	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
 	require.Nil(t, peerSwitch.Start())
-	peerSwitch.Stop() // nolint:errcheck // ignore for tests
+	peerSwitch.Stop() //nolint:errcheck // ignore for tests
 }
 
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
@@ -253,12 +253,12 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	// 1. create seed
 	seed := testCreateSeed(dir, 0, []*p2p.NetAddress{}, []*p2p.NetAddress{})
 	require.Nil(t, seed.Start())
-	defer seed.Stop() // nolint:errcheck // ignore for tests
+	defer seed.Stop() //nolint:errcheck // ignore for tests
 
 	// 2. create usual peer with only seed configured.
 	peer := testCreatePeerWithSeed(dir, 1, seed)
 	require.Nil(t, peer.Start())
-	defer peer.Stop() // nolint:errcheck // ignore for tests
+	defer peer.Stop() //nolint:errcheck // ignore for tests
 
 	// 3. check that the peer connects to seed immediately
 	assertPeersWithTimeout(t, []*p2p.Switch{peer}, 10*time.Millisecond, 3*time.Second, 1)
@@ -273,18 +273,18 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	// 1. create peer
 	peerSwitch := testCreateDefaultPeer(dir, 1)
 	require.Nil(t, peerSwitch.Start())
-	defer peerSwitch.Stop() // nolint:errcheck // ignore for tests
+	defer peerSwitch.Stop() //nolint:errcheck // ignore for tests
 
 	// 2. Create seed which knows about the peer
 	peerAddr := peerSwitch.NetAddress()
 	seed := testCreateSeed(dir, 2, []*p2p.NetAddress{peerAddr}, []*p2p.NetAddress{peerAddr})
 	require.Nil(t, seed.Start())
-	defer seed.Stop() // nolint:errcheck // ignore for tests
+	defer seed.Stop() //nolint:errcheck // ignore for tests
 
 	// 3. create another peer with only seed configured.
 	secondPeer := testCreatePeerWithSeed(dir, 3, seed)
 	require.Nil(t, secondPeer.Start())
-	defer secondPeer.Stop() // nolint:errcheck // ignore for tests
+	defer secondPeer.Stop() //nolint:errcheck // ignore for tests
 
 	// 4. check that the second peer connects to seed immediately
 	assertPeersWithTimeout(t, []*p2p.Switch{secondPeer}, 10*time.Millisecond, 3*time.Second, 1)
@@ -307,13 +307,13 @@ func TestPEXReactorSeedMode(t *testing.T) {
 	sw.SetAddrBook(book)
 	err = sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop() // nolint:errcheck // ignore for tests
+	defer sw.Stop() //nolint:errcheck // ignore for tests
 
 	assert.Zero(t, sw.Peers().Size())
 
 	peerSwitch := testCreateDefaultPeer(dir, 1)
 	require.NoError(t, peerSwitch.Start())
-	defer peerSwitch.Stop() // nolint:errcheck // ignore for tests
+	defer peerSwitch.Stop() //nolint:errcheck // ignore for tests
 
 	// 1. Test crawlPeers dials the peer
 	pexR.crawlPeers([]*p2p.NetAddress{peerSwitch.NetAddress()})
@@ -346,13 +346,13 @@ func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 	sw.SetAddrBook(book)
 	err = sw.Start()
 	require.NoError(t, err)
-	defer sw.Stop() // nolint:errcheck // ignore for tests
+	defer sw.Stop() //nolint:errcheck // ignore for tests
 
 	assert.Zero(t, sw.Peers().Size())
 
 	peerSwitch := testCreateDefaultPeer(dir, 1)
 	require.NoError(t, peerSwitch.Start())
-	defer peerSwitch.Stop() // nolint:errcheck // ignore for tests
+	defer peerSwitch.Stop() //nolint:errcheck // ignore for tests
 
 	err = sw.AddPersistentPeers([]string{peerSwitch.NetAddress().String()})
 	require.NoError(t, err)
@@ -618,7 +618,7 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 			book := NewAddrBook(filepath.Join(dir, "addrbookSeed.json"), false)
 			book.SetLogger(log.TestingLogger())
 			for j := 0; j < len(knownAddrs); j++ {
-				book.AddAddress(knownAddrs[j], srcAddrs[j]) // nolint:errcheck // ignore for tests
+				book.AddAddress(knownAddrs[j], srcAddrs[j]) //nolint:errcheck // ignore for tests
 				book.MarkGood(knownAddrs[j].ID)
 			}
 			sw.SetAddrBook(book)

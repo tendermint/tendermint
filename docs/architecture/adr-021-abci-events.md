@@ -7,7 +7,7 @@
 
 ## Context
 
-ABCI tags were first described in [ADR 002](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-002-event-subscription.md).
+ABCI tags were first described in [ADR 002](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-002-event-subscription.md).
 They are key-value pairs that can be used to index transactions.
 
 Currently, ABCI messages return a list of tags to describe an

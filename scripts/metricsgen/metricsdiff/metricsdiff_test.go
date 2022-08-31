@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	metricsdiff "github.com/tendermint/tendermint/scripts/metricsgen/metricsdiff"
 )
 

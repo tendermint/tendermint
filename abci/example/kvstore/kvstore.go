@@ -68,6 +68,7 @@ type Application struct {
 
 	state        State
 	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
+	txToRemove   map[string]struct{}
 }
 
 func NewApplication() *Application {
@@ -87,15 +88,19 @@ func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo)
 
 // tx is either "key=value" or just arbitrary bytes
 func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
-	var key, value []byte
+	if isReplacedTx(req.Tx) {
+		app.txToRemove[string(req.Tx)] = struct{}{}
+	}
+	var key, value string
+
 	parts := bytes.Split(req.Tx, []byte("="))
 	if len(parts) == 2 {
-		key, value = parts[0], parts[1]
+		key, value = string(parts[0]), string(parts[1])
 	} else {
-		key, value = req.Tx, req.Tx
+		key, value = string(req.Tx), string(req.Tx)
 	}
 
-	err := app.state.db.Set(prefixKey(key), value)
+	err := app.state.db.Set(prefixKey([]byte(key)), []byte(value))
 	if err != nil {
 		panic(err)
 	}
@@ -105,10 +110,10 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 		{
 			Type: "app",
 			Attributes: []types.EventAttribute{
-				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
-				{Key: []byte("key"), Value: key, Index: true},
-				{Key: []byte("index_key"), Value: []byte("index is working"), Index: true},
-				{Key: []byte("noindex_key"), Value: []byte("index is working"), Index: false},
+				{Key: "creator", Value: "Cosmoshi Netowoko", Index: true},
+				{Key: "key", Value: key, Index: true},
+				{Key: "index_key", Value: "index is working", Index: true},
+				{Key: "noindex_key", Value: "index is working", Index: false},
 			},
 		},
 	}
@@ -117,6 +122,11 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	if req.Type == types.CheckTxType_Recheck {
+		if _, ok := app.txToRemove[string(req.Tx)]; ok {
+			return types.ResponseCheckTx{Code: code.CodeTypeExecuted, GasWanted: 1}
+		}
+	}
 	return types.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
@@ -126,6 +136,8 @@ func (app *Application) Commit() types.ResponseCommit {
 	binary.PutVarint(appHash, app.state.Size)
 	app.state.AppHash = appHash
 	app.state.Height++
+
+	// empty out the set of transactions to remove via rechecktx
 	saveState(app.state)
 
 	resp := types.ResponseCommit{Data: appHash}
@@ -169,4 +181,19 @@ func (app *Application) Query(reqQuery types.RequestQuery) (resQuery types.Respo
 	resQuery.Height = app.state.Height
 
 	return resQuery
+}
+
+func (app *Application) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+	app.txToRemove = map[string]struct{}{}
+	return types.ResponseBeginBlock{}
+}
+
+func (app *Application) ProcessProposal(
+	req types.RequestProcessProposal) types.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		if len(tx) == 0 {
+			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
+		}
+	}
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}
 }
