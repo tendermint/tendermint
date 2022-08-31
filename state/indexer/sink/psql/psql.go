@@ -111,7 +111,7 @@ INSERT INTO `+tableEvents+` (block_id, tx_id, type) VALUES ($1, $2, $3)
 			if !attr.Index {
 				continue
 			}
-			compositeKey := evt.Type + "." + string(attr.Key)
+			compositeKey := evt.Type + "." + attr.Key
 			if _, err := dbtx.Exec(`
 INSERT INTO `+tableAttributes+` (event_id, key, composite_key, value)
   VALUES ($1, $2, $3, $4);
@@ -133,7 +133,7 @@ func makeIndexedEvent(compositeKey, value string) abci.Event {
 		return abci.Event{Type: compositeKey}
 	}
 	return abci.Event{Type: compositeKey[:i], Attributes: []abci.EventAttribute{
-		{Key: []byte(compositeKey[i+1:]), Value: []byte(value), Index: true},
+		{Key: compositeKey[i+1:], Value: value, Index: true},
 	}}
 }
 

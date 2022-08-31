@@ -168,8 +168,8 @@ func TestIndexing(t *testing.T) {
 
 			{Type: "", Attributes: []abci.EventAttribute{
 				{
-					Key:   []byte("not_allowed"),
-					Value: []byte("Vlad"),
+					Key:   "not_allowed",
+					Value: "Vlad",
 					Index: true,
 				},
 			}},
