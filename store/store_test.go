@@ -476,6 +476,7 @@ func TestPruneBlocks(t *testing.T) {
 	require.Nil(t, bs.LoadBlockByHash(prunedBlock.Hash()))
 	require.Nil(t, bs.LoadBlockCommit(1199))
 	require.Nil(t, bs.LoadBlockMeta(1199))
+	require.Nil(t, bs.LoadBlockMetaByHash(prunedBlock.Hash()))
 	require.Nil(t, bs.LoadBlockPart(1199, 1))
 
 	for i := int64(1); i < 1200; i++ {
@@ -550,6 +551,25 @@ func TestLoadBlockMeta(t *testing.T) {
 		require.Equal(t, mustEncode(pbmeta), mustEncode(pbgotMeta),
 			"expecting successful retrieval of previously saved blockMeta")
 	}
+}
+
+func TestLoadBlockMetaByHash(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+	stateStore := sm.NewStore(dbm.NewMemDB())
+	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
+	require.NoError(t, err)
+	bs := NewBlockStore(dbm.NewMemDB())
+
+	block := makeBlock(1, state, new(types.Commit))
+	partSet := block.MakePartSet(2)
+	seenCommit := makeTestCommit(1, tmtime.Now())
+	bs.SaveBlock(block, partSet, seenCommit)
+
+	baseBlock := bs.LoadBlockMetaByHash(block.Hash())
+	assert.EqualValues(t, block.Header.Height, baseBlock.Header.Height)
+	assert.EqualValues(t, block.Header.LastBlockID, baseBlock.Header.LastBlockID)
+	assert.EqualValues(t, block.Header.ChainID, baseBlock.Header.ChainID)
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
