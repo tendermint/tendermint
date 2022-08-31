@@ -5,22 +5,7 @@ It defines when a node should dial peers and which peers it should dial.
 The peer manager is not an implementation abstraction of the p2p layer,
 but a role that is played by the [PEX reactor](./pex.md).
 
-## Persistent peers
-
-The node configuration can contain a list of *persistent peers*.
-Those peers have preferential treatment compared to regular peers and the node
-is always trying to connect to them.
-Moreover, these peers are not removed from the address book in the case of
-multiple attempts to dial them.
-
-> FIXME: are persistent peers removed from the address book in case of
-> authentication failures?
-
-On startup, the node immediately tries to dial the configured persistent peers
-by calling the switch's [`DialPeersAsync`](./switch.md#dialpeersasync) method.
-This is not done at the p2p package, but in the methods to set up a node.
-
-## Ensure peers
+## Outbound peers
 
 The `ensurePeersRoutine` is a persistent routine intended to ensure that a node
 is connected to `MaxNumOutboundPeers` outbound peers.
@@ -117,6 +102,39 @@ However, if when the persistent routine is started the node already has some
 peers, either inbound or outbound peers, or is dialing some addresses, the
 first invocation of `ensurePeers` is delayed by a random amount of time from 0
 to `ensurePeersPeriod`.
+
+### Persistent peers
+
+The node configuration can contain a list of *persistent peers*.
+Those peers have preferential treatment compared to regular peers and the node
+is always trying to connect to them.
+Moreover, these peers are not removed from the address book in the case of
+multiple failed dial attempts.
+
+On startup, the node immediately tries to dial the configured persistent peers
+by calling the switch's [`DialPeersAsync`](./switch.md#manual-operation) method.
+This is not done in the p2p package, but it is part of the procedure to set up a node.
+
+> TODO: the handling of persistent peers should be described in more detail.
+
+### Life cycle
+
+The picture below is a first attempt of illustrating the life cycle of an outbound peer:
+
+<img src="img/p2p_state.png" width="50%" title="Outgoing peers lifecycle">
+
+A peer can be in the following states:
+
+- Candidate peers: peer addresses stored in the address boook, that can be
+  retrieved via the [`PickAddress`](./addressbook.md#pick-address) method
+- [Dialing](switch.md#dialing-peers): peer addresses that are currently being
+  dialed. This state exists to ensure that a single dialing routine exist per peer.
+- [Reconnecting](switch.md#reconnect-to-peer): persistent peers to which a node
+  is currently reconnecting, as a previous connection attempt has failed.
+- Connected peers: peers that a node has successfully dialed, added as outbound peers.
+- [Bad peers](addressbook.md#bad-peers): peers marked as bad in the address
+  book due to exhibited [misbehavior](pex-protocol.md#misbehavior).
+  Peers can be reinstated after being marked as bad. 
 
 ## Pending of documentation
 

@@ -43,22 +43,6 @@ ToDo Check that the split in tables corresponds to what is actually in the files
 | PEX / reactors (only marking peers as good/bad); address book (actual ranking)| - | PEX reactor| 
 
 
-### Peer lifecycle
-
-A Node can pass through various states before becoming the peer of another node as demonstrated below on the example of an outbound peer:
-<img src="img/p2p_state.png" width="50%" title="Outgoing peers lifecycle">Outgoing peers lifecycle</img>
-
-A node can be in the following states before connecting to its peer:
-- 'Candidate': peers that we have not connected to yet but are discovered. (no explicit list)
-- ['Dialing'](switch.md#dialing-peers) : peers who are currently being dialed. ( I did not see where this is of particular use. )
-- 'Peers' : Connected peers (effectivley a connected state). Peers who a node has successfully dialed or from whom it has [accepted a connection](switch.md#accepting-peers).
-- ['Reconnecting'](switch.md#reconnect-to-peer): Peers to whom a node is currently reconnecting. The node is trying to establish a connection to these peers and is failing to do so. After a certain amount of time, the peer is simply dropped to be discovered again by the PEX reactor. 
-- ['BadPeers'](addressbook.md#bad-peers) : This is the only list not kept by the switch. It is stored within the addressbook of the PEX reactor. It contains the list of peers that were marked as bad due to exhibited [misbehavior](pex-protocol.md#misbehavior). Peers can be reinstated after being marked as bad. 
-
-This specification explains the conditions that need to be satisfied for a node to transition between these state.
-
-
-
 ### Node types
 
 From a p2p perspective, within a network, Tendermint distinguishes between regular and [seed nodes](pex-protocol.md#seed-nodes). 
