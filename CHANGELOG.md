@@ -1,4 +1,19 @@
-## [0.8.0-dev.6] - 2022-07-06
+## [0.9.0-dev.1] - 2022-08-31
+
+### Bug Fixes
+
+- Invalid initial height in e2e vote extensions test (#419)
+
+### Refactor
+
+- Allow set 0 for 'create-proof-block-range' to ignore proof block app hash
+- Start test of proof-block range from 0 height
+
+### Build
+
+- Bump actions/setup-go from 3.2.0 to 3.2.1
+
+## [0.8.0-dev.6] - 2022-07-15
 
 ### Bug Fixes
 
@@ -9,6 +24,7 @@
 - Make NewSignItem and MakeSignID exported, revert to precalculate hash for SignItem
 - Quorum_sign_data_test.go
 - Lint issue
+- Check a receiver of ValidatorSet on nil
 
 ### Features
 
@@ -22,6 +38,7 @@
 - Some modification after self-review
 - Remove ThresholdVoteExtension as redundant, use VoteExtension instead
 - Update order fields initialization
+- Update changelog and version to 0.8.0-dev.6
 
 ### Refactor
 
