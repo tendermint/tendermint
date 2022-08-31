@@ -82,5 +82,8 @@ func (c *TxGenerator) GenerateTx() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return b, nil
+
+	// prepend a single key so that the kv store only ever stores a single
+	// transaction instead of storing all tx and ballooning in size.
+	return append([]byte("a="), b...), nil
 }
