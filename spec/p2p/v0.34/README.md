@@ -49,45 +49,23 @@ which implements the following abstractions:
 - Finally, [Types](/.types.md) and [Configuration](./configuration.md) provide
    a list of existing types and configuration parameters used by the p2p layer implementation.
 
-<!-- 
-Move to Docs but reuse perhaps before moving
+## Further References 
 
-## Introduction 
+Existing documentation referring to the p2p layer:
 
-This documentation aims at separating the logical components on a protocol level from the implementation details of each protocol. 
+- https://github.com/tendermint/tendermint/tree/main/spec/p2p: p2p-related
+  configuration flags; overview of connections, peer instances, and reactors;
+  overview of peer discovery and node types; peer identity, secure connections
+  and peer authentication handshake.
+- https://github.com/tendermint/tendermint/tree/main/spec/p2p/messages: message
+  types and channel IDs of Block Sync, Mempool, Evidence, State Sync, PEX, and
+  Consensus reactors.
+- https://docs.tendermint.com/v0.34/tendermint-core: the p2p layer
+  configuration and operation is documented in several pages.
+  This content is not necessarily up-to-date, some settings and concepts may
+  refer to the release `v0.35`, that was [discontinued][v35postmorten].
+- https://github.com/tendermint/tendermint/tree/master/docs/tendermint-core/pex:
+  peer types, peer discovery, peer management overview, address book and peer
+  ranking. This documentation refers to the release `v0.35`, that was [discontinued][v35postmorten].
 
-At a high level, the p2p layer in Tendermint has the following main functionalities:
-1. Peer management: peer discovery and peer ranking
-2. Peer connection handling: dialing and accepting connections
-3. Message transfer
-   
-
-Peer discovery, peer management, connection handling and message types. 
-
-The implementation of these three functionalities is split between different Tendermint components as shown in the tables below. 
-
-#### **Peer communication** 
-| [Peer discovery](peer_manager.md) | [Peer dialing](switch.md#dialing-peers) | [Accepting connections from peers](switch.md#accepting-peers) | Connection management (processing msgs) |
-| ---| ---| ---| --- | 
-| PEX / config | PEX / Switch | Reactors / Switch | Reactors| 
-
-
-#### **Peer management**
-| [Peer ranking](addressbook.md#pick-address) | Connection upgrading | [Evicting](pex-protocol.md#misbehavior)| 
-| --- | --- | --- |
-| PEX / reactors (only marking peers as good/bad); address book (actual ranking)| - | PEX reactor| 
-
-### Node types
-
-From a p2p perspective, within a network, Tendermint distinguishes between regular and [seed nodes](pex-protocol.md#seed-nodes). 
-While regular nodes try to form connections between one another, the main role of a seed node is to provide other nodes with addresses. 
--->
-
-## References 
-
-Documents that describe some of the functionality of the p2p layer prior to this specification:
-
-- https://github.com/tendermint/tendermint/tree/master/spec/p2p : Peer information (handshake and addresses); Mconn package;
-Tendermint nodes can connect and communicate via p2p to one another. The main high level responsibilities of the p2p layer are  1) establishing and maintaining connections between peers and 2) managing the state of peers. 
-- https://github.com/tendermint/tendermint/tree/master/docs/tendermint-core/pex : PEX reactor (*Note* I am not sure that the peer exchange section is valid anymore)
-- 
+[v35postmorten]: https://interchain-io.medium.com/discontinuing-tendermint-v0-35-a-postmortem-on-the-new-networking-layer-3696c811dabc
