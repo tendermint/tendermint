@@ -27,9 +27,9 @@ require (
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.13.0
-	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/rs/cors v1.8.2
-	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa
+	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/snikch/goodman v0.0.0-20171125024755-10e37e294daa
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
@@ -147,6 +147,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/informalsystems/tm-load-test v1.0.0 // indirect
 	github.com/jdxcode/netrc v0.0.0-20210204082910-926c7f70242a // indirect
 	github.com/jgautheron/goconst v1.5.1 // indirect
 	github.com/jhump/protocompile v0.0.0-20220216033700-d705409f108f // indirect
@@ -175,7 +176,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mbilski/exhaustivestruct v1.2.0 // indirect
 	github.com/mgechev/revive v1.2.1 // indirect
-	github.com/mimoo/StrobeGo v0.0.0-20181016162300-f8f6d4d2b643 // indirect
+	github.com/mimoo/StrobeGo v0.0.0-20210601165009-122bf33a46e0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/buildkit v0.10.3 // indirect
@@ -211,6 +212,7 @@ require (
 	github.com/ryanrolds/sqlclosecheck v0.3.0 // indirect
 	github.com/sanposhiho/wastedassign/v2 v2.0.6 // indirect
 	github.com/sashamelentyev/usestdlibvars v1.8.0 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/securego/gosec/v2 v2.12.0 // indirect
 	github.com/shazow/go-diff v0.0.0-20160112020656-b6b7b6733b8c // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
