@@ -141,7 +141,7 @@ func TestBlockSyncConfigValidateBasic(t *testing.T) {
 }
 
 func TestConsensusConfig_ValidateBasic(t *testing.T) {
-	// nolint: lll
+	//nolint: lll
 	testcases := map[string]struct {
 		modify    func(*ConsensusConfig)
 		expectErr bool

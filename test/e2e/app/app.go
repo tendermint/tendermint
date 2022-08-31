@@ -176,12 +176,12 @@ func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock
 				Type: "val_updates",
 				Attributes: []abci.EventAttribute{
 					{
-						Key:   []byte("size"),
-						Value: []byte(strconv.Itoa(valUpdates.Len())),
+						Key:   "size",
+						Value: strconv.Itoa(valUpdates.Len()),
 					},
 					{
-						Key:   []byte("height"),
-						Value: []byte(strconv.Itoa(int(req.Height))),
+						Key:   "height",
+						Value: strconv.Itoa(int(req.Height)),
 					},
 				},
 			},

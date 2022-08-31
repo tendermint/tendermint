@@ -17,7 +17,8 @@ const (
 // all other modules).
 //
 // Example:
-//		ParseLogLevel("consensus:debug,mempool:debug,*:error", log.NewTMLogger(os.Stdout), "info")
+//
+//	ParseLogLevel("consensus:debug,mempool:debug,*:error", log.NewTMLogger(os.Stdout), "info")
 func ParseLogLevel(lvl string, logger log.Logger, defaultLogLevelValue string) (log.Logger, error) {
 	if lvl == "" {
 		return nil, errors.New("empty log level")
