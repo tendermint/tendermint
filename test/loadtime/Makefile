@@ -12,7 +12,7 @@ endif
 ifeq (,$(shell which protoc-gen-go))
 	$(error "protoc-gen-go is required for Protobuf generation. See instructions for your platform on how to install it.")
 endif
-.PHONY: check-proto-format-deps
+.PHONY: check-proto-gen-deps
 
 check-proto-format-deps:
 ifeq (,$(shell which clang-format))
