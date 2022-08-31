@@ -18,6 +18,20 @@ connections between nodes in a Tendermint network,
 for managing the communication between a node and its peers,
 and for intermediating the exchange of messages between peers in Tendermint protocols.
 
+## Content
+
+The documentation is organized as follows:
+
+1. [Peer manager](peer_manager.md) describes the high level functionality that a peer manager should provide. It contains pointers to the implementation of relevant functions and their descriptions. 
+2. Peer discovery is implemented within the [Pex reactor](pex.md), but we explain the main functionalities abstracted away from the implementation as the [Pex protocol](pex-protocol.md).
+3. The [Switch](switch.md) is a service that handles peer connections and exposes an API to receive incoming messages 
+on `Reactors`.
+4. Tendermint uses an [Address book](addressbook.md) to store peer information and can be viewed as a database. However, the address book also provides the implementation of additional funcationality: peer ranking, peer selection and persistence of peer addresses. 
+5. [Transport](transport.md) describes the functions called by other p2p components to actually establishe secure and authenticated connections with peers.
+6. Finally, [Types](types.md) and [Configuration](configuration.md) provide a list of existing types and configuration parameters used by the Tendermint p2p layer. 
+
+<!--
+
 ## Introduction 
 This documentation aims at separating the logical components on a protocol level from the implementation details of each protocol. 
 
@@ -27,9 +41,6 @@ At a high level, the p2p layer in Tendermint has the following main functionalit
 3. Message transfer
    
 The implementation of these three functionalities is split between different Tendermint components as shown in the tables below. 
-<!--
-ToDo Check that the split in tables corresponds to what is actually in the files. 
--->
 
 #### **Peer communication** 
 | [Peer discovery](peer_manager.md) | [Peer dialing](switch.md#dialing-peers) | [Accepting connections from peers](switch.md#accepting-peers) | Connection management (processing msgs) |
@@ -49,19 +60,6 @@ From a p2p perspective, within a network, Tendermint distinguishes between regul
 While regular nodes try to form connections between one another, the main role of a seed node is to provide other nodes with addresses. 
 
 
-## Documentation overview
-
-We organize this specification as follows:
-
-1. [Peer manager](peer_manager.md) describes the high level functionality that a peer manager should provide. It contains pointers to the implementation of relevant functions and their descriptions. 
-2. Peer discovery is implemented within the [Pex reactor](pex.md), but we explain the main functionalities abstracted away from the implementation as the [Pex protocol](pex-protocol.md).
-3. The [Switch](switch.md) is a service that handles peer connections and exposes an API to receive incoming messages 
-on `Reactors`.
-4. Tendermint uses an [Address book](addressbook.md) to store peer information and can be viewed as a database. However, the address book also provides the implementation of additional funcationality: peer ranking, peer selection and persistence of peer addresses. 
-5. [Transport](transport.md) describes the functions called by other p2p components to actually establishe secure and authenticated connections with peers.
-6. Finally, [Types](types.md) and [Configuration](configuration.md) provide a list of existing types and configuration parameters used by the Tendermint p2p layer. 
- 
-<!--
 ToDo check if smething can be moved to existing sections Daniel wrote, otherwise delete
 ### Peer discovery
 
@@ -171,5 +169,3 @@ Tendermint nodes can connect and communicate via p2p to one another. The main hi
 *Bug v0.36* p2p router l722 - this increment hgappens twice (once for in and once for out )
 
 *v0.36 p2p statesync* If the statesyncing node has only two peers and one of those does not have the requested light block (has not created a snapshot yet for example), statesync will not look for additional peers but will fail to initialize the `StateProvider` and halt. 
-
-
