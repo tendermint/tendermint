@@ -55,9 +55,9 @@ References
 ~~~~~~~~~~
 
 - Legacy Implementation
-  - `publication of events <https://github.com/tendermint/tendermint/blob/main/libs/pubsub/pubsub.go#L333-L345>`_ 
-  - `send operation <https://github.com/tendermint/tendermint/blob/main/libs/pubsub/pubsub.go#L489-L527>`_ 
-  - `send loop <https://github.com/tendermint/tendermint/blob/main/libs/pubsub/pubsub.go#L381-L402>`_
+  - `publication of events <https://github.com/tendermint/tendermint/blob/v0.37.x/libs/pubsub/pubsub.go#L333-L345>`_ 
+  - `send operation <https://github.com/tendermint/tendermint/blob/v0.37.x/libs/pubsub/pubsub.go#L489-L527>`_ 
+  - `send loop <https://github.com/tendermint/tendermint/blob/v0.37.x/libs/pubsub/pubsub.go#L381-L402>`_
 - Related RFCs 
   - `RFC 002: IPC Ecosystem <./rfc-002-ipc-ecosystem.md>`_ 
   - `RFC 003: Performance Questions <./rfc-003-performance-questions.md>`_ 

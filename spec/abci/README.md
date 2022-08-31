@@ -15,7 +15,7 @@ To perform state-machine replication, Tendermint calls the ABCI methods on the
 ABCI application by sending the `Request*` messages and receiving the `Response*` messages in return.
 
 All ABCI messages and methods are defined in [protocol
-buffers](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/abci/types.proto).
+buffers](https://github.com/tendermint/tendermint/blob/v0.37.x/proto/tendermint/abci/types.proto).
 This allows Tendermint to run with applications written in many programming
 languages.
 

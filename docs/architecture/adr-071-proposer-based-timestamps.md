@@ -16,7 +16,7 @@
 
 ## Context
 
-Tendermint currently provides a monotonically increasing source of time known as [BFTTime](https://github.com/tendermint/tendermint/blob/main/spec/consensus/bft-time.md).
+Tendermint currently provides a monotonically increasing source of time known as [BFTTime](https://github.com/tendermint/tendermint/blob/v0.37.x/spec/consensus/bft-time.md).
 This mechanism for producing a source of time is reasonably simple.
 Each correct validator adds a timestamp to each `Precommit` message it sends.
 The timestamp it sends is either the validator's current known Unix time or one millisecond greater than the previous block time, depending on which value is greater.
@@ -41,7 +41,7 @@ Proposer-based timestamps alter the current mechanism for producing block timest
 1. Correct validators only approve the proposed block timestamp if it is close enough to their own currently known Unix time.
 
 The result of these changes is a more meaningful timestamp that cannot be controlled by `<= 2/3` of the validator voting power.
-This document outlines the necessary code changes in Tendermint to implement the corresponding [proposer-based timestamps specification](https://github.com/tendermint/tendermint/tree/main/spec/consensus/proposer-based-timestamp).
+This document outlines the necessary code changes in Tendermint to implement the corresponding [proposer-based timestamps specification](https://github.com/tendermint/tendermint/tree/v0.37.x/spec/consensus/proposer-based-timestamp).
 
 ## Alternative Approaches
 
@@ -58,7 +58,7 @@ We therefore decided not to remove the timestamp.
 Applications often wish for some transactions to occur on a certain day, on a regular period, or after some time following a different event.
 All of these require some meaningful representation of agreed upon time.
 The following protocols and application features require a reliable source of time:
-* Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
+* Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/tendermint/blob/v0.37.x/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
 * Tendermint Evidence validity is determined [either in terms of heights or in terms of time](https://github.com/tendermint/tendermint/blob/8029cf7a0fcc89a5004e173ec065aa48ad5ba3c8/spec/consensus/evidence.md#verification).
 * Unbonding of staked assets in the Cosmos Hub [occurs after a period of 21 days](https://github.com/cosmos/governance/blob/ce75de4019b0129f6efcbb0e752cd2cc9e6136d3/params-change/Staking.md#unbondingtime).
 * IBC packets can use either a [timestamp or a height to timeout packet delivery](https://docs.cosmos.network/v0.44/ibc/overview.html#acknowledgements)
@@ -135,7 +135,7 @@ A validator will only Prevote a proposal if the proposal timestamp is considered
 A proposal timestamp is considered `timely` if it is within `PRECISION` and `MSGDELAY` of the Unix time known to the validator.
 More specifically, a proposal timestamp is `timely` if `proposalTimestamp - PRECISION ≤ validatorLocalTime ≤ proposalTimestamp + PRECISION + MSGDELAY`.
 
-Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/types/params.proto#L11) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
+Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/v0.37.x/proto/tendermint/types/params.proto#L11) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
 
 The consensus parameters will be updated to include this `Synchrony` field as follows:
 
@@ -328,6 +328,6 @@ This skew will be bound by the `PRECISION` value, so it is unlikely to be too la
 
 ## References
 
-* [PBTS Spec](https://github.com/tendermint/tendermint/tree/main/spec/consensus/proposer-based-timestamp)
-* [BFTTime spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/bft-time.md)
+* [PBTS Spec](https://github.com/tendermint/tendermint/tree/v0.37.x/spec/consensus/proposer-based-timestamp)
+* [BFTTime spec](https://github.com/tendermint/tendermint/blob/v0.37.x/spec/consensus/bft-time.md)
 * [Issue 371](https://github.com/tendermint/spec/issues/371)

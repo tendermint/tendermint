@@ -102,7 +102,7 @@ Accepted
 
 ## References
 
-- State sync ADR: <https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-053-state-sync-prototype.md>
+- State sync ADR: <https://github.com/tendermint/tendermint/blob/v0.37.x/docs/architecture/adr-053-state-sync-prototype.md>
 
 - State sync issue: <https://github.com/tendermint/tendermint/issues/828>
 

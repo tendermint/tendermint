@@ -210,7 +210,7 @@ to reconstruct the vote set given the validator set.
 | Signature        | [Signature](#signature)     | Signature corresponding to the validators participation in consensus.                                                                                           | The length of the signature must be > 0 and < than  64            |
 
 NOTE: `ValidatorAddress` and `Timestamp` fields may be removed in the future
-(see [ADR-25](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-025-commit.md)).
+(see [ADR-25](https://github.com/tendermint/tendermint/blob/v0.37.x/docs/architecture/adr-025-commit.md)).
 
 ## BlockIDFlag
 

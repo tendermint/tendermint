@@ -73,7 +73,7 @@ applications using it. In particular:
   server to understand which operation is requested is to dispatch on the type
   of the request and response payloads. For responses, this means that [any
   error condition is terminal not only to the request, but to the entire ABCI
-  client](https://github.com/tendermint/tendermint/blob/main/abci/client/socket_client.go#L149).
+  client](https://github.com/tendermint/tendermint/blob/v0.37.x/abci/client/socket_client.go#L149).
 
   The historical intent of terminating for any error seems to have been that
   all ABCI errors are unrecoverable and hence protocol fatal <!-- markdown-link-check-disable-next-line -->
@@ -221,10 +221,10 @@ design.
 - [Tendermint ABCI gRPC client][grpc-client]
 - [Initial commit of gRPC client][abci-start]
 
-[abci]: https://github.com/tendermint/tendermint/tree/main/spec/abci
-[socket-client]: https://github.com/tendermint/tendermint/blob/main/abci/client/socket_client.go
-[socket-server]: https://github.com/tendermint/tendermint/blob/main/abci/server/socket_server.go
-[grpc-client]: https://github.com/tendermint/tendermint/blob/main/abci/client/grpc_client.go
+[abci]: https://github.com/tendermint/tendermint/tree/v0.37.x/spec/abci
+[socket-client]: https://github.com/tendermint/tendermint/blob/v0.37.x/abci/client/socket_client.go
+[socket-server]: https://github.com/tendermint/tendermint/blob/v0.37.x/abci/server/socket_server.go
+[grpc-client]: https://github.com/tendermint/tendermint/blob/v0.37.x/abci/client/grpc_client.go
 [abci-start]: https://github.com/tendermint/abci/commit/1ab3c747182aaa38418258679c667090c2bb1e0d
 
 ## Notes

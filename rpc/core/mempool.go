@@ -18,10 +18,9 @@ import (
 
 // BroadcastTxAsync returns right away, with no response. Does not wait for
 // CheckTx nor DeliverTx results.
-// More: https://docs.tendermint.com/main/rpc/#/Tx/broadcast_tx_async
+// More: https://docs.tendermint.com/v0.37/rpc/#/Tx/broadcast_tx_async
 func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := env.Mempool.CheckTx(tx, nil, mempl.TxInfo{})
-
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +29,7 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 
 // BroadcastTxSync returns with the response from CheckTx. Does not wait for
 // DeliverTx result.
-// More: https://docs.tendermint.com/main/rpc/#/Tx/broadcast_tx_sync
+// More: https://docs.tendermint.com/v0.37/rpc/#/Tx/broadcast_tx_sync
 func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
 	err := env.Mempool.CheckTx(tx, func(res *abci.Response) {
@@ -38,7 +37,6 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 		case <-ctx.Context().Done():
 		case resCh <- res:
 		}
-
 	}, mempl.TxInfo{})
 	if err != nil {
 		return nil, err
@@ -60,7 +58,7 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 }
 
 // BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
-// More: https://docs.tendermint.com/main/rpc/#/Tx/broadcast_tx_commit
+// More: https://docs.tendermint.com/v0.37/rpc/#/Tx/broadcast_tx_commit
 func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	subscriber := ctx.RemoteAddr()
 
@@ -149,7 +147,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 
 // UnconfirmedTxs gets unconfirmed transactions (maximum ?limit entries)
 // including their number.
-// More: https://docs.tendermint.com/main/rpc/#/Info/unconfirmed_txs
+// More: https://docs.tendermint.com/v0.37/rpc/#/Info/unconfirmed_txs
 func UnconfirmedTxs(ctx *rpctypes.Context, limitPtr *int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
 	limit := validatePerPage(limitPtr)
@@ -159,21 +157,23 @@ func UnconfirmedTxs(ctx *rpctypes.Context, limitPtr *int) (*ctypes.ResultUnconfi
 		Count:      len(txs),
 		Total:      env.Mempool.Size(),
 		TotalBytes: env.Mempool.SizeBytes(),
-		Txs:        txs}, nil
+		Txs:        txs,
+	}, nil
 }
 
 // NumUnconfirmedTxs gets number of unconfirmed transactions.
-// More: https://docs.tendermint.com/main/rpc/#/Info/num_unconfirmed_txs
+// More: https://docs.tendermint.com/v0.37/rpc/#/Info/num_unconfirmed_txs
 func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, error) {
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      env.Mempool.Size(),
 		Total:      env.Mempool.Size(),
-		TotalBytes: env.Mempool.SizeBytes()}, nil
+		TotalBytes: env.Mempool.SizeBytes(),
+	}, nil
 }
 
 // CheckTx checks the transaction without executing it. The transaction won't
 // be added to the mempool either.
-// More: https://docs.tendermint.com/main/rpc/#/Tx/check_tx
+// More: https://docs.tendermint.com/v0.37/rpc/#/Tx/check_tx
 func CheckTx(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
 	res, err := env.ProxyAppMempool.CheckTxSync(abci.RequestCheckTx{Tx: tx})
 	if err != nil {
