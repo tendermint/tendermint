@@ -35,8 +35,8 @@ These parameters can be set using the `$TMHOME/config/config.toml` file. A subse
 | Seed nodes | `p2p.seeds` | `--p2p.seeds “id100000000000000000000000000000000@1.2.3.4:26656,id200000000000000000000000000000000@2.3.4.5:4444”` |
 | Persistent peers | `p2p.persistent_peers` | `--p2p.persistent_peers “id100000000000000000000000000000000@1.2.3.4:26656,id200000000000000000000000000000000@2.3.4.5:26656”` | 
 | Unconditional peers | `p2p.unconditional_peer_ids` | `--p2p.unconditional_peer_ids “id100000000000000000000000000000000,id200000000000000000000000000000000”` |
- | UPNP  | `p2p.upnp` | `--p2p.upnp true` | 
- | PexReactor | `p2p.pex` | `--p2p.pex true` | 
+ | UPNP  | `p2p.upnp` | `--p2p.upnp` | 
+ | PexReactor | `p2p.pex` | `--p2p.pex` | 
  | Seed mode | `p2p.seed_mode` | `--p2p.seed_mode` |
  | Private peer ids | `p2p.private_peer_ids` | `--p2p.private_peer_ids “id100000000000000000000000000000000,id200000000000000000000000000000000”` |
 
