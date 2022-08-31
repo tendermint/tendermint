@@ -27,19 +27,33 @@ connections between nodes in a Tendermint network,
 for managing the communication between a node and its peers,
 and for intermediating the exchange of messages between peers in Tendermint protocols.
 
-## Content
+## Contents
 
-The documentation is organized as follows:
+The documentation follows the organization of the `p2p` package of Tendermint,
+which implements the following abstractions:
 
-1. [Peer manager](peer_manager.md) describes the high level functionality that a peer manager should provide. It contains pointers to the implementation of relevant functions and their descriptions. 
-2. Peer discovery is implemented within the [Pex reactor](pex.md), but we explain the main functionalities abstracted away from the implementation as the [Pex protocol](pex-protocol.md).
-3. The [Switch](switch.md) is a service that handles peer connections and exposes an API to receive incoming messages 
-on `Reactors`.
-4. Tendermint uses an [Address book](addressbook.md) to store peer information and can be viewed as a database. However, the address book also provides the implementation of additional funcationality: peer ranking, peer selection and persistence of peer addresses. 
-5. [Transport](transport.md) describes the functions called by other p2p components to actually establishe secure and authenticated connections with peers.
-6. Finally, [Types](types.md) and [Configuration](configuration.md) provide a list of existing types and configuration parameters used by the Tendermint p2p layer. 
+- [Transport](./transport.md): establishes secure and authenticated
+   connections with peers;
+- [Switch](./switch.md): responsible for dialing peers and accepting
+   connections from peers, for managing established connections, and for
+   routing messages between the reactors and peers,
+   that is, between local and remote instances of the Tendermint protocols;
+- [PEX Reactor](./pex.md): responsible for peer discovery, ranking, and
+   management, roles that are implemented by:
+   - [Address Book](./addressbook.md): tracks information about other nodes
+      in the network and allows ranking peers based on quality metrics;
+   - [Peer Exchange protocol](./pex-protocol.md): enables nodes to exchange
+      peer addresses, thus implementing a peer discovery mechanism;
+   - [Peer Manager](./peer_manager.md): responsible for establishing
+      connection with peers, defining when and which peers a node should dial;
+- Finally, [Types](/.types.md) and [Configuration](./configuration.md) provide
+   a list of existing types and configuration parameters used by the p2p layer implementation.
+
+<!-- 
+Move to Docs but reuse perhaps before moving
 
 ## Introduction 
+
 This documentation aims at separating the logical components on a protocol level from the implementation details of each protocol. 
 
 At a high level, the p2p layer in Tendermint has the following main functionalities:
@@ -47,8 +61,6 @@ At a high level, the p2p layer in Tendermint has the following main functionalit
 2. Peer connection handling: dialing and accepting connections
 3. Message transfer
    
-<!-- 
-Move to Docs but reuse perhaps before moving
 
 Peer discovery, peer management, connection handling and message types. 
 
@@ -65,24 +77,12 @@ The implementation of these three functionalities is split between different Ten
 | --- | --- | --- |
 | PEX / reactors (only marking peers as good/bad); address book (actual ranking)| - | PEX reactor| 
 
--->
 ### Node types
 
 From a p2p perspective, within a network, Tendermint distinguishes between regular and [seed nodes](pex-protocol.md#seed-nodes). 
 While regular nodes try to form connections between one another, the main role of a seed node is to provide other nodes with addresses. 
+-->
 
-## Documentation overview
-
-We organize this specification as follows:
-
-1. [Peer manager](peer_manager.md) describes the high level functionality that a peer manager should provide. It contains pointers to the implementation of relevant functions and their descriptions. 
-2. Peer discovery is implemented within the [Pex reactor](pex.md), but we explain the main functionalities abstracted away from the implementation as the [Pex protocol](pex-protocol.md).
-3. The [Switch](switch.md) is a service that handles peer connections and exposes an API to receive incoming messages 
-on `Reactors`.
-4. Tendermint uses an [Address book](addressbook.md) to store peer information and can be viewed as a database. However, the address book also provides the implementation of additional funcationality: peer ranking, peer selection and persistence of peer addresses. 
-5. [Transport](transport.md) describes the functions called by other p2p components to actually establishe secure and authenticated connections with peers.
-6. Finally, [Types](types.md) and [Configuration](configuration.md) provide a list of existing types and configuration parameters used by the Tendermint p2p layer. 
- 
 ## References 
 
 Documents that describe some of the functionality of the p2p layer prior to this specification:
