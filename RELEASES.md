@@ -76,7 +76,7 @@ the 0.38.x line.
 
    * `github.com/tendermint/tendermint/blob/main` ->
      `github.com/tendermint/tendermint/blob/v0.38.x`
-   * `github.com/tendermint/tendermint/tree/main*` ->
+   * `github.com/tendermint/tendermint/tree/main` ->
      `github.com/tendermint/tendermint/tree/v0.38.x`
    * `docs.tendermint.com/main` -> `docs.tendermint.com/v0.38`
 
