@@ -10,17 +10,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// payloadSizeBytes holds the maximum encoded size of the payload message, not
-// counting the 'Padding' field.
-// This value is used to calculated how much padding should be included in the
-// encoded data.
-//
-// The values break down as follows:
-// 7 total field tags, each 1 byte.
-// 4 varint encoded uint64s, requiring 10 total bytes.
-// 1 varint encoded uint32, requiring 5 total bytes.
-const payloadSizeBytes = 7 + 4*10 + 1*5
-
 // Ensure all of the interfaces are correctly satisfied.
 var (
 	_ loadtest.ClientFactory = (*ClientFactory)(nil)
@@ -34,9 +23,10 @@ type ClientFactory struct{}
 // TxGenerator holds the set of information that will be used to generate
 // each transaction.
 type TxGenerator struct {
-	conns uint64
-	rate  uint64
-	size  uint64
+	conns            uint64
+	rate             uint64
+	size             uint64
+	payloadSizeBytes uint64
 }
 
 func main() {
@@ -52,17 +42,27 @@ func main() {
 }
 
 func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
-	if cfg.Size < payloadSizeBytes {
+	psb, err := payload.CalculateUnpaddedSizeBytes()
+	if err != nil {
+		return err
+	}
+
+	if psb > cfg.Size {
 		return fmt.Errorf("payload size exceeds configured size")
 	}
 	return nil
 }
 
 func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) {
+	psb, err := payload.CalculateUnpaddedSizeBytes()
+	if err != nil {
+		return nil, err
+	}
 	return &TxGenerator{
-		conns: uint64(cfg.Connections),
-		rate:  uint64(cfg.Rate),
-		size:  uint64(cfg.Size),
+		conns:            uint64(cfg.Connections),
+		rate:             uint64(cfg.Rate),
+		size:             uint64(cfg.Size),
+		payloadSizeBytes: uint64(psb),
 	}, nil
 }
 
@@ -72,7 +72,7 @@ func (c *TxGenerator) GenerateTx() ([]byte, error) {
 		Connections: c.conns,
 		Rate:        c.rate,
 		Size:        c.size,
-		Padding:     make([]byte, c.size-payloadSizeBytes),
+		Padding:     make([]byte, c.size-c.payloadSizeBytes),
 	}
 	_, err := rand.Read(p.Padding)
 	if err != nil {
