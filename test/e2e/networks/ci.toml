@@ -3,7 +3,11 @@
 
 ipv6 = true
 initial_height = 1000
+evidence = 5
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+prepare_proposal_delay = "100ms"
+process_proposal_delay = "100ms"
+check_tx_delay = "0ms"
 
 [validators]
 validator01 = 100
@@ -27,20 +31,15 @@ validator05 = 50
 
 [node.seed01]
 mode = "seed"
-seeds = ["seed02"]
-
-[node.seed02]
-mode = "seed"
-seeds = ["seed01"]
+perturb = ["restart"]
 
 [node.validator01]
 seeds = ["seed01"]
 snapshot_interval = 5
 perturb = ["disconnect"]
-misbehaviors = { 1018 = "double-prevote" }
 
 [node.validator02]
-seeds = ["seed02"]
+seeds = ["seed01"]
 database = "boltdb"
 abci_protocol = "tcp"
 privval_protocol = "tcp"
@@ -54,7 +53,7 @@ database = "badgerdb"
 #abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
-retain_blocks = 3
+retain_blocks = 10
 perturb = ["kill"]
 
 [node.validator04]
@@ -64,10 +63,10 @@ abci_protocol = "builtin"
 perturb = ["pause"]
 
 [node.validator05]
+block_sync = "v0" 
 start_at = 1005 # Becomes part of the validator set at 1010
-seeds = ["seed02"]
+persistent_peers = ["validator01", "full01"]
 database = "cleveldb"
-fast_sync = "v0"
 mempool_version = "v1"
 # FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
 #abci_protocol = "grpc"
@@ -77,17 +76,15 @@ perturb = ["kill", "pause", "disconnect", "restart"]
 [node.full01]
 start_at = 1010
 mode = "full"
-# FIXME: should be v2, disabled due to flake
-fast_sync = "v0"
+block_sync = "v0"
 persistent_peers = ["validator01", "validator02", "validator03", "validator04", "validator05"]
-retain_blocks = 1
+retain_blocks = 10
 perturb = ["restart"]
 
 [node.full02]
 start_at = 1015
 mode = "full"
-# FIXME: should be v2, disabled due to flake
-fast_sync = "v0"
+block_sync = "v0"
 state_sync = true
 seeds = ["seed01"]
 perturb = ["restart"]

@@ -5,7 +5,7 @@ env:
   - GO111MODULE=on
 
 builds:
-  - id: "Tendermint"
+  - id: "tendermint"
     main: ./cmd/tendermint/main.go
     ldflags:
       - -s -w -X github.com/tendermint/tendermint/version.TMCoreSemVer={{ .Version }}
@@ -26,3 +26,11 @@ checksum:
 
 release:
   name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
+
+archives:
+  - files:
+      - LICENSE
+      - README.md
+      - UPGRADING.md
+      - SECURITY.md
+      - CHANGELOG.md

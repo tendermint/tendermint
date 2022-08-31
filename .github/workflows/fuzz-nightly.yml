@@ -1,9 +1,13 @@
 # Runs fuzzing nightly.
-name: fuzz-nightly
+name: Fuzz Tests
 on:
-  workflow_dispatch: # allow running workflow manually
+  workflow_dispatch:  # allow running workflow manually
   schedule:
     - cron: '0 3 * * *'
+  pull_request:
+    branches: [main]
+    paths:
+      - "test/fuzz/**/*.go"
 
 jobs:
   fuzz-nightly-test:
@@ -11,13 +15,13 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.15'
+          go-version: '1.18'
 
       - uses: actions/checkout@v3
 
       - name: Install go-fuzz
         working-directory: test/fuzz
-        run: go get -u github.com/dvyukov/go-fuzz/go-fuzz github.com/dvyukov/go-fuzz/go-fuzz-build
+        run: go install github.com/dvyukov/go-fuzz/go-fuzz@latest github.com/dvyukov/go-fuzz/go-fuzz-build@latest
 
       - name: Fuzz mempool
         working-directory: test/fuzz
@@ -49,14 +53,14 @@ jobs:
         with:
           name: crashers
           path: test/fuzz/**/crashers
-          retention-days: 1
+          retention-days: 3
 
       - name: Archive suppressions
         uses: actions/upload-artifact@v3
         with:
           name: suppressions
           path: test/fuzz/**/suppressions
-          retention-days: 1
+          retention-days: 3
 
       - name: Set crashers count
         working-directory: test/fuzz
@@ -71,13 +75,24 @@ jobs:
     if: ${{ needs.fuzz-nightly-test.outputs.crashers-count != 0 }}
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Slack if any crashers
-        uses: rtCamp/action-slack-notify@f565a63638bd3615e76249bffab00fcb9dab90f7
+      - name: Notify Slack on failure
+        uses: slackapi/slack-github-action@v1.21.0
         env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_CHANNEL: tendermint-internal
-          SLACK_USERNAME: Nightly Fuzz Tests
-          SLACK_ICON_EMOJI: ':firecracker:'
-          SLACK_COLOR: danger
-          SLACK_MESSAGE: Crashers found in Nightly Fuzz tests
-          SLACK_FOOTER: ''
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+          BRANCH: ${{ github.ref_name }}
+          CRASHERS: ${{ needs.fuzz-nightly-test.outputs.crashers-count }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":skull: Nightly fuzz tests for `${{ env.BRANCH }}` failed with ${{ env.CRASHERS }} crasher(s). See the <${{ env.RUN_URL }}|run details>."
+                  }
+                }
+              ]
+            }

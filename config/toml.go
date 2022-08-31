@@ -3,7 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -87,10 +87,10 @@ proxy_app = "{{ .BaseConfig.ProxyApp }}"
 # A custom human readable name for this node
 moniker = "{{ .BaseConfig.Moniker }}"
 
-# If this node is many blocks behind the tip of the chain, FastSync
+# If this node is many blocks behind the tip of the chain, BlockSync
 # allows them to catchup quickly by downloading blocks in parallel
 # and verifying their commits
-fast_sync = {{ .BaseConfig.FastSyncMode }}
+block_sync = {{ .BaseConfig.BlockSyncMode }}
 
 # Database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb
 # * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -230,7 +230,7 @@ experimental_websocket_write_buffer_size = {{ .RPC.WebSocketWriteBufferSize }}
 #
 # Enabling this experimental parameter will cause the WebSocket connection to
 # be closed instead if it cannot read fast enough, allowing for greater
-# predictability in subscription behaviour.
+# predictability in subscription behavior.
 experimental_close_on_slow_client = {{ .RPC.CloseOnSlowClient }}
 
 # How long to wait for a tx to be committed during /broadcast_tx_commit.
@@ -429,15 +429,17 @@ chunk_request_timeout = "{{ .StateSync.ChunkRequestTimeout }}"
 chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 
 #######################################################
-###       Fast Sync Configuration Connections       ###
+###       Block Sync Configuration Options          ###
 #######################################################
-[fastsync]
+[blocksync]
 
-# Fast Sync version to use:
-#   1) "v0" (default) - the legacy fast sync implementation
-#   2) "v1" - refactor of v0 version for better testability
-#   2) "v2" - complete redesign of v0, optimized for testability & readability
-version = "{{ .FastSync.Version }}"
+# Block Sync version to use:
+# 
+# In v0.37, v1 and v2 of the block sync protocols were deprecated.
+# Please use v0 instead.
+#
+#   1) "v0" - the default block sync implementation
+version = "{{ .BlockSync.Version }}"
 
 #######################################################
 ###         Consensus Configuration Options         ###
@@ -479,6 +481,16 @@ create_empty_blocks_interval = "{{ .Consensus.CreateEmptyBlocksInterval }}"
 # Reactor sleep duration parameters
 peer_gossip_sleep_duration = "{{ .Consensus.PeerGossipSleepDuration }}"
 peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
+
+#######################################################
+###         Storage Configuration Options           ###
+#######################################################
+
+# Set to true to discard ABCI responses from the state store, which can save a
+# considerable amount of disk space. Set to false to ensure ABCI responses are
+# persisted. ABCI responses are required for /block_results RPC queries, and to
+# reindex events in the command-line tool.
+discard_abci_responses = {{ .Storage.DiscardABCIResponses}}
 
 #######################################################
 ###   Transaction Indexer Configuration Options     ###
@@ -533,7 +545,7 @@ func ResetTestRoot(testName string) *Config {
 
 func ResetTestRootWithChainID(testName string, chainID string) *Config {
 	// create a unique, concurrency-safe test directory under os.TempDir()
-	rootDir, err := ioutil.TempDir("", fmt.Sprintf("%s-%s_", chainID, testName))
+	rootDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s_", chainID, testName))
 	if err != nil {
 		panic(err)
 	}

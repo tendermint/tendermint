@@ -1,4 +1,3 @@
-//nolint: gosec
 package e2e
 
 import (
@@ -11,12 +10,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	mcs "github.com/tendermint/tendermint/test/maverick/consensus"
 )
 
 const (
@@ -26,9 +25,11 @@ const (
 	networkIPv6           = "fd80:b10c::/48"
 )
 
-type Mode string
-type Protocol string
-type Perturbation string
+type (
+	Mode         string
+	Protocol     string
+	Perturbation string
+)
 
 const (
 	ModeValidator Mode = "validator"
@@ -46,21 +47,28 @@ const (
 	PerturbationKill       Perturbation = "kill"
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
+
+	EvidenceAgeHeight int64         = 7
+	EvidenceAgeTime   time.Duration = 500 * time.Millisecond
 )
 
 // Testnet represents a single testnet.
 type Testnet struct {
-	Name             string
-	File             string
-	Dir              string
-	IP               *net.IPNet
-	InitialHeight    int64
-	InitialState     map[string]string
-	Validators       map[*Node]int64
-	ValidatorUpdates map[int64]map[*Node]int64
-	Nodes            []*Node
-	KeyType          string
-	ABCIProtocol     string
+	Name                 string
+	File                 string
+	Dir                  string
+	IP                   *net.IPNet
+	InitialHeight        int64
+	InitialState         map[string]string
+	Validators           map[*Node]int64
+	ValidatorUpdates     map[int64]map[*Node]int64
+	Nodes                []*Node
+	KeyType              string
+	Evidence             int
+	ABCIProtocol         string
+	PrepareProposalDelay time.Duration
+	ProcessProposalDelay time.Duration
+	CheckTxDelay         time.Duration
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -73,7 +81,7 @@ type Node struct {
 	IP               net.IP
 	ProxyPort        uint32
 	StartAt          int64
-	FastSync         string
+	BlockSync        string
 	StateSync        bool
 	Mempool          string
 	Database         string
@@ -85,7 +93,6 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
-	Misbehaviors     map[int64]string
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -115,16 +122,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	testnet := &Testnet{
-		Name:             filepath.Base(dir),
-		File:             file,
-		Dir:              dir,
-		IP:               ipGen.Network(),
-		InitialHeight:    1,
-		InitialState:     manifest.InitialState,
-		Validators:       map[*Node]int64{},
-		ValidatorUpdates: map[int64]map[*Node]int64{},
-		Nodes:            []*Node{},
-		ABCIProtocol:     manifest.ABCIProtocol,
+		Name:                 filepath.Base(dir),
+		File:                 file,
+		Dir:                  dir,
+		IP:                   ipGen.Network(),
+		InitialHeight:        1,
+		InitialState:         manifest.InitialState,
+		Validators:           map[*Node]int64{},
+		ValidatorUpdates:     map[int64]map[*Node]int64{},
+		Nodes:                []*Node{},
+		Evidence:             manifest.Evidence,
+		ABCIProtocol:         manifest.ABCIProtocol,
+		PrepareProposalDelay: manifest.PrepareProposalDelay,
+		ProcessProposalDelay: manifest.ProcessProposalDelay,
+		CheckTxDelay:         manifest.CheckTxDelay,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -157,14 +168,13 @@ func LoadTestnet(file string) (*Testnet, error) {
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
-			FastSync:         nodeManifest.FastSync,
+			BlockSync:        nodeManifest.BlockSync,
 			Mempool:          nodeManifest.Mempool,
 			StateSync:        nodeManifest.StateSync,
 			PersistInterval:  1,
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
-			Misbehaviors:     make(map[int64]string),
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
@@ -186,13 +196,6 @@ func LoadTestnet(file string) (*Testnet, error) {
 		}
 		for _, p := range nodeManifest.Perturb {
 			node.Perturbations = append(node.Perturbations, Perturbation(p))
-		}
-		for heightString, misbehavior := range nodeManifest.Misbehaviors {
-			height, err := strconv.ParseInt(heightString, 10, 64)
-			if err != nil {
-				return nil, fmt.Errorf("unable to parse height %s to int64: %w", heightString, err)
-			}
-			node.Misbehaviors[height] = misbehavior
 		}
 		testnet.Nodes = append(testnet.Nodes, node)
 	}
@@ -307,11 +310,10 @@ func (n Node) Validate(testnet Testnet) error {
 			}
 		}
 	}
-	switch n.FastSync {
-	case "", "v0", "v1", "v2":
+	switch n.BlockSync {
+	case "", "v0":
 	default:
-		return fmt.Errorf("invalid fast sync setting %q", n.FastSync)
-
+		return fmt.Errorf("invalid block sync setting %q", n.BlockSync)
 	}
 	switch n.Mempool {
 	case "", "v0", "v1":
@@ -344,6 +346,10 @@ func (n Node) Validate(testnet Testnet) error {
 	if n.StateSync && n.StartAt == 0 {
 		return errors.New("state synced nodes cannot start at the initial height")
 	}
+	if n.RetainBlocks != 0 && n.RetainBlocks < uint64(EvidenceAgeHeight) {
+		return fmt.Errorf("retain_blocks must be greater or equal to max evidence age (%d)",
+			EvidenceAgeHeight)
+	}
 	if n.PersistInterval == 0 && n.RetainBlocks > 0 {
 		return errors.New("persist_interval=0 requires retain_blocks=0")
 	}
@@ -359,30 +365,6 @@ func (n Node) Validate(testnet Testnet) error {
 		case PerturbationDisconnect, PerturbationKill, PerturbationPause, PerturbationRestart:
 		default:
 			return fmt.Errorf("invalid perturbation %q", perturbation)
-		}
-	}
-
-	if (n.PrivvalProtocol != "file" || n.Mode != "validator") && len(n.Misbehaviors) != 0 {
-		return errors.New("must be using \"file\" privval protocol to implement misbehaviors")
-	}
-
-	for height, misbehavior := range n.Misbehaviors {
-		if height < n.StartAt {
-			return fmt.Errorf("misbehavior height %d is below node start height %d",
-				height, n.StartAt)
-		}
-		if height < testnet.InitialHeight {
-			return fmt.Errorf("misbehavior height %d is below network initial height %d",
-				height, testnet.InitialHeight)
-		}
-		exists := false
-		for possibleBehaviors := range mcs.MisbehaviorList {
-			if possibleBehaviors == misbehavior {
-				exists = true
-			}
-		}
-		if !exists {
-			return fmt.Errorf("misbehavior %s does not exist", misbehavior)
 		}
 	}
 
@@ -415,7 +397,7 @@ func (t Testnet) ArchiveNodes() []*Node {
 // RandomNode returns a random non-seed node.
 func (t Testnet) RandomNode() *Node {
 	for {
-		node := t.Nodes[rand.Intn(len(t.Nodes))]
+		node := t.Nodes[rand.Intn(len(t.Nodes))] //nolint:gosec
 		if node.Mode != ModeSeed {
 			return node
 		}
@@ -435,19 +417,6 @@ func (t Testnet) HasPerturbations() bool {
 		}
 	}
 	return false
-}
-
-// LastMisbehaviorHeight returns the height of the last misbehavior.
-func (t Testnet) LastMisbehaviorHeight() int64 {
-	lastHeight := int64(0)
-	for _, node := range t.Nodes {
-		for height := range node.Misbehaviors {
-			if height > lastHeight {
-				lastHeight = height
-			}
-		}
-	}
-	return lastHeight
 }
 
 // Address returns a P2P endpoint address for the node.
@@ -491,7 +460,7 @@ type keyGenerator struct {
 
 func newKeyGenerator(seed int64) *keyGenerator {
 	return &keyGenerator{
-		random: rand.New(rand.NewSource(seed)),
+		random: rand.New(rand.NewSource(seed)), //nolint:gosec
 	}
 }
 

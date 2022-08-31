@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -51,11 +52,22 @@ type Manifest struct {
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
 
+	// Evidence indicates the amount of evidence that will be injected into the
+	// testnet via the RPC endpoint of a random node. Default is 0
+	Evidence int `toml:"evidence"`
+
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
 	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
 	// builtin will build a complete Tendermint node into the application and
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
+	// TODO: add vote extension and finalize block delay (@cmwaters)
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -88,9 +100,9 @@ type ManifestNode struct {
 	// runner will wait for the network to reach at least this block height.
 	StartAt int64 `toml:"start_at"`
 
-	// FastSync specifies the fast sync mode: "" (disable), "v0", "v1", or "v2".
+	// BlockSync specifies the block sync mode: "" (disable), "v0" or "v2".
 	// Defaults to disabled.
-	FastSync string `toml:"fast_sync"`
+	BlockSync string `toml:"block_sync"`
 
 	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
 	// This defaults to v0.
@@ -124,16 +136,6 @@ type ManifestNode struct {
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
-
-	// Misbehaviors sets how a validator behaves during consensus at a
-	// certain height. Multiple misbehaviors at different heights can be used
-	//
-	// An example of misbehaviors
-	//    { 10 = "double-prevote", 20 = "double-prevote"}
-	//
-	// For more information, look at the readme in the maverick folder.
-	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
-	Misbehaviors map[string]string `toml:"misbehaviors"`
 }
 
 // Save saves the testnet manifest to a file.

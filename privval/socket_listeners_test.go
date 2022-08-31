@@ -1,7 +1,6 @@
 package privval
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -29,7 +28,7 @@ type listenerTestCase struct {
 // testUnixAddr will attempt to obtain a platform-independent temporary file
 // name for a Unix socket
 func testUnixAddr() (string, error) {
-	f, err := ioutil.TempFile("", "tendermint-privval-test-*")
+	f, err := os.CreateTemp("", "tendermint-privval-test-*")
 	if err != nil {
 		return "", err
 	}

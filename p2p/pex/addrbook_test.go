@@ -3,7 +3,6 @@ package pex
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net"
 	"os"
@@ -718,7 +717,7 @@ func assertMOldAndNNewAddrsInSelection(t *testing.T, m, n int, addrs []*p2p.NetA
 }
 
 func createTempFileName(prefix string) string {
-	f, err := ioutil.TempFile("", prefix)
+	f, err := os.CreateTemp("", prefix)
 	if err != nil {
 		panic(err)
 	}
@@ -771,7 +770,7 @@ func countOldAndNewAddrsInSelection(addrs []*p2p.NetAddress, book *addrBook) (nO
 	return
 }
 
-// Analyse the layout of the selection specified by 'addrs'
+// Analyze the layout of the selection specified by 'addrs'
 // Returns:
 // - seqLens - the lengths of the sequences of addresses of same type
 // - seqTypes - the types of sequences in selection

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log/term"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"path"
@@ -20,7 +20,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
@@ -201,13 +200,17 @@ func startTestRound(cs *State, height int64, round int32) {
 
 // Create proposal block from cs1 but sign it with vs.
 func decideProposal(
+	t *testing.T,
 	cs1 *State,
 	vs *validatorStub,
 	height int64,
 	round int32,
 ) (proposal *types.Proposal, block *types.Block) {
 	cs1.mtx.Lock()
-	block, blockParts := cs1.createProposalBlock()
+	block, err := cs1.createProposalBlock()
+	require.NoError(t, err)
+	blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(t, err)
 	validRound := cs1.ValidRound
 	chainID := cs1.state.ChainID
 	cs1.mtx.Unlock()
@@ -428,7 +431,9 @@ func newStateWithConfigAndBlockStore(
 
 	// Make State
 	stateDB := blockDB
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
 		panic(err)
 	}
@@ -458,12 +463,16 @@ func loadPrivValidator(config *cfg.Config) *privval.FilePV {
 }
 
 func randState(nValidators int) (*State, []*validatorStub) {
+	return randStateWithApp(nValidators, kvstore.NewApplication())
+}
+
+func randStateWithApp(nValidators int, app abci.Application) (*State, []*validatorStub) {
 	// Get State
 	state, privVals := randGenesisState(nValidators, false, 10)
 
 	vss := make([]*validatorStub, nValidators)
 
-	cs := newState(state, privVals[0], counter.NewApplication(true))
+	cs := newState(state, privVals[0], app)
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = newValidatorStub(privVals[i], int32(i))
@@ -678,6 +687,33 @@ func ensureVote(voteCh <-chan tmpubsub.Message, height int64, round int32,
 	}
 }
 
+func ensurePrevoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte) {
+	t.Helper()
+	ensureVoteMatch(t, voteCh, height, round, hash, tmproto.PrevoteType)
+}
+
+func ensureVoteMatch(t *testing.T, voteCh <-chan tmpubsub.Message, height int64, round int32, hash []byte, voteType tmproto.SignedMsgType) {
+	t.Helper()
+	select {
+	case <-time.After(ensureTimeout):
+		t.Fatal("Timeout expired while waiting for NewVote event")
+	case msg := <-voteCh:
+		voteEvent, ok := msg.Data().(types.EventDataVote)
+		require.True(t, ok, "expected a EventDataVote, got %T. Wrong subscription channel?",
+			msg.Data())
+
+		vote := voteEvent.Vote
+		assert.Equal(t, height, vote.Height, "expected height %d, but got %d", height, vote.Height)
+		assert.Equal(t, round, vote.Round, "expected round %d, but got %d", round, vote.Round)
+		assert.Equal(t, voteType, vote.Type, "expected type %s, but got %s", voteType, vote.Type)
+		if hash == nil {
+			require.Nil(t, vote.BlockID.Hash, "Expected prevote to be for nil, got %X", vote.BlockID.Hash)
+		} else {
+			require.True(t, bytes.Equal(vote.BlockID.Hash, hash), "Expected prevote to be for %X, got %X", hash, vote.BlockID.Hash)
+		}
+	}
+}
+
 func ensurePrecommitTimeout(ch <-chan tmpubsub.Message) {
 	select {
 	case <-time.After(ensureTimeout):
@@ -718,7 +754,9 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	configRootDirs := make([]string, 0, nValidators)
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -756,7 +794,9 @@ func randConsensusNetWithPeers(
 	configRootDirs := make([]string, 0, nPeers)
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -768,11 +808,11 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+			tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 			if err != nil {
 				panic(err)
 			}
-			tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+			tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 			if err != nil {
 				panic(err)
 			}
@@ -887,18 +927,16 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 func (*mockTicker) SetLogger(log.Logger) {}
 
-//------------------------------------
-
-func newCounter() abci.Application {
-	return counter.NewApplication(true)
-}
-
 func newPersistentKVStore() abci.Application {
-	dir, err := ioutil.TempDir("", "persistent-kvstore")
+	dir, err := os.MkdirTemp("", "persistent-kvstore")
 	if err != nil {
 		panic(err)
 	}
 	return kvstore.NewPersistentKVStoreApplication(dir)
+}
+
+func newKVStore() abci.Application {
+	return kvstore.NewApplication()
 }
 
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {

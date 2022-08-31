@@ -52,7 +52,7 @@ func TestNodeStartStop(t *testing.T) {
 	select {
 	case <-blocksSub.Out():
 	case <-blocksSub.Cancelled():
-		t.Fatal("blocksSub was cancelled")
+		t.Fatal("blocksSub was canceled")
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
 	}
@@ -123,7 +123,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	// default config uses the kvstore app
-	var appVersion uint64 = kvstore.ProtocolVersion
+	var appVersion = kvstore.ProtocolVersion
 
 	// check version is set in state
 	state, err := n.stateStore.Load()
@@ -226,7 +226,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -235,7 +235,9 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	var height int64 = 1
 	state, stateDB, privVals := state(1, height)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	maxBytes := 16384
 	var partSize uint32 = 256
 	maxEvidenceBytes := int64(maxBytes / 2)
@@ -277,7 +279,8 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	var currentBytes int64
 	for currentBytes <= maxEvidenceBytes {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		require.NoError(t, err)
 		currentBytes += int64(len(ev.Bytes()))
 		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 	}
@@ -305,14 +308,17 @@ func TestCreateProposalBlock(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
 		proposerAddr,
+		nil,
 	)
+	require.NoError(t, err)
 
 	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
+	partSet, err := block.MakePartSet(partSize)
+	require.NoError(t, err)
 	assert.Less(t, partSet.ByteSize(), int64(maxBytes))
 
 	partSetFromHeader := types.NewPartSetFromHeader(partSet.Header())
@@ -331,7 +337,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
-	proxyApp := proxy.NewAppConns(cc)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
@@ -340,7 +346,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	var height int64 = 1
 	state, stateDB, _ := state(1, height)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	var maxBytes int64 = 16384
 	var partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -383,18 +391,21 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
 		proposerAddr,
+		nil,
 	)
+	require.NoError(t, err)
 
 	pb, err := block.ToProto()
 	require.NoError(t, err)
 	assert.Less(t, int64(pb.Size()), maxBytes)
 
 	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
+	partSet, err := block.MakePartSet(partSize)
+	require.NoError(t, err)
 	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
 }
 
@@ -464,7 +475,9 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	if err := stateStore.Save(s); err != nil {
 		panic(err)
 	}

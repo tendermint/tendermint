@@ -1,5 +1,6 @@
 PACKAGES=$(shell go list ./...)
-OUTPUT?=build/tendermint
+BUILDDIR?=$(CURDIR)/build
+OUTPUT?=$(BUILDDIR)/tendermint
 
 BUILD_TAGS?=tendermint
 
@@ -52,6 +53,67 @@ endif
 # allow users to pass additional flags via the conventional LDFLAGS variable
 LD_FLAGS += $(LDFLAGS)
 
+# Process Docker environment varible TARGETPLATFORM 
+# in order to build binary with correspondent ARCH
+# by default will always build for linux/amd64
+TARGETPLATFORM ?= 
+GOOS ?= linux
+GOARCH ?= amd64
+GOARM ?=
+
+ifeq (linux/arm,$(findstring linux/arm,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=arm
+	GOARM=7
+endif
+
+ifeq (linux/arm/v6,$(findstring linux/arm/v6,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=arm
+	GOARM=6
+endif
+
+ifeq (linux/arm64,$(findstring linux/arm64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=arm64
+	GOARM=7
+endif
+
+ifeq (linux/386,$(findstring linux/386,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=386
+endif
+
+ifeq (linux/amd64,$(findstring linux/amd64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=amd64
+endif
+
+ifeq (linux/mips,$(findstring linux/mips,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mips
+endif
+
+ifeq (linux/mipsle,$(findstring linux/mipsle,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mipsle
+endif
+
+ifeq (linux/mips64,$(findstring linux/mips64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mips64
+endif
+
+ifeq (linux/mips64le,$(findstring linux/mips64le,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=mips64le
+endif
+
+ifeq (linux/riscv64,$(findstring linux/riscv64,$(TARGETPLATFORM)))
+	GOOS=linux
+	GOARCH=riscv64
+endif
+
 all: check build test install
 .PHONY: all
 
@@ -69,6 +131,20 @@ install:
 	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 .PHONY: install
 
+###############################################################################
+###                               Metrics                                   ###
+###############################################################################
+
+metrics: testdata-metrics
+	go generate -run="scripts/metricsgen" ./...
+.PHONY: metrics
+
+# By convention, the go tool ignores subdirectories of directories named
+# 'testdata'. This command invokes the generate command on the folder directly
+# to avoid this.
+testdata-metrics:
+	ls ./scripts/metricsgen/testdata | xargs -I{} go generate -v -run="scripts/metricsgen" ./scripts/metricsgen/testdata/{}
+.PHONY: testdata-metrics
 
 ###############################################################################
 ###                                Mocks                                    ###
@@ -209,15 +285,32 @@ DESTINATION = ./index.html.md
 ###                           Documentation                                 ###
 ###############################################################################
 
+DOCS_OUTPUT?=/tmp/tendermint-core-docs
+
+# This builds a docs site for each branch/tag in `./docs/versions` and copies
+# each site to a version prefixed path. The last entry inside the `versions`
+# file will be the default root index.html. Only redirects that are built into
+# the "redirects" folder of each of the branches will be copied out to the root
+# of the build at the end.
 build-docs:
 	@cd docs && \
 	while read -r branch path_prefix; do \
 		(git checkout $${branch} && npm ci && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
-		mkdir -p ~/output/$${path_prefix} ; \
-		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
-		cp ~/output/$${path_prefix}/index.html ~/output ; \
+		mkdir -p $(DOCS_OUTPUT)/$${path_prefix} ; \
+		cp -r .vuepress/dist/* $(DOCS_OUTPUT)/$${path_prefix}/ ; \
+		cp $(DOCS_OUTPUT)/$${path_prefix}/index.html $(DOCS_OUTPUT) ; \
+		cp $(DOCS_OUTPUT)/$${path_prefix}/404.html $(DOCS_OUTPUT) ; \
+		cp -r $(DOCS_OUTPUT)/$${path_prefix}/redirects/* $(DOCS_OUTPUT) || true ; \
 	done < versions ;
 .PHONY: build-docs
+
+# Build and serve the local version of the docs on the current branch from
+# http://0.0.0.0:8080
+serve-docs:
+	@cd docs && \
+		npm ci && \
+		npm run serve
+.PHONY: serve-docs
 
 sync-docs:
 	cd ~/output && \
@@ -226,6 +319,11 @@ sync-docs:
 	aws s3 sync . s3://${WEBSITE_BUCKET} --profile terraform --delete ; \
 	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*" ;
 .PHONY: sync-docs
+
+# Verify that important design docs have ToC entries.
+check-docs-toc:
+	@./docs/presubmit.sh
+.PHONY: check-docs-toc
 
 ###############################################################################
 ###                            Docker image                                 ###
@@ -243,7 +341,7 @@ build-docker: build-linux
 
 # Build linux binary on other platforms
 build-linux:
-	GOOS=linux GOARCH=amd64 $(MAKE) build
+	GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) $(MAKE) build
 .PHONY: build-linux
 
 build-docker-localnode:
@@ -286,3 +384,25 @@ endif
 contract-tests:
 	dredd
 .PHONY: contract-tests
+
+# Implements test splitting and running. This is pulled directly from
+# the github action workflows for better local reproducibility.
+
+GO_TEST_FILES != find $(CURDIR) -name "*_test.go"
+
+# default to four splits by default
+NUM_SPLIT ?= 4
+
+$(BUILDDIR):
+	mkdir -p $@
+
+# The format statement filters out all packages that don't have tests.
+# Note we need to check for both in-package tests (.TestGoFiles) and
+# out-of-package tests (.XTestGoFiles).
+$(BUILDDIR)/packages.txt:$(GO_TEST_FILES) $(BUILDDIR)
+	go list -f "{{ if (or .TestGoFiles .XTestGoFiles) }}{{ .ImportPath }}{{ end }}" ./... | sort > $@
+
+split-test-packages:$(BUILDDIR)/packages.txt
+	split -d -n l/$(NUM_SPLIT) $< $<.
+test-group-%:split-test-packages
+	cat $(BUILDDIR)/packages.txt.$* | xargs go test -mod=readonly -timeout=5m -race -coverprofile=$(BUILDDIR)/$*.profile.out

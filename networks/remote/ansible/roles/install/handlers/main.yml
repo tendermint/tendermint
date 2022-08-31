@@ -2,4 +2,3 @@
 
 - name: reload services
   systemd: "name={{service}} daemon_reload=yes enabled=yes"
-

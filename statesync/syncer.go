@@ -267,7 +267,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 		return sm.State{}, nil, err
 	}
 
-	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context cancelled.
+	// Spawn chunk fetchers. They will terminate when the chunk queue is closed or context canceled.
 	fetchCtx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	for i := int32(0); i < s.chunkFetchers; i++ {

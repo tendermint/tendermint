@@ -3,7 +3,6 @@ package debug
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,7 +55,7 @@ func killCmdHandler(cmd *cobra.Command, args []string) error {
 
 	// Create a temporary directory which will contain all the state dumps and
 	// relevant files and directories that will be compressed into a file.
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "tendermint_debug_tmp")
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "tendermint_debug_tmp")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
@@ -105,7 +104,7 @@ func killProc(pid uint64, dir string) error {
 	// pipe STDERR output from tailing the Tendermint process to a file
 	//
 	// NOTE: This will only work on UNIX systems.
-	cmd := exec.Command("tail", "-f", fmt.Sprintf("/proc/%d/fd/2", pid)) // nolint: gosec
+	cmd := exec.Command("tail", "-f", fmt.Sprintf("/proc/%d/fd/2", pid)) //nolint: gosec
 
 	outFile, err := os.Create(filepath.Join(dir, "stacktrace.out"))
 	if err != nil {

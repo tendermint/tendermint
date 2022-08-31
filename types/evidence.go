@@ -20,13 +20,13 @@ import (
 // Evidence represents any provable malicious activity by a validator.
 // Verification logic for each evidence is part of the evidence module.
 type Evidence interface {
-	ABCI() []abci.Evidence // forms individual evidence to be sent to the application
-	Bytes() []byte         // bytes which comprise the evidence
-	Hash() []byte          // hash of the evidence
-	Height() int64         // height of the infraction
-	String() string        // string format of the evidence
-	Time() time.Time       // time of the infraction
-	ValidateBasic() error  // basic consistency check
+	ABCI() []abci.Misbehavior // forms individual evidence to be sent to the application
+	Bytes() []byte            // bytes which comprise the evidence
+	Hash() []byte             // hash of the evidence
+	Height() int64            // height of the infraction
+	String() string           // string format of the evidence
+	Time() time.Time          // time of the infraction
+	ValidateBasic() error     // basic consistency check
 }
 
 //--------------------------------------------------------------------------------------
@@ -45,15 +45,20 @@ type DuplicateVoteEvidence struct {
 var _ Evidence = &DuplicateVoteEvidence{}
 
 // NewDuplicateVoteEvidence creates DuplicateVoteEvidence with right ordering given
-// two conflicting votes. If one of the votes is nil, evidence returned is nil as well
-func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet) *DuplicateVoteEvidence {
+// two conflicting votes. If either of the votes is nil, the val set is nil or the voter is
+// not in the val set, an error is returned
+func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *ValidatorSet,
+) (*DuplicateVoteEvidence, error) {
 	var voteA, voteB *Vote
-	if vote1 == nil || vote2 == nil || valSet == nil {
-		return nil
+	if vote1 == nil || vote2 == nil {
+		return nil, errors.New("missing vote")
+	}
+	if valSet == nil {
+		return nil, errors.New("missing validator set")
 	}
 	idx, val := valSet.GetByAddress(vote1.ValidatorAddress)
 	if idx == -1 {
-		return nil
+		return nil, fmt.Errorf("validator %s not in validator set", vote1.ValidatorAddress.String())
 	}
 
 	if strings.Compare(vote1.BlockID.Key(), vote2.BlockID.Key()) == -1 {
@@ -69,13 +74,13 @@ func NewDuplicateVoteEvidence(vote1, vote2 *Vote, blockTime time.Time, valSet *V
 		TotalVotingPower: valSet.TotalVotingPower(),
 		ValidatorPower:   val.VotingPower,
 		Timestamp:        blockTime,
-	}
+	}, nil
 }
 
 // ABCI returns the application relevant representation of the evidence
-func (dve *DuplicateVoteEvidence) ABCI() []abci.Evidence {
-	return []abci.Evidence{{
-		Type: abci.EvidenceType_DUPLICATE_VOTE,
+func (dve *DuplicateVoteEvidence) ABCI() []abci.Misbehavior {
+	return []abci.Misbehavior{{
+		Type: abci.MisbehaviorType_DUPLICATE_VOTE,
 		Validator: abci.Validator{
 			Address: dve.VoteA.ValidatorAddress,
 			Power:   dve.ValidatorPower,
@@ -199,12 +204,12 @@ type LightClientAttackEvidence struct {
 
 var _ Evidence = &LightClientAttackEvidence{}
 
-// ABCI forms an array of abci evidence for each byzantine validator
-func (l *LightClientAttackEvidence) ABCI() []abci.Evidence {
-	abciEv := make([]abci.Evidence, len(l.ByzantineValidators))
+// ABCI forms an array of abci.Misbehavior for each byzantine validator
+func (l *LightClientAttackEvidence) ABCI() []abci.Misbehavior {
+	abciEv := make([]abci.Misbehavior, len(l.ByzantineValidators))
 	for idx, val := range l.ByzantineValidators {
-		abciEv[idx] = abci.Evidence{
-			Type:             abci.EvidenceType_LIGHT_CLIENT_ATTACK,
+		abciEv[idx] = abci.Misbehavior{
+			Type:             abci.MisbehaviorType_LIGHT_CLIENT_ATTACK,
 			Validator:        TM2PB.Validator(val),
 			Height:           l.Height(),
 			Time:             l.Timestamp,
@@ -459,6 +464,16 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	return false
 }
 
+// ToABCI converts the evidence list to a slice of the ABCI protobuf messages
+// for use when communicating the evidence to an application.
+func (evl EvidenceList) ToABCI() []abci.Misbehavior {
+	var el []abci.Misbehavior
+	for _, e := range evl {
+		el = append(el, e.ABCI()...)
+	}
+	return el
+}
+
 //------------------------------------------ PROTO --------------------------------------
 
 // EvidenceToProto is a generalized function for encoding evidence that conforms to the
@@ -554,23 +569,32 @@ func (err *ErrEvidenceOverflow) Error() string {
 // unstable - use only for testing
 
 // assumes the round to be 0 and the validator index to be 0
-func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) *DuplicateVoteEvidence {
+func NewMockDuplicateVoteEvidence(height int64, time time.Time, chainID string) (*DuplicateVoteEvidence, error) {
 	val := NewMockPV()
 	return NewMockDuplicateVoteEvidenceWithValidator(height, time, val, chainID)
 }
 
 // assumes voting power to be 10 and validator to be the only one in the set
 func NewMockDuplicateVoteEvidenceWithValidator(height int64, time time.Time,
-	pv PrivValidator, chainID string) *DuplicateVoteEvidence {
-	pubKey, _ := pv.GetPubKey()
+	pv PrivValidator, chainID string) (*DuplicateVoteEvidence, error) {
+	pubKey, err := pv.GetPubKey()
+	if err != nil {
+		return nil, err
+	}
 	val := NewValidator(pubKey, 10)
 	voteA := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vA := voteA.ToProto()
-	_ = pv.SignVote(chainID, vA)
+	err = pv.SignVote(chainID, vA)
+	if err != nil {
+		return nil, err
+	}
 	voteA.Signature = vA.Signature
 	voteB := makeMockVote(height, 0, 0, pubKey.Address(), randBlockID(), time)
 	vB := voteB.ToProto()
-	_ = pv.SignVote(chainID, vB)
+	err = pv.SignVote(chainID, vB)
+	if err != nil {
+		return nil, err
+	}
 	voteB.Signature = vB.Signature
 	return NewDuplicateVoteEvidence(voteA, voteB, time, NewValidatorSet([]*Validator{val}))
 }

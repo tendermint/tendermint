@@ -14,7 +14,7 @@ Applications](./apps.md).
 ## Message Protocol
 
 The message protocol consists of pairs of requests and responses defined in the
-[protobuf file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
+[protobuf file](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/abci/types.proto).
 
 Some messages have no fields, while others may include byte-arrays, strings, integers,
 or custom protobuf types.
@@ -30,7 +30,8 @@ responses.
 To use ABCI in your programming language of choice, there must be a ABCI
 server in that language. Tendermint supports three implementations of the ABCI, written in Go:
 
-- In-process ([Golang](https://github.com/tendermint/tendermint/tree/master/abci), [Rust](https://github.com/tendermint/rust-abci))
+- In-process ([Golang](https://github.com/tendermint/tendermint/tree/main/abci),
+  [Rust](https://github.com/informalsystems/tendermint-rs/tree/main/abci))
 - ABCI-socket
 - GRPC
 
@@ -38,7 +39,7 @@ The latter two can be tested using the `abci-cli` by setting the `--abci` flag
 appropriately (ie. to `socket` or `grpc`).
 
 See examples, in various stages of maintenance, in
-[Go](https://github.com/tendermint/tendermint/tree/master/abci/server),
+[Go](https://github.com/tendermint/tendermint/tree/main/abci/server),
 [JavaScript](https://github.com/tendermint/js-abci),
 [C++](https://github.com/mdyring/cpp-tmsp), and
 [Java](https://github.com/jTendermint/jabci).
@@ -54,7 +55,7 @@ If GRPC is available in your language, this is the easiest approach,
 though it will have significant performance overhead.
 
 To get started with GRPC, copy in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto)
+file](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/abci/types.proto)
 and compile it using the GRPC plugin for your language. For instance,
 for golang, the command is `protoc --go_out=plugins=grpc:. types.proto`.
 See the [grpc documentation for more details](http://www.grpc.io/docs/).
@@ -66,25 +67,28 @@ Note the length-prefixing used in the socket implementation (TSP) does not apply
 
 ### TSP
 
-Tendermint Socket Protocol is an asynchronous, raw socket server which provides ordered message passing over unix or tcp.
-Messages are serialized using Protobuf3 and length-prefixed with a [signed Varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#signed-integers)
+Tendermint Socket Protocol is an asynchronous, raw socket server which provides
+ordered message passing over unix or tcp. Messages are serialized using
+Protobuf3 and length-prefixed with an [unsigned
+varint](https://developers.google.com/protocol-buffers/docs/encoding?csw=1#varints)
 
-If GRPC is not available in your language, or you require higher
-performance, or otherwise enjoy programming, you may implement your own
-ABCI server using the Tendermint Socket Protocol. The first step is still to auto-generate the relevant data
-types and codec in your language using `protoc`. In addition to being proto3 encoded, messages coming over
-the socket are length-prefixed to facilitate use as a streaming protocol. proto3 doesn't have an
-official length-prefix standard, so we use our own. The first byte in
-the prefix represents the length of the Big Endian encoded length. The
-remaining bytes in the prefix are the Big Endian encoded length.
+If GRPC is not available in your language, or you require higher performance, or
+otherwise enjoy programming, you may implement your own ABCI server using the
+Tendermint Socket Protocol. The first step is still to auto-generate the
+relevant data types and codec in your language using `protoc`. In addition to
+being proto3 encoded, messages coming over the socket are length-prefixed to
+facilitate use as a streaming protocol. proto3 doesn't have an official
+length-prefix standard, so we use our own. The first byte in the prefix
+represents the length of the Big Endian encoded length. The remaining bytes in
+the prefix are the Big Endian encoded length.
 
-For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
-bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
-encoded ABCI message is 65535 bytes long, the length-prefixed message
-would be like 0x02FFFF....
+For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4 bytes), the
+length-prefixed message is 0x0104DEADBEEF. If the proto3 encoded ABCI message is
+65535 bytes long, the length-prefixed message would be like 0x02FFFF....
 
-The benefit of using this `varint` encoding over the old version (where integers were encoded as `<len of len><big endian len>` is that
-it is the standard way to encode integers in Protobuf. It is also generally shorter.
+The benefit of using this `varint` encoding over the old version (where integers
+were encoded as `<len of len><big endian len>` is that it is the common way to
+encode integers in Protobuf. It is also generally shorter.
 
 As noted above, this prefixing does not apply for GRPC.
 
@@ -110,4 +114,4 @@ received or a block is committed.
 
 It is unlikely that you will need to implement a client. For details of
 our client, see
-[here](https://github.com/tendermint/tendermint/tree/master/abci/client).
+[here](https://github.com/tendermint/tendermint/tree/main/abci/client).

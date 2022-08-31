@@ -67,7 +67,7 @@ configuration, service discovery, locking, leader-election, and so on.
 Tendermint is in essence similar software, but with two key differences:
 
 - It is Byzantine Fault Tolerant, meaning it can only tolerate up to a
-  1/3 of failures, but those failures can include arbitrary behaviour -
+  1/3 of failures, but those failures can include arbitrary behavior -
   including hacking and malicious attacks. - It does not specify a
   particular application, like a fancy key-value store. Instead, it
   focuses on arbitrary state machine replication, so developers can build
@@ -101,13 +101,13 @@ Another example of a cryptocurrency application built on Tendermint is
 
 [Fabric](https://github.com/hyperledger/fabric) takes a similar approach
 to Tendermint, but is more opinionated about how the state is managed,
-and requires that all application behaviour runs in potentially many
+and requires that all application behavior runs in potentially many
 docker containers, modules it calls "chaincode". It uses an
 implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf).
 from a team at IBM that is [augmented to handle potentially
 non-deterministic
 chaincode](https://www.zurich.ibm.com/~cca/papers/sieve.pdf) It is
-possible to implement this docker-based behaviour as a ABCI app in
+possible to implement this docker-based behavior as a ABCI app in
 Tendermint, though extending Tendermint to handle non-determinism
 remains for future work.
 
@@ -120,7 +120,7 @@ consensus engine, and provides a particular application state.
 ## ABCI Overview
 
 The [Application BlockChain Interface
-(ABCI)](https://github.com/tendermint/tendermint/tree/master/abci)
+(ABCI)](https://github.com/tendermint/tendermint/tree/main/abci)
 allows for Byzantine Fault Tolerant replication of applications
 written in any programming language.
 
@@ -188,7 +188,7 @@ core to the application. The application replies with corresponding
 response messages.
 
 The messages are specified here: [ABCI Message
-Types](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types).
+Types](https://github.com/tendermint/tendermint/blob/main/abci/README.md#message-types).
 
 The **DeliverTx** message is the work horse of the application. Each
 transaction in the blockchain is delivered with this message. The

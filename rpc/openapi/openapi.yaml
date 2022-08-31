@@ -51,10 +51,10 @@ info:
 
         ws ws://localhost:26657/websocket
         > { "jsonrpc": "2.0", "method": "subscribe", "params": ["tm.event='NewBlock'"], "id": 1 }
-  version: "Master"
+  version: "main"
   license:
     name: Apache 2.0
-    url: https://github.com/tendermint/tendermint/blob/master/LICENSE
+    url: https://github.com/tendermint/tendermint/blob/main/LICENSE
 servers:
   - url: https://rpc.cosmos.network
     description: Cosmos mainnet node to interact with the Tendermint RPC
@@ -83,7 +83,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/main/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -95,7 +95,7 @@ paths:
 
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -127,7 +127,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/main/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -139,7 +139,7 @@ paths:
         3. node can be offline
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -172,7 +172,7 @@ paths:
         IMPORTANT: use only for testing and development. In production, use
         BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
         result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/main/app-dev/subscribing-to-events-via-websocket.html
 
         CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
         waiting for tx to commit.
@@ -181,7 +181,7 @@ paths:
         will contain a non-OK ABCI code.
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -214,7 +214,7 @@ paths:
         The transaction won't be added to the mempool.
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -537,8 +537,7 @@ paths:
             type: array
             items:
               type: string
-              example:
-                ["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"]
+              example: "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"
       responses:
         "200":
           description: Dialing seeds in progress. See /net_info for details
@@ -588,8 +587,7 @@ paths:
             type: array
             items:
               type: string
-              example:
-                ["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"]
+              example: "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656"
       responses:
         "200":
           description: Dialing seeds in progress. See /net_info for details
@@ -789,7 +787,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Validators. Validators are sorted by voting power.
+        Get Validators. Validators are sorted first by voting power (descending), then by address (ascending).
       responses:
         "200":
           description: Commit results.
@@ -1674,7 +1672,7 @@ components:
                     nullable: false
                     items:
                       $ref: "#/components/schemas/Event"
-            end_block:
+            end_block_events:
               type: array
               nullable: true
               items:
@@ -1709,7 +1707,7 @@ components:
                   power:
                     type: string
                     example: "300"
-            consensus_params_updates:
+            consensus_param_updates:
               $ref: "#/components/schemas/ConsensusParams"
 
     CommitResponse:
@@ -2741,6 +2739,33 @@ components:
         Log:
           type: string
           example: "Dialing seeds in progress. See /net_info for details"
+
+    BlockSearchResponse:
+      type: object
+      required:
+        - "jsonrpc"
+        - "id"
+        - "result"
+      properties:
+        jsonrpc:
+          type: string
+          example: "2.0"
+        id:
+          type: integer
+          example: 0
+        result:
+          required:
+            - "blocks"
+            - "total_count"
+          properties:
+            blocks:
+              type: array
+              items:
+                $ref: "#/components/schemas/BlockComplete"
+            total_count:
+              type: integer
+              example: 2
+          type: object
 
     ###### Reuseable types ######
 

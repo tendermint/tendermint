@@ -28,7 +28,7 @@ func TestAppConns_Start_Stop(t *testing.T) {
 
 	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil).Times(4)
 
-	appConns := NewAppConns(clientCreatorMock)
+	appConns := NewAppConns(clientCreatorMock, NopMetrics())
 
 	err := appConns.Start()
 	require.NoError(t, err)
@@ -53,7 +53,7 @@ func TestAppConns_Failure(t *testing.T) {
 	}()
 
 	quitCh := make(chan struct{})
-	var recvQuitCh <-chan struct{} // nolint:gosimple
+	var recvQuitCh <-chan struct{} //nolint:gosimple
 	recvQuitCh = quitCh
 
 	clientCreatorMock := &mocks.ClientCreator{}
@@ -68,7 +68,7 @@ func TestAppConns_Failure(t *testing.T) {
 
 	clientCreatorMock.On("NewABCIClient").Return(clientMock, nil)
 
-	appConns := NewAppConns(clientCreatorMock)
+	appConns := NewAppConns(clientCreatorMock, NopMetrics())
 
 	err := appConns.Start()
 	require.NoError(t, err)

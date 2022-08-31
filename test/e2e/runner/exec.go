@@ -1,4 +1,3 @@
-//nolint: gosec
 package main
 
 import (
@@ -10,7 +9,7 @@ import (
 
 // execute executes a shell command.
 func exec(args ...string) error {
-	cmd := osexec.Command(args[0], args[1:]...)
+	cmd := osexec.Command(args[0], args[1:]...) //nolint:gosec
 	out, err := cmd.CombinedOutput()
 	switch err := err.(type) {
 	case nil:
@@ -24,7 +23,7 @@ func exec(args ...string) error {
 
 // execVerbose executes a shell command while displaying its output.
 func execVerbose(args ...string) error {
-	cmd := osexec.Command(args[0], args[1:]...)
+	cmd := osexec.Command(args[0], args[1:]...) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

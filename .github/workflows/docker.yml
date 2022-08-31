@@ -1,14 +1,13 @@
-name: Build & Push
-#  Build & Push rebuilds the tendermint docker image on every push to master and creation of tags
-# and pushes the image to https://hub.docker.com/r/interchainio/simapp/tags
+name: Docker
+# Build & Push rebuilds the Tendermint docker image on every push to main and creation of tags
+# and pushes the image to https://hub.docker.com/r/tendermint/tendermint
 on:
-  pull_request:
   push:
     branches:
-      - master
+      - main
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+" # Push events to matching v*, i.e. v1.0, v20.15.10
-      - "v[0-9]+.[0-9]+.[0-9]+-rc*" # Push events to matching v*, i.e. v1.0-rc1, v20.15.10-rc5
+      - "v[0-9]+.[0-9]+.[0-9]+"  # Push events to matching v*, i.e. v1.0, v20.15.10
+      - "v[0-9]+.[0-9]+.[0-9]+-rc*"  # Push events to matching v*, i.e. v1.0-rc1, v20.15.10-rc5
 
 jobs:
   build:
@@ -39,18 +38,18 @@ jobs:
         with:
           platforms: all
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Build
+        uses: docker/setup-buildx-action@v2.0.0
 
       - name: Login to DockerHub
         if: ${{ github.event_name != 'pull_request' }}
-        uses: docker/login-action@v2
+        uses: docker/login-action@v2.0.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Publish to Docker Hub
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v3.1.1
         with:
           context: .
           file: ./DOCKER/Dockerfile

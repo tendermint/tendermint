@@ -1,14 +1,14 @@
-name: Lint
+name: Markdown Linter
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - "**.md"
       - "**.yml"
       - "**.yaml"
   pull_request:
-    branches: [master]
+    branches: [main]
     paths:
       - "**.md"
       - "**.yml"
@@ -21,12 +21,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
       - name: Lint Code Base
-        uses: docker://github/super-linter:v3
+        uses: docker://github/super-linter:v4
         env:
-          LINTER_RULES_PATH: .
           VALIDATE_ALL_CODEBASE: true
-          DEFAULT_BRANCH: master
+          DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_MD: true
           VALIDATE_OPENAPI: true
           VALIDATE_YAML: true
+          YAML_CONFIG_FILE: yaml-lint.yml
