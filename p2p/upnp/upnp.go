@@ -202,7 +202,7 @@ func localIPv4() (net.IP, error) {
 }
 
 func getServiceURL(rootURL string) (url, urnDomain string, err error) {
-	r, err := http.Get(rootURL) // nolint: gosec
+	r, err := http.Get(rootURL) //nolint: gosec
 	if err != nil {
 		return
 	}

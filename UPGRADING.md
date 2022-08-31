@@ -26,6 +26,11 @@ Tendermint Core.
   in order to ensure compatibility.
 * The `SetOption` method has been removed from the ABCI `Client` interface.
   The corresponding Protobuf types have been deprecated.
+* The `key` and `value` fields in the `EventAttribute` type have been changed
+  from type `bytes` to `string`. As per the [Protocol Buffers updating
+  guidelines](https://developers.google.com/protocol-buffers/docs/proto3#updating),
+  this should have no effect on the wire-level encoding for UTF8-encoded
+  strings.
 
 ## v0.34.20
 

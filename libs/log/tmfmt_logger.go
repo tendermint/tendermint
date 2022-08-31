@@ -65,7 +65,7 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 		switch keyvals[i] {
 		case kitlevel.Key():
 			excludeIndexes = append(excludeIndexes, i)
-			switch keyvals[i+1].(type) { // nolint:gocritic
+			switch keyvals[i+1].(type) { //nolint:gocritic
 			case string:
 				lvl = keyvals[i+1].(string)
 			case kitlevel.Value:

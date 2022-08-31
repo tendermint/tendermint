@@ -91,15 +91,16 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 	if isReplacedTx(req.Tx) {
 		app.txToRemove[string(req.Tx)] = struct{}{}
 	}
-	var key, value []byte
+	var key, value string
+
 	parts := bytes.Split(req.Tx, []byte("="))
 	if len(parts) == 2 {
-		key, value = parts[0], parts[1]
+		key, value = string(parts[0]), string(parts[1])
 	} else {
-		key, value = req.Tx, req.Tx
+		key, value = string(req.Tx), string(req.Tx)
 	}
 
-	err := app.state.db.Set(prefixKey(key), value)
+	err := app.state.db.Set(prefixKey([]byte(key)), []byte(value))
 	if err != nil {
 		panic(err)
 	}
@@ -109,10 +110,10 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 		{
 			Type: "app",
 			Attributes: []types.EventAttribute{
-				{Key: []byte("creator"), Value: []byte("Cosmoshi Netowoko"), Index: true},
-				{Key: []byte("key"), Value: key, Index: true},
-				{Key: []byte("index_key"), Value: []byte("index is working"), Index: true},
-				{Key: []byte("noindex_key"), Value: []byte("index is working"), Index: false},
+				{Key: "creator", Value: "Cosmoshi Netowoko", Index: true},
+				{Key: "key", Value: key, Index: true},
+				{Key: "index_key", Value: "index is working", Index: true},
+				{Key: "noindex_key", Value: "index is working", Index: false},
 			},
 		},
 	}
