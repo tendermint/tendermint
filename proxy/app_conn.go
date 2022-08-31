@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 )

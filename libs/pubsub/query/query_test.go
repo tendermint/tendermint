@@ -68,8 +68,8 @@ var apiTypeEvents = []types.Event{
 		Type: "tm",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("event"),
-				Value: []byte("Tx"),
+				Key:   "event",
+				Value: "Tx",
 			},
 		},
 	},
@@ -77,8 +77,8 @@ var apiTypeEvents = []types.Event{
 		Type: "tm",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("hash"),
-				Value: []byte("XYZ"),
+				Key:   "hash",
+				Value: "XYZ",
 			},
 		},
 	},
@@ -86,8 +86,8 @@ var apiTypeEvents = []types.Event{
 		Type: "tm",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("height"),
-				Value: []byte("5"),
+				Key:   "height",
+				Value: "5",
 			},
 		},
 	},
@@ -95,25 +95,12 @@ var apiTypeEvents = []types.Event{
 		Type: "rewards.withdraw",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("address"),
-				Value: []byte("AddrA"),
+				Key:   "address",
+				Value: "AddrA",
 			},
 			{
-				Key:   []byte("address"),
-				Value: []byte("AddrB"),
-			},
-		},
-	},
-	{
-		Type: "rewards.withdraw",
-		Attributes: []types.EventAttribute{
-			{
-				Key:   []byte("source"),
-				Value: []byte("SrcX"),
-			},
-			{
-				Key:   []byte("source"),
-				Value: []byte("SrcY"),
+				Key:   "address",
+				Value: "AddrB",
 			},
 		},
 	},
@@ -121,12 +108,12 @@ var apiTypeEvents = []types.Event{
 		Type: "rewards.withdraw",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("amount"),
-				Value: []byte("100"),
+				Key:   "source",
+				Value: "SrcX",
 			},
 			{
-				Key:   []byte("amount"),
-				Value: []byte("45"),
+				Key:   "source",
+				Value: "SrcY",
 			},
 		},
 	},
@@ -134,12 +121,25 @@ var apiTypeEvents = []types.Event{
 		Type: "rewards.withdraw",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("balance"),
-				Value: []byte("1500"),
+				Key:   "amount",
+				Value: "100",
 			},
 			{
-				Key:   []byte("balance"),
-				Value: []byte("999"),
+				Key:   "amount",
+				Value: "45",
+			},
+		},
+	},
+	{
+		Type: "rewards.withdraw",
+		Attributes: []types.EventAttribute{
+			{
+				Key:   "balance",
+				Value: "1500",
+			},
+			{
+				Key:   "balance",
+				Value: "999",
 			},
 		},
 	},
@@ -147,8 +147,8 @@ var apiTypeEvents = []types.Event{
 		Type: "transfer",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("sender"),
-				Value: []byte("AddrC"),
+				Key:   "sender",
+				Value: "AddrC",
 			},
 		},
 	},
@@ -156,8 +156,8 @@ var apiTypeEvents = []types.Event{
 		Type: "transfer",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("recipient"),
-				Value: []byte("AddrD"),
+				Key:   "recipient",
+				Value: "AddrD",
 			},
 		},
 	},
@@ -165,8 +165,8 @@ var apiTypeEvents = []types.Event{
 		Type: "transfer",
 		Attributes: []types.EventAttribute{
 			{
-				Key:   []byte("amount"),
-				Value: []byte("160"),
+				Key:   "amount",
+				Value: "160",
 			},
 		},
 	},
@@ -339,7 +339,7 @@ func TestCompiledMatches(t *testing.T) {
 func sortEvents(events []types.Event) []types.Event {
 	sort.Slice(events, func(i, j int) bool {
 		if events[i].Type == events[j].Type {
-			return string(events[i].Attributes[0].Key) < string(events[j].Attributes[0].Key)
+			return events[i].Attributes[0].Key < events[j].Attributes[0].Key
 		}
 		return events[i].Type < events[j].Type
 	})

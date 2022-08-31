@@ -146,7 +146,11 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 			}
 
 			// index if `index: true` is set
-			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
+			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
+			// ensure event does not conflict with a reserved prefix key
+			if compositeTag == types.TxHashKey || compositeTag == types.TxHeightKey {
+				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeTag)
+			}
 			if attr.GetIndex() {
 				err := store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 				if err != nil {
@@ -250,6 +254,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	}
 
 	results := make([]*abci.TxResult, 0, len(filteredHashes))
+RESULTS_LOOP:
 	for _, h := range filteredHashes {
 		res, err := txi.Get(h)
 		if err != nil {
@@ -260,7 +265,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
-			break
+			break RESULTS_LOOP
 		default:
 		}
 	}
@@ -316,13 +321,14 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	EQ_LOOP:
 		for ; it.Valid(); it.Next() {
 			tmpHashes[string(it.Value())] = it.Value()
 
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break EQ_LOOP
 			default:
 			}
 		}
@@ -339,13 +345,14 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	EXISTS_LOOP:
 		for ; it.Valid(); it.Next() {
 			tmpHashes[string(it.Value())] = it.Value()
 
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break EXISTS_LOOP
 			default:
 			}
 		}
@@ -363,6 +370,7 @@ func (txi *TxIndex) match(
 		}
 		defer it.Close()
 
+	CONTAINS_LOOP:
 		for ; it.Valid(); it.Next() {
 			if !isTagKey(it.Key()) {
 				continue
@@ -374,7 +382,7 @@ func (txi *TxIndex) match(
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break CONTAINS_LOOP
 			default:
 			}
 		}
@@ -398,6 +406,7 @@ func (txi *TxIndex) match(
 
 	// Remove/reduce matches in filteredHashes that were not found in this
 	// match (tmpHashes).
+REMOVE_LOOP:
 	for k := range filteredHashes {
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
@@ -405,7 +414,7 @@ func (txi *TxIndex) match(
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break REMOVE_LOOP
 			default:
 			}
 		}
@@ -478,7 +487,7 @@ LOOP:
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
-			break
+			break LOOP
 		default:
 		}
 	}
@@ -499,6 +508,7 @@ LOOP:
 
 	// Remove/reduce matches in filteredHashes that were not found in this
 	// match (tmpHashes).
+REMOVE_LOOP:
 	for k := range filteredHashes {
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
@@ -506,7 +516,7 @@ LOOP:
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():
-				break
+				break REMOVE_LOOP
 			default:
 			}
 		}
@@ -526,7 +536,7 @@ func extractValueFromKey(key []byte) string {
 	return parts[1]
 }
 
-func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
+func keyForEvent(key string, value string, result *abci.TxResult) []byte {
 	return []byte(fmt.Sprintf("%s/%s/%d/%d",
 		key,
 		value,

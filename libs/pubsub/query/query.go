@@ -1,10 +1,7 @@
 // Package query implements the custom query format used to filter event
 // subscriptions in Tendermint.
 //
-// Query expressions describe properties of events and their attributes, using
-// strings like:
-//
-//    abci.invoice.number = 22 AND abci.invoice.owner = 'Ivan'
+//	abci.invoice.number=22 AND abci.invoice.owner=Ivan
 //
 // Query expressions can handle attribute values encoding numbers, strings,
 // dates, and timestamps.  The complete query grammar is described in the
@@ -76,8 +73,8 @@ func ExpandEvents(flattenedEvents map[string][]string) []types.Event {
 		attrs := make([]types.EventAttribute, len(values))
 		for i, v := range values {
 			attrs[i] = types.EventAttribute{
-				Key:   []byte(tokens[len(tokens)-1]),
-				Value: []byte(v),
+				Key:   tokens[len(tokens)-1],
+				Value: v,
 			}
 		}
 
@@ -144,9 +141,9 @@ func (c condition) findAttr(event types.Event) ([]string, bool) {
 	}
 	var vals []string
 	for _, attr := range event.Attributes {
-		fullName := event.Type + "." + string(attr.Key)
+		fullName := event.Type + "." + attr.Key
 		if fullName == c.tag {
-			vals = append(vals, string(attr.Value))
+			vals = append(vals, attr.Value)
 		}
 	}
 	return vals, false

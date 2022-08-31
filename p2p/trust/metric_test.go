@@ -72,6 +72,7 @@ func TestTrustMetricCopyNilPointer(t *testing.T) {
 }
 
 // XXX: This test fails non-deterministically
+//
 //nolint:unused,deadcode
 func _TestTrustMetricStopPause(t *testing.T) {
 	// The TestTicker will provide manual control over
