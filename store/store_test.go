@@ -556,13 +556,16 @@ func TestLoadBlockMeta(t *testing.T) {
 func TestLoadBlockMetaByHash(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
-	stateStore := sm.NewStore(dbm.NewMemDB())
+	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	require.NoError(t, err)
 	bs := NewBlockStore(dbm.NewMemDB())
 
-	block := makeBlock(1, state, new(types.Commit))
-	partSet := block.MakePartSet(2)
+	block = state.MakeBlock(state.LastBlockHeight+1, test.MakeNTxs(state.LastBlockHeight+1, 10), new(types.Commit), nil, state.Validators.GetProposer().Address)
+	partSet, err := block.MakePartSet(2)
+	require.NoError(t, err)
 	seenCommit := makeTestCommit(1, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 
