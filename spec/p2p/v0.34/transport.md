@@ -118,7 +118,7 @@ an `ErrFilterTimeout` error is returned.
 ## Connection Upgrade
 
 The `upgrade` method is invoked for every new raw connection established by the
-transport, that was not [filtered out](#filtering-connections).
+transport, that was not [filtered out](#connection-filtering).
 It upgrades an established raw TCP connection into a secret authenticated
 connection, and validates the information provided by the peer.
 

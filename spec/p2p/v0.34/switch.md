@@ -32,7 +32,7 @@ The actual dialing is implemented by the [`Dial`](./transport.md#dial) method
 of the transport configured for the switch, in the `addOutboundPeerWithConfig`
 method.
 If the transport succeeds establishing a connection, the returned `Peer` is
-added to the switch using the [`addPeer`](#addpeer) method.
+added to the switch using the [`addPeer`](#add-peer) method.
 This operation can fail, returning an error. In this case, the switch invokes
 the transport's [`Cleanup`](./transport.md#cleanup) method to clean any resources
 associated with the peer.

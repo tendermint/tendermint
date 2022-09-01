@@ -46,7 +46,7 @@ which implements the following abstractions:
       peer addresses, thus implementing a peer discovery mechanism;
    - [Peer Manager](./peer_manager.md): responsible for establishing
       connection with peers, defining when and which peers a node should dial;
-- Finally, [Types](/.types.md) and [Configuration](./configuration.md) provide
+- Finally, [Types](./types.md) and [Configuration](./configuration.md) provide
    a list of existing types and configuration parameters used by the p2p layer implementation.
 
 ## Further References 

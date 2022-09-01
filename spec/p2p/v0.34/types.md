@@ -37,7 +37,7 @@ Defines several error types.
 Mainly produced by the [transport](#transportgo),
 but also by the [switch](#switchgo).
 
-`ErrSwitchDuplicatePeerID` is produced by the `PeerSet` used by the [switch](switchgo).
+`ErrSwitchDuplicatePeerID` is produced by the `PeerSet` used by the [switch](#switchgo).
 
 `ErrSwitchConnectToSelf` is handled by the [switch](#switchgo),
 but currently is not produced outside tests.
@@ -168,7 +168,7 @@ connection built atop a raw network (TCP) connection.
 A [`Peer`](#peergo) stores the `SecretConnection` established by the transport,
 which is the underlying connection multiplexed by [`MConnection`](#connectiongo).
 
-As briefly documented in the [transport](./transport#Connection-Upgrade),
+As briefly documented in the [transport](./transport.md#Connection-Upgrade),
 a `SecretConnection` implements the Station-To-Station (STS) protocol.
 
 The `SecretConnection` type implements the `net.Conn` interface,
@@ -234,6 +234,6 @@ Not imported by any other Tendermint source file.
 
 ## Package `p2p.upnp`
 
-This package implementation was taken from [`taipei-torrent`](http://www.upnp-hacks.org/upnp.html).
+This package implementation was taken from "taipei-torrent".
 
 It is used by the `probe-upnp` command of the Tendermint binary. 
