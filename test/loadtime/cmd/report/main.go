@@ -24,10 +24,10 @@ var (
 func main() {
 	flag.Parse()
 	if *db == "" {
-		log.Fatalf("must specifiy a database-type")
+		log.Fatalf("must specify a database-type")
 	}
 	if *dir == "" {
-		log.Fatalf("must specifiy a data-dir")
+		log.Fatalf("must specify a data-dir")
 	}
 	d := strings.TrimPrefix(*dir, "~/")
 	if d != *dir {
