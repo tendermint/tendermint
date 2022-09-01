@@ -1,6 +1,7 @@
 package report
 
 import (
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -9,20 +10,33 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-type blockStore interface {
+// BlockStore defines the set of methods needed by the report generator from
+// Tendermint's store.Blockstore type. Using an interface allows for tests to
+// more easily simulate the required behavior without having to use the more
+// complex real API.
+type BlockStore interface {
 	Height() int64
 	Base() int64
 	LoadBlock(int64) *types.Block
 }
 
+// Report contains the data calculated from reading the timestamped transactions
+// of each block found in the blockstore.
 type Report struct {
-	Max, Min, Avg time.Duration
-	StdDev        int64
-	All           []time.Duration
-	ErrorCount    int
+	Max, Min, Avg, StdDev time.Duration
+
+	// ErrorCount is the number of parsing errors encountered while reading the
+	// transaction data. Parsing errors may occur if a transaction not generated
+	// by the payload package is submitted to the chain.
+	ErrorCount int
+
+	// All contains all data points gathered from all valid transactions.
+	All []time.Duration
 }
 
-func GenerateFromBlockStore(s blockStore) (Report, error) {
+// GenerateFromBlockStore creates a Report using the data in the provided
+// BlockStore.
+func GenerateFromBlockStore(s BlockStore) (Report, error) {
 	type payloadData struct {
 		l   time.Duration
 		err error
@@ -48,7 +62,7 @@ func GenerateFromBlockStore(s blockStore) (Report, error) {
 					pdc <- payloadData{err: err}
 					continue
 				}
-				l := p.Time.AsTime().Sub(b.bt)
+				l := b.bt.Sub(p.Time.AsTime())
 				pdc <- payloadData{l: l}
 			}
 		}()
@@ -89,5 +103,22 @@ func GenerateFromBlockStore(s blockStore) (Report, error) {
 		sum += int64(pd.l)
 	}
 	r.Avg = time.Duration(sum / int64(len(r.All)))
+	r.StdDev = time.Duration(stddev(r.All))
 	return r, nil
+}
+
+func stddev(l []time.Duration) int64 {
+	var s1 int64
+	for _, x := range l {
+		s1 += int64(x)
+	}
+	u := s1 / int64(len(l))
+	var s2 int64
+	for _, x := range l {
+		s2 += (int64(x) - u) * (int64(x) - u)
+	}
+	r := s2 / (int64(len(l)))
+	sqr := math.Sqrt(float64(r))
+	fmt.Println(sqr)
+	return int64(sqr)
 }

@@ -38,7 +38,10 @@ func main() {
 }
 
 func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
-	psb := payload.UnpaddedSizeBytes()
+	psb, err := payload.MaxUnpaddedSize()
+	if err != nil {
+		return err
+	}
 	if psb > cfg.Size {
 		return fmt.Errorf("payload size exceeds configured size")
 	}
@@ -54,9 +57,9 @@ func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) 
 }
 
 func (c *TxGenerator) GenerateTx() ([]byte, error) {
-	return payload.NewBytes(payload.Options{
-		Conns: c.conns,
-		Rate:  c.rate,
-		Size:  c.size,
+	return payload.NewBytes(&payload.Payload{
+		Connections: c.conns,
+		Rate:        c.rate,
+		Size:        c.size,
 	})
 }

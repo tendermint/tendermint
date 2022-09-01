@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/test/loadtime/payload"
 	"github.com/tendermint/tendermint/test/loadtime/report"
 	"github.com/tendermint/tendermint/types"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type mockBlockStore struct {
@@ -27,13 +28,16 @@ func (m *mockBlockStore) LoadBlock(i int64) *types.Block {
 }
 
 func TestGenerateReport(t *testing.T) {
-	b1, err := payload.NewBytes(payload.Options{
+	tn := time.Now()
+	b1, err := payload.NewBytes(&payload.Payload{
+		Time: timestamppb.New(tn.Add(-6 * time.Second)),
 		Size: 1024,
 	})
 	if err != nil {
 		t.Fatalf("generating payload %s", err)
 	}
-	b2, err := payload.NewBytes(payload.Options{
+	b2, err := payload.NewBytes(&payload.Payload{
+		Time: timestamppb.New(tn.Add(-4 * time.Second)),
 		Size: 1024,
 	})
 	if err != nil {
@@ -43,10 +47,15 @@ func TestGenerateReport(t *testing.T) {
 		blocks: []*types.Block{
 			{
 				Header: types.Header{
-					Time: time.Now(),
+					Time: tn,
 				},
 				Data: types.Data{
 					Txs: []types.Tx{b1, b2},
+				},
+			},
+			{
+				Data: types.Data{
+					Txs: []types.Tx{[]byte("error")},
 				},
 			},
 		},
@@ -56,6 +65,23 @@ func TestGenerateReport(t *testing.T) {
 		t.Fatalf("generating report %s", err)
 	}
 	if len(r.All) != 2 {
-		t.Fatalf("report contained different number of data points from expected. Expected %d but contained %d", 1, len(r.All))
+		t.Fatalf("report contained different number of data points from expected. Expected %d but contained %d", 2, len(r.All))
+	}
+	if r.ErrorCount != 1 {
+		t.Fatalf("ErrorCount did not match expected. Expected %d but contained %d", 1, r.ErrorCount)
+	}
+	if r.Avg != 5*time.Second {
+		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 5*time.Second, r.Avg)
+	}
+	if r.Min != 4*time.Second {
+		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 4*time.Second, r.Min)
+	}
+	if r.Max != 6*time.Second {
+		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 6*time.Second, r.Max)
+	}
+	// Verified using online standard deviation calculator:
+	// https://www.calculator.net/standard-deviation-calculator.html?numberinputs=6%2C+4&ctype=p&x=84&y=27
+	if r.StdDev != time.Second {
+		t.Fatalf("StdDev did not match expected. Expected %s but contained %s", time.Second, r.StdDev)
 	}
 }

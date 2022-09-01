@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
-	"time"
 
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/test/loadtime/report"
@@ -26,5 +24,5 @@ func main() {
 	fmt.Println(r.Min)
 	fmt.Println(r.Max)
 	fmt.Println(r.Avg)
-	fmt.Println(int64(time.Duration(math.MaxInt64) / (2 * time.Second)))
+	fmt.Println(r.StdDev)
 }
