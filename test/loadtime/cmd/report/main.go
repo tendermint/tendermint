@@ -1,28 +1,86 @@
 package main
 
 import (
+	"encoding/csv"
+	"flag"
 	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/test/loadtime/report"
 	dbm "github.com/tendermint/tm-db"
 )
 
+var (
+	db     = flag.String("database-type", "goleveldb", "the type of database holding the blockstore")
+	dir    = flag.String("data-dir", "~/.tendermint/data", "path to the directory containing the tendermint databases")
+	csvOut = flag.String("csv", "", "dump the extracted latencies as raw csv for use in additional tooling")
+)
+
 func main() {
-	// parse out the db location
-	db, err := dbm.NewDB("blockstore", dbm.GoLevelDBBackend, "/home/william/.tendermint/data")
+	flag.Parse()
+	if *db == "" {
+		log.Fatalf("must specifiy a database-type")
+	}
+	if *dir == "" {
+		log.Fatalf("must specifiy a data-dir")
+	}
+	d := strings.TrimPrefix(*dir, "~/")
+	if d != *dir {
+		h, err := os.UserHomeDir()
+		if err != nil {
+			panic(err)
+		}
+		d = h + "/" + d
+	}
+	_, err := os.Stat(d)
+	if err != nil {
+		panic(err)
+	}
+	dbType := dbm.BackendType(*db)
+	db, err := dbm.NewDB("blockstore", dbType, d)
 	if err != nil {
 		panic(err)
 	}
 	s := store.NewBlockStore(db)
+	defer s.Close()
 	r, err := report.GenerateFromBlockStore(s)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(r.ErrorCount)
-	fmt.Println(len(r.All))
-	fmt.Println(r.Min)
-	fmt.Println(r.Max)
-	fmt.Println(r.Avg)
-	fmt.Println(r.StdDev)
+	if *csvOut != "" {
+		cf, err := os.Create(*csvOut)
+		if err != nil {
+			panic(err)
+		}
+		w := csv.NewWriter(cf)
+		err = w.WriteAll(toRecords(r.All))
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
+
+	fmt.Printf(""+
+		"Total Valid Tx: %d\n"+
+		"Total Invalid Tx: %d\n"+
+		"Minimum Latency: %s\n"+
+		"Maximum Latency: %s\n"+
+		"Average Latency: %s\n"+
+		"Standard Deviation: %s\n", len(r.All), r.ErrorCount, r.Min, r.Max, r.Avg, r.StdDev)
+}
+
+func toRecords(l []time.Duration) [][]string {
+	res := make([][]string, len(l)+1)
+
+	res[0] = make([]string, 1)
+	res[0][0] = "duration_ns"
+	for i, v := range l {
+		res[1+i] = []string{strconv.FormatInt(int64(v), 10)}
+	}
+	return res
 }

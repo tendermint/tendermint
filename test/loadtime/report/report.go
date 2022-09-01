@@ -1,13 +1,13 @@
 package report
 
 import (
-	"fmt"
 	"math"
 	"sync"
 	"time"
 
 	"github.com/tendermint/tendermint/test/loadtime/payload"
 	"github.com/tendermint/tendermint/types"
+	"gonum.org/v1/gonum/stat"
 )
 
 // BlockStore defines the set of methods needed by the report generator from
@@ -102,23 +102,19 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 		// We are therefore assuming that the data does not exceed these bounds.
 		sum += int64(pd.l)
 	}
+	if len(r.All) == 0 {
+		r.Min = 0
+		return r, nil
+	}
 	r.Avg = time.Duration(sum / int64(len(r.All)))
-	r.StdDev = time.Duration(stddev(r.All))
+	r.StdDev = time.Duration(int64(stat.StdDev(toFloat(r.All), nil)))
 	return r, nil
 }
 
-func stddev(l []time.Duration) int64 {
-	var s1 int64
-	for _, x := range l {
-		s1 += int64(x)
+func toFloat(in []time.Duration) []float64 {
+	r := make([]float64, len(in))
+	for i, v := range in {
+		r[i] = float64(int64(v))
 	}
-	u := s1 / int64(len(l))
-	var s2 int64
-	for _, x := range l {
-		s2 += (int64(x) - u) * (int64(x) - u)
-	}
-	r := s2 / (int64(len(l)))
-	sqr := math.Sqrt(float64(r))
-	fmt.Println(sqr)
-	return int64(sqr)
+	return r
 }
