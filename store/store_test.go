@@ -563,16 +563,20 @@ func TestLoadBlockMetaByHash(t *testing.T) {
 	require.NoError(t, err)
 	bs := NewBlockStore(dbm.NewMemDB())
 
-	block = state.MakeBlock(state.LastBlockHeight+1, test.MakeNTxs(state.LastBlockHeight+1, 10), new(types.Commit), nil, state.Validators.GetProposer().Address)
-	partSet, err := block.MakePartSet(2)
+	b1 := state.MakeBlock(state.LastBlockHeight+1, test.MakeNTxs(state.LastBlockHeight+1, 10), new(types.Commit), nil, state.Validators.GetProposer().Address)
+	partSet, err := b1.MakePartSet(2)
 	require.NoError(t, err)
 	seenCommit := makeTestCommit(1, tmtime.Now())
-	bs.SaveBlock(block, partSet, seenCommit)
+	bs.SaveBlock(b1, partSet, seenCommit)
 
-	baseBlock := bs.LoadBlockMetaByHash(block.Hash())
-	assert.EqualValues(t, block.Header.Height, baseBlock.Header.Height)
-	assert.EqualValues(t, block.Header.LastBlockID, baseBlock.Header.LastBlockID)
-	assert.EqualValues(t, block.Header.ChainID, baseBlock.Header.ChainID)
+	// baseBlock := bs.LoadBlockMetaByHash(b1.Hash())
+	// assert.EqualValues(t, b1.Header.Height, baseBlock.Header.Height)
+	// assert.EqualValues(t, b1.Header.LastBlockID, baseBlock.Header.LastBlockID)
+	// assert.EqualValues(t, b1.Header.ChainID, baseBlock.Header.ChainID)
+
+	b1.Header.ChainID = strings.Repeat(b1.Header.ChainID, 2)
+	baseBlock := bs.LoadBlockMetaByHash(b1.Hash())
+	assert.EqualValues(t, b1.Header, baseBlock.Header.ChainID)
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
