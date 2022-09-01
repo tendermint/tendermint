@@ -162,13 +162,13 @@ title: Methods
     | hash                 | bytes                                       | The block's hash. This can be derived from the block header.                                                      | 1            |
     | header               | [Header](../core/data_structures.md#header) | The block header.                                                                                                 | 2            |
     | last_commit_info     | [CommitInfo](#commitinfo)           | Info about the last commit, including the round, and the list of validators and which ones signed the last block. | 3            |
-    | byzantine_validators | repeated [Evidence](#evidence)              | List of evidence of validators that acted maliciously.                                                            | 4            |
+    | byzantine_validators | repeated [Evidence](abci++_basic_concepts.md#evidence)              | List of evidence of validators that acted maliciously.                                                            | 4            |
 
 * **Response**:
 
     | Name   | Type                      | Description                         | Field Number |
     |--------|---------------------------|-------------------------------------|--------------|
-    | events | repeated [Event](#events) | type & Key-Value events for indexing | 1           |
+    | events | repeated [Event](abci++_basic_concepts.md#events) | type & Key-Value events for indexing | 1           |
 
 * **Usage**:
     * Signals the beginning of a new block.
@@ -196,7 +196,7 @@ title: Methods
     | info       | string                    | Additional information. **May be non-deterministic.**                 | 4            |
     | gas_wanted | int64                     | Amount of gas requested for transaction.                              | 5            |
     | gas_used   | int64                     | Amount of gas consumed by transaction.                                | 6            |
-    | events     | repeated [Event](#events) | Type & Key-Value events for indexing transactions (eg. by account).   | 7            |
+    | events     | repeated [Event](abci++_basic_concepts.md#events) | Type & Key-Value events for indexing transactions (eg. by account).   | 7            |
     | codespace  | string                    | Namespace for the `code`.                                             | 8            |
 
 * **Usage**:
@@ -224,7 +224,7 @@ title: Methods
     |-------------------------|----------------------------------------------|-----------------------------------------------------------------|--------------|
     | validator_updates       | repeated [ValidatorUpdate](#validatorupdate) | Changes to validator set (set voting power to 0 to remove).     | 1            |
     | consensus_param_updates | [ConsensusParams](#consensusparams)          | Changes to consensus-critical time, size, and other parameters. | 2            |
-    | events                  | repeated [Event](#events)                    | Type & Key-Value events for indexing                            | 3            |
+    | events                  | repeated [Event](abci++_basic_concepts.md#events)                    | Type & Key-Value events for indexing                            | 3            |
 
 * **Usage**:
     * Signals the end of a block.
@@ -237,7 +237,7 @@ title: Methods
         * `H+3`: `last_commit_info (BeginBlock)` is changed to include the altered validator set and `*_last_commit` fields in `PrepareProposal`, `ProcessProposal` now include the altered validator set.
     * `consensus_param_updates` returned for block `H` apply to the consensus
       params for block `H+1`. For more information on the consensus parameters,
-      see the [application spec entry on consensus parameters](./apps.md#consensus-parameters).
+      see the [application spec entry on consensus parameters](abci++_app_requirements.md#consensus-parameters).
     * `validator_updates` and `consensus_param_updates` may be empty. In this case, Tendermint will keep the current values. 
 
 
@@ -880,7 +880,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
     * This information is typically extracted from a proposed or decided block.
 
-<!--
+
 
 ### ExtendedVoteInfo
 
@@ -890,14 +890,13 @@ Most of the data structures used in ABCI are shared [common data structures](../
     |-------------------|-------------------------|------------------------------------------------------------------------------|--------------|
     | validator         | [Validator](#validator) | The validator that sent the vote.                                            | 1            |
     | signed_last_block | bool                    | Indicates whether or not the validator signed the last block.                | 2            |
-    | vote_extension    | bytes                   | Non-deterministic extension provided by the sending validator's Application. | 3            |
+    | vote_extension    | bytes                   | Reserved for future use. | 3            |
 
 * **Usage**:
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
     * This information is extracted from Tendermint's data structures in the local process.
-    * `vote_extension` contains the sending validator's vote extension, which is signed by Tendermint. It can be empty
+    * `vote_extension` is reserved for future use when vote extensions are added. Currently, this field is always set to `nil`. 
 
--->
 
 ### CommitInfo
 
@@ -908,7 +907,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | round | int32                          | Commit round. Reflects the round at which the block proposer decided in the previous height. | 1            |
     | votes | repeated [VoteInfo](#voteinfo) | List of validators' addresses in the last validator set with their voting information.       | 2            |
 
-<!--
+
 ### ExtendedCommitInfo
 
 * **Fields**:
@@ -918,6 +917,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
     | round | int32                                          | Commit round. Reflects the round at which the block proposer decided in the previous height.                      | 1            |
     | votes | repeated [ExtendedVoteInfo](#extendedvoteinfo) | List of validators' addresses in the last validator set with their voting information, including vote extensions. | 2            |
 
+<!-- 
 ### ExecTxResult
 
 * **Fields**:
