@@ -329,9 +329,9 @@ the `index` flag is non-deterministic and may vary across different nodes in the
 
 ```protobuf
 message EventAttribute {
-  bytes key   = 1;
-  bytes value = 2;
-  bool  index = 3;  // nondeterministic
+  string key   = 1;
+  string value = 2;
+  bool   index = 3;  // nondeterministic
 }
 ```
 
@@ -344,25 +344,25 @@ Example:
   {
    Type: "validator.provisions",
    Attributes: []abci.EventAttribute{
-    abci.EventAttribute{Key: []byte("address"), Value: []byte("..."), Index: true},
-    abci.EventAttribute{Key: []byte("amount"), Value: []byte("..."), Index: true},
-    abci.EventAttribute{Key: []byte("balance"), Value: []byte("..."), Index: true},
+    abci.EventAttribute{Key: "address", Value: "...", Index: true},
+    abci.EventAttribute{Key: "amount", Value: "...", Index: true},
+    abci.EventAttribute{Key: "balance", Value: "...", Index: true},
    },
   },
   {
    Type: "validator.provisions",
    Attributes: []abci.EventAttribute{
-    abci.EventAttribute{Key: []byte("address"), Value: []byte("..."), Index: true},
-    abci.EventAttribute{Key: []byte("amount"), Value: []byte("..."), Index: false},
-    abci.EventAttribute{Key: []byte("balance"), Value: []byte("..."), Index: false},
+    abci.EventAttribute{Key: "address", Value: "...", Index: true},
+    abci.EventAttribute{Key: "amount", Value: "...", Index: false},
+    abci.EventAttribute{Key: "balance", Value: "...", Index: false},
    },
   },
   {
    Type: "validator.slashed",
    Attributes: []abci.EventAttribute{
-    abci.EventAttribute{Key: []byte("address"), Value: []byte("..."), Index: false},
-    abci.EventAttribute{Key: []byte("amount"), Value: []byte("..."), Index: true},
-    abci.EventAttribute{Key: []byte("reason"), Value: []byte("..."), Index: true},
+    abci.EventAttribute{Key: "address", Value: "...", Index: false},
+    abci.EventAttribute{Key: "amount", Value: "...", Index: true},
+    abci.EventAttribute{Key: "reason", Value: "...", Index: true},
    },
   },
   // ...
