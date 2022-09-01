@@ -74,14 +74,15 @@ func TestGenerateReport(t *testing.T) {
 		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 5*time.Second, r.Avg)
 	}
 	if r.Min != 4*time.Second {
-		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 4*time.Second, r.Min)
+		t.Fatalf("Min did not match expected. Expected %s but contained %s", 4*time.Second, r.Min)
 	}
 	if r.Max != 6*time.Second {
-		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 6*time.Second, r.Max)
+		t.Fatalf("Max did not match expected. Expected %s but contained %s", 6*time.Second, r.Max)
 	}
 	// Verified using online standard deviation calculator:
 	// https://www.calculator.net/standard-deviation-calculator.html?numberinputs=6%2C+4&ctype=p&x=84&y=27
-	if r.StdDev != time.Second {
-		t.Fatalf("StdDev did not match expected. Expected %s but contained %s", time.Second, r.StdDev)
+	expectedStdDev := 1414213562 * time.Nanosecond
+	if r.StdDev != expectedStdDev {
+		t.Fatalf("StdDev did not match expected. Expected %s but contained %s", expectedStdDev, r.StdDev)
 	}
 }

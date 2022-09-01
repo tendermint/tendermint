@@ -9,7 +9,10 @@ import (
 const payloadSizeTarget = 1024 // 1kb
 
 func TestSize(t *testing.T) {
-	s := payload.UnpaddedSizeBytes()
+	s, err := payload.MaxUnpaddedSize()
+	if err != nil {
+		t.Fatalf("calculating max unpadded size %s", err)
+	}
 	if s > payloadSizeTarget {
 		t.Fatalf("unpadded payload size %d exceeds target %d", s, payloadSizeTarget)
 	}
@@ -20,10 +23,10 @@ func TestRoundTrip(t *testing.T) {
 		testConns = 512
 		testRate  = 4
 	)
-	b, err := payload.NewBytes(payload.Options{
-		Size:  payloadSizeTarget,
-		Conns: testConns,
-		Rate:  testRate,
+	b, err := payload.NewBytes(&payload.Payload{
+		Size:        payloadSizeTarget,
+		Connections: testConns,
+		Rate:        testRate,
 	})
 	if err != nil {
 		t.Fatalf("generating payload %s", err)

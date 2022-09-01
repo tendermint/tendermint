@@ -94,7 +94,8 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 		r.All = append(r.All, pd.l)
 		if pd.l > r.Max {
 			r.Max = pd.l
-		} else if pd.l < r.Min {
+		}
+		if pd.l < r.Min {
 			r.Min = pd.l
 		}
 		// Using an int64 here makes an assumption about the scale and quantity of the data we are processing.
