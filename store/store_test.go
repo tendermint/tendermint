@@ -569,14 +569,10 @@ func TestLoadBlockMetaByHash(t *testing.T) {
 	seenCommit := makeTestCommit(1, tmtime.Now())
 	bs.SaveBlock(b1, partSet, seenCommit)
 
-	// baseBlock := bs.LoadBlockMetaByHash(b1.Hash())
-	// assert.EqualValues(t, b1.Header.Height, baseBlock.Header.Height)
-	// assert.EqualValues(t, b1.Header.LastBlockID, baseBlock.Header.LastBlockID)
-	// assert.EqualValues(t, b1.Header.ChainID, baseBlock.Header.ChainID)
-
-	b1.Header.ChainID = strings.Repeat(b1.Header.ChainID, 2)
 	baseBlock := bs.LoadBlockMetaByHash(b1.Hash())
-	assert.EqualValues(t, b1.Header, baseBlock.Header.ChainID)
+	assert.EqualValues(t, b1.Header.Height, baseBlock.Header.Height)
+	assert.EqualValues(t, b1.Header.LastBlockID, baseBlock.Header.LastBlockID)
+	assert.EqualValues(t, b1.Header.ChainID, baseBlock.Header.ChainID)
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
