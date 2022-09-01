@@ -312,7 +312,6 @@ func TestCreateProposalBlock(t *testing.T) {
 		height,
 		state, commit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
@@ -395,7 +394,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		height,
 		state, commit,
 		proposerAddr,
-		nil,
 	)
 	require.NoError(t, err)
 
