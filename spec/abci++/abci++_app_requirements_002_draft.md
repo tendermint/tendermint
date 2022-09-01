@@ -20,22 +20,22 @@ Process $p$'s prepared proposal can differ in two different rounds where $p$ is 
 
 * Requirement 1 [`PrepareProposal`, header-changes] When the blockchain is in same-block execution mode,
   $p$'s Application provides values for the following parameters in `ResponsePrepareProposal`:
-  _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorUpdates_. Provided values for
-  _ConsensusParams_ and _ValidatorUpdates_ MAY be empty to denote that the Application
+  _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorSetUpdate_. Provided values for
+  _ConsensusParams_ and _ValidatorSetUpdate_ MAY be empty to denote that the Application
   wishes to keep the current values.
 
-Parameters _AppHash_, _TxResults_, _ConsensusParams_, and _ValidatorUpdates_ are used by Tendermint to
+Parameters _AppHash_, _TxResults_, _ConsensusParams_, and _ValidatorSetUpdate_ are used by Tendermint to
 compute various hashes in the block header that will finally be part of the proposal.
 
 * Requirement 2 [`PrepareProposal`, no-header-changes] When the blockchain is in next-block execution
   mode, $p$'s Application does not provide values for the following parameters in `ResponsePrepareProposal`:
-  _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorUpdates_.
+  _AppHash_, _TxResults_, _ConsensusParams_, _ValidatorSetUpdate_.
 
 In practical terms, Requirements 1 and 2 imply that Tendermint will (a) panic if the Application is in
 same-block execution mode and _does_ _not_ provide values for
-_AppHash_, _TxResults_, _ConsensusParams_, and _ValidatorUpdates_, or
+_AppHash_, _TxResults_, _ConsensusParams_, and _ValidatorSetUpdate_, or
 (b) log an error if the Application is in next-block execution mode and _does_ provide values for
-_AppHash_, _TxResults_, _ConsensusParams_, or _ValidatorUpdates_ (the values provided will be ignored).
+_AppHash_, _TxResults_, _ConsensusParams_, or _ValidatorSetUpdate_ (the values provided will be ignored).
 
 * Requirement 3 [`PrepareProposal`, timeliness] If $p$'s Application fully executes prepared blocks in
   `PrepareProposal` and the network is in a synchronous period while processes $p$ and $q$ are in $r_p$, then
@@ -91,8 +91,8 @@ of `ProcessProposal`. As a general rule `ProcessProposal` _should_ always accept
 
 According to the Tendermint algorithm, a correct process can broadcast at most one precommit message in round $r$, height $h$.
 Since, as stated in the [Description](#description) section, `ResponseExtendVote` is only called when Tendermint
-is about to broadcast a non-`nil` precommit message, a correct process can only produce one vote extension in round $r$, height $h$.
-Let $e^r_p$ be the vote extension that the Application of a correct process $p$ returns via `ResponseExtendVote` in round $r$, height $h$.
+is about to broadcast a non-`nil` precommit message, a correct process can produce multiple vote extensions in round $r$, height $h$.
+Let $e^r_p$ be the vote extensions that the Application of a correct process $p$ returns via `ResponseExtendVote` in round $r$, height $h$.
 Let $w^r_p$ be the proposed block that $p$'s Tendermint passes to the Application via `RequestExtendVote` in round $r$, height $h$.
 
 * Requirement 8 [`ExtendVote`, `VerifyVoteExtension`, coherence]: For any two correct processes $p$ and $q$, if $q$ receives $e^r_p$
@@ -107,32 +107,32 @@ we will face the same liveness issues as described for Requirement 5, as Precomm
 extensions will be discarded.
 
 * Requirement 9 [`VerifyVoteExtension`, determinism-1]: `VerifyVoteExtension` is a (deterministic) function of
-  the current state, the vote extension received, and the prepared proposal that the extension refers to.
+  the current state, the vote extensions received, and the prepared proposal that the extensions refers to.
   In other words, for any correct process $p$, and any arbitrary vote extension $e$, and any arbitrary
   block $w$, if $p$'s (resp. $q$'s) Tendermint calls `RequestVerifyVoteExtension` on $e$ and $w$ at height $h$,
   then $p$'s Application's acceptance or rejection **exclusively** depends on $e$, $w$ and $s_{p,h-1}$.
 
 * Requirement 10 [`VerifyVoteExtension`, determinism-2]: For any two correct processes $p$ and $q$,
-  and any arbitrary vote extension $e$, and any arbitrary block $w$,
+  and any arbitrary vote extensions $e$, and any arbitrary block $w$,
   if $p$'s (resp. $q$'s) Tendermint calls `RequestVerifyVoteExtension` on $e$ and $w$ at height $h$,
   then $p$'s Application accepts $e$ if and only if $q$'s Application accepts $e$.
   Note that this requirement follows from Requirement 9 and the Agreement property of consensus.
 
 Requirements 9 and 10 ensure that the validation of vote extensions will be deterministic at all
 correct processes.
-Requirements 9 and 10 protect against arbitrary vote extension data from Byzantine processes
+Requirements 9 and 10 protect against arbitrary vote extensions data from Byzantine processes
 similarly to Requirements 6 and 7 and proposed blocks.
 Requirements 9 and 10 can be violated by a bug inducing non-determinism in
 `VerifyVoteExtension`. In this case liveness can be compromised.
 Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteExtension` and,
-as a general rule, `VerifyVoteExtension` _should_ always accept the vote extension.
+as a general rule, `VerifyVoteExtension` _should_ always accept the vote extensions.
 
 * Requirement 11 [_all_, no-side-effects]: $p$'s calls to `RequestPrepareProposal`,
   `RequestProcessProposal`, `RequestExtendVote`, and `RequestVerifyVoteExtension` at height $h$ do
   not modify $s_{p,h-1}$.
 
 * Requirement 12 [`ExtendVote`, `FinalizeBlock`, non-dependency]: for any correct process $p$,
-and any vote extension $e$ that $p$ received at height $h$, the computation of
+and any vote extensions $e$ that $p$ received at height $h$, the computation of
 $s_{p,h}$ does not depend on $e$.
 
 The call to correct process $p$'s `RequestFinalizeBlock` at height $h$, with block $v_{p,h}$

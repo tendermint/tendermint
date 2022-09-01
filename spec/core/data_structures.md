@@ -5,6 +5,7 @@ Here we describe the data structures in the Tendermint blockchain and the rules 
 The Tendermint blockchains consists of a short list of data types:
 
 - [Data Structures](#data-structures)
+    - [ProTxHash](#protxhash)
     - [Block](#block)
     - [Execution](#execution)
     - [Header](#header)
@@ -39,6 +40,10 @@ The Tendermint blockchains consists of a short list of data types:
         - [SynchronyParams](#synchronyparams)
         - [TimeoutParams](#timeoutparams)
     - [Proof](#proof)
+
+## ProTxHash
+
+ProTxHash is 32 bytes array. Validator provides this parameter via a config.
 
 ## Block
 
