@@ -25,6 +25,8 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
 		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), ""),
 		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
+		"header":               rpcserver.NewRPCFunc(makeHeaderFunc(c), "height"),
+		"header_by_hash":       rpcserver.NewRPCFunc(makeHeaderByHashFunc(c), "hash"),
 		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
 		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
 		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
@@ -105,6 +107,22 @@ type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBloc
 func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
 		return c.Block(ctx.Context(), height)
+	}
+}
+
+type rpcHeaderFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultHeader, error)
+
+func makeHeaderFunc(c *lrpc.Client) rpcHeaderFunc {
+	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultHeader, error) {
+		return c.Header(ctx.Context(), height)
+	}
+}
+
+type rpcHeaderByHashFunc func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultHeader, error)
+
+func makeHeaderByHashFunc(c *lrpc.Client) rpcHeaderByHashFunc {
+	return func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultHeader, error) {
+		return c.HeaderByHash(ctx.Context(), hash)
 	}
 }
 
