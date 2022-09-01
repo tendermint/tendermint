@@ -659,7 +659,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HeaderResponse"
+                $ref: "#/components/schemas/BlockHeader"
         "500":
           description: Error
           content:
@@ -688,7 +688,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HeaderResponse"
+                $ref: "#/components/schemas/BlockHeader"
         "500":
           description: Error
           content:
