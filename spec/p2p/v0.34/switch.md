@@ -119,7 +119,7 @@ reached, or if the peer was configured as an _unconditional peer_.
 The maximum number of inbound peers is determined by the `MaxNumInboundPeers`
 configuration parameter, whose default value is `40`.
 
-If accepted, the peer is added to the switch using the [`addPeer`](#addpeer) method.
+If accepted, the peer is added to the switch using the [`addPeer`](#add-peer) method.
 If the switch does not accept the established incoming connection, or if the
 `addPeer` method returns an error, the switch invokes the transport's
 [`Cleanup`](./transport.md#cleanup) method to clean any resources associated
