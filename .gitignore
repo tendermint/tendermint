@@ -47,6 +47,8 @@ terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
 profile\.out
+test/app/grpc_client
+test/loadtime/build
 test/e2e/build
 test/e2e/networks/*/
 test/logs
