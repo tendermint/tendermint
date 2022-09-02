@@ -7,7 +7,7 @@ Tendermint Core.
 
 ### ABCI Changes
 
-* The `ABCIVersion` is now `0.18.0`.
+* The `ABCIVersion` is now `1.0.0`.
 
 * Added new ABCI methods `PrepareProposal` and `ProcessProposal`. For details,
   please see the [spec](spec/abci/README.md). Applications upgrading to
