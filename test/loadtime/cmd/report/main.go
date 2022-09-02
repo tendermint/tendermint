@@ -17,7 +17,7 @@ import (
 
 var (
 	db     = flag.String("database-type", "goleveldb", "the type of database holding the blockstore")
-	dir    = flag.String("data-dir", "~/.tendermint/data", "path to the directory containing the tendermint databases")
+	dir    = flag.String("data-dir", "", "path to the directory containing the tendermint databases")
 	csvOut = flag.String("csv", "", "dump the extracted latencies as raw csv for use in additional tooling")
 )
 
