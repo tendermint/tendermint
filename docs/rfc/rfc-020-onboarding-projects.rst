@@ -159,7 +159,7 @@ in many cases the panics were just added to simplify downstream error
 checking, and could easily be converted to errors.
 
 The `Don't Panic RFC
-<https://github.com/tendermint/tendermint/blob/main/docs/rfc/rfc-008-do-not-panic.MD>`_
+<./rfc-008-do-not-panic.MD>`_
 covers some of the background and approach.
 
 While the changes are in this project are relatively rote, this will provide
