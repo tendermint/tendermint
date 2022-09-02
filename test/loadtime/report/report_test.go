@@ -46,16 +46,23 @@ func TestGenerateReport(t *testing.T) {
 	s := &mockBlockStore{
 		blocks: []*types.Block{
 			{
-				Header: types.Header{
-					Time: tn,
-				},
 				Data: types.Data{
 					Txs: []types.Tx{b1, b2},
 				},
 			},
 			{
+				// The timestamp from block H+1 is used to calculate the
+				// latency for the transactions in block H.
+				Header: types.Header{
+					Time: tn,
+				},
 				Data: types.Data{
 					Txs: []types.Tx{[]byte("error")},
+				},
+			},
+			{
+				Data: types.Data{
+					Txs: []types.Tx{},
 				},
 			},
 		},

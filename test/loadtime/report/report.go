@@ -62,6 +62,7 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 					pdc <- payloadData{err: err}
 					continue
 				}
+
 				l := b.bt.Sub(p.Time.AsTime())
 				pdc <- payloadData{l: l}
 			}
@@ -78,11 +79,25 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 	}
 	var sum int64
 	go func() {
-		for i := s.Base(); i < s.Height(); i++ {
-			b := s.LoadBlock(i)
-			for _, tx := range b.Data.Txs {
-				txc <- txData{tx: tx, bt: b.Time}
+		base, height := s.Base(), s.Height()
+		prev := s.LoadBlock(base)
+		for i := base + 1; i < height; i++ {
+			// Data from two adjacent block are used here simultaneously,
+			// blocks of height H and H+1. The transactions of the block of
+			// height H are used with the timestamp from the block of height
+			// H+1. This is done because the timestamp from H+1 is calculated
+			// by using the precommits submitted at height H. The timestamp in
+			// block H+1 represents the time at which block H was committed.
+			//
+			// In the (very unlikely) event that the very last block of the
+			// chain contains payload transactions, those transactions will not
+			// be used in the latency calculations because the last block whose
+			// transactions are used is the block one before the last.
+			cur := s.LoadBlock(i)
+			for _, tx := range prev.Data.Txs {
+				txc <- txData{tx: tx, bt: cur.Time}
 			}
+			prev = cur
 		}
 		close(txc)
 	}()
