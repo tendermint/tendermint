@@ -36,6 +36,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 
 ### IMPROVEMENTS
 
+- [rpc] \#9276 Added `header` and `header_by_hash` queries to the RPC client (@samricotta)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
 
 ### BUG FIXES
