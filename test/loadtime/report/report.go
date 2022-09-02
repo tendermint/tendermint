@@ -30,6 +30,13 @@ type Report struct {
 	// by the payload package is submitted to the chain.
 	ErrorCount int
 
+	// NegativeCount is the number of negative durations encountered while
+	// reading the transaction data. A negative duration means that
+	// a transaction timestamp was greater than the timestamp of the block it
+	// was included in and likely indicates an issue with the experimental
+	// setup.
+	NegativeCount int
+
 	// All contains all data points gathered from all valid transactions.
 	All []time.Duration
 }
@@ -112,6 +119,9 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 		}
 		if pd.l < r.Min {
 			r.Min = pd.l
+		}
+		if int64(pd.l) < 0 {
+			r.NegativeCount++
 		}
 		// Using an int64 here makes an assumption about the scale and quantity of the data we are processing.
 		// If all latencies were 2 seconds, we would need around 4 billion records to overflow this.

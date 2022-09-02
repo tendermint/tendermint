@@ -28,18 +28,26 @@ func (m *mockBlockStore) LoadBlock(i int64) *types.Block {
 }
 
 func TestGenerateReport(t *testing.T) {
-	tn := time.Now()
+	t1 := time.Now()
 	b1, err := payload.NewBytes(&payload.Payload{
-		Time: timestamppb.New(tn.Add(-6 * time.Second)),
+		Time: timestamppb.New(t1.Add(-10 * time.Second)),
 		Size: 1024,
 	})
 	if err != nil {
 		t.Fatalf("generating payload %s", err)
 	}
 	b2, err := payload.NewBytes(&payload.Payload{
-		Time: timestamppb.New(tn.Add(-4 * time.Second)),
+		Time: timestamppb.New(t1.Add(-4 * time.Second)),
 		Size: 1024,
 	})
+	if err != nil {
+		t.Fatalf("generating payload %s", err)
+	}
+	b3, err := payload.NewBytes(&payload.Payload{
+		Time: timestamppb.New(t1.Add(2 * time.Second)),
+		Size: 1024,
+	})
+	t2 := t1.Add(time.Second)
 	if err != nil {
 		t.Fatalf("generating payload %s", err)
 	}
@@ -54,13 +62,21 @@ func TestGenerateReport(t *testing.T) {
 				// The timestamp from block H+1 is used to calculate the
 				// latency for the transactions in block H.
 				Header: types.Header{
-					Time: tn,
+					Time: t1,
 				},
 				Data: types.Data{
 					Txs: []types.Tx{[]byte("error")},
 				},
 			},
 			{
+				Data: types.Data{
+					Txs: []types.Tx{b3, b3},
+				},
+			},
+			{
+				Header: types.Header{
+					Time: t2,
+				},
 				Data: types.Data{
 					Txs: []types.Tx{},
 				},
@@ -71,24 +87,27 @@ func TestGenerateReport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generating report %s", err)
 	}
-	if len(r.All) != 2 {
-		t.Fatalf("report contained different number of data points from expected. Expected %d but contained %d", 2, len(r.All))
+	if len(r.All) != 4 {
+		t.Fatalf("report contained different number of data points from expected. Expected %d but contained %d", 4, len(r.All))
 	}
 	if r.ErrorCount != 1 {
 		t.Fatalf("ErrorCount did not match expected. Expected %d but contained %d", 1, r.ErrorCount)
 	}
-	if r.Avg != 5*time.Second {
-		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 5*time.Second, r.Avg)
+	if r.NegativeCount != 2 {
+		t.Fatalf("NegativeCount did not match expected. Expected %d but contained %d", 2, r.NegativeCount)
 	}
-	if r.Min != 4*time.Second {
-		t.Fatalf("Min did not match expected. Expected %s but contained %s", 4*time.Second, r.Min)
+	if r.Avg != 3*time.Second {
+		t.Fatalf("Avg did not match expected. Expected %s but contained %s", 3*time.Second, r.Avg)
 	}
-	if r.Max != 6*time.Second {
-		t.Fatalf("Max did not match expected. Expected %s but contained %s", 6*time.Second, r.Max)
+	if r.Min != -time.Second {
+		t.Fatalf("Min did not match expected. Expected %s but contained %s", time.Second, r.Min)
+	}
+	if r.Max != 10*time.Second {
+		t.Fatalf("Max did not match expected. Expected %s but contained %s", 10*time.Second, r.Max)
 	}
 	// Verified using online standard deviation calculator:
-	// https://www.calculator.net/standard-deviation-calculator.html?numberinputs=6%2C+4&ctype=p&x=84&y=27
-	expectedStdDev := 1414213562 * time.Nanosecond
+	// https://www.calculator.net/standard-deviation-calculator.html?numberinputs=10%2C+4%2C+-1%2C+-1&ctype=s&x=45&y=12
+	expectedStdDev := 5228129047 * time.Nanosecond
 	if r.StdDev != expectedStdDev {
 		t.Fatalf("StdDev did not match expected. Expected %s but contained %s", expectedStdDev, r.StdDev)
 	}

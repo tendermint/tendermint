@@ -68,10 +68,11 @@ func main() {
 	fmt.Printf(""+
 		"Total Valid Tx: %d\n"+
 		"Total Invalid Tx: %d\n"+
+		"Total Negative Latencies: %d\n"+
 		"Minimum Latency: %s\n"+
 		"Maximum Latency: %s\n"+
 		"Average Latency: %s\n"+
-		"Standard Deviation: %s\n", len(r.All), r.ErrorCount, r.Min, r.Max, r.Avg, r.StdDev)
+		"Standard Deviation: %s\n", len(r.All), r.ErrorCount, r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
 }
 
 func toRecords(l []time.Duration) [][]string {
