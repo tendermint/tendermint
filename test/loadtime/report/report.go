@@ -38,6 +38,8 @@ type Report struct {
 	NegativeCount int
 
 	// All contains all data points gathered from all valid transactions.
+	// The order of the contents of All is not guaranteed to be match the order of transactions
+	// in the chain.
 	All []time.Duration
 }
 
@@ -53,6 +55,11 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 		bt time.Time
 	}
 
+	// Deserializing to proto can be slow but does not depend on other data
+	// and can therefore be done in parallel.
+	// Deserializing in parallel does mean that the resulting data is
+	// not guaranteed to be delivered in the same order it was given to the
+	// worker pool.
 	const poolSize = 16
 
 	txc := make(chan txData)
