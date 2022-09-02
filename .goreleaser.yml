@@ -25,6 +25,7 @@ checksum:
   algorithm: sha256
 
 release:
+  prerelease: auto
   name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
 
 archives:
