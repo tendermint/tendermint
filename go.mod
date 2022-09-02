@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d
 	github.com/adlio/schema v1.3.3
-	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/fortytw2/leaktest v1.3.0
@@ -43,7 +42,7 @@ require (
 	github.com/golangci/golangci-lint v1.49.0
 	github.com/pointlander/peg v1.0.1
 	github.com/prometheus/common v0.37.0
-	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
+	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
 
 require (
@@ -121,7 +120,7 @@ require (
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2 // indirect
 	github.com/golangci/dupl v0.0.0-20180902072040-3e9179ac440a // indirect
 	github.com/golangci/go-misc v0.0.0-20220329215616-d24fe342adfe // indirect
