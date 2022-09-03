@@ -5,7 +5,7 @@ var TMCoreSemVer = TMVersionDefault
 const (
 	// TMVersionDefault is the used as the fallback version of Tendermint Core
 	// when not using git describe. It is formatted with semantic versioning.
-	TMVersionDefault = "0.34.20"
+	TMVersionDefault = "v0.38.0-dev"
 	// ABCISemVer is the semantic version of the ABCI protocol
 	ABCISemVer = "1.0.0"
 
