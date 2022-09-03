@@ -49,7 +49,7 @@ require (
 
 require (
 	github.com/informalsystems/tm-load-test v1.0.0
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/protobuf v1.28.1
 )
 
 require (
