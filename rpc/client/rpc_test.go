@@ -285,6 +285,15 @@ func TestAppCalls(t *testing.T) {
 		require.NoError(err)
 		require.Equal(block, blockByHash)
 
+		// check that the header matches the block hash
+		header, err := c.Header(context.Background(), &apph)
+		require.NoError(err)
+		require.Equal(block.Block.Header, *header.Header)
+
+		headerByHash, err := c.HeaderByHash(context.Background(), block.BlockID.Hash)
+		require.NoError(err)
+		require.Equal(header, headerByHash)
+
 		// now check the results
 		blockResults, err := c.BlockResults(context.Background(), &txh)
 		require.Nil(err, "%d: %+v", i, err)

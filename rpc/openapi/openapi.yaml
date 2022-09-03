@@ -500,7 +500,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /net_info:
     get:
-      summary: Network informations
+      summary: Network information
       operationId: net_info
       tags:
         - Info
@@ -631,6 +631,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BlockchainResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /header:
+    get:
+      summary: Get header at a specified height
+      operationId: header
+      parameters:
+        - in: query
+          name: height
+          schema:
+            type: integer
+            default: 0
+            example: 1
+          description: height to return. If no height is provided, it will fetch the latest header.
+      tags:
+        - Info
+      description: |
+        Get Header.
+      responses:
+        "200":
+          description: Header informations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockHeader"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /header_by_hash:
+    get:
+      summary: Get header by hash
+      operationId: header_by_hash
+      parameters:
+        - in: query
+          name: hash
+          description: header hash
+          required: true
+          schema:
+            type: string
+            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+      tags:
+        - Info
+      description: |
+        Get Header By Hash.
+      responses:
+        "200":
+          description: Header informations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockHeader"
         "500":
           description: Error
           content:
