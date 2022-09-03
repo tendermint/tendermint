@@ -26,7 +26,7 @@ checksum:
 
 release:
   prerelease: auto
-  name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
+  name_template: "{{.Version}}"
 
 archives:
   - files:
