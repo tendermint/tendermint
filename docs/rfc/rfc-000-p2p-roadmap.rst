@@ -313,4 +313,4 @@ References
 
 - `Tracking Ticket for P2P Refactor Project <https://github.com/tendermint/tendermint/issues/5670>`_
 - `ADR 61: P2P Refactor Scope <../architecture/adr-061-p2p-refactor-scope.md>`_
-- `ADR 62: P2P Architecture and Abstraction <../architecture/adr-061-p2p-architecture.md>`_
+- `ADR 62: P2P Architecture and Abstraction <../architecture/adr-062-p2p-architecture.md>`_
