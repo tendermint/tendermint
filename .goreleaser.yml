@@ -25,9 +25,6 @@ checksum:
   algorithm: sha256
 
 release:
-<<<<<<< HEAD
-  name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
-=======
   prerelease: auto
   name_template: "{{.Version}}"
 
@@ -38,4 +35,3 @@ archives:
       - UPGRADING.md
       - SECURITY.md
       - CHANGELOG.md
->>>>>>> d7645628f (ci: Remove "(WARNING: BETA SOFTWARE)" tagline from all upcoming releases (#9371))
