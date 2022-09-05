@@ -25,4 +25,13 @@ checksum:
   algorithm: sha256
 
 release:
-  name_template: "{{.Version}} (WARNING: BETA SOFTWARE)"
+  prerelease: auto
+  name_template: "{{.Version}}"
+
+archives:
+  - files:
+      - LICENSE
+      - README.md
+      - UPGRADING.md
+      - SECURITY.md
+      - CHANGELOG.md

@@ -1,6 +1,7 @@
 # Upgrading Tendermint Core
 
-This guide provides instructions for upgrading to specific versions of Tendermint Core.
+This guide provides instructions for upgrading to specific versions of
+Tendermint Core.
 
 ## v0.34.20
 
@@ -23,7 +24,7 @@ Refactor](https://github.com/tendermint/tendermint/blob/main/docs/architecture/a
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher.
+Note also that Tendermint 0.34 also requires Go 1.16 or higher.
 
 ### ABCI Changes
 
@@ -64,12 +65,9 @@ directory. For more, see "Protobuf," below.
 
 ### Blockchain Protocol
 
-* `Header#LastResultsHash` previously was the root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data)` responses.
-  As of 0.34,`Header#LastResultsHash` is now the root hash of a Merkle tree built from:
-    * `BeginBlock#Events`
-    * Root hash of a Merkle tree built from `ResponseDeliverTx(Code, Data,
-      GasWanted, GasUsed, Events)` responses
-    * `BeginBlock#Events`
+* `Header#LastResultsHash`, which is the root hash of a Merkle tree built from
+  `ResponseDeliverTx(Code, Data)` as of v0.34 also includes `GasWanted` and `GasUsed`
+  fields.
 
 * Merkle hashes of empty trees previously returned nothing, but now return the hash of an empty input,
   to conform with [RFC-6962](https://tools.ietf.org/html/rfc6962).
@@ -159,7 +157,7 @@ The `bech32` package has moved to the Cosmos SDK:
 ### CLI
 
 The `tendermint lite` command has been renamed to `tendermint light` and has a slightly different API.
-See [the docs](https://docs.tendermint.com/v0.34/tendermint-core/light-client-protocol.html#http-proxy) for details.
+See [the docs](https://docs.tendermint.com/v0.33/tendermint-core/light-client-protocol.html#http-proxy) for details.
 
 ### Light Client
 
@@ -173,6 +171,7 @@ Other user-relevant changes include:
 * The `Verifier` was broken up into two pieces:
     * Core verification logic (pure `VerifyX` functions)
     * `Client` object, which represents the complete light client
+* The new light client stores headers and validator sets as `LightBlock`s
 * The RPC client can be found in the `/rpc` directory.
 * The HTTP(S) proxy is located in the `/proxy` directory.
 
@@ -314,7 +313,7 @@ Evidence Params has been changed to include duration.
 ### RPC Changes
 
 * `/validators` is now paginated (default: 30 vals per page)
-* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/v0.34/rpc/#/Info/block_results)
+* `/block_results` response format updated [see RPC docs for details](https://docs.tendermint.com/v0.33/rpc/#/Info/block_results)
 * Event suffix has been removed from the ID in event responses
 * IDs are now integers not `json-client-XYZ`
 
@@ -433,11 +432,11 @@ the compilation tag:
 
 Use `cleveldb` tag instead of `gcc` to compile Tendermint with CLevelDB or
 use `make build_c` / `make install_c` (full instructions can be found at
-<https://tendermint.com/docs/introduction/install.html#compile-with-cleveldb-support>)
+<https://docs.tendermint.com/v0.33/introduction/install.html#compile-with-cleveldb-support>)
 
 ## v0.31.0
 
-This release contains a breaking change to the behaviour of the pubsub system.
+This release contains a breaking change to the behavior of the pubsub system.
 It also contains some minor breaking changes in the Go API and ABCI.
 There are no changes to the block or p2p protocols, so v0.31.0 should work fine
 with blockchains created from the v0.30 series.
@@ -455,7 +454,7 @@ In this case, the WS client will receive an error with description:
   "error": {
     "code": -32000,
     "msg": "Server error",
-    "data": "subscription was cancelled (reason: client is not pulling messages fast enough)" // or "subscription was cancelled (reason: Tendermint exited)"
+    "data": "subscription was canceled (reason: client is not pulling messages fast enough)" // or "subscription was canceled (reason: Tendermint exited)"
   }
 }
 
@@ -636,7 +635,7 @@ to `timeout_propose = "3s"`.
 
 ### RPC Changes
 
-The default behaviour of `/abci_query` has been changed to not return a proof,
+The default behavior of `/abci_query` has been changed to not return a proof,
 and the name of the parameter that controls this has been changed from `trusted`
 to `prove`. To get proofs with your queries, ensure you set `prove=true`.
 
