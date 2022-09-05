@@ -9,12 +9,6 @@ parent:
 
 ## Introduction
 
-<<<<<<< HEAD
-All ABCI messages and methods are defined in [protocol
-buffers](https://github.com/tendermint/tendermint/blob/v0.37.x/proto/tendermint/abci/types.proto).
-This allows Tendermint to run with applications written in many programming
-languages.
-=======
 ABCI++ is a major evolution of ABCI (**A**pplication **B**lock**c**hain **I**nterface).
 Like its predecessor, ABCI++ is the interface between Tendermint (a state-machine
 replication engine) and the actual state machine being replicated (i.e., the Application).
@@ -28,7 +22,6 @@ in return.
 
 All ABCI++ messages and methods are defined in [protocol buffers](../../proto/tendermint/abci/types.proto).
 This allows Tendermint to run with applications written in many programming languages.
->>>>>>> 6371f0281 (spec: abci++ cleanup for v0.37 (#9288))
 
 This specification is split as follows:
 
