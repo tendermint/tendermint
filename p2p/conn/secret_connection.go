@@ -13,7 +13,7 @@ import (
 	"net"
 	"time"
 
-	gogotypes "github.com/gogo/protobuf/types"
+	gogotypes "github.com/cosmos/gogoproto/types"
 	"github.com/gtank/merlin"
 	pool "github.com/libp2p/go-buffer-pool"
 	"golang.org/x/crypto/chacha20poly1305"
