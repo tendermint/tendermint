@@ -33,7 +33,7 @@ package protoio
 import (
 	"io"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 )
 
 type Writer interface {
