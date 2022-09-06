@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/cosmos/gogoproto/proto"
+	gogotypes "github.com/cosmos/gogoproto/types"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
