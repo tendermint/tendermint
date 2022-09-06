@@ -74,7 +74,7 @@ func main() {
 			"\tMinimum Latency: %s\n"+
 			"\tMaximum Latency: %s\n"+
 			"\tAverage Latency: %s\n"+
-			"\tStandard Deviation: %s\n\n", r.Id, r.Connections, r.Rate, r.Size, len(r.All), r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
+			"\tStandard Deviation: %s\n\n", r.ID, r.Connections, r.Rate, r.Size, len(r.All), r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
 
 	}
 	fmt.Printf("Total Invalid Tx: %d\n", rs.ErrorCount())
@@ -90,7 +90,7 @@ func toCSVRecords(rs []report.Report) [][]string {
 	res[0] = []string{"experiment_id", "duration_ns", "connections", "rate", "size"}
 	offset := 1
 	for _, r := range rs {
-		idStr := r.Id.String()
+		idStr := r.ID.String()
 		connStr := strconv.FormatInt(int64(r.Connections), 10)
 		rateStr := strconv.FormatInt(int64(r.Rate), 10)
 		sizeStr := strconv.FormatInt(int64(r.Size), 10)

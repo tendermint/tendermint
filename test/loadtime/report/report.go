@@ -24,7 +24,7 @@ type BlockStore interface {
 // Report contains the data calculated from reading the timestamped transactions
 // of each block found in the blockstore.
 type Report struct {
-	Id                      uuid.UUID
+	ID                      uuid.UUID
 	Rate, Connections, Size uint64
 	Max, Min, Avg, StdDev   time.Duration
 
@@ -68,7 +68,7 @@ func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, conns, rate, size
 		r = Report{
 			Max:         0,
 			Min:         math.MaxInt64,
-			Id:          id,
+			ID:          id,
 			Connections: conns,
 			Rate:        rate,
 			Size:        size,

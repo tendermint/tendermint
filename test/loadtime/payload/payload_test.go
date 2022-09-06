@@ -25,12 +25,12 @@ func TestRoundTrip(t *testing.T) {
 		testConns = 512
 		testRate  = 4
 	)
-	testId := [16]byte(uuid.New())
+	testID := [16]byte(uuid.New())
 	b, err := payload.NewBytes(&payload.Payload{
 		Size:        payloadSizeTarget,
 		Connections: testConns,
 		Rate:        testRate,
-		Id:          testId[:],
+		Id:          testID[:],
 	})
 	if err != nil {
 		t.Fatalf("generating payload %s", err)
@@ -51,7 +51,7 @@ func TestRoundTrip(t *testing.T) {
 	if p.Rate != testRate {
 		t.Fatalf("payload rate value %d does not match expected %d", p.Rate, testRate)
 	}
-	if !bytes.Equal(p.Id, testId[:]) {
-		t.Fatalf("payload Id value %d does not match expected %d", p.Id, testId)
+	if !bytes.Equal(p.Id, testID[:]) {
+		t.Fatalf("payload ID value %d does not match expected %d", p.Id, testID)
 	}
 }
