@@ -9,7 +9,14 @@ require (
 	github.com/adlio/schema v1.3.3
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
+<<<<<<< HEAD
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
+=======
+	github.com/bufbuild/buf v1.7.0
+	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
+	github.com/cosmos/gogoproto v1.4.1
+	github.com/creachadair/taskgroup v0.3.2
+>>>>>>> 1067ba157 (add separated runs by UUID (#9367))
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.12.0
 	github.com/go-kit/log v0.2.1
@@ -32,6 +39,15 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
+<<<<<<< HEAD
+=======
+	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
+)
+
+require (
+	github.com/gofrs/uuid v4.2.0+incompatible
+	github.com/google/uuid v1.3.0
+>>>>>>> 1067ba157 (add separated runs by UUID (#9367))
 	github.com/tendermint/tm-db v0.6.6
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220726230323-06994584191e
@@ -118,7 +134,11 @@ require (
 	github.com/go-xmlfmt/xmlfmt v0.0.0-20191208150333-d5b6f63a941b // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
+<<<<<<< HEAD
 	github.com/gofrs/uuid v4.2.0+incompatible // indirect
+=======
+	github.com/gogo/protobuf v1.3.2 // indirect
+>>>>>>> 1067ba157 (add separated runs by UUID (#9367))
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2 // indirect

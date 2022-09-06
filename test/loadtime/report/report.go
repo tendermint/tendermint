@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/tendermint/tendermint/test/loadtime/payload"
 	"github.com/tendermint/tendermint/types"
 	"gonum.org/v1/gonum/stat"
@@ -23,12 +24,9 @@ type BlockStore interface {
 // Report contains the data calculated from reading the timestamped transactions
 // of each block found in the blockstore.
 type Report struct {
-	Max, Min, Avg, StdDev time.Duration
-
-	// ErrorCount is the number of parsing errors encountered while reading the
-	// transaction data. Parsing errors may occur if a transaction not generated
-	// by the payload package is submitted to the chain.
-	ErrorCount int
+	ID                      uuid.UUID
+	Rate, Connections, Size uint64
+	Max, Min, Avg, StdDev   time.Duration
 
 	// NegativeCount is the number of negative durations encountered while
 	// reading the transaction data. A negative duration means that
@@ -41,18 +39,92 @@ type Report struct {
 	// The order of the contents of All is not guaranteed to be match the order of transactions
 	// in the chain.
 	All []time.Duration
+
+	// used for calculating average during report creation.
+	sum int64
+}
+
+type Reports struct {
+	s map[uuid.UUID]Report
+	l []Report
+
+	// errorCount is the number of parsing errors encountered while reading the
+	// transaction data. Parsing errors may occur if a transaction not generated
+	// by the payload package is submitted to the chain.
+	errorCount int
+}
+
+func (rs *Reports) List() []Report {
+	return rs.l
+}
+
+func (rs *Reports) ErrorCount() int {
+	return rs.errorCount
+}
+
+func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, conns, rate, size uint64) {
+	r, ok := rs.s[id]
+	if !ok {
+		r = Report{
+			Max:         0,
+			Min:         math.MaxInt64,
+			ID:          id,
+			Connections: conns,
+			Rate:        rate,
+			Size:        size,
+		}
+		rs.s[id] = r
+	}
+	r.All = append(r.All, l)
+	if l > r.Max {
+		r.Max = l
+	}
+	if l < r.Min {
+		r.Min = l
+	}
+	if int64(l) < 0 {
+		r.NegativeCount++
+	}
+	// Using an int64 here makes an assumption about the scale and quantity of the data we are processing.
+	// If all latencies were 2 seconds, we would need around 4 billion records to overflow this.
+	// We are therefore assuming that the data does not exceed these bounds.
+	r.sum += int64(l)
+	rs.s[id] = r
+}
+
+func (rs *Reports) calculateAll() {
+	rs.l = make([]Report, 0, len(rs.s))
+	for _, r := range rs.s {
+		if len(r.All) == 0 {
+			r.Min = 0
+			rs.l = append(rs.l, r)
+			continue
+		}
+		r.Avg = time.Duration(r.sum / int64(len(r.All)))
+		r.StdDev = time.Duration(int64(stat.StdDev(toFloat(r.All), nil)))
+		rs.l = append(rs.l, r)
+	}
+}
+
+func (rs *Reports) addError() {
+	rs.errorCount++
 }
 
 // GenerateFromBlockStore creates a Report using the data in the provided
 // BlockStore.
-func GenerateFromBlockStore(s BlockStore) (Report, error) {
+func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 	type payloadData struct {
-		l   time.Duration
-		err error
+		id                      uuid.UUID
+		l                       time.Duration
+		connections, rate, size uint64
+		err                     error
 	}
 	type txData struct {
 		tx []byte
 		bt time.Time
+	}
+	reports := &Reports{
+		s: make(map[uuid.UUID]Report),
 	}
 
 	// Deserializing to proto can be slow but does not depend on other data
@@ -78,7 +150,14 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 				}
 
 				l := b.bt.Sub(p.Time.AsTime())
-				pdc <- payloadData{l: l}
+				b := (*[16]byte)(p.Id)
+				pdc <- payloadData{
+					l:           l,
+					id:          uuid.UUID(*b),
+					connections: p.Connections,
+					rate:        p.Rate,
+					size:        p.Size,
+				}
 			}
 		}()
 	}
@@ -87,11 +166,6 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 		close(pdc)
 	}()
 
-	r := Report{
-		Max: 0,
-		Min: math.MaxInt64,
-	}
-	var sum int64
 	go func() {
 		base, height := s.Base(), s.Height()
 		prev := s.LoadBlock(base)
@@ -117,31 +191,13 @@ func GenerateFromBlockStore(s BlockStore) (Report, error) {
 	}()
 	for pd := range pdc {
 		if pd.err != nil {
-			r.ErrorCount++
+			reports.addError()
 			continue
 		}
-		r.All = append(r.All, pd.l)
-		if pd.l > r.Max {
-			r.Max = pd.l
-		}
-		if pd.l < r.Min {
-			r.Min = pd.l
-		}
-		if int64(pd.l) < 0 {
-			r.NegativeCount++
-		}
-		// Using an int64 here makes an assumption about the scale and quantity of the data we are processing.
-		// If all latencies were 2 seconds, we would need around 4 billion records to overflow this.
-		// We are therefore assuming that the data does not exceed these bounds.
-		sum += int64(pd.l)
+		reports.addDataPoint(pd.id, pd.l, pd.connections, pd.rate, pd.size)
 	}
-	if len(r.All) == 0 {
-		r.Min = 0
-		return r, nil
-	}
-	r.Avg = time.Duration(sum / int64(len(r.All)))
-	r.StdDev = time.Duration(int64(stat.StdDev(toFloat(r.All), nil)))
-	return r, nil
+	reports.calculateAll()
+	return reports, nil
 }
 
 func toFloat(in []time.Duration) []float64 {
