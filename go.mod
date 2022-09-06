@@ -38,12 +38,21 @@ require (
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.8.0
 	github.com/syndtr/goleveldb v1.0.1-0.20200815110645-5c35d600f0ca
+	github.com/gofrs/uuid v4.2.0+incompatible
+	github.com/google/uuid v1.3.0
 	github.com/tendermint/tm-db v0.6.6
 	github.com/vektra/mockery/v2 v2.14.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220726230323-06994584191e
 	gonum.org/v1/gonum v0.11.0
 	google.golang.org/grpc v1.49.0
+	github.com/golangci/golangci-lint v1.49.0
+	github.com/pointlander/peg v1.0.1
+	github.com/prometheus/common v0.37.0
+	github.com/informalsystems/tm-load-test v1.0.0
+	github.com/prometheus/client_model v0.2.0
+	github.com/vektra/mockery/v2 v2.14.0
+	gonum.org/v1/gonum v0.11.0
 	google.golang.org/protobuf v1.28.1
 )
 

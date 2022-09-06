@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/test/loadtime/report"
@@ -48,7 +47,7 @@ func main() {
 	}
 	s := store.NewBlockStore(db)
 	defer s.Close()
-	r, err := report.GenerateFromBlockStore(s)
+	rs, err := report.GenerateFromBlockStore(s)
 	if err != nil {
 		panic(err)
 	}
@@ -58,30 +57,47 @@ func main() {
 			panic(err)
 		}
 		w := csv.NewWriter(cf)
-		err = w.WriteAll(toRecords(r.All))
+		err = w.WriteAll(toCSVRecords(rs.List()))
 		if err != nil {
 			panic(err)
 		}
 		return
 	}
+	for _, r := range rs.List() {
+		fmt.Printf(""+
+			"Experiment ID: %s\n\n"+
+			"\tConnections: %d\n"+
+			"\tRate: %d\n"+
+			"\tSize: %d\n\n"+
+			"\tTotal Valid Tx: %d\n"+
+			"\tTotal Negative Latencies: %d\n"+
+			"\tMinimum Latency: %s\n"+
+			"\tMaximum Latency: %s\n"+
+			"\tAverage Latency: %s\n"+
+			"\tStandard Deviation: %s\n\n", r.ID, r.Connections, r.Rate, r.Size, len(r.All), r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev) //nolint: lll
 
-	fmt.Printf(""+
-		"Total Valid Tx: %d\n"+
-		"Total Invalid Tx: %d\n"+
-		"Total Negative Latencies: %d\n"+
-		"Minimum Latency: %s\n"+
-		"Maximum Latency: %s\n"+
-		"Average Latency: %s\n"+
-		"Standard Deviation: %s\n", len(r.All), r.ErrorCount, r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
+	}
+	fmt.Printf("Total Invalid Tx: %d\n", rs.ErrorCount())
 }
 
-func toRecords(l []time.Duration) [][]string {
-	res := make([][]string, len(l)+1)
+func toCSVRecords(rs []report.Report) [][]string {
+	total := 0
+	for _, v := range rs {
+		total += len(v.All)
+	}
+	res := make([][]string, total+1)
 
-	res[0] = make([]string, 1)
-	res[0][0] = "duration_ns"
-	for i, v := range l {
-		res[1+i] = []string{strconv.FormatInt(int64(v), 10)}
+	res[0] = []string{"experiment_id", "duration_ns", "connections", "rate", "size"}
+	offset := 1
+	for _, r := range rs {
+		idStr := r.ID.String()
+		connStr := strconv.FormatInt(int64(r.Connections), 10)
+		rateStr := strconv.FormatInt(int64(r.Rate), 10)
+		sizeStr := strconv.FormatInt(int64(r.Size), 10)
+		for i, v := range r.All {
+			res[offset+i] = []string{idStr, strconv.FormatInt(int64(v), 10), connStr, rateStr, sizeStr}
+		}
+		offset += len(r.All)
 	}
 	return res
 }
