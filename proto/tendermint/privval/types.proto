@@ -2,7 +2,7 @@ syntax = "proto3";
 package tendermint.privval;
 
 import "tendermint/crypto/keys.proto";
-import "tendermint/types/types.proto";
+import "tendermint/proto/tendermint/types/types.proto";
 import "gogoproto/gogo.proto";
 
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/privval";

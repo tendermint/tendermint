@@ -3454,7 +3454,7 @@ containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusCon
 
 - Logger
   - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`.
-See our new [logging library](https://github.com/tendermint/tmlibs/log) and [blog post](https://tendermint.com/blog/abstracting-the-logger-interface-in-go) for more details
+See our new [logging library](https://github.com/tendermint/libs/logger.go) and [blog post](https://blog.cosmos.network/abstracting-the-logger-interface-in-go-4cf96bf90bb7) for more details
   - Levels `warn` and `notice` are removed (you may need to change them in your `config.toml`!)
   - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) to accept a logger
 

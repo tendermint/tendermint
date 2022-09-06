@@ -45,7 +45,7 @@ the 0.38.x line.
 1. Start on `main`
 
 2. Ensure that there is a [branch protection
-   rule](https://github.com/tendermint/tendermint/settings/branches) for the
+   rule](https://github.com/tendermint/tendermint/branches) for the
    branch you are about to create (you will need admin access to the repository
    in order to do this).
 

@@ -29,7 +29,7 @@ PexResponse is an list of net addresses provided to a peer to dial.
 
 | Name  | Type                               | Description                              | Field Number |
 |-------|------------------------------------|------------------------------------------|--------------|
-| addresses | repeated [PexAddress](#PexAddress) | List of peer addresses available to dial | 1            |
+| addresses | repeated [PexAddress](#pexaddress) | List of peer addresses available to dial | 1            |
 
 ### PexAddress
 
@@ -54,7 +54,7 @@ PexResponse is an list of net addresses provided to a peer to dial.
 
 | Name  | Type                               | Description                              | Field Number |
 |-------|------------------------------------|------------------------------------------|--------------|
-| addresses | repeated [PexAddressV2](#PexAddressV2) | List of peer addresses available to dial | 1            |
+| addresses | repeated [PexAddressV2](#pexresponsev2) | List of peer addresses available to dial | 1            |
 
 ### PexAddressV2
 
@@ -70,7 +70,7 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 
 | Name         | Type                      | Description                                          | Field Number |
 |--------------|---------------------------|------------------------------------------------------|--------------|
-| pex_request  | [PexRequest](#PexRequest) | Empty request asking for a list of addresses to dial | 1            |
-| pex_response | [PexResponse](#PexResponse)  | List of addresses to dial                            | 2            |
-| pex_request_v2 | [PexRequestV2](#PexRequestV2) | Empty request asking for a list of addresses to dial | 3         |
-| pex_response_v2 | [PexRespinseV2](#PexResponseV2) | List of addresses to dial | 4 |
+| pex_request  | [PexRequest](#pexrequest) | Empty request asking for a list of addresses to dial | 1            |
+| pex_response | [PexResponse](#pexresponse)  | List of addresses to dial                            | 2            |
+| pex_request_v2 | [PexRequestV2](#pexrequestv2) | Empty request asking for a list of addresses to dial | 3         |
+| pex_response_v2 | [PexRespinseV2](#pexresponsev2) | List of addresses to dial | 4 |

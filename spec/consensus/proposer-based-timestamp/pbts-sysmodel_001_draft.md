@@ -73,7 +73,7 @@ Finally, observe that the agreement ([Agreement] and [Time-Agreement]) propertie
 
 ### SAFETY
 
-Here we will provide specifications that relate local time to block time. However, since we do not assume (by now) that local time is linked to real-time, these specifications also do not provide a relation between block time and real-time. Such properties are given [later](#REAL-TIME-SAFETY).
+Here we will provide specifications that relate local time to block time. However, since we do not assume (by now) that local time is linked to real-time, these specifications also do not provide a relation between block time and real-time. Such properties are given [later](#real-time-safety).
 
 For a correct validator `V`, let `beginConsensus(V,k)` be the local time when it sets its height to `k`, and let `endConsensus(V,k)` be the time when it sets its height to `k + 1`.
 
