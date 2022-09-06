@@ -16,7 +16,7 @@ var (
 
 // ClientFactory implements the loadtest.ClientFactory interface.
 type ClientFactory struct {
-	Id []byte
+	ID []byte
 }
 
 // TxGenerator is responsible for generating transactions.
@@ -31,7 +31,7 @@ type TxGenerator struct {
 
 func main() {
 	u := [16]byte(uuid.New()) // generate run ID on startup
-	if err := loadtest.RegisterClientFactory("loadtime-client", &ClientFactory{Id: u[:]}); err != nil {
+	if err := loadtest.RegisterClientFactory("loadtime-client", &ClientFactory{ID: u[:]}); err != nil {
 		panic(err)
 	}
 	loadtest.Run(&loadtest.CLIConfig{
@@ -55,7 +55,7 @@ func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
 
 func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) {
 	return &TxGenerator{
-		id:    f.Id,
+		id:    f.ID,
 		conns: uint64(cfg.Connections),
 		rate:  uint64(cfg.Rate),
 		size:  uint64(cfg.Size),
