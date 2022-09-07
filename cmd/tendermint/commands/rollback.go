@@ -38,7 +38,7 @@ be done multiple times.
 			return fmt.Errorf("failed to rollback state: %w", err)
 		}
 
-		if (removeBlock) {
+		if removeBlock {
 			fmt.Printf("Rolled back both state and block to height %d and hash %X\n", height, hash)
 		} else {
 			fmt.Printf("Rolled back state to height %d and hash %X\n", height, hash)
