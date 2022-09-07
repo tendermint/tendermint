@@ -121,6 +121,22 @@ func (_m *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	return r0
 }
 
+// LoadBlockMetaByHash provides a mock function with given fields: hash
+func (_m *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
+	ret := _m.Called(hash)
+
+	var r0 *types.BlockMeta
+	if rf, ok := ret.Get(0).(func([]byte) *types.BlockMeta); ok {
+		r0 = rf(hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.BlockMeta)
+		}
+	}
+
+	return r0
+}
+
 // LoadBlockPart provides a mock function with given fields: height, index
 func (_m *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	ret := _m.Called(height, index)

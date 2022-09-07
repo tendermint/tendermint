@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,9 +32,7 @@ func TestEnsureRoot(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
 	require.Nil(err)
 
-	if !checkConfig(string(data)) {
-		t.Fatalf("config file missing some information")
-	}
+	assertValidConfig(t, string(data))
 
 	ensureFiles(t, tmpDir, "data")
 }
@@ -54,24 +51,21 @@ func TestEnsureTestRoot(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
 	require.Nil(err)
 
-	if !checkConfig(string(data)) {
-		t.Fatalf("config file missing some information")
-	}
+	assertValidConfig(t, string(data))
 
 	// TODO: make sure the cfg returned and testconfig are the same!
 	baseConfig := DefaultBaseConfig()
 	ensureFiles(t, rootDir, defaultDataDir, baseConfig.Genesis, baseConfig.PrivValidatorKey, baseConfig.PrivValidatorState)
 }
 
-func checkConfig(configFile string) bool {
-	var valid bool
-
+func assertValidConfig(t *testing.T, configFile string) {
+	t.Helper()
 	// list of words we expect in the config
 	var elems = []string{
 		"moniker",
 		"seeds",
 		"proxy_app",
-		"fast_sync",
+		"block_sync",
 		"create_empty_blocks",
 		"peer",
 		"timeout",
@@ -84,11 +78,6 @@ func checkConfig(configFile string) bool {
 		"genesis",
 	}
 	for _, e := range elems {
-		if !strings.Contains(configFile, e) {
-			valid = false
-		} else {
-			valid = true
-		}
+		assert.Contains(t, configFile, e)
 	}
-	return valid
 }

@@ -106,7 +106,7 @@ specify exactly the dependency you want to update, eg.
 ## Protobuf
 
 We use [Protocol Buffers](https://developers.google.com/protocol-buffers) along
-with [`gogoproto`](https://github.com/gogo/protobuf) to generate code for use
+with [`gogoproto`](https://github.com/cosmos/gogoproto) to generate code for use
 across Tendermint Core.
 
 To generate proto stubs, lint, and check protos for breaking changes, you will
@@ -142,7 +142,6 @@ If you are a VS Code user, you may want to add the following to your `.vscode/se
   "protoc": {
     "options": [
       "--proto_path=${workspaceRoot}/proto",
-      "--proto_path=${workspaceRoot}/third_party/proto"
     ]
   }
 }
