@@ -84,11 +84,9 @@ func (s *syncer) AddChunk(chunk *chunk) (bool, error) {
 		return false, err
 	}
 	if added {
-		s.logger.Debug("Added chunk to queue", "height", chunk.Height, "format", chunk.Format,
-			"chunk", chunk.Index)
+		s.logger.Debug("Added chunk to queue", "height", chunk.Height, "format", chunk.Format, "chunk", chunk.Index)
 	} else {
-		s.logger.Debug("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format,
-			"chunk", chunk.Index)
+		s.logger.Debug("Ignoring duplicate chunk in queue", "height", chunk.Height, "format", chunk.Format, "chunk", chunk.Index)
 	}
 	return added, nil
 }
@@ -137,12 +135,20 @@ func (s *syncer) SyncAny(
 		discoveryTime = minimumDiscoveryTime
 	}
 
+	timer := time.NewTimer(discoveryTime)
+	defer timer.Stop()
+
 	if discoveryTime > 0 {
 		if err := requestSnapshots(); err != nil {
 			return sm.State{}, nil, err
 		}
-		s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
-		time.Sleep(discoveryTime)
+		s.logger.Info("discovering snapshots",
+			"interval", discoveryTime)
+		select {
+		case <-ctx.Done():
+			return sm.State{}, nil, ctx.Err()
+		case <-timer.C:
+		}
 	}
 
 	// The app may ask us to retry a snapshot restoration, in which case we need to reuse
@@ -151,8 +157,11 @@ func (s *syncer) SyncAny(
 		snapshot *snapshot
 		chunks   *chunkQueue
 		err      error
+		iters    int
 	)
+
 	for {
+		iters++
 		// If not nil, we're going to retry restoration of the same snapshot.
 		if snapshot == nil {
 			snapshot = s.snapshots.Best()
@@ -162,9 +171,16 @@ func (s *syncer) SyncAny(
 			if discoveryTime == 0 {
 				return sm.State{}, nil, errNoSnapshots
 			}
-			s.logger.Info(fmt.Sprintf("Discovering snapshots for %v", discoveryTime))
-			time.Sleep(discoveryTime)
-			continue
+			s.logger.Info("discovering snapshots",
+				"iterations", iters,
+				"interval", discoveryTime)
+			timer.Reset(discoveryTime)
+			select {
+			case <-ctx.Done():
+				return sm.State{}, nil, ctx.Err()
+			case <-timer.C:
+				continue
+			}
 		}
 		if chunks == nil {
 			chunks, err = newChunkQueue(snapshot, s.tempDir)
@@ -494,13 +510,11 @@ func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uin
 		return nil
 	}
 
-	s.logger.Debug(
-		"Requesting snapshot chunk",
+	s.logger.Debug("Requesting snapshot chunk",
 		"height", snapshot.Height,
 		"format", snapshot.Format,
 		"chunk", chunk,
-		"peer", peer,
-	)
+		"peer", peer)
 
 	msg := p2p.Envelope{
 		To: peer,

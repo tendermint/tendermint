@@ -315,6 +315,10 @@ func TestMConnectionMultiplePings(t *testing.T) {
 }
 
 func TestMConnectionPingPongs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// check that we are not leaking any go-routines
 	t.Cleanup(leaktest.CheckTimeout(t, 10*time.Second))
 
@@ -558,6 +562,10 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 }
 
 func TestMConnectionTrySend(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	server, client := net.Pipe()
 	t.Cleanup(closeAll(t, client, server))
 	ctx, cancel := context.WithCancel(context.Background())
@@ -606,6 +614,10 @@ func TestConnVectors(t *testing.T) {
 }
 
 func TestMConnectionChannelOverflow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	chOnErr := make(chan struct{})
 	chOnRcv := make(chan struct{})
 

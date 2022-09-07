@@ -1,8 +1,9 @@
 # Releases
 
-Tendermint uses [semantic versioning](https://semver.org/) with each release following
-a `vX.Y.Z` format. The `master` branch is used for active development and thus it's
-advisable not to build against it.
+Tendermint uses modified [semantic versioning](https://semver.org/) with each
+release following a `vX.Y.Z` format. Tendermint is currently on major version
+0 and uses the minor version to signal breaking changes. The `master` branch is
+used for active development and thus it is not advisable to build against it.
 
 The latest changes are always initially merged into `master`.
 Releases are specified using tags and are built from long-lived "backport" branches
@@ -29,8 +30,8 @@ merging the pull request.
 
 ### Creating a backport branch
 
-If this is the first release candidate for a major release, you get to have the
-honor of creating the backport branch!
+If this is the first release candidate for a minor version release, e.g.
+v0.25.0, you get to have the honor of creating the backport branch!
 
 Note that, after creating the backport branch, you'll also need to update the
 tags on `master` so that `go mod` is able to order the branches correctly. You
@@ -77,7 +78,8 @@ the 0.35.x line.
 
 After doing these steps, go back to `master` and do the following:
 
-1. Tag `master` as the dev branch for the _next_ major release and push it up to GitHub.
+1. Tag `master` as the dev branch for the _next_ minor version release and push
+   it up to GitHub.
    For example:
    ```sh
    git tag -a v0.36.0-dev -m "Development base for Tendermint v0.36."
@@ -99,7 +101,7 @@ After doing these steps, go back to `master` and do the following:
 
 ## Release candidates
 
-Before creating an official release, especially a major release, we may want to create a
+Before creating an official release, especially a minor release, we may want to create a
 release candidate (RC) for our friends and partners to test out. We use git tags to
 create RCs, and we build them off of backport branches.
 
@@ -109,7 +111,7 @@ Tags for RCs should follow the "standard" release naming conventions, with `-rcX
 (Note that branches and tags _cannot_ have the same names, so it's important that these branches
 have distinct names from the tags/release names.)
 
-If this is the first RC for a major release, you'll have to make a new backport branch (see above).
+If this is the first RC for a minor release, you'll have to make a new backport branch (see above).
 Otherwise:
 
 1. Start from the backport branch (e.g. `v0.35.x`).
@@ -140,10 +142,12 @@ Note that this process should only be used for "true" RCs--
 release candidates that, if successful, will be the next release.
 For more experimental "RCs," create a new, short-lived branch and tag that instead.
 
-## Major release
+## Minor release
 
-This major release process assumes that this release was preceded by release candidates.
+This minor release process assumes that this release was preceded by release candidates.
 If there were no release candidates, begin by creating a backport branch, as described above.
+
+Before performing these steps, be sure the [Minor Release Checklist](#minor-release-checklist) has been completed.
 
 1. Start on the backport branch (e.g. `v0.35.x`)
 2. Run integration tests (`make test_integrations`) and the e2e nightlies.
@@ -176,16 +180,16 @@ If there were no release candidates, begin by creating a backport branch, as des
    - Commit these changes to `master` and backport them into the backport
      branch for this release.
 
-## Minor release (point releases)
+## Patch release
 
-Minor releases are done differently from major releases: They are built off of
+Patch releases are done differently from minor releases: They are built off of
 long-lived backport branches, rather than from master.  As non-breaking changes
 land on `master`, they should also be backported into these backport branches.
 
-Minor releases don't have release candidates by default, although any tricky
+Patch releases don't have release candidates by default, although any tricky
 changes may merit a release candidate.
 
-To create a minor release:
+To create a patch release:
 
 1. Checkout the long-lived backport branch: `git checkout v0.35.x`
 2. Run integration tests (`make test_integrations`) and the nightlies.
@@ -197,11 +201,143 @@ To create a minor release:
    - Bump the TMDefaultVersion in `version.go`
    - Bump the ABCI version number, if necessary.
      (Note that ABCI follows semver, and that ABCI versions are the only versions
-     which can change during minor releases, and only field additions are valid minor changes.)
+     which can change during patch releases, and only field additions are valid patch changes.)
 4. Open a PR with these changes that will land them back on `v0.35.x`
 5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
    - `git tag -a v0.35.1 -m 'Release v0.35.1'`
    - `git push origin v0.35.1`
 6. Create a pull request back to master with the CHANGELOG & version changes from the latest release.
-   - Remove all `R:minor` labels from the pull requests that were included in the release.
+   - Remove all `R:patch` labels from the pull requests that were included in the release.
    - Do not merge the backport branch into master.
+
+## Minor Release Checklist
+
+The following set of steps are performed on all releases that increment the
+_minor_ version, e.g. v0.25 to v0.26. These steps ensure that Tendermint is
+well tested, stable, and suitable for adoption by the various diverse projects
+that rely on Tendermint.
+
+### Feature Freeze
+
+Ahead of any minor version release of Tendermint, the software enters 'Feature
+Freeze' for at least two weeks. A feature freeze means that _no_ new features
+are added to the code being prepared for release. No code changes should be made
+to the code being released that do not directly improve pressing issues of code
+quality. The following must not be merged during a feature freeze:
+
+* Refactors that are not related to specific bug fixes.
+* Dependency upgrades.
+* New test code that does not test a discovered regression.
+* New features of any kind.
+* Documentation or spec improvements that are not related to the newly developed
+code.
+
+This period directly follows the creation of the [backport
+branch](#creating-a-backport-branch). The Tendermint team instead directs all
+attention to ensuring that the existing code is stable and reliable. Broken
+tests are fixed, flakey-tests are remedied, end-to-end test failures are
+thoroughly diagnosed and all efforts of the team are aimed at improving the
+quality of the code. During this period, the upgrade harness tests are run
+repeatedly and a variety of in-house testnets are run to ensure Tendermint
+functions at the scale it will be used by application developers and node
+operators.
+
+### Nightly End-To-End Tests
+
+The Tendermint team maintains [a set of end-to-end
+tests](https://github.com/tendermint/tendermint/blob/master/test/e2e/README.md#L1)
+that run each night on the latest commit of the project and on the code in the
+tip of each supported backport branch. These tests start a network of containerized
+Tendermint processes and run automated checks that the network functions as
+expected in both stable and unstable conditions. During the feature freeze,
+these tests are run nightly and must pass consistently for a release of
+Tendermint to be considered stable.
+
+### Upgrade Harness
+
+> TODO(williambanfield): Change to past tense and clarify this section once
+> upgrade harness is complete.
+
+The Tendermint team is creating an upgrade test harness to exercise the
+workflow of stopping an instance of Tendermint running one version of the
+software and starting up the same application running the next version. To
+support upgrade testing, we will add the ability to terminate the Tendermint
+process at specific pre-defined points in its execution so that we can verify
+upgrades work in a representative sample of stop conditions.
+
+### Large Scale Testnets
+
+The Tendermint end-to-end tests run a small network (~10s of nodes) to exercise
+basic consensus interactions. Real world deployments of Tendermint often have over 
+a hundred nodes just in the validator set, with many others acting as full
+nodes and sentry nodes. To gain more assurance before a release, we will also run
+larger-scale test networks to shake out emergent behaviors at scale.
+
+Large-scale test networks are run on a set of virtual machines (VMs). Each VM
+is equipped with 4 Gigabytes of RAM and 2 CPU cores. The network runs a very
+simple key-value store application. The application adds artificial delays to
+different ABCI calls to simulate a slow application. Each testnet is briefly
+run with no load being generated to collect a baseline performance. Once
+baseline is captured, a consistent load is applied across the network. This
+load takes the form of 10% of the running nodes all receiving a consistent
+stream of two hundred transactions per minute each.
+
+During each test net, the following metrics are monitored and collected on each
+node:
+
+* Consensus rounds per height
+* Maximum connected peers, Minimum connected peers, Rate of change of peer connections
+* Memory resident set size
+* CPU utilization
+* Blocks produced per minute
+* Seconds for each step of consensus (Propose, Prevote, Precommit, Commit)
+* Latency to receive block proposals
+
+For these tests we intentionally target low-powered host machines (with low core
+counts and limited memory) to ensure we observe similar kinds of resource contention 
+and limitation that real-world  deployments of Tendermint experience in production. 
+
+#### 200 Node Testnet
+
+To test the stability and performance of Tendermint in a real world scenario,
+a 200 node test network is run. The network comprises 5 seed nodes, 100
+validators and 95 non-validating full nodes. All nodes begin by dialing
+a subset of the seed nodes to discover peers. The network is run for several
+days, with metrics being collected continuously. In cases of changes to performance
+critical systems, testnets of larger sizes should be considered.
+
+#### Rotating Node Testnet
+
+Real-world deployments of Tendermint frequently see new nodes arrive and old
+nodes exit the network. The rotating node testnet ensures that Tendermint is
+able to handle this reliably. In this test, a network with 10 validators and
+3 seed nodes is started. A rolling set of 25 full nodes are started and each
+connects to the network by dialing one of the seed nodes. Once the node is able
+to blocksync to the head of the chain and begins producing blocks using
+Tendermint consensus it is stopped. Once stopped, a new node is started and
+takes its place. This network is run for several days.
+
+#### Network Partition Testnet
+
+Tendermint is expected to recover from network partitions. A partition where no
+subset of the nodes is left with the super-majority of the stake is expected to
+stop making blocks. Upon alleviation of the partition, the network is expected
+to once again become fully connected and capable of producing blocks. The
+network partition testnet ensures that Tendermint is able to handle this
+reliably at scale. In this test, a network with 100 validators and 95 full
+nodes is started. All validators have equal stake. Once the network is
+producing blocks, a set of firewall rules is deployed to create a partitioned
+network with 50% of the stake on one side and 50% on the other. Once the
+network stops producing blocks, the firewall rules are removed and the nodes
+are monitored to ensure they reconnect and that the network again begins
+producing blocks.
+
+#### Absent Stake Testnet
+
+Tendermint networks often run with _some_ portion of the voting power offline.
+The absent stake testnet ensures that large networks are able to handle this
+reliably. A set of 150 validator nodes and three seed nodes is started. The set
+of 150 validators is configured to only possess a cumulative stake of 67% of
+the total stake. The remaining 33% of the stake is configured to belong to
+a validator that is never actually run in the test network. The network is run
+for multiple days, ensuring that it is able to produce blocks without issue.
