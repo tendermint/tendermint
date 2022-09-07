@@ -863,7 +863,7 @@ and a validator address plus a timestamp. Note we may remove the validator
 address & timestamp fields in the future (see ADR-25).
 
 `lite2` package has been added to solve `lite` issues and introduce weak
-subjectivity interface. Refer to the [spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client.md) for complete details.
+subjectivity interface. Refer to the [spec](https://github.com/tendermint/tendermint/tree/main/spec/consensus/light-client) for complete details.
 `lite` package is now deprecated and will be removed in v0.34 release.
 
 ### BREAKING CHANGES:
@@ -1223,7 +1223,7 @@ Special thanks to external contributors on this release: @jon-certik, @gracenoah
 
 *August 28, 2019*
 
-@climber73 wrote the [Writing a Tendermint Core application in Java
+@climber73 wrote the [Writing a Tendermint Core application in Java <!-- markdown-link-check-disable-next-line -->
 (gRPC)](https://github.com/tendermint/tendermint/blob/main/docs/guides/java.md)
 guide.
 
@@ -2614,7 +2614,7 @@ are affected by a change.
 
 A few more breaking changes are in the works - each will come with a clear
 Architecture Decision Record (ADR) explaining the change. You can review ADRs
-[here](https://github.com/tendermint/tendermint/tree/develop/docs/architecture)
+[here](https://github.com/tendermint/tendermint/tree/main/docs/architecture)
 or in the [open Pull Requests](https://github.com/tendermint/tendermint/pulls).
 You can also check in on the [issues marked as
 breaking](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3Abreaking).
@@ -2893,7 +2893,7 @@ BREAKING CHANGES:
 FEATURES
 - [cmd] Added metrics (served under `/metrics` using a Prometheus client;
   disabled by default). See the new `instrumentation` section in the config and
-  [metrics](https://tendermint.readthedocs.io/projects/tools/en/develop/metrics.html)
+  [metrics](https://github.com/tendermint/tendermint/blob/main/docs/tendermint-core/metrics.md)
   guide.
 - [p2p] Add IPv6 support to peering.
 - [p2p] Add `external_address` to config to allow specifying the address for
@@ -3007,7 +3007,7 @@ BREAKING:
 
 FEATURES
 
-- [rpc] the RPC documentation is now published to https://tendermint.github.io/slate
+- [rpc] the RPC documentation is now published to https://github.com/tendermint/tendermint/tree/main/spec/rpc
 - [p2p] AllowDuplicateIP config option to refuse connections from same IP.
     - true by default for now, false by default in next breaking release
 - [docs] Add docs for query, tx indexing, events, pubsub
@@ -3486,7 +3486,7 @@ containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusCon
 
 - Logger
   - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`.
-See our new [logging library](https://github.com/tendermint/libs/logger.go) and [blog post](https://blog.cosmos.network/abstracting-the-logger-interface-in-go-4cf96bf90bb7) for more details
+See our new [logging library](https://github.com/tendermint/tendermint/blob/main/libs/log/logger.go) and [blog post](https://blog.cosmos.network/abstracting-the-logger-interface-in-go-4cf96bf90bb7) for more details
   - Levels `warn` and `notice` are removed (you may need to change them in your `config.toml`!)
   - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) to accept a logger
 

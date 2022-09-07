@@ -207,7 +207,9 @@ Execution:
 
 *Remark.* In this case, the more than 1/3 of faulty validators do not need to commit an equivocation (F1) as they only vote once per round in the execution.
 
-Detecting faulty validators in the case of such an attack can be done by the fork accountability mechanism described in: <https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing>.
+Detecting faulty validators in the case of such an attack can be done by the fork accountability mechanism described in: 
+<!-- markdown-link-check-disable-next-line -->
+<https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing>.
 
 If a light client is attacked using this attack with 1/3 or more of voting power (and less than 2/3), the attacker cannot change the application state arbitrarily. Rather, the attacker is limited to a state a correct validator finds acceptable: In the execution above, correct validators still find the value acceptable, however, the block the light client trusts deviates from the one on the main chain.
 
@@ -231,7 +233,7 @@ Consequences:
 
 * The validators in F1 will be detectable by the the fork accountability mechanisms.
 * The validators in F2 cannot be detected using this mechanism.
-Only in case they signed something which conflicts with the application this can be used against them. Otherwise they do not do anything incorrect.
+Only in case they signed something which conflicts with the application this can be used against them. Otherwise they do not do anything incorrect. <!-- markdown-link-check-disable-next-line -->
 * This case is not covered by the report <https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing> as it only assumes at most 2/3 of faulty validators.
 
 **Q:** do we need to define a special kind of attack for the case where a validator sign arbitrarily state? It seems that detecting such attack requires a different mechanism that would require as an evidence a sequence of blocks that led to that state. This might be very tricky to implement.
