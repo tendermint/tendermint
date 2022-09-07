@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/crypto"
@@ -57,7 +57,7 @@ func exampleProposal() *types.Proposal {
 	}
 }
 
-// nolint:lll // ignore line length for tests
+//nolint:lll // ignore line length for tests
 func TestPrivvalVectors(t *testing.T) {
 	pk := ed25519.GenPrivKeyFromSecret([]byte("it's a secret")).PubKey()
 	ppk, err := cryptoenc.PubKeyToProto(pk)

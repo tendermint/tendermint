@@ -1,7 +1,6 @@
 build:
   roots:
     - proto
-    - third_party/proto
 lint:
   use:
     - BASIC

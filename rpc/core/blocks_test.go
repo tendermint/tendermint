@@ -14,7 +14,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 	sm "github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/state/mocks"
 )
 
 func TestBlockchainInfo(t *testing.T) {
@@ -81,10 +81,15 @@ func TestBlockResults(t *testing.T) {
 	}
 
 	env = &Environment{}
-	env.StateStore = sm.NewStore(dbm.NewMemDB())
+	env.StateStore = sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	err := env.StateStore.SaveABCIResponses(100, results)
 	require.NoError(t, err)
-	env.BlockStore = mockBlockStore{height: 100}
+	mockstore := &mocks.BlockStore{}
+	mockstore.On("Height").Return(int64(100))
+	mockstore.On("Base").Return(int64(1))
+	env.BlockStore = mockstore
 
 	testCases := []struct {
 		height  int64

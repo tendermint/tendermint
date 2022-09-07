@@ -10,7 +10,7 @@ Block sync has one channel.
 
 | Name              | Number |
 |-------------------|--------|
-| BlockchainChannel | 64     |
+| BlocksyncChannel | 64     |
 
 ## Message Types
 

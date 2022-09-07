@@ -37,8 +37,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/test"
+	"github.com/cosmos/gogoproto/proto"
+	"github.com/cosmos/gogoproto/test"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/protoio"

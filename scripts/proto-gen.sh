@@ -14,6 +14,6 @@ docker run --rm -i -v "$PWD":/w --workdir=/w golang:1.18-alpine sh <<"EOF"
 apk add git make
 
 go install github.com/bufbuild/buf/cmd/buf
-go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
+go install github.com/cosmos/gogoproto/protoc-gen-gogofaster@latest
 make proto-gen
 EOF

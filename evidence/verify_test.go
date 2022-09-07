@@ -412,11 +412,14 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	}
 
 	// create good evidence and correct validator power
-	goodEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	goodEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	require.NoError(t, err)
 	goodEv.ValidatorPower = 1
 	goodEv.TotalVotingPower = 1
-	badEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
-	badTimeEv := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID)
+	badEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime, val, chainID)
+	require.NoError(t, err)
+	badTimeEv, err := types.NewMockDuplicateVoteEvidenceWithValidator(10, defaultEvidenceTime.Add(1*time.Minute), val, chainID)
+	require.NoError(t, err)
 	badTimeEv.ValidatorPower = 1
 	badTimeEv.TotalVotingPower = 1
 	state := sm.State{

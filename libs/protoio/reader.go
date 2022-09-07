@@ -36,7 +36,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 )
 
 // NewDelimitedReader reads varint-delimited Protobuf messages from a reader.

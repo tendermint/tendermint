@@ -68,14 +68,18 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
-	RPC             *RPCConfig             `mapstructure:"rpc"`
-	P2P             *P2PConfig             `mapstructure:"p2p"`
-	Mempool         *MempoolConfig         `mapstructure:"mempool"`
-	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
-	FastSync        *FastSyncConfig        `mapstructure:"fastsync"`
-	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
-	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
-	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
+	RPC       *RPCConfig       `mapstructure:"rpc"`
+	P2P       *P2PConfig       `mapstructure:"p2p"`
+	Mempool   *MempoolConfig   `mapstructure:"mempool"`
+	StateSync *StateSyncConfig `mapstructure:"statesync"`
+	BlockSync *BlockSyncConfig `mapstructure:"blocksync"`
+	//TODO(williambanfield): remove this field once v0.37 is released.
+	// https://github.com/tendermint/tendermint/issues/9279
+	DeprecatedFastSyncConfig map[interface{}]interface{} `mapstructure:"fastsync"`
+	Consensus                *ConsensusConfig            `mapstructure:"consensus"`
+	Storage                  *StorageConfig              `mapstructure:"storage"`
+	TxIndex                  *TxIndexConfig              `mapstructure:"tx_index"`
+	Instrumentation          *InstrumentationConfig      `mapstructure:"instrumentation"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -86,8 +90,9 @@ func DefaultConfig() *Config {
 		P2P:             DefaultP2PConfig(),
 		Mempool:         DefaultMempoolConfig(),
 		StateSync:       DefaultStateSyncConfig(),
-		FastSync:        DefaultFastSyncConfig(),
+		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
+		Storage:         DefaultStorageConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
 	}
@@ -101,8 +106,9 @@ func TestConfig() *Config {
 		P2P:             TestP2PConfig(),
 		Mempool:         TestMempoolConfig(),
 		StateSync:       TestStateSyncConfig(),
-		FastSync:        TestFastSyncConfig(),
+		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
+		Storage:         TestStorageConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
 	}
@@ -136,8 +142,8 @@ func (cfg *Config) ValidateBasic() error {
 	if err := cfg.StateSync.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [statesync] section: %w", err)
 	}
-	if err := cfg.FastSync.ValidateBasic(); err != nil {
-		return fmt.Errorf("error in [fastsync] section: %w", err)
+	if err := cfg.BlockSync.ValidateBasic(); err != nil {
+		return fmt.Errorf("error in [blocksync] section: %w", err)
 	}
 	if err := cfg.Consensus.ValidateBasic(); err != nil {
 		return fmt.Errorf("error in [consensus] section: %w", err)
@@ -146,6 +152,17 @@ func (cfg *Config) ValidateBasic() error {
 		return fmt.Errorf("error in [instrumentation] section: %w", err)
 	}
 	return nil
+}
+
+func (cfg *Config) CheckDeprecated() []string {
+	var warnings []string
+	if cfg.DeprecatedFastSyncConfig != nil {
+		warnings = append(warnings, "[fastsync] table detected. This section has been renamed to [blocksync]. The values in this deprecated section will be disregarded.")
+	}
+	if cfg.BaseConfig.DeprecatedFastSyncMode != nil {
+		warnings = append(warnings, "fast_sync key detected. This key has been renamed to block_sync. The value of this deprecated key will be disregarded.")
+	}
+	return warnings
 }
 
 //-----------------------------------------------------------------------------
@@ -167,10 +184,14 @@ type BaseConfig struct { //nolint: maligned
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
-	// If this node is many blocks behind the tip of the chain, FastSync
+	// If this node is many blocks behind the tip of the chain, Blocksync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
-	FastSyncMode bool `mapstructure:"fast_sync"`
+	BlockSyncMode bool `mapstructure:"block_sync"`
+
+	//TODO(williambanfield): remove this field once v0.37 is released.
+	// https://github.com/tendermint/tendermint/issues/9279
+	DeprecatedFastSyncMode interface{} `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -238,7 +259,7 @@ func DefaultBaseConfig() BaseConfig {
 		ABCI:               "socket",
 		LogLevel:           DefaultLogLevel,
 		LogFormat:          LogFormatPlain,
-		FastSyncMode:       true,
+		BlockSyncMode:      true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
 		DBPath:             "data",
@@ -250,7 +271,7 @@ func TestBaseConfig() BaseConfig {
 	cfg := DefaultBaseConfig()
 	cfg.chainID = "tendermint_test"
 	cfg.ProxyApp = "kvstore"
-	cfg.FastSyncMode = false
+	cfg.BlockSyncMode = false
 	cfg.DBBackend = "memdb"
 	return cfg
 }
@@ -817,7 +838,7 @@ func DefaultStateSyncConfig() *StateSyncConfig {
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the state sync service
+// TestStateSyncConfig returns a default configuration for the state sync service
 func TestStateSyncConfig() *StateSyncConfig {
 	return DefaultStateSyncConfig()
 }
@@ -873,34 +894,34 @@ func (cfg *StateSyncConfig) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------------------
-// FastSyncConfig
+// BlockSyncConfig
 
-// FastSyncConfig defines the configuration for the Tendermint fast sync service
-type FastSyncConfig struct {
+// BlockSyncConfig (formerly known as FastSync) defines the configuration for the Tendermint block sync service
+type BlockSyncConfig struct {
 	Version string `mapstructure:"version"`
 }
 
-// DefaultFastSyncConfig returns a default configuration for the fast sync service
-func DefaultFastSyncConfig() *FastSyncConfig {
-	return &FastSyncConfig{
+// DefaultBlockSyncConfig returns a default configuration for the block sync service
+func DefaultBlockSyncConfig() *BlockSyncConfig {
+	return &BlockSyncConfig{
 		Version: "v0",
 	}
 }
 
-// TestFastSyncConfig returns a default configuration for the fast sync.
-func TestFastSyncConfig() *FastSyncConfig {
-	return DefaultFastSyncConfig()
+// TestBlockSyncConfig returns a default configuration for the block sync.
+func TestBlockSyncConfig() *BlockSyncConfig {
+	return DefaultBlockSyncConfig()
 }
 
 // ValidateBasic performs basic validation.
-func (cfg *FastSyncConfig) ValidateBasic() error {
+func (cfg *BlockSyncConfig) ValidateBasic() error {
 	switch cfg.Version {
 	case "v0":
 		return nil
 	case "v1", "v2":
-		return fmt.Errorf("fast sync version %s has been deprecated. Please use v0 instead", cfg.Version)
+		return fmt.Errorf("blocksync version %s has been deprecated. Please use v0 instead", cfg.Version)
 	default:
-		return fmt.Errorf("unknown fastsync version %s", cfg.Version)
+		return fmt.Errorf("unknown blocksync version %s", cfg.Version)
 	}
 }
 
@@ -1069,11 +1090,41 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------------------
+// StorageConfig
+
+// StorageConfig allows more fine-grained control over certain storage-related
+// behavior.
+type StorageConfig struct {
+	// Set to false to ensure ABCI responses are persisted. ABCI responses are
+	// required for `/block_results` RPC queries, and to reindex events in the
+	// command-line tool.
+	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
+}
+
+// DefaultStorageConfig returns the default configuration options relating to
+// Tendermint storage optimization.
+func DefaultStorageConfig() *StorageConfig {
+	return &StorageConfig{
+		DiscardABCIResponses: false,
+	}
+}
+
+// TestStorageConfig returns storage configuration that can be used for
+// testing.
+func TestStorageConfig() *StorageConfig {
+	return &StorageConfig{
+		DiscardABCIResponses: false,
+	}
+}
+
+// -----------------------------------------------------------------------------
 // TxIndexConfig
 // Remember that Event has the following structure:
 // type: [
-//  key: value,
-//  ...
+//
+//	key: value,
+//	...
+//
 // ]
 //
 // CompositeKeys are constructed by `type.key`

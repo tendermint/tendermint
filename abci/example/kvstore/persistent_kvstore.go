@@ -45,7 +45,10 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	state := loadState(db)
 
 	return &PersistentKVStoreApplication{
-		app:                &Application{state: state},
+		app: &Application{
+			state:      state,
+			txToRemove: map[string]struct{}{},
+		},
 		valAddrToPubKeyMap: make(map[string]pc.PublicKey),
 		logger:             log.NewNopLogger(),
 	}
@@ -62,10 +65,6 @@ func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.Respo
 	return res
 }
 
-func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
-	return app.app.SetOption(req)
-}
-
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
 func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
@@ -74,6 +73,10 @@ func (app *PersistentKVStoreApplication) DeliverTx(req types.RequestDeliverTx) t
 		// update validators in the merkle tree
 		// and in app.ValUpdates
 		return app.execValidatorTx(req.Tx)
+	}
+
+	if isPrepareTx(req.Tx) {
+		return app.execPrepareTx(req.Tx)
 	}
 
 	// otherwise, update the key-value store
@@ -126,7 +129,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 
 	// Punish validators who committed equivocation.
 	for _, ev := range req.ByzantineValidators {
-		if ev.Type == types.EvidenceType_DUPLICATE_VOTE {
+		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
 			addr := string(ev.Validator.Address)
 			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
 				app.updateValidator(types.ValidatorUpdate{
@@ -142,7 +145,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 		}
 	}
 
-	return types.ResponseBeginBlock{}
+	return app.app.BeginBlock(req)
 }
 
 // Update the validator set
@@ -168,6 +171,21 @@ func (app *PersistentKVStoreApplication) OfferSnapshot(
 func (app *PersistentKVStoreApplication) ApplySnapshotChunk(
 	req types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
 	return types.ResponseApplySnapshotChunk{Result: types.ResponseApplySnapshotChunk_ABORT}
+}
+
+func (app *PersistentKVStoreApplication) PrepareProposal(
+	req types.RequestPrepareProposal) types.ResponsePrepareProposal {
+	return types.ResponsePrepareProposal{Txs: app.substPrepareTx(req.Txs, req.MaxTxBytes)}
+}
+
+func (app *PersistentKVStoreApplication) ProcessProposal(
+	req types.RequestProcessProposal) types.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		if len(tx) == 0 || isPrepareTx(tx) {
+			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
+		}
+	}
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}
 }
 
 //---------------------------------------------
@@ -283,4 +301,43 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate
 	app.ValUpdates = append(app.ValUpdates, v)
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+}
+
+// -----------------------------
+
+const (
+	PreparePrefix = "prepare"
+	ReplacePrefix = "replace"
+)
+
+func isPrepareTx(tx []byte) bool { return bytes.HasPrefix(tx, []byte(PreparePrefix)) }
+
+func isReplacedTx(tx []byte) bool {
+	return bytes.HasPrefix(tx, []byte(ReplacePrefix))
+}
+
+// execPrepareTx is noop. tx data is considered as placeholder
+// and is substitute at the PrepareProposal.
+func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.ResponseDeliverTx {
+	// noop
+	return types.ResponseDeliverTx{}
+}
+
+// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
+// proposal for transactions with the prefix stripped.
+func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte, maxTxBytes int64) [][]byte {
+	txs := make([][]byte, 0, len(blockData))
+	var totalBytes int64
+	for _, tx := range blockData {
+		txMod := tx
+		if isPrepareTx(tx) {
+			txMod = bytes.Replace(tx, []byte(PreparePrefix), []byte(ReplacePrefix), 1)
+		}
+		totalBytes += int64(len(txMod))
+		if totalBytes > maxTxBytes {
+			break
+		}
+		txs = append(txs, txMod)
+	}
+	return txs
 }

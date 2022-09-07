@@ -33,7 +33,7 @@ See the [references](#references) for more.
 
 The native proto library in Go generates inflexible and verbose code.
 Many in the Go community have adopted a fork called
-[gogoproto](https://github.com/gogo/protobuf) that provides a
+[gogoproto](https://github.com/cosmos/gogoproto) that provides a
 variety of features aimed to improve the developer experience.
 While `gogoproto` is nice, it creates an additional dependency, and compiling
 the protobuf types for other languages has been reported to fail when `gogoproto` is used.

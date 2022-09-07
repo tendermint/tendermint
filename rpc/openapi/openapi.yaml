@@ -51,10 +51,10 @@ info:
 
         ws ws://localhost:26657/websocket
         > { "jsonrpc": "2.0", "method": "subscribe", "params": ["tm.event='NewBlock'"], "id": 1 }
-  version: "Master"
+  version: "main"
   license:
     name: Apache 2.0
-    url: https://github.com/tendermint/tendermint/blob/master/LICENSE
+    url: https://github.com/tendermint/tendermint/blob/main/LICENSE
 servers:
   - url: https://rpc.cosmos.network
     description: Cosmos mainnet node to interact with the Tendermint RPC
@@ -83,7 +83,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/main/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -95,7 +95,7 @@ paths:
 
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -127,7 +127,7 @@ paths:
       description: |
         If you want to be sure that the transaction is included in a block, you can
         subscribe for the result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/main/app-dev/subscribing-to-events-via-websocket.html
         If you haven't received anything after a couple of blocks, resend it. If the
         same happens again, send it to some other node. A few reasons why it could
         happen:
@@ -139,7 +139,7 @@ paths:
         3. node can be offline
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -172,7 +172,7 @@ paths:
         IMPORTANT: use only for testing and development. In production, use
         BroadcastTxSync or BroadcastTxAsync. You can subscribe for the transaction
         result using JSONRPC via a websocket. See
-        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+        https://docs.tendermint.com/main/app-dev/subscribing-to-events-via-websocket.html
 
         CONTRACT: only returns error if mempool.CheckTx() errs or if we timeout
         waiting for tx to commit.
@@ -181,7 +181,7 @@ paths:
         will contain a non-OK ABCI code.
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -214,7 +214,7 @@ paths:
         The transaction won't be added to the mempool.
 
         Please refer to
-        https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        https://docs.tendermint.com/main/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
       parameters:
         - in: query
@@ -500,7 +500,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /net_info:
     get:
-      summary: Network informations
+      summary: Network information
       operationId: net_info
       tags:
         - Info
@@ -631,6 +631,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BlockchainResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /header:
+    get:
+      summary: Get header at a specified height
+      operationId: header
+      parameters:
+        - in: query
+          name: height
+          schema:
+            type: integer
+            default: 0
+            example: 1
+          description: height to return. If no height is provided, it will fetch the latest header.
+      tags:
+        - Info
+      description: |
+        Get Header.
+      responses:
+        "200":
+          description: Header informations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockHeader"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /header_by_hash:
+    get:
+      summary: Get header by hash
+      operationId: header_by_hash
+      parameters:
+        - in: query
+          name: hash
+          description: header hash
+          required: true
+          schema:
+            type: string
+            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
+      tags:
+        - Info
+      description: |
+        Get Header By Hash.
+      responses:
+        "200":
+          description: Header informations.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockHeader"
         "500":
           description: Error
           content:
@@ -787,7 +845,7 @@ paths:
       tags:
         - Info
       description: |
-        Get Validators. Validators are sorted by voting power.
+        Get Validators. Validators are sorted first by voting power (descending), then by address (ascending).
       responses:
         "200":
           description: Commit results.

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
-	gogotypes "github.com/gogo/protobuf/types"
+	"github.com/cosmos/gogoproto/proto"
+	gogotypes "github.com/cosmos/gogoproto/types"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -137,22 +137,22 @@ func (b *Block) Hash() tmbytes.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 // CONTRACT: partSize is greater than zero.
-func (b *Block) MakePartSet(partSize uint32) *PartSet {
+func (b *Block) MakePartSet(partSize uint32) (*PartSet, error) {
 	if b == nil {
-		return nil
+		return nil, errors.New("nil block")
 	}
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
 	pbb, err := b.ToProto()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	bz, err := proto.Marshal(pbb)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return NewPartSetFromData(bz, partSize)
+	return NewPartSetFromData(bz, partSize), nil
 }
 
 // HashesTo is a convenience function that checks if a block hashes to the given argument.
@@ -321,7 +321,7 @@ func MaxDataBytesNoEvidence(maxBytes int64, valsCount int) int64 {
 // NOTE: changes to the Header should be duplicated in:
 // - header.Hash()
 // - abci.Header
-// - https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md
+// - https://github.com/tendermint/tendermint/blob/main/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
 	Version tmversion.Consensus `json:"version"`
@@ -509,7 +509,8 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
 		indent, h.ProposerAddress,
-		indent, h.Hash())
+		indent, h.Hash(),
+	)
 }
 
 // ToProto converts Header to protobuf
