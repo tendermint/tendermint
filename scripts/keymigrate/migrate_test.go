@@ -1,16 +1,12 @@
 package keymigrate
 
 import (
-	"bytes"
-	"context"
-	"errors"
 	"fmt"
-	"math"
+	"strings"
 	"testing"
 
 	"github.com/google/orderedcode"
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
 )
 
 func makeKey(t *testing.T, elems ...interface{}) []byte {
@@ -21,6 +17,7 @@ func makeKey(t *testing.T, elems ...interface{}) []byte {
 }
 
 func getLegacyPrefixKeys(val int) map[string][]byte {
+	vstr := fmt.Sprintf("%02x", byte(val))
 	return map[string][]byte{
 		"Height":            []byte(fmt.Sprintf("H:%d", val)),
 		"BlockPart":         []byte(fmt.Sprintf("P:%d:%d", val, val)),
@@ -40,14 +37,19 @@ func getLegacyPrefixKeys(val int) map[string][]byte {
 		"UserKey1":          []byte(fmt.Sprintf("foo/bar/baz/%d/%d", val, val)),
 		"TxHeight":          []byte(fmt.Sprintf("tx.height/%s/%d/%d", fmt.Sprint(val), val, val)),
 		"TxHash": append(
-			bytes.Repeat([]byte{fmt.Sprint(val)[0]}, 16),
-			bytes.Repeat([]byte{fmt.Sprint(val)[len([]byte(fmt.Sprint(val)))-1]}, 16)...,
+			[]byte(strings.Repeat(vstr[:1], 16)),
+			[]byte(strings.Repeat(vstr[1:], 16))...,
 		),
+
+		// Transaction hashes that could be mistaken for evidence keys.
+		"TxHashMimic0": append([]byte{0}, []byte(strings.Repeat(vstr, 16)[:31])...),
+		"TxHashMimic1": append([]byte{1}, []byte(strings.Repeat(vstr, 16)[:31])...),
 	}
 }
 
 func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 	t.Helper()
+	vstr := fmt.Sprintf("%02x", byte(val))
 	return map[string][]byte{
 		"Height":            makeKey(t, int64(0), int64(val)),
 		"BlockPart":         makeKey(t, int64(1), int64(val), int64(val)),
@@ -66,32 +68,10 @@ func getNewPrefixKeys(t *testing.T, val int) map[string][]byte {
 		"UserKey0":          makeKey(t, "foo", "bar", int64(val), int64(val)),
 		"UserKey1":          makeKey(t, "foo", "bar/baz", int64(val), int64(val)),
 		"TxHeight":          makeKey(t, "tx.height", fmt.Sprint(val), int64(val), int64(val+2), int64(val+val)),
-		"TxHash":            makeKey(t, "tx.hash", string(bytes.Repeat([]byte{[]byte(fmt.Sprint(val))[0]}, 32))),
+		"TxHash":            makeKey(t, "tx.hash", strings.Repeat(vstr, 16)),
+		"TxHashMimic0":      makeKey(t, "tx.hash", "\x00"+strings.Repeat(vstr, 16)[:31]),
+		"TxHashMimic1":      makeKey(t, "tx.hash", "\x01"+strings.Repeat(vstr, 16)[:31]),
 	}
-}
-
-func getLegacyDatabase(t *testing.T) (int, dbm.DB) {
-	db := dbm.NewMemDB()
-	batch := db.NewBatch()
-	ct := 0
-
-	generated := []map[string][]byte{
-		getLegacyPrefixKeys(8),
-		getLegacyPrefixKeys(9001),
-		getLegacyPrefixKeys(math.MaxInt32 << 1),
-		getLegacyPrefixKeys(math.MaxInt64 - 8),
-	}
-
-	// populate database
-	for _, km := range generated {
-		for _, key := range km {
-			ct++
-			require.NoError(t, batch.Set(key, []byte(fmt.Sprintf(`{"value": %d}`, ct))))
-		}
-	}
-	require.NoError(t, batch.WriteSync())
-	require.NoError(t, batch.Close())
-	return ct - (2 * len(generated)) + 2, db
 }
 
 func TestMigration(t *testing.T) {
@@ -105,36 +85,11 @@ func TestMigration(t *testing.T) {
 
 		require.Equal(t, len(legacyPrefixes), len(newPrefixes))
 
-		t.Run("Legacy", func(t *testing.T) {
-			for kind, le := range legacyPrefixes {
-				require.True(t, checkKeyType(le).isLegacy(), kind)
-			}
-		})
-		t.Run("New", func(t *testing.T) {
-			for kind, ne := range newPrefixes {
-				require.False(t, checkKeyType(ne).isLegacy(), kind)
-			}
-		})
-		t.Run("Conversion", func(t *testing.T) {
-			for kind, le := range legacyPrefixes {
-				nk, err := migrateKey(le)
-				require.NoError(t, err, kind)
-				require.False(t, checkKeyType(nk).isLegacy(), kind)
-			}
-		})
 		t.Run("Hashes", func(t *testing.T) {
 			t.Run("NewKeysAreNotHashes", func(t *testing.T) {
 				for _, key := range getNewPrefixKeys(t, 9001) {
 					require.True(t, len(key) != 32)
 				}
-			})
-			t.Run("ContrivedLegacyKeyDetection", func(t *testing.T) {
-				// length 32: should appear to be a hash
-				require.Equal(t, txHashKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
-
-				// length ≠ 32: should not appear to be a hash
-				require.Equal(t, nonLegacyKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx--")))
-				require.Equal(t, nonLegacyKey, checkKeyType([]byte("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")))
 			})
 		})
 	})
@@ -163,72 +118,101 @@ func TestMigration(t *testing.T) {
 				"UserKey3":        []byte("foo/bar/baz/1.2/4"),
 			}
 			for kind, key := range table {
-				out, err := migrateKey(key)
+				out, err := migrateKey(key, "")
+				// TODO probably these error at the
+				// moment because of store missmatches
 				require.Error(t, err, kind)
 				require.Nil(t, out, kind)
 			}
 		})
-		t.Run("Replacement", func(t *testing.T) {
-			t.Run("MissingKey", func(t *testing.T) {
-				db := dbm.NewMemDB()
-				require.NoError(t, replaceKey(db, keyID("hi"), nil))
-			})
-			t.Run("ReplacementFails", func(t *testing.T) {
-				db := dbm.NewMemDB()
-				key := keyID("hi")
-				require.NoError(t, db.Set(key, []byte("world")))
-				require.Error(t, replaceKey(db, key, func(k keyID) (keyID, error) {
-					return nil, errors.New("hi")
-				}))
-			})
-			t.Run("KeyDisappears", func(t *testing.T) {
-				db := dbm.NewMemDB()
-				key := keyID("hi")
-				require.NoError(t, db.Set(key, []byte("world")))
-				require.Error(t, replaceKey(db, key, func(k keyID) (keyID, error) {
-					require.NoError(t, db.Delete(key))
-					return keyID("wat"), nil
-				}))
-
-				exists, err := db.Has(key)
-				require.NoError(t, err)
-				require.False(t, exists)
-
-				exists, err = db.Has(keyID("wat"))
-				require.NoError(t, err)
-				require.False(t, exists)
-			})
-		})
 	})
-	t.Run("Integration", func(t *testing.T) {
-		t.Run("KeyDiscovery", func(t *testing.T) {
-			size, db := getLegacyDatabase(t)
-			keys, err := getAllLegacyKeys(db)
-			require.NoError(t, err)
-			require.Equal(t, size, len(keys))
-			legacyKeys := 0
-			for _, k := range keys {
-				if checkKeyType(k).isLegacy() {
-					legacyKeys++
-				}
+}
+
+func TestGlobalDataStructuresForRefactor(t *testing.T) {
+	defer func() {
+		if t.Failed() {
+			t.Log("number of migrations:", len(migrations))
+		}
+	}()
+
+	const unPrefixedLegacyKeys = 3
+
+	t.Run("MigrationsAreDefined", func(t *testing.T) {
+		if len(prefixes)+unPrefixedLegacyKeys != len(migrations) {
+			t.Fatal("migrationse are not correctly defined",
+				"prefixes", len(prefixes),
+				"migrations", len(migrations))
+		}
+	})
+	t.Run("AllMigrationsHavePrefixDefined", func(t *testing.T) {
+		for _, m := range migrations {
+			if m.prefix == nil && m.storeName != "tx_index" {
+				t.Errorf("migration named %q for store %q does not have a prefix defined", m.name, m.storeName)
 			}
-			require.Equal(t, size, legacyKeys)
-		})
-		t.Run("KeyIdempotency", func(t *testing.T) {
-			for _, key := range getNewPrefixKeys(t, 84) {
-				require.False(t, checkKeyType(key).isLegacy())
+		}
+	})
+	t.Run("Deduplication", func(t *testing.T) {
+		t.Run("Prefixes", func(t *testing.T) {
+			set := map[string]struct{}{}
+			for _, prefix := range prefixes {
+				set[string(prefix.prefix)] = struct{}{}
+			}
+			if len(set) != len(prefixes) {
+				t.Fatal("duplicate prefix definition",
+					"set", len(set),
+					"values", set)
 			}
 		})
-		t.Run("Migrate", func(t *testing.T) {
-			_, db := getLegacyDatabase(t)
+		t.Run("MigrationName", func(t *testing.T) {
+			set := map[string]struct{}{}
+			for _, migration := range migrations {
+				set[migration.name] = struct{}{}
+			}
+			if len(set) != len(migrations) {
+				t.Fatal("duplicate migration name defined",
+					"set", len(set),
+					"values", set)
+			}
+		})
+		t.Run("MigrationPrefix", func(t *testing.T) {
+			set := map[string]struct{}{}
+			for _, migration := range migrations {
+				set[string(migration.prefix)] = struct{}{}
+			}
+			// three keys don't have prefixes in the
+			// legacy system; this is fine but it means
+			// the set will have 1  less than expected
+			// (well 2 less, but the empty key takes one
+			// of the slots):
+			expectedDupl := unPrefixedLegacyKeys - 1
 
-			ctx := context.Background()
-			err := Migrate(ctx, db)
-			require.NoError(t, err)
-			keys, err := getAllLegacyKeys(db)
-			require.NoError(t, err)
-			require.Equal(t, 0, len(keys))
-
+			if len(set) != len(migrations)-expectedDupl {
+				t.Fatal("duplicate migration prefix defined",
+					"set", len(set),
+					"expected", len(migrations)-expectedDupl,
+					"values", set)
+			}
+		})
+		t.Run("MigrationStoreName", func(t *testing.T) {
+			set := map[string]struct{}{}
+			for _, migration := range migrations {
+				set[migration.storeName] = struct{}{}
+			}
+			if len(set) != 5 {
+				t.Fatal("duplicate migration store name defined",
+					"set", len(set),
+					"values", set)
+			}
+			if _, ok := set[""]; ok {
+				t.Fatal("empty store name defined")
+			}
 		})
 	})
+	t.Run("NilPrefix", func(t *testing.T) {
+		_, err := getMigrationFunc("tx_index", []byte("fooo"))
+		if err != nil {
+			t.Fatal("should find an index for tx", err)
+		}
+	})
+
 }

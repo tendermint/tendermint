@@ -4,10 +4,9 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
-	state "github.com/tendermint/tendermint/internal/state"
-	tendermintstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 
-	testing "testing"
+	state "github.com/tendermint/tendermint/internal/state"
 
 	types "github.com/tendermint/tendermint/types"
 )
@@ -66,17 +65,15 @@ func (_m *Store) Load() (state.State, error) {
 	return r0, r1
 }
 
-// LoadABCIResponses provides a mock function with given fields: _a0
-func (_m *Store) LoadABCIResponses(_a0 int64) (*tendermintstate.ABCIResponses, error) {
+// LoadConsensusParams provides a mock function with given fields: _a0
+func (_m *Store) LoadConsensusParams(_a0 int64) (types.ConsensusParams, error) {
 	ret := _m.Called(_a0)
 
-	var r0 *tendermintstate.ABCIResponses
-	if rf, ok := ret.Get(0).(func(int64) *tendermintstate.ABCIResponses); ok {
+	var r0 types.ConsensusParams
+	if rf, ok := ret.Get(0).(func(int64) types.ConsensusParams); ok {
 		r0 = rf(_a0)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*tendermintstate.ABCIResponses)
-		}
+		r0 = ret.Get(0).(types.ConsensusParams)
 	}
 
 	var r1 error
@@ -89,15 +86,17 @@ func (_m *Store) LoadABCIResponses(_a0 int64) (*tendermintstate.ABCIResponses, e
 	return r0, r1
 }
 
-// LoadConsensusParams provides a mock function with given fields: _a0
-func (_m *Store) LoadConsensusParams(_a0 int64) (types.ConsensusParams, error) {
+// LoadFinalizeBlockResponses provides a mock function with given fields: _a0
+func (_m *Store) LoadFinalizeBlockResponses(_a0 int64) (*abcitypes.ResponseFinalizeBlock, error) {
 	ret := _m.Called(_a0)
 
-	var r0 types.ConsensusParams
-	if rf, ok := ret.Get(0).(func(int64) types.ConsensusParams); ok {
+	var r0 *abcitypes.ResponseFinalizeBlock
+	if rf, ok := ret.Get(0).(func(int64) *abcitypes.ResponseFinalizeBlock); ok {
 		r0 = rf(_a0)
 	} else {
-		r0 = ret.Get(0).(types.ConsensusParams)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*abcitypes.ResponseFinalizeBlock)
+		}
 	}
 
 	var r1 error
@@ -161,12 +160,12 @@ func (_m *Store) Save(_a0 state.State) error {
 	return r0
 }
 
-// SaveABCIResponses provides a mock function with given fields: _a0, _a1
-func (_m *Store) SaveABCIResponses(_a0 int64, _a1 *tendermintstate.ABCIResponses) error {
+// SaveFinalizeBlockResponses provides a mock function with given fields: _a0, _a1
+func (_m *Store) SaveFinalizeBlockResponses(_a0 int64, _a1 *abcitypes.ResponseFinalizeBlock) error {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, *tendermintstate.ABCIResponses) error); ok {
+	if rf, ok := ret.Get(0).(func(int64, *abcitypes.ResponseFinalizeBlock) error); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
@@ -189,8 +188,13 @@ func (_m *Store) SaveValidatorSets(_a0 int64, _a1 int64, _a2 *types.ValidatorSet
 	return r0
 }
 
-// NewStore creates a new instance of Store. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewStore(t testing.TB) *Store {
+type mockConstructorTestingTNewStore interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewStore creates a new instance of Store. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewStore(t mockConstructorTestingTNewStore) *Store {
 	mock := &Store{}
 	mock.Mock.Test(t)
 

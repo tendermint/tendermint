@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"testing"
 	"time"
 
@@ -186,19 +185,4 @@ func TestApp_Tx(t *testing.T) {
 
 	}
 
-}
-
-func TestApp_VoteExtensions(t *testing.T) {
-	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
-		client, err := node.Client()
-		require.NoError(t, err)
-
-		// This special value should have been created by way of vote extensions
-		resp, err := client.ABCIQuery(ctx, "", []byte("extensionSum"))
-		require.NoError(t, err)
-
-		extSum, err := strconv.Atoi(string(resp.Response.Value))
-		require.NoError(t, err)
-		require.GreaterOrEqual(t, extSum, 0)
-	})
 }

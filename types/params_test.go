@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -175,6 +174,7 @@ func TestConsensusParamsValidation(t *testing.T) {
 type makeParamsArgs struct {
 	blockBytes          int64
 	blockGas            int64
+	recheck             bool
 	evidenceAge         int64
 	maxEvidenceBytes    int64
 	pubkeyTypes         []string
@@ -233,6 +233,9 @@ func makeParams(args makeParamsArgs) ConsensusParams {
 			Commit:              *args.commit,
 			BypassCommitTimeout: args.bypassCommitTimeout,
 		},
+		ABCI: ABCIParams{
+			RecheckTx: args.recheck,
+		},
 	}
 }
 
@@ -265,19 +268,19 @@ func TestConsensusParamsHash(t *testing.T) {
 
 func TestConsensusParamsUpdate(t *testing.T) {
 	testCases := []struct {
-		intialParams  ConsensusParams
+		initialParams ConsensusParams
 		updates       *tmproto.ConsensusParams
 		updatedParams ConsensusParams
 	}{
 		// empty updates
 		{
-			intialParams:  makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
+			initialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 			updates:       &tmproto.ConsensusParams{},
 			updatedParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 		},
 		{
 			// update synchrony params
-			intialParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: time.Second, messageDelay: 3 * time.Second}),
+			initialParams: makeParams(makeParamsArgs{evidenceAge: 3, precision: time.Second, messageDelay: 3 * time.Second}),
 			updates: &tmproto.ConsensusParams{
 				Synchrony: &tmproto.SynchronyParams{
 					Precision:    durationPtr(time.Second * 2),
@@ -288,7 +291,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		},
 		{
 			// update timeout params
-			intialParams: makeParams(makeParamsArgs{
+			initialParams: makeParams(makeParamsArgs{
 				propose:             durationPtr(3 * time.Second),
 				proposeDelta:        durationPtr(500 * time.Millisecond),
 				vote:                durationPtr(time.Second),
@@ -317,7 +320,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 		},
 		// fine updates
 		{
-			intialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
+			initialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 			updates: &tmproto.ConsensusParams{
 				Block: &tmproto.BlockParams{
 					MaxBytes: 100,
@@ -339,7 +342,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 			}),
 		},
 		{
-			intialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
+			initialParams: makeParams(makeParamsArgs{blockBytes: 1, blockGas: 2, evidenceAge: 3}),
 			updates: &tmproto.ConsensusParams{
 				Block: &tmproto.BlockParams{
 					MaxBytes: 100,
@@ -364,7 +367,7 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		assert.Equal(t, tc.updatedParams, tc.intialParams.UpdateConsensusParams(tc.updates))
+		assert.Equal(t, tc.updatedParams, tc.initialParams.UpdateConsensusParams(tc.updates))
 	}
 }
 
@@ -391,6 +394,14 @@ func TestProto(t *testing.T) {
 		makeParams(makeParamsArgs{blockBytes: 4, blockGas: 6, evidenceAge: 5, maxEvidenceBytes: 1}),
 		makeParams(makeParamsArgs{precision: time.Second, messageDelay: time.Minute}),
 		makeParams(makeParamsArgs{precision: time.Nanosecond, messageDelay: time.Millisecond}),
+		makeParams(makeParamsArgs{
+			propose:             durationPtr(2 * time.Second),
+			proposeDelta:        durationPtr(400 * time.Millisecond),
+			vote:                durationPtr(5 * time.Second),
+			voteDelta:           durationPtr(400 * time.Millisecond),
+			commit:              durationPtr(time.Minute),
+			bypassCommitTimeout: true,
+		}),
 	}
 
 	for i := range params {

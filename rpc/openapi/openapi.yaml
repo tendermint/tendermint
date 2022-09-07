@@ -82,9 +82,50 @@ paths:
   /broadcast_tx_sync:
     get:
       summary: Returns with the response from CheckTx. Does not wait for DeliverTx result.
+      deprecated: true
       tags:
         - Tx
       operationId: broadcast_tx_sync
+      description: |
+        This method is deprecated in Tendermint v0.36, and will be
+        removed in v0.37. Use `broadcast_tx`, which has similar
+        semantics.
+
+        This method blocks until CheckTx returns and reports its result, but
+        does not wait for the transaction to be included in a block. To know
+        when the transaction is included in a block, check for the transaction
+        event using JSON-RPC.  See
+        https://docs.tendermint.com/master/app-dev/subscribing-to-events-via-websocket.html
+
+        See https://docs.tendermint.com/master/tendermint-core/using-tendermint.html#formatting
+        for formatting/encoding rules.
+      parameters:
+        - in: query
+          name: tx
+          required: true
+          schema:
+            type: string
+          example: "456"
+          description: The transaction
+      responses:
+        "200":
+          description: Empty
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BroadcastTxResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /broadcast_tx:
+    get:
+      summary: Returns with the response from CheckTx. Does not wait for DeliverTx result.
+      tags:
+        - Tx
+      operationId: broadcast_tx
       description: |
         This method blocks until CheckTx returns and reports its result, but
         does not wait for the transaction to be included in a block. To know
@@ -118,10 +159,14 @@ paths:
   /broadcast_tx_async:
     get:
       summary: Returns right away, with no response. Does not wait for CheckTx nor DeliverTx results.
+      deprecated: true
       tags:
         - Tx
       operationId: broadcast_tx_async
       description: |
+        This method is deprecated in Tendermint v0.36, and will be
+        removed in v0.37. Use `broadcast_tx`.
+
         This method submits the transaction and returns immediately without
         waiting for the transaction to be checked (CheckTx) or committed.  Too
         know when the transaction is included in a block, you can check for the
@@ -154,6 +199,7 @@ paths:
   /broadcast_tx_commit:
     get:
       summary: Returns with the responses from CheckTx and DeliverTx.
+      deprecated: true
       tags:
         - Tx
       operationId: broadcast_tx_commit
@@ -165,7 +211,7 @@ paths:
         succeed and report the failing (non-zero) ABCI result code.
 
         WARNING: Use this only for testing and development. For production use,
-        call broadcast_tx_sync or broadcast_tx_async.
+        call broadcast_tx.
 
         To know when a transaction is included in a block, check for the
         transaction event using JSON-RPC.  See
@@ -260,10 +306,9 @@ paths:
       operationId: events
       description: |
         Fetch a batch of events posted by the consensus node and matching a
-        specified query.
+        specified query string.
 
-        The query grammar is defined in
-        https://godoc.org/github.com/tendermint/tendermint/internal/pubsub/query/syntax.
+        The query grammar is defined in [pubsub/query/syntax](https://godoc.org/github.com/tendermint/tendermint/internal/pubsub/query/syntax).
         An empty query matches all events; otherwise a query comprises one or
         more terms comparing event metadata to target values. For example, to
         select new block events:
@@ -275,13 +320,13 @@ paths:
 
             tm.event = 'Tx' AND tx.hash = 'EA7B33F'
 
-        The comparison operators include "=", "<", "<=", ">", ">=", and
-        "CONTAINS". Operands may be strings (in single quotes), numbers, dates,
-        or timestamps. In addition, the "EXISTS" operator allows you to check
+        The comparison operators include `=`, `<`, `<=`, `>`, `>=`, and
+        `CONTAINS`. Operands may be strings (in single quotes), numbers, dates,
+        or timestamps. In addition, the `EXISTS` operator allows you to check
         for the presence of an attribute regardless of its value.
 
-        Tendermint defines a tm.event attribute for all events. Transactions
-        are also assigned tx.hash and tx.height attributes. Other attributes
+        Tendermint defines a `tm.event` attribute for all events. Transactions
+        are also assigned `tx.hash` and `tx.height` attributes. Other attributes
         are provided by the application as ABCI Event records. The name of the
         event in the query is formed by combining the type and attribute key
         with a period. For example, given:
@@ -295,16 +340,16 @@ paths:
                 },
             }}
 
-        the query may refer to the names "reward.address", "reward.amount", and
-        "reward.balance", as in:
+        the query may refer to the names`"reward.address`,`"reward.amount`, and
+        `reward.balance`, as in:
 
             reward.address EXISTS AND reward.balance > 45
 
         The node maintains a log of all events within an operator-defined time
         window. The /events method returns the most recent items from the log
         that match the query. Each item returned includes a cursor that marks
-        its location in the log. Cursors can be passed via the "before" and
-        "after" parameters to fetch events earlier in the log.
+        its location in the log. Cursors can be passed via the `before` and
+        `after` parameters to fetch events earlier in the log.
       parameters:
         - in: query
           name: filter
@@ -1508,7 +1553,7 @@ components:
       description: Event filter query
       type: object
       properties:
-        filter:
+        query:
           type: string
           example: "tm.event = 'Tx'"
     EventsResponse:

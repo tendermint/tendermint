@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	nilVoteStr string = "nil-Vote"
+	absentVoteStr string = "Vote{absent}"
+	nilVoteStr    string = "nil-Vote"
 	// MaxVoteBytes is a maximum vote size (including amino overhead).
 	MaxVoteBytesBLS12381 int64 = 241
 	MaxVoteBytesEd25519  int64 = 209
@@ -175,7 +176,7 @@ func (vote *Vote) Copy() *Vote {
 // 10. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
-		return nilVoteStr
+		return absentVoteStr
 	}
 
 	var typeString string
@@ -188,21 +189,25 @@ func (vote *Vote) String() string {
 		panic("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X %X %X}",
+	blockHashString := nilVoteStr
+	if len(vote.BlockID.Hash) > 0 {
+		blockHashString = fmt.Sprintf("%X", tmbytes.Fingerprint(vote.BlockID.Hash))
+	}
+
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%s) %X %X %X}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorProTxHash),
 		vote.Height,
 		vote.Round,
-		vote.Type,
 		typeString,
-		tmbytes.Fingerprint(vote.BlockID.Hash),
+		blockHashString,
 		tmbytes.Fingerprint(vote.BlockSignature),
 		tmbytes.Fingerprint(vote.StateSignature),
 		vote.VoteExtensions.Fingerprint(),
 	)
 }
 
-// VerifyWithExtension performs the same verification as Verify, but
+// VerifyVoteAndExtension performs the same verification as Verify, but
 // additionally checks whether the vote extension signature corresponds to the
 // given chain ID and public key. We only verify vote extension signatures for
 // precommits.
@@ -259,12 +264,30 @@ func (vote *Vote) verifyBasic(proTxHash ProTxHash, pubKey crypto.PubKey) error {
 	return nil
 }
 
+// VerifyExtensionSign checks whether the vote extension signature corresponds to the
+// given chain ID and public key.
+func (vote *Vote) VerifyExtensionSign(chainID string, pubKey crypto.PubKey, quorumType btcjson.LLMQType, quorumHash crypto.QuorumHash) error {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsNil() {
+		return nil
+	}
+	quorumSignData, err := MakeQuorumSigns(chainID, quorumType, quorumHash, vote.ToProto(), StateID{})
+	if err != nil {
+		return err
+	}
+	verifier := NewQuorumSignsVerifier(
+		quorumSignData,
+		WithVerifyBlock(false),
+		WithVerifyState(false),
+	)
+	return verifier.Verify(pubKey, vote.makeQuorumSigns())
+}
+
 func (vote *Vote) verifySign(
 	pubKey crypto.PubKey,
 	quorumSignData QuorumSignData,
 	opts ...func(verifier *QuorumSingsVerifier),
 ) error {
-	verifier := NewQuorumSingsVerifier(
+	verifier := NewQuorumSignsVerifier(
 		quorumSignData,
 		append(opts, WithVerifyState(vote.BlockID.Hash != nil))...,
 	)
@@ -334,9 +357,16 @@ func (vote *Vote) ValidateBasic() error {
 	}
 
 	// We should only ever see vote extensions in precommits.
-	if vote.Type != tmproto.PrecommitType {
+	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsNil()) {
 		if !vote.VoteExtensions.IsEmpty() {
 			return errors.New("unexpected vote extensions")
+		}
+	}
+
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+		err := vote.VoteExtensions.Validate()
+		if err != nil {
+			return err
 		}
 	}
 

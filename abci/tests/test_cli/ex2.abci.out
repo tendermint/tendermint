@@ -6,17 +6,32 @@
 
 > finalize_block 0x00
 -> code: OK
+-> code: OK
+-> data.hex: 0x0200000000000000000000000000000000000000000000000000000000000000
+
+> commit
+-> code: OK
 
 > check_tx 0x00
 -> code: OK
 
 > finalize_block 0x01
 -> code: OK
+-> code: OK
+-> data.hex: 0x0400000000000000000000000000000000000000000000000000000000000000
+
+> commit
+-> code: OK
 
 > finalize_block 0x04
 -> code: OK
+-> code: OK
+-> data.hex: 0x0600000000000000000000000000000000000000000000000000000000000000
 
-> info 
+> commit
+-> code: OK
+
+> info
 -> code: OK
 -> data: {"size":3}
 -> data.hex: 0x7B2273697A65223A337D

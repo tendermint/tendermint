@@ -296,6 +296,10 @@ func TestPeerManager_DialNext(t *testing.T) {
 }
 
 func TestPeerManager_DialNext_Retry(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -384,16 +388,14 @@ func TestPeerManager_DialNext_WakeOnDialFailed(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 
 	// Add b. We shouldn't be able to dial it, due to MaxConnected.
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 
 	// Spawn a goroutine to fail a's dial attempt.
@@ -427,8 +429,7 @@ func TestPeerManager_DialNext_WakeOnDialFailedRetry(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.DialFailed(ctx, dial))
 	failed := time.Now()
@@ -458,8 +459,7 @@ func TestPeerManager_DialNext_WakeOnDisconnected(t *testing.T) {
 	err = peerManager.Accepted(a.NodeID)
 	require.NoError(t, err)
 
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Zero(t, dial)
 
 	dctx, dcancel := context.WithTimeout(ctx, 300*time.Millisecond)
@@ -490,8 +490,7 @@ func TestPeerManager_TryDialNext_MaxConnected(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.Dialed(a))
 
@@ -499,16 +498,14 @@ func TestPeerManager_TryDialNext_MaxConnected(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, b, dial)
 
 	// At this point, adding c will not allow dialing it.
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 }
 
@@ -524,11 +521,11 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 0,
-			b.NodeID: 1,
-			c.NodeID: 2,
-			d.NodeID: 3,
-			e.NodeID: 0,
+			a.NodeID: p2p.PeerScore(0),
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(2),
+			d.NodeID: p2p.PeerScore(3),
+			e.NodeID: p2p.PeerScore(0),
 		},
 		PersistentPeers:     []types.NodeID{c.NodeID, d.NodeID},
 		MaxConnected:        2,
@@ -540,7 +537,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
+	dial := peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.Dialed(a))
@@ -549,8 +546,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, b, dial)
 
 	// Even though we are at capacity, we should be allowed to dial c for an
@@ -558,8 +554,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, c, dial)
 
 	// However, since we're using all upgrade slots now, we can't add and dial
@@ -567,24 +562,20 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	added, err = peerManager.Add(d)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 
 	// We go through with c's upgrade.
 	require.NoError(t, peerManager.Dialed(c))
 
 	// Still can't dial d.
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 
 	// Now, if we disconnect a, we should be allowed to dial d because we have a
 	// free upgrade slot.
+	require.Error(t, peerManager.Dialed(d))
 	peerManager.Disconnected(ctx, a.NodeID)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
-	require.Equal(t, d, dial)
 	require.NoError(t, peerManager.Dialed(d))
 
 	// However, if we disconnect b (such that only c and d are connected), we
@@ -594,8 +585,7 @@ func TestPeerManager_TryDialNext_MaxConnectedUpgrade(t *testing.T) {
 	added, err = peerManager.Add(e)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 }
 
@@ -605,7 +595,7 @@ func TestPeerManager_TryDialNext_UpgradeReservesPeer(t *testing.T) {
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("c", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: p2p.PeerScore(1), c.NodeID: 1},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
 	})
@@ -615,8 +605,7 @@ func TestPeerManager_TryDialNext_UpgradeReservesPeer(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.Dialed(a))
 
@@ -624,8 +613,7 @@ func TestPeerManager_TryDialNext_UpgradeReservesPeer(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, b, dial)
 
 	// Adding c and dialing it will fail, because a is the only connected
@@ -633,8 +621,7 @@ func TestPeerManager_TryDialNext_UpgradeReservesPeer(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Empty(t, dial)
 }
 
@@ -655,22 +642,19 @@ func TestPeerManager_TryDialNext_DialingConnected(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 
 	// Adding a's TCP address will not dispense a, since it's already dialing.
 	added, err = peerManager.Add(aTCP)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 
 	// Marking a as dialed will still not dispense it.
 	require.NoError(t, peerManager.Dialed(a))
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 
 	// Adding b and accepting a connection from it will not dispense it either.
@@ -678,8 +662,7 @@ func TestPeerManager_TryDialNext_DialingConnected(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 	require.NoError(t, peerManager.Accepted(bID))
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 }
 
@@ -708,16 +691,14 @@ func TestPeerManager_TryDialNext_Multiple(t *testing.T) {
 	// All addresses should be dispensed as long as dialing them has failed.
 	dial := []p2p.NodeAddress{}
 	for range addresses {
-		address, err := peerManager.TryDialNext()
-		require.NoError(t, err)
+		address := peerManager.TryDialNext()
 		require.NotZero(t, address)
 		require.NoError(t, peerManager.DialFailed(ctx, address))
 		dial = append(dial, address)
 	}
 	require.ElementsMatch(t, dial, addresses)
 
-	address, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	address := peerManager.TryDialNext()
 	require.Zero(t, address)
 }
 
@@ -742,15 +723,14 @@ func TestPeerManager_DialFailed(t *testing.T) {
 	// Dialing and then calling DialFailed with a different address (same
 	// NodeID) should unmark as dialing and allow us to dial the other address
 	// again, but not register the failed address.
-	dial, err := peerManager.TryDialNext()
+	dial := peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.DialFailed(ctx, p2p.NodeAddress{
 		Protocol: "tcp", NodeID: aID, Hostname: "localhost"}))
 	require.Equal(t, []p2p.NodeAddress{a}, peerManager.Addresses(aID))
 
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 
 	// Calling DialFailed on same address twice should be fine.
@@ -771,7 +751,10 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	c := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("c", 40))}
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(2),
+		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
 	})
@@ -781,8 +764,7 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.Dialed(a))
 
@@ -790,8 +772,7 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, b, dial)
 
 	// Adding c and dialing it will fail, even though it could upgrade a and we
@@ -800,14 +781,12 @@ func TestPeerManager_DialFailed_UnreservePeer(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Empty(t, dial)
 
 	// Failing b's dial will now make c available for dialing.
 	require.NoError(t, peerManager.DialFailed(ctx, b))
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, c, dial)
 }
 
@@ -822,8 +801,7 @@ func TestPeerManager_Dialed_Connected(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 
 	require.NoError(t, peerManager.Dialed(a))
@@ -833,8 +811,7 @@ func TestPeerManager_Dialed_Connected(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, b, dial)
 
 	require.NoError(t, peerManager.Accepted(b.NodeID))
@@ -863,8 +840,7 @@ func TestPeerManager_Dialed_MaxConnected(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 
 	// Marking b as dialed in the meanwhile (even without TryDialNext)
@@ -887,7 +863,7 @@ func TestPeerManager_Dialed_MaxConnectedUpgrade(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{c.NodeID: 1, d.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{c.NodeID: p2p.PeerScore(1), d.NodeID: 1},
 	})
 	require.NoError(t, err)
 
@@ -906,8 +882,7 @@ func TestPeerManager_Dialed_MaxConnectedUpgrade(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, c, dial)
 	require.NoError(t, peerManager.Dialed(c))
 
@@ -937,7 +912,7 @@ func TestPeerManager_Dialed_Upgrade(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1, c.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: p2p.PeerScore(1), c.NodeID: 1},
 	})
 	require.NoError(t, err)
 
@@ -951,8 +926,7 @@ func TestPeerManager_Dialed_Upgrade(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, b, dial)
 	require.NoError(t, peerManager.Dialed(b))
 
@@ -961,8 +935,7 @@ func TestPeerManager_Dialed_Upgrade(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Empty(t, dial)
 
 	// a should now be evicted.
@@ -984,10 +957,10 @@ func TestPeerManager_Dialed_UpgradeEvenLower(t *testing.T) {
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 3,
-			b.NodeID: 2,
-			c.NodeID: 10,
-			d.NodeID: 1,
+			a.NodeID: p2p.PeerScore(3),
+			b.NodeID: p2p.PeerScore(2),
+			c.NodeID: p2p.PeerScore(10),
+			d.NodeID: p2p.PeerScore(1),
 		},
 	})
 	require.NoError(t, err)
@@ -1008,8 +981,7 @@ func TestPeerManager_Dialed_UpgradeEvenLower(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, c, dial)
 
 	// In the meanwhile, a disconnects and d connects. d is even lower-scored
@@ -1040,9 +1012,9 @@ func TestPeerManager_Dialed_UpgradeNoEvict(t *testing.T) {
 		MaxConnected:        2,
 		MaxConnectedUpgrade: 1,
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			a.NodeID: 1,
-			b.NodeID: 2,
-			c.NodeID: 3,
+			a.NodeID: p2p.PeerScore(1),
+			b.NodeID: p2p.PeerScore(2),
+			c.NodeID: p2p.PeerScore(3),
 		},
 	})
 	require.NoError(t, err)
@@ -1062,7 +1034,7 @@ func TestPeerManager_Dialed_UpgradeNoEvict(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
+	dial := peerManager.TryDialNext()
 	require.NoError(t, err)
 	require.Equal(t, c, dial)
 
@@ -1108,8 +1080,7 @@ func TestPeerManager_Accepted(t *testing.T) {
 	added, err = peerManager.Add(c)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, c, dial)
 	require.NoError(t, peerManager.Accepted(c.NodeID))
 	require.Error(t, peerManager.Dialed(c))
@@ -1118,8 +1089,7 @@ func TestPeerManager_Accepted(t *testing.T) {
 	added, err = peerManager.Add(d)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, d, dial)
 	require.NoError(t, peerManager.Dialed(d))
 	require.Error(t, peerManager.Accepted(d.NodeID))
@@ -1161,8 +1131,8 @@ func TestPeerManager_Accepted_MaxConnectedUpgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			c.NodeID: 1,
-			d.NodeID: 2,
+			c.NodeID: p2p.PeerScore(1),
+			d.NodeID: p2p.PeerScore(2),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
@@ -1209,8 +1179,8 @@ func TestPeerManager_Accepted_Upgrade(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			b.NodeID: 1,
-			c.NodeID: 1,
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(1),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
@@ -1252,8 +1222,8 @@ func TestPeerManager_Accepted_UpgradeDialing(t *testing.T) {
 
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		PeerScores: map[types.NodeID]p2p.PeerScore{
-			b.NodeID: 1,
-			c.NodeID: 1,
+			b.NodeID: p2p.PeerScore(1),
+			c.NodeID: p2p.PeerScore(1),
 		},
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 2,
@@ -1270,8 +1240,7 @@ func TestPeerManager_Accepted_UpgradeDialing(t *testing.T) {
 	added, err = peerManager.Add(b)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, b, dial)
 
 	// a has already been claimed as an upgrade of a, so accepting
@@ -1428,7 +1397,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1},
+		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: p2p.PeerScore(1)},
 	})
 	require.NoError(t, err)
 
@@ -1445,8 +1414,7 @@ func TestPeerManager_EvictNext_WakeOnUpgradeDialed(t *testing.T) {
 		added, err := peerManager.Add(b)
 		require.NoError(t, err)
 		require.True(t, added)
-		dial, err := peerManager.TryDialNext()
-		require.NoError(t, err)
+		dial := peerManager.TryDialNext()
 		require.Equal(t, b, dial)
 		require.NoError(t, peerManager.Dialed(b))
 	}()
@@ -1469,7 +1437,9 @@ func TestPeerManager_EvictNext_WakeOnUpgradeAccepted(t *testing.T) {
 	peerManager, err := p2p.NewPeerManager(selfID, dbm.NewMemDB(), p2p.PeerManagerOptions{
 		MaxConnected:        1,
 		MaxConnectedUpgrade: 1,
-		PeerScores:          map[types.NodeID]p2p.PeerScore{b.NodeID: 1},
+		PeerScores: map[types.NodeID]p2p.PeerScore{
+			b.NodeID: p2p.PeerScore(1),
+		},
 	})
 	require.NoError(t, err)
 
@@ -1578,13 +1548,11 @@ func TestPeerManager_Disconnected(t *testing.T) {
 
 	// Disconnecting a dialing peer does not unmark it as dialing, to avoid
 	// dialing it multiple times in parallel.
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 
 	peerManager.Disconnected(ctx, a.NodeID)
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Zero(t, dial)
 }
 
@@ -1657,8 +1625,7 @@ func TestPeerManager_Subscribe(t *testing.T) {
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}, <-sub.Updates())
 
 	// Outbound connection with peer error and eviction.
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 	require.Empty(t, sub.Updates())
 
@@ -1681,8 +1648,7 @@ func TestPeerManager_Subscribe(t *testing.T) {
 	require.Equal(t, p2p.PeerUpdate{NodeID: a.NodeID, Status: p2p.PeerStatusDown}, <-sub.Updates())
 
 	// Outbound connection with dial failure.
-	dial, err = peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial = peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 	require.Empty(t, sub.Updates())
 
@@ -1787,8 +1753,7 @@ func TestPeerManager_Close(t *testing.T) {
 	added, err := peerManager.Add(a)
 	require.NoError(t, err)
 	require.True(t, added)
-	dial, err := peerManager.TryDialNext()
-	require.NoError(t, err)
+	dial := peerManager.TryDialNext()
 	require.Equal(t, a, dial)
 	require.NoError(t, peerManager.DialFailed(ctx, a))
 }
@@ -1833,6 +1798,7 @@ func TestPeerManager_Advertise(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, added)
 
+	require.Len(t, peerManager.Advertise(dID, 100), 6)
 	// d should get all addresses.
 	require.ElementsMatch(t, []p2p.NodeAddress{
 		aTCP, aMem, bTCP, bMem, cTCP, cMem,
@@ -1846,10 +1812,18 @@ func TestPeerManager_Advertise(t *testing.T) {
 	// Asking for 0 addresses should return, well, 0.
 	require.Empty(t, peerManager.Advertise(aID, 0))
 
-	// Asking for 2 addresses should get the highest-rated ones, i.e. a.
-	require.ElementsMatch(t, []p2p.NodeAddress{
-		aTCP, aMem,
-	}, peerManager.Advertise(dID, 2))
+	// Asking for 2 addresses should get two addresses
+	// the content of the list when there are two
+	addrs := peerManager.Advertise(dID, 2)
+	require.Len(t, addrs, 2)
+	for _, addr := range addrs {
+		if dID == addr.NodeID {
+			t.Fatal("never advertise self")
+		}
+		if cID == addr.NodeID {
+			t.Fatal("should not have returned the lowest ranked peer")
+		}
+	}
 }
 
 func TestPeerManager_Advertise_Self(t *testing.T) {
@@ -1867,39 +1841,4 @@ func TestPeerManager_Advertise_Self(t *testing.T) {
 	require.ElementsMatch(t, []p2p.NodeAddress{
 		self,
 	}, peerManager.Advertise(dID, 100))
-}
-
-func TestPeerManager_SetHeight_GetHeight(t *testing.T) {
-	a := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("a", 40))}
-	b := p2p.NodeAddress{Protocol: "memory", NodeID: types.NodeID(strings.Repeat("b", 40))}
-
-	db := dbm.NewMemDB()
-	peerManager, err := p2p.NewPeerManager(selfID, db, p2p.PeerManagerOptions{})
-	require.NoError(t, err)
-
-	// Getting a height should default to 0, for unknown peers and
-	// for known peers without height.
-	added, err := peerManager.Add(a)
-	require.NoError(t, err)
-	require.True(t, added)
-	require.EqualValues(t, 0, peerManager.GetHeight(a.NodeID))
-	require.EqualValues(t, 0, peerManager.GetHeight(b.NodeID))
-
-	// Setting a height should work for a known node.
-	require.NoError(t, peerManager.SetHeight(a.NodeID, 3))
-	require.EqualValues(t, 3, peerManager.GetHeight(a.NodeID))
-
-	// Setting a height should add an unknown node.
-	require.Equal(t, []types.NodeID{a.NodeID}, peerManager.Peers())
-	require.NoError(t, peerManager.SetHeight(b.NodeID, 7))
-	require.EqualValues(t, 7, peerManager.GetHeight(b.NodeID))
-	require.ElementsMatch(t, []types.NodeID{a.NodeID, b.NodeID}, peerManager.Peers())
-
-	// The heights should not be persisted.
-	peerManager, err = p2p.NewPeerManager(selfID, db, p2p.PeerManagerOptions{})
-	require.NoError(t, err)
-
-	require.ElementsMatch(t, []types.NodeID{a.NodeID, b.NodeID}, peerManager.Peers())
-	require.Zero(t, peerManager.GetHeight(a.NodeID))
-	require.Zero(t, peerManager.GetHeight(b.NodeID))
 }

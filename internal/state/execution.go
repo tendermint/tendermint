@@ -16,7 +16,6 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -128,13 +127,13 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	rpp, err := blockExec.appClient.PrepareProposal(
 		ctx,
 		&abci.RequestPrepareProposal{
-			MaxTxBytes:          maxDataBytes,
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:     abci.ExtendedCommitInfo(localLastCommit),
-			ByzantineValidators: block.Evidence.ToABCI(),
-			Height:              block.Height,
-			Time:                block.Time,
-			NextValidatorsHash:  block.NextValidatorsHash,
+			MaxTxBytes:         maxDataBytes,
+			Txs:                block.Txs.ToSliceOfBytes(),
+			LocalLastCommit:    abci.ExtendedCommitInfo(localLastCommit),
+			Misbehavior:        block.Evidence.ToABCI(),
+			Height:             block.Height,
+			Time:               block.Time,
+			NextValidatorsHash: block.NextValidatorsHash,
 
 			// Dash's fields
 			CoreChainLockedHeight: block.CoreChainLockedHeight,
@@ -184,20 +183,27 @@ func (blockExec *BlockExecutor) ProcessProposal(
 	state State,
 ) (bool, error) {
 	resp, err := blockExec.appClient.ProcessProposal(ctx, &abci.RequestProcessProposal{
-		Hash:                block.Header.Hash(),
-		Height:              block.Header.Height,
-		Time:                block.Header.Time,
-		Txs:                 block.Data.Txs.ToSliceOfBytes(),
-		ProposedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
-		ByzantineValidators: block.Evidence.ToABCI(),
-		ProposerProTxHash:   block.ProposerProTxHash,
-		NextValidatorsHash:  block.NextValidatorsHash,
+		Hash:               block.Header.Hash(),
+		Height:             block.Header.Height,
+		Time:               block.Header.Time,
+		Txs:                block.Data.Txs.ToSliceOfBytes(),
+		ProposedLastCommit: buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+		Misbehavior:        block.Evidence.ToABCI(),
+		ProposerProTxHash:  block.ProposerProTxHash,
+		NextValidatorsHash: block.NextValidatorsHash,
 	})
 	if err != nil {
 		return false, ErrInvalidBlock(err)
 	}
 	if resp.IsStatusUnknown() {
 		panic(fmt.Sprintf("ProcessProposal responded with status %s", resp.Status.String()))
+	}
+	// we force the abci app to return only 32 byte app hashes (set to 20 temporarily)
+	if resp.AppHash != nil && len(resp.AppHash) != blockExec.appHashSize {
+		blockExec.logger.Error(
+			"Client returned invalid app hash size", "bytesLength", len(resp.AppHash),
+		)
+		return false, errors.New("invalid App Hash size")
 	}
 
 	return resp.IsAccepted(), nil
@@ -267,16 +273,16 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	startTime := time.Now().UnixNano()
 	txs := block.Txs.ToSliceOfBytes()
 	version := block.Header.Version.ToProto()
-	finalizeBlockResponse, err := blockExec.appClient.FinalizeBlock(
+	fBlockRes, err := blockExec.appClient.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
-			Hash:                block.Hash(),
-			Height:              block.Header.Height,
-			Time:                block.Header.Time,
-			Txs:                 txs,
-			DecidedLastCommit:   buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
-			ByzantineValidators: block.Evidence.ToABCI(),
-			NextValidatorsHash:  block.NextValidatorsHash,
+			Hash:               block.Hash(),
+			Height:             block.Header.Height,
+			Time:               block.Header.Time,
+			Txs:                txs,
+			DecidedLastCommit:  buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
+			Misbehavior:        block.Evidence.ToABCI(),
+			NextValidatorsHash: block.NextValidatorsHash,
 
 			// Dash's fields
 			ProposerProTxHash:     block.ProposerProTxHash,
@@ -291,32 +297,51 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrProxyAppConn(err)
 	}
 
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: finalizeBlockResponse,
+	numValUpdates := 0
+	if fBlockRes.ValidatorSetUpdate != nil {
+		numValUpdates = len(fBlockRes.ValidatorSetUpdate.ValidatorUpdates)
 	}
 
+	blockExec.logger.Info(
+		"finalized block",
+		"height", block.Height,
+		"num_txs_res", len(fBlockRes.TxResults),
+		"num_val_updates", numValUpdates,
+		"block_app_hash", fmt.Sprintf("%X", fBlockRes.AppHash),
+	)
+
 	// Save the results before we commit.
-	if err := blockExec.store.SaveABCIResponses(block.Height, abciResponses); err != nil {
+	err = blockExec.store.SaveFinalizeBlockResponses(block.Height, fBlockRes)
+	if err != nil && !errors.Is(err, ErrNoFinalizeBlockResponsesForHeight{block.Height}) {
+		// It is correct to have an empty ResponseFinalizeBlock for ApplyBlock,
+		// but not for saving it to the state store
 		return state, err
 	}
 
 	// validate the validator updates and convert to tendermint types
-	err = validateValidatorSetUpdate(finalizeBlockResponse.ValidatorSetUpdate, state.ConsensusParams.Validator)
+	err = validateValidatorSetUpdate(fBlockRes.ValidatorSetUpdate, state.ConsensusParams.Validator)
 	if err != nil {
 		return state, fmt.Errorf("error in validator updates: %w", err)
 	}
 
 	nextCoreChainLock, err := types.CoreChainLockFromProto(
-		finalizeBlockResponse.NextCoreChainLockUpdate,
+		fBlockRes.NextCoreChainLockUpdate,
 	)
 	if err != nil {
 		return state, fmt.Errorf("error in chain lock from proto: %v", err)
 	}
 
 	// The quorum type should not even matter here
-	validators, thresholdPublicKey, quorumHash, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(finalizeBlockResponse.ValidatorSetUpdate)
+	validators, thresholdPublicKey, quorumHash, err := types.PB2TM.ValidatorUpdatesFromValidatorSet(fBlockRes.ValidatorSetUpdate)
 	if err != nil {
 		return state, fmt.Errorf("error in chain lock from proto: %v", err)
+	}
+	if len(validators) > 0 {
+		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validators))
+		blockExec.metrics.ValidatorSetUpdates.Add(1)
+	}
+	if fBlockRes.ConsensusParamUpdates != nil {
+		blockExec.metrics.ConsensusParamUpdates.Add(1)
 	}
 
 	if len(validators) > 0 {
@@ -330,18 +355,18 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	// Update the state with the block and responses.
-	rs, err := abci.MarshalTxResults(finalizeBlockResponse.TxResults)
+	rs, err := abci.MarshalTxResults(fBlockRes.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("marshaling TxResults: %w", err)
 	}
 	h := merkle.HashFromByteSlices(rs)
-	state, err = state.Update(proTxHash, blockID, &block.Header, h, finalizeBlockResponse.ConsensusParamUpdates, validators, thresholdPublicKey, quorumHash)
+	state, err = state.Update(proTxHash, blockID, &block.Header, h, fBlockRes.ConsensusParamUpdates, validators, thresholdPublicKey, quorumHash)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, retainHeight, err := blockExec.Commit(ctx, state, block, finalizeBlockResponse.TxResults)
+	retainHeight, err := blockExec.Commit(ctx, state, block, fBlockRes.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -353,7 +378,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	blockExec.NextCoreChainLock = nextCoreChainLock
 
 	// Update the app hash and save the state.
-	state.AppHash = appHash
+	state.AppHash = fBlockRes.AppHash
 	if err := blockExec.store.Save(state); err != nil {
 		return state, err
 	}
@@ -373,7 +398,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
-	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, finalizeBlockResponse, state.NextValidators)
+	fireEvents(blockExec.logger, blockExec.eventBus, block, blockID, fBlockRes, state.NextValidators)
 
 	return state, nil
 }
@@ -406,7 +431,7 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 	}
 
 	if !resp.IsOK() {
-		return types.ErrVoteInvalidExtension
+		return errors.New("invalid vote extension")
 	}
 
 	return nil
@@ -423,7 +448,7 @@ func (blockExec *BlockExecutor) Commit(
 	state State,
 	block *types.Block,
 	txResults []*abci.ExecTxResult,
-) ([]byte, int64, error) {
+) (int64, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -432,22 +457,14 @@ func (blockExec *BlockExecutor) Commit(
 	err := blockExec.mempool.FlushAppConn(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during mempool.FlushAppConn", "err", err)
-		return nil, 0, err
+		return 0, err
 	}
 
 	// Commit block, get hash back
 	res, err := blockExec.appClient.Commit(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during proxyAppConn.Commit", "err", err)
-		return nil, 0, err
-	}
-
-	// we force the abci app to return only 32 byte app hashes (set to 20 temporarily)
-	if res.Data != nil && len(res.Data) != blockExec.appHashSize {
-		blockExec.logger.Error(
-			"Client returned invalid app hash size", "bytesLength", len(res.Data),
-		)
-		return nil, 0, errors.New("invalid App Hash size")
+		return 0, err
 	}
 
 	// ResponseCommit has no error code - just data
@@ -456,7 +473,7 @@ func (blockExec *BlockExecutor) Commit(
 		"height", block.Height,
 		"core_height", block.CoreChainLockedHeight,
 		"num_txs", len(block.Txs),
-		"app_hash", fmt.Sprintf("%X", res.Data),
+		"block_app_hash", fmt.Sprintf("%X", block.AppHash),
 	)
 
 	// Update mempool.
@@ -467,9 +484,10 @@ func (blockExec *BlockExecutor) Commit(
 		txResults,
 		TxPreCheckForState(state),
 		TxPostCheckForState(state),
+		state.ConsensusParams.ABCI.RecheckTx,
 	)
 
-	return res.Data, res.RetainHeight, err
+	return res.RetainHeight, err
 }
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
@@ -574,13 +592,13 @@ func (state State) Update(
 	// We need to generate LastStateID before changing the state
 	lastStateID := state.StateID()
 
-	// Update the validator set with the latest abciResponses.
+	// Update the validator set with the latest responses to FinalizeBlock.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(validatorUpdates) > 0 {
 		if bytes.Equal(nValSet.QuorumHash, quorumHash) {
 			err := nValSet.UpdateWithChangeSet(validatorUpdates, newThresholdPublicKey, quorumHash)
 			if err != nil {
-				return state, fmt.Errorf("error changing validator set: %w", err)
+				return state, fmt.Errorf("changing validator set: %w", err)
 			}
 			// Change results from this height but only applies to the next next height.
 			lastHeightValsChanged = header.Height + 1 + 1
@@ -595,7 +613,7 @@ func (state State) Update(
 	// Update validator proposer priority and set state variables.
 	nValSet.IncrementProposerPriority(1)
 
-	// Update the params with the latest abciResponses.
+	// Update the params with the latest responses to FinalizeBlock.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if consensusParamUpdates != nil {
@@ -603,7 +621,7 @@ func (state State) Update(
 		nextParams = state.ConsensusParams.UpdateConsensusParams(consensusParamUpdates)
 		err := nextParams.ValidateConsensusParams()
 		if err != nil {
-			return state, fmt.Errorf("error updating consensus params: %w", err)
+			return state, fmt.Errorf("updating consensus params: %w", err)
 		}
 
 		state.Version.Consensus.App = nextParams.Version.AppVersion
@@ -734,12 +752,12 @@ func ExecCommitBlock(
 	finalizeBlockResponse, err := appConn.FinalizeBlock(
 		ctx,
 		&abci.RequestFinalizeBlock{
-			Hash:                block.Hash(),
-			Height:              block.Height,
-			Time:                block.Time,
-			Txs:                 block.Txs.ToSliceOfBytes(),
-			DecidedLastCommit:   buildLastCommitInfo(block, store, initialHeight),
-			ByzantineValidators: block.Evidence.ToABCI(),
+			Hash:              block.Hash(),
+			Height:            block.Height,
+			Time:              block.Time,
+			Txs:               block.Txs.ToSliceOfBytes(),
+			DecidedLastCommit: buildLastCommitInfo(block, store, initialHeight),
+			Misbehavior:       block.Evidence.ToABCI(),
 
 			// Dash's fields
 			CoreChainLockedHeight: block.CoreChainLockedHeight,
@@ -785,15 +803,15 @@ func ExecCommitBlock(
 		fireEvents(be.logger, be.eventBus, block, blockID, finalizeBlockResponse, validatorSetUpdate)
 	}
 
-	// Commit block, get hash back
-	res, err := appConn.Commit(ctx)
+	// Commit block
+	_, err = appConn.Commit(ctx)
 	if err != nil {
-		logger.Error("client error during proxyAppConn.Commit", "err", res)
+		logger.Error("client error during proxyAppConn.Commit", "err", err)
 		return nil, err
 	}
 
-	// ResponseCommit has no error or log, just data
-	return res.Data, nil
+	// ResponseCommit has no error or log
+	return finalizeBlockResponse.AppHash, nil
 }
 
 func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64) (uint64, error) {

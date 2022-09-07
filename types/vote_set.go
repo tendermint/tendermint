@@ -55,8 +55,8 @@ const (
 type VoteSet struct {
 	chainID       string
 	height        int64
-	stateID       StateID // ID of state for which this voting is executed
 	round         int32
+	stateID       StateID // ID of state for which this voting is executed
 	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
 
@@ -74,7 +74,8 @@ type VoteSet struct {
 	thresholdVoteExtSigs []ThresholdExtensionSign // If a 2/3 majority is seen, recover the vote extension sigs
 }
 
-// NewVoteSet constructs a new VoteSet struct used to accumulate votes for given height/round.
+// NewVoteSet instantiates all fields of a new vote set. This constructor requires
+// that no vote extension data be present on the votes that are added to the set.
 func NewVoteSet(chainID string, height int64, round int32,
 	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet, stateID StateID) *VoteSet {
 	if height == 0 {
@@ -250,13 +251,6 @@ func (voteSet *VoteSet) getVote(valIndex int32, blockKey string) (vote *Vote, ok
 	return nil, false
 }
 
-func (voteSet *VoteSet) GetVotes() []*Vote {
-	if voteSet == nil {
-		return nil
-	}
-	return voteSet.votes
-}
-
 // Assumes signature is valid.
 // If conflicting vote exists, returns it.
 func (voteSet *VoteSet) addVerifiedVote(
@@ -361,7 +355,7 @@ func (voteSet *VoteSet) recoverThresholdSignsAndVerify(blockVotes *blockVotes, q
 	if err != nil {
 		return err
 	}
-	verifier := NewQuorumSingsVerifier(
+	verifier := NewQuorumSignsVerifier(
 		quorumDataSigns,
 		WithVerifyReachedQuorum(voteSet.IsQuorumReached()),
 	)
@@ -578,7 +572,7 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
-			voteStrings[i] = nilVoteStr
+			voteStrings[i] = absentVoteStr
 		} else {
 			voteStrings[i] = vote.String()
 		}
@@ -643,7 +637,7 @@ func (voteSet *VoteSet) voteStrings() []string {
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
-			voteStrings[i] = nilVoteStr
+			voteStrings[i] = absentVoteStr
 		} else {
 			voteStrings[i] = vote.String()
 		}
@@ -697,8 +691,8 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 //--------------------------------------------------------------------------------
 // Commit
 
-// MakeCommit constructs a Commit from the VoteSet. It only includes precommits
-// for the block, which has 2/3+ majority, and nil.
+// MakeCommit constructs a Commit from the VoteSet. It only includes
+// precommits for the block, which has 2/3+ majority, and nil.
 //
 // Panics if the vote type is not PrecommitType or if there's no +2/3 votes for
 // a single block.

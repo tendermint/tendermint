@@ -180,7 +180,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 	app.valSetUpdate.ValidatorUpdates = make([]types.ValidatorUpdate, 0)
 
 	// Punish validators who committed equivocation.
-	for _, ev := range req.ByzantineValidators {
+	for _, ev := range req.Misbehavior {
 		// TODO it seems this code is not needed to keep here
 		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
 			proTxHash := crypto.ProTxHash(ev.Validator.ProTxHash)
@@ -197,9 +197,16 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 		respTxs[i] = app.handleTx(tx)
 	}
 
+	// Using a memdb - just return the big endian size of the db
+	appHash := make([]byte, 32)
+	binary.PutVarint(appHash, app.state.Size)
+	app.state.AppHash = appHash
+	app.state.Height++
+
 	return &types.ResponseFinalizeBlock{
 		TxResults:          respTxs,
 		ValidatorSetUpdate: proto.Clone(&app.valSetUpdate).(*types.ValidatorSetUpdate),
+		AppHash:            appHash,
 	}, nil
 }
 
@@ -211,14 +218,9 @@ func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error)
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	// Using a memdb - just return the big endian size of the db
-	appHash := make([]byte, 32)
-	binary.PutVarint(appHash, app.state.Size)
-	app.state.AppHash = appHash
-	app.state.Height++
 	saveState(app.state)
 
-	resp := &types.ResponseCommit{Data: appHash}
+	resp := &types.ResponseCommit{}
 	if app.RetainBlocks > 0 && app.state.Height >= app.RetainBlocks {
 		resp.RetainHeight = app.state.Height - app.RetainBlocks + 1
 	}
@@ -328,7 +330,7 @@ func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPre
 
 func (*Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
-		if len(tx) == 0 {
+		if len(tx) == 0 || isPrepareTx(tx) {
 			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
 		}
 	}

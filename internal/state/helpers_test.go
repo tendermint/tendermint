@@ -17,7 +17,6 @@ import (
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmtime "github.com/tendermint/tendermint/libs/time"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -142,15 +141,13 @@ func makeHeaderPartsResponsesValPowerChange(
 	t *testing.T,
 	state sm.State,
 	power int64,
-) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
+) (types.Header, *types.CoreChainLock, types.BlockID, *abci.ResponseFinalizeBlock) {
 	t.Helper()
 
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	require.NoError(t, err)
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{}
 
-	abciResponses := &tmstate.ABCIResponses{}
-
-	abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{}
 	// If the pubkey is new, remove the old and add the new.
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
@@ -159,7 +156,7 @@ func makeHeaderPartsResponsesValPowerChange(
 		thresholdPubKey, err := encoding.PubKeyToProto(state.NextValidators.ThresholdPublicKey)
 		require.NoError(t, err)
 
-		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
+		finalizeBlockResponses = &abci.ResponseFinalizeBlock{
 			ValidatorSetUpdate: &abci.ValidatorSetUpdate{
 				ValidatorUpdates: []abci.ValidatorUpdate{
 					{PubKey: &vPbPk, Power: power},
@@ -170,41 +167,35 @@ func makeHeaderPartsResponsesValPowerChange(
 		}
 	}
 
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
-func makeHeaderPartsResponsesValKeysRegenerate(t *testing.T, state sm.State, regenerate bool) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
+func makeHeaderPartsResponsesValKeysRegenerate(t *testing.T, state sm.State, regenerate bool) (types.Header, *types.CoreChainLock, types.BlockID, *abci.ResponseFinalizeBlock) {
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	if err != nil {
 		t.Error(err)
 	}
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ValidatorSetUpdate: nil},
-	}
+	fbResp := &abci.ResponseFinalizeBlock{}
 	if regenerate == true {
 		proTxHashes := state.Validators.GetProTxHashes()
 		valUpdates := types.ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes)
-		abciResponses.FinalizeBlock = &abci.ResponseFinalizeBlock{
-			ValidatorSetUpdate: &valUpdates,
-		}
+		fbResp.ValidatorSetUpdate = &valUpdates
 	}
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, fbResp
 }
 
 func makeHeaderPartsResponsesParams(
 	t *testing.T,
 	state sm.State,
 	params *types.ConsensusParams,
-) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
+) (types.Header, *types.CoreChainLock, types.BlockID, *abci.ResponseFinalizeBlock) {
 	t.Helper()
 
 	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
 	require.NoError(t, err)
 	pbParams := params.ToProto()
-	abciResponses := &tmstate.ABCIResponses{
-		FinalizeBlock: &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams},
-	}
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
+	finalizeBlockResponses := &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams}
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
 }
 
 func randomGenesisDoc() *types.GenesisDoc {
@@ -268,8 +259,8 @@ func makeRandomStateFromConsensusParams(
 type testApp struct {
 	abci.BaseApplication
 
-	ByzantineValidators []abci.Misbehavior
-	ValidatorSetUpdate  *abci.ValidatorSetUpdate
+	Misbehavior        []abci.Misbehavior
+	ValidatorSetUpdate *abci.ValidatorSetUpdate
 }
 
 var _ abci.Application = (*testApp)(nil)
@@ -279,7 +270,7 @@ func (app *testApp) Info(_ context.Context, req *abci.RequestInfo) (*abci.Respon
 }
 
 func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	app.ByzantineValidators = req.ByzantineValidators
+	app.Misbehavior = req.Misbehavior
 
 	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {

@@ -12,8 +12,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -91,6 +89,29 @@ func (_m *ABCIClient) ABCIQueryWithOptions(ctx context.Context, path string, dat
 	return r0, r1
 }
 
+// BroadcastTx provides a mock function with given fields: _a0, _a1
+func (_m *ABCIClient) BroadcastTx(_a0 context.Context, _a1 types.Tx) (*coretypes.ResultBroadcastTx, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *coretypes.ResultBroadcastTx
+	if rf, ok := ret.Get(0).(func(context.Context, types.Tx) *coretypes.ResultBroadcastTx); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultBroadcastTx)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.Tx) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // BroadcastTxAsync provides a mock function with given fields: _a0, _a1
 func (_m *ABCIClient) BroadcastTxAsync(_a0 context.Context, _a1 types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	ret := _m.Called(_a0, _a1)
@@ -160,8 +181,13 @@ func (_m *ABCIClient) BroadcastTxSync(_a0 context.Context, _a1 types.Tx) (*coret
 	return r0, r1
 }
 
-// NewABCIClient creates a new instance of ABCIClient. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewABCIClient(t testing.TB) *ABCIClient {
+type mockConstructorTestingTNewABCIClient interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewABCIClient creates a new instance of ABCIClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewABCIClient(t mockConstructorTestingTNewABCIClient) *ABCIClient {
 	mock := &ABCIClient{}
 	mock.Mock.Test(t)
 

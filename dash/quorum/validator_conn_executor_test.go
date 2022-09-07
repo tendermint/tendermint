@@ -374,6 +374,7 @@ func TestFinalizeBlock(t *testing.T) {
 		testifymock.Anything,
 		testifymock.Anything,
 		testifymock.Anything,
+		testifymock.Anything,
 		testifymock.Anything).Return(nil)
 
 	blockExec := sm.NewBlockExecutor(
@@ -669,7 +670,7 @@ func (app *testApp) Info(context.Context, *abci.RequestInfo) (*abci.ResponseInfo
 }
 
 func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	app.ByzantineValidators = req.ByzantineValidators
+	app.ByzantineValidators = req.Misbehavior
 	txs := make([]*abci.ExecTxResult, 0, len(req.Txs))
 	for _, tx := range req.Txs {
 		txs = append(txs, &abci.ExecTxResult{Data: tx})

@@ -97,7 +97,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	require.NoError(t, err)
 	part2 := validPartSet.GetPart(1)
 
-	seenCommit := makeTestCommit(state, 10, tmtime.Now())
+	seenCommit := makeTestCommit(state, block.Header.Height, tmtime.Now())
 	bs.SaveBlock(block, validPartSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
@@ -156,9 +156,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:     newBlock(header1, commitAtH10),
-			parts:     incompletePartSet,
-			wantPanic: "only save complete block", // incomplete parts
+			block:      newBlock(header1, commitAtH10),
+			parts:      incompletePartSet,
+			wantPanic:  "only save complete block", // incomplete parts
+			seenCommit: makeTestCommit(state, 10, tmtime.Now()),
 		},
 
 		{
@@ -187,7 +188,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:      newBlock(header1, commitAtH10),
+			block:      block,
 			parts:      validPartSet,
 			seenCommit: seenCommit,
 
@@ -196,7 +197,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:      newBlock(header1, commitAtH10),
+			block:      block,
 			parts:      validPartSet,
 			seenCommit: seenCommit,
 
@@ -348,7 +349,6 @@ func TestLoadBlockPart(t *testing.T) {
 	require.NoError(t, err)
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
-	require.NoError(t, err)
 	part1 := partSet.GetPart(0)
 
 	pb1, err := part1.ToProto()
@@ -492,7 +492,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
-	seenCommit := makeTestCommit(state, 10, tmtime.Now())
+	seenCommit := makeTestCommit(state, block.Header.Height, tmtime.Now())
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
@@ -515,6 +515,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 
 func TestSeenAndCanonicalCommit(t *testing.T) {
 	state, store := makeStateAndBlockStore(t, t.TempDir())
+
 	loadCommit := func() (interface{}, error) {
 		meta := store.LoadSeenCommit()
 		return meta, nil
@@ -545,6 +546,8 @@ func TestSeenAndCanonicalCommit(t *testing.T) {
 		require.Nil(t, c5)
 		c6 := store.LoadBlockCommit(h - 1)
 		require.Equal(t, blockCommit.Hash(), c6.Hash())
+		c7 := store.LoadSeenCommitAt(h)
+		require.Equal(t, seenCommit.Hash(), c7.Hash())
 	}
 
 }

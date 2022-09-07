@@ -1154,6 +1154,10 @@ func applyChangesToValSet(t *testing.T, expErr error, valSet *ValidatorSet, vals
 }
 
 func TestValSetUpdatePriorityOrderTests(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	const nMaxElections int32 = 5000
 
 	testCases := []testVSetCfg{
@@ -1418,7 +1422,6 @@ func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
 			// create a commit with n validators
 			commit, err := makeCommit(ctx, blockID, stateID, h, 0, voteSet, vals)
 			require.NoError(b, err)
-
 			for i := 0; i < b.N/n; i++ {
 				err = valSet.VerifyCommit(chainID, blockID, stateID, h, commit)
 				assert.NoError(b, err)

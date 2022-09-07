@@ -224,7 +224,7 @@ func makeNode(
 
 	weAreOnlyValidator := onlyValidatorIsUs(state, proTxHash)
 
-	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID)
+	peerManager, peerCloser, err := createPeerManager(cfg, dbProvider, nodeKey.ID, nodeMetrics.p2p)
 	closers = append(closers, peerCloser)
 	if err != nil {
 		return nil, combineCloseError(
@@ -306,7 +306,7 @@ func makeNode(
 	node.evPool = evPool
 
 	mpReactor, mp := createMempoolReactor(logger, cfg, proxyApp, stateStore, nodeMetrics.mempool,
-		peerManager.Subscribe, node.router.OpenChannel, peerManager.GetHeight)
+		peerManager.Subscribe, node.router.OpenChannel)
 	node.rpcEnv.Mempool = mp
 	node.services = append(node.services, mpReactor)
 
@@ -780,7 +780,9 @@ func loadStateFromDBOrGenesisDocProvider(stateStore sm.Store, genDoc *types.Gene
 
 func getRouterConfig(conf *config.Config, appClient abciclient.Client) p2p.RouterOptions {
 	opts := p2p.RouterOptions{
-		QueueType: conf.P2P.QueueType,
+		QueueType:        conf.P2P.QueueType,
+		HandshakeTimeout: conf.P2P.HandshakeTimeout,
+		DialTimeout:      conf.P2P.DialTimeout,
 	}
 
 	if conf.FilterPeers && appClient != nil {

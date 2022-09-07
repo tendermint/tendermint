@@ -557,7 +557,7 @@ func DefaultRPCConfig() *RPCConfig {
 		MaxSubscriptionClients:       100,
 		MaxSubscriptionsPerClient:    5,
 		ExperimentalDisableWebsocket: false, // compatible with TM v0.35 and earlier
-		EventLogWindowSize:           0,     // disables /events RPC by default
+		EventLogWindowSize:           30 * time.Second,
 		EventLogMaxItems:             0,
 
 		TimeoutBroadcastTxCommit: 10 * time.Second,
@@ -646,15 +646,6 @@ type P2PConfig struct { //nolint: maligned
 	// Address to advertise to peers for them to dial
 	ExternalAddress string `mapstructure:"external-address"`
 
-	// Comma separated list of seed nodes to connect to
-	// We only use these if we can’t connect to peers in the addrbook
-	//
-	// Deprecated: This value is not used by the new PEX reactor. Use
-	// BootstrapPeers instead.
-	//
-	// TODO(#5670): Remove once the p2p refactor is complete.
-	Seeds string `mapstructure:"seeds"`
-
 	// Comma separated list of peers to be added to the peer store
 	// on startup. Either BootstrapPeers or PersistentPeers are
 	// needed for peer discovery
@@ -670,6 +661,10 @@ type P2PConfig struct { //nolint: maligned
 	// outbound).
 	MaxConnections uint16 `mapstructure:"max-connections"`
 
+	// MaxOutgoingConnections defines the maximum number of connected peers (inbound and
+	// outbound).
+	MaxOutgoingConnections uint16 `mapstructure:"max-outgoing-connections"`
+
 	// MaxIncomingConnectionAttempts rate limits the number of incoming connection
 	// attempts per IP address.
 	MaxIncomingConnectionAttempts uint `mapstructure:"max-incoming-connection-attempts"`
@@ -680,9 +675,6 @@ type P2PConfig struct { //nolint: maligned
 	// Comma separated list of peer IDs to keep private (will not be gossiped to
 	// other peers)
 	PrivatePeerIDs string `mapstructure:"private-peer-ids"`
-
-	// Toggle to disable guard against peers connecting from the same ip.
-	AllowDuplicateIP bool `mapstructure:"allow-duplicate-ip"`
 
 	// Time to wait before flushing messages out on the connection
 	FlushThrottleTimeout time.Duration `mapstructure:"flush-throttle-timeout"`
@@ -700,13 +692,9 @@ type P2PConfig struct { //nolint: maligned
 	HandshakeTimeout time.Duration `mapstructure:"handshake-timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial-timeout"`
 
-	// Testing params.
-	// Force dial to fail
-	TestDialFail bool `mapstructure:"test-dial-fail"`
-
 	// Makes it possible to configure which queue backend the p2p
-	// layer uses. Options are: "fifo" and "priority",
-	// with the default being "priority".
+	// layer uses. Options are: "fifo" and "simple-priority", and "priority",
+	// with the default being "simple-priority".
 	QueueType string `mapstructure:"queue-type"`
 }
 
@@ -717,6 +705,7 @@ func DefaultP2PConfig() *P2PConfig {
 		ExternalAddress:               "",
 		UPNP:                          false,
 		MaxConnections:                64,
+		MaxOutgoingConnections:        12,
 		MaxIncomingConnectionAttempts: 100,
 		FlushThrottleTimeout:          100 * time.Millisecond,
 		// The MTU (Maximum Transmission Unit) for Ethernet is 1500 bytes.
@@ -728,11 +717,9 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                5120000, // 5 mB/s
 		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
-		AllowDuplicateIP:        false,
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
-		TestDialFail:            false,
-		QueueType:               "priority",
+		QueueType:               "simple-priority",
 	}
 }
 
@@ -751,6 +738,9 @@ func (cfg *P2PConfig) ValidateBasic() error {
 	if cfg.RecvRate < 0 {
 		return errors.New("recv-rate can't be negative")
 	}
+	if cfg.MaxOutgoingConnections > cfg.MaxConnections {
+		return errors.New("max-outgoing-connections cannot be larger than max-connections")
+	}
 	return nil
 }
 
@@ -758,7 +748,6 @@ func (cfg *P2PConfig) ValidateBasic() error {
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://127.0.0.1:36656"
-	cfg.AllowDuplicateIP = true
 	cfg.FlushThrottleTimeout = 10 * time.Millisecond
 	return cfg
 }
@@ -768,9 +757,10 @@ func TestP2PConfig() *P2PConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool.
 type MempoolConfig struct {
-	RootDir   string `mapstructure:"home"`
-	Recheck   bool   `mapstructure:"recheck"`
-	Broadcast bool   `mapstructure:"broadcast"`
+	RootDir string `mapstructure:"home"`
+
+	// Whether to broadcast transactions to other nodes
+	Broadcast bool `mapstructure:"broadcast"`
 
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
@@ -817,7 +807,6 @@ type MempoolConfig struct {
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool.
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
-		Recheck:   true,
 		Broadcast: true,
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck

@@ -1,4 +1,3 @@
-//nolint: gosec
 package main
 
 import (
@@ -87,6 +86,8 @@ func (cli *CLI) generate() error {
 		return err
 	}
 
+	// nolint: gosec
+	// G404: Use of weak random number generator (math/rand instead of crypto/rand)
 	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), cli.opts)
 	if err != nil {
 		return err

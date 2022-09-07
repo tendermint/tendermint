@@ -5,11 +5,9 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/kit/metrics/discard"
 
-	"github.com/go-kit/kit/metrics/prometheus"
-	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -19,28 +17,30 @@ const (
 	MetricsSubsystem = "consensus"
 )
 
+//go:generate go run ../../scripts/metricsgen -struct=Metrics
+
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Height of the chain.
 	Height metrics.Gauge
 
-	// ValidatorLastSignedHeight of a validator.
-	ValidatorLastSignedHeight metrics.Gauge
+	// Last height signed by this validator if the node is a validator.
+	ValidatorLastSignedHeight metrics.Gauge `metrics_labels:"validator_address"`
 
 	// Number of rounds.
 	Rounds metrics.Gauge
 
 	// Histogram of round duration.
-	RoundDuration metrics.Histogram
+	RoundDuration metrics.Histogram `metrics_buckettype:"exprange" metrics_bucketsizes:"0.1, 100, 8"`
 
 	// Number of validators.
 	Validators metrics.Gauge
 	// Total power of all validators.
 	ValidatorsPower metrics.Gauge
 	// Power of a validator.
-	ValidatorPower metrics.Gauge
-	// Amount of blocks missed by a validator.
-	ValidatorMissedBlocks metrics.Gauge
+	ValidatorPower metrics.Gauge `metrics_labels:"validator_address"`
+	// Amount of blocks missed per validator.
+	ValidatorMissedBlocks metrics.Gauge `metrics_labels:"validator_address"`
 	// Number of validators who did not sign.
 	MissingValidators metrics.Gauge
 	// Total power of the missing validators.
@@ -60,27 +60,27 @@ type Metrics struct {
 	// Total number of transactions.
 	TotalTxs metrics.Gauge
 	// The latest block height.
-	CommittedHeight metrics.Gauge
+	CommittedHeight metrics.Gauge `metrics_name:"latest_block_height"`
 	// Whether or not a node is block syncing. 1 if yes, 0 if no.
 	BlockSyncing metrics.Gauge
 	// Whether or not a node is state syncing. 1 if yes, 0 if no.
 	StateSyncing metrics.Gauge
 
-	// Number of blockparts transmitted by peer.
-	BlockParts metrics.Counter
+	// Number of block parts transmitted by each peer.
+	BlockParts metrics.Counter `metrics_labels:"peer_id"`
 
-	// Histogram of step duration.
-	StepDuration metrics.Histogram
+	// Histogram of durations for each step in the consensus protocol.
+	StepDuration metrics.Histogram `metrics_labels:"step" metrics_buckettype:"exprange" metrics_bucketsizes:"0.1, 100, 8"`
 	stepStart    time.Time
 
 	// Histogram of time taken to receive a block in seconds, measured between when a new block is first
 	// discovered to when the block is completed.
-	BlockGossipReceiveLatency metrics.Histogram
+	BlockGossipReceiveLatency metrics.Histogram `metrics_buckettype:"exprange" metrics_bucketsizes:"0.1, 100, 8"`
 	blockGossipStart          time.Time
 
 	// Number of block parts received by the node, separated by whether the part
 	// was relevant to the block the node is trying to gather or not.
-	BlockGossipPartsReceived metrics.Counter
+	BlockGossipPartsReceived metrics.Counter `metrics_labels:"matches_current"`
 
 	// QuroumPrevoteMessageDelay is the interval in seconds between the proposal
 	// timestamp and the timestamp of the earliest prevote that achieved a quorum
@@ -91,232 +91,50 @@ type Metrics struct {
 	// be above 2/3 of the total voting power of the network defines the endpoint
 	// the endpoint of the interval. Subtract the proposal timestamp from this endpoint
 	// to obtain the quorum delay.
-	QuorumPrevoteDelay metrics.Gauge
+	//metrics:Interval in seconds between the proposal timestamp and the timestamp of the earliest prevote that achieved a quorum.
+	QuorumPrevoteDelay metrics.Gauge `metrics_labels:"proposer_address"`
 
 	// FullPrevoteDelay is the interval in seconds between the proposal
 	// timestamp and the timestamp of the latest prevote in a round where 100%
 	// of the voting power on the network issued prevotes.
-	FullPrevoteDelay metrics.Gauge
+	//metrics:Interval in seconds between the proposal timestamp and the timestamp of the latest prevote in a round where all validators voted.
+	FullPrevoteDelay metrics.Gauge `metrics_labels:"proposer_address"`
 
 	// ProposalTimestampDifference is the difference between the timestamp in
 	// the proposal message and the local time of the validator at the time
 	// that the validator received the message.
-	ProposalTimestampDifference metrics.Histogram
-}
+	//metrics:Difference between the timestamp in the proposal message and the local time of the validator at the time it received the message.
+	ProposalTimestampDifference metrics.Histogram `metrics_labels:"is_timely" metrics_bucketsizes:"-10, -.5, -.025, 0, .1, .5, 1, 1.5, 2, 10"`
 
-// PrometheusMetrics returns Metrics build using Prometheus client library.
-// Optionally, labels can be provided along with their values ("foo",
-// "fooValue").
-func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
-	labels := []string{}
-	for i := 0; i < len(labelsAndValues); i += 2 {
-		labels = append(labels, labelsAndValues[i])
-	}
-	return &Metrics{
-		Height: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "height",
-			Help:      "Height of the chain.",
-		}, labels).With(labelsAndValues...),
-		Rounds: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "rounds",
-			Help:      "Number of rounds.",
-		}, labels).With(labelsAndValues...),
-		RoundDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "round_duration",
-			Help:      "Time spent in a round.",
-			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
-		}, labels).With(labelsAndValues...),
-		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "validators",
-			Help:      "Number of validators.",
-		}, labels).With(labelsAndValues...),
-		ValidatorLastSignedHeight: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "validator_last_signed_height",
-			Help:      "Last signed height for a validator",
-		}, append(labels, "validator_address")).With(labelsAndValues...),
-		ValidatorMissedBlocks: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "validator_missed_blocks",
-			Help:      "Total missed blocks for a validator",
-		}, append(labels, "validator_address")).With(labelsAndValues...),
-		ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "validators_power",
-			Help:      "Total power of all validators.",
-		}, labels).With(labelsAndValues...),
-		ValidatorPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "validator_power",
-			Help:      "Power of a validator",
-		}, append(labels, "validator_address")).With(labelsAndValues...),
-		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "missing_validators",
-			Help:      "Number of validators who did not sign.",
-		}, labels).With(labelsAndValues...),
-		MissingValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "missing_validators_power",
-			Help:      "Total power of the missing validators.",
-		}, labels).With(labelsAndValues...),
-		ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "byzantine_validators",
-			Help:      "Number of validators who tried to double sign.",
-		}, labels).With(labelsAndValues...),
-		ByzantineValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "byzantine_validators_power",
-			Help:      "Total power of the byzantine validators.",
-		}, labels).With(labelsAndValues...),
-		BlockIntervalSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "block_interval_seconds",
-			Help:      "Time between this and the last block.",
-		}, labels).With(labelsAndValues...),
-		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "num_txs",
-			Help:      "Number of transactions.",
-		}, labels).With(labelsAndValues...),
-		BlockSizeBytes: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "block_size_bytes",
-			Help:      "Size of the block.",
-		}, labels).With(labelsAndValues...),
-		TotalTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "total_txs",
-			Help:      "Total number of transactions.",
-		}, labels).With(labelsAndValues...),
-		CommittedHeight: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "latest_block_height",
-			Help:      "The latest block height.",
-		}, labels).With(labelsAndValues...),
-		BlockSyncing: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "block_syncing",
-			Help:      "Whether or not a node is block syncing. 1 if yes, 0 if no.",
-		}, labels).With(labelsAndValues...),
-		StateSyncing: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "state_syncing",
-			Help:      "Whether or not a node is state syncing. 1 if yes, 0 if no.",
-		}, labels).With(labelsAndValues...),
-		BlockParts: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "block_parts",
-			Help:      "Number of blockparts transmitted by peer.",
-		}, append(labels, "peer_id")).With(labelsAndValues...),
-		BlockGossipReceiveLatency: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "block_gossip_receive_latency",
-			Help: "Difference in seconds between when the validator learns of a new block" +
-				"and when the validator receives the last piece of the block.",
-			Buckets: stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
-		}, labels).With(labelsAndValues...),
-		BlockGossipPartsReceived: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "block_gossip_parts_received",
-			Help: "Number of block parts received by the node, labeled by whether the " +
-				"part was relevant to the block the node was currently gathering or not.",
-		}, append(labels, "matches_current")).With(labelsAndValues...),
-		StepDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "step_duration",
-			Help:      "Time spent per step.",
-			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
-		}, append(labels, "step")).With(labelsAndValues...),
-		QuorumPrevoteDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "quorum_prevote_delay",
-			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
-				"of the latest prevote that achieved a quorum in the prevote step.",
-		}, append(labels, "proposer_address")).With(labelsAndValues...),
-		FullPrevoteDelay: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "full_prevote_delay",
-			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
-				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
-		}, append(labels, "proposer_address")).With(labelsAndValues...),
-		ProposalTimestampDifference: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "proposal_timestamp_difference",
-			Help: "Difference in seconds between the timestamp in the proposal " +
-				"message and the local time when the message was received. " +
-				"Only calculated when a new block is proposed.",
-			Buckets: []float64{-10, -.5, -.025, 0, .1, .5, 1, 1.5, 2, 10},
-		}, append(labels, "is_timely")).With(labelsAndValues...),
-	}
-}
+	// VoteExtensionReceiveCount is the number of vote extensions received by this
+	// node. The metric is annotated by the status of the vote extension from the
+	// application, either 'accepted' or 'rejected'.
+	//metrics:Number of vote extensions received labeled by application response status.
+	VoteExtensionReceiveCount metrics.Counter `metrics_labels:"status"`
 
-// NopMetrics returns no-op Metrics.
-func NopMetrics() *Metrics {
-	return &Metrics{
-		Height: discard.NewGauge(),
+	// ProposalReceiveCount is the total number of proposals received by this node
+	// since process start.
+	// The metric is annotated by the status of the proposal from the application,
+	// either 'accepted' or 'rejected'.
+	//metrics:Total number of proposals received by the node since process start labeled by application response status.
+	ProposalReceiveCount metrics.Counter `metrics_labels:"status"`
 
-		ValidatorLastSignedHeight: discard.NewGauge(),
+	// ProposalCreationCount is the total number of proposals created by this node
+	// since process start.
+	//metrics:Total number of proposals created by the node since process start.
+	ProposalCreateCount metrics.Counter
 
-		Rounds:        discard.NewGauge(),
-		RoundDuration: discard.NewHistogram(),
-		StepDuration:  discard.NewHistogram(),
+	// RoundVotingPowerPercent is the percentage of the total voting power received
+	// with a round. The value begins at 0 for each round and approaches 1.0 as
+	// additional voting power is observed. The metric is labeled by vote type.
+	//metrics:A value between 0 and 1.0 representing the percentage of the total voting power per vote type received within a round.
+	RoundVotingPowerPercent metrics.Gauge `metrics_labels:"vote_type"`
 
-		Validators:               discard.NewGauge(),
-		ValidatorsPower:          discard.NewGauge(),
-		ValidatorPower:           discard.NewGauge(),
-		ValidatorMissedBlocks:    discard.NewGauge(),
-		MissingValidators:        discard.NewGauge(),
-		MissingValidatorsPower:   discard.NewGauge(),
-		ByzantineValidators:      discard.NewGauge(),
-		ByzantineValidatorsPower: discard.NewGauge(),
-
-		BlockIntervalSeconds: discard.NewHistogram(),
-
-		NumTxs:                      discard.NewGauge(),
-		BlockSizeBytes:              discard.NewHistogram(),
-		TotalTxs:                    discard.NewGauge(),
-		CommittedHeight:             discard.NewGauge(),
-		BlockSyncing:                discard.NewGauge(),
-		StateSyncing:                discard.NewGauge(),
-		BlockParts:                  discard.NewCounter(),
-		BlockGossipReceiveLatency:   discard.NewHistogram(),
-		BlockGossipPartsReceived:    discard.NewCounter(),
-		QuorumPrevoteDelay:          discard.NewGauge(),
-		FullPrevoteDelay:            discard.NewGauge(),
-		ProposalTimestampDifference: discard.NewHistogram(),
-	}
+	// LateVotes stores the number of votes that were received by this node that
+	// correspond to earlier heights and rounds than this node is currently
+	// in.
+	//metrics:Number of votes received by the node since process start that correspond to earlier heights and rounds than this node is currently in.
+	LateVotes metrics.Counter `metrics_labels:"vote_type"`
 }
 
 // RecordConsMetrics uses for recording the block related metrics during fast-sync.
@@ -335,10 +153,45 @@ func (m *Metrics) MarkBlockGossipComplete() {
 	m.BlockGossipReceiveLatency.Observe(time.Since(m.blockGossipStart).Seconds())
 }
 
+func (m *Metrics) MarkProposalProcessed(accepted bool) {
+	status := "accepted"
+	if !accepted {
+		status = "rejected"
+	}
+	m.ProposalReceiveCount.With("status", status).Add(1)
+}
+
+func (m *Metrics) MarkVoteExtensionReceived(accepted bool) {
+	status := "accepted"
+	if !accepted {
+		status = "rejected"
+	}
+	m.VoteExtensionReceiveCount.With("status", status).Add(1)
+}
+
+func (m *Metrics) MarkVoteReceived(vt tmproto.SignedMsgType, power, totalPower int64) {
+	p := float64(power) / float64(totalPower)
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.RoundVotingPowerPercent.With("vote_type", n).Add(p)
+}
+
 func (m *Metrics) MarkRound(r int32, st time.Time) {
 	m.Rounds.Set(float64(r))
 	roundTime := time.Since(st).Seconds()
 	m.RoundDuration.Observe(roundTime)
+
+	pvt := tmproto.PrevoteType
+	pvn := strings.ToLower(strings.TrimPrefix(pvt.String(), "SIGNED_MSG_TYPE_"))
+	m.RoundVotingPowerPercent.With("vote_type", pvn).Set(0)
+
+	pct := tmproto.PrecommitType
+	pcn := strings.ToLower(strings.TrimPrefix(pct.String(), "SIGNED_MSG_TYPE_"))
+	m.RoundVotingPowerPercent.With("vote_type", pcn).Set(0)
+}
+
+func (m *Metrics) MarkLateVote(vt tmproto.SignedMsgType) {
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.LateVotes.With("vote_type", n).Add(1)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {

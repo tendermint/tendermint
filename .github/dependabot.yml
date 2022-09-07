@@ -16,7 +16,7 @@ updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: daily
+      interval: weekly
     target-branch: "v0.35.x"
     open-pull-requests-limit: 10
     reviewers:

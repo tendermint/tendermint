@@ -314,7 +314,7 @@ func (r *Reactor) OnStart(ctx context.Context) error {
 		return nil
 	}
 
-	go r.processChannels(ctx, map[p2p.ChannelID]*p2p.Channel{
+	go r.processChannels(ctx, map[p2p.ChannelID]p2p.Channel{
 		SnapshotChannel:   snapshotCh,
 		ChunkChannel:      chunkCh,
 		LightBlockChannel: blockCh,
@@ -635,7 +635,7 @@ func (r *Reactor) backfill(
 // handleSnapshotMessage handles envelopes sent from peers on the
 // SnapshotChannel. It returns an error only if the Envelope.Message is unknown
 // for this channel. This should never be called outside of handleMessage.
-func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope *p2p.Envelope, snapshotCh *p2p.Channel) error {
+func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope *p2p.Envelope, snapshotCh p2p.Channel) error {
 	logger := r.logger.With("peer", envelope.From)
 
 	switch msg := envelope.Message.(type) {
@@ -707,40 +707,34 @@ func (r *Reactor) handleSnapshotMessage(ctx context.Context, envelope *p2p.Envel
 // handleChunkMessage handles envelopes sent from peers on the ChunkChannel.
 // It returns an error only if the Envelope.Message is unknown for this channel.
 // This should never be called outside of handleMessage.
-func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope, chunkCh *p2p.Channel) error {
+func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope, chunkCh p2p.Channel) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ChunkRequest:
-		r.logger.Debug(
-			"received chunk request",
+		r.logger.Debug("received chunk request",
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From,
-		)
+			"peer", envelope.From)
 		resp, err := r.conn.LoadSnapshotChunk(ctx, &abci.RequestLoadSnapshotChunk{
 			Height: msg.Height,
 			Format: msg.Format,
 			Chunk:  msg.Index,
 		})
 		if err != nil {
-			r.logger.Error(
-				"failed to load chunk",
+			r.logger.Error("failed to load chunk",
 				"height", msg.Height,
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From,
-			)
+				"peer", envelope.From)
 			return nil
 		}
 
-		r.logger.Debug(
-			"sending chunk",
+		r.logger.Debug("sending chunk",
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From,
-		)
+			"peer", envelope.From)
 		if err := chunkCh.Send(ctx, p2p.Envelope{
 			To: envelope.From,
 			Message: &ssproto.ChunkResponse{
@@ -763,13 +757,11 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 			return nil
 		}
 
-		r.logger.Debug(
-			"received chunk; adding to sync",
+		r.logger.Debug("received chunk; adding to sync",
 			"height", msg.Height,
 			"format", msg.Format,
 			"chunk", msg.Index,
-			"peer", envelope.From,
-		)
+			"peer", envelope.From)
 		_, err := r.syncer.AddChunk(&chunk{
 			Height: msg.Height,
 			Format: msg.Format,
@@ -778,14 +770,12 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 			Sender: envelope.From,
 		})
 		if err != nil {
-			r.logger.Error(
-				"failed to add chunk",
+			r.logger.Error("failed to add chunk",
 				"height", msg.Height,
 				"format", msg.Format,
 				"chunk", msg.Index,
 				"err", err,
-				"peer", envelope.From,
-			)
+				"peer", envelope.From)
 			return nil
 		}
 
@@ -796,7 +786,7 @@ func (r *Reactor) handleChunkMessage(ctx context.Context, envelope *p2p.Envelope
 	return nil
 }
 
-func (r *Reactor) handleLightBlockMessage(ctx context.Context, envelope *p2p.Envelope, blockCh *p2p.Channel) error {
+func (r *Reactor) handleLightBlockMessage(ctx context.Context, envelope *p2p.Envelope, blockCh p2p.Channel) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.LightBlockRequest:
 		r.logger.Info("received light block request", "height", msg.Height)
@@ -853,7 +843,7 @@ func (r *Reactor) handleLightBlockMessage(ctx context.Context, envelope *p2p.Env
 	return nil
 }
 
-func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelope, paramsCh *p2p.Channel) error {
+func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelope, paramsCh p2p.Channel) error {
 	switch msg := envelope.Message.(type) {
 	case *ssproto.ParamsRequest:
 		r.logger.Debug("received consensus params request", "height", msg.Height)
@@ -902,7 +892,7 @@ func (r *Reactor) handleParamsMessage(ctx context.Context, envelope *p2p.Envelop
 // handleMessage handles an Envelope sent from a peer on a specific p2p Channel.
 // It will handle errors and any possible panics gracefully. A caller can handle
 // any error returned by sending a PeerError on the respective channel.
-func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, chans map[p2p.ChannelID]*p2p.Channel) (err error) {
+func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, chans map[p2p.ChannelID]p2p.Channel) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("panic in processing message: %v", e)
@@ -936,12 +926,12 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope, cha
 // encountered during message execution will result in a PeerError being sent on
 // the respective channel. When the reactor is stopped, we will catch the signal
 // and close the p2p Channel gracefully.
-func (r *Reactor) processChannels(ctx context.Context, chanTable map[p2p.ChannelID]*p2p.Channel) {
-	// make sure that the iterator gets cleaned up in case of error
+func (r *Reactor) processChannels(ctx context.Context, chanTable map[p2p.ChannelID]p2p.Channel) {
+	// make sure tht the iterator gets cleaned up in case of error
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	chs := make([]*p2p.Channel, 0, len(chanTable))
+	chs := make([]p2p.Channel, 0, len(chanTable))
 	for key := range chanTable {
 		chs = append(chs, chanTable[key])
 	}

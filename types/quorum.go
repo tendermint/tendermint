@@ -110,6 +110,7 @@ func MakeThresholdVoteExtensions(extensions []VoteExtension, thresholdSigs [][]b
 // QuorumSingsVerifier ...
 type QuorumSingsVerifier struct {
 	QuorumSignData
+	shouldVerifyBlock          bool
 	shouldVerifyState          bool
 	shouldVerifyVoteExtensions bool
 }
@@ -118,6 +119,13 @@ type QuorumSingsVerifier struct {
 func WithVerifyExtensions(shouldVerify bool) func(*QuorumSingsVerifier) {
 	return func(verifier *QuorumSingsVerifier) {
 		verifier.shouldVerifyVoteExtensions = shouldVerify
+	}
+}
+
+// WithVerifyBlock sets a flag that tells QuorumSingsVerifier to verify block signature or not
+func WithVerifyBlock(shouldVerify bool) func(*QuorumSingsVerifier) {
+	return func(verifier *QuorumSingsVerifier) {
+		verifier.shouldVerifyBlock = shouldVerify
 	}
 }
 
@@ -137,11 +145,12 @@ func WithVerifyReachedQuorum(quorumReached bool) func(*QuorumSingsVerifier) {
 	}
 }
 
-// NewQuorumSingsVerifier creates and returns an instance of QuorumSingsVerifier that is used for verification
+// NewQuorumSignsVerifier creates and returns an instance of QuorumSingsVerifier that is used for verification
 // quorum signatures
-func NewQuorumSingsVerifier(quorumData QuorumSignData, opts ...func(*QuorumSingsVerifier)) *QuorumSingsVerifier {
+func NewQuorumSignsVerifier(quorumData QuorumSignData, opts ...func(*QuorumSingsVerifier)) *QuorumSingsVerifier {
 	verifier := &QuorumSingsVerifier{
 		QuorumSignData:             quorumData,
+		shouldVerifyBlock:          true,
 		shouldVerifyState:          true,
 		shouldVerifyVoteExtensions: true,
 	}
@@ -165,6 +174,9 @@ func (q *QuorumSingsVerifier) Verify(pubKey crypto.PubKey, signs QuorumSigns) er
 }
 
 func (q *QuorumSingsVerifier) verifyBlock(pubKey crypto.PubKey, signs QuorumSigns) error {
+	if !q.shouldVerifyBlock {
+		return nil
+	}
 	if !pubKey.VerifySignatureDigest(q.Block.ID, signs.BlockSign) {
 		return fmt.Errorf(
 			"threshold block signature is invalid: (%X) signID=%X: %w",

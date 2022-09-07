@@ -81,7 +81,7 @@ func TestMsgToProto(t *testing.T) {
 		1,
 		1,
 		2,
-		types.BlockID{},
+		bi,
 		types.StateID{},
 	)
 	require.NoError(t, err)

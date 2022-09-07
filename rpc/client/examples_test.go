@@ -18,6 +18,10 @@ import (
 )
 
 func TestHTTPSimple(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -68,6 +72,10 @@ func TestHTTPSimple(t *testing.T) {
 }
 
 func TestHTTPBatching(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

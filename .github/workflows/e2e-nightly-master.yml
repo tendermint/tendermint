@@ -1,7 +1,8 @@
 # Runs randomly generated E2E testnets nightly on master
 
-# !! If you change something in this file, you probably want
-# to update the e2e-nightly-34x workflow as well!
+# !! Relevant changes to this file should be propagated to the e2e-nightly-<V>x
+# files for the supported backport branches, when appropriate, modulo version
+# markers.
 
 name: e2e-nightly-master
 on:
@@ -16,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: ['00', '01', '02', '03']
+        group: ['00', '01', '02', '03', "04"]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -34,7 +35,7 @@ jobs:
       - name: Generate testnets
         working-directory: test/e2e
         # When changing -g, also change the matrix groups above
-        run: ./build/generator -g 4 -d networks/nightly/
+        run: ./build/generator -g 5 -d networks/nightly/
 
       - name: Run ${{ matrix.p2p }} p2p testnets
         working-directory: test/e2e

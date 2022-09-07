@@ -292,7 +292,9 @@ pprof-laddr = "{{ .RPC.PprofListenAddress }}"
 #######################################################
 [p2p]
 
-# Select the p2p internal queue
+# Select the p2p internal queue.
+# Options are: "fifo" and "simple-priority", and "priority",
+# with the default being "simple-priority".
 queue-type = "{{ .P2P.QueueType }}"
 
 # Address to listen for incoming connections
@@ -304,13 +306,6 @@ laddr = "{{ .P2P.ListenAddress }}"
 # to figure out the address. ip and port are required
 # example: 159.89.10.97:26656
 external-address = "{{ .P2P.ExternalAddress }}"
-
-# Comma separated list of seed nodes to connect to
-# We only use these if we can’t connect to peers in the addrbook
-# NOTE: not used by the new PEX reactor. Please use BootstrapPeers instead.
-# TODO: Remove once p2p refactor is complete
-# ref: https:#github.com/tendermint/tendermint/issues/5670
-seeds = "{{ .P2P.Seeds }}"
 
 # Comma separated list of peers to be added to the peer store
 # on startup. Either BootstrapPeers or PersistentPeers are
@@ -326,6 +321,10 @@ upnp = {{ .P2P.UPNP }}
 # Maximum number of connections (inbound and outbound).
 max-connections = {{ .P2P.MaxConnections }}
 
+# Maximum number of connections reserved for outgoing
+# connections. Must be less than max-connections
+max-outgoing-connections = {{ .P2P.MaxOutgoingConnections }}
+
 # Rate limits the number of incoming connection attempts per IP address.
 max-incoming-connection-attempts = {{ .P2P.MaxIncomingConnectionAttempts }}
 
@@ -335,9 +334,6 @@ pex = {{ .P2P.PexReactor }}
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 # Warning: IPs will be exposed at /net_info, for more information https://github.com/tendermint/tendermint/issues/3055
 private-peer-ids = "{{ .P2P.PrivatePeerIDs }}"
-
-# Toggle to disable guard against peers connecting from the same ip.
-allow-duplicate-ip = {{ .P2P.AllowDuplicateIP }}
 
 # Peer connection configuration.
 handshake-timeout = "{{ .P2P.HandshakeTimeout }}"
@@ -365,7 +361,11 @@ recv-rate = {{ .P2P.RecvRate }}
 #######################################################
 [mempool]
 
-recheck = {{ .Mempool.Recheck }}
+# recheck has been moved from a config option to a global
+# consensus param in v0.36
+# See https://github.com/tendermint/tendermint/issues/8244 for more information.
+
+# Set true to broadcast transactions in the mempool to other nodes
 broadcast = {{ .Mempool.Broadcast }}
 
 # Maximum number of transactions in the mempool

@@ -22,6 +22,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// key prefixes
+// NB: Before modifying these, cross-check them with those in
+// * internal/store/store.go    [0..4, 13]
+// * internal/state/store.go    [5..8, 14]
+// * internal/evidence/pool.go  [9..10]
+// * light/store/db/db.go       [11..12]
+// TODO(sergio): Move all these to their own package.
+// TODO: what about these (they already collide):
+// * scripts/scmigrate/migrate.go [3]
+// * internal/p2p/peermanager.go  [1]
 const (
 	// prefixes are unique across all tm db's
 	prefixCommitted = int64(9)

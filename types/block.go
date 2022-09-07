@@ -930,8 +930,6 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	return commit, commit.ValidateBasic()
 }
 
-//-----------------------------------------------------------------------------
-
 // Data contains the set of transactions included in the block
 type Data struct {
 
@@ -1100,4 +1098,10 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()
+}
+
+// ProtoBlockIDIsNil is similar to the IsNil function on BlockID, but for the
+// Protobuf representation.
+func ProtoBlockIDIsNil(bID *tmproto.BlockID) bool {
+	return len(bID.Hash) == 0 && ProtoPartSetHeaderIsZero(&bID.PartSetHeader)
 }

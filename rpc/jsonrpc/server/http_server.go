@@ -20,16 +20,27 @@ import (
 
 // Config is a RPC server configuration.
 type Config struct {
-	// see netutil.LimitListener
+	// The maximum number of connections that will be accepted by the listener.
+	// See https://godoc.org/golang.org/x/net/netutil#LimitListener
 	MaxOpenConnections int
-	// mirrors http.Server#ReadTimeout
+
+	// Used to set the HTTP server's per-request read timeout.
+	// See https://godoc.org/net/http#Server.ReadTimeout
 	ReadTimeout time.Duration
-	// mirrors http.Server#WriteTimeout
+
+	// Used to set the HTTP server's per-request write timeout.  Note that this
+	// affects ALL methods on the server, so it should not be set too low. This
+	// should be used as a safety valve, not a resource-control timeout.
+	//
+	// See https://godoc.org/net/http#Server.WriteTimeout
 	WriteTimeout time.Duration
-	// MaxBodyBytes controls the maximum number of bytes the
-	// server will read parsing the request body.
+
+	// Controls the maximum number of bytes the server will read parsing the
+	// request body.
 	MaxBodyBytes int64
-	// mirrors http.Server#MaxHeaderBytes
+
+	// Controls the maximum size of a request header.
+	// See https://godoc.org/net/http#Server.MaxHeaderBytes
 	MaxHeaderBytes int
 }
 
@@ -38,16 +49,16 @@ func DefaultConfig() *Config {
 	return &Config{
 		MaxOpenConnections: 0, // unlimited
 		ReadTimeout:        10 * time.Second,
-		WriteTimeout:       10 * time.Second,
-		MaxBodyBytes:       int64(1000000), // 1MB
-		MaxHeaderBytes:     1 << 20,        // same as the net/http default
+		WriteTimeout:       0,       // no default timeout
+		MaxBodyBytes:       1000000, // 1MB
+		MaxHeaderBytes:     1 << 20, // same as the net/http default
 	}
 }
 
 // Serve creates a http.Server and calls Serve with the given listener. It
 // wraps handler to recover panics and limit the request body size.
 func Serve(ctx context.Context, listener net.Listener, handler http.Handler, logger log.Logger, config *Config) error {
-	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listener.Addr()))
+	logger.Info("Starting RPC HTTP server on", "addr", listener.Addr())
 	h := recoverAndLogHandler(MaxBytesHandler(handler, config.MaxBodyBytes), logger)
 	s := &http.Server{
 		Handler:        h,

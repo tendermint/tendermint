@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -142,8 +143,10 @@ func checkTxsRange(ctx context.Context, t *testing.T, cs *State, start, end int)
 	for i := start; i < end; i++ {
 		txBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(t, cs.txNotifier).CheckTx(ctx, txBytes, nil, mempool.TxInfo{})
+		var rCode uint32
+		err := assertMempool(t, cs.txNotifier).CheckTx(ctx, txBytes, func(r *abci.ResponseCheckTx) { rCode = r.Code }, mempool.TxInfo{})
 		require.NoError(t, err, "error after checkTx")
+		require.Equal(t, code.CodeTypeOK, rCode, "checkTx code is error, txBytes %X", txBytes)
 	}
 }
 
@@ -179,6 +182,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 		case msg := <-newBlockHeaderCh:
 			headerEvent := msg.Data().(types.EventDataNewBlockHeader)
 			n += headerEvent.NumTxs
+			logger.Info("new transactions", "nTxs", headerEvent.NumTxs, "total", n)
 		case <-time.After(30 * time.Second):
 			t.Fatal("Timed out waiting 30s to commit blocks with transactions")
 		}
@@ -208,20 +212,21 @@ func TestMempoolRmBadTx(t *testing.T) {
 	resFinalize, err := app.FinalizeBlock(ctx, &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	require.NoError(t, err)
 	assert.False(t, resFinalize.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
+	assert.True(t, len(resFinalize.AppHash) > 0)
 
-	resCommit, err := app.Commit(ctx)
+	_, err = app.Commit(ctx)
 	require.NoError(t, err)
-	assert.True(t, len(resCommit.Data) > 0)
 
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})
 	go func() {
-		// Try to send the tx through the mempool.
+		// Try to send an out-of-sequence transaction through the mempool.
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
+		binary.BigEndian.PutUint64(txBytes, uint64(5))
 		err := assertMempool(t, cs.txNotifier).CheckTx(ctx, txBytes, func(r *abci.ResponseCheckTx) {
 			if r.Code != code.CodeTypeBadNonce {
-				t.Errorf("expected checktx to return bad nonce, got %v", r)
+				t.Errorf("expected checktx to return bad nonce, got %#v", r)
 				return
 			}
 			checkTxRespCh <- struct{}{}
@@ -269,6 +274,7 @@ type CounterApplication struct {
 
 	txCount        int
 	mempoolTxCount int
+	mu             sync.Mutex
 }
 
 func NewCounterApplication() *CounterApplication {
@@ -276,10 +282,16 @@ func NewCounterApplication() *CounterApplication {
 }
 
 func (app *CounterApplication) Info(_ context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	return &abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}, nil
 }
 
 func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
 	respTxs := make([]*abci.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
 		txValue := txAsUint64(tx)
@@ -293,18 +305,29 @@ func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.Reques
 		app.txCount++
 		respTxs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
-	return &abci.ResponseFinalizeBlock{TxResults: respTxs}, nil
+
+	res := &abci.ResponseFinalizeBlock{TxResults: respTxs}
+
+	if app.txCount > 0 {
+		res.AppHash = make([]byte, 32)
+		binary.BigEndian.PutUint64(res.AppHash[24:], uint64(app.txCount))
+	}
+
+	return res, nil
 }
 
 func (app *CounterApplication) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
-	txValue := txAsUint64(req.Tx)
-	if txValue != uint64(app.mempoolTxCount) {
-		return &abci.ResponseCheckTx{
-			Code: code.CodeTypeBadNonce,
-			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue),
-		}, nil
+	app.mu.Lock()
+	defer app.mu.Unlock()
+	if req.Type == abci.CheckTxType_New {
+		txValue := txAsUint64(req.Tx)
+		if txValue != uint64(app.mempoolTxCount) {
+			return &abci.ResponseCheckTx{
+				Code: code.CodeTypeBadNonce,
+			}, nil
+		}
+		app.mempoolTxCount++
 	}
-	app.mempoolTxCount++
 	return &abci.ResponseCheckTx{Code: code.CodeTypeOK}, nil
 }
 
@@ -315,14 +338,7 @@ func txAsUint64(tx []byte) uint64 {
 }
 
 func (app *CounterApplication) Commit(context.Context) (*abci.ResponseCommit, error) {
-	app.mempoolTxCount = app.txCount
-	if app.txCount == 0 {
-		return &abci.ResponseCommit{}, nil
-	}
-
-	hash := make([]byte, 32)
-	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return &abci.ResponseCommit{Data: hash}, nil
+	return &abci.ResponseCommit{}, nil
 }
 
 func (app *CounterApplication) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {

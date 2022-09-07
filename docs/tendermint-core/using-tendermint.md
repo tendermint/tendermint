@@ -261,7 +261,7 @@ afford to lose all blockchain data!
 To reset a blockchain, stop the node and run:
 
 ```sh
-tenderdash unsafe_reset_all
+tendermint unsafe-reset-all
 ```
 
 This command will remove the data directory and reset private validator and

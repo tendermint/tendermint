@@ -9,10 +9,15 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
+
+// DefaultRPCTimeout is the default context timeout for calls to any RPC method
+// that does not override it with a more specific timeout.
+const DefaultRPCTimeout = 60 * time.Second
 
 // RegisterRPCFuncs adds a route to mux for each non-websocket function in the
 // funcMap, and also a root JSON-RPC POST handler.
@@ -21,22 +26,23 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 		if fn.ws {
 			continue // skip websocket endpoints, not usable via GET calls
 		}
-		mux.HandleFunc("/"+name, makeHTTPHandler(fn, logger))
+		mux.HandleFunc("/"+name, ensureBodyClose(makeHTTPHandler(fn, logger)))
 	}
 
 	// Endpoints for POST.
-	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
+	mux.HandleFunc("/", ensureBodyClose(handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger))))
 }
 
 // Function introspection
 
 // RPCFunc contains the introspected type information for a function.
 type RPCFunc struct {
-	f      reflect.Value // underlying rpc function
-	param  reflect.Type  // the parameter struct, or nil
-	result reflect.Type  // the non-error result type, or nil
-	args   []argInfo     // names and type information (for URL decoding)
-	ws     bool          // websocket only
+	f       reflect.Value // underlying rpc function
+	param   reflect.Type  // the parameter struct, or nil
+	result  reflect.Type  // the non-error result type, or nil
+	args    []argInfo     // names and type information (for URL decoding)
+	timeout time.Duration // default request timeout, 0 means none
+	ws      bool          // websocket only
 }
 
 // argInfo records the name of a field, along with a bit to tell whether the
@@ -52,6 +58,12 @@ type argInfo struct {
 // with the resulting argument value. It reports an error if parameter parsing
 // fails, otherwise it returns the result from the wrapped function.
 func (rf *RPCFunc) Call(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	// If ctx has its own deadline we will respect it; otherwise use rf.timeout.
+	if _, ok := ctx.Deadline(); !ok && rf.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, rf.timeout)
+		defer cancel()
+	}
 	args, err := rf.parseParams(ctx, params)
 	if err != nil {
 		return nil, err
@@ -73,6 +85,11 @@ func (rf *RPCFunc) Call(ctx context.Context, params json.RawMessage) (interface{
 	}
 	return returns[0].Interface(), nil
 }
+
+// Timeout updates rf to include a default timeout for calls to rf. This
+// timeout is used if one is not already provided on the request context.
+// Setting d == 0 means there will be no timeout. Returns rf to allow chaining.
+func (rf *RPCFunc) Timeout(d time.Duration) *RPCFunc { rf.timeout = d; return rf }
 
 // parseParams parses the parameters of a JSON-RPC request and returns the
 // corresponding argument values. On success, the first argument value will be
@@ -129,7 +146,9 @@ func (rf *RPCFunc) adjustParams(data []byte) (json.RawMessage, error) {
 //     func(context.Context, *T) (R, error)
 //
 // for an arbitrary struct type T and type R. NewRPCFunc will panic if f does
-// not have one of these forms.
+// not have one of these forms.  A newly-constructed RPCFunc has a default
+// timeout of DefaultRPCTimeout; use the Timeout method to adjust this as
+// needed.
 func NewRPCFunc(f interface{}) *RPCFunc {
 	rf, err := newRPCFunc(f)
 	if err != nil {
@@ -215,10 +234,11 @@ func newRPCFunc(f interface{}) (*RPCFunc, error) {
 	}
 
 	return &RPCFunc{
-		f:      fv,
-		param:  ptype,
-		result: rtype,
-		args:   args,
+		f:       fv,
+		param:   ptype,
+		result:  rtype,
+		args:    args,
+		timeout: DefaultRPCTimeout, // until overridden
 	}, nil
 }
 

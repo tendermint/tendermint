@@ -19,20 +19,24 @@ import (
 
 // BroadcastTxAsync returns right away, with no response. Does not wait for
 // CheckTx nor DeliverTx results.
-// More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
+// More:
+// https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
+// Deprecated and should be removed in 0.37
 func (env *Environment) BroadcastTxAsync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
-	err := env.Mempool.CheckTx(ctx, req.Tx, nil, mempool.TxInfo{})
-	if err != nil {
-		return nil, err
-	}
+	go func() { _ = env.Mempool.CheckTx(ctx, req.Tx, nil, mempool.TxInfo{}) }()
 
 	return &coretypes.ResultBroadcastTx{Hash: req.Tx.Hash()}, nil
 }
 
-// BroadcastTxSync returns with the response from CheckTx. Does not wait for
+// Deprecated and should be remove in 0.37
+func (env *Environment) BroadcastTxSync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
+	return env.BroadcastTx(ctx, req)
+}
+
+// BroadcastTx returns with the response from CheckTx. Does not wait for
 // DeliverTx result.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_sync
-func (env *Environment) BroadcastTxSync(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
+func (env *Environment) BroadcastTx(ctx context.Context, req *coretypes.RequestBroadcastTx) (*coretypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.ResponseCheckTx, 1)
 	err := env.Mempool.CheckTx(
 		ctx,
@@ -54,13 +58,10 @@ func (env *Environment) BroadcastTxSync(ctx context.Context, req *coretypes.Requ
 		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Err())
 	case r := <-resCh:
 		return &coretypes.ResultBroadcastTx{
-			Code:         r.Code,
-			Data:         r.Data,
-			Log:          r.Log,
-			Codespace:    r.Codespace,
-			MempoolError: r.MempoolError,
-			Info:         r.Info,
-			Hash:         req.Tx.Hash(),
+			Code:      r.Code,
+			Data:      r.Data,
+			Codespace: r.Codespace,
+			Hash:      req.Tx.Hash(),
 		}, nil
 	}
 }
@@ -92,7 +93,7 @@ func (env *Environment) BroadcastTxCommit(ctx context.Context, req *coretypes.Re
 			return &coretypes.ResultBroadcastTxCommit{
 				CheckTx: *r,
 				Hash:    req.Tx.Hash(),
-			}, fmt.Errorf("transaction encountered error (%s)", r.MempoolError)
+			}, fmt.Errorf("wrong ABCI CodeType, got (%d) instead of OK", r.Code)
 		}
 
 		if !indexer.KVSinkEnabled(env.EventSinks) {

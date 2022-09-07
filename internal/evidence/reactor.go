@@ -159,7 +159,7 @@ func (r *Reactor) handleMessage(ctx context.Context, envelope *p2p.Envelope) (er
 
 // processEvidenceCh implements a blocking event loop where we listen for p2p
 // Envelope messages from the evidenceCh.
-func (r *Reactor) processEvidenceCh(ctx context.Context, evidenceCh *p2p.Channel) {
+func (r *Reactor) processEvidenceCh(ctx context.Context, evidenceCh p2p.Channel) {
 	iter := evidenceCh.Receive(ctx)
 	for iter.Next(ctx) {
 		envelope := iter.Envelope()
@@ -186,7 +186,7 @@ func (r *Reactor) processEvidenceCh(ctx context.Context, evidenceCh *p2p.Channel
 // connects/disconnects frequently from the broadcasting peer(s).
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate, evidenceCh *p2p.Channel) {
+func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpdate, evidenceCh p2p.Channel) {
 	r.logger.Debug("received peer update", "peer", peerUpdate.NodeID, "status", peerUpdate.Status)
 
 	r.mtx.Lock()
@@ -227,7 +227,7 @@ func (r *Reactor) processPeerUpdate(ctx context.Context, peerUpdate p2p.PeerUpda
 // processPeerUpdates initiates a blocking process where we listen for and handle
 // PeerUpdate messages. When the reactor is stopped, we will catch the signal and
 // close the p2p PeerUpdatesCh gracefully.
-func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerUpdates, evidenceCh *p2p.Channel) {
+func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerUpdates, evidenceCh p2p.Channel) {
 	for {
 		select {
 		case peerUpdate := <-peerUpdates.Updates():
@@ -249,7 +249,7 @@ func (r *Reactor) processPeerUpdates(ctx context.Context, peerUpdates *p2p.PeerU
 // that the peer has already received or may not be ready for.
 //
 // REF: https://github.com/tendermint/tendermint/issues/4727
-func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID, evidenceCh *p2p.Channel) {
+func (r *Reactor) broadcastEvidenceLoop(ctx context.Context, peerID types.NodeID, evidenceCh p2p.Channel) {
 	var next *clist.CElement
 
 	defer func() {

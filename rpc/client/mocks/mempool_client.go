@@ -8,8 +8,6 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -101,8 +99,13 @@ func (_m *MempoolClient) UnconfirmedTxs(ctx context.Context, page *int, perPage 
 	return r0, r1
 }
 
-// NewMempoolClient creates a new instance of MempoolClient. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewMempoolClient(t testing.TB) *MempoolClient {
+type mockConstructorTestingTNewMempoolClient interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewMempoolClient creates a new instance of MempoolClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewMempoolClient(t mockConstructorTestingTNewMempoolClient) *MempoolClient {
 	mock := &MempoolClient{}
 	mock.Mock.Test(t)
 

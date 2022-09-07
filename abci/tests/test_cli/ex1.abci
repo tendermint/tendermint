@@ -1,10 +1,18 @@
 echo hello
 info
-commit
+prepare_proposal "abc"
+process_proposal "abc"
 finalize_block "abc"
-info
 commit
+info
 query "abc"
 finalize_block "def=xyz" "ghi=123"
 commit
 query "def"
+prepare_proposal "preparedef"
+process_proposal "def"
+process_proposal "preparedef"
+prepare_proposal
+process_proposal
+finalize_block
+commit

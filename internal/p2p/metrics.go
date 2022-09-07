@@ -7,9 +7,6 @@ import (
 	"sync"
 
 	"github.com/go-kit/kit/metrics"
-	"github.com/go-kit/kit/metrics/discard"
-	"github.com/go-kit/kit/metrics/prometheus"
-	stdprometheus "github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -25,140 +22,74 @@ var (
 	valueToLabelRegexp = regexp.MustCompile(`\*?(\w+)\.(.*)`)
 )
 
+//go:generate go run ../../scripts/metricsgen -struct=Metrics
+
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
-	// Number of peers.
-	Peers metrics.Gauge
-	// Number of bytes received from a given peer.
-	PeerReceiveBytesTotal metrics.Counter
-	// Number of bytes sent to a given peer.
-	PeerSendBytesTotal metrics.Counter
-	// Pending bytes to be sent to a given peer.
-	PeerPendingSendBytes metrics.Gauge
+	// Number of peers connected.
+	PeersConnected metrics.Gauge
+	// Nomber of peers in the peer store database.
+	PeersStored metrics.Gauge
+	// Number of inactive peers stored.
+	PeersInactivated metrics.Gauge
+	// Number of bytes per channel received from a given peer.
+	PeerReceiveBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`
+	// Number of bytes per channel sent to a given peer.
+	PeerSendBytesTotal metrics.Counter `metrics_labels:"peer_id, chID, message_type"`
+	// Number of bytes pending being sent to a given peer.
+	PeerPendingSendBytes metrics.Gauge `metrics_labels:"peer_id"`
+
+	// Number of successful connection attempts
+	PeersConnectedSuccess metrics.Counter
+	// Number of failed connection attempts
+	PeersConnectedFailure metrics.Counter
+
+	// Number of peers connected as a result of dialing the
+	// peer.
+	PeersConnectedIncoming metrics.Gauge
+	// Number of peers connected as a result of the peer dialing
+	// this node.
+	PeersConnectedOutgoing metrics.Gauge
+
+	// Number of peers evicted by this node.
+	PeersEvicted metrics.Counter
 
 	// RouterPeerQueueRecv defines the time taken to read off of a peer's queue
 	// before sending on the connection.
+	//metrics:The time taken to read off of a peer's queue before sending on the connection.
 	RouterPeerQueueRecv metrics.Histogram
 
 	// RouterPeerQueueSend defines the time taken to send on a peer's queue which
 	// will later be read and sent on the connection (see RouterPeerQueueRecv).
+	//metrics:The time taken to send on a peer's queue which will later be read and sent on the connection.
 	RouterPeerQueueSend metrics.Histogram
 
 	// RouterChannelQueueSend defines the time taken to send on a p2p channel's
 	// queue which will later be consued by the corresponding reactor/service.
+	//metrics:The time taken to send on a p2p channel's queue which will later be consued by the corresponding reactor/service.
 	RouterChannelQueueSend metrics.Histogram
 
 	// PeerQueueDroppedMsgs defines the number of messages dropped from a peer's
 	// queue for a specific flow (i.e. Channel).
-	PeerQueueDroppedMsgs metrics.Counter
+	//metrics:The number of messages dropped from a peer's queue for a specific p2p Channel.
+	PeerQueueDroppedMsgs metrics.Counter `metrics_labels:"ch_id" metrics_name:"router_channel_queue_dropped_msgs"`
 
 	// PeerQueueMsgSize defines the average size of messages sent over a peer's
 	// queue for a specific flow (i.e. Channel).
-	PeerQueueMsgSize metrics.Gauge
+	//metrics:The size of messages sent over a peer's queue for a specific p2p Channel.
+	PeerQueueMsgSize metrics.Gauge `metrics_labels:"ch_id" metric_name:"router_channel_queue_msg_size"`
+}
 
+type metricsLabelCache struct {
 	mtx               *sync.RWMutex
 	messageLabelNames map[reflect.Type]string
-}
-
-// PrometheusMetrics returns Metrics build using Prometheus client library.
-// Optionally, labels can be provided along with their values ("foo",
-// "fooValue").
-func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
-	labels := []string{}
-	for i := 0; i < len(labelsAndValues); i += 2 {
-		labels = append(labels, labelsAndValues[i])
-	}
-	return &Metrics{
-		Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "peers",
-			Help:      "Number of peers.",
-		}, labels).With(labelsAndValues...),
-
-		PeerReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "peer_receive_bytes_total",
-			Help:      "Number of bytes received from a given peer.",
-		}, append(labels, "peer_id", "chID", "message_type")).With(labelsAndValues...),
-
-		PeerSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "peer_send_bytes_total",
-			Help:      "Number of bytes sent to a given peer.",
-		}, append(labels, "peer_id", "chID", "message_type")).With(labelsAndValues...),
-
-		PeerPendingSendBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "peer_pending_send_bytes",
-			Help:      "Number of pending bytes to be sent to a given peer.",
-		}, append(labels, "peer_id")).With(labelsAndValues...),
-
-		RouterPeerQueueRecv: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "router_peer_queue_recv",
-			Help:      "The time taken to read off of a peer's queue before sending on the connection.",
-		}, labels).With(labelsAndValues...),
-
-		RouterPeerQueueSend: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "router_peer_queue_send",
-			Help:      "The time taken to send on a peer's queue which will later be read and sent on the connection (see RouterPeerQueueRecv).",
-		}, labels).With(labelsAndValues...),
-
-		RouterChannelQueueSend: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "router_channel_queue_send",
-			Help:      "The time taken to send on a p2p channel's queue which will later be consued by the corresponding reactor/service.",
-		}, labels).With(labelsAndValues...),
-
-		PeerQueueDroppedMsgs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "router_channel_queue_dropped_msgs",
-			Help:      "The number of messages dropped from a peer's queue for a specific p2p Channel.",
-		}, append(labels, "ch_id")).With(labelsAndValues...),
-
-		PeerQueueMsgSize: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "router_channel_queue_msg_size",
-			Help:      "The size of messages sent over a peer's queue for a specific p2p Channel.",
-		}, append(labels, "ch_id")).With(labelsAndValues...),
-
-		mtx:               &sync.RWMutex{},
-		messageLabelNames: map[reflect.Type]string{},
-	}
-}
-
-// NopMetrics returns no-op Metrics.
-func NopMetrics() *Metrics {
-	return &Metrics{
-		Peers:                  discard.NewGauge(),
-		PeerReceiveBytesTotal:  discard.NewCounter(),
-		PeerSendBytesTotal:     discard.NewCounter(),
-		PeerPendingSendBytes:   discard.NewGauge(),
-		RouterPeerQueueRecv:    discard.NewHistogram(),
-		RouterPeerQueueSend:    discard.NewHistogram(),
-		RouterChannelQueueSend: discard.NewHistogram(),
-		PeerQueueDroppedMsgs:   discard.NewCounter(),
-		PeerQueueMsgSize:       discard.NewGauge(),
-		mtx:                    &sync.RWMutex{},
-		messageLabelNames:      map[reflect.Type]string{},
-	}
 }
 
 // ValueToMetricLabel is a method that is used to produce a prometheus label value of the golang
 // type that is passed in.
 // This method uses a map on the Metrics struct so that each label name only needs
 // to be produced once to prevent expensive string operations.
-func (m *Metrics) ValueToMetricLabel(i interface{}) string {
+func (m *metricsLabelCache) ValueToMetricLabel(i interface{}) string {
 	t := reflect.TypeOf(i)
 	m.mtx.RLock()
 
@@ -175,4 +106,11 @@ func (m *Metrics) ValueToMetricLabel(i interface{}) string {
 	defer m.mtx.Unlock()
 	m.messageLabelNames[t] = l
 	return l
+}
+
+func newMetricsLabelCache() *metricsLabelCache {
+	return &metricsLabelCache{
+		mtx:               &sync.RWMutex{},
+		messageLabelNames: map[reflect.Type]string{},
+	}
 }

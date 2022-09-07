@@ -12,8 +12,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -221,6 +219,29 @@ func (_m *RemoteClient) BroadcastEvidence(_a0 context.Context, _a1 types.Evidenc
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, types.Evidence) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// BroadcastTx provides a mock function with given fields: _a0, _a1
+func (_m *RemoteClient) BroadcastTx(_a0 context.Context, _a1 types.Tx) (*coretypes.ResultBroadcastTx, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *coretypes.ResultBroadcastTx
+	if rf, ok := ret.Get(0).(func(context.Context, types.Tx) *coretypes.ResultBroadcastTx); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*coretypes.ResultBroadcastTx)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, types.Tx) error); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
@@ -812,8 +833,13 @@ func (_m *RemoteClient) Validators(ctx context.Context, height *int64, page *int
 	return r0, r1
 }
 
-// NewRemoteClient creates a new instance of RemoteClient. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewRemoteClient(t testing.TB) *RemoteClient {
+type mockConstructorTestingTNewRemoteClient interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewRemoteClient creates a new instance of RemoteClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewRemoteClient(t mockConstructorTestingTNewRemoteClient) *RemoteClient {
 	mock := &RemoteClient{}
 	mock.Mock.Test(t)
 

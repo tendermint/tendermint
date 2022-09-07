@@ -50,7 +50,7 @@ jobs:
             suffix=${{ steps.suffix.outputs.result }}
 
       - name: Publish to Docker Hub
-        uses: docker/build-push-action@v3.0.0
+        uses: docker/build-push-action@v3.1.0
         with:
           context: .
           file: ./DOCKER/Dockerfile

@@ -212,7 +212,7 @@ type stateProviderP2P struct {
 	sync.Mutex    // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
-	paramsSendCh  *p2p.Channel
+	paramsSendCh  p2p.Channel
 	paramsRecvCh  chan types.ConsensusParams
 }
 
@@ -224,7 +224,7 @@ func NewP2PStateProvider(
 	initialHeight int64,
 	trustHeight int64,
 	providers []lightprovider.Provider,
-	paramsSendCh *p2p.Channel,
+	paramsSendCh p2p.Channel,
 	logger log.Logger,
 	dashCoreClient dashcore.Client,
 ) (StateProvider, error) {

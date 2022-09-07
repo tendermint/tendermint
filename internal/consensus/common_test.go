@@ -159,7 +159,7 @@ func signVote(
 	quorumHash crypto.QuorumHash) *types.Vote {
 
 	exts := make(types.VoteExtensions)
-	if voteType == tmproto.PrecommitType {
+	if voteType == tmproto.PrecommitType && !blockID.IsNil() {
 		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte("extension"))
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, lastAppHash, quorumType, quorumHash, exts)
@@ -525,10 +525,11 @@ func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 }
 
 type makeStateArgs struct {
-	config      *config.Config
-	logger      log.Logger
-	validators  int
-	application abci.Application
+	config          *config.Config
+	consensusParams *types.ConsensusParams
+	logger          log.Logger
+	validators      int
+	application     abci.Application
 }
 
 func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
@@ -549,15 +550,18 @@ func makeState(ctx context.Context, t *testing.T, args makeStateArgs) (*State, [
 	if args.logger == nil {
 		args.logger = log.NewNopLogger()
 	}
+	c := factory.ConsensusParams()
+	if args.consensusParams != nil {
+		c = args.consensusParams
+	}
 
-	consensusParams := factory.ConsensusParams()
 	// vote timeout increased because of bls12381 signing/verifying operations are longer performed than ed25519
 	// and 10ms (previous value) is not enough
-	consensusParams.Timeout.Vote = 50 * time.Millisecond
-	consensusParams.Timeout.VoteDelta = 5 * time.Millisecond
+	c.Timeout.Vote = 50 * time.Millisecond
+	c.Timeout.VoteDelta = 5 * time.Millisecond
 
 	state, privVals := makeGenesisState(ctx, t, args.config, genesisStateArgs{
-		Params:     consensusParams,
+		Params:     c,
 		Validators: validators,
 	})
 

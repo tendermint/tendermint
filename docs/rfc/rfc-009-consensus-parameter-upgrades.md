@@ -31,12 +31,12 @@ not reference the new parameters. Any nodes joining the network with the newer
 version of Tendermint will have the new consensus parameters. Tendermint will need
 to handle this case so that new versions of Tendermint with new consensus parameters
 can still validate old blocks correctly without having to do anything overly complex
-or hacky. 
+or hacky.
 
 ### Allowing Developer-Defined Values and the `EndBlock` Problem
 
 When new consensus parameters are added, application developers may wish to set
-values for them so that the developer-defined values may be used as soon as the 
+values for them so that the developer-defined values may be used as soon as the
 software upgrades. We do not currently have a clean mechanism for handling this.
 
 Consensus parameter updates are communicated from the application to Tendermint
@@ -51,7 +51,7 @@ can take effect is height `H+1`. As of now, height `H` must run with the default
 
 ### Hash Compatibility
 
-This section discusses possible solutions to the problem of maintaining backwards-compatibility 
+This section discusses possible solutions to the problem of maintaining backwards-compatibility
 of hashed parameters while adding new parameters.
 
 #### Never Hash Defaults

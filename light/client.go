@@ -11,6 +11,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	dashcore "github.com/tendermint/tendermint/dash/core"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/light/provider"
 	"github.com/tendermint/tendermint/light/store"
@@ -443,7 +444,8 @@ func (c *Client) VerifyHeader(ctx context.Context, newHeader *types.Header, now 
 			return fmt.Errorf("existing trusted header %X does not match newHeader %X", l.Hash(), newHeader.Hash())
 		}
 		c.logger.Debug("header has already been verified",
-			"height", newHeader.Height, "hash", newHeader.Hash())
+			"height", newHeader.Height,
+			"hash", tmstrings.LazyBlockHash(newHeader))
 		return nil
 	}
 
@@ -777,7 +779,12 @@ func (c *Client) findNewPrimary(ctx context.Context, height int64, remove bool) 
 
 	// process all the responses as they come in
 	for i := 0; i < cap(witnessResponsesC); i++ {
-		response := <-witnessResponsesC
+		var response witnessResponse
+		select {
+		case response = <-witnessResponsesC:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 		switch response.err {
 		// success! We have found a new primary
 		case nil:

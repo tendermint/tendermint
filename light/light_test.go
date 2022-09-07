@@ -26,6 +26,10 @@ import (
 
 // Automatically getting new headers and verifying them.
 func TestClientIntegration_Update(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Parallel()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -88,6 +92,10 @@ func TestClientIntegration_Update(t *testing.T) {
 
 // Manually getting light blocks and verifying them.
 func TestClientIntegration_VerifyLightBlockAtHeight(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -165,6 +173,10 @@ func waitForBlock(ctx context.Context, p provider.Provider, height int64) (*type
 }
 
 func TestClientStatusRPC(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	conf, err := rpctest.CreateConfig(t, t.Name())

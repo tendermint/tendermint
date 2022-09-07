@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/eventlog"
+	"github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
@@ -26,7 +27,6 @@ import (
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/internal/statesync"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 	rpcserver "github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/types"
@@ -236,7 +236,8 @@ func (env *Environment) StartService(ctx context.Context, conf *config.Config) (
 	// If necessary adjust global WriteTimeout to ensure it's greater than
 	// TimeoutBroadcastTxCommit.
 	// See https://github.com/tendermint/tendermint/issues/3435
-	if cfg.WriteTimeout <= conf.RPC.TimeoutBroadcastTxCommit {
+	// Note we don't need to adjust anything if the timeout is already unlimited.
+	if cfg.WriteTimeout > 0 && cfg.WriteTimeout <= conf.RPC.TimeoutBroadcastTxCommit {
 		cfg.WriteTimeout = conf.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 

@@ -16,6 +16,10 @@ const (
 )
 
 func TestBasicPartSet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// Construct random data of size partSize * 100
 	nParts := 100
 	data := tmrand.Bytes(testPartSize * nParts)
@@ -64,6 +68,10 @@ func TestBasicPartSet(t *testing.T) {
 }
 
 func TestWrongProof(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// Construct random data of size partSize * 100
 	data := tmrand.Bytes(testPartSize * 100)
 	partSet := NewPartSetFromData(data, testPartSize)
@@ -89,6 +97,10 @@ func TestWrongProof(t *testing.T) {
 }
 
 func TestPartSetHeaderValidateBasic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	testCases := []struct {
 		testName              string
 		malleatePartSetHeader func(*PartSetHeader)
@@ -110,6 +122,10 @@ func TestPartSetHeaderValidateBasic(t *testing.T) {
 }
 
 func TestPartValidateBasic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	testCases := []struct {
 		testName     string
 		malleatePart func(*Part)

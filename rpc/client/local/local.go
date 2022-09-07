@@ -87,6 +87,10 @@ func (c *Local) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes.
 	return c.env.BroadcastTxCommit(ctx, &coretypes.RequestBroadcastTx{Tx: tx})
 }
 
+func (c *Local) BroadcastTx(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
+	return c.env.BroadcastTx(ctx, &coretypes.RequestBroadcastTx{Tx: tx})
+}
+
 func (c *Local) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
 	return c.env.BroadcastTxAsync(ctx, &coretypes.RequestBroadcastTx{Tx: tx})
 }

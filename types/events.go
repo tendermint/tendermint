@@ -133,7 +133,10 @@ type EventDataNewBlock struct {
 func (EventDataNewBlock) TypeTag() string { return "tendermint/event/NewBlock" }
 
 // ABCIEvents implements the eventlog.ABCIEventer interface.
-func (e EventDataNewBlock) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
+func (e EventDataNewBlock) ABCIEvents() []abci.Event {
+	base := []abci.Event{eventWithAttr(BlockHeightKey, fmt.Sprint(e.Block.Header.Height))}
+	return append(base, e.ResultFinalizeBlock.Events...)
+}
 
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
@@ -146,7 +149,10 @@ type EventDataNewBlockHeader struct {
 func (EventDataNewBlockHeader) TypeTag() string { return "tendermint/event/NewBlockHeader" }
 
 // ABCIEvents implements the eventlog.ABCIEventer interface.
-func (e EventDataNewBlockHeader) ABCIEvents() []abci.Event { return e.ResultFinalizeBlock.Events }
+func (e EventDataNewBlockHeader) ABCIEvents() []abci.Event {
+	base := []abci.Event{eventWithAttr(BlockHeightKey, fmt.Sprint(e.Header.Height))}
+	return append(base, e.ResultFinalizeBlock.Events...)
+}
 
 type EventDataNewEvidence struct {
 	Evidence Evidence `json:"evidence"`
@@ -273,18 +279,17 @@ func (EventDataEvidenceValidated) TypeTag() string { return "tendermint/event/Ev
 const (
 	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "tm.event"
+
 	// TxHashKey is a reserved key, used to specify transaction's hash.
 	// see EventBus#PublishEventTx
 	TxHashKey = "tx.hash"
+
 	// TxHeightKey is a reserved key, used to specify transaction block's height.
 	// see EventBus#PublishEventTx
 	TxHeightKey = "tx.height"
 
 	// BlockHeightKey is a reserved key used for indexing FinalizeBlock events.
 	BlockHeightKey = "block.height"
-
-	// EventTypeFinalizeBlock is a reserved key used for indexing FinalizeBlock events.
-	EventTypeFinalizeBlock = "finalize_block"
 )
 
 var (

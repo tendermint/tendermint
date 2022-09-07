@@ -1917,10 +1917,101 @@
 
 ### Rfc
 
-- E2e improvements (#6941)
-- Add performance taxonomy rfc (#6921)
-- Fix a few typos and formatting glitches p2p roadmap (#6960)
-- Event system (#6957)
+## v0.35.9
+
+July 20, 2022
+
+This release fixes a deadlock that could occur in some cases when using the
+priority mempool with the ABCI socket client.
+
+### BUG FIXES
+
+- [mempool] [\#9030](https://github.com/tendermint/tendermint/pull/9030) rework lock discipline to mitigate callback deadlocks (@creachadair)
+
+
+## v0.35.8
+
+July 12, 2022
+
+Special thanks to external contributors on this release: @joeabbey
+
+This release fixes an unbounded heap growth issue in the implementation of the
+priority mempool, as well as some configuration, logging, and peer dialing
+improvements in the non-legacy p2p stack. It also adds a new opt-in
+"simple-priority" value for the `p2p.queue-type` setting, that should improve
+gossip performance for non-legacy peer networks.
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+   - [node] [\#8902](https://github.com/tendermint/tendermint/pull/8902) Always start blocksync and avoid misconfiguration (@tychoish)
+
+### FEATURES
+
+- [cli] [\#8675](https://github.com/tendermint/tendermint/pull/8675) Add command to force compact goleveldb databases (@cmwaters)
+
+### IMPROVEMENTS
+
+- [p2p] [\#8914](https://github.com/tendermint/tendermint/pull/8914) [\#8875](https://github.com/tendermint/tendermint/pull/8875) Improvements to peer dialing (backported). (@tychoish)
+- [p2p] [\#8820](https://github.com/tendermint/tendermint/pull/8820) add eviction metrics and cleanup dialing error handling (backport #8819) (@tychoish)
+- [logging] [\#8896](https://github.com/tendermint/tendermint/pull/8896) Do not pre-process log results (backport #8895). (@tychoish)
+- [p2p] [\#8956](https://github.com/tendermint/tendermint/pull/8956) Simpler priority queue (backport #8929). (@tychoish)
+
+### BUG FIXES
+
+- [mempool] [\#8944](https://github.com/tendermint/tendermint/pull/8944) Fix unbounded heap growth in the priority mempool. (@creachadair)
+- [p2p] [\#8869](https://github.com/tendermint/tendermint/pull/8869) Set empty timeouts to configed values. (backport #8847). (@williambanfield)
+
+
+## v0.35.7
+
+June 16, 2022
+
+### BUG FIXES
+
+- [p2p] [\#8692](https://github.com/tendermint/tendermint/pull/8692) scale the number of stored peers by the configured maximum connections (#8684)
+- [rpc] [\#8715](https://github.com/tendermint/tendermint/pull/8715) always close http bodies (backport #8712)
+- [p2p] [\#8760](https://github.com/tendermint/tendermint/pull/8760) accept should not abort on first error (backport #8759)
+
+### BREAKING CHANGES
+
+- P2P Protocol
+
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Introduce "inactive" peer label to avoid re-dialing incompatible peers. (@tychoish)
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Increase frequency of dialing attempts to reduce latency for peer acquisition. (@tychoish)
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Improvements to peer scoring and sorting to gossip a greater variety of peers during PEX. (@tychoish)
+  - [p2p] [\#8737](https://github.com/tendermint/tendermint/pull/8737) Track incoming and outgoing peers separately to ensure more peer slots open for incoming connections. (@tychoish)
+
+## v0.35.6
+
+June 3, 2022
+
+### FEATURES
+
+- [migrate] [\#8672](https://github.com/tendermint/tendermint/pull/8672) provide function for database production (backport #8614) (@tychoish)
+
+### BUG FIXES
+
+- [consensus] [\#8651](https://github.com/tendermint/tendermint/pull/8651) restructure peer catchup sleep (@tychoish)
+- [pex] [\#8657](https://github.com/tendermint/tendermint/pull/8657) align max address thresholds (@cmwaters)
+- [cmd] [\#8668](https://github.com/tendermint/tendermint/pull/8668) don't used global config for reset commands (@cmwaters)
+- [p2p] [\#8681](https://github.com/tendermint/tendermint/pull/8681) shed peers from store from other networks (backport #8678) (@tychoish)
+
+
+## v0.35.5
+
+May 26, 2022
+
+### BUG FIXES
+
+- [p2p] [\#8371](https://github.com/tendermint/tendermint/pull/8371) fix setting in con-tracker (backport #8370) (@tychoish)
+- [blocksync] [\#8496](https://github.com/tendermint/tendermint/pull/8496) validate block against state before persisting it to disk (@cmwaters)
+- [statesync] [\#8494](https://github.com/tendermint/tendermint/pull/8494) avoid potential race (@tychoish)
+- [keymigrate] [\#8467](https://github.com/tendermint/tendermint/pull/8467) improve filtering for legacy transaction hashes (backport #8466) (@creachadair)
+- [rpc] [\#8594](https://github.com/tendermint/tendermint/pull/8594) fix encoding of block_results responses (@creachadair)
+
+## v0.35.4
 
 ### Rpc
 
@@ -2374,10 +2465,51 @@
 
 ### Security
 
-- Bump github.com/spf13/viper from 1.8.0 to 1.8.1 (#6622)
-- Bump github.com/rs/cors from 1.7.0 to 1.8.0 (#6635)
-- Bump github.com/go-kit/kit from 0.10.0 to 0.11.0 (#6651)
-- Bump github.com/spf13/cobra from 1.2.0 to 1.2.1 (#6650)
+  - [consensus] [\#4582](https://github.com/tendermint/tendermint/pull/4582) RoundState: `Round`, `LockedRound` & `CommitRound` are now `int32` (@marbar3778)
+  - [consensus] [\#4582](https://github.com/tendermint/tendermint/pull/4582) HeightVoteSet: `round` is now `int32` (@marbar3778)
+  - [crypto] [\#4721](https://github.com/tendermint/tendermint/pull/4721) Remove `SimpleHashFromMap()` and `SimpleProofsFromMap()` (@erikgrinaker)
+  - [crypto] [\#4940](https://github.com/tendermint/tendermint/pull/4940) All keys have become `[]byte` instead of `[<size>]byte`. The byte method no longer returns the marshaled value but just the `[]byte` form of the data. (@marbar3778)
+  - [crypto] [\#4988](https://github.com/tendermint/tendermint/pull/4988) Removal of key type multisig (@marbar3778)
+    - The key has been moved to the [Cosmos-SDK](https://github.com/cosmos/cosmos-sdk/blob/master/crypto/types/multisig/multisignature.go)
+  - [crypto] [\#4989](https://github.com/tendermint/tendermint/pull/4989) Remove `Simple` prefixes from `SimpleProof`, `SimpleValueOp` & `SimpleProofNode`. (@marbar3778)
+    - `merkle.Proof` has been renamed to `ProofOps`.
+    - Protobuf messages `Proof` & `ProofOp` has been moved to `proto/crypto/merkle`
+    - `SimpleHashFromByteSlices` has been renamed to `HashFromByteSlices`
+    - `SimpleHashFromByteSlicesIterative` has been renamed to `HashFromByteSlicesIterative`
+    - `SimpleProofsFromByteSlices` has been renamed to `ProofsFromByteSlices`
+  - [crypto] [\#4941](https://github.com/tendermint/tendermint/pull/4941) Remove suffixes from all keys. (@marbar3778)
+    - ed25519: type `PrivKeyEd25519` is now `PrivKey`
+    - ed25519: type `PubKeyEd25519` is now `PubKey`
+    - secp256k1: type`PrivKeySecp256k1` is now `PrivKey`
+    - secp256k1: type`PubKeySecp256k1` is now `PubKey`
+    - sr25519: type `PrivKeySr25519` is now `PrivKey`
+    - sr25519: type `PubKeySr25519` is now `PubKey`
+  - [crypto] [\#5214](https://github.com/tendermint/tendermint/pull/5214) Change `GenPrivKeySecp256k1` to `GenPrivKeyFromSecret` to be consistent with other keys (@marbar3778)
+  - [crypto] [\#5236](https://github.com/tendermint/tendermint/pull/5236) `VerifyBytes` is now `VerifySignature` on the `crypto.PubKey` interface (@marbar3778)
+  - [evidence] [\#5361](https://github.com/tendermint/tendermint/pull/5361) Add LightClientAttackEvidence and change evidence interface (@cmwaters)
+  - [libs] [\#4831](https://github.com/tendermint/tendermint/pull/4831) Remove `Bech32` pkg from Tendermint. This pkg now lives in the [cosmos-sdk](https://github.com/cosmos/cosmos-sdk/tree/4173ea5ebad906dd9b45325bed69b9c655504867/types/bech32) (@marbar3778)
+  - [light] [\#4946](https://github.com/tendermint/tendermint/pull/4946) Rename `lite2` pkg to `light`. Remove `lite` implementation. (@marbar3778)
+  - [light] [\#5347](https://github.com/tendermint/tendermint/pull/5347) `NewClient`, `NewHTTPClient`, `VerifyHeader` and `VerifyLightBlockAtHeight` now accept `context.Context` as 1st param (@melekes)
+  - [merkle] [\#5193](https://github.com/tendermint/tendermint/pull/5193) `HashFromByteSlices` and `ProofsFromByteSlices` now return a hash for empty inputs, following RFC6962 (@erikgrinaker)
+  - [proto] [\#5025](https://github.com/tendermint/tendermint/pull/5025) All proto files have been moved to `/proto` directory. (@marbar3778)
+    - Using the recommended the file layout from buf, [see here for more info](https://docs.buf.build/lint/rules) <!-- markdown-link-check-disable-line -->
+  - [rpc/client] [\#4947](https://github.com/tendermint/tendermint/pull/4947) `Validators`, `TxSearch` `page`/`per_page` params become pointers (@melekes)
+    - `UnconfirmedTxs` `limit` param is a pointer
+  - [rpc/jsonrpc/server] [\#5141](https://github.com/tendermint/tendermint/pull/5141) Remove `WriteRPCResponseArrayHTTP` (use `WriteRPCResponseHTTP` instead) (@melekes)
+  - [state] [\#4679](https://github.com/tendermint/tendermint/pull/4679) `TxResult` is a Protobuf type defined in `abci` types directory (@marbar3778)
+  - [state] [\#5191](https://github.com/tendermint/tendermint/pull/5191) Add `State.InitialHeight` field to record initial block height, must be `1` (not `0`) to start from 1 (@erikgrinaker)
+  - [state] [\#5231](https://github.com/tendermint/tendermint/pull/5231) `LoadStateFromDBOrGenesisFile()` and `LoadStateFromDBOrGenesisDoc()` no longer saves the state in the database if not found, the genesis state is simply returned (@erikgrinaker)
+  - [state] [\#5348](https://github.com/tendermint/tendermint/pull/5348) Define an Interface for the state store. (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939)  `SignedMsgType` has moved to a Protobuf enum types (@marbar3778)
+  - [types] [\#4962](https://github.com/tendermint/tendermint/pull/4962) `ConsensusParams`, `BlockParams`, `EvidenceParams`, `ValidatorParams` & `HashedParams` are now Protobuf types (@marbar3778)
+  - [types] [\#4852](https://github.com/tendermint/tendermint/pull/4852) Vote & Proposal `SignBytes` is now func `VoteSignBytes` & `ProposalSignBytes` (@marbar3778)
+  - [types] [\#4798](https://github.com/tendermint/tendermint/pull/4798) Simplify `VerifyCommitTrusting` func + remove extra validation (@melekes)
+  - [types] [\#4845](https://github.com/tendermint/tendermint/pull/4845) Remove `ABCIResult` (@melekes)
+  - [types] [\#5029](https://github.com/tendermint/tendermint/pull/5029) Rename all values from `PartsHeader` to `PartSetHeader` to have consistency (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) `Total` in `Parts` & `PartSetHeader` has been changed from a `int` to a `uint32` (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Vote: `ValidatorIndex` & `Round` are now `int32` (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Proposal: `POLRound` & `Round` are now `int32` (@marbar3778)
+  - [types] [\#4939](https://github.com/tendermint/tendermint/pull/4939) Block: `Round` is now `int32` (@marbar3778)
 
 ### Testing
 
@@ -3501,7 +3633,7 @@
 - Only run when applicable (#4752)
 - Check git diff on each job (#4770)
 - Checkout code before git diff check (#4779)
-- Add paths 
+- Add paths
 - Bump the timeout for test_coverage (#4864)
 - Migrate localnet to github actions (#4878)
 - Add timeouts (#4912)
@@ -4395,12 +4527,12 @@
 
 ### P2p/conn
 
-- Add Bufferpool (#3664)
-- Simplify secret connection handshake malleability fix with merlin (#4185)
-- Add a test for MakeSecretConnection (#4829)
-- Migrate to Protobuf (#4990)
-- Check for channel id overflow before processing receive msg (#6522)
-- Check for channel id overflow before processing receive msg (backport #6522) (#6528)
+This release fixes yet another issue with the proposer selection algorithm.
+We hope it's the last one, but we won't be surprised if it's not.
+We plan to one day expose the selection algorithm more directly to
+the application ([\#3285](https://github.com/tendermint/tendermint/issues/3285)), and even to support randomness ([\#763](https://github.com/tendermint/tendermint/issues/763)). <!-- markdown-link-check-disable-line -->
+For more, see issues marked
+[proposer-selection](https://github.com/tendermint/tendermint/labels/proposer-selection).
 
 ### P2p/pex
 
@@ -4750,7 +4882,7 @@
 ### Swagger
 
 - Update swagger port (#4498)
-- Remove duplicate blockID 
+- Remove duplicate blockID
 - Define version (#4952)
 - Update (#5257)
 

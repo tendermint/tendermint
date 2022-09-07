@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/evidence"
+	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/p2p/conn"
@@ -30,7 +31,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
-	tmstrings "github.com/tendermint/tendermint/libs/strings"
 	"github.com/tendermint/tendermint/privval"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
 	"github.com/tendermint/tendermint/types"
@@ -149,7 +149,6 @@ func createMempoolReactor(
 	memplMetrics *mempool.Metrics,
 	peerEvents p2p.PeerEventSubscriber,
 	chCreator p2p.ChannelCreator,
-	peerHeight func(types.NodeID) int64,
 ) (service.Service, mempool.Mempool) {
 	logger = logger.With("module", "mempool")
 
@@ -168,7 +167,6 @@ func createMempoolReactor(
 		mp,
 		chCreator,
 		peerEvents,
-		peerHeight,
 	)
 
 	if cfg.Consensus.WaitForTxs() {
@@ -206,6 +204,7 @@ func createPeerManager(
 	cfg *config.Config,
 	dbProvider config.DBProvider,
 	nodeID types.NodeID,
+	metrics *p2p.Metrics,
 ) (*p2p.PeerManager, closer, error) {
 
 	selfAddr, err := p2p.ParseNodeAddress(nodeID.AddressString(cfg.P2P.ExternalAddress))
@@ -227,16 +226,29 @@ func createPeerManager(
 		maxConns = 64
 	}
 
+	var maxOutgoingConns uint16
+	switch {
+	case cfg.P2P.MaxOutgoingConnections > 0:
+		maxOutgoingConns = cfg.P2P.MaxOutgoingConnections
+	default:
+		maxOutgoingConns = maxConns / 2
+	}
+
+	maxUpgradeConns := uint16(4)
+
 	options := p2p.PeerManagerOptions{
-		SelfAddress:            selfAddr,
-		MaxConnected:           maxConns,
-		MaxConnectedUpgrade:    4,
-		MaxPeers:               1000,
-		MinRetryTime:           250 * time.Millisecond,
-		MaxRetryTime:           30 * time.Minute,
-		MaxRetryTimePersistent: 5 * time.Minute,
-		RetryTimeJitter:        5 * time.Second,
-		PrivatePeers:           privatePeerIDs,
+		SelfAddress:              selfAddr,
+		MaxConnected:             maxConns,
+		MaxOutgoingConnections:   maxOutgoingConns,
+		MaxConnectedUpgrade:      maxUpgradeConns,
+		DisconnectCooldownPeriod: 2 * time.Second,
+		MaxPeers:                 maxUpgradeConns + 4*maxConns,
+		MinRetryTime:             250 * time.Millisecond,
+		MaxRetryTime:             30 * time.Minute,
+		MaxRetryTimePersistent:   5 * time.Minute,
+		RetryTimeJitter:          5 * time.Second,
+		PrivatePeers:             privatePeerIDs,
+		Metrics:                  metrics,
 	}
 
 	peers := []p2p.NodeAddress{}

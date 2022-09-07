@@ -233,6 +233,10 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*coretypes.R
 	return c.next.BroadcastTxSync(ctx, tx)
 }
 
+func (c *Client) BroadcastTx(ctx context.Context, tx types.Tx) (*coretypes.ResultBroadcastTx, error) {
+	return c.next.BroadcastTx(ctx, tx)
+}
+
 func (c *Client) UnconfirmedTxs(ctx context.Context, page, perPage *int) (*coretypes.ResultUnconfirmedTxs, error) {
 	return c.next.UnconfirmedTxs(ctx, page, perPage)
 }

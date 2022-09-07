@@ -35,6 +35,10 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cfg, err := rpctest.CreateConfig(t, t.Name())

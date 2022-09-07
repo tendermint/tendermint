@@ -24,7 +24,7 @@ type QuorumSignData struct {
 
 // Verify verifies a quorum signatures: block, state and vote-extensions
 func (q QuorumSignData) Verify(pubKey crypto.PubKey, signs QuorumSigns) error {
-	return NewQuorumSingsVerifier(q).Verify(pubKey, signs)
+	return NewQuorumSignsVerifier(q).Verify(pubKey, signs)
 }
 
 // SignItem represents quorum sign data, like a request id, message bytes, sha256 hash of message and signID

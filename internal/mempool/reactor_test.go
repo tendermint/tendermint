@@ -30,7 +30,7 @@ type reactorTestSuite struct {
 	logger  log.Logger
 
 	reactors        map[types.NodeID]*Reactor
-	mempoolChannels map[types.NodeID]*p2p.Channel
+	mempoolChannels map[types.NodeID]p2p.Channel
 	mempools        map[types.NodeID]*TxMempool
 	kvstores        map[types.NodeID]*kvstore.Application
 
@@ -51,7 +51,7 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 		logger:          log.NewNopLogger().With("testCase", t.Name()),
 		network:         p2ptest.MakeNetwork(ctx, t, p2ptest.NetworkOptions{NumNodes: numNodes}),
 		reactors:        make(map[types.NodeID]*Reactor, numNodes),
-		mempoolChannels: make(map[types.NodeID]*p2p.Channel, numNodes),
+		mempoolChannels: make(map[types.NodeID]p2p.Channel, numNodes),
 		mempools:        make(map[types.NodeID]*TxMempool, numNodes),
 		kvstores:        make(map[types.NodeID]*kvstore.Application, numNodes),
 		peerChans:       make(map[types.NodeID]chan p2p.PeerUpdate, numNodes),
@@ -68,14 +68,14 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 		require.NoError(t, client.Start(ctx))
 		t.Cleanup(client.Wait)
 
-		mempool := setup(t, client, 0)
+		mempool := setup(t, client, 1<<20)
 		rts.mempools[nodeID] = mempool
 
 		rts.peerChans[nodeID] = make(chan p2p.PeerUpdate, chBuf)
 		rts.peerUpdates[nodeID] = p2p.NewPeerUpdates(rts.peerChans[nodeID], 1)
 		rts.network.Nodes[nodeID].PeerManager.Register(ctx, rts.peerUpdates[nodeID])
 
-		chCreator := func(ctx context.Context, chDesc *p2p.ChannelDescriptor) (*p2p.Channel, error) {
+		chCreator := func(ctx context.Context, chDesc *p2p.ChannelDescriptor) (p2p.Channel, error) {
 			return rts.mempoolChannels[nodeID], nil
 		}
 
@@ -85,7 +85,6 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 			mempool,
 			chCreator,
 			func(ctx context.Context) *p2p.PeerUpdates { return rts.peerUpdates[nodeID] },
-			rts.network.Nodes[nodeID].PeerManager.GetHeight,
 		)
 		rts.nodes = append(rts.nodes, nodeID)
 
@@ -171,7 +170,9 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 	secondaryReactor.observePanic = observePanic
 
 	firstTx := &WrappedTx{}
+	primaryMempool.Lock()
 	primaryMempool.insertTx(firstTx)
+	primaryMempool.Unlock()
 
 	// run the router
 	rts.start(ctx, t)
@@ -184,6 +185,8 @@ func TestReactorBroadcastDoesNotPanic(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			primaryMempool.Lock()
+			defer primaryMempool.Unlock()
 			primaryMempool.insertTx(next)
 		}()
 	}
@@ -254,7 +257,7 @@ func TestReactorConcurrency(t *testing.T) {
 				deliverTxResponses[i] = &abci.ExecTxResult{Code: 0}
 			}
 
-			require.NoError(t, mempool.Update(ctx, 1, convertTex(txs), deliverTxResponses, nil, nil))
+			require.NoError(t, mempool.Update(ctx, 1, convertTex(txs), deliverTxResponses, nil, nil, true))
 		}()
 
 		// 1. submit a bunch of txs
@@ -268,7 +271,7 @@ func TestReactorConcurrency(t *testing.T) {
 			mempool.Lock()
 			defer mempool.Unlock()
 
-			err := mempool.Update(ctx, 1, []types.Tx{}, make([]*abci.ExecTxResult, 0), nil, nil)
+			err := mempool.Update(ctx, 1, []types.Tx{}, make([]*abci.ExecTxResult, 0), nil, nil, true)
 			require.NoError(t, err)
 		}()
 	}

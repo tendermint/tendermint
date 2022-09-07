@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
@@ -273,9 +274,16 @@ func (c *MemoryConnection) RemoteEndpoint() Endpoint {
 // Handshake implements Connection.
 func (c *MemoryConnection) Handshake(
 	ctx context.Context,
+	timeout time.Duration,
 	nodeInfo types.NodeInfo,
 	privKey crypto.PrivKey,
 ) (types.NodeInfo, crypto.PubKey, error) {
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
 	select {
 	case c.sendCh <- memoryMessage{nodeInfo: &nodeInfo, pubKey: privKey.PubKey()}:
 		c.logger.Debug("sent handshake", "nodeInfo", nodeInfo)

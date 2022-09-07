@@ -4,10 +4,8 @@ package mocks
 
 import (
 	context "context"
-	testing "testing"
 
 	mock "github.com/stretchr/testify/mock"
-
 	types "github.com/tendermint/tendermint/abci/types"
 )
 
@@ -422,8 +420,13 @@ func (_m *Client) Wait() {
 	_m.Called()
 }
 
-// NewClient creates a new instance of Client. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewClient(t testing.TB) *Client {
+type mockConstructorTestingTNewClient interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewClient creates a new instance of Client. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewClient(t mockConstructorTestingTNewClient) *Client {
 	mock := &Client{}
 	mock.Mock.Test(t)
 

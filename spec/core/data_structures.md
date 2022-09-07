@@ -54,7 +54,7 @@ and a list of evidence of malfeasance (ie. signing conflicting votes).
 |--------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
 | Header | [Header](#header) | Header corresponding to the block. This field contains information used throughout consensus and other areas of the protocol. To find out what it contains, visit [header] (#header) | Must adhere to the validation rules of [header](#header) |
 | Data       | [Data](#data)                  | Data contains a list of transactions. The contents of the transaction is unknown to Tendermint.                                                                                      | This field can be empty or populated, but no validation is performed. Applications can perform validation on individual transactions prior to block creation using [checkTx](../abci/abci.md#checktx).
-| Evidence   | [EvidenceList](#evidence_list) | Evidence contains a list of infractions committed by validators.                                                                                                                     | Can be empty, but when populated the validations rules from [evidenceList](#evidence_list) apply |
+| Evidence   | [EvidenceList](#evidencelist) | Evidence contains a list of infractions committed by validators.                                                                                                                     | Can be empty, but when populated the validations rules from [evidenceList](#evidencelist) apply |
 | LastCommit | [Commit](#commit)              | `LastCommit` includes one vote for every validator.  All votes must either be for the previous block, nil or absent. If a vote is for the previous block it must have a valid signature from the corresponding validator. The sum of the voting power of the validators that voted must be greater than 2/3 of the total voting power of the complete validator set. The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).                                                                                             | Must be empty for the initial height and must adhere to the validation rules of [commit](#commit).  |
 
 ## Execution
@@ -157,7 +157,7 @@ The `BlockID` contains two distinct Merkle roots of the block. The `BlockID` inc
 | Name          | Type                            | Description                                                                                                                                                      | Validation                                                             |
 |---------------|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------|
 | Hash          | slice of bytes (`[]byte`)       | MerkleRoot of all the fields in the header (ie. `MerkleRoot(header)`.                                                                                            | hash must be of length 32                                              |
-| PartSetHeader | [PartSetHeader](#PartSetHeader) | Used for secure gossiping of the block during consensus, is the MerkleRoot of the complete serialized block cut into parts (ie. `MerkleRoot(MakeParts(block))`). | Must adhere to the validation rules of [PartSetHeader](#PartSetHeader) |
+| PartSetHeader | [PartSetHeader](#partsetheader) | Used for secure gossiping of the block during consensus, is the MerkleRoot of the complete serialized block cut into parts (ie. `MerkleRoot(MakeParts(block))`). | Must adhere to the validation rules of [PartSetHeader](#partsetheader) |
 
 See [MerkleRoot](./encoding.md#MerkleRoot) for details.
 
@@ -243,7 +243,7 @@ The vote extension is not part of the [`CanonicalVote`](#canonicalvote).
 | Height             | uint64                          | Height for which this vote was created.                                                 | Must be > 0                                                                                          |
 | Round              | int32                           | Round that the commit corresponds to.                                                       | Must be > 0                                                                                          |
 | BlockID            | [BlockID](#blockid)             | The blockID of the corresponding block.                                                     | [BlockID](#blockid)                                                                                  |
-| Timestamp          | [Time](#Time)                   | The time at which a validator signed.                                  | [Time](#time)                                                                                        |
+| Timestamp          | [Time](#time)                   | The time at which a validator signed.                                  | [Time](#time)                                                                                        |
 | ValidatorAddress   | slice of bytes (`[]byte`)       | Address of the validator                                                                    | Length must be equal to 20                                                                           |
 | ValidatorIndex     | int32                           | Index at a specific block height that corresponds to the Index of the validator in the set. | must be > 0                                                                                          |
 | Signature          | slice of bytes (`[]byte`)       | Signature by the validator if they participated in consensus for the associated bock.       | Length of signature must be > 0 and < 64                                                             |
@@ -300,7 +300,7 @@ is locked in POLRound. The message is signed by the validator private key.
 | Round     | int32                           | Round that the commit corresponds to.                                                 | Must be > 0                                             |
 | POLRound  | int64                           | Proof of lock                                                                         | Must be > 0                                             |
 | BlockID   | [BlockID](#blockid)             | The blockID of the corresponding block.                                               | [BlockID](#blockid)                                     |
-| Timestamp | [Time](#Time)                   | Timestamp represents the time at which a validator signed.                            | [Time](#time)                                           |
+| Timestamp | [Time](#time)                   | Timestamp represents the time at which a validator signed.                            | [Time](#time)                                           |
 | Signature | slice of bytes (`[]byte`)       | Signature by the validator if they participated in consensus for the associated bock. | Length of signature must be > 0 and < 64                |
 
 ## SignedMsgType
@@ -351,7 +351,7 @@ in the same round of the same height. Votes are lexicographically sorted on `Blo
 | VoteB            | [Vote](#vote) | The second vote submitted by a validator when they equivocated     | VoteB must adhere to [Vote](#vote) validation rules |
 | TotalVotingPower | int64         | The total power of the validator set at the height of equivocation | Must be equal to nodes own copy of the data         |
 | ValidatorPower   | int64         | Power of the equivocating validator at the height                  | Must be equal to the nodes own copy of the data     |
-| Timestamp        | [Time](#Time) | Time of the block where the equivocation occurred                  | Must be equal to the nodes own copy of the data     |
+| Timestamp        | [Time](#time) | Time of the block where the equivocation occurred                  | Must be equal to the nodes own copy of the data     |
 
 ### LightClientAttackEvidence
 
@@ -360,13 +360,13 @@ a light client such that a full node can verify, propose and commit the evidence
 punishment of the malicious validators. There are three forms of attacks: Lunatic, Equivocation
 and Amnesia. These attacks are exhaustive. You can find a more detailed overview of this [here](../light-client/accountability#the_misbehavior_of_faulty_validators)
 
-| Name                 | Type                               | Description                                                          | Validation                                                       |
-|----------------------|------------------------------------|----------------------------------------------------------------------|------------------------------------------------------------------|
-| ConflictingBlock     | [LightBlock](#LightBlock)          | Read Below                                                           | Must adhere to the validation rules of [lightBlock](#lightblock) |
-| CommonHeight         | int64                              | Read Below                                                           | must be > 0                                                      |
-| Byzantine Validators | Array of [Validators](#Validators) | validators that acted maliciously                                    | Read Below                                                       |
-| TotalVotingPower     | int64                              | The total power of the validator set at the height of the infraction | Must be equal to the nodes own copy of the data                  |
-| Timestamp            | [Time](#Time)                      | Time of the block where the infraction occurred                      | Must be equal to the nodes own copy of the data                  |
+| Name                 | Type                             | Description                                                          | Validation                                                       |
+|----------------------|----------------------------------|----------------------------------------------------------------------|------------------------------------------------------------------|
+| ConflictingBlock     | [LightBlock](#lightblock)        | Read Below                                                           | Must adhere to the validation rules of [lightBlock](#lightblock) |
+| CommonHeight         | int64                            | Read Below                                                           | must be > 0                                                      |
+| Byzantine Validators | Array of [Validator](#validator) | validators that acted maliciously                                    | Read Below                                                       |
+| TotalVotingPower     | int64                            | The total power of the validator set at the height of the infraction | Must be equal to the nodes own copy of the data                  |
+| Timestamp            | [Time](#time)                    | Time of the block where the infraction occurred                      | Must be equal to the nodes own copy of the data                  |
 
 ## LightBlock
 
@@ -385,7 +385,7 @@ The SignedhHeader is the [header](#header) accompanied by the commit to prove it
 
 | Name   | Type              | Description       | Validation                                                                        |
 |--------|-------------------|-------------------|-----------------------------------------------------------------------------------|
-| Header | [Header](#Header) | [Header](#header) | Header cannot be nil and must adhere to the [Header](#Header) validation criteria |
+| Header | [Header](#header) | [Header](#header) | Header cannot be nil and must adhere to the [Header](#header) validation criteria |
 | Commit | [Commit](#commit) | [Commit](#commit) | Commit cannot be nil and must adhere to the [Commit](#commit) criteria            |
 
 ## ValidatorSet
@@ -434,6 +434,7 @@ func SumTruncated(bz []byte) []byte {
 |--------------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
 | max_bytes    | int64 | Max size of a block, in bytes.                                                                                                                                                                              | 1            |
 | max_gas      | int64 | Max sum of `GasWanted` in a proposed block. NOTE: blocks that violate this may be committed if there are Byzantine proposers. It's the application's responsibility to handle this when processing a block! | 2            |
+| recheck_tx   | bool  | Indicated whether to run `CheckTx` on all remaining transactions *after* every execution of a block | 3            |
 
 ### EvidenceParams
 

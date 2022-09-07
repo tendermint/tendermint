@@ -3,9 +3,10 @@
 
 evidence = 5
 initial_height = 1000
-initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+initial_state = {initial01 = "a", initial02 = "b", initial03 = "c"}
+queue_type = "simple-priority"
+abci_protocol = "builtin"
 initial_core_chain_locked_height = 3400
-queue_type = "priority"
 
 [chainlock_updates]
 1000 = 3450
@@ -40,7 +41,6 @@ block_sync = "v0"
 perturb = ["disconnect"]
 
 [node.validator02]
-abci_protocol = "tcp"
 database = "cleveldb"
 persist_interval = 0
 perturb = ["restart"]
@@ -51,7 +51,6 @@ block_sync = "v0"
 [node.validator03]
 database = "badgerdb"
 seeds = ["seed01"]
-abci_protocol = "grpc"
 persist_interval = 3
 perturb = ["kill"]
 privval_protocol = "grpc"
@@ -59,7 +58,6 @@ block_sync = "v0"
 retain_blocks = 10
 
 [node.validator04]
-abci_protocol = "builtin"
 snapshot_interval = 5
 database = "rocksdb"
 persistent_peers = ["validator01"]
@@ -72,7 +70,6 @@ block_sync = "v0"
 database = "badgerdb"
 state_sync = "p2p"
 start_at = 1005 # Becomes part of the validator set at 1010
-abci_protocol = "builtin"
 perturb = ["pause", "disconnect", "restart"]
 
 [node.full01]

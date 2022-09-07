@@ -5,8 +5,6 @@ package mocks
 import (
 	mock "github.com/stretchr/testify/mock"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -169,6 +167,22 @@ func (_m *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	return r0
 }
 
+// LoadBlockSeenCommitAt provides a mock function with given fields: height
+func (_m *BlockStore) LoadSeenCommitAt(height int64) *types.Commit {
+	ret := _m.Called(height)
+
+	var r0 *types.Commit
+	if rf, ok := ret.Get(0).(func(int64) *types.Commit); ok {
+		r0 = rf(height)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Commit)
+		}
+	}
+
+	return r0
+}
+
 // LoadSeenCommit provides a mock function with given fields:
 func (_m *BlockStore) LoadSeenCommit() *types.Commit {
 	ret := _m.Called()
@@ -225,8 +239,13 @@ func (_m *BlockStore) Size() int64 {
 	return r0
 }
 
-// NewBlockStore creates a new instance of BlockStore. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewBlockStore(t testing.TB) *BlockStore {
+type mockConstructorTestingTNewBlockStore interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewBlockStore creates a new instance of BlockStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewBlockStore(t mockConstructorTestingTNewBlockStore) *BlockStore {
 	mock := &BlockStore{}
 	mock.Mock.Test(t)
 

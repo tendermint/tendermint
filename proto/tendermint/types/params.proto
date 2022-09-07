@@ -17,6 +17,7 @@ message ConsensusParams {
   VersionParams   version   = 4;
   SynchronyParams synchrony = 5;
   TimeoutParams   timeout   = 6;
+  ABCIParams      abci      = 7;
 }
 
 // BlockParams contains limits on the block size.
@@ -126,4 +127,11 @@ message TimeoutParams {
   // Setting bypass_commit_timeout false (the default) causes Tendermint to wait
   // for the full commit timeout.
   bool bypass_commit_timeout = 6;
+}
+
+// ABCIParams configure functionality specific to the Application Blockchain Interface.
+message ABCIParams {
+  // Indicates if CheckTx should be called on all the transactions
+  // remaining in the mempool after a block is executed.
+  bool recheck_tx = 2;
 }

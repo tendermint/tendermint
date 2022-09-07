@@ -8,8 +8,6 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	coretypes "github.com/tendermint/tendermint/rpc/coretypes"
 
-	testing "testing"
-
 	types "github.com/tendermint/tendermint/types"
 )
 
@@ -41,8 +39,13 @@ func (_m *EvidenceClient) BroadcastEvidence(_a0 context.Context, _a1 types.Evide
 	return r0, r1
 }
 
-// NewEvidenceClient creates a new instance of EvidenceClient. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
-func NewEvidenceClient(t testing.TB) *EvidenceClient {
+type mockConstructorTestingTNewEvidenceClient interface {
+	mock.TestingT
+	Cleanup(func())
+}
+
+// NewEvidenceClient creates a new instance of EvidenceClient. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewEvidenceClient(t mockConstructorTestingTNewEvidenceClient) *EvidenceClient {
 	mock := &EvidenceClient{}
 	mock.Mock.Test(t)
 
