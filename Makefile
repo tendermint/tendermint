@@ -160,7 +160,7 @@ mockery:
 
 check-proto-deps:
 ifeq (,$(shell which protoc-gen-gogofaster))
-	@go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
+	@go install github.com/cosmos/gogoproto/protoc-gen-gogofaster@latest
 endif
 .PHONY: check-proto-deps
 
@@ -174,6 +174,7 @@ proto-gen: check-proto-deps
 	@echo "Generating Protobuf files"
 	@go run github.com/bufbuild/buf/cmd/buf generate
 	@mv ./proto/tendermint/abci/types.pb.go ./abci/types/
+	@cp ./proto/tendermint/rpc/grpc/types.pb.go ./rpc/grpc
 .PHONY: proto-gen
 
 # These targets are provided for convenience and are intended for local
