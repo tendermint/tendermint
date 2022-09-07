@@ -47,7 +47,7 @@ Mechanisms like `fork accountability` and `evidence submission` are defined in t
 they incentivize validators to follow the protocol specification defined in this document. If they don't,
 and we have 1/3 (or more) faulty validators, safety may be violated. Our approach then is
 to *detect* these cases (after the fact), and take suitable repair actions (automatic and social).
-This is discussed in document on [Fork accountability](../../consensus/accountability.md).
+This is discussed in document on [Fork accountability](../../consensus/light-client/accountability.md).
 
 The term "trusted" above indicates that the correctness of the protocol depends on
 this assumption. It is in the responsibility of the user that runs the light client to make sure that the risk

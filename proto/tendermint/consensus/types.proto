@@ -4,7 +4,7 @@ package tendermint.consensus;
 option go_package = "github.com/tendermint/tendermint/proto/tendermint/consensus";
 
 import "gogoproto/gogo.proto";
-import "tendermint/proto/tendermint/types/types.proto";
+import "tendermint/types/types.proto";
 import "tendermint/libs/bits/types.proto";
 
 // NewRoundStep is sent for every step taken in the ConsensusState.
