@@ -52,6 +52,7 @@ func TestRollback(t *testing.T) {
 		BlockID: initialState.LastBlockID,
 		Header: types.Header{
 			Height:          initialState.LastBlockHeight,
+			Time:            initialState.LastBlockTime,
 			AppHash:         crypto.CRandBytes(tmhash.Size),
 			LastBlockID:     makeBlockIDRandom(),
 			LastResultsHash: initialState.LastResultsHash,
@@ -63,6 +64,7 @@ func TestRollback(t *testing.T) {
 			Height:          nextState.LastBlockHeight,
 			AppHash:         initialState.AppHash,
 			LastBlockID:     block.BlockID,
+			Time:            nextState.LastBlockTime,
 			LastResultsHash: nextState.LastResultsHash,
 		},
 	}
