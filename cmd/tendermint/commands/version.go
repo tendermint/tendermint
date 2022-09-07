@@ -16,15 +16,15 @@ var VersionCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if verbose {
 			values, _ := json.MarshalIndent(struct {
-				Tendermint    string
-				ABCI          string
-				BlockProtocol uint64
-				P2PProtocol   uint64
+				tendermint     string
+				abci           string
+				block_protocol uint64
+				p2p_protocol   uint64
 			}{
-				Tendermint:    version.TMCoreSemVer,
-				ABCI:          version.ABCIVersion,
-				BlockProtocol: version.BlockProtocol,
-				P2PProtocol:   version.P2PProtocol,
+				tendermint:     version.TMCoreSemVer,
+				abci:           version.ABCIVersion,
+				block_protocol: version.BlockProtocol,
+				p2p_protocol:   version.P2PProtocol,
 			}, "", "  ")
 			fmt.Println(string(values))
 		} else {
