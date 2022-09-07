@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-/master/ /main/
-=======
 /redirects/master/ /main/
 /redirects/master/spec/core/state.html https://github.com/tendermint/tendermint/blob/v0.34.x/spec/core/state.md
 /redirects/master/spec/core/encoding.html https://github.com/tendermint/tendermint/blob/v0.34.x/spec/core/encoding.md
@@ -67,4 +64,3 @@
 /redirects/master/spec/blockchain/blockchain.html https://github.com/tendermint/tendermint/blob/v0.34.x/spec/blockchain/blockchain.md
 /redirects/master/spec/blockchain/index.html https://github.com/tendermint/tendermint/blob/v0.34.x/spec/blockchain/readme.md
 /redirects/master/tutorials/go.html /v0.34/tutorials/go.html
->>>>>>> 43ebbed9c (add redirect links (#9385))
