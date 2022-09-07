@@ -3,7 +3,7 @@ package privval
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 
 	privvalproto "github.com/tendermint/tendermint/proto/tendermint/privval"
 )

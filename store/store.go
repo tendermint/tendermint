@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -194,6 +194,26 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	}
 
 	return blockMeta
+}
+
+// LoadBlockMetaByHash returns the blockmeta who's header corresponds to the given
+// hash. If none is found, returns nil.
+func (bs *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
+	bz, err := bs.db.Get(calcBlockHashKey(hash))
+	if err != nil {
+		panic(err)
+	}
+	if len(bz) == 0 {
+		return nil
+	}
+
+	s := string(bz)
+	height, err := strconv.ParseInt(s, 10, 64)
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to extract height from %s: %v", s, err))
+	}
+	return bs.LoadBlockMeta(height)
 }
 
 // LoadBlockCommit returns the Commit for the given height.
