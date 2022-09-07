@@ -59,6 +59,7 @@ func TestEnsureTestRoot(t *testing.T) {
 }
 
 func assertValidConfig(t *testing.T, configFile string) {
+	t.Helper()
 	// list of words we expect in the config
 	var elems = []string{
 		"moniker",
