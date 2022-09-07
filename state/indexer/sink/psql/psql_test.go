@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/adlio/schema"
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
@@ -168,8 +168,8 @@ func TestIndexing(t *testing.T) {
 
 			{Type: "", Attributes: []abci.EventAttribute{
 				{
-					Key:   []byte("not_allowed"),
-					Value: []byte("Vlad"),
+					Key:   "not_allowed",
+					Value: "Vlad",
 					Index: true,
 				},
 			}},

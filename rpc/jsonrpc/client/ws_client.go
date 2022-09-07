@@ -30,7 +30,7 @@ const (
 // the remote server.
 //
 // WSClient is safe for concurrent use by multiple goroutines.
-type WSClient struct { // nolint: maligned
+type WSClient struct { //nolint: maligned
 	conn *websocket.Conn
 
 	Address  string // IP:PORT or /path/to/socket
@@ -265,7 +265,7 @@ func (c *WSClient) dial() error {
 		Proxy:   http.ProxyFromEnvironment,
 	}
 	rHeader := http.Header{}
-	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader) // nolint:bodyclose
+	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader) //nolint:bodyclose
 	if err != nil {
 		return err
 	}

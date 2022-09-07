@@ -34,9 +34,14 @@ var (
 	nodeMempools          = uniformChoice{"v0", "v1"}
 	nodePersistIntervals  = uniformChoice{0, 1, 5}
 	nodeSnapshotIntervals = uniformChoice{0, 3}
-	nodeRetainBlocks      = uniformChoice{0, 1, 5}
-	abciDelays            = uniformChoice{"none", "small", "large"}
-	nodePerturbations     = probSetChoice{
+	nodeRetainBlocks      = uniformChoice{
+		0,
+		2 * int(e2e.EvidenceAgeHeight),
+		4 * int(e2e.EvidenceAgeHeight),
+	}
+	evidence          = uniformChoice{0, 1, 10}
+	abciDelays        = uniformChoice{"none", "small", "large"}
+	nodePerturbations = probSetChoice{
 		"disconnect": 0.1,
 		"pause":      0.1,
 		"kill":       0.1,
@@ -66,6 +71,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
+		Evidence:         evidence.Choose(r).(int),
 		Nodes:            map[string]*e2e.ManifestNode{},
 	}
 

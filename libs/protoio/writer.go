@@ -35,7 +35,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 )
 
 // NewDelimitedWriter writes a varint-delimited Protobuf message to a writer. It is
