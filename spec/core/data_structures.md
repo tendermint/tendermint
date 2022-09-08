@@ -270,7 +270,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
   return ErrVoteInvalidValidatorAddress
  }
 
- if !pubKey.VerifyBytes(types.VoteSignBytes(chainID), vote.Signature) {
+ if !pubKey.VerifyBytes(types.VoteSignBytes(chainID, v), vote.Signature) {
   return ErrVoteInvalidSignature
  }
  return nil
