@@ -18,14 +18,14 @@ import (
 var _ pubsub.Query = (*query.Query)(nil)
 
 // Example events from the OpenAPI documentation:
-//  https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
+//
+//	https://github.com/tendermint/tendermint/blob/master/rpc/openapi/openapi.yaml
 //
 // Redactions:
 //
 //   - Add an explicit "tm" event for the built-in attributes.
 //   - Remove Index fields (not relevant to tests).
 //   - Add explicit balance values (to use in tests).
-//
 var apiEvents = map[string][]string{
 	"tm.event": {
 		"Tx",
