@@ -3,7 +3,7 @@
 This document collects drafts of function for generating and
 submitting proof of fork in the IBC context
 
-- [IBC](#on---chain-ibc-component)
+- [IBC](#on-chain-ibc-component)
 
 - [Relayer](#relayer)
 

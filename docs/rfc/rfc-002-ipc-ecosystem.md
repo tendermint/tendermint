@@ -416,5 +416,5 @@ discussed.
 [socket-server]: https://github.com/tendermint/tendermint/blob/main/abci/server/socket_server.go
 [sdk-grpc]: https://pkg.go.dev/github.com/cosmos/cosmos-sdk/types/tx#ServiceServer
 [json-rpc]: https://www.jsonrpc.org/specification
-[abci-conn]: https://github.com/tendermint/tendermint/blob/main/spec/abci/apps.md#state
+[abci-conn]: https://github.com/tendermint/tendermint/blob/main/spec/abci/abci++_basic_concepts.md
 [adr-57]: https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-057-RPC.md
