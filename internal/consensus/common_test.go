@@ -24,6 +24,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dash"
 	"github.com/tendermint/tendermint/dash/llmq"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -833,8 +834,11 @@ func makeConsensusState(
 		_, err = app.InitChain(ctx, &abci.RequestInitChain{ValidatorSet: &vals})
 		require.NoError(t, err)
 
+		proTxHash, _ := privVals[i].GetProTxHash(ctx)
+		sCtx := dash.ContextWithProTxHash(ctx, proTxHash)
+
 		l := logger.With("validator", i, "module", "consensus")
-		css[i] = newStateWithConfigAndBlockStore(ctx, t, l, thisConfig, state, privVals[i], app, blockStore)
+		css[i] = newStateWithConfigAndBlockStore(sCtx, t, l, thisConfig, state, privVals[i], app, blockStore)
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
 

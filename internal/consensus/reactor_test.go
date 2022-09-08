@@ -21,6 +21,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dash"
 	"github.com/tendermint/tendermint/dash/llmq"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
@@ -50,6 +51,14 @@ type reactorTestSuite struct {
 	dataChannels        map[types.NodeID]p2p.Channel
 	voteChannels        map[types.NodeID]p2p.Channel
 	voteSetBitsChannels map[types.NodeID]p2p.Channel
+}
+
+func (rts *reactorTestSuite) switchToConsensus(ctx context.Context) {
+	for nodeID, reactor := range rts.reactors {
+		state := reactor.state.GetState()
+		sCtx := dash.ContextWithProTxHash(ctx, rts.states[nodeID].privValidatorProTxHash)
+		reactor.SwitchToConsensus(sCtx, state, false)
+	}
 }
 
 func chDesc(chID p2p.ChannelID, size int) *p2p.ChannelDescriptor {
@@ -108,6 +117,7 @@ func setup(
 
 	for i := 0; i < numNodes; i++ {
 		state := states[i]
+		sCtx := dash.ContextWithProTxHash(ctx, states[i].privValidatorProTxHash)
 		node := rts.network.NodeByProTxHash(state.privValidatorProTxHash)
 		require.NotNil(t, node)
 		nodeID := node.NodeID
@@ -145,7 +155,7 @@ func setup(
 			require.NoError(t, state.blockExec.Store().Save(state.state))
 		}
 
-		require.NoError(t, reactor.Start(ctx))
+		require.NoError(t, reactor.Start(sCtx))
 		require.True(t, reactor.IsRunning())
 		t.Cleanup(reactor.Wait)
 	}
@@ -363,10 +373,7 @@ func TestReactorBasic(t *testing.T) {
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
-	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
-	}
+	rts.switchToConsensus(ctx)
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, len(rts.subs))
@@ -500,10 +507,10 @@ func TestReactorWithEvidence(t *testing.T) {
 		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(ctx, 1, defaultTestTime, privVals[vIdx], cfg.ChainID(), state.Validators.QuorumType, state.Validators.QuorumHash)
 		require.NoError(t, err)
 		evpool := &statemocks.EvidencePool{}
-		evpool.On("CheckEvidence", ctx, mock.AnythingOfType("types.EvidenceList")).Return(nil)
+		evpool.On("CheckEvidence", mock.Anything, mock.AnythingOfType("types.EvidenceList")).Return(nil)
 		evpool.On("PendingEvidence", mock.AnythingOfType("int64")).Return([]types.Evidence{
 			ev}, int64(len(ev.Bytes())))
-		evpool.On("Update", ctx, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
+		evpool.On("Update", mock.Anything, mock.AnythingOfType("state.State"), mock.AnythingOfType("types.EvidenceList")).Return()
 
 		evpool2 := sm.EmptyEvidencePool{}
 
@@ -524,10 +531,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
-	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
-	}
+	rts.switchToConsensus(ctx)
 
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
@@ -572,10 +576,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
-	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
-	}
+	rts.switchToConsensus(ctx)
 
 	// send a tx
 	require.NoError(
@@ -619,10 +620,7 @@ func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 
 	rts := setup(ctx, t, n, states, 100) // buffer must be large enough to not deadlock
 
-	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
-	}
+	rts.switchToConsensus(ctx)
 
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
@@ -696,10 +694,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	rts := setup(ctx, t, nPeers, states, 100) // buffer must be large enough to not deadlock
 
-	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
-	}
+	rts.switchToConsensus(ctx)
 
 	// map of active validators
 	activeVals := make(map[string]struct{})

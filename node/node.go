@@ -17,6 +17,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dash"
 	"github.com/tendermint/tendermint/dash/core"
 	dashquorum "github.com/tendermint/tendermint/dash/quorum"
 	"github.com/tendermint/tendermint/internal/blocksync"
@@ -462,6 +463,7 @@ func (n *nodeImpl) OnStart(ctx context.Context) error {
 			return err
 		}
 	}
+	ctx = dash.ContextWithProTxHash(ctx, proTxHash)
 
 	// EventBus and IndexerService must be started before the handshake because
 	// we might need to index the txs of the replayed block as this might not have happened
