@@ -1223,8 +1223,8 @@ Special thanks to external contributors on this release: @jon-certik, @gracenoah
 
 *August 28, 2019*
 
-@climber73 wrote the [Writing a Tendermint Core application in Java <!-- markdown-link-check-disable-next-line -->
-(gRPC)](https://github.com/tendermint/tendermint/blob/main/docs/guides/java.md)
+@climber73 wrote the [Writing a Tendermint Core application in Java 
+(gRPC)](https://docs.tendermint.com/v0.34/tutorials/java.html)
 guide.
 
 Special thanks to external contributors on this release:
