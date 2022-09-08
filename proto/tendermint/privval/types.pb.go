@@ -5,8 +5,8 @@ package privval
 
 import (
 	fmt "fmt"
-	_ "github.com/gogo/protobuf/gogoproto"
-	proto "github.com/gogo/protobuf/proto"
+	_ "github.com/cosmos/gogoproto/gogoproto"
+	proto "github.com/cosmos/gogoproto/proto"
 	crypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	types "github.com/tendermint/tendermint/proto/tendermint/types"
 	io "io"

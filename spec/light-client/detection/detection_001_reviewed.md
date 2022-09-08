@@ -1,3 +1,4 @@
+<!-- markdown-link-check-disable -->
 # ***This an unfinished draft. Comments are welcome!***
 
 **TODO:** We will need to do small adaptations to the verification

@@ -555,7 +555,7 @@ failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
 explicitly programmed by the application developer. See the [application
-developers guide](../app-dev/app-development.md) for more details.
+developers guide](../app-dev/abci-cli.md) for more details.
 
 ### Local Network
 
