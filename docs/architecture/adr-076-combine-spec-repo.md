@@ -108,5 +108,5 @@ N/A
 
 ## References
 
-- https://github.com/tendermint/spec
+- https://github.com/tendermint/tendermint/tree/main/spec
 - https://github.com/tendermint/tendermint

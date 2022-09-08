@@ -1,3 +1,3 @@
 # Fork accountability
 
-Deprecated, please see [light-client/accountability](../../light-client/accountability.md).
+Deprecated, please see [light-client/accountability](https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client/accountability.md).

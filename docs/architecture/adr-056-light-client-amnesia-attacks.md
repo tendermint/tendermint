@@ -63,7 +63,7 @@ Light clients where all witnesses are faulty can be subject to an amnesia attack
 
 
 ## References
-
+<!-- markdown-link-check-disable-next-line -->
 - [Fork accountability algorithm](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
 - [Fork accountability spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client/accountability.md)
 

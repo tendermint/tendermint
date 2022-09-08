@@ -4,7 +4,7 @@
 
 In the following, I distilled what I considered relevant from
 
-<https://github.com/cosmos/ics/tree/master/spec/ics-002-client-semantics>
+<https://github.com/cosmos/ibc>
 
 ### Components and their interface
 

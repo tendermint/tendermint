@@ -106,7 +106,7 @@ docker containers, modules it calls "chaincode". It uses an
 implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf).
 from a team at IBM that is [augmented to handle potentially
 non-deterministic
-chaincode](https://www.zurich.ibm.com/~cca/papers/sieve.pdf) It is
+chaincode](https://drops.dagstuhl.de/opus/volltexte/2017/7093/pdf/LIPIcs-OPODIS-2016-24.pdf) It is
 possible to implement this docker-based behavior as a ABCI app in
 Tendermint, though extending Tendermint to handle non-determinism
 remains for future work.
