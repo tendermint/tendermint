@@ -97,7 +97,6 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	state State,
 	commit *types.Commit,
 	proposerAddr []byte,
-	votes []*types.Vote,
 ) (*types.Block, error) {
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -116,7 +115,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 		abci.RequestPrepareProposal{
 			MaxTxBytes:         maxDataBytes,
 			Txs:                block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:    extendedCommitInfo(localLastCommit, votes),
+			LocalLastCommit:    extendedCommitInfo(localLastCommit),
 			Misbehavior:        block.Evidence.Evidence.ToABCI(),
 			Height:             block.Height,
 			Time:               block.Time,
@@ -432,7 +431,7 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
+func extendedCommitInfo(c abci.CommitInfo) abci.ExtendedCommitInfo {
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
 		vs[i] = abci.ExtendedVoteInfo{
