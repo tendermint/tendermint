@@ -72,3 +72,23 @@ func TestHashDeterministicFieldsOnly(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, merkle.HashFromByteSlices(r1), merkle.HashFromByteSlices(r2))
 }
+
+func TestValidatorSetUpdateMarshalJSON_Nil(t *testing.T) {
+	type testCase struct {
+		vsu *abci.ValidatorSetUpdate
+	}
+	testCases := []testCase{
+		{vsu: nil},
+		{vsu: &abci.ValidatorSetUpdate{}},
+	}
+	for _, tc := range testCases {
+		t.Run("", func(t *testing.T) {
+			vsu := tc.vsu
+			json, err := vsu.MarshalJSON()
+
+			assert.NoError(t, err)
+			assert.NotEmpty(t, json)
+
+		})
+	}
+}
