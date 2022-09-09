@@ -25,10 +25,10 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 	valSet, privVals := types.RandValidatorSet(10)
 
-	stateID := types.StateID{}
+	stateID := types.StateID{Height: 1}
 
 	chainID := cfg.ChainID()
-	hvs := NewHeightVoteSet(chainID, 1, stateID, valSet)
+	hvs := NewHeightVoteSet(chainID, 1, valSet)
 
 	vote999_0 := makeVoteHR(ctx, t, 1, 0, 999, privVals, chainID, valSet.QuorumType, valSet.QuorumHash, stateID)
 	added, err := hvs.AddVote(vote999_0, "peer1")

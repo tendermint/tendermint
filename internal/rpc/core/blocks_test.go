@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/state/mocks"
+	"github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/rpc/coretypes"
 )
 
@@ -69,17 +70,20 @@ func TestBlockchainInfo(t *testing.T) {
 }
 
 func TestBlockResults(t *testing.T) {
-	results := &abci.ResponseFinalizeBlock{
-		TxResults: []*abci.ExecTxResult{
-			{Code: 0, Data: []byte{0x01}, Log: "ok", GasUsed: 10},
-			{Code: 0, Data: []byte{0x02}, Log: "ok", GasUsed: 5},
-			{Code: 1, Log: "not ok", GasUsed: 0},
+	results := state.ABCIResponses{
+		FinalizeBlock: &abci.ResponseFinalizeBlock{},
+		ProcessProposal: &abci.ResponseProcessProposal{
+			TxResults: []*abci.ExecTxResult{
+				{Code: 0, Data: []byte{0x01}, Log: "ok", GasUsed: 10},
+				{Code: 0, Data: []byte{0x02}, Log: "ok", GasUsed: 5},
+				{Code: 1, Log: "not ok", GasUsed: 0},
+			},
 		},
 	}
 
 	env := &Environment{}
 	env.StateStore = sm.NewStore(dbm.NewMemDB())
-	err := env.StateStore.SaveFinalizeBlockResponses(100, results)
+	err := env.StateStore.SaveABCIResponses(100, results)
 	require.NoError(t, err)
 	mockstore := &mocks.BlockStore{}
 	mockstore.On("Height").Return(int64(100))
@@ -96,11 +100,11 @@ func TestBlockResults(t *testing.T) {
 		{101, true, nil},
 		{100, false, &coretypes.ResultBlockResults{
 			Height:                100,
-			TxsResults:            results.TxResults,
+			TxsResults:            results.ProcessProposal.TxResults,
 			TotalGasUsed:          15,
-			FinalizeBlockEvents:   results.Events,
-			ValidatorSetUpdate:    results.ValidatorSetUpdate,
-			ConsensusParamUpdates: consensusParamsPtrFromProtoPtr(results.ConsensusParamUpdates),
+			FinalizeBlockEvents:   results.FinalizeBlock.Events,
+			ValidatorSetUpdate:    results.ProcessProposal.ValidatorSetUpdate,
+			ConsensusParamUpdates: consensusParamsPtrFromProtoPtr(results.ProcessProposal.ConsensusParamUpdates),
 		}},
 	}
 

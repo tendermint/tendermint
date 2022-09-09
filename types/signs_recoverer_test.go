@@ -92,7 +92,7 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 		height  = 1000
 		n       = 4
 	)
-	stateID := RandStateID().WithHeight(height - 1)
+	stateID := RandStateID().WithHeight(height)
 	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
 	vals, pvs := RandValidatorSet(n)
 	quorumType := crypto.SmallQuorumType()
@@ -109,6 +109,7 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 			Round:              0,
 			Type:               tmproto.PrecommitType,
 			BlockID:            blockID,
+			AppHash:            stateID.AppHash,
 			VoteExtensions: mockVoteExtensions(t,
 				tmproto.VoteExtensionType_DEFAULT, "default",
 				tmproto.VoteExtensionType_THRESHOLD_RECOVER, "threshold",
@@ -120,7 +121,7 @@ func TestSigsRecoverer_UsingVoteSet(t *testing.T) {
 		err = votes[i].PopulateSignsFromProto(vpb)
 		require.NoError(t, err)
 	}
-	voteSet := NewVoteSet(chainID, height, 0, tmproto.PrecommitType, vals, stateID)
+	voteSet := NewVoteSet(chainID, height, 0, tmproto.PrecommitType, vals)
 	for _, vote := range votes {
 		added, err := voteSet.AddVote(vote)
 		require.NoError(t, err)

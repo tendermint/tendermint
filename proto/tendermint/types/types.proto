@@ -36,7 +36,7 @@ enum SignedMsgType {
       [(gogoproto.enumvalue_customname) = "PrevoteType"];
   SIGNED_MSG_TYPE_PRECOMMIT = 2
       [(gogoproto.enumvalue_customname) = "PrecommitType"];
-  SIGNED_MSG_TYPE_COMMIT    = 3
+  SIGNED_MSG_TYPE_COMMIT = 3
       [(gogoproto.enumvalue_customname) = "CommitType"];
 
   // Proposals
@@ -64,8 +64,8 @@ message BlockID {
 
 // StateID
 message StateID {
-  bytes last_app_hash = 1;
-  int64 height        = 2;
+  bytes app_hash = 1;
+  int64 height   = 2;
 }
 
 // --------------------------------
@@ -73,11 +73,11 @@ message StateID {
 // Header defines the structure of a Tendermint block header.
 message Header {
   // basic block info
-  tendermint.version.Consensus version  = 1 [(gogoproto.nullable) = false];
-  string                       chain_id = 2 [(gogoproto.customname) = "ChainID"];
-  int64                        height   = 3;
+  tendermint.version.Consensus version                  = 1 [(gogoproto.nullable) = false];
+  string                       chain_id                 = 2 [(gogoproto.customname) = "ChainID"];
+  int64                        height                   = 3;
   uint32                       core_chain_locked_height = 100;
-  google.protobuf.Timestamp    time     = 4
+  google.protobuf.Timestamp    time                     = 4
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   // prev block info
@@ -92,8 +92,8 @@ message Header {
   bytes next_validators_hash = 9;   // validators for the next block
   bytes consensus_hash       = 10;  // consensus params for current block
   bytes app_hash             = 11;  // state after txs from the previous block
-  bytes last_results_hash =
-      12;  // root hash of all results from the txs from the previous block
+  bytes results_hash =
+      12;  // root hash of all results from the txs from current block
 
   // consensus info
   bytes evidence_hash        = 13;   // evidence included in the block
@@ -131,6 +131,8 @@ message Vote {
   // Vote extension signature by the validator if they participated in
   // consensus for the associated block. Only valid for precommit messages.
   repeated VoteExtension vote_extensions = 11;
+
+  bytes app_hash = 12;
 }
 
 // Commit contains the evidence that a block was committed by a set of
@@ -148,16 +150,16 @@ message Commit {
 }
 
 message Proposal {
-  SignedMsgType             type                     = 1;
-  int64                     height                   = 2;
-  uint32                    core_chain_locked_height = 100;
-  int32                     round                    = 3;
-  int32                     pol_round                = 4;
-  BlockID                   block_id                 = 5
+  SignedMsgType type                     = 1;
+  int64         height                   = 2;
+  uint32        core_chain_locked_height = 100;
+  int32         round                    = 3;
+  int32         pol_round                = 4;
+  BlockID       block_id                 = 5
       [(gogoproto.customname) = "BlockID", (gogoproto.nullable) = false];
-  google.protobuf.Timestamp timestamp                = 6
+  google.protobuf.Timestamp timestamp = 6
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
-  bytes                     signature                = 7;
+  bytes signature = 7;
 }
 
 message SignedHeader {
@@ -177,7 +179,7 @@ message BlockMeta {
   Header header     = 3 [(gogoproto.nullable) = false];
   int64  num_txs    = 4;
 
-  bool    has_core_chain_lock = 100;
+  bool has_core_chain_lock = 100;
 }
 
 // TxProof represents a Merkle proof of the presence of a transaction in the

@@ -226,7 +226,7 @@ func TestClientMethodCalls(t *testing.T) {
 				require.NoError(t, err)
 
 				assert.GreaterOrEqual(t, status.SyncInfo.LatestBlockHeight, info.Response.LastBlockHeight)
-				assert.True(t, strings.Contains(info.Response.Data, "size"))
+				assert.True(t, strings.Contains(info.Response.Data, "appHash"))
 			})
 			t.Run("NetInfo", func(t *testing.T) {
 				nc, ok := c.(client.NetworkClient)

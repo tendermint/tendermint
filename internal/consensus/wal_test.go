@@ -48,7 +48,7 @@ func TestWALTruncate(t *testing.T) {
 	// 60 block's size nearly 70K, greater than group's headBuf size(4096 * 10),
 	// when headBuf is full, truncate content will Flush to the file. at this
 	// time, RotateFile is called, truncate content exist in each file.
-	WALGenerateNBlocks(ctx, t, logger, wal.Group(), 60)
+	WALGenerateNBlocks(ctx, t, logger, wal.Group(), newDefaultFakeNode(ctx, t, logger), 60)
 
 	// put the leakcheck here so it runs after other cleanup
 	// functions.
@@ -56,9 +56,7 @@ func TestWALTruncate(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond) // wait groupCheckDuration, make sure RotateFile run
 
-	if err := wal.FlushAndSync(); err != nil {
-		t.Error(err)
-	}
+	require.NoError(t, wal.FlushAndSync())
 
 	h := int64(50)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
@@ -170,7 +168,7 @@ func TestWALWriteCommit(t *testing.T) {
 	}
 	msg := &CommitMessage{
 		Commit: &tmtypes.Commit{
-			Height:                  stateID.Height + 1,
+			Height:                  stateID.Height,
 			StateID:                 stateID,
 			BlockID:                 blockID,
 			ThresholdBlockSignature: crypto.CRandBytes(96),
@@ -210,7 +208,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	walBody, err := WALWithNBlocks(ctx, t, logger, 6)
+	walBody, err := WALWithNBlocks(ctx, t, logger, newDefaultFakeNode(ctx, t, logger), 6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +249,7 @@ func TestWALPeriodicSync(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	// Generate some data
-	WALGenerateNBlocks(ctx, t, logger, wal.Group(), 5)
+	WALGenerateNBlocks(ctx, t, logger, wal.Group(), newDefaultFakeNode(ctx, t, logger), 5)
 
 	// We should have data in the buffer now
 	assert.NotZero(t, wal.Group().Buffered())

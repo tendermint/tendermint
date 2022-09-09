@@ -19,14 +19,14 @@ import (
 
 const (
 	//nolint: lll
-	preCommitTestStr = `Vote{56789:959A8F5EF2BE 12345/02/Precommit(8B01023386C3) 000000000000 000000000000 000000000000}`
+	preCommitTestStr = `Vote{56789:959A8F5EF2BE 12345/02/Precommit(8B01023386C3) 000000000000 000000000000 000000000000 000000}`
 	//nolint: lll
-	preVoteTestStr = `Vote{56789:959A8F5EF2BE 12345/02/Prevote(8B01023386C3) 000000000000 000000000000 000000000000}`
+	preVoteTestStr = `Vote{56789:959A8F5EF2BE 12345/02/Prevote(8B01023386C3) 000000000000 000000000000 000000000000 000000}`
 )
 
 var (
 	// nolint: lll
-	nilVoteTestStr = fmt.Sprintf(`Vote{56789:959A8F5EF2BE 12345/02/Precommit(%s) 000000000000 000000000000 000000000000}`, nilVoteStr)
+	nilVoteTestStr = fmt.Sprintf(`Vote{56789:959A8F5EF2BE 12345/02/Precommit(%s) 000000000000 000000000000 000000000000 000000}`, nilVoteStr)
 )
 
 func examplePrevote(t *testing.T) *Vote {
@@ -59,6 +59,7 @@ func exampleVote(tb testing.TB, t byte) *Vote {
 		},
 		ValidatorProTxHash: crypto.ProTxHashFromSeedBytes([]byte("validator_pro_tx_hash")),
 		ValidatorIndex:     56789,
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
 	}
 }
 
@@ -182,8 +183,8 @@ func TestVoteStateSignBytesTestVectors(t *testing.T) {
 	}
 	for i, tc := range tests {
 		sid := StateID{
-			Height:      tc.height,
-			LastAppHash: tc.apphash,
+			Height:  tc.height,
+			AppHash: tc.apphash,
 		}
 		got := sid.SignBytes(tc.chainID)
 		assert.Equal(t, len(tc.want), len(got), "test case #%v: got unexpected sign bytes length for Vote.", i)

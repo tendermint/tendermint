@@ -25,7 +25,6 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmstrings "github.com/tendermint/tendermint/internal/libs/strings"
 	"github.com/tendermint/tendermint/libs/log"
 	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -49,6 +48,8 @@ type Application struct {
 	cfg             *Config
 	restoreSnapshot *abci.Snapshot
 	restoreChunks   [][]byte
+
+	valUpdates *abci.ValidatorSetUpdate
 }
 
 // Config allows for the setting of high level parameters for running the e2e Application
@@ -125,13 +126,13 @@ func NewApplication(cfg *Config) (*Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo)
+	logger, err := log.NewDefaultLogger(log.LogFormatPlain, log.LogLevelDebug)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Application{
-		logger:    logger,
+		logger:    logger.With("module", "abci_app"),
 		state:     state,
 		snapshots: snapshots,
 		cfg:       cfg,
@@ -182,6 +183,8 @@ func (app *Application) InitChain(_ context.Context, req *abci.RequestInitChain)
 	if resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(0); err != nil {
 		panic(err)
 	}
+	app.logger.Debug("InitChain", "req", req, "resp", resp)
+
 	return resp, nil
 }
 
@@ -204,6 +207,15 @@ func (app *Application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*a
 	return &abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}, nil
 }
 
+func (app *Application) txResults(nTransactions int) (txs []*abci.ExecTxResult) {
+	txs = make([]*abci.ExecTxResult, nTransactions)
+	for i := 0; i < nTransactions; i++ {
+		txs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
+	}
+
+	return txs
+}
+
 // FinalizeBlock implements ABCI.
 func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	var txs = make([]*abci.ExecTxResult, len(req.Txs))
@@ -221,31 +233,19 @@ func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinali
 		txs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
 
-	var err error
-	resp := abci.ResponseFinalizeBlock{
-		TxResults: txs,
-		AppHash:   app.state.Finalize(),
-	}
-	resp.ValidatorSetUpdate, err = app.validatorSetUpdates(uint64(req.Height))
-	if err != nil {
-		panic(err)
-	}
+	resp := abci.ResponseFinalizeBlock{}
 
 	if app.cfg.FinalizeBlockDelayMS != 0 {
 		time.Sleep(time.Duration(app.cfg.FinalizeBlockDelayMS) * time.Millisecond)
 	}
 
-	resp.NextCoreChainLockUpdate, err = app.chainLockUpdate(uint64(req.Height))
-	if err != nil {
-		panic(err)
-	}
 	resp.Events = []abci.Event{
 		{
 			Type: "val_updates",
 			Attributes: []abci.EventAttribute{
 				{
 					Key:   "size",
-					Value: strconv.Itoa(len(resp.ValidatorSetUpdate.ValidatorUpdates)),
+					Value: strconv.Itoa(len(app.valUpdates.ValidatorUpdates)),
 				},
 				{
 					Key:   "height",
@@ -263,7 +263,7 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	height, err := app.state.Commit()
+	height, hash, err := app.state.Commit()
 	if err != nil {
 		panic(err)
 	}
@@ -283,6 +283,7 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 		retainHeight = int64(height - app.cfg.RetainBlocks + 1)
 	}
 	return &abci.ResponseCommit{
+		Data:         hash,
 		RetainHeight: retainHeight,
 	}, nil
 }
@@ -374,67 +375,85 @@ func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrep
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	extCount := len(req.LocalLastCommit.ThresholdVoteExtensions)
-	// We only generate our special transaction if we have vote extensions
-	if extCount > 0 {
-		var totalBytes int64
-		extTxPrefix := fmt.Sprintf("%s=", voteExtensionKey)
-		extTx := []byte(fmt.Sprintf("%s%d", extTxPrefix, extCount))
-		app.logger.Info("preparing proposal with custom transaction from vote extensions", "tx", extTx)
-		// Our generated transaction takes precedence over any supplied
-		// transaction that attempts to modify the "extensionSum" value.
-		txRecords := make([]*abci.TxRecord, len(req.Txs)+1)
-		for i, tx := range req.Txs {
-			if strings.HasPrefix(string(tx), extTxPrefix) {
-				txRecords[i] = &abci.TxRecord{
-					Action: abci.TxRecord_REMOVED,
-					Tx:     tx,
-				}
-			} else {
-				txRecords[i] = &abci.TxRecord{
-					Action: abci.TxRecord_UNMODIFIED,
-					Tx:     tx,
-				}
-				totalBytes += int64(len(tx))
-			}
-		}
-		if totalBytes+int64(len(extTx)) < req.MaxTxBytes {
-			txRecords[len(req.Txs)] = &abci.TxRecord{
-				Action: abci.TxRecord_ADDED,
-				Tx:     extTx,
-			}
-		} else {
-			app.logger.Info(
-				"too many txs to include special vote extension-generated tx",
-				"totalBytes", totalBytes,
-				"MaxTxBytes", req.MaxTxBytes,
-				"extTx", extTx,
-				"extTxLen", len(extTx),
-			)
-		}
-		return &abci.ResponsePrepareProposal{
-			TxRecords: txRecords,
-		}, nil
+	validatorSetUpdate, err := app.validatorSetUpdates(uint64(req.Height))
+	if err != nil {
+		panic(err)
 	}
-	// None of the transactions are modified by this application.
-	trs := make([]*abci.TxRecord, 0, len(req.Txs))
-	var totalBytes int64
-	for _, tx := range req.Txs {
-		totalBytes += int64(len(tx))
-		if totalBytes > req.MaxTxBytes {
-			break
-		}
-		trs = append(trs, &abci.TxRecord{
-			Action: abci.TxRecord_UNMODIFIED,
-			Tx:     tx,
-		})
+	app.valUpdates = validatorSetUpdate
+
+	nextCoreChainLockUpdate, err := app.chainLockUpdate(uint64(req.Height))
+	if err != nil {
+		panic(err)
+	}
+
+	extCount := len(req.LocalLastCommit.ThresholdVoteExtensions)
+	txRecords, err := app.processTxs(req.Txs, req.MaxTxBytes, extCount)
+	if err != nil {
+		return &abci.ResponsePrepareProposal{}, err
 	}
 
 	if app.cfg.PrepareProposalDelayMS != 0 {
 		time.Sleep(time.Duration(app.cfg.PrepareProposalDelayMS) * time.Millisecond)
 	}
 
-	return &abci.ResponsePrepareProposal{TxRecords: trs}, nil
+	return &abci.ResponsePrepareProposal{
+		TxRecords:           txRecords,
+		TxResults:           app.txResults(len(txRecords)),
+		ValidatorSetUpdate:  validatorSetUpdate,
+		CoreChainLockUpdate: nextCoreChainLockUpdate,
+		AppHash:             app.state.Hash,
+	}, nil
+}
+
+func (app *Application) processTxs(txs [][]byte, maxTxBytes int64, extCount int) ([]*abci.TxRecord, error) {
+	var (
+		totalBytes int64
+		txRecords  []*abci.TxRecord
+	)
+
+	txRecords = make([]*abci.TxRecord, 0, len(txs)+1)
+	extTxPrefix := voteExtensionKey + "="
+	extTx := []byte(fmt.Sprintf("%s%d", extTxPrefix, extCount))
+
+	app.logger.Info("preparing proposal with custom transaction from vote extensions", "tx", extTx)
+
+	// Our generated transaction takes precedence over any supplied
+	// transaction that attempts to modify the "extensionSum" value.
+	for _, tx := range txs {
+		// we only modify transactions if there is at least 1 extension, eg. extCount > 0
+		if extCount > 0 && strings.HasPrefix(string(tx), extTxPrefix) {
+			txRecords = append(txRecords, &abci.TxRecord{
+				Action: abci.TxRecord_REMOVED,
+				Tx:     tx,
+			})
+			totalBytes -= int64(len(tx))
+		} else {
+			txRecords = append(txRecords, &abci.TxRecord{
+				Action: abci.TxRecord_UNMODIFIED,
+				Tx:     tx,
+			})
+			totalBytes += int64(len(tx))
+		}
+	}
+	// we only modify transactions if there is at least 1 extension, eg. extCount > 0
+	if extCount > 0 {
+		if totalBytes+int64(len(extTx)) < maxTxBytes {
+			txRecords = append(txRecords, &abci.TxRecord{
+				Action: abci.TxRecord_ADDED,
+				Tx:     extTx,
+			})
+		}
+	} else {
+		app.logger.Info(
+			"too many txs to include special vote extension-generated tx",
+			"totalBytes", totalBytes,
+			"MaxTxBytes", maxTxBytes,
+			"extTx", extTx,
+			"extTxLen", len(extTx),
+		)
+	}
+
+	return txRecords, nil
 }
 
 // ProcessProposal implements part of the Application interface.
@@ -459,11 +478,28 @@ func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProc
 		}
 	}
 
+	validatorSetUpdate, err := app.validatorSetUpdates(uint64(req.Height))
+	if err != nil {
+		panic(err)
+	}
+	nextCoreChainLockUpdate, err := app.chainLockUpdate(uint64(req.Height))
+	if err != nil {
+		panic(err)
+	}
+
+	app.valUpdates = validatorSetUpdate
+
 	if app.cfg.ProcessProposalDelayMS != 0 {
 		time.Sleep(time.Duration(app.cfg.ProcessProposalDelayMS) * time.Millisecond)
 	}
 
-	return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil
+	return &abci.ResponseProcessProposal{
+		Status:              abci.ResponseProcessProposal_ACCEPT,
+		TxResults:           app.txResults(len(req.Txs)),
+		ValidatorSetUpdate:  validatorSetUpdate,
+		CoreChainLockUpdate: nextCoreChainLockUpdate,
+		AppHash:             app.state.Hash,
+	}, nil
 }
 
 // ExtendVote will produce vote extensions in the form of random numbers to
@@ -497,15 +533,11 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 	// nolint:gosec // G404: Use of weak random number generator
 	num := rand.Int63n(voteExtensionMaxVal)
 	extLen := binary.PutVarint(ext, num)
-
-	if app.cfg.VoteExtensionDelayMS != 0 {
-		time.Sleep(time.Duration(app.cfg.VoteExtensionDelayMS) * time.Millisecond)
-	}
-
 	app.logger.Info("generated vote extension",
 		"num", num,
-		"ext", tmstrings.LazySprintf("%x", ext[:extLen]),
-		"state.Height", app.state.Height)
+		"ext", fmt.Sprintf("%x", ext[:extLen]),
+		"state.Height", app.state.Height,
+	)
 	return &abci.ResponseExtendVote{
 		VoteExtensions: []*abci.ExtendVoteExtension{
 			{
@@ -524,9 +556,6 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 // without doing anything about them. In this case, it just makes sure that the
 // vote extension is a well-formed integer value.
 func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-
 	// We allow vote extensions to be optional
 	if len(req.VoteExtensions) == 0 {
 		return &abci.ResponseVerifyVoteExtension{

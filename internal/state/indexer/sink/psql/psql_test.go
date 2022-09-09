@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/state/indexer"
 	"github.com/tendermint/tendermint/types"
 
@@ -223,6 +224,10 @@ func TestStop(t *testing.T) {
 func newTestBlockHeader() types.EventDataNewBlockHeader {
 	return types.EventDataNewBlockHeader{
 		Header: types.Header{Height: 1},
+		ResultProcessProposal: abci.ResponseProcessProposal{
+			Status:  abci.ResponseProcessProposal_ACCEPT,
+			AppHash: make([]byte, crypto.DefaultAppHashSize),
+		},
 		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
 			Events: []abci.Event{
 				makeIndexedEvent("finalize_event.proposer", "FCAA001"),

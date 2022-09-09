@@ -34,8 +34,6 @@ func TestRollback(t *testing.T) {
 	nextState.LastBlockID = factory.MakeBlockID()
 	nextState.AppHash = factory.RandomHash()
 	nextState.LastValidators = initialState.Validators
-	nextState.Validators = initialState.NextValidators
-	nextState.NextValidators = initialState.NextValidators.CopyIncrementProposerPriority(1)
 	nextState.ConsensusParams = *newParams
 	nextState.LastHeightConsensusParamsChanged = nextHeight + 1
 	nextState.LastHeightValidatorsChanged = nextHeight + 1
@@ -46,20 +44,20 @@ func TestRollback(t *testing.T) {
 	block := &types.BlockMeta{
 		BlockID: initialState.LastBlockID,
 		Header: types.Header{
-			Height:          initialState.LastBlockHeight,
-			AppHash:         factory.RandomHash(),
-			LastBlockID:     factory.MakeBlockID(),
-			LastResultsHash: initialState.LastResultsHash,
+			Height:      initialState.LastBlockHeight,
+			AppHash:     factory.RandomHash(),
+			LastBlockID: factory.MakeBlockID(),
+			ResultsHash: initialState.LastResultsHash,
 		},
 	}
 	commit := &types.Commit{}
 	nextBlock := &types.BlockMeta{
 		BlockID: initialState.LastBlockID,
 		Header: types.Header{
-			Height:          nextState.LastBlockHeight,
-			AppHash:         initialState.AppHash,
-			LastBlockID:     block.BlockID,
-			LastResultsHash: nextState.LastResultsHash,
+			Height:      nextState.LastBlockHeight,
+			AppHash:     initialState.AppHash,
+			LastBlockID: block.BlockID,
+			ResultsHash: nextState.LastResultsHash,
 		},
 	}
 	blockStore.On("LoadBlockMeta", height).Return(block)
@@ -138,7 +136,6 @@ func setupStateStore(t *testing.T, height int64) state.Store {
 		LastBlockHeight:                  height,
 		LastValidators:                   valSet,
 		Validators:                       valSet.CopyIncrementProposerPriority(1),
-		NextValidators:                   valSet.CopyIncrementProposerPriority(2),
 		LastHeightValidatorsChanged:      height + 1,
 		ConsensusParams:                  *params,
 		LastHeightConsensusParamsChanged: height + 1,

@@ -167,13 +167,13 @@ func (_m *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	return r0
 }
 
-// LoadBlockSeenCommitAt provides a mock function with given fields: height
-func (_m *BlockStore) LoadSeenCommitAt(height int64) *types.Commit {
-	ret := _m.Called(height)
+// LoadSeenCommit provides a mock function with given fields:
+func (_m *BlockStore) LoadSeenCommit() *types.Commit {
+	ret := _m.Called()
 
 	var r0 *types.Commit
-	if rf, ok := ret.Get(0).(func(int64) *types.Commit); ok {
-		r0 = rf(height)
+	if rf, ok := ret.Get(0).(func() *types.Commit); ok {
+		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.Commit)
@@ -183,13 +183,13 @@ func (_m *BlockStore) LoadSeenCommitAt(height int64) *types.Commit {
 	return r0
 }
 
-// LoadSeenCommit provides a mock function with given fields:
-func (_m *BlockStore) LoadSeenCommit() *types.Commit {
-	ret := _m.Called()
+// LoadSeenCommitAt provides a mock function with given fields: height
+func (_m *BlockStore) LoadSeenCommitAt(height int64) *types.Commit {
+	ret := _m.Called(height)
 
 	var r0 *types.Commit
-	if rf, ok := ret.Get(0).(func() *types.Commit); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(int64) *types.Commit); ok {
+		r0 = rf(height)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.Commit)

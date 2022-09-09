@@ -1,6 +1,7 @@
 package bytes
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -90,6 +91,10 @@ func (bz HexBytes) Copy() HexBytes {
 	copied := make(HexBytes, len(bz))
 	copy(copied, bz)
 	return copied
+}
+
+func (bz HexBytes) Equal(b []byte) bool {
+	return bytes.Equal(bz, b)
 }
 
 // Reverse returns a reversed sequence bytes of passed slice

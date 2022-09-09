@@ -31,6 +31,15 @@ func (tx Tx) String() string { return fmt.Sprintf("Tx{%X}", []byte(tx)) }
 // Txs is a slice of Tx.
 type Txs []Tx
 
+// NewTxs creates new transactions object based on raw transactions
+func NewTxs(in [][]byte) Txs {
+	ret := make(Txs, len(in))
+	for key, val := range in {
+		ret[key] = val
+	}
+	return ret
+}
+
 // Hash returns the Merkle root hash of the transaction hashes.
 // i.e. the leaves of the tree are the hashes of the txs.
 func (txs Txs) Hash() []byte {

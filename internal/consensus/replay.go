@@ -394,13 +394,6 @@ func (h *Handshaker) ReplayBlocks(
 					newValidatorSet,
 				)
 				state.Validators = newValidatorSet
-				state.NextValidators = types.NewValidatorSetWithLocalNodeProTxHash(
-					vals,
-					thresholdPublicKey,
-					h.genDoc.QuorumType,
-					quorumHash,
-					h.nodeProTxHash,
-				).CopyIncrementProposerPriority(1)
 			} else if len(h.genDoc.Validators) == 0 {
 				// If validator set is not set in genesis and still empty after InitChain, exit.
 				h.logger.Debug("Validator set is nil in genesis and still empty after InitChain")
@@ -505,11 +498,11 @@ func (h *Handshaker) ReplayBlocks(
 
 		case appBlockHeight == storeBlockHeight:
 			// We ran Commit, but didn't save the state, so replayBlock with mock app.
-			finalizeBlockResponses, err := h.stateStore.LoadFinalizeBlockResponses(storeBlockHeight)
+			abciResponses, err := h.stateStore.LoadABCIResponses(storeBlockHeight)
 			if err != nil {
 				return nil, err
 			}
-			mockApp, err := newMockProxyApp(h.logger, appHash, finalizeBlockResponses)
+			mockApp, err := newMockProxyApp(h.logger, appHash, abciResponses)
 			if err != nil {
 				return nil, err
 			}
@@ -565,25 +558,31 @@ func (h *Handshaker) replayBlocks(
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
 		// Extra check to ensure the app was not changed in a way it shouldn't have.
-		if len(appHash) > 0 {
-			if err := checkAppHashEqualsOneFromBlock(appHash, block); err != nil {
-				return nil, err
-			}
+
+		var blockExec *sm.BlockExecutor
+		blockExec = sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus, sm.NopMetrics())
+
+		uncommittedState, err := blockExec.ProcessProposal(ctx, block, state, false)
+		if err != nil {
+			return nil, fmt.Errorf("replay process proposal: %w", err)
+		}
+		appHash = uncommittedState.AppHash
+
+		// We emit events for the index services at the final block due to the sync issue when
+		// the node shutdown during the block committing status.
+		// For all other cases, we disable emitting events by providing blockExec=nil in ExecReplayedCommitBlock
+		if !(i == finalBlock && !mutateState) {
+			blockExec = nil
 		}
 
-		if i == finalBlock && !mutateState {
-			// We emit events for the index services at the final block due to the sync issue when
-			// the node shutdown during the block committing status.
-			blockExec := sm.NewBlockExecutor(h.stateStore, h.logger, appClient, emptyMempool{}, sm.EmptyEvidencePool{}, h.store, h.eventBus, sm.NopMetrics())
-			appHash, err = sm.ExecCommitBlock(ctx,
-				blockExec, appClient, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			appHash, err = sm.ExecCommitBlock(ctx,
-				nil, appClient, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state)
-			if err != nil {
+		_, err = sm.ExecReplayedCommitBlock(ctx, blockExec, appClient, block, h.logger, h.stateStore, h.genDoc.InitialHeight, state, uncommittedState)
+		if err != nil {
+			return nil, err
+		}
+
+		// Extra check to ensure the app was not changed in a way it shouldn't have.
+		if len(appHash) > 0 {
+			if err := checkAppHashEqualsOneFromBlock(appHash, block); err != nil {
 				return nil, err
 			}
 		}
@@ -631,7 +630,7 @@ func (h *Handshaker) replayBlock(
 	blockExec.SetAppHashSize(h.appHashSize)
 
 	var err error
-	state, err = blockExec.ApplyBlock(ctx, state, h.nodeProTxHash, meta.BlockID, block)
+	state, err = blockExec.ApplyBlock(ctx, state, meta.BlockID, block)
 	if err != nil {
 		return sm.State{}, err
 	}

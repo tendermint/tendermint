@@ -50,11 +50,11 @@ type HeightVoteSet struct {
 	peerCatchupRounds map[types.NodeID][]int32 // keys: peer.ID; values: at most 2 rounds
 }
 
-func NewHeightVoteSet(chainID string, height int64, stateID types.StateID, valSet *types.ValidatorSet) *HeightVoteSet {
-	hvs := &HeightVoteSet{
-		chainID: chainID,
-		stateID: stateID,
-	}
+func NewHeightVoteSet(
+	chainID string,
+	height int64,
+	valSet *types.ValidatorSet) *HeightVoteSet {
+	hvs := &HeightVoteSet{chainID: chainID}
 	hvs.Reset(height, valSet)
 	return hvs
 }
@@ -111,8 +111,8 @@ func (hvs *HeightVoteSet) addRound(round int32) {
 	}
 	// log.Debug("addRound(round)", "round", round)
 	if hvs.valSet.HasPublicKeys {
-		prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet, hvs.stateID)
-		precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet, hvs.stateID)
+		prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrevoteType, hvs.valSet)
+		precommits := types.NewVoteSet(hvs.chainID, hvs.height, round, tmproto.PrecommitType, hvs.valSet)
 		hvs.roundVoteSets[round] = RoundVoteSet{
 			Prevotes:   prevotes,
 			Precommits: precommits,

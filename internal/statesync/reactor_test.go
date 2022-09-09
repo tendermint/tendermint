@@ -457,8 +457,8 @@ func TestReactor_LightBlockResponse(t *testing.T) {
 	h.Height = height
 	blockID := factory.MakeBlockIDWithHash(h.Hash())
 	stateID := types.StateID{
-		Height:      height,
-		LastAppHash: h.AppHash,
+		Height:  height,
+		AppHash: h.AppHash,
 	}
 	vals, pv := types.RandValidatorSet(1)
 	vote, err := factory.MakeVote(ctx, pv[0], vals, h.ChainID, 0, h.Height, 0, 2,
@@ -889,6 +889,7 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 		Height:      height,
 		LastBlockID: lastBlockID,
 		Time:        time,
+		AppHash:     make([]byte, crypto.DefaultHashSize),
 	})
 	header.Version.App = testAppVersion
 
@@ -898,10 +899,10 @@ func mockLB(ctx context.Context, t *testing.T, height int64, time time.Time, las
 	header.ConsensusHash = types.DefaultConsensusParams().HashConsensusParams()
 	lastBlockID = factory.MakeBlockIDWithHash(header.Hash())
 	stateID := types.StateID{
-		Height:      height - 1,
-		LastAppHash: header.AppHash,
+		Height:  height,
+		AppHash: header.AppHash,
 	}
-	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, currentVals, stateID)
+	voteSet := types.NewVoteSet(factory.DefaultTestChainID, height, 0, tmproto.PrecommitType, currentVals)
 	commit, err := factory.MakeCommit(ctx, lastBlockID, height, 0, voteSet, currentVals, currentPrivVals, stateID)
 	require.NoError(t, err)
 	return nextVals, nextPrivVals, &types.LightBlock{

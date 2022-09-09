@@ -377,10 +377,11 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	proposedAppVersion := uint64(1)
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil)
-	block, err := blockExec.CreateProposalBlock(
+	block, _, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
-		state, commit,
+		state,
+		commit,
 		proposerProTxHash,
 		proposedAppVersion,
 	)
@@ -459,10 +460,11 @@ func TestMaxTxsProposalBlockSize(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, types.StateID{}, nil)
-	block, err := blockExec.CreateProposalBlock(
+	block, _, err := blockExec.CreateProposalBlock(
 		ctx,
 		height,
-		state, commit,
+		state,
+		commit,
 		proposerProTxHash,
 		0,
 	)
@@ -492,12 +494,12 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication())
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication(kvstore.WithLogger(logger), kvstore.WithState(math.MaxInt64-1)))
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)
 
-	state, stateDB, _ := state(t, 100, int64(1))
+	state, stateDB, _ := state(t, 100, 1)
 
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
@@ -526,12 +528,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	coreChainLock := types.CoreChainLock{
-		CoreBlockHeight: math.MaxUint32,
-		CoreBlockHash:   crypto.CRandBytes(32),
-		Signature:       crypto.CRandBytes(96),
-	}
-
 	eventBus := eventbus.NewDefault(logger)
 	require.NoError(t, eventBus.Start(ctx))
 
@@ -545,7 +541,6 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		eventBus,
 		sm.NopMetrics(),
 	)
-	blockExec.SetNextCoreChainLock(&coreChainLock)
 
 	blockID := types.BlockID{
 		Hash: crypto.Checksum([]byte("blockID_hash")),
@@ -556,14 +551,13 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	}
 
 	// save the updated validator set for use by the block executor.
-	state.LastBlockHeight = math.MaxInt64 - 3
+	state.LastBlockHeight = math.MaxInt64 - 2
 	state.LastHeightValidatorsChanged = math.MaxInt64 - 1
-	state.NextValidators = state.Validators.Copy()
 	require.NoError(t, stateStore.Save(state))
 
 	stateID := types.StateID{
-		Height:      math.MaxInt64 - 1,
-		LastAppHash: crypto.Checksum([]byte("app_hash")),
+		Height:  math.MaxInt64 - 1,
+		AppHash: crypto.Checksum([]byte("app_hash")),
 	}
 
 	timestamp := time.Date(math.MaxInt64, 0, 0, 0, 0, 0, math.MaxInt64, time.UTC)
@@ -591,10 +585,11 @@ func TestMaxProposalBlockSize(t *testing.T) {
 		ThresholdStateSignature: crypto.CRandBytes(bls12381.SignatureSize),
 	}
 
-	block, err := blockExec.CreateProposalBlock(
+	block, _, err := blockExec.CreateProposalBlock(
 		ctx,
 		math.MaxInt64,
-		state, commit,
+		state,
+		commit,
 		proposerProTxHash,
 		0,
 	)
@@ -612,7 +607,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	require.Equal(t, types.MaxHeaderBytes, int64(pb.Header.Size()))
 	require.Equal(t, types.MaxCommitSize, int64(pb.LastCommit.Size()))
 	// make sure that the block is less than the max possible size
-	assert.Equal(t, int64(1292+cfg.Mempool.MaxTxBytes), int64(pb.Size()))
+	assert.Equal(t, int64(1150+cfg.Mempool.MaxTxBytes), int64(pb.Size()))
 	// because of the proto overhead we expect the part set bytes to be equal or
 	// less than the pb block size
 	assert.LessOrEqual(t, partSet.ByteSize(), int64(pb.Size()))

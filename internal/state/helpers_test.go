@@ -12,13 +12,17 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
-	"github.com/tendermint/tendermint/crypto/encoding"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmtime "github.com/tendermint/tendermint/libs/time"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
+)
+
+const (
+	chainID = "execution_chain"
 )
 
 type paramsChangeTestCase struct {
@@ -63,14 +67,18 @@ func makeAndApplyGoodBlock(
 	proposedAppVersion uint64,
 ) (sm.State, types.BlockID) {
 	t.Helper()
-	block := state.MakeBlock(height, nil, factory.MakeNTxs(height, 10), lastCommit, evidence, proposerProTxHash, proposedAppVersion)
+	block := state.MakeBlock(height, factory.MakeNTxs(height, 10), lastCommit, evidence, proposerProTxHash, proposedAppVersion)
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 
 	require.NoError(t, blockExec.ValidateBlock(ctx, state, block))
 	blockID := types.BlockID{Hash: block.Hash(),
 		PartSetHeader: partSet.Header()}
-	state, err = blockExec.ApplyBlock(ctx, state, nodeProTxHash, blockID, block)
+	txResults := factory.ExecTxResults(block.Txs)
+	block.ResultsHash, err = abci.TxResultsHash(txResults)
+	require.NoError(t, err)
+
+	state, err = blockExec.ApplyBlock(ctx, state, blockID, block)
 	require.NoError(t, err)
 
 	return state, blockID
@@ -120,7 +128,7 @@ func makeState(t *testing.T, nVals, height int) (sm.State, dbm.DB, map[string]ty
 		Validators:         genVals,
 		ThresholdPublicKey: vals.ThresholdPublicKey,
 		QuorumHash:         vals.QuorumHash,
-		AppHash:            nil,
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
 	})
 
 	stateDB := dbm.NewMemDB()
@@ -137,65 +145,44 @@ func makeState(t *testing.T, nVals, height int) (sm.State, dbm.DB, map[string]ty
 	return s, stateDB, privValsByProTxHash
 }
 
-func makeHeaderPartsResponsesValPowerChange(
-	t *testing.T,
-	state sm.State,
-	power int64,
-) (types.Header, *types.CoreChainLock, types.BlockID, *abci.ResponseFinalizeBlock) {
-	t.Helper()
-
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
-	require.NoError(t, err)
-	finalizeBlockResponses := &abci.ResponseFinalizeBlock{}
-
-	// If the pubkey is new, remove the old and add the new.
-	_, val := state.NextValidators.GetByIndex(0)
-	if val.VotingPower != power {
-		vPbPk, err := encoding.PubKeyToProto(val.PubKey)
-		require.NoError(t, err)
-		thresholdPubKey, err := encoding.PubKeyToProto(state.NextValidators.ThresholdPublicKey)
-		require.NoError(t, err)
-
-		finalizeBlockResponses = &abci.ResponseFinalizeBlock{
-			ValidatorSetUpdate: &abci.ValidatorSetUpdate{
-				ValidatorUpdates: []abci.ValidatorUpdate{
-					{PubKey: &vPbPk, Power: power},
-				},
-				ThresholdPublicKey: thresholdPubKey,
-				QuorumHash:         state.NextValidators.QuorumHash,
-			},
-		}
-	}
-
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
-}
-
-func makeHeaderPartsResponsesValKeysRegenerate(t *testing.T, state sm.State, regenerate bool) (types.Header, *types.CoreChainLock, types.BlockID, *abci.ResponseFinalizeBlock) {
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+func makeHeaderPartsResponsesValKeysRegenerate(t *testing.T, state sm.State, regenerate bool, proposedAppVersion uint64) (types.Header, *types.CoreChainLock, types.BlockID, tmstate.ABCIResponses) {
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), proposedAppVersion)
 	if err != nil {
 		t.Error(err)
 	}
-	fbResp := &abci.ResponseFinalizeBlock{}
+	abciResponses := tmstate.ABCIResponses{
+		ProcessProposal: &abci.ResponseProcessProposal{
+			ValidatorSetUpdate:  nil,
+			CoreChainLockUpdate: block.CoreChainLock.ToProto(),
+			Status:              abci.ResponseProcessProposal_ACCEPT,
+		},
+	}
+
 	if regenerate == true {
 		proTxHashes := state.Validators.GetProTxHashes()
 		valUpdates := types.ValidatorUpdatesRegenerateOnProTxHashes(proTxHashes)
-		fbResp.ValidatorSetUpdate = &valUpdates
+		abciResponses.ProcessProposal.ValidatorSetUpdate = &valUpdates
 	}
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, fbResp
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func makeHeaderPartsResponsesParams(
 	t *testing.T,
 	state sm.State,
 	params *types.ConsensusParams,
-) (types.Header, *types.CoreChainLock, types.BlockID, *abci.ResponseFinalizeBlock) {
+	proposedAppVersion uint64,
+) (types.Header, *types.CoreChainLock, types.BlockID, *tmstate.ABCIResponses) {
 	t.Helper()
 
-	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), nil, 0)
+	block, err := sf.MakeBlock(state, state.LastBlockHeight+1, new(types.Commit), proposedAppVersion)
 	require.NoError(t, err)
 	pbParams := params.ToProto()
-	finalizeBlockResponses := &abci.ResponseFinalizeBlock{ConsensusParamUpdates: &pbParams}
-	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, finalizeBlockResponses
+	abciResponses := &tmstate.ABCIResponses{
+		ProcessProposal: &abci.ResponseProcessProposal{
+			ConsensusParamUpdates: &pbParams,
+			Status:                abci.ResponseProcessProposal_ACCEPT,
+		}}
+	return block.Header, block.CoreChainLock, types.BlockID{Hash: block.Hash(), PartSetHeader: types.PartSetHeader{}}, abciResponses
 }
 
 func randomGenesisDoc() *types.GenesisDoc {
@@ -224,7 +211,6 @@ func makeRandomStateFromValidatorSet(
 ) sm.State {
 	return sm.State{
 		LastBlockHeight:                  height - 1,
-		NextValidators:                   lastValSet.CopyIncrementProposerPriority(2),
 		Validators:                       lastValSet.CopyIncrementProposerPriority(1),
 		LastValidators:                   lastValSet.Copy(),
 		LastHeightConsensusParamsChanged: height,
@@ -246,7 +232,6 @@ func makeRandomStateFromConsensusParams(
 		LastBlockHeight:                  height - 1,
 		ConsensusParams:                  *consensusParams,
 		LastHeightConsensusParamsChanged: lastHeightConsensusParamsChanged,
-		NextValidators:                   valSet.CopyIncrementProposerPriority(2),
 		Validators:                       valSet.CopyIncrementProposerPriority(1),
 		LastValidators:                   valSet.Copy(),
 		LastHeightValidatorsChanged:      height,
@@ -272,24 +257,8 @@ func (app *testApp) Info(_ context.Context, req *abci.RequestInfo) (*abci.Respon
 func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.Misbehavior = req.Misbehavior
 
-	resTxs := make([]*abci.ExecTxResult, len(req.Txs))
-	for i, tx := range req.Txs {
-		if len(tx) > 0 {
-			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
-		} else {
-			resTxs[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK + 10} // error
-		}
-	}
-
 	return &abci.ResponseFinalizeBlock{
-		ValidatorSetUpdate: app.ValidatorSetUpdate,
-		ConsensusParamUpdates: &tmproto.ConsensusParams{
-			Version: &tmproto.VersionParams{
-				AppVersion: 1,
-			},
-		},
-		Events:    []abci.Event{},
-		TxResults: resTxs,
+		Events: []abci.Event{},
 	}, nil
 }
 
@@ -305,11 +274,37 @@ func (app *testApp) Query(_ context.Context, req *abci.RequestQuery) (*abci.Resp
 	return &abci.ResponseQuery{}, nil
 }
 
-func (app *testApp) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
-	for _, tx := range req.Txs {
-		if len(tx) == 0 {
-			return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}, nil
-		}
+func (app *testApp) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
+	resTxs := factory.ExecTxResults(types.NewTxs(req.Txs))
+	if resTxs == nil {
+		return &abci.ResponsePrepareProposal{}, nil
 	}
-	return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil
+	return &abci.ResponsePrepareProposal{
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
+		ValidatorSetUpdate: app.ValidatorSetUpdate,
+		ConsensusParamUpdates: &tmproto.ConsensusParams{
+			Version: &tmproto.VersionParams{
+				AppVersion: 1,
+			},
+		},
+		TxResults: resTxs,
+	}, nil
+}
+
+func (app *testApp) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
+	resTxs := factory.ExecTxResults(types.NewTxs(req.Txs))
+	if resTxs == nil {
+		return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}, nil
+	}
+	return &abci.ResponseProcessProposal{
+		AppHash:            make([]byte, crypto.DefaultAppHashSize),
+		ValidatorSetUpdate: app.ValidatorSetUpdate,
+		ConsensusParamUpdates: &tmproto.ConsensusParams{
+			Version: &tmproto.VersionParams{
+				AppVersion: 1,
+			},
+		},
+		TxResults: resTxs,
+		Status:    abci.ResponseProcessProposal_ACCEPT,
+	}, nil
 }

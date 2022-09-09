@@ -143,7 +143,7 @@ func invalidDoPrevoteFunc(
 			cs.Validators.QuorumType,
 			cs.Validators.QuorumHash,
 			p,
-			cs.state.StateID(),
+			cs.StateID(),
 			log.NewNopLogger(),
 		)
 		require.NoError(t, err)

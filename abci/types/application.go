@@ -1,6 +1,10 @@
 package types
 
-import "context"
+import (
+	"context"
+
+	"github.com/tendermint/tendermint/crypto"
+)
 
 //go:generate ../../scripts/mockery_generate.sh Application
 // Application is an interface that enables any finite, deterministic state machine
@@ -103,19 +107,29 @@ func (BaseApplication) PrepareProposal(_ context.Context, req *RequestPreparePro
 			Tx:     tx,
 		})
 	}
-	return &ResponsePrepareProposal{TxRecords: trs}, nil
+	return &ResponsePrepareProposal{TxRecords: trs,
+		AppHash:   make([]byte, crypto.DefaultAppHashSize),
+		TxResults: txResults(req.Txs),
+	}, nil
+}
+
+func txResults(txs [][]byte) []*ExecTxResult {
+	results := make([]*ExecTxResult, len(txs))
+	for i := range txs {
+		results[i] = &ExecTxResult{Code: CodeTypeOK}
+	}
+	return results
 }
 
 func (BaseApplication) ProcessProposal(_ context.Context, req *RequestProcessProposal) (*ResponseProcessProposal, error) {
-	return &ResponseProcessProposal{Status: ResponseProcessProposal_ACCEPT}, nil
+	return &ResponseProcessProposal{
+		AppHash:   make([]byte, crypto.DefaultAppHashSize),
+		Status:    ResponseProcessProposal_ACCEPT,
+		TxResults: txResults(req.Txs),
+	}, nil
 }
 
 func (BaseApplication) FinalizeBlock(_ context.Context, req *RequestFinalizeBlock) (*ResponseFinalizeBlock, error) {
-	txs := make([]*ExecTxResult, len(req.Txs))
-	for i := range req.Txs {
-		txs[i] = &ExecTxResult{Code: CodeTypeOK}
-	}
-	return &ResponseFinalizeBlock{
-		TxResults: txs,
-	}, nil
+
+	return &ResponseFinalizeBlock{}, nil
 }

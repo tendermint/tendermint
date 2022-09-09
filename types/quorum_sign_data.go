@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/dashevo/dashd-go/btcjson"
+	"github.com/rs/zerolog"
 
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -29,10 +30,10 @@ func (q QuorumSignData) Verify(pubKey crypto.PubKey, signs QuorumSigns) error {
 
 // SignItem represents quorum sign data, like a request id, message bytes, sha256 hash of message and signID
 type SignItem struct {
-	ReqID []byte
-	ID    []byte
-	Raw   []byte
-	Hash  []byte
+	ReqID []byte // Request ID for quorum signing
+	ID    []byte // Signature ID
+	Raw   []byte // Raw data to be signed
+	Hash  []byte // Checksum of Raw
 }
 
 // Validate validates prepared data for signing
@@ -43,6 +44,13 @@ func (i *SignItem) Validate() error {
 	return nil
 }
 
+func (i SignItem) MarshalZerologObject(e *zerolog.Event) {
+	e.Hex("signBytes", i.Raw)
+	e.Hex("signRequestID", i.ReqID)
+	e.Hex("signID", i.ID)
+	e.Hex("signHash", i.Hash)
+}
+
 // MakeQuorumSignsWithVoteSet creates and returns QuorumSignData struct built with a vote-set and an added vote
 func MakeQuorumSignsWithVoteSet(voteSet *VoteSet, vote *types.Vote) (QuorumSignData, error) {
 	return MakeQuorumSigns(
@@ -50,7 +58,10 @@ func MakeQuorumSignsWithVoteSet(voteSet *VoteSet, vote *types.Vote) (QuorumSignD
 		voteSet.valSet.QuorumType,
 		voteSet.valSet.QuorumHash,
 		vote,
-		voteSet.stateID,
+		StateID{
+			Height:  vote.Height,
+			AppHash: vote.AppHash,
+		},
 	)
 }
 

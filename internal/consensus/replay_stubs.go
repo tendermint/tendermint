@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
 	"github.com/tendermint/tendermint/libs/log"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -50,6 +51,34 @@ func (emptyMempool) TxsWaitChan() <-chan struct{} { return nil }
 func (emptyMempool) InitWAL() error { return nil }
 func (emptyMempool) CloseWAL()      {}
 
+type mockMempool struct {
+	emptyMempool
+	calls []types.Txs
+}
+
+func (m *mockMempool) ReapMaxBytesMaxGas(_, _ int64) types.Txs {
+	if len(m.calls) == 0 {
+		return types.Txs{}
+	}
+	txs := m.calls[0]
+	return txs
+}
+
+func (m *mockMempool) Update(
+	_ context.Context,
+	_ int64,
+	_ types.Txs,
+	_ []*abci.ExecTxResult,
+	_ mempool.PreCheckFunc,
+	_ mempool.PostCheckFunc,
+	_ bool,
+) error {
+	if len(m.calls) > 0 {
+		m.calls = m.calls[1:]
+	}
+	return nil
+}
+
 //-----------------------------------------------------------------------------
 // mockProxyApp uses Responses to FinalizeBlock to give the right results.
 //
@@ -59,24 +88,32 @@ func (emptyMempool) CloseWAL()      {}
 func newMockProxyApp(
 	logger log.Logger,
 	appHash []byte,
-	finalizeBlockResponses *abci.ResponseFinalizeBlock,
+	abciResponses *tmstate.ABCIResponses,
 ) (abciclient.Client, error) {
 	return proxy.New(abciclient.NewLocalClient(logger, &mockProxyApp{
-		appHash:                appHash,
-		finalizeBlockResponses: finalizeBlockResponses,
+		appHash:       appHash,
+		abciResponses: abciResponses,
 	}), logger, proxy.NopMetrics()), nil
 }
 
 type mockProxyApp struct {
 	abci.BaseApplication
 
-	appHash                []byte
-	txCount                int
-	finalizeBlockResponses *abci.ResponseFinalizeBlock
+	appHash       []byte
+	txCount       int
+	abciResponses *tmstate.ABCIResponses
+}
+
+func (mock *mockProxyApp) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
+	r := mock.abciResponses.ProcessProposal
+	if r == nil {
+		return &abci.ResponseProcessProposal{}, nil
+	}
+	return r, nil
 }
 
 func (mock *mockProxyApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	r := mock.finalizeBlockResponses
+	r := mock.abciResponses.FinalizeBlock
 	mock.txCount++
 	if r == nil {
 		return &abci.ResponseFinalizeBlock{}, nil

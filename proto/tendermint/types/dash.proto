@@ -19,7 +19,7 @@ enum VoteExtensionType {
 }
 
 message VoteExtension {
-  VoteExtensionType type = 1;
-  bytes extension        = 2;
-  bytes signature        = 3;
+  VoteExtensionType type      = 1;
+  bytes             extension = 2;
+  bytes             signature = 3;
 }

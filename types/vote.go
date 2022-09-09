@@ -90,6 +90,7 @@ type Vote struct {
 	BlockSignature     tmbytes.HexBytes      `json:"block_signature"`
 	StateSignature     tmbytes.HexBytes      `json:"state_signature"`
 	VoteExtensions     VoteExtensions        `json:"vote_extensions"`
+	AppHash            tmbytes.HexBytes      `json:"app_hash"`
 }
 
 // VoteFromProto attempts to convert the given serialization (Protobuf) type to
@@ -111,6 +112,7 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		BlockSignature:     pv.BlockSignature,
 		StateSignature:     pv.StateSignature,
 		VoteExtensions:     VoteExtensionsFromProto(pv.VoteExtensions),
+		AppHash:            pv.AppHash,
 	}, nil
 }
 
@@ -162,6 +164,14 @@ func (vote *Vote) Copy() *Vote {
 	return &voteCopy
 }
 
+// StateID generates state ID for this vote
+func (vote *Vote) StateID() StateID {
+	return StateID{
+		Height:  vote.Height,
+		AppHash: vote.AppHash,
+	}
+}
+
 // String returns a string representation of Vote.
 //
 // 1. validator index
@@ -194,7 +204,7 @@ func (vote *Vote) String() string {
 		blockHashString = fmt.Sprintf("%X", tmbytes.Fingerprint(vote.BlockID.Hash))
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%s) %X %X %X}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%s) %X %X %X %s}",
 		vote.ValidatorIndex,
 		tmbytes.Fingerprint(vote.ValidatorProTxHash),
 		vote.Height,
@@ -204,6 +214,7 @@ func (vote *Vote) String() string {
 		tmbytes.Fingerprint(vote.BlockSignature),
 		tmbytes.Fingerprint(vote.StateSignature),
 		vote.VoteExtensions.Fingerprint(),
+		vote.AppHash.ShortString(),
 	)
 }
 
@@ -412,6 +423,7 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 		BlockSignature:     vote.BlockSignature,
 		StateSignature:     vote.StateSignature,
 		VoteExtensions:     voteExtensions,
+		AppHash:            vote.AppHash,
 	}
 }
 
@@ -420,13 +432,13 @@ func (vote *Vote) MarshalZerologObject(e *zerolog.Event) {
 	if vote == nil {
 		return
 	}
-	e.Str("vote", vote.String())
 	e.Int64("height", vote.Height)
 	e.Int32("round", vote.Round)
 	e.Str("type", vote.Type.String())
-	e.Str("block_key", vote.BlockID.String())
+	e.Str("block_id", vote.BlockID.String())
 	e.Str("block_signature", vote.BlockSignature.ShortString())
 	e.Str("state_signature", vote.StateSignature.ShortString())
+	e.Str("apphash", vote.AppHash.ShortString())
 	e.Str("val_proTxHash", vote.ValidatorProTxHash.ShortString())
 	e.Int32("val_index", vote.ValidatorIndex)
 	e.Bool("nil", vote.BlockID.IsNil())

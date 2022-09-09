@@ -260,7 +260,7 @@ func (r *Reactor) SwitchToConsensus(ctx context.Context, state sm.State, skipWAL
 
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
 	// NewRoundStepMessage.
-	r.state.updateToState(state, nil)
+	r.state.UpdateToState(state, nil)
 	if err := r.state.Start(ctx); err != nil {
 		panic(fmt.Sprintf(`failed to start consensus state: %v
 
@@ -780,12 +780,9 @@ func (r *Reactor) gossipCommit(ctx context.Context, voteCh p2p.Channel, rs *csty
 	}
 
 	if commit == nil {
-		//r.logger.Debug("cannot find a block",
-		//	"prs.Height", prs.Height,
-		//	"rs.Height", rs.Height,
-		//	"blockStoreBase", blockStoreBase,
-		//	"stack", string(debug.Stack()),
-		//)
+		if prs.Height == 0 {
+			return nil // not an error when we are at genesis
+		}
 		return fmt.Errorf("commit at height %d not found", prs.Height)
 	}
 

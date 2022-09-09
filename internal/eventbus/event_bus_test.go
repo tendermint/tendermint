@@ -81,7 +81,8 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	block := types.MakeBlock(0, 0, nil, []types.Tx{}, nil, []types.Evidence{}, 1)
+	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
+	block.SetDashParams(0, nil, 1, nil)
 	bps, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -253,13 +254,22 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	err := eventBus.Start(ctx)
 	require.NoError(t, err)
 
-	block := types.MakeBlock(0, 0, nil, []types.Tx{}, nil, []types.Evidence{}, 1)
+	block := types.MakeBlock(0, []types.Tx{}, nil, []types.Evidence{})
+	block.SetDashParams(0, nil, 1, nil)
 	resultFinalizeBlock := abci.ResponseFinalizeBlock{
 		Events: []abci.Event{
 			{Type: "testType", Attributes: []abci.EventAttribute{
 				{Key: "baz", Value: "1"},
 				{Key: "foz", Value: "2"},
 			}},
+		},
+	}
+	resultProcessProposal := abci.ResponseProcessProposal{
+		Status:  abci.ResponseProcessProposal_ACCEPT,
+		AppHash: make([]byte, crypto.DefaultAppHashSize),
+		TxResults: []*abci.ExecTxResult{
+			{Code: abci.CodeTypeOK, Data: []byte("baz=1")},
+			{Code: abci.CodeTypeOK, Data: []byte("foz=2")},
 		},
 	}
 
@@ -283,8 +293,9 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	}()
 
 	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-		Header:              block.Header,
-		ResultFinalizeBlock: resultFinalizeBlock,
+		Header:                block.Header,
+		ResultProcessProposal: resultProcessProposal,
+		ResultFinalizeBlock:   resultFinalizeBlock,
 	})
 	assert.NoError(t, err)
 

@@ -103,6 +103,9 @@ func (cl *CoreChainLock) StringIndented(indent string) string {
 		indent, cl.CoreBlockHash,
 		indent, cl.Signature)
 }
+func (cl *CoreChainLock) IsZero() bool {
+	return cl == nil || (len(cl.CoreBlockHash) == 0 && len(cl.Signature) == 0 && cl.CoreBlockHeight == 0)
+}
 
 // FromProto sets a protobuf Header to the given pointer.
 // It returns an error if the chain lock is invalid.

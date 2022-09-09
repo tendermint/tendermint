@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/version"
 )
@@ -137,7 +138,7 @@ func TestSignedHeaderValidateBasic(t *testing.T) {
 		NextValidatorsHash: commit.Hash(),
 		ConsensusHash:      commit.Hash(),
 		AppHash:            commit.Hash(),
-		LastResultsHash:    commit.Hash(),
+		ResultsHash:        commit.Hash(),
 		EvidenceHash:       commit.Hash(),
 		ProposerProTxHash:  crypto.ProTxHashFromSeedBytes([]byte("proposer_pro_tx_hash")),
 	}

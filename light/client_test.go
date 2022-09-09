@@ -213,7 +213,7 @@ func TestClient(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, l)
 			assert.Equal(t, l.Hash(), h1.Hash())
-			assert.Equal(t, l.ValidatorSet.Hash(), h1.ValidatorsHash.Bytes())
+			assert.Equal(t, l.ValidatorSet.Hash(), h1.ValidatorsHash)
 			mockNode.AssertExpectations(t)
 		})
 

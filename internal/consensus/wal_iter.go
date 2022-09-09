@@ -17,6 +17,7 @@ type walIter struct {
 	queue     []*TimedWALMessage
 	hold      []*TimedWALMessage
 	msg       *TimedWALMessage
+	value     *TimedWALMessage
 	err       error
 }
 
@@ -28,23 +29,12 @@ func newWalIter(reader walReader) *walIter {
 
 // Value takes a top element from a queue, otherwise returns nil if the queue is empty
 func (i *walIter) Value() *TimedWALMessage {
-	if len(i.queue) == 0 {
-		return nil
-	}
-	msg := i.queue[0]
-	i.queue = i.queue[1:]
-	return msg
+	return i.value
 }
 
 // Next reads a next message from WAL, every message holds until reach a next height
 // if the read message is Propose with the "round" greater than previous, then held messages are flush
 func (i *walIter) Next() bool {
-	if len(i.queue) > 0 {
-		return true
-	}
-	if i.err != nil {
-		return false
-	}
 	for len(i.queue) == 0 && i.readMsg() {
 		if !i.processMsg(i.msg) {
 			return false
@@ -53,8 +43,14 @@ func (i *walIter) Next() bool {
 	}
 	if len(i.queue) == 0 {
 		i.queue = i.hold
+		i.hold = i.hold[0:0]
 	}
-	return len(i.queue) > 0
+	if len(i.queue) > 0 {
+		i.value = i.queue[0]
+		i.queue = i.queue[1:]
+		return true
+	}
+	return false
 }
 
 // Err returns an error if got the error is not io.EOF otherwise returns nil

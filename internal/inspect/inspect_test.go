@@ -23,6 +23,7 @@ import (
 	indexermocks "github.com/tendermint/tendermint/internal/state/indexer/mocks"
 	statemocks "github.com/tendermint/tendermint/internal/state/mocks"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proto/tendermint/state"
 	httpclient "github.com/tendermint/tendermint/rpc/client/http"
 	"github.com/tendermint/tendermint/types"
 )
@@ -261,11 +262,13 @@ func TestBlockResults(t *testing.T) {
 	testHeight := int64(1)
 	testGasUsed := int64(100)
 	stateStoreMock := &statemocks.Store{}
-	//	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	stateStoreMock.On("LoadFinalizeBlockResponses", testHeight).Return(&abcitypes.ResponseFinalizeBlock{
-		TxResults: []*abcitypes.ExecTxResult{
-			{
-				GasUsed: testGasUsed,
+	stateStoreMock.On("LoadABCIResponses", testHeight).Return(&state.ABCIResponses{
+		FinalizeBlock: &abcitypes.ResponseFinalizeBlock{},
+		ProcessProposal: &abcitypes.ResponseProcessProposal{
+			TxResults: []*abcitypes.ExecTxResult{
+				{
+					GasUsed: testGasUsed,
+				},
 			},
 		},
 	}, nil)

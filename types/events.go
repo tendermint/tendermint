@@ -141,8 +141,10 @@ func (e EventDataNewBlock) ABCIEvents() []abci.Event {
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
-	NumTxs              int64                      `json:"num_txs,string"` // Number of txs in a block
-	ResultFinalizeBlock abci.ResponseFinalizeBlock `json:"result_finalize_block"`
+	NumTxs int64 `json:"num_txs,string"` // Number of txs in a block
+
+	ResultProcessProposal abci.ResponseProcessProposal `json:"result_process_proposal"`
+	ResultFinalizeBlock   abci.ResponseFinalizeBlock   `json:"result_finalize_block"`
 }
 
 // TypeTag implements the required method of jsontypes.Tagged.

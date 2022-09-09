@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -170,23 +169,16 @@ func setup(
 	return rts
 }
 
-func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
-	if _, ok := activeVals[block.ProposerProTxHash.String()]; !ok {
-		return fmt.Errorf("found vote for inactive validator %X", block.ProposerProTxHash)
-	}
-	return block.ValidateBasic()
-}
-
 func waitForAndValidateBlock(
 	bctx context.Context,
 	t *testing.T,
 	n int,
-	activeVals map[string]struct{},
 	blocksSubs []eventbus.Subscription,
-	states []*State,
-	txs ...[]byte,
-) {
+
+) []*types.Block {
 	t.Helper()
+
+	blocks := make([]*types.Block, n)
 
 	ctx, cancel := context.WithCancel(bctx)
 	defer cancel()
@@ -203,141 +195,14 @@ func waitForAndValidateBlock(
 			require.NoError(t, err)
 			return
 		}
-
 		newBlock := msg.Data().(types.EventDataNewBlock).Block
-		require.NoError(t, validateBlock(newBlock, activeVals))
-
-		for _, tx := range txs {
-			err := assertMempool(t, states[j].txNotifier).CheckTx(ctx, tx, nil, mempool.TxInfo{})
-			if errors.Is(err, types.ErrTxInCache) {
-				continue
-			}
-			require.NoError(t, err)
-		}
-	}
-
-	var wg sync.WaitGroup
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			fn(j)
-		}(i)
-	}
-
-	wg.Wait()
-
-	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		t.Fatal("encountered timeout")
-	}
-}
-
-func waitForAndValidateBlockWithTx(
-	bctx context.Context,
-	t *testing.T,
-	n int,
-	activeVals map[string]struct{},
-	blocksSubs []eventbus.Subscription,
-	states []*State,
-	txs ...[]byte,
-) {
-	t.Helper()
-
-	ctx, cancel := context.WithCancel(bctx)
-	defer cancel()
-	fn := func(j int) {
-		ntxs := 0
-		for {
-			msg, err := blocksSubs[j].Next(ctx)
-			switch {
-			case errors.Is(err, context.DeadlineExceeded):
-				return
-			case errors.Is(err, context.Canceled):
-				return
-			case err != nil:
-				cancel() // terminate other workers
-				t.Fatalf("problem waiting for %d subscription: %v", j, err)
-				return
-			}
-
-			newBlock := msg.Data().(types.EventDataNewBlock).Block
-			require.NoError(t, validateBlock(newBlock, activeVals))
-
-			// check that txs match the txs we're waiting for.
-			// note they could be spread over multiple blocks,
-			// but they should be in order.
-			for _, tx := range newBlock.Data.Txs {
-				require.EqualValues(t, txs[ntxs], tx)
-				ntxs++
-			}
-
-			if ntxs == len(txs) {
-				break
-			}
-		}
-	}
-
-	var wg sync.WaitGroup
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			fn(j)
-		}(i)
-	}
-
-	wg.Wait()
-	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		t.Fatal("encountered timeout")
-	}
-}
-
-func waitForBlockWithUpdatedValsAndValidateIt(
-	bctx context.Context,
-	t *testing.T,
-	n int,
-	quorumHash crypto.QuorumHash,
-	blocksSubs []eventbus.Subscription,
-	css []*State,
-) {
-	t.Helper()
-	ctx, cancel := context.WithCancel(bctx)
-	defer cancel()
-
-	fn := func(j int) {
-		var newBlock *types.Block
-
-		for {
-			msg, err := blocksSubs[j].Next(ctx)
-			switch {
-			case errors.Is(err, context.DeadlineExceeded):
-				return
-			case errors.Is(err, context.Canceled):
-				return
-			case err != nil:
-				cancel() // terminate other workers
-				t.Fatalf("problem waiting for %d subscription: %v", j, err)
-				return
-			}
-
-			newBlock = msg.Data().(types.EventDataNewBlock).Block
-			if bytes.Equal(newBlock.LastCommit.QuorumHash, quorumHash) {
-				break
-			}
-			css[j].logger.Info(
-				"waitForBlockWithUpdatedValsAndValidateIt: Got block with no new validators. Skipping",
-				"height",
-				newBlock.Height,
-				"lastCommitQuorum", newBlock.LastCommit.QuorumHash, "ActualQuorum", quorumHash,
-			)
-		}
-
 		require.NoError(t, newBlock.ValidateBasic())
+		blocks[j] = newBlock
 	}
 
 	var wg sync.WaitGroup
+	wg.Add(n)
 	for i := 0; i < n; i++ {
-		wg.Add(1)
 		go func(j int) {
 			defer wg.Done()
 			fn(j)
@@ -348,6 +213,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("encountered timeout")
 	}
+	return blocks
 }
 
 func ensureBlockSyncStatus(t *testing.T, msg tmpubsub.Message, complete bool, height int64) {
@@ -464,7 +330,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 	genDoc, privVals := factory.RandGenesisDoc(cfg, n, 1, consParams)
 	states := make([]*State, n)
-	logger := consensusLogger()
+	logger := consensusLogger(t)
 
 	for i := 0; i < n; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
@@ -680,30 +546,40 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	nPeers := 7
 	nVals := 4
-	states, _, _, cleanup := randConsensusNetWithPeers(
-		ctx,
-		t,
-		cfg,
-		nVals,
-		nPeers,
-		"consensus_val_set_changes_test",
-		newTickerFunc(),
-		newEpehemeralKVStore,
+
+	updates := []validatorUpdate{
+		{height: 5, count: 1, operation: addValsOp},
+		{height: 10, count: 2, operation: addValsOp},
+		{height: 17, count: 2, operation: removeValsOp},
+	}
+	gen := consensusNetGen{
+		cfg:              cfg,
+		nPeers:           nPeers,
+		nVals:            nVals,
+		appFunc:          newKVStoreFunc(),
+		validatorUpdates: updates,
+	}
+	states, _, _, validatorSetUpdates := gen.generate(ctx, t)
+
+	var (
+		endHeight         int64
+		allowedValidators = make([]map[string]struct{}, 0, len(updates)+1)
+		heights           = []int64{0}
 	)
-	t.Cleanup(cleanup)
+	for _, item := range updates {
+		heights = append(heights, item.height)
+	}
+	for _, height := range heights {
+		validatorSetUpdate, ok := validatorSetUpdates[height]
+		require.True(t, ok)
+		allowedValidators = append(allowedValidators, makeProTxHashMap(validatorSetUpdate.ProTxHashes()))
+	}
+	endHeight = heights[len(heights)-1] + int64(len(validatorSetUpdates[heights[len(heights)-1]].ValidatorUpdates))
+	heights = append(heights, endHeight)
 
 	rts := setup(ctx, t, nPeers, states, 100) // buffer must be large enough to not deadlock
 
 	rts.switchToConsensus(ctx)
-
-	// map of active validators
-	activeVals := make(map[string]struct{})
-	for i := 0; i < nVals; i++ {
-		proTxHash, err := states[i].privValidator.GetProTxHash(ctx)
-		require.NoError(t, err)
-
-		activeVals[proTxHash.String()] = struct{}{}
-	}
 
 	var wg sync.WaitGroup
 	for _, sub := range rts.subs {
@@ -725,86 +601,74 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 
 	wg.Wait()
 
-	blocksSubs := []eventbus.Subscription{}
+	blocksSubs := make([]eventbus.Subscription, 0, len(rts.subs))
 	for _, sub := range rts.subs {
 		blocksSubs = append(blocksSubs, sub)
 	}
-
-	valsUpdater, err := newValidatorUpdater(states, nVals)
-	require.NoError(t, err)
-
-	// add one validator to a validator set
-	addOneVal, err := valsUpdater.addValidatorsAt(ctx, 5, 1)
-	require.NoError(t, err)
-
-	// add two validators to the validator set
-	addTwoVals, err := valsUpdater.addValidatorsAt(ctx, 10, 2)
-	require.NoError(t, err)
-
-	// remove two validators from the validator set
-	removeTwoVals, err := valsUpdater.removeValidatorsAt(ctx, 15, 2)
-	require.NoError(t, err)
-
-	// wait till everyone makes block 2
-	// ensure the commit includes all validators
-	// send newValTx to change vals in block 3
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, addOneVal.tx)
-
-	// wait till everyone makes block 3.
-	// it includes the commit for block 2, which is by the original validator set
-	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, addOneVal.tx)
-
-	// wait till everyone makes block 4.
-	// it includes the commit for block 3, which is by the original validator set
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
-
-	// the commits for block 4 should be with the updated validator set
-	activeVals = makeProTxHashMap(addOneVal.ProTxHashes)
-
-	// wait till everyone makes block 5
-	// it includes the commit for block 4, which should have the updated validator set
-	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, addOneVal.quorumHash, blocksSubs, states)
-
-	validate(t, states)
-
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, addTwoVals.tx)
-	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, addTwoVals.tx)
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
-
-	// the commits for block 8 should be with the updated validator set
-	activeVals = makeProTxHashMap(addTwoVals.ProTxHashes)
-
-	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, addTwoVals.quorumHash, blocksSubs, states)
-
-	validate(t, states)
-
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states, removeTwoVals.tx)
-	waitForAndValidateBlockWithTx(ctx, t, nPeers, activeVals, blocksSubs, states, removeTwoVals.tx)
-	waitForAndValidateBlock(ctx, t, nPeers, activeVals, blocksSubs, states)
-
-	waitForBlockWithUpdatedValsAndValidateIt(ctx, t, nPeers, removeTwoVals.quorumHash, blocksSubs, states)
-
-	validate(t, states)
+	var height int64 = 2
+	blocksByHeights := make(map[int64][]*types.Block)
+	for ; height <= endHeight; height++ {
+		blocks := waitForAndValidateBlock(ctx, t, nPeers, blocksSubs)
+		blocksByHeights[height] = blocks
+		validate(t, states)
+	}
+	var i int64 = 2
+	for _, h := range heights[1:] {
+		vals := allowedValidators[0]
+		allowedValidators = allowedValidators[1:]
+		for ; i <= h; i++ {
+			for _, block := range blocksByHeights[i] {
+				_, ok := vals[block.ProposerProTxHash.ShortString()]
+				require.True(t, ok)
+			}
+		}
+	}
+	i = 2
+	vh := heights[0]
+	for _, h := range heights[1:] {
+		for ; i < h+2; i++ {
+			for _, block := range blocksByHeights[i] {
+				require.Equalf(t, validatorSetUpdates[vh].QuorumHash, block.LastCommit.QuorumHash.Bytes(),
+					"LastCommit at %d has unexpected quorum-hash. want %X, got %X",
+					block.LastCommit.Height,
+					validatorSetUpdates[vh].QuorumHash,
+					block.LastCommit.QuorumHash.Bytes(),
+				)
+			}
+		}
+		vh = h
+	}
 }
 
 func makeProTxHashMap(proTxHashes []crypto.ProTxHash) map[string]struct{} {
 	res := make(map[string]struct{})
 	for _, proTxHash := range proTxHashes {
-		res[proTxHash.String()] = struct{}{}
+		res[proTxHash.ShortString()] = struct{}{}
 	}
 	return res
 }
+
+type validatorSetUpdateStore interface {
+	AddValidatorSetUpdate(vsu abci.ValidatorSetUpdate, height int64)
+}
+
+const (
+	addValsOp    = "add"
+	removeValsOp = "remove"
+)
 
 type validatorUpdater struct {
 	lastProTxHashes []crypto.ProTxHash
 	stateIndexMap   map[string]int
 	states          []*State
+	stores          []validatorSetUpdateStore
 }
 
-func newValidatorUpdater(states []*State, nVals int) (*validatorUpdater, error) {
+func newValidatorUpdater(states []*State, stores []validatorSetUpdateStore, nVals int) (*validatorUpdater, error) {
 	updater := validatorUpdater{
 		lastProTxHashes: make([]crypto.ProTxHash, nVals),
 		states:          states,
+		stores:          stores,
 		stateIndexMap:   make(map[string]int),
 	}
 	var (
@@ -827,6 +691,21 @@ func newValidatorUpdater(states []*State, nVals int) (*validatorUpdater, error) 
 	return &updater, nil
 }
 
+func (u *validatorUpdater) execOperation(
+	ctx context.Context,
+	operation string,
+	height int64,
+	count int,
+) (*quorumData, error) {
+	switch operation {
+	case addValsOp:
+		return u.addValidatorsAt(ctx, height, count)
+	case removeValsOp:
+		return u.removeValidatorsAt(ctx, height, count)
+	}
+	return nil, fmt.Errorf("unknown operation %s", operation)
+}
+
 func (u *validatorUpdater) addValidatorsAt(ctx context.Context, height int64, count int) (*quorumData, error) {
 	proTxHashes := u.lastProTxHashes
 	l := len(proTxHashes)
@@ -838,12 +717,13 @@ func (u *validatorUpdater) addValidatorsAt(ctx context.Context, height int64, co
 		}
 		proTxHashes = append(proTxHashes, proTxHash)
 	}
-	res, err := generatePrivValUpdate(proTxHashes)
+	qd, err := generatePrivValUpdate(proTxHashes)
 	if err != nil {
 		return nil, err
 	}
-	u.updateStatePrivVals(ctx, res, height)
-	return res, nil
+	u.updateStatePrivVals(ctx, qd, height)
+	u.updateValidatorSetUpdateStore(qd.validatorSetUpdate, height)
+	return qd, nil
 }
 
 func (u *validatorUpdater) removeValidatorsAt(ctx context.Context, height int64, count int) (*quorumData, error) {
@@ -859,12 +739,13 @@ func (u *validatorUpdater) removeValidatorsAt(ctx context.Context, height int64,
 		}
 		newProTxHashes = append(newProTxHashes, proTxHash)
 	}
-	priValUpdate, err := generatePrivValUpdate(newProTxHashes)
+	qd, err := generatePrivValUpdate(newProTxHashes)
 	if err != nil {
 		return nil, err
 	}
-	u.updateStatePrivVals(ctx, priValUpdate, height)
-	return priValUpdate, nil
+	u.updateStatePrivVals(ctx, qd, height)
+	u.updateValidatorSetUpdateStore(qd.validatorSetUpdate, height)
+	return qd, nil
 }
 
 func (u *validatorUpdater) updateStatePrivVals(ctx context.Context, data *quorumData, height int64) {
@@ -884,6 +765,12 @@ func (u *validatorUpdater) updateStatePrivVals(ctx context.Context, data *quorum
 	u.lastProTxHashes = data.ProTxHashes
 }
 
+func (u *validatorUpdater) updateValidatorSetUpdateStore(vsu abci.ValidatorSetUpdate, height int64) {
+	for _, s := range u.stores {
+		s.AddValidatorSetUpdate(vsu, height)
+	}
+}
+
 func generatePrivValUpdate(proTxHashes []crypto.ProTxHash) (*quorumData, error) {
 	// generate LLMQ data
 	ld, err := llmq.Generate(proTxHashes)
@@ -895,11 +782,7 @@ func generatePrivValUpdate(proTxHashes []crypto.ProTxHash) (*quorumData, error) 
 	if err != nil {
 		return nil, err
 	}
-	// make transactions to update a validator-set
-	qd.tx, err = kvstore.MarshalValidatorSetUpdate(vsu)
-	if err != nil {
-		return nil, err
-	}
+	qd.validatorSetUpdate = *vsu
 	return &qd, nil
 }
 

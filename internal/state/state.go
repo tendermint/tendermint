@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -91,7 +93,6 @@ type State struct {
 	// Note that if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1 + 1
 	// Extra +1 due to nextValSet delay.
-	NextValidators              *types.ValidatorSet
 	Validators                  *types.ValidatorSet
 	LastValidators              *types.ValidatorSet
 	LastHeightValidatorsChanged int64
@@ -102,15 +103,26 @@ type State struct {
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
-	LastResultsHash []byte
+	LastResultsHash tmbytes.HexBytes
 
 	// the latest AppHash we've received from calling abci.Commit()
-	AppHash []byte
+	// TODO: Rename to LastAppHash
+	AppHash tmbytes.HexBytes
 }
+
+//  NewRound changes the State to apply settings new round and height to it.
+// func (state *State) NewRound(ctx context.Context, height int64, round int32, lastBockHeader types.Header) error {
+// 	if state.LastBlockHeight+1 != height {
+// 		return fmt.Errorf("New height %d is in future, last block height was %d", height, state.LastBlockHeight)
+// 	}
+
+// 	if height == state.NextBlockSettings.Height {
+// 		state.NextBlockSettings.Apply(height, state)
+// 	}
+// }
 
 // Copy makes a copy of the State for mutating.
 func (state State) Copy() State {
-
 	return State{
 		Version:       state.Version,
 		ChainID:       state.ChainID,
@@ -124,7 +136,6 @@ func (state State) Copy() State {
 
 		LastCoreChainLockedBlockHeight: state.LastCoreChainLockedBlockHeight,
 
-		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
 		LastValidators:              state.LastValidators.Copy(),
 		LastHeightValidatorsChanged: state.LastHeightValidatorsChanged,
@@ -170,22 +181,6 @@ func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
 }
 
-// StateID generates new state ID based on current `state`
-func (state State) StateID() types.StateID {
-	lastAppHash := make([]byte, len(state.AppHash))
-	copy(lastAppHash, state.AppHash)
-
-	height := state.LastBlockHeight
-	if height == 0 {
-		height = state.InitialHeight - 1
-	}
-
-	return types.StateID{
-		Height:      height,
-		LastAppHash: lastAppHash,
-	}
-}
-
 // ToProto takes the local state type and returns the equivalent proto type
 func (state *State) ToProto() (*tmstate.State, error) {
 	if state == nil {
@@ -210,12 +205,6 @@ func (state *State) ToProto() (*tmstate.State, error) {
 	sm.Validators = vals
 
 	sm.LastStateID = state.LastStateID.ToProto()
-
-	nVals, err := state.NextValidators.ToProto()
-	if err != nil {
-		return nil, err
-	}
-	sm.NextValidators = nVals
 
 	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
 		lVals, err := state.LastValidators.ToProto()
@@ -269,12 +258,6 @@ func FromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 	}
 	state.Validators = vals
 
-	nVals, err := types.ValidatorSetFromProto(pb.NextValidators)
-	if err != nil {
-		return nil, err
-	}
-	state.NextValidators = nVals
-
 	if state.LastBlockHeight >= 1 { // At Block 1 LastValidators is nil
 		lVals, err := types.ValidatorSetFromProto(pb.LastValidators)
 		if err != nil {
@@ -302,7 +285,6 @@ func FromProto(pb *tmstate.State) (*State, error) { //nolint:golint
 // track rounds, and hence does not know the correct proposer. TODO: fix this!
 func (state State) MakeBlock(
 	height int64,
-	coreChainLock *types.CoreChainLock,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
@@ -310,23 +292,20 @@ func (state State) MakeBlock(
 	proposedAppVersion uint64,
 ) *types.Block {
 
-	var coreChainLockHeight uint32
-	if coreChainLock == nil {
-		coreChainLockHeight = state.LastCoreChainLockedBlockHeight
-	} else {
-		coreChainLockHeight = coreChainLock.CoreBlockHeight
-	}
-
 	// Build base block with block data.
-	block := types.MakeBlock(height, coreChainLockHeight, coreChainLock, txs, commit, evidence, proposedAppVersion)
+	block := types.MakeBlock(height, txs, commit, evidence)
 
 	// Fill rest of header with state data.
+	validatorsHash := state.Validators.Hash()
 	block.Header.Populate(
 		state.Version.Consensus, state.ChainID,
 		tmtime.Now(), state.LastBlockID,
-		state.Validators.Hash(), state.NextValidators.Hash(),
-		state.ConsensusParams.HashConsensusParams(), state.AppHash, state.LastResultsHash,
+		validatorsHash, validatorsHash,
+		state.ConsensusParams.HashConsensusParams(),
+		state.AppHash,
+		state.LastResultsHash,
 		proposerProTxHash,
+		proposedAppVersion,
 	)
 
 	return block
@@ -336,11 +315,16 @@ func (state State) ValidatorsAtHeight(height int64) *types.ValidatorSet {
 	switch {
 	case state.LastBlockHeight == height:
 		return state.LastValidators
-	case state.LastBlockHeight+2 == height:
-		return state.NextValidators
 	default:
 		return state.Validators
 	}
+}
+
+// NewStateChangeset returns a structure that will hold new changes to the state, that can be applied once the block is finalized
+func (state State) NewStateChangeset(ctx context.Context, proposalResponse proto.Message) (CurrentRoundState, error) {
+	ret := CurrentRoundState{}
+	err := ret.populate(ctx, proposalResponse, state)
+	return ret, err
 }
 
 //------------------------------------------------------------------------
@@ -378,10 +362,9 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		return State{}, fmt.Errorf("error in genesis doc: %w", err)
 	}
 
-	var validatorSet, nextValidatorSet *types.ValidatorSet
+	var validatorSet *types.ValidatorSet
 	if genDoc.Validators == nil || len(genDoc.Validators) == 0 {
 		validatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false)
-		nextValidatorSet = types.NewValidatorSet(nil, nil, genDoc.QuorumType, nil, false)
 	} else {
 		validators := make([]*types.Validator, len(genDoc.Validators))
 		hasAllPublicKeys := true
@@ -394,14 +377,11 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		validatorSet = types.NewValidatorSet(
 			validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
 		)
-		nextValidatorSet = types.NewValidatorSet(
-			validators, genDoc.ThresholdPublicKey, genDoc.QuorumType, genDoc.QuorumHash, hasAllPublicKeys,
-		).CopyIncrementProposerPriority(1)
 	}
 
 	stateID := types.StateID{
-		Height:      genDoc.InitialHeight - 1,
-		LastAppHash: genDoc.AppHash,
+		Height:  genDoc.InitialHeight,
+		AppHash: genDoc.AppHash,
 	}
 
 	return State{
@@ -416,8 +396,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 
 		LastCoreChainLockedBlockHeight: genDoc.InitialCoreChainLockedHeight,
 
-		NextValidators: nextValidatorSet,
-		Validators:     validatorSet,
+		Validators: validatorSet,
 		// The quorum type must be 0 on an empty validator set
 		LastValidators:              types.NewEmptyValidatorSet(),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,

@@ -71,8 +71,8 @@ func TestPrivvalVectors(t *testing.T) {
 	proposal := exampleProposal()
 	proposalpb := proposal.ToProto()
 
-	// Previous state ID
-	stateID := types.StateID{Height: vote.Height - 1, LastAppHash: []byte("12345678901234567890123456789012")}
+	// State ID
+	stateID := vote.StateID()
 	stateIDpb := stateID.ToProto()
 
 	// Create a Reuseable remote error
@@ -88,7 +88,7 @@ func TestPrivvalVectors(t *testing.T) {
 		{"pubKey request", &privproto.PubKeyRequest{}, "0a00"},
 		{"pubKey response", &privproto.PubKeyResponse{PubKey: ppk, Error: nil}, "12340a32223011c7f5ac5a6d01fd9dde3840f7ebbb6a20deed6fba72a347dd66da2f8c9c977c6604b2cd2e0148206c2add9a8f5ddd74"},
 		{"pubKey response with error", &privproto.PubKeyResponse{PubKey: cryptoproto.PublicKey{}, Error: remoteError}, "12140a0012100801120c697427732061206572726f72"},
-		{"Vote Request", &privproto.SignVoteRequest{Vote: votepb, StateId: &stateIDpb}, "1aae010a8501080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a3220959a8f5ef2be68d0ed3a07ed8cff85991ee7995c2ac17030f742c135f9729fbe38d5bb035a0b1209657874656e73696f6e2a240a2031323334353637383930313233343536373839303132333435363738393031321002"},
+		{"Vote Request", &privproto.SignVoteRequest{Vote: votepb, StateId: &stateIDpb}, "1a8c010a8501080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a3220959a8f5ef2be68d0ed3a07ed8cff85991ee7995c2ac17030f742c135f9729fbe38d5bb035a0b1209657874656e73696f6e2a021003"},
 		{"Vote Response", &privproto.SignedVoteResponse{Vote: *votepb, Error: nil}, "2288010a8501080210031802224a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a3220959a8f5ef2be68d0ed3a07ed8cff85991ee7995c2ac17030f742c135f9729fbe38d5bb035a0b1209657874656e73696f6e"},
 		{"Vote Response with error", &privproto.SignedVoteResponse{Vote: tmproto.Vote{}, Error: remoteError}, "22180a042202120012100801120c697427732061206572726f72"},
 		{"Proposal Request", &privproto.SignProposalRequest{Proposal: proposalpb}, "2a700a6e08011003180220022a4a0a208b01023386c371778ecb6368573e539afc3cc860ec3a2f614e54fe5652f4fc80122608c0843d122072db3d959635dff1bb567bedaa70573392c5159666a3f8caf11e413aac52207a320608f49a8ded053a10697427732061207369676e6174757265"},

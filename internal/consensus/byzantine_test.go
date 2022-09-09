@@ -56,7 +56,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	for i := 0; i < nValidators; i++ {
 		func() {
-			logger := consensusLogger().With("test", "byzantine", "validator", i)
+			logger := consensusLogger(t).With("test", "byzantine", "validator", i)
 			stateDB := dbm.NewMemDB() // each state needs its own db
 			stateStore := sm.NewStore(stateDB)
 			state, err := sm.MakeGenesisState(genDoc)
@@ -132,6 +132,11 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	// alter prevote so that the byzantine node double votes when height is 2
 	bzNodeState.doPrevote = func(ctx context.Context, height int64, round int32, allowOldBlocks bool) {
 		// allow first height to happen normally so that byzantine validator is no longer proposer
+		uncommittedState, err := bzNodeState.blockExec.ProcessProposal(ctx, bzNodeState.ProposalBlock, bzNodeState.state, true)
+		assert.NoError(t, err)
+		assert.NotZero(t, uncommittedState)
+		bzNodeState.CurrentRoundState = uncommittedState
+
 		if height == prevoteHeight {
 			prevote1, err := bzNodeState.signVote(ctx,
 				tmproto.PrevoteType,
@@ -204,7 +209,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 		proposerProTxHash := lazyNodeState.privValidatorProTxHash
 
-		block, err := lazyNodeState.blockExec.CreateProposalBlock(
+		block, uncommittedState, err := lazyNodeState.blockExec.CreateProposalBlock(
 			ctx,
 			lazyNodeState.Height,
 			lazyNodeState.state,
@@ -213,6 +218,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			0,
 		)
 		require.NoError(t, err)
+		assert.NotZero(t, uncommittedState)
 		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
 
@@ -256,9 +262,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 	}
 
-	for _, reactor := range rts.reactors {
-		reactor.SwitchToConsensus(ctx, reactor.state.GetState(), false)
-	}
+	rts.switchToConsensus(ctx)
 
 	// Evidence should be submitted and committed at the third height but
 	// we will check the first six just in case

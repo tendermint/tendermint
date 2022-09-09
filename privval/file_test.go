@@ -63,7 +63,7 @@ func TestResetValidator(t *testing.T) {
 	randBytes := tmrand.Bytes(crypto.HashSize)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
 
-	stateID := types.RandStateID().WithHeight(height - 1)
+	stateID := types.RandStateID().WithHeight(height)
 
 	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, blockID, nil)
 	err = privVal.SignVote(ctx, "mychainid", 0, quorumHash, vote.ToProto(), stateID, nil)
@@ -206,7 +206,7 @@ func TestSignVote(t *testing.T) {
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
 
-	stateID := types.RandStateID().WithHeight(height - 1)
+	stateID := types.RandStateID().WithHeight(height)
 
 	// sign a vote for first time
 	vote := newVote(privVal.Key.ProTxHash, 0, height, round, voteType, block1, nil)
@@ -350,7 +350,7 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrecommitType
-	stateID := types.RandStateID().WithHeight(height - 1)
+	stateID := types.RandStateID().WithHeight(height)
 	exts := types.VoteExtensions{
 		tmproto.VoteExtensionType_DEFAULT: []types.VoteExtension{{Extension: []byte("extension")}},
 	}

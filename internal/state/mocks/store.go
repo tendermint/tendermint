@@ -4,9 +4,8 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
-	abcitypes "github.com/tendermint/tendermint/abci/types"
-
 	state "github.com/tendermint/tendermint/internal/state"
+	tendermintstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	types "github.com/tendermint/tendermint/types"
 )
@@ -65,15 +64,17 @@ func (_m *Store) Load() (state.State, error) {
 	return r0, r1
 }
 
-// LoadConsensusParams provides a mock function with given fields: _a0
-func (_m *Store) LoadConsensusParams(_a0 int64) (types.ConsensusParams, error) {
+// LoadABCIResponses provides a mock function with given fields: _a0
+func (_m *Store) LoadABCIResponses(_a0 int64) (*tendermintstate.ABCIResponses, error) {
 	ret := _m.Called(_a0)
 
-	var r0 types.ConsensusParams
-	if rf, ok := ret.Get(0).(func(int64) types.ConsensusParams); ok {
+	var r0 *tendermintstate.ABCIResponses
+	if rf, ok := ret.Get(0).(func(int64) *tendermintstate.ABCIResponses); ok {
 		r0 = rf(_a0)
 	} else {
-		r0 = ret.Get(0).(types.ConsensusParams)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*tendermintstate.ABCIResponses)
+		}
 	}
 
 	var r1 error
@@ -86,17 +87,15 @@ func (_m *Store) LoadConsensusParams(_a0 int64) (types.ConsensusParams, error) {
 	return r0, r1
 }
 
-// LoadFinalizeBlockResponses provides a mock function with given fields: _a0
-func (_m *Store) LoadFinalizeBlockResponses(_a0 int64) (*abcitypes.ResponseFinalizeBlock, error) {
+// LoadConsensusParams provides a mock function with given fields: _a0
+func (_m *Store) LoadConsensusParams(_a0 int64) (types.ConsensusParams, error) {
 	ret := _m.Called(_a0)
 
-	var r0 *abcitypes.ResponseFinalizeBlock
-	if rf, ok := ret.Get(0).(func(int64) *abcitypes.ResponseFinalizeBlock); ok {
+	var r0 types.ConsensusParams
+	if rf, ok := ret.Get(0).(func(int64) types.ConsensusParams); ok {
 		r0 = rf(_a0)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*abcitypes.ResponseFinalizeBlock)
-		}
+		r0 = ret.Get(0).(types.ConsensusParams)
 	}
 
 	var r1 error
@@ -160,12 +159,12 @@ func (_m *Store) Save(_a0 state.State) error {
 	return r0
 }
 
-// SaveFinalizeBlockResponses provides a mock function with given fields: _a0, _a1
-func (_m *Store) SaveFinalizeBlockResponses(_a0 int64, _a1 *abcitypes.ResponseFinalizeBlock) error {
+// SaveABCIResponses provides a mock function with given fields: _a0, _a1
+func (_m *Store) SaveABCIResponses(_a0 int64, _a1 tendermintstate.ABCIResponses) error {
 	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, *abcitypes.ResponseFinalizeBlock) error); ok {
+	if rf, ok := ret.Get(0).(func(int64, tendermintstate.ABCIResponses) error); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)

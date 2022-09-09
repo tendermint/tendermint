@@ -193,17 +193,19 @@ func eventReIndex(cmd *cobra.Command, args eventReIndexArgs) error {
 				return fmt.Errorf("not able to load block at height %d from the blockstore", i)
 			}
 
-			r, err := args.stateStore.LoadFinalizeBlockResponses(i)
+			r, err := args.stateStore.LoadABCIResponses(i)
 			if err != nil {
 				return fmt.Errorf("not able to load ABCI Response at height %d from the statestore", i)
 			}
 
 			e := types.EventDataNewBlockHeader{
-				Header:              b.Header,
-				NumTxs:              int64(len(b.Txs)),
-				ResultFinalizeBlock: *r,
+				Header:                b.Header,
+				NumTxs:                int64(len(b.Txs)),
+				ResultProcessProposal: *r.ProcessProposal,
 			}
-
+			if r.FinalizeBlock != nil {
+				e.ResultFinalizeBlock = *r.FinalizeBlock
+			}
 			var batch *indexer.Batch
 			if e.NumTxs > 0 {
 				batch = indexer.NewBatch(e.NumTxs)
@@ -213,7 +215,7 @@ func eventReIndex(cmd *cobra.Command, args eventReIndexArgs) error {
 						Height: b.Height,
 						Index:  uint32(i),
 						Tx:     b.Data.Txs[i],
-						Result: *(r.TxResults[i]),
+						Result: *(r.ProcessProposal.TxResults[i]),
 					}
 
 					_ = batch.Add(&tr)

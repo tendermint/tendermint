@@ -209,7 +209,7 @@ func randLightBlock(ctx context.Context, t *testing.T, height int64) *types.Ligh
 				NextValidatorsHash: crypto.CRandBytes(crypto.HashSize),
 				ConsensusHash:      crypto.CRandBytes(crypto.HashSize),
 				AppHash:            crypto.CRandBytes(crypto.HashSize),
-				LastResultsHash:    crypto.CRandBytes(crypto.HashSize),
+				ResultsHash:        crypto.CRandBytes(crypto.HashSize),
 				EvidenceHash:       crypto.CRandBytes(crypto.HashSize),
 				ProposerProTxHash:  crypto.CRandBytes(crypto.DefaultHashSize),
 			},

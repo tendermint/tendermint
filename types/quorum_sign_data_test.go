@@ -7,8 +7,8 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/crypto"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -54,8 +54,8 @@ func TestMakeStateSignID(t *testing.T) {
 	}{
 		{
 			stateID: StateID{
-				Height:      1001,
-				LastAppHash: mustHexDecode("524F1D03D1D81E94A099042736D40BD9681B867321443FF58A4568E274DBD83B"),
+				Height:  1001,
+				AppHash: mustHexDecode("524F1D03D1D81E94A099042736D40BD9681B867321443FF58A4568E274DBD83B"),
 			},
 			quorumHash: mustHexDecode("6A12D9CF7091D69072E254B297AEF15997093E480FDE295E09A7DE73B31CEEDD"),
 			want: newSignItem(

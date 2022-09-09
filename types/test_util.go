@@ -12,8 +12,8 @@ import (
 
 func RandStateID() StateID {
 	return StateID{
-		Height:      rand.Int63(), // nolint:gosec
-		LastAppHash: tmrand.Bytes(crypto.HashSize),
+		Height:  rand.Int63(), // nolint:gosec
+		AppHash: tmrand.Bytes(crypto.HashSize),
 	}
 }
 
@@ -40,6 +40,7 @@ func makeCommit(
 			Round:              round,
 			Type:               tmproto.PrecommitType,
 			BlockID:            blockID,
+			AppHash:            stateID.AppHash,
 			VoteExtensions: VoteExtensions{
 				tmproto.VoteExtensionType_DEFAULT:           []VoteExtension{{Extension: []byte("default")}},
 				tmproto.VoteExtensionType_THRESHOLD_RECOVER: []VoteExtension{{Extension: []byte("threshold")}},
@@ -57,7 +58,8 @@ func makeCommit(
 
 // signAddVote signs a vote using StateID configured inside voteSet, and adds it to that voteSet
 func signAddVote(ctx context.Context, privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	return signAddVoteForStateID(ctx, privVal, vote, voteSet, voteSet.stateID)
+	stateID := vote.StateID()
+	return signAddVoteForStateID(ctx, privVal, vote, voteSet, stateID)
 }
 
 func signAddVoteForStateID(ctx context.Context, privVal PrivValidator, vote *Vote, voteSet *VoteSet,

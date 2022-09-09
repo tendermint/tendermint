@@ -5,7 +5,10 @@ package mocks
 import (
 	context "context"
 
+	bytes "github.com/tendermint/tendermint/libs/bytes"
+
 	mock "github.com/stretchr/testify/mock"
+
 	state "github.com/tendermint/tendermint/internal/state"
 
 	types "github.com/tendermint/tendermint/types"
@@ -17,15 +20,15 @@ type StateProvider struct {
 }
 
 // AppHash provides a mock function with given fields: ctx, height
-func (_m *StateProvider) AppHash(ctx context.Context, height uint64) ([]byte, error) {
+func (_m *StateProvider) AppHash(ctx context.Context, height uint64) (bytes.HexBytes, error) {
 	ret := _m.Called(ctx, height)
 
-	var r0 []byte
-	if rf, ok := ret.Get(0).(func(context.Context, uint64) []byte); ok {
+	var r0 bytes.HexBytes
+	if rf, ok := ret.Get(0).(func(context.Context, uint64) bytes.HexBytes); ok {
 		r0 = rf(ctx, height)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]byte)
+			r0 = ret.Get(0).(bytes.HexBytes)
 		}
 	}
 

@@ -48,6 +48,7 @@ func RandGenesisDoc(
 		ChainID:         cfg.ChainID(),
 		Validators:      validators,
 		ConsensusParams: consensusParams,
+		AppHash:         make([]byte, crypto.DefaultAppHashSize),
 
 		// dash fields
 		InitialCoreChainLockedHeight: 1,

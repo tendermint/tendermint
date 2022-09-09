@@ -82,7 +82,7 @@ func TestResultBlockResults_regression8583(t *testing.T) {
           "type": "tendermint/PubKeyBLS12381",
           "value": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nzg5YWJjZGVm"
         },
-        "power": "400"
+        "power": 400, "pro_tx_hash": null, "node_address": ""
       }
     ],
     "threshold_public_key": {

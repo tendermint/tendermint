@@ -9,6 +9,8 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
+	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/types"
 )
@@ -55,8 +57,9 @@ func validateBlock(state State, block *types.Block) error {
 
 	// Validate proposed app version
 	if block.Header.ProposedAppVersion > 0 && block.Header.ProposedAppVersion <= state.Version.Consensus.App {
-		return fmt.Errorf("wrong block.Header.ProposedAppVersion must be higher than %v",
+		return fmt.Errorf("wrong block.Header.ProposedAppVersion must be higher than %v, is %d",
 			state.Version.Consensus.App,
+			block.Header.ProposedAppVersion,
 		)
 	}
 
@@ -69,12 +72,6 @@ func validateBlock(state State, block *types.Block) error {
 	}
 
 	// Validate app info
-	if !bytes.Equal(block.AppHash, state.AppHash) {
-		return fmt.Errorf("wrong Block.Header.AppHash.  Expected %X, got %v",
-			state.AppHash,
-			block.AppHash,
-		)
-	}
 	hashCP := state.ConsensusParams.HashConsensusParams()
 	if !bytes.Equal(block.ConsensusHash, hashCP) {
 		return fmt.Errorf("wrong Block.Header.ConsensusHash.  Expected %X, got %v",
@@ -82,22 +79,10 @@ func validateBlock(state State, block *types.Block) error {
 			block.ConsensusHash,
 		)
 	}
-	if !bytes.Equal(block.LastResultsHash, state.LastResultsHash) {
-		return fmt.Errorf("wrong Block.Header.LastResultsHash.  Expected %X, got %v",
-			state.LastResultsHash,
-			block.LastResultsHash,
-		)
-	}
 	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
 		return fmt.Errorf("wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
 			state.Validators.Hash(),
 			block.ValidatorsHash,
-		)
-	}
-	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
-		return fmt.Errorf("wrong Block.Header.NextValidatorsHash.  Expected %X, got %v",
-			state.NextValidators.Hash(),
-			block.NextValidatorsHash,
 		)
 	}
 
@@ -153,30 +138,6 @@ func validateBlock(state State, block *types.Block) error {
 	default:
 		return fmt.Errorf("block height %v lower than initial height %v",
 			block.Height, state.InitialHeight)
-	}
-
-	if block.CoreChainLock != nil {
-		// If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
-		if block.Header.CoreChainLockedHeight != block.CoreChainLock.CoreBlockHeight {
-			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. CoreChainLock CoreBlockHeight %d, got %d",
-				block.CoreChainLock.CoreBlockHeight,
-				block.Header.CoreChainLockedHeight,
-			)
-		}
-
-		// We also need to make sure that the new height is superior to the old height
-		if block.Header.CoreChainLockedHeight <= state.LastCoreChainLockedBlockHeight {
-			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
-				state.LastCoreChainLockedBlockHeight,
-				block.Header.CoreChainLockedHeight,
-			)
-		}
-
-		// If there is no new Chain Lock we need to make sure the height has stayed the same
-	} else if block.Header.CoreChainLockedHeight != state.LastCoreChainLockedBlockHeight {
-		return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. "+
-			"Previous CoreChainLockedHeight %d, got %d",
-			state.LastCoreChainLockedBlockHeight, block.Header.CoreChainLockedHeight)
 	}
 
 	// Check evidence doesn't exceed the limit amount of bytes.
@@ -252,5 +213,100 @@ func validateBlockChainLock(ctx context.Context, client abci.Application, state 
 			state.LastCoreChainLockedBlockHeight, block.Header.CoreChainLockedHeight)
 	}
 
+	return nil
+}
+
+func validateCoreChainLock(block *types.Block, state State) error {
+	if block.CoreChainLock == nil {
+		// If there is no new Chain Lock we need to make sure the height has stayed the same
+		if block.Header.CoreChainLockedHeight != state.LastCoreChainLockedBlockHeight {
+			return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight when no new Chain Lock. "+
+				"Previous CoreChainLockedHeight %d, got %d",
+				state.LastCoreChainLockedBlockHeight, block.Header.CoreChainLockedHeight)
+		}
+		return nil
+	}
+	// If there is a new Chain Lock we need to make sure the height in the header is the same as the chain lock
+	if block.Header.CoreChainLockedHeight != block.CoreChainLock.CoreBlockHeight {
+		return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. CoreChainLock CoreBlockHeight %d, got %d",
+			block.CoreChainLock.CoreBlockHeight,
+			block.Header.CoreChainLockedHeight,
+		)
+	}
+	// We also need to make sure that the new height is superior to the old height
+	if block.Header.CoreChainLockedHeight <= state.LastCoreChainLockedBlockHeight {
+		return fmt.Errorf("wrong Block.Header.CoreChainLockedHeight. Previous CoreChainLockedHeight %d, got %d",
+			state.LastCoreChainLockedBlockHeight,
+			block.Header.CoreChainLockedHeight,
+		)
+	}
+	return nil
+}
+
+func validateValidatorSetUpdate(
+	abciValidatorSetUpdate *abci.ValidatorSetUpdate,
+	params types.ValidatorParams,
+) error {
+	// if there was no update return no error
+	if abciValidatorSetUpdate == nil {
+		return nil
+	}
+	if len(abciValidatorSetUpdate.ValidatorUpdates) != 0 &&
+		abciValidatorSetUpdate.ThresholdPublicKey.Sum == nil {
+		return fmt.Errorf("received validator updates without a threshold public key")
+	}
+	return validateValidatorUpdates(abciValidatorSetUpdate.ValidatorUpdates, params)
+}
+
+func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate, params types.ValidatorParams) error {
+	for _, valUpdate := range abciUpdates {
+		if valUpdate.GetPower() < 0 {
+			return fmt.Errorf("voting power can't be negative %v", valUpdate)
+		} else if valUpdate.GetPower() == 0 {
+			// continue, since this is deleting the validator, and thus there is no
+			// pubkey to check
+			continue
+		}
+
+		// Check if validator's pubkey matches an ABCI type in the consensus params
+		if valUpdate.PubKey != nil {
+			pk, err := cryptoenc.PubKeyFromProto(*valUpdate.PubKey)
+			if err != nil {
+				return err
+			}
+			if !params.IsValidPubkeyType(pk.Type()) {
+				return fmt.Errorf(
+					"validator %v is using pubkey %s, which is unsupported for consensus",
+					valUpdate,
+					pk.Type(),
+				)
+			}
+			if err := validatePubKey(pk); err != nil {
+				return fmt.Errorf("public key in validator %X is invalid: %w", valUpdate.ProTxHash, err)
+			}
+		}
+
+		if valUpdate.ProTxHash == nil {
+			return fmt.Errorf(
+				"validator %v does not have a protxhash, which is needed for consensus",
+				valUpdate,
+			)
+		}
+
+		if len(valUpdate.ProTxHash) != crypto.ProTxHashSize {
+			return fmt.Errorf(
+				"validator %v is using protxhash %s, which is not the required length",
+				valUpdate,
+				valUpdate.ProTxHash,
+			)
+		}
+
+		if valUpdate.NodeAddress != "" {
+			_, err := types.ParseValidatorAddress(valUpdate.NodeAddress)
+			if err != nil {
+				return fmt.Errorf("cannot parse validator address %s: %w", valUpdate.NodeAddress, err)
+			}
+		}
+	}
 	return nil
 }

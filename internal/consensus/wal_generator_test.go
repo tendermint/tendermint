@@ -7,22 +7,13 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	dbm "github.com/tendermint/tm-db"
-
-	abciclient "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/eventbus"
-	"github.com/tendermint/tendermint/internal/proxy"
-	sm "github.com/tendermint/tendermint/internal/state"
-	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/privval"
-	"github.com/tendermint/tendermint/types"
 )
 
 // WALGenerateNBlocks generates a consensus WAL. It does this by
@@ -30,85 +21,10 @@ import (
 // consensus state) with a kvstore application and special consensus
 // wal instance (byteBufferWAL) and waits until numBlocks are created.
 // If the node fails to produce given numBlocks, it fails the test.
-func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr io.Writer, numBlocks int) {
+func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr io.Writer, node *fakeNode, numBlocks int) {
 	t.Helper()
 
-	cfg := getConfig(t)
-
-	app := kvstore.NewApplication()
-
 	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)
-
-	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
-	// NOTE: we can't import node package because of circular dependency.
-	// NOTE: we don't do handshake so need to set state.Version.Consensus.App directly.
-	privValidatorKeyFile := cfg.PrivValidator.KeyFile()
-	privValidatorStateFile := cfg.PrivValidator.StateFile()
-	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
-	if err != nil {
-		t.Fatal(fmt.Errorf("failed to read genesis file: %w", err))
-	}
-	blockStoreDB := dbm.NewMemDB()
-	stateDB := blockStoreDB
-	stateStore := sm.NewStore(stateDB)
-	state, err := sm.MakeGenesisState(genDoc)
-	if err != nil {
-		t.Fatal(fmt.Errorf("failed to make genesis state: %w", err))
-	}
-	state.Version.Consensus.App = kvstore.ProtocolVersion
-	if err = stateStore.Save(state); err != nil {
-		t.Fatal(err)
-	}
-
-	blockStore := store.NewBlockStore(blockStoreDB)
-	proxyLogger := logger.With("module", "proxy")
-	proxyApp := proxy.New(abciclient.NewLocalClient(logger, app), proxyLogger, proxy.NopMetrics())
-	if err := proxyApp.Start(ctx); err != nil {
-		t.Fatal(fmt.Errorf("failed to start proxy app connections: %w", err))
-	}
-	t.Cleanup(proxyApp.Wait)
-
-	eventBus := eventbus.NewDefault(logger.With("module", "events"))
-	if err := eventBus.Start(ctx); err != nil {
-		t.Fatal(fmt.Errorf("failed to start event bus: %w", err))
-	}
-	t.Cleanup(func() { eventBus.Stop(); eventBus.Wait() })
-
-	mempool := emptyMempool{}
-	evpool := sm.EmptyEvidencePool{}
-	blockExec := sm.NewBlockExecutor(
-		stateStore,
-		log.NewNopLogger(),
-		proxyApp,
-		mempool,
-		evpool,
-		blockStore,
-		eventBus,
-		sm.NopMetrics(),
-	)
-	blockExec.SetAppHashSize(cfg.Consensus.AppHashSize)
-	consensusState, err := NewState(
-		logger,
-		cfg.Consensus,
-		stateStore,
-		blockExec,
-		blockStore,
-		mempool,
-		evpool,
-		eventBus,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if privValidator != nil && privValidator != (*privval.FilePV)(nil) {
-		consensusState.SetPrivValidator(ctx, privValidator)
-	}
-	// END OF COPY PASTE
 
 	// set consensus wal to buffered WAL, which will write all incoming msgs to buffer
 	numBlocksWritten := make(chan struct{})
@@ -118,14 +34,11 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 		t.Fatal(err)
 	}
 
-	consensusState.wal = wal
+	node.csState.wal = wal
 
-	if err := consensusState.Start(ctx); err != nil {
-		t.Fatal(fmt.Errorf("failed to start consensus state: %w", err))
-	}
-	t.Cleanup(consensusState.Wait)
+	node.start(ctx, t)
+	defer node.stop()
 
-	defer consensusState.Stop()
 	timer := time.NewTimer(time.Minute)
 	defer timer.Stop()
 
@@ -137,11 +50,11 @@ func WALGenerateNBlocks(ctx context.Context, t *testing.T, logger log.Logger, wr
 }
 
 // WALWithNBlocks returns a WAL content with numBlocks.
-func WALWithNBlocks(ctx context.Context, t *testing.T, logger log.Logger, numBlocks int) (data []byte, err error) {
+func WALWithNBlocks(ctx context.Context, t *testing.T, logger log.Logger, node *fakeNode, numBlocks int) (data []byte, err error) {
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)
 
-	WALGenerateNBlocks(ctx, t, logger, wr, numBlocks)
+	WALGenerateNBlocks(ctx, t, logger, wr, node, numBlocks)
 
 	wr.Flush()
 	return b.Bytes(), nil
@@ -150,7 +63,6 @@ func WALWithNBlocks(ctx context.Context, t *testing.T, logger log.Logger, numBlo
 func randPort() int {
 	// returns between base and base + spread
 	base, spread := 20000, 20000
-	// nolint:gosec // G404: Use of weak random number generator
 	return base + mrand.Intn(spread)
 }
 
@@ -165,7 +77,8 @@ func makeAddrs() (p2pAddr, rpcAddr string) {
 
 // getConfig returns a config for test cases
 func getConfig(t *testing.T) *config.Config {
-	c, err := config.ResetTestRoot(t.TempDir(), t.Name())
+	testName := strings.ReplaceAll(t.Name(), "/", "_")
+	c, err := config.ResetTestRoot(t.TempDir(), testName)
 	require.NoError(t, err)
 
 	p2pAddr, rpcAddr := makeAddrs()

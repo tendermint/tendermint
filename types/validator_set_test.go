@@ -18,6 +18,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -49,7 +50,7 @@ func TestValidatorSetBasic(t *testing.T) {
 	assert.Zero(t, vset.Size())
 	assert.Equal(t, int64(0), vset.TotalVotingPower())
 	assert.Nil(t, vset.GetProposer())
-	assert.Equal(t, []byte(nil), vset.Hash())
+	assert.Equal(t, tmbytes.HexBytes(nil), vset.Hash())
 	// add
 	val = randModuloValidator(vset.TotalVotingPower())
 	assert.NoError(t, vset.UpdateWithChangeSet([]*Validator{val}, val.PubKey, crypto.RandQuorumHash()))
@@ -1418,7 +1419,7 @@ func BenchmarkValidatorSet_VerifyCommit_Ed25519(b *testing.B) {
 			b.ReportAllocs()
 			// generate n validators
 			stateID := RandStateID()
-			voteSet, valSet, vals := randVoteSet(ctx, b, h, 0, tmproto.PrecommitType, n, stateID)
+			voteSet, valSet, vals := randVoteSet(ctx, b, h, 0, tmproto.PrecommitType, n)
 			// create a commit with n validators
 			commit, err := makeCommit(ctx, blockID, stateID, h, 0, voteSet, vals)
 			require.NoError(b, err)

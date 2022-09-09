@@ -11,7 +11,7 @@ const (
 	// when not using git describe. It is formatted with semantic versioning.
 	TMVersionDefault = "0.9.0-dev.1"
 	// ABCISemVer is the semantic version of the ABCI library
-	ABCISemVer = "0.19.0"
+	ABCISemVer = "0.20.0"
 
 	ABCIVersion = ABCISemVer
 )

@@ -22,24 +22,12 @@ import (
 )
 
 func TestValidProposalChainLocks(t *testing.T) {
-	const (
-		nVals  = 4
-		nPeers = nVals
-	)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := configSetup(t)
-	states, _, _, cleanup := randConsensusNetWithPeers(ctx, t,
-		conf,
-		nVals,
-		nPeers,
-		"consensus_chainlocks_test",
-		newTickerFunc(),
-		newCounterWithCoreChainLocks,
-	)
-	t.Cleanup(cleanup)
-
+	const nVals = 4
+	var initChainLockHeight uint32 = 2
+	states := genConsStates(ctx, t, nVals, initChainLockHeight, 1)
 	rts := setupReactor(ctx, t, nVals, states, 100)
 
 	for i := 0; i < 3; i++ {
@@ -49,31 +37,20 @@ func TestValidProposalChainLocks(t *testing.T) {
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			state := states[0].GetState()
-			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)           //nolint:scopelint
-			assert.EqualValues(t, state.InitialHeight+int64(i), block.Header.Height) //nolint:scopelint
+			assert.EqualValues(t, initChainLockHeight+uint32(i), block.Header.CoreChainLockedHeight) //nolint:scopelint
+			assert.EqualValues(t, state.InitialHeight+int64(i), block.Header.Height)                 //nolint:scopelint
 		})
 	}
 }
 
 // one byz val sends a proposal for a height 1 less than it should, but then sends the correct block after it
 func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
-	const (
-		nVals  = 4
-		nPeers = nVals
-	)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := configSetup(t)
-	states, _, _, cleanup := randConsensusNetWithPeers(ctx, t,
-		conf,
-		nVals,
-		nPeers,
-		"consensus_chainlocks_test",
-		newTickerFunc(),
-		newCounterWithCoreChainLocks,
-	)
-	t.Cleanup(cleanup)
+	const nVals = 4
+	var initChainLockHeight uint32 = 2
+	states := genConsStates(ctx, t, nVals, initChainLockHeight, 1)
 
 	// this proposer sends a chain lock at each height
 	byzProposerID := 0
@@ -95,32 +72,18 @@ func TestReactorInvalidProposalHeightForChainLocks(t *testing.T) {
 			block := msg.Data().(types.EventDataNewBlock).Block
 			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
 			state := states[0].GetState()
-			assert.EqualValues(t, i+1, block.Header.CoreChainLockedHeight)           //nolint:scopelint
-			assert.EqualValues(t, state.InitialHeight+int64(i), block.Header.Height) //nolint:scopelint
+			assert.EqualValues(t, initChainLockHeight+uint32(i), block.Header.CoreChainLockedHeight) //nolint:scopelint
+			assert.EqualValues(t, state.InitialHeight+int64(i), block.Header.Height)                 //nolint:scopelint
 		})
 	}
 }
 
 func TestReactorInvalidBlockChainLock(t *testing.T) {
-	// TODO: Leads to race, explore
-	const (
-		nVals  = 4
-		nPeers = nVals
-	)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf := configSetup(t)
-	states, _, _, cleanup := randConsensusNetWithPeers(ctx, t,
-		conf,
-		nVals,
-		nPeers,
-		"consensus_chainlocks_test",
-		newTickerFunc(),
-		newCounterWithBackwardsCoreChainLocks,
-	)
-	t.Cleanup(cleanup)
-
+	const nVals = 4
+	states := genConsStates(ctx, t, nVals, 100, -1)
 	rts := setupReactor(ctx, t, nVals, states, 100)
 
 	for i := 0; i < 10; i++ {
@@ -128,12 +91,8 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 			msg, err := sub.Next(ctx)
 			require.NoError(t, err)
 			block := msg.Data().(types.EventDataNewBlock).Block
-			// this is true just because of this test where each new height has a new chain lock that is incremented by 1
-			state := states[0].GetState()
-			expected := 99
-			if block.Header.Height == state.InitialHeight {
-				expected = 1
-			}
+			expected := 100
+
 			// We started at 1 then 99, then try 98, 97, 96...
 			// The chain lock should stay on 99
 			assert.EqualValues(t, expected, block.Header.CoreChainLockedHeight)
@@ -141,28 +100,18 @@ func TestReactorInvalidBlockChainLock(t *testing.T) {
 	}
 }
 
-func newCounterWithCoreChainLocks(logger log.Logger, _ string) abci.Application {
-	counterApp := counter.NewApplication(true)
-	counterApp.HasCoreChainLocks = true
-	counterApp.CurrentCoreChainLockHeight = 1
-	return counterApp
-}
-
-func newCounterWithBackwardsCoreChainLocks(logger log.Logger, _ string) abci.Application {
-	counterApp := counter.NewApplication(true)
-	counterApp.HasCoreChainLocks = true
-	counterApp.CurrentCoreChainLockHeight = 100
-	counterApp.CoreChainLockStep = -1
-	return counterApp
+func newCounterWithCoreChainLocks(initCoreChainHeight uint32, step int32) func(logger log.Logger, _ string) abci.Application {
+	return func(logger log.Logger, _ string) abci.Application {
+		counterApp := counter.NewApplication(true)
+		counterApp.InitCoreChainLock(initCoreChainHeight, step)
+		return counterApp
+	}
 }
 
 func setupReactor(ctx context.Context, t *testing.T, n int, states []*State, size int) *reactorTestSuite {
 	t.Helper()
 	rts := setup(ctx, t, n, states, size)
-	for _, reactor := range rts.reactors {
-		state := reactor.state.GetState()
-		reactor.SwitchToConsensus(ctx, state, false)
-	}
+	rts.switchToConsensus(ctx)
 	return rts
 }
 
@@ -273,4 +222,15 @@ func capture() {
 	trace := make([]byte, 10240000)
 	count := runtime.Stack(trace, true)
 	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
+}
+
+func genConsStates(ctx context.Context, t *testing.T, nVals int, initCoreChainHeight uint32, step int32) []*State {
+	conf := configSetup(t)
+	gen := consensusNetGen{
+		cfg:     conf,
+		nVals:   nVals,
+		appFunc: newCounterWithCoreChainLocks(initCoreChainHeight, step),
+	}
+	states, _, _, _ := gen.generate(ctx, t)
+	return states
 }

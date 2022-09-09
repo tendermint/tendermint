@@ -119,8 +119,8 @@ func TestSignVote(t *testing.T) {
 				QuorumType: int32(btcjson.LLMQType_5_60),
 				QuorumHash: quorumHash,
 				StateId: &tmproto.StateID{
-					Height:      tc.have.Height - 1,
-					LastAppHash: factory.RandomHash(),
+					Height:  tc.have.Height,
+					AppHash: factory.RandomHash(),
 				},
 			}
 			resp, err := s.SignVote(ctx, req)

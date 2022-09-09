@@ -1,10 +1,17 @@
 package state
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var (
+	ErrBlockRejected = errors.New("block not accepted by abci app")
+)
 
 type (
-	ErrInvalidBlock error
 	ErrProxyAppConn error
+	ErrInvalidBlock struct{ error }
 
 	ErrUnknownBlock struct {
 		Height int64
@@ -47,6 +54,10 @@ type (
 	}
 
 	ErrNoFinalizeBlockResponsesForHeight struct {
+		Height int64
+	}
+
+	ErrNoABCIResponsesForHeight struct {
 		Height int64
 	}
 )
@@ -104,4 +115,8 @@ func (e ErrNoConsensusParamsForHeight) Error() string {
 
 func (e ErrNoFinalizeBlockResponsesForHeight) Error() string {
 	return fmt.Sprintf("could not find FinalizeBlock responses for height #%d", e.Height)
+}
+
+func (e ErrNoABCIResponsesForHeight) Error() string {
+	return fmt.Sprintf("could not find results for height #%d", e.Height)
 }

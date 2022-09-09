@@ -34,7 +34,7 @@ func TestKVStore(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	t.Log("### Testing KVStore")
-	testBulk(ctx, t, logger, kvstore.NewApplication())
+	testBulk(ctx, t, logger, kvstore.NewApplication(kvstore.WithLogger(logger)))
 }
 
 func TestBaseApp(t *testing.T) {
@@ -77,12 +77,12 @@ func testBulk(ctx context.Context, t *testing.T, logger log.Logger, app types.Ap
 	require.NoError(t, err)
 
 	// Construct request
-	rfb := &types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
+	rpp := &types.RequestProcessProposal{Height: 1, Txs: make([][]byte, numDeliverTxs)}
 	for counter := 0; counter < numDeliverTxs; counter++ {
-		rfb.Txs[counter] = []byte("test")
+		rpp.Txs[counter] = []byte("test")
 	}
 	// Send bulk request
-	res, err := client.FinalizeBlock(ctx, rfb)
+	res, err := client.ProcessProposal(ctx, rpp)
 	require.NoError(t, err)
 	require.Equal(t, numDeliverTxs, len(res.TxResults), "Number of txs doesn't match")
 	for _, tx := range res.TxResults {
@@ -130,13 +130,13 @@ func testGRPCSync(ctx context.Context, t *testing.T, logger log.Logger, app type
 	client := types.NewABCIApplicationClient(conn)
 
 	// Construct request
-	rfb := types.RequestFinalizeBlock{Txs: make([][]byte, numDeliverTxs)}
+	rpp := types.RequestProcessProposal{Txs: make([][]byte, numDeliverTxs)}
 	for counter := 0; counter < numDeliverTxs; counter++ {
-		rfb.Txs[counter] = []byte("test")
+		rpp.Txs[counter] = []byte("test")
 	}
 
 	// Send request
-	response, err := client.FinalizeBlock(ctx, &rfb)
+	response, err := client.ProcessProposal(ctx, &rpp)
 	require.NoError(t, err, "Error in GRPC FinalizeBlock")
 	require.Equal(t, numDeliverTxs, len(response.TxResults), "Number of txs returned via GRPC doesn't match")
 	for _, tx := range response.TxResults {

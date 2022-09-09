@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
 	sm "github.com/tendermint/tendermint/internal/state"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -38,7 +40,7 @@ func TestStoreBootstrap(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = stateStore.LoadValidators(101)
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	state, err := stateStore.Load()
 	require.NoError(t, err)
@@ -51,17 +53,22 @@ func TestStoreLoadValidators(t *testing.T) {
 	vals, _ := types.RandValidatorSet(3)
 
 	// 1) LoadValidators loads validators using a height where they were last changed
-	// Note that only the next validators at height h + 1 are saved
+	// Note that only the current validators at height h are saved
 	require.NoError(t, stateStore.Save(makeRandomStateFromValidatorSet(vals, 1, 1)))
 	require.NoError(t, stateStore.Save(makeRandomStateFromValidatorSet(vals.CopyIncrementProposerPriority(1), 2, 1)))
-	loadedVals, err := stateStore.LoadValidators(3)
+	loadedVals, err := stateStore.LoadValidators(2)
 	require.NoError(t, err)
-	require.Equal(t, vals.CopyIncrementProposerPriority(3), loadedVals)
+
+	_, err = stateStore.LoadValidators(3)
+	assert.Error(t, err, "no validator expected at this height")
+
+	require.Equal(t, vals.CopyIncrementProposerPriority(2), loadedVals)
 
 	// 2) LoadValidators loads validators using a checkpoint height
 
-	// add a validator set at the checkpoint
-	err = stateStore.Save(makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval, 1))
+	// add a validator set after the checkpoint
+	state := makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval+1, 1)
+	err = stateStore.Save(state)
 	require.NoError(t, err)
 
 	// check that a request will go back to the last checkpoint
@@ -72,15 +79,14 @@ func TestStoreLoadValidators(t *testing.T) {
 		valSetCheckpointInterval, valSetCheckpointInterval+1), err.Error())
 
 	// now save a validator set at that checkpoint
-	err = stateStore.Save(makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval-1, 1))
+	err = stateStore.Save(makeRandomStateFromValidatorSet(vals, valSetCheckpointInterval, 1))
 	require.NoError(t, err)
 
 	loadedVals, err = stateStore.LoadValidators(valSetCheckpointInterval)
 	require.NoError(t, err)
-	// validator set gets updated with the one given hence we expect it to equal next validators (with an increment of one)
-	// as opposed to being equal to an increment of 100000 - 1 (if we didn't save at the checkpoint)
-	require.Equal(t, vals.CopyIncrementProposerPriority(2), loadedVals)
-	require.NotEqual(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval), loadedVals)
+	// ensure we have correct validator set loaded
+	require.Equal(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval), loadedVals)
+	require.NotEqual(t, vals.CopyIncrementProposerPriority(valSetCheckpointInterval-1), loadedVals)
 }
 
 // This benchmarks the speed of loading validators from different heights if there is no validator set change.
@@ -104,7 +110,6 @@ func BenchmarkLoadValidators(b *testing.B) {
 	}
 
 	state.Validators, _ = types.RandValidatorSet(valSetSize)
-	state.NextValidators = state.Validators.CopyIncrementProposerPriority(1)
 	err = stateStore.Save(state)
 	require.NoError(b, err)
 
@@ -112,7 +117,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 	for i := 10; i < 10000000000; i *= 10 { // 10, 100, 1000, ...
 		i := i
-		err = stateStore.Save(makeRandomStateFromValidatorSet(state.NextValidators,
+		err = stateStore.Save(makeRandomStateFromValidatorSet(state.Validators,
 			int64(i)-1, state.LastHeightValidatorsChanged))
 		if err != nil {
 			b.Fatalf("error saving store: %v", err)
@@ -195,8 +200,8 @@ func TestPruneStates(t *testing.T) {
 			paramsChanged := int64(0)
 
 			for h := tc.startHeight; h <= tc.endHeight; h++ {
-				if valsChanged == 0 || h%10 == 2 {
-					valsChanged = h + 1 // Have to add 1, since NextValidators is what's stored
+				if valsChanged == 0 || h%10 == 3 {
+					valsChanged = h
 				}
 				if paramsChanged == 0 || h%10 == 5 {
 					paramsChanged = h
@@ -206,7 +211,6 @@ func TestPruneStates(t *testing.T) {
 					InitialHeight:   1,
 					LastBlockHeight: h - 1,
 					Validators:      validatorSet,
-					NextValidators:  validatorSet,
 					ConsensusParams: types.ConsensusParams{
 						Block: types.BlockParams{MaxBytes: 10e6},
 					},
@@ -220,15 +224,17 @@ func TestPruneStates(t *testing.T) {
 
 				err := stateStore.Save(state)
 				require.NoError(t, err)
-
-				err = stateStore.SaveFinalizeBlockResponses(h, &abci.ResponseFinalizeBlock{
-					TxResults: []*abci.ExecTxResult{
-						{Data: []byte{1}},
-						{Data: []byte{2}},
-						{Data: []byte{3}},
+				// TODO: Rewrite, as we need to save Response*Proposal to keep TxResults
+				err = stateStore.SaveABCIResponses(h, tmstate.ABCIResponses{
+					ProcessProposal: &abci.ResponseProcessProposal{
+						TxResults: []*abci.ExecTxResult{
+							{Data: []byte{1}},
+							{Data: []byte{2}},
+							{Data: []byte{3}},
+						},
 					},
-				},
-				)
+					FinalizeBlock: &abci.ResponseFinalizeBlock{},
+				})
 				require.NoError(t, err)
 			}
 
@@ -249,9 +255,9 @@ func TestPruneStates(t *testing.T) {
 				require.NoError(t, err, h)
 				require.NotNil(t, params, h)
 
-				finRes, err := stateStore.LoadFinalizeBlockResponses(h)
+				abciRes, err := stateStore.LoadABCIResponses(h)
 				require.NoError(t, err, h)
-				require.NotNil(t, finRes, h)
+				require.NotNil(t, abciRes, h)
 			}
 
 			emptyParams := types.ConsensusParams{}
@@ -275,9 +281,9 @@ func TestPruneStates(t *testing.T) {
 					require.Equal(t, emptyParams, params, h)
 				}
 
-				finRes, err := stateStore.LoadFinalizeBlockResponses(h)
+				abciRes, err := stateStore.LoadABCIResponses(h)
 				require.Error(t, err, h)
-				require.Nil(t, finRes, h)
+				require.Nil(t, abciRes, h)
 			}
 		})
 	}

@@ -188,23 +188,23 @@ func (env *Environment) BlockResults(ctx context.Context, req *coretypes.Request
 		return nil, err
 	}
 
-	results, err := env.StateStore.LoadFinalizeBlockResponses(height)
+	results, err := env.StateStore.LoadABCIResponses(height)
 	if err != nil {
 		return nil, err
 	}
 
 	var totalGasUsed int64
-	for _, res := range results.GetTxResults() {
+	for _, res := range results.ProcessProposal.GetTxResults() {
 		totalGasUsed += res.GetGasUsed()
 	}
 
 	return &coretypes.ResultBlockResults{
 		Height:                height,
-		TxsResults:            results.TxResults,
+		TxsResults:            results.ProcessProposal.TxResults,
 		TotalGasUsed:          totalGasUsed,
-		FinalizeBlockEvents:   results.Events,
-		ValidatorSetUpdate:    results.ValidatorSetUpdate,
-		ConsensusParamUpdates: consensusParamsPtrFromProtoPtr(results.ConsensusParamUpdates),
+		FinalizeBlockEvents:   results.FinalizeBlock.Events,
+		ValidatorSetUpdate:    results.ProcessProposal.ValidatorSetUpdate,
+		ConsensusParamUpdates: consensusParamsPtrFromProtoPtr(results.ProcessProposal.ConsensusParamUpdates),
 	}, nil
 }
 

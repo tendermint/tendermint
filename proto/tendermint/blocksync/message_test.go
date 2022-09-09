@@ -87,7 +87,9 @@ func TestStatusResponse_Validate(t *testing.T) {
 func TestBlockchainMessageVectors(t *testing.T) {
 	coreChainLock := types.NewMockChainLock(1)
 
-	block := types.MakeBlock(int64(3), coreChainLock.CoreBlockHeight, &coreChainLock, []types.Tx{types.Tx("Hello World")}, nil, nil, 0)
+	block := types.MakeBlock(int64(3), []types.Tx{types.Tx("Hello World")}, nil, nil)
+	block.CoreChainLock = &coreChainLock
+	block.CoreChainLockedHeight = coreChainLock.CoreBlockHeight
 	block.Version.Block = 11 // overwrite updated protocol version
 
 	bpb, err := block.ToProto()

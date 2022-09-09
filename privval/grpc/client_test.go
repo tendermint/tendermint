@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmgrpc "github.com/tendermint/tendermint/privval/grpc"
@@ -111,10 +110,7 @@ func TestSignerClient_SignVote(t *testing.T) {
 	}
 
 	pbHave := have.ToProto()
-	stateID := types.StateID{
-		Height:      0,
-		LastAppHash: factory.RandomHash(),
-	}
+	stateID := have.StateID()
 
 	err = client.SignVote(ctx, chainID, btcjson.LLMQType_5_60, quorumHash, pbHave, stateID, logger)
 	require.NoError(t, err)

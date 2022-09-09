@@ -40,7 +40,7 @@ const (
 	// prefixes are unique across all tm db's
 	prefixValidators             = int64(5)
 	prefixConsensusParams        = int64(6)
-	prefixABCIResponses          = int64(7) // deprecated in v0.36
+	prefixABCIResponses          = int64(7)
 	prefixState                  = int64(8)
 	prefixFinalizeBlockResponses = int64(14)
 )
@@ -91,16 +91,16 @@ func init() {
 type Store interface {
 	// Load loads the current state of the blockchain
 	Load() (State, error)
-	// LoadValidators loads the validator set at a given height
+	// LoadValidators loads the validator set that is used to validate the given height
 	LoadValidators(int64) (*types.ValidatorSet, error)
-	// LoadFinalizeBlockResponses loads the responses to FinalizeBlock for a given height
-	LoadFinalizeBlockResponses(int64) (*abci.ResponseFinalizeBlock, error)
+	// LoadABCIResponses loads the abciResponse for a given height
+	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
-	// SaveFinalizeBlockResponses saves responses to FinalizeBlock for a given height
-	SaveFinalizeBlockResponses(int64, *abci.ResponseFinalizeBlock) error
+	// SaveABCIResponses saves ABCIResponses for a given height
+	SaveABCIResponses(int64, tmstate.ABCIResponses) error
 	// SaveValidatorSet saves the validator set at a given height
 	SaveValidatorSets(int64, int64, *types.ValidatorSet) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
@@ -162,24 +162,26 @@ func (store dbStore) save(state State, key []byte) error {
 	batch := store.db.NewBatch()
 	defer batch.Close()
 
-	nextHeight := state.LastBlockHeight + 1
+	// We assume that the state was already updated, so state.LastBlockHeight represents height of already generated
+	// block.
+	nextBlockHeight := state.LastBlockHeight + 1
 	// If first block, save validators for the block.
-	if nextHeight == 1 {
-		nextHeight = state.InitialHeight
+	if nextBlockHeight == 1 {
+		nextBlockHeight = state.InitialHeight
 		// This extra logic due to Tendermint validator set changes being delayed 1 block.
 		// It may get overwritten due to InitChain validator updates.
-		if err := store.saveValidatorsInfo(nextHeight, nextHeight, state.Validators, batch); err != nil {
+		if err := store.saveValidatorsInfo(nextBlockHeight, nextBlockHeight, state.Validators, batch); err != nil {
 			return err
 		}
 	}
 	// Save next validators.
-	err := store.saveValidatorsInfo(nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators, batch)
+	err := store.saveValidatorsInfo(nextBlockHeight, state.LastHeightValidatorsChanged, state.Validators, batch)
 	if err != nil {
 		return err
 	}
 
 	// Save next consensus params.
-	if err := store.saveConsensusParamsInfo(nextHeight,
+	if err := store.saveConsensusParamsInfo(nextBlockHeight,
 		state.LastHeightConsensusParamsChanged, state.ConsensusParams, batch); err != nil {
 		return err
 	}
@@ -213,10 +215,6 @@ func (store dbStore) Bootstrap(state State) error {
 	}
 
 	if err := store.saveValidatorsInfo(height, height, state.Validators, batch); err != nil {
-		return err
-	}
-
-	if err := store.saveValidatorsInfo(height+1, height+1, state.NextValidators, batch); err != nil {
 		return err
 	}
 
@@ -425,63 +423,59 @@ func (store dbStore) reverseBatchDelete(batch dbm.Batch, start, end []byte) ([]b
 
 //------------------------------------------------------------------------
 
-// LoadFinalizeBlockResponses loads the responses to FinalizeBlock for the
-// given height from the database. If not found,
-// ErrNoFinalizeBlockResponsesForHeight is returned.
+// LoadABCIResponses loads the ABCIResponses for the given height from the
+// database. If not found, ErrNoABCIResponsesForHeight is returned.
 //
-// This is useful for recovering from crashes where we called app.Commit
-// and before we called s.Save(). It can also be used to produce Merkle
-// proofs of the result of txs.
-func (store dbStore) LoadFinalizeBlockResponses(height int64) (*abci.ResponseFinalizeBlock, error) {
-	buf, err := store.db.Get(finalizeBlockResponsesKey(height))
+// This is useful for recovering from crashes where we called app.Commit and
+// before we called s.Save(). It can also be used to produce Merkle proofs of
+// the result of txs.
+func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
+	buf, err := store.db.Get(abciResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
 	if len(buf) == 0 {
-		return nil, ErrNoFinalizeBlockResponsesForHeight{height}
+
+		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
-	finalizeBlockResponses := new(abci.ResponseFinalizeBlock)
-	err = finalizeBlockResponses.Unmarshal(buf)
+	abciResponses := new(tmstate.ABCIResponses)
+	err = abciResponses.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(fmt.Sprintf("data has been corrupted or its spec has changed: %+v", err))
 	}
 	// TODO: ensure that buf is completely read.
 
-	return finalizeBlockResponses, nil
+	return abciResponses, nil
 }
 
-// SaveFinalizeBlockResponses persists to the database the responses to FinalizeBlock.
+// SaveABCIResponses persists the ABCIResponses to the database.
 // This is useful in case we crash after app.Commit and before s.Save().
 // Responses are indexed by height so they can also be loaded later to produce
 // Merkle proofs.
 //
 // Exposed for testing.
-func (store dbStore) SaveFinalizeBlockResponses(height int64, finalizeBlockResponses *abci.ResponseFinalizeBlock) error {
-	return store.saveFinalizeBlockResponses(height, finalizeBlockResponses)
+func (store dbStore) SaveABCIResponses(height int64, abciResponses tmstate.ABCIResponses) error {
+	return store.saveABCIResponses(height, abciResponses)
 }
 
-func (store dbStore) saveFinalizeBlockResponses(height int64, finalizeBlockResponses *abci.ResponseFinalizeBlock) error {
+func (store dbStore) saveABCIResponses(height int64, abciResponses tmstate.ABCIResponses) error {
 	var dtxs []*abci.ExecTxResult
 	// strip nil values,
-	for _, tx := range finalizeBlockResponses.TxResults {
-		if tx != nil {
-			dtxs = append(dtxs, tx)
+	if abciResponses.ProcessProposal != nil {
+		for _, tx := range abciResponses.ProcessProposal.TxResults {
+			if tx != nil {
+				dtxs = append(dtxs, tx)
+			}
 		}
+		abciResponses.ProcessProposal.TxResults = dtxs
 	}
-
-	finalizeBlockResponses.TxResults = dtxs
-
-	bz, err := finalizeBlockResponses.Marshal()
+	bz, err := abciResponses.Marshal()
 	if err != nil {
 		return err
 	}
-	if len(bz) == 0 {
-		return ErrNoFinalizeBlockResponsesForHeight{height}
-	}
-
-	return store.db.SetSync(finalizeBlockResponsesKey(height), bz)
+	return store.db.SetSync(abciResponsesKey(height), bz)
 }
 
 // SaveValidatorSets is used to save the validator set over multiple heights.
@@ -632,7 +626,7 @@ func (store dbStore) LoadConsensusParams(height int64) (types.ConsensusParams, e
 
 	if paramsInfo.ConsensusParams.Equal(&emptypb) {
 		paramsInfo2, err := store.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
-		if err != nil {
+		if err != nil || paramsInfo2.ConsensusParams.Equal(&emptypb) {
 			return empty, fmt.Errorf(
 				"couldn't find consensus params at height %d (height %d was originally requested): %w",
 				paramsInfo.LastHeightChanged,
@@ -671,7 +665,7 @@ func (store dbStore) loadConsensusParamsInfo(height int64) (*tmstate.ConsensusPa
 // If the consensus params did not change after processing the latest block,
 // only the last height for which they changed is persisted.
 func (store dbStore) saveConsensusParamsInfo(
-	nextHeight, changeHeight int64,
+	height, changeHeight int64,
 	params types.ConsensusParams,
 	batch dbm.Batch,
 ) error {
@@ -679,7 +673,7 @@ func (store dbStore) saveConsensusParamsInfo(
 		LastHeightChanged: changeHeight,
 	}
 
-	if changeHeight == nextHeight {
+	if changeHeight == height {
 		paramsInfo.ConsensusParams = params.ToProto()
 	}
 	bz, err := paramsInfo.Marshal()
@@ -687,7 +681,7 @@ func (store dbStore) saveConsensusParamsInfo(
 		return err
 	}
 
-	return batch.Set(consensusParamsKey(nextHeight), bz)
+	return batch.Set(consensusParamsKey(height), bz)
 }
 
 func (store dbStore) Close() error {

@@ -264,8 +264,8 @@ func TestEvidenceVectors(t *testing.T) {
 	blockID2 := makeBlockID(crypto.Checksum([]byte("blockhash2")), math.MaxInt32, crypto.Checksum([]byte("partshash")))
 	const chainID = "mychain"
 	stateID := StateID{
-		Height:      100,
-		LastAppHash: make([]byte, crypto.HashSize),
+		Height:  100,
+		AppHash: make([]byte, crypto.HashSize),
 	}
 	v := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 1, 0x01, quorumType, quorumHash, blockID, stateID)
 	v2 := makeVote(ctx, t, val, chainID, math.MaxInt32, math.MaxInt64, 2, 0x01, quorumType, quorumHash, blockID2, stateID)

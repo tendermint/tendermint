@@ -14,6 +14,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/internal/eventbus"
 	mpmocks "github.com/tendermint/tendermint/internal/mempool/mocks"
@@ -192,10 +193,8 @@ func (rts *reactorTestSuite) addNode(
 	require.NoError(t, err)
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		block, blockID, partSet, seenCommit := makeNextBlock(ctx, t, state, privVal, blockHeight, commit)
-
-		state, err = reactor.blockExec.ApplyBlock(ctx, state, proTxHash, blockID, block)
+		state, err = reactor.blockExec.ApplyBlock(ctx, state, blockID, block)
 		require.NoError(t, err)
-
 		reactor.store.SaveBlock(block, partSet, seenCommit)
 		commit = seenCommit
 	}
@@ -211,12 +210,16 @@ func makeNextBlock(ctx context.Context,
 	signer types.PrivValidator,
 	height int64,
 	commit *types.Commit) (*types.Block, types.BlockID, *types.PartSet, *types.Commit) {
-
-	block, err := sf.MakeBlock(state, height, commit, nil, 0)
+	block, err := sf.MakeBlock(state, height, commit, 0)
 	require.NoError(t, err)
+	block.CoreChainLockedHeight = state.LastCoreChainLockedBlockHeight
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
 	blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: partSet.Header()}
+	stateID := types.StateID{
+		Height:  block.Header.Height,
+		AppHash: make([]byte, crypto.DefaultAppHashSize),
+	}
 
 	// Simulate a commit for the current height
 	vote, err := factory.MakeVote(
@@ -229,14 +232,14 @@ func makeNextBlock(ctx context.Context,
 		0,
 		2,
 		blockID,
-		state.StateID(),
+		stateID,
 	)
 	require.NoError(t, err)
 	seenCommit := types.NewCommit(
 		vote.Height,
 		vote.Round,
 		blockID,
-		state.StateID(),
+		stateID,
 		&types.CommitSigns{
 			QuorumSigns: types.QuorumSigns{
 				BlockSign:      vote.BlockSignature,

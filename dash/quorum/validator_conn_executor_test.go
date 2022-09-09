@@ -14,6 +14,7 @@ import (
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/dash"
 	"github.com/tendermint/tendermint/dash/quorum/mock"
 	"github.com/tendermint/tendermint/dash/quorum/selectpeers"
 	"github.com/tendermint/tendermint/internal/eventbus"
@@ -23,9 +24,9 @@ import (
 	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
+	"github.com/tendermint/tendermint/internal/test/factory"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -359,6 +360,8 @@ func TestFinalizeBlock(t *testing.T) {
 
 	state, stateDB, _ := makeState(3, 1)
 	nodeProTxHash := state.Validators.Validators[0].ProTxHash
+	ctx = dash.ContextWithProTxHash(ctx, nodeProTxHash)
+
 	stateStore := sm.NewStore(stateDB)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	eventBus := eventbus.NewDefault(logger)
@@ -397,17 +400,9 @@ func TestFinalizeBlock(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	block := makeBlock(state, 1, new(types.Commit))
-	blockID, err := block.BlockID()
-	require.NoError(t, err)
-
 	vals := state.Validators
 	proTxHashes := vals.GetProTxHashes()
-	addProTxHashes := make([]tmbytes.HexBytes, 0, 100)
-	for i := 0; i < 100; i++ {
-		addProTxHash := crypto.RandProTxHash()
-		addProTxHashes = append(addProTxHashes, addProTxHash)
-	}
+	addProTxHashes := crypto.RandProTxHashes(10)
 	proTxHashes = append(proTxHashes, addProTxHashes...)
 	newVals, _ := types.GenerateValidatorSet(types.NewValSetParam(proTxHashes))
 
@@ -416,6 +411,7 @@ func TestFinalizeBlock(t *testing.T) {
 		validator.NodeAddress = types.RandValidatorAddress()
 	}
 
+	app.ValidatorSetUpdates[1] = newVals.ABCIEquivalentValidatorUpdates()
 	// setup ValidatorConnExecutor
 	sw := mock.NewDashDialer()
 	proTxHash := newVals.Validators[0].ProTxHash
@@ -424,13 +420,19 @@ func TestFinalizeBlock(t *testing.T) {
 	err = vc.Start(ctx)
 	require.NoError(t, err)
 
-	app.ValidatorSetUpdates[1] = newVals.ABCIEquivalentValidatorUpdates()
+	block := makeBlock(t, state, 1, new(types.Commit))
+	blockID, err := block.BlockID()
+	require.NoError(t, err)
+	block.NextValidatorsHash = newVals.Hash()
+	candidateState, err := blockExec.ProcessProposal(ctx, block, state, true)
+	require.NoError(t, err)
 
-	state, err = blockExec.ApplyBlock(ctx, state, nodeProTxHash, blockID, block)
-	require.Nil(t, err)
+	state, err = blockExec.FinalizeBlock(ctx, state, candidateState, blockID, block)
+	require.NoError(t, err)
+
 	// test new validator was added to NextValidators
-	require.Equal(t, state.Validators.Size()+100, state.NextValidators.Size())
-	nextValidatorsProTxHashes := mock.ValidatorsProTxHashes(state.NextValidators.Validators)
+	require.Equal(t, state.Validators.Size(), candidateState.NextValidators.Size())
+	nextValidatorsProTxHashes := mock.ValidatorsProTxHashes(candidateState.NextValidators.Validators)
 	for _, addProTxHash := range addProTxHashes {
 		assert.Contains(t, nextValidatorsProTxHashes, addProTxHash)
 	}
@@ -639,11 +641,16 @@ func makeState(nVals int, height int64) (sm.State, dbm.DB, map[string]types.Priv
 	return s, stateDB, privValsByProTxHash
 }
 
-func makeBlock(state sm.State, height int64, commit *types.Commit) *types.Block {
-	return state.MakeBlock(
-		height, nil, makeTxs(state.LastBlockHeight),
+func makeBlock(t *testing.T, state sm.State, height int64, commit *types.Commit) *types.Block {
+	block := state.MakeBlock(
+		height, makeTxs(state.LastBlockHeight),
 		commit, nil, state.Validators.GetProposer().ProTxHash, 0,
 	)
+	var err error
+	block.AppHash = make([]byte, crypto.DefaultAppHashSize)
+	block.ResultsHash, err = abci.TxResultsHash(factory.ExecTxResults(block.Txs))
+	require.NoError(t, err)
+	return block
 }
 
 // TEST APP //
@@ -665,34 +672,17 @@ func newTestApp() *testApp {
 
 var _ abci.Application = (*testApp)(nil)
 
-func (app *testApp) Info(context.Context, *abci.RequestInfo) (*abci.ResponseInfo, error) {
-	return &abci.ResponseInfo{}, nil
-}
-
-func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	app.ByzantineValidators = req.Misbehavior
+func (app *testApp) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
 	txs := make([]*abci.ExecTxResult, 0, len(req.Txs))
-	for _, tx := range req.Txs {
-		txs = append(txs, &abci.ExecTxResult{Data: tx})
+	for range req.Txs {
+		txs = append(txs, &abci.ExecTxResult{Code: abci.CodeTypeOK})
 	}
-	return &abci.ResponseFinalizeBlock{
-		Events:             []abci.Event{},
-		TxResults:          txs,
-		ValidatorSetUpdate: app.ValidatorSetUpdates[req.Height],
-		ConsensusParamUpdates: &tmproto.ConsensusParams{
-			Version: &tmproto.VersionParams{AppVersion: 1},
-		},
+	return &abci.ResponseProcessProposal{
+		Status:                abci.ResponseProcessProposal_ACCEPT,
+		AppHash:               make([]byte, 32),
+		TxResults:             txs,
+		ConsensusParamUpdates: nil,
+		CoreChainLockUpdate:   nil,
+		ValidatorSetUpdate:    app.ValidatorSetUpdates[req.Height],
 	}, nil
-}
-
-func (app *testApp) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
-	return &abci.ResponseCheckTx{Code: abci.CodeTypeOK}, nil
-}
-
-func (app *testApp) Commit(_ context.Context) (*abci.ResponseCommit, error) {
-	return &abci.ResponseCommit{RetainHeight: 1}, nil
-}
-
-func (app *testApp) Query(_ context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
-	return &abci.ResponseQuery{}, nil
 }

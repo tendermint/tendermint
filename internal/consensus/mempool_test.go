@@ -15,6 +15,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/mempool"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
@@ -36,34 +37,27 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	defer cancel()
 
 	baseConfig := configSetup(t)
-	for proofBlockRange := int64(0); proofBlockRange <= 3; proofBlockRange++ {
-		t.Logf("Checking proof block range %d", proofBlockRange)
-		config, err := ResetConfig(t.TempDir(), "consensus_mempool_txs_available_test")
-		require.NoError(t, err)
-		t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
+	config, err := ResetConfig(t.TempDir(), "consensus_mempool_txs_available_test")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(config.RootDir) })
 
-		config.Consensus.CreateEmptyBlocks = false
-		config.Consensus.CreateProofBlockRange = proofBlockRange
+	config.Consensus.CreateEmptyBlocks = false
 
-		state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
-			Validators: 1,
-			Power:      types.DefaultDashVotingPower,
-			Params:     factory.ConsensusParams()})
-		cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
-		assertMempool(t, cs.txNotifier).EnableTxsAvailable()
-		height, round := cs.Height, cs.Round
-		newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
-		startTestRound(ctx, cs, height, round)
+	state, privVals := makeGenesisState(ctx, t, baseConfig, genesisStateArgs{
+		Validators: 1,
+		Power:      types.DefaultDashVotingPower,
+		Params:     factory.ConsensusParams()})
+	cs := newStateWithConfig(ctx, t, log.NewNopLogger(), config, state, privVals[0], NewCounterApplication())
+	assertMempool(t, cs.txNotifier).EnableTxsAvailable()
+	height, round := cs.Height, cs.Round
+	newBlockCh := subscribe(ctx, t, cs.eventBus, types.EventQueryNewBlock)
+	startTestRound(ctx, cs, height, round)
 
-		ensureNewEventOnChannel(t, newBlockCh) // first block gets committed
-		ensureNoNewEventOnChannel(t, newBlockCh)
-		checkTxsRange(ctx, t, cs, 0, 1)
-		ensureNewEventOnChannel(t, newBlockCh) // commit txs
-		for i := int64(0); i < proofBlockRange; i++ {
-			ensureNewEventOnChannel(t, newBlockCh) // commit updated app hash
-		}
-		ensureNoNewEventOnChannel(t, newBlockCh)
-	}
+	ensureNewEventOnChannel(t, newBlockCh) // first block gets committed
+	ensureNoNewEventOnChannel(t, newBlockCh)
+	checkTxsRange(ctx, t, cs, 0, 1)
+	ensureNewEventOnChannel(t, newBlockCh) // commit txs
+	ensureNoNewEventOnChannel(t, newBlockCh)
 }
 
 func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
@@ -209,10 +203,13 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
+	resProcess, err := app.ProcessProposal(ctx, &abci.RequestProcessProposal{
+		Txs: [][]byte{txBytes},
+	})
+	require.NoError(t, err)
 	resFinalize, err := app.FinalizeBlock(ctx, &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	require.NoError(t, err)
-	assert.False(t, resFinalize.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
-	assert.True(t, len(resFinalize.AppHash) > 0)
+	assert.False(t, resProcess.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
 
 	_, err = app.Commit(ctx)
 	require.NoError(t, err)
@@ -288,12 +285,9 @@ func (app *CounterApplication) Info(_ context.Context, req *abci.RequestInfo) (*
 	return &abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}, nil
 }
 
-func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-
-	respTxs := make([]*abci.ExecTxResult, len(req.Txs))
-	for i, tx := range req.Txs {
+func (app *CounterApplication) txResults(txs [][]byte) []*abci.ExecTxResult {
+	respTxs := make([]*abci.ExecTxResult, len(txs))
+	for i, tx := range txs {
 		txValue := txAsUint64(tx)
 		if txValue != uint64(app.txCount) {
 			respTxs[i] = &abci.ExecTxResult{
@@ -306,14 +300,11 @@ func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.Reques
 		respTxs[i] = &abci.ExecTxResult{Code: code.CodeTypeOK}
 	}
 
-	res := &abci.ResponseFinalizeBlock{TxResults: respTxs}
+	return respTxs
+}
 
-	if app.txCount > 0 {
-		res.AppHash = make([]byte, 32)
-		binary.BigEndian.PutUint64(res.AppHash[24:], uint64(app.txCount))
-	}
-
-	return res, nil
+func (app *CounterApplication) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+	return &abci.ResponseFinalizeBlock{}, nil
 }
 
 func (app *CounterApplication) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
@@ -354,9 +345,17 @@ func (app *CounterApplication) PrepareProposal(_ context.Context, req *abci.Requ
 			Tx:     tx,
 		})
 	}
-	return &abci.ResponsePrepareProposal{TxRecords: trs}, nil
+	return &abci.ResponsePrepareProposal{
+		AppHash:   make([]byte, crypto.DefaultAppHashSize),
+		TxRecords: trs,
+		TxResults: app.txResults(req.Txs),
+	}, nil
 }
 
 func (app *CounterApplication) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
-	return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil
+	return &abci.ResponseProcessProposal{
+		AppHash:   make([]byte, crypto.DefaultAppHashSize),
+		Status:    abci.ResponseProcessProposal_ACCEPT,
+		TxResults: app.txResults(req.Txs),
+	}, nil
 }

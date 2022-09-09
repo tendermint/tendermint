@@ -152,7 +152,7 @@ proto-check-breaking: check-proto-deps
 ###############################################################################
 
 build_abci:
-	@go build -mod=readonly -i ./abci/cmd/...
+	@go build -mod=readonly ./abci/cmd/...
 .PHONY: build_abci
 
 install_abci:

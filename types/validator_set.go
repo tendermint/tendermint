@@ -18,6 +18,7 @@ import (
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/dash/llmq"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
@@ -162,6 +163,12 @@ func (vals *ValidatorSet) ValidateBasic() error {
 }
 
 func (vals *ValidatorSet) Equals(other *ValidatorSet) bool {
+	if vals == nil && other == nil {
+		return true
+	}
+	if vals == nil || other == nil {
+		return false
+	}
 	if !vals.ThresholdPublicKey.Equals(other.ThresholdPublicKey) {
 		return false
 	}
@@ -582,8 +589,8 @@ func (vals *ValidatorSet) findProposer() *Validator {
 }
 
 // Hash returns the Quorum Hash.
-func (vals *ValidatorSet) Hash() []byte {
-	if vals.QuorumHash == nil || vals.ThresholdPublicKey == nil {
+func (vals *ValidatorSet) Hash() tmbytes.HexBytes {
+	if vals == nil || vals.QuorumHash == nil || vals.ThresholdPublicKey == nil {
 		return []byte(nil)
 	}
 	bzs := make([][]byte, 2)
