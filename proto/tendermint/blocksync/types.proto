@@ -19,7 +19,7 @@ message NoBlockResponse {
 
 // BlockResponse returns block to the requested
 message BlockResponse {
-  tendermint.types.Block  block      = 1;
+  tendermint.types.Block  block  = 1;
   tendermint.types.Commit commit = 2;
 }
 

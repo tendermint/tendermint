@@ -274,7 +274,7 @@ func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error)
 		return &types.ResponseCommit{}, err
 	}
 
-	resp := &types.ResponseCommit{Data: app.lastCommittedState.AppHash}
+	resp := &types.ResponseCommit{}
 	if app.RetainBlocks > 0 && app.lastCommittedState.Height >= app.RetainBlocks {
 		resp.RetainHeight = app.lastCommittedState.Height - app.RetainBlocks + 1
 	}

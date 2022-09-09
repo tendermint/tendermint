@@ -17,6 +17,7 @@ BUILD_IMAGE := ghcr.io/tendermint/docker-build-proto
 BASE_BRANCH ?= v0.8-dev
 DOCKER_PROTO := docker run -v $(shell pwd):/workspace --workdir /workspace $(BUILD_IMAGE)
 CGO_ENABLED ?= 1
+GOGOPROTO_PATH = $(shell go list -m -f '{{.Dir}}' github.com/gogo/protobuf)
 
 # handle ARM builds
 ifeq (arm,$(GOARCH))
@@ -109,6 +110,9 @@ $(BUILDDIR)/:
 ###                                Protobuf                                 ###
 ###############################################################################
 
+proto: proto-format proto-lint proto-doc proto-gen
+.PHONY: proto
+
 check-proto-deps:
 ifeq (,$(shell which protoc-gen-gogofaster))
 	$(error "gogofaster plugin for protoc is required. Run 'go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest' to install")
@@ -146,6 +150,15 @@ proto-check-breaking: check-proto-deps
 	@echo "      https://docs.buf.build/breaking/usage"
 	@go run github.com/bufbuild/buf/cmd/buf breaking --against ".git"
 .PHONY: proto-check-breaking
+
+proto-doc:
+	@echo Generating Protobuf API specification: spec/abci++/api.md 
+	@protoc \
+		-I $(realpath .)/proto \
+		-I "$(GOGOPROTO_PATH)" \
+		--doc_opt=markdown,api.md \
+		--doc_out=spec/abci++ \
+		tendermint/abci/types.proto
 
 ###############################################################################
 ###                              Build ABCI                                 ###

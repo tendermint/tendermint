@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
-	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -25,9 +24,8 @@ const (
 
 func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []byte, key, value string, height int64) {
 	reqPrep := types.RequestPrepareProposal{
-		Txs:     [][]byte{tx},
-		Height:  height,
-		AppHash: make([]byte, tmcrypto.DefaultAppHashSize),
+		Txs:    [][]byte{tx},
+		Height: height,
 	}
 
 	respPrep, err := app.PrepareProposal(ctx, &reqPrep)

@@ -263,7 +263,7 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 	app.mu.Lock()
 	defer app.mu.Unlock()
 
-	height, hash, err := app.state.Commit()
+	height, _, err := app.state.Commit()
 	if err != nil {
 		panic(err)
 	}
@@ -283,7 +283,6 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 		retainHeight = int64(height - app.cfg.RetainBlocks + 1)
 	}
 	return &abci.ResponseCommit{
-		Data:         hash,
 		RetainHeight: retainHeight,
 	}, nil
 }
