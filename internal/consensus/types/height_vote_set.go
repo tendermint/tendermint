@@ -42,7 +42,6 @@ type HeightVoteSet struct {
 	chainID string
 	height  int64
 	valSet  *types.ValidatorSet
-	stateID types.StateID // State ID describing current state (eg. previous height and previous app hash)
 
 	mtx               sync.Mutex
 	round             int32                    // max tracked round

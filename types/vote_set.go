@@ -56,7 +56,6 @@ type VoteSet struct {
 	chainID       string
 	height        int64
 	round         int32
-	stateID       StateID // ID of state for which this voting is executed
 	signedMsgType tmproto.SignedMsgType
 	valSet        *ValidatorSet
 
