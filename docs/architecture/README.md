@@ -67,7 +67,6 @@ Note the context/background should be written in the present tense.
 - [ADR-072: Restore Requests for Comments](./adr-072-request-for-comments.md)
 - [ADR-077: Configurable Block Retention](./adr-077-block-retention.md)
 - [ADR-078: Non-zero Genesis](./adr-078-nonzero-genesis.md)
-- [ADR-080: Reverse Sync](./adr-080-reverse-sync.md)
 
 ### Accepted
 
@@ -77,7 +76,6 @@ Note the context/background should be written in the present tense.
 - [ADR-039: Peer-Behaviour](./adr-039-peer-behaviour.md)
 - [ADR-063: Privval-gRPC](./adr-063-privval-grpc.md)
 - [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
-- [ADR-068: Reverse-Sync](./adr-068-reverse-sync.md)
 - [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
@@ -114,7 +112,9 @@ None
 - [ADR-061: P2P-Refactor-Scope](./adr-061-p2p-refactor-scope.md)
 - [ADR-062: P2P-Architecture](./adr-062-p2p-architecture.md)
 - [ADR-064: Batch Verification](./adr-064-batch-verification.md)
+- [ADR-068: Reverse-Sync](./adr-068-reverse-sync.md)
 - [ADR-069: Node Initialization](./adr-069-flexible-node-initialization.md)
 - [ADR-071: Proposer-Based Timestamps](./adr-071-proposer-based-timestamps.md)
 - [ADR-073: Adopt LibP2P](./adr-073-libp2p.md)
 - [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
+- [ADR-080: Reverse Sync](./adr-080-reverse-sync.md)
