@@ -162,7 +162,7 @@ The API guarantees above can be fairly constraining, but are unavoidable given t
 
 ## Status
 
-Accepted
+Proposed
 
 ## Consequences
 
