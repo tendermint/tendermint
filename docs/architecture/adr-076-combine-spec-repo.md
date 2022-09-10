@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted.
+Implemented
 
 ## Context
 

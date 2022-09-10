@@ -66,6 +66,7 @@ Note the context/background should be written in the present tense.
 - [ADR-065: Custom Event Indexing](./adr-065-custom-event-indexing.md)
 - [ADR-066: E2E-Testing](./adr-066-e2e-testing.md)
 - [ADR-072: Restore Requests for Comments](./adr-072-request-for-comments.md)
+- [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
 - [ADR-077: Configurable Block Retention](./adr-077-block-retention.md)
 - [ADR-078: Non-zero Genesis](./adr-078-nonzero-genesis.md)
 
@@ -78,7 +79,6 @@ Note the context/background should be written in the present tense.
 - [ADR-063: Privval-gRPC](./adr-063-privval-grpc.md)
 - [ADR-067: Mempool Refactor](./adr-067-mempool-refactor.md)
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
-- [ADR-076: Combine Spec and Tendermint Repositories](./adr-076-combine-spec-repo.md)
 - [ADR-079: Ed25519 Verification](./adr-079-ed25519-verification.md)
 - [ADR-081: Protocol Buffers Management](./adr-081-protobuf-mgmt.md)
 
