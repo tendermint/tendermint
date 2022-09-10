@@ -65,7 +65,7 @@ Note the context/background should be written in the present tense.
 - [ADR-059: Evidence-Composition-and-Lifecycle](./adr-059-evidence-composition-and-lifecycle.md)
 - [ADR-066: E2E-Testing](./adr-066-e2e-testing.md)
 - [ADR-072: Restore Requests for Comments](./adr-072-request-for-comments.md)
-- [ADR-077: Block Retention](./adr-077-block-retention.md)
+- [ADR-077: Configurable Block Retention](./adr-077-block-retention.md)
 - [ADR-078: Non-zero Genesis](./adr-078-nonzero-genesis.md)
 - [ADR-079: ED25519 Verification](./adr-079-ed25519-verification.md)
 - [ADR-080: Reverse Sync](./adr-080-reverse-sync.md)
