@@ -214,7 +214,7 @@ etc.) by Tendermint Core.
 
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
-specification"](https://github.com/tendermint/tendermint/blob/main/spec/abci/apps.md#gas).
+specification"](https://github.com/tendermint/tendermint/blob/main/spec/abci/abci++_app_requirements.md#gas).
 
 For the underlying key-value store we'll use
 [badger](https://github.com/dgraph-io/badger), which is an embeddable,

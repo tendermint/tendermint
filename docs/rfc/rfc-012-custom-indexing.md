@@ -343,10 +343,10 @@ something like this (subject to refinement):
 [i1161]: https://github.com/tendermint/tendermint/issues/1161
 [i7135]: https://github.com/tendermint/tendermint/issues/7135
 [i7247]: https://github.com/tendermint/tendermint/issues/7247
-[kv-index]: https://github.com/tendermint/tendermint/blob/main/internal/state/indexer/tx/kv
+[kv-index]: https://github.com/tendermint/tendermint/blob/main/state/indexer/block/kv
 [postgres]: https://postgresql.org/
-[psql]: https://github.com/tendermint/tendermint/blob/main/internal/state/indexer/sink/psql
-[psql]: https://github.com/tendermint/tendermint/blob/main/internal/state/indexer/sink/psql
+[psql]: https://github.com/tendermint/tendermint/tree/main/state/indexer/sink/psql
+[psql]: https://github.com/tendermint/tendermint/tree/main/state/indexer/sink/psql
 [query]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/pubsub/query/syntax
 [sdk]: https://github.com/cosmos/cosmos-sdk
 [tmdb]: https://pkg.go.dev/github.com/tendermint/tm-db#DB

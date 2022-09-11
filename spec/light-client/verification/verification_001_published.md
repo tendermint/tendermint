@@ -1,14 +1,14 @@
 # Light Client Verification
 
 The light client implements a read operation of a
-[header][TMBC-HEADER-link] from the [blockchain][TMBC-SEQ-link], by
+[header][#tmbc-header1] from the [blockchain][tmbc-seq1], by
 communicating with full nodes.  As some full nodes may be faulty, this
 functionality must be implemented in a fault-tolerant way.
 
 In the Tendermint blockchain, the validator set may change with every
 new block.  The staking and unbonding mechanism induces a [security
 model][TMBC-FM-2THIRDS-link]: starting at time *Time* of the
-[header][TMBC-HEADER-link],
+[header][#tmbc-header1],
 more than two-thirds of the next validators of a new block are correct
 for the duration of *TrustedPeriod*. The fault-tolerant read
 operation is designed for this security model.
@@ -19,7 +19,7 @@ greater than *h1*.  Checking all headers of heights from *h1* to *h2*
 might be too costly (e.g., in terms of energy for mobile devices).
 This specification tries to reduce the number of intermediate blocks
 that need to be checked, by exploiting the guarantees provided by the
-[security model][TMBC-FM-2THIRDS-link].
+[security model][tmbc-fm-2thirds1].
 
 # Status
 
@@ -46,10 +46,10 @@ blockchain.
 - [Part II](#part-ii---sequential-definition-of-the-verification-problem): Introduction
 of the problem addressed by the Lightclient Verification protocol.
     - [Verification Informal Problem
-      statement](#Verification-Informal-Problem-statement): For the general
+      statement](#verification-informal-problem-statement): For the general
       audience, that is, engineers who want to get an overview over what
       the component is doing from a bird's eye view.
-    - [Sequential Problem statement](#Sequential-Problem-statement):
+    - [Sequential Problem statement](#sequential-problem-statement):
       Provides a mathematical definition of the problem statement in
       its sequential form, that is, ignoring the distributed aspect of
       the implementation of the blockchain.
@@ -61,17 +61,17 @@ of the problem addressed by the Lightclient Verification protocol.
     - [Incentives](#incentives): how faulty full nodes may benefit from
     misbehaving and how correct full nodes benefit from cooperating.
   
-    - [Computational Model](#Computational-Model):
+    - [Computational Model](#computational-model):
       timing and correctness assumptions.
 
-    - [Distributed Problem Statement](#Distributed-Problem-Statement):
+    - [Distributed Problem Statement](#distributed-problem-statement):
       temporal properties that formalize safety and liveness
       properties in the distributed setting.
 
 - [Part IV](#part-iv---light-client-verification-protocol):
   Specification of the protocols.
 
-    - [Definitions](#Definitions): Describes inputs, outputs,
+    - [Definitions](#definitions): Describes inputs, outputs,
        variables used by the protocol, auxiliary functions
 
     - [Core Verification](#core-verification): gives an outline of the solution,
@@ -406,9 +406,9 @@ Each instance must eventually terminate.
 
 > These definitions imply that if the primary is faulty, a header may or
 > may not be added to *LightStore*. In any case,
-> [**[LCV-DIST-SAFE.1]**](#lcv-vc-inv) must hold.
-> The invariant [**[LCV-DIST-SAFE.1]**](#lcv-dist-safe) and the liveness
-> requirement [**[LCV-DIST-LIVE.1]**](#lcv-dist-life)
+> [**[LCV-DIST-SAFE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe1) must hold.
+> The invariant [**[LCV-DIST-SAFE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe1) and the liveness
+> requirement [**[LCV-DIST-LIVE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-life1)
 > allow that verified headers are added to *LightStore* whose
 > height was not passed
 > to the verifier (e.g., intermediate headers used in bisection; see below).
@@ -425,16 +425,16 @@ Each instance must eventually terminate.
 This specification provides a partial solution to the sequential specification.
 The *Verifier* solves the invariant of the sequential part
 
-[**[LCV-DIST-SAFE.1]**](#lcv-vc-inv) => [**[LCV-SEQ-SAFE.1]**](#lcv-seq-inv)
+[**[LCV-DIST-SAFE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe1) => [**[LCV-SEQ-SAFE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-seq-inv)
 
 In the case the primary is correct, and there is a recent header in *LightStore*, the verifier satisfies the liveness requirements.
 
 ⋀ *primary is correct*  
 ⋀ always ∃ verified header in LightStore. *header.Time* > *now* - *trustingPeriod*  
-⋀ [**[LCV-A-Comm.1]**](#lcv-a-comm) ⋀ (
+⋀ [**[LCV-A-Comm.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-a-comm) ⋀ (
        ( [**[TMBC-CorrFull.1]**][TMBC-CorrFull-link] ⋀
-         [**[LCV-DIST-LIVE.1]**](#lcv-vc-live) )
-       ⟹ [**[LCV-SEQ-LIVE.1]**](#lcv-seq-live)
+         [**[LCV-DIST-LIVE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-live1) )
+       ⟹ [**[LCV-SEQ-LIVE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-seq-live1)
 )
 
 # Part IV - Light Client Verification Protocol
@@ -767,7 +767,7 @@ func VerifyToTarget(primary PeerID, lightStore LightStore,
 - Error conditions
     - if the precondition is violated
     - if `ValidAndVerified` or `FetchLightBlock` report an error
-    - if [**[LCV-INV-TP.1]**](#LCV-INV-TP.1) is violated
+    - if [**[LCV-INV-TP.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-inv-tp1) is violated
   
 ### Details of the Functions
 
@@ -854,7 +854,7 @@ func Schedule(lightStore, nextHeight, targetHeight) Height
 *trustedStore* is implemented by the light blocks in lightStore that
 have the state *StateVerified*.
 
-#### Argument for [**[LCV-DIST-SAFE.1]**](#lcv-dist-safe)
+#### Argument for [**[LCV-DIST-SAFE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe)
 
 - `ValidAndVerified` implements the soundness checks and the checks
   [**[TMBC-VAL-CONTAINS-CORR.1]**][TMBC-VAL-CONTAINS-CORR-link] and
@@ -863,7 +863,7 @@ have the state *StateVerified*.
 - Only if `ValidAndVerified` returns with `SUCCESS`, the state of a light block is
   set to *StateVerified*.
 
-#### Argument for [**[LCV-DIST-LIVE.1]**](#lcv-dist-life)
+#### Argument for [**[LCV-DIST-LIVE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-life)
 
 - If *primary* is correct,
     - `FetchLightBlock` will always return a light block consistent
@@ -871,7 +871,7 @@ have the state *StateVerified*.
     - `ValidAndVerified` either verifies the header using the trusting
       period or falls back to sequential
       verification
-    - If [**[LCV-INV-TP.1]**](#LCV-INV-TP.1) holds, eventually every
+    - If [**[LCV-INV-TP.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-inv-tp1) holds, eventually every
    header will be verified and core verification **terminates successfully**.
     - successful termination depends on the age of *lightStore.LatestVerified*
       (for instance, initially on the age of  *trustedHeader*) and the
@@ -887,7 +887,7 @@ have the state *StateVerified*.
 
 ## Liveness Scenarios
 
-The liveness argument above assumes [**[LCV-INV-TP.1]**](#LCV-INV-TP.1)
+The liveness argument above assumes [**[LCV-INV-TP.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-inv-tp1)
 
 which requires that there is a header that does not expire before the
 target height is reached. Here we discuss scenarios to ensure this.
@@ -1163,16 +1163,12 @@ func Main (primary PeerID, lightStore LightStore, targetHeight Height)
 [TMBC-SOUND-DISTR-POSS-COMMIT-link]: #tmbc-sound-distr-poss-commit1
 
 [lightclient]: https://github.com/interchainio/tendermint-rs/blob/e2cb9aca0b95430fca2eac154edddc9588038982/docs/architecture/adr-002-lite-client.md
-[fork-detector]: https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection.md
-[fullnode]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/fullnode.md
+[fork-detector]: https://github.com/tendermint/tendermint/tree/main/spec/light-client/detection
+[fullnode]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain
 
 [ibc-rs]:https://github.com/informalsystems/ibc-rs
 
-[FN-LuckyCase-link]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/fullnode.md#fn-luckycase
-
-[blockchain-validator-set]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/blockchain.md#data-structures
-[fullnode-data-structures]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/fullnode.md#data-structures
-
-[FN-ManifestFaulty-link]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/fullnode.md#fn-manifestfaulty
+[blockchain-validator-set]: https://github.com/tendermint/tendermint/blob/main/spec/core/data_structures.md#validatorset
+[fullnode-data-structures]: https://github.com/tendermint/tendermint/blob/main/spec/core/data_structures.md
 
 [arXiv]: https://arxiv.org/abs/1807.04938
