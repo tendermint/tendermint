@@ -770,14 +770,6 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			err := cs.handleMsg(mi)
 			if err != nil {
-				cs.Logger.Error(
-					"failed to process message",
-					"height", cs.Height,
-					"round", cs.Round,
-					"peer", peerID,
-					"msg_type", fmt.Sprintf("%T", msg),
-					"err", err,
-				)
 				// if error is due to misbehaviour, disconect from peer
 				// TODO: can we create some higher order type to collect these errors in?
 				switch err {
@@ -812,17 +804,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			}
 
 			// handles proposals, block parts, votes
-			err := cs.handleMsg(mi)
-			if err != nil {
+			if err := cs.handleMsg(mi); err != nil {
 				// TODO: why are we erroring on our own messages?
 				// should we panic ?
-				cs.Logger.Error(
-					"failed to process internal message",
-					"height", cs.Height,
-					"round", cs.Round,
-					"msg_type", fmt.Sprintf("%T", msg),
-					"err", err,
-				)
 			}
 
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
@@ -842,7 +826,7 @@ func (cs *State) receiveRoutine(maxSteps int) {
 }
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
-func (cs *State) handleMsg(mi msgInfo) error {
+func (cs *State) handleMsg(mi msgInfo) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -852,11 +836,12 @@ func (cs *State) handleMsg(mi msgInfo) error {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		return cs.setProposal(msg.Proposal)
+		err = cs.setProposal(msg.Proposal)
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		added, err := cs.addProposalBlockPart(msg, peerID)
+		var added bool
+		added, err = cs.addProposalBlockPart(msg, peerID)
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
 		// Previously, this code held the lock from the point at which the final block
@@ -888,12 +873,12 @@ func (cs *State) handleMsg(mi msgInfo) error {
 			)
 			err = nil
 		}
-		return err
 
 	case *VoteMessage:
+		var added bool
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		added, err := cs.tryAddVote(msg.Vote, peerID)
+		added, err = cs.tryAddVote(msg.Vote, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
@@ -912,12 +897,23 @@ func (cs *State) handleMsg(mi msgInfo) error {
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
-		return err
 
 	default:
 		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
 		return nil
 	}
+
+	if err != nil {
+		cs.Logger.Error(
+			"failed to process message",
+			"height", cs.Height,
+			"round", cs.Round,
+			"peer", peerID,
+			"msg_type", fmt.Sprintf("%T", msg),
+			"err", err,
+		)
+	}
+	return err
 }
 
 func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
