@@ -21,20 +21,17 @@ type PersistentKVStoreApplication struct {
 func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *PersistentKVStoreApplication {
 	db, err := dbm.NewGoLevelDB("kvstore", dbDir)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("cannot open app state store: %w", err))
 	}
-	state := NewKvState(db)
-	if err := state.Load(); err != nil {
-		panic(fmt.Sprintf("cannot load state: %s", err))
-	}
+	stateStore := &StateReaderWriter{DB: db}
+
+	app := NewApplication(
+		WithLogger(logger),
+		WithStateStore(stateStore, 1),
+	)
+
 	return &PersistentKVStoreApplication{
-		Application: &Application{
-			lastCommittedState:  state,
-			roundStates:         make(map[string]State),
-			logger:              logger,
-			validatorSetUpdates: make(map[int64]types.ValidatorSetUpdate),
-			initialHeight:       1,
-		},
+		Application: app,
 	}
 }
 

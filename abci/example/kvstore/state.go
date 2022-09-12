@@ -1,9 +1,12 @@
 package kvstore
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -15,12 +18,14 @@ import (
 type State interface {
 	dbm.DB
 
-	Save() error
-	Load() error
+	Save(to io.Writer) error
+	Load(from io.Reader) error
 	Copy(dst State) error
 	Close() error
 
 	GetHeight() int64
+
+	NextHeightState(db dbm.DB) (State, error)
 
 	GetAppHash() tmbytes.HexBytes
 	UpdateAppHash(lastCommittedState State, txs [][]byte, txResults []*types.ExecTxResult) error
@@ -108,9 +113,25 @@ func (state kvState) GetHeight() int64 {
 	return state.Height
 }
 
+// NextHeightState creates a state at next height with a copy of all key/value pairs.
+// It uses `db` as a backend database.
+func (state kvState) NextHeightState(db dbm.DB) (State, error) {
+	height := state.GetHeight() + 1
+	nextState := NewKvState(db).(*kvState)
+	err := state.Copy(nextState)
+	nextState.Height = height
+	if err != nil {
+		return &kvState{}, fmt.Errorf("cannot copy current state: %w", err)
+	}
+	// overwrite what was set in Copy, as we are at new height
+	nextState.Height = height
+	return nextState, nil
+}
+
 func (state kvState) GetAppHash() tmbytes.HexBytes {
 	return state.AppHash.Copy()
 }
+
 func (state *kvState) UpdateAppHash(lastCommittedState State, txs [][]byte, txResults []*types.ExecTxResult) error {
 	// UpdateAppHash updates app hash for the current app state.
 	txResultsHash, err := types.TxResultsHash(txResults)
@@ -122,17 +143,19 @@ func (state *kvState) UpdateAppHash(lastCommittedState State, txs [][]byte, txRe
 	return nil
 }
 
-func (state *kvState) Load() error {
+func (state *kvState) Load(from io.Reader) error {
 	if state == nil || state.DB == nil {
 		return errors.New("cannot load into nil state")
 	}
-	stateBytes, err := state.DB.Get(stateKey)
+
+	stateBytes, err := ioutil.ReadAll(from)
 	if err != nil {
-		return fmt.Errorf("kvState get: %w", err)
+		return fmt.Errorf("kvState read: %w", err)
 	}
 	if len(stateBytes) == 0 {
-		return nil // noop
+		return nil // NOOP
 	}
+
 	err = json.Unmarshal(stateBytes, &state)
 	if err != nil {
 		return fmt.Errorf("kvState unmarshal: %w", err)
@@ -141,14 +164,15 @@ func (state *kvState) Load() error {
 	return nil
 }
 
-func (state kvState) Save() error {
+func (state kvState) Save(to io.Writer) error {
 	stateBytes, err := json.Marshal(state)
 	if err != nil {
 		return fmt.Errorf("kvState marshal: %w", err)
 	}
-	err = state.DB.Set(stateKey, stateBytes)
+
+	_, err = to.Write(stateBytes)
 	if err != nil {
-		return fmt.Errorf("kvState set: %w", err)
+		return fmt.Errorf("kvState write: %w", err)
 	}
 
 	return nil
@@ -159,4 +183,36 @@ func (state *kvState) Close() error {
 		return state.DB.Close()
 	}
 	return nil
+}
+
+// StateReader is a wrapper around dbm.DB that provides io.Reader to read a state.
+// Note that you should create a new StateReaderWriter each time you use it.
+type StateReaderWriter struct {
+	dbm.DB
+	data *bytes.Buffer
+}
+
+// Read implements io.Reader
+func (w *StateReaderWriter) Read(p []byte) (n int, err error) {
+	if w.data == nil {
+		data, err := w.DB.Get(stateKey)
+		if err != nil {
+			return 0, err
+		}
+		w.data = bytes.NewBuffer(data)
+	}
+
+	return w.data.Read(p)
+}
+
+// Write implements io.Writer
+func (w *StateReaderWriter) Write(p []byte) (int, error) {
+	if err := w.DB.Set(stateKey, p); err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
+func (w *StateReaderWriter) Close() error {
+	return w.DB.Close()
 }

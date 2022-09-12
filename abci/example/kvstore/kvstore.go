@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
@@ -48,6 +49,15 @@ type Application struct {
 
 	finalizedAppHash    []byte
 	validatorSetUpdates map[int64]types.ValidatorSetUpdate
+
+	// Persistence config
+
+	// persistInterval defines how many blocks are generated between persisting data to disk; default of 0 means disabled
+	persistInterval int64
+	// persistDir is a path to directory where data will be persisted
+	persistDir string
+
+	stateStore io.ReadWriteCloser
 }
 
 func WithValidatorSetUpdates(validatorSetUpdates map[int64]types.ValidatorSetUpdate) func(app *Application) {
@@ -72,12 +82,17 @@ func WithHeight(height int64) func(app *Application) {
 	}
 }
 
+func WithStateStore(stateStore io.ReadWriteCloser, interval int64) func(app *Application) {
+	return func(app *Application) {
+		app.persistInterval = interval
+		app.stateStore = stateStore
+	}
+}
+
 func NewApplication(opts ...func(app *Application)) *Application {
 	db := dbm.NewMemDB()
 	state := NewKvState(db)
-	if err := state.Load(); err != nil {
-		panic(fmt.Sprintf("cannot load state: %s", err))
-	}
+	stateStore := &StateReaderWriter{DB: db}
 
 	app := &Application{
 		logger:              log.NewNopLogger(),
@@ -85,11 +100,19 @@ func NewApplication(opts ...func(app *Application)) *Application {
 		roundStates:         map[string]State{},
 		validatorSetUpdates: make(map[int64]types.ValidatorSetUpdate),
 		initialHeight:       1,
+
+		stateStore:      stateStore,
+		persistInterval: 1,
 	}
 
 	for _, opt := range opts {
 		opt(app)
 	}
+
+	if err := state.Load(stateStore); err != nil {
+		panic(fmt.Errorf("load state: %w", err))
+	}
+
 	return app
 }
 
@@ -289,22 +312,10 @@ func (app *Application) Close() error {
 	defer app.mu.Unlock()
 
 	app.resetRoundStates()
-	return app.lastCommittedState.Close()
-}
+	app.lastCommittedState.Close()
+	app.stateStore.Close()
 
-func (app *Application) newRound(height int64) (State, error) {
-	if height != app.lastCommittedState.GetHeight()+1 {
-		return &kvState{}, fmt.Errorf("invalid height: expected: %d, got: %d", app.lastCommittedState.GetHeight()+1, height)
-	}
-	roundState := &kvState{DB: dbm.NewMemDB()}
-	err := app.lastCommittedState.Copy(roundState)
-	roundState.Height = height
-	if err != nil {
-		return &kvState{}, fmt.Errorf("cannot copy current state: %w", err)
-	}
-	// overwrite what was set in Copy, as we are at new height
-	roundState.Height = height
-	return roundState, nil
+	return nil
 }
 
 // newHeight frees resources from previous height and starts new height.
@@ -316,14 +327,17 @@ func (app *Application) newHeight(height int64, committedAppHash tmbytes.HexByte
 	}
 
 	// Committed round becomes new state
-	// Note it can be empty (eg. on initial height), but State.Copy() should handle it
-	err := app.roundStates[committedAppHash.String()].Copy(app.lastCommittedState)
+	committedState := app.roundStates[committedAppHash.String()]
+	if committedState == nil {
+		committedState = NewKvState(dbm.NewMemDB())
+	}
+	err := committedState.Copy(app.lastCommittedState)
 	if err != nil {
 		return err
 	}
 
 	app.resetRoundStates()
-	if err := app.lastCommittedState.Save(); err != nil {
+	if err := app.Persist(); err != nil {
 		return err
 	}
 	app.finalizedAppHash = nil
@@ -339,7 +353,7 @@ func (app *Application) resetRoundStates() {
 }
 
 func (app *Application) handleProposal(height int64, txs [][]byte) (State, []*types.ExecTxResult, error) {
-	roundState, err := app.newRound(height)
+	roundState, err := app.lastCommittedState.NextHeightState(dbm.NewMemDB())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -487,4 +501,11 @@ func encodeMsg(data proto.Message) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func (app *Application) Persist() error {
+	if app.persistInterval > 0 && app.lastCommittedState.GetHeight()%app.persistInterval == 0 {
+		return app.lastCommittedState.Save(app.stateStore)
+	}
+	return nil
 }
