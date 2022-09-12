@@ -1,10 +1,31 @@
 # Unreleased Changes
 
-## v0.37.0
-
 Special thanks to external contributors on this release:
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+
+## v0.38.0
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+    - [light] \#9420 Default trust level has been modified to a more secure value of 2/3 (@cmwaters)
+
+- Blockchain Protocol
+
+### FEATURES
+
+### IMPROVEMENTS
+
+### BUG FIXES
+
+## v0.37.0
 
 ### BREAKING CHANGES
 
