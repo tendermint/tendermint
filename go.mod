@@ -89,6 +89,8 @@ require (
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/cosmos/go-bip39 v0.0.0-20180819234021-555e2067c45d // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/creachadair/atomicfile v0.2.7
+	github.com/creachadair/tomledit v0.0.23
 	github.com/curioswitch/go-reassign v0.1.2 // indirect
 	github.com/daixiang0/gci v0.6.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
