@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/tendermint/tendermint/version"
@@ -62,6 +63,10 @@ var (
 
 	minSubscriptionBufferSize     = 100
 	defaultSubscriptionBufferSize = 200
+
+	// taken from https://semver.org/
+	semverRegexp = regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
+
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -315,6 +320,10 @@ func (cfg BaseConfig) DBDir() string {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
+	if !semverRegexp.MatchString(cfg.Version) {
+		return fmt.Errorf("invalid version string: %s", cfg.Version)
+	}
+
 	switch cfg.LogFormat {
 	case LogFormatPlain, LogFormatJSON:
 	default:
