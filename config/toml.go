@@ -76,6 +76,10 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
 # or --home cmd flag.
 
+# The version of the Tendermint binary that created or
+# last modified the config file. Do not modify this.
+version = "{{ .BaseConfig.Version }}"
+
 #######################################################################
 ###                   Main Base Config Options                      ###
 #######################################################################

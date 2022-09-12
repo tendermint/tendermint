@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -173,6 +175,10 @@ type BaseConfig struct { //nolint: maligned
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
+	// The version of the Tendermint binary that created
+	// or last modified the config file
+	Version string `mapstructure:"version"`
+
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
@@ -250,6 +256,7 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
+		Version:            version.TMCoreSemVer,
 		Genesis:            defaultGenesisJSONPath,
 		PrivValidatorKey:   defaultPrivValKeyPath,
 		PrivValidatorState: defaultPrivValStatePath,
@@ -262,7 +269,7 @@ func DefaultBaseConfig() BaseConfig {
 		BlockSyncMode:      true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
-		DBPath:             "data",
+		DBPath:             defaultDataDir,
 	}
 }
 
