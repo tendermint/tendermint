@@ -31,7 +31,8 @@ As part of the acceptance of this proposal it would be best to contract or discu
 
 ## Status
 
-Proposed
+Accepted (implicitly tracked in
+[\#9186](https://github.com/tendermint/tendermint/issues/9186))
 
 ## Consequences
 
