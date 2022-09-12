@@ -1921,9 +1921,9 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	cs.ProposalBlockParts = types.NewPartSetFromHeader(parts.Header())
 	cs.handleMsg(msgInfo{msg, peer.ID()})
 
-	statsMessage := <-cs.statsMsgQueue
-	require.Equal(t, msg, statsMessage.Msg, "")
-	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
+	statsMessage := <-cs.peerInfoQueue
+	require.Equal(t, msg, statsMessage.(msgInfo).Msg, "")
+	require.Equal(t, peer.ID(), statsMessage.(msgInfo).PeerID, "")
 
 	// sending the same part from different peer
 	cs.handleMsg(msgInfo{msg, "peer2"})
@@ -1941,7 +1941,7 @@ func TestStateOutputsBlockPartsStats(t *testing.T) {
 	cs.handleMsg(msgInfo{msg, peer.ID()})
 
 	select {
-	case <-cs.statsMsgQueue:
+	case <-cs.peerInfoQueue:
 		t.Errorf("should not output stats message after receiving the known block part!")
 	case <-time.After(50 * time.Millisecond):
 	}
@@ -1960,9 +1960,9 @@ func TestStateOutputVoteStats(t *testing.T) {
 	voteMessage := &VoteMessage{vote}
 	cs.handleMsg(msgInfo{voteMessage, peer.ID()})
 
-	statsMessage := <-cs.statsMsgQueue
-	require.Equal(t, voteMessage, statsMessage.Msg, "")
-	require.Equal(t, peer.ID(), statsMessage.PeerID, "")
+	statsMessage := <-cs.peerInfoQueue
+	require.Equal(t, voteMessage, statsMessage.(msgInfo).Msg, "")
+	require.Equal(t, peer.ID(), statsMessage.(msgInfo).PeerID, "")
 
 	// sending the same part from different peer
 	cs.handleMsg(msgInfo{&VoteMessage{vote}, "peer2"})
@@ -1974,7 +1974,7 @@ func TestStateOutputVoteStats(t *testing.T) {
 	cs.handleMsg(msgInfo{&VoteMessage{vote}, peer.ID()})
 
 	select {
-	case <-cs.statsMsgQueue:
+	case <-cs.peerInfoQueue:
 		t.Errorf("should not output stats message after receiving the known vote or vote from bigger height")
 	case <-time.After(50 * time.Millisecond):
 	}
