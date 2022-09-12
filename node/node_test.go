@@ -494,7 +494,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication(kvstore.WithLogger(logger), kvstore.WithState(math.MaxInt64-1)))
+	cc := abciclient.NewLocalClient(logger, kvstore.NewApplication(kvstore.WithLogger(logger), kvstore.WithHeight(math.MaxInt64-1)))
 	proxyApp := proxy.New(cc, logger, proxy.NopMetrics())
 	err = proxyApp.Start(ctx)
 	require.NoError(t, err)

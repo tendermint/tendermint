@@ -3,7 +3,6 @@ package kvstore
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
@@ -27,109 +26,8 @@ var (
 	ProtocolVersion uint64 = 0x1
 )
 
-type State struct {
-	db      dbm.DB
-	Height  int64            `json:"height"`
-	AppHash tmbytes.HexBytes `json:"app_hash"`
-}
-
-func loadState(db dbm.DB) State {
-	var state State
-	state.db = db
-	stateBytes, err := db.Get(stateKey)
-	if err != nil {
-		panic(err)
-	}
-	if len(stateBytes) == 0 {
-		return state
-	}
-	err = json.Unmarshal(stateBytes, &state)
-	if err != nil {
-		panic(err)
-	}
-	return state
-}
-
-func saveState(state State) {
-	stateBytes, err := json.Marshal(state)
-	if err != nil {
-		panic(err)
-	}
-	err = state.db.Set(stateKey, stateBytes)
-	if err != nil {
-		panic(err)
-	}
-}
-
 func prefixKey(key []byte) []byte {
 	return append(kvPairPrefixKey, key...)
-}
-
-// Copy copies the state. It ensures copy is a valid, initialized state.
-// Caller should close the state once it's not needed anymore
-// newDBfunc can be provided to define DB that will be used for this copy.
-func (s State) Copy(dst *State) error {
-	dst.Height = s.Height
-	dst.AppHash = s.AppHash.Copy()
-	// apphash is required, and should never be nil,zero-length
-	if len(dst.AppHash) == 0 {
-		dst.AppHash = make(tmbytes.HexBytes, crypto.DefaultAppHashSize)
-	}
-	if err := copyDB(s.db, dst.db); err != nil {
-		return fmt.Errorf("copy state db: %w", err)
-	}
-	return nil
-}
-
-func copyDB(src dbm.DB, dst dbm.DB) error {
-	dstBatch := dst.NewBatch()
-	defer dstBatch.Close()
-
-	// cleanup dest DB first
-	dstIter, err := dst.Iterator(nil, nil)
-	if err != nil {
-		return fmt.Errorf("cannot create dest db iterator: %w", err)
-	}
-	defer dstIter.Close()
-
-	// Delete content of dst, to be sure that it will not contain any unexpected data.
-	keys := make([][]byte, 0)
-	for dstIter.Valid() {
-		keys = append(keys, dstIter.Key())
-		dstIter.Next()
-	}
-	for _, key := range keys {
-		_ = dstBatch.Delete(key) // ignore errors
-	}
-
-	// write source to dest
-	if src != nil {
-		srcIter, err := src.Iterator(nil, nil)
-		if err != nil {
-			return fmt.Errorf("cannot copy current DB: %w", err)
-		}
-		defer srcIter.Close()
-
-		for srcIter.Valid() {
-			if err = dstBatch.Set(srcIter.Key(), srcIter.Value()); err != nil {
-				return err
-			}
-			srcIter.Next()
-		}
-
-		if err = dstBatch.Write(); err != nil {
-			return fmt.Errorf("cannot close dest batch: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (s *State) Close() error {
-	if s.db != nil {
-		return s.db.Close()
-	}
-	return nil
 }
 
 //---------------------------------------------------
@@ -166,9 +64,9 @@ func WithLogger(logger log.Logger) func(app *Application) {
 	}
 }
 
-func WithState(height int64) func(app *Application) {
+func WithHeight(height int64) func(app *Application) {
 	return func(app *Application) {
-		app.lastCommittedState = State{
+		app.lastCommittedState = &kvState{
 			Height: height,
 		}
 	}
@@ -176,9 +74,14 @@ func WithState(height int64) func(app *Application) {
 
 func NewApplication(opts ...func(app *Application)) *Application {
 	db := dbm.NewMemDB()
+	state := NewKvState(db)
+	if err := state.Load(); err != nil {
+		panic(fmt.Sprintf("cannot load state: %s", err))
+	}
+
 	app := &Application{
 		logger:              log.NewNopLogger(),
-		lastCommittedState:  loadState(db),
+		lastCommittedState:  state,
 		roundStates:         map[string]State{},
 		validatorSetUpdates: make(map[int64]types.ValidatorSetUpdate),
 		initialHeight:       1,
@@ -215,11 +118,11 @@ func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPre
 	if err != nil {
 		return &types.ResponsePrepareProposal{}, err
 	}
-	app.logger.Debug("end of prepare proposal", "app_hash", roundState.AppHash)
+	app.logger.Debug("end of prepare proposal", "app_hash", roundState.GetAppHash())
 
 	return &types.ResponsePrepareProposal{
 		TxRecords:             app.substPrepareTx(req.Txs, req.MaxTxBytes),
-		AppHash:               roundState.AppHash,
+		AppHash:               roundState.GetAppHash(),
 		TxResults:             txResults,
 		ConsensusParamUpdates: nil,
 		CoreChainLockUpdate:   nil,
@@ -239,7 +142,7 @@ func (app *Application) ProcessProposal(_ context.Context, req *types.RequestPro
 
 	return &types.ResponseProcessProposal{
 		Status:             types.ResponseProcessProposal_ACCEPT,
-		AppHash:            roundState.AppHash,
+		AppHash:            roundState.GetAppHash(),
 		TxResults:          txResults,
 		ValidatorSetUpdate: app.getValidatorSetUpdate(req.Height),
 	}, nil
@@ -269,14 +172,14 @@ func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error)
 		return &types.ResponseCommit{}, fmt.Errorf("no uncommitted finalized block")
 	}
 
-	err := app.newHeight(app.lastCommittedState.Height+1, app.finalizedAppHash)
+	err := app.newHeight(app.lastCommittedState.GetHeight()+1, app.finalizedAppHash)
 	if err != nil {
 		return &types.ResponseCommit{}, err
 	}
 
 	resp := &types.ResponseCommit{}
-	if app.RetainBlocks > 0 && app.lastCommittedState.Height >= app.RetainBlocks {
-		resp.RetainHeight = app.lastCommittedState.Height - app.RetainBlocks + 1
+	if app.RetainBlocks > 0 && app.lastCommittedState.GetHeight() >= app.RetainBlocks {
+		resp.RetainHeight = app.lastCommittedState.GetHeight() - app.RetainBlocks + 1
 	}
 
 	app.logger.Debug("commit", "resp", resp)
@@ -287,12 +190,13 @@ func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error)
 func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
+	appHash := app.lastCommittedState.GetAppHash()
 	return &types.ResponseInfo{
-		Data:             fmt.Sprintf("{\"appHash\":\"%s\"}", app.lastCommittedState.AppHash.String()),
+		Data:             fmt.Sprintf("{\"appHash\":\"%s\"}", appHash.String()),
 		Version:          version.ABCIVersion,
 		AppVersion:       ProtocolVersion,
-		LastBlockHeight:  app.lastCommittedState.Height,
-		LastBlockAppHash: app.lastCommittedState.AppHash,
+		LastBlockHeight:  app.lastCommittedState.GetHeight(),
+		LastBlockAppHash: app.lastCommittedState.GetAppHash(),
 	}, nil
 }
 
@@ -332,7 +236,7 @@ func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (
 	}
 
 	if reqQuery.Prove {
-		value, err := app.lastCommittedState.db.Get(prefixKey(reqQuery.Data))
+		value, err := app.lastCommittedState.Get(prefixKey(reqQuery.Data))
 		if err != nil {
 			panic(err)
 		}
@@ -341,7 +245,7 @@ func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (
 			Index:  -1,
 			Key:    reqQuery.Data,
 			Value:  value,
-			Height: app.lastCommittedState.Height,
+			Height: app.lastCommittedState.GetHeight(),
 		}
 
 		if value == nil {
@@ -353,7 +257,7 @@ func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (
 		return &resQuery, nil
 	}
 
-	value, err := app.lastCommittedState.db.Get(prefixKey(reqQuery.Data))
+	value, err := app.lastCommittedState.Get(prefixKey(reqQuery.Data))
 	if err != nil {
 		panic(err)
 	}
@@ -361,7 +265,7 @@ func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (
 	resQuery := types.ResponseQuery{
 		Key:    reqQuery.Data,
 		Value:  value,
-		Height: app.lastCommittedState.Height,
+		Height: app.lastCommittedState.GetHeight(),
 	}
 
 	if value == nil {
@@ -388,26 +292,15 @@ func (app *Application) Close() error {
 	return app.lastCommittedState.Close()
 }
 
-// updateAppHash updates app hash for the current app state.
-func (s *State) updateAppHash(lastAppHash tmbytes.HexBytes, txResults []*types.ExecTxResult) error {
-	txResultsHash, err := types.TxResultsHash(txResults)
-	if err != nil {
-		return err
-	}
-	s.AppHash = crypto.Checksum(append(lastAppHash, txResultsHash...))
-
-	return nil
-}
-
 func (app *Application) newRound(height int64) (State, error) {
-	if height != app.lastCommittedState.Height+1 {
-		return State{}, fmt.Errorf("invalid height: expected: %d, got: %d", app.lastCommittedState.Height+1, height)
+	if height != app.lastCommittedState.GetHeight()+1 {
+		return &kvState{}, fmt.Errorf("invalid height: expected: %d, got: %d", app.lastCommittedState.GetHeight()+1, height)
 	}
-	roundState := State{db: dbm.NewMemDB()}
-	err := app.lastCommittedState.Copy(&roundState)
+	roundState := &kvState{DB: dbm.NewMemDB()}
+	err := app.lastCommittedState.Copy(roundState)
 	roundState.Height = height
 	if err != nil {
-		return State{}, fmt.Errorf("cannot copy current state: %w", err)
+		return &kvState{}, fmt.Errorf("cannot copy current state: %w", err)
 	}
 	// overwrite what was set in Copy, as we are at new height
 	roundState.Height = height
@@ -418,19 +311,21 @@ func (app *Application) newRound(height int64) (State, error) {
 // `height` shall be new height, and `committedRound` shall be round from previous commit
 // Caller should lock the Application.
 func (app *Application) newHeight(height int64, committedAppHash tmbytes.HexBytes) error {
-	if height != app.lastCommittedState.Height+1 {
-		return fmt.Errorf("invalid height: expected: %d, got: %d", app.lastCommittedState.Height+1, height)
+	if height != app.lastCommittedState.GetHeight()+1 {
+		return fmt.Errorf("invalid height: expected: %d, got: %d", app.lastCommittedState.GetHeight()+1, height)
 	}
 
 	// Committed round becomes new state
 	// Note it can be empty (eg. on initial height), but State.Copy() should handle it
-	err := app.roundStates[committedAppHash.String()].Copy(&app.lastCommittedState)
+	err := app.roundStates[committedAppHash.String()].Copy(app.lastCommittedState)
 	if err != nil {
 		return err
 	}
 
 	app.resetRoundStates()
-	saveState(app.lastCommittedState)
+	if err := app.lastCommittedState.Save(); err != nil {
+		return err
+	}
 	app.finalizedAppHash = nil
 
 	return nil
@@ -446,22 +341,22 @@ func (app *Application) resetRoundStates() {
 func (app *Application) handleProposal(height int64, txs [][]byte) (State, []*types.ExecTxResult, error) {
 	roundState, err := app.newRound(height)
 	if err != nil {
-		return State{}, nil, err
+		return nil, nil, err
 	}
 
 	// execute block
 	txResults := make([]*types.ExecTxResult, len(txs))
 	for i, tx := range txs {
-		txResults[i] = app.handleTx(&roundState, tx)
+		txResults[i] = app.handleTx(roundState, tx)
 	}
 
 	// Don't update AppHash at genesis height
-	if roundState.Height != app.initialHeight {
-		if err = roundState.updateAppHash(app.lastCommittedState.AppHash, txResults); err != nil {
-			return State{}, nil, fmt.Errorf("update apphash: %w", err)
+	if roundState.GetHeight() != app.initialHeight {
+		if err = roundState.UpdateAppHash(app.lastCommittedState, txs, txResults); err != nil {
+			return nil, nil, fmt.Errorf("update apphash: %w", err)
 		}
 	}
-	app.roundStates[roundState.AppHash.String()] = roundState
+	app.roundStates[roundState.GetAppHash().String()] = roundState
 
 	return roundState, txResults, nil
 }
@@ -531,7 +426,7 @@ func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) []*
 }
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
-func (app *Application) handleTx(roundState *State, tx []byte) *types.ExecTxResult {
+func (app *Application) handleTx(roundState State, tx []byte) *types.ExecTxResult {
 	if isPrepareTx(tx) {
 		return app.execPrepareTx(tx)
 	}
@@ -544,7 +439,7 @@ func (app *Application) handleTx(roundState *State, tx []byte) *types.ExecTxResu
 		key, value = string(tx), string(tx)
 	}
 
-	err := roundState.db.Set(prefixKey([]byte(key)), []byte(value))
+	err := roundState.Set(prefixKey([]byte(key)), []byte(value))
 	if err != nil {
 		panic(err)
 	}
@@ -567,7 +462,7 @@ func (app *Application) handleTx(roundState *State, tx []byte) *types.ExecTxResu
 func (app *Application) getActiveValidatorSetUpdates() types.ValidatorSetUpdate {
 	var closestHeight int64
 	for height := range app.validatorSetUpdates {
-		if height > closestHeight && height <= app.lastCommittedState.Height {
+		if height > closestHeight && height <= app.lastCommittedState.GetHeight() {
 			closestHeight = height
 		}
 	}

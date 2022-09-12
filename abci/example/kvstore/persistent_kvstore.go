@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"context"
+	"fmt"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -22,10 +23,13 @@ func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *Persisten
 	if err != nil {
 		panic(err)
 	}
-
+	state := NewKvState(db)
+	if err := state.Load(); err != nil {
+		panic(fmt.Sprintf("cannot load state: %s", err))
+	}
 	return &PersistentKVStoreApplication{
 		Application: &Application{
-			lastCommittedState:  loadState(db),
+			lastCommittedState:  state,
 			roundStates:         make(map[string]State),
 			logger:              logger,
 			validatorSetUpdates: make(map[int64]types.ValidatorSetUpdate),
