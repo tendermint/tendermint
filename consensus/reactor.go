@@ -877,28 +877,43 @@ func (conR *Reactor) peerStatsRoutine() {
 		}
 
 		select {
-		case msg := <-conR.conS.statsMsgQueue:
-			// Get peer
-			peer := conR.Switch.Peers().Get(msg.PeerID)
-			if peer == nil {
-				conR.Logger.Debug("Attempt to update stats for non-existent peer",
-					"peer", msg.PeerID)
-				continue
-			}
-			// Get peer state
-			ps, ok := peer.Get(types.PeerStateKey).(*PeerState)
-			if !ok {
-				panic(fmt.Sprintf("Peer %v has no state", peer))
-			}
-			switch msg.Msg.(type) {
-			case *VoteMessage:
-				if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
-					conR.Switch.MarkPeerAsGood(peer)
+		case mInterface := <-conR.conS.peerInfoQueue:
+			switch msg := mInterface.(type) {
+			case msgInfo:
+				// Get peer
+				peer := conR.Switch.Peers().Get(msg.PeerID)
+				if peer == nil {
+					conR.Logger.Debug("Attempt to update stats for non-existent peer",
+						"peer", msg.PeerID)
+					continue
 				}
-			case *BlockPartMessage:
-				if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
-					conR.Switch.MarkPeerAsGood(peer)
+				// Get peer state
+				ps, ok := peer.Get(types.PeerStateKey).(*PeerState)
+				if !ok {
+					panic(fmt.Sprintf("Peer %v has no state", peer))
 				}
+				switch msg.Msg.(type) {
+				case *VoteMessage:
+					if numVotes := ps.RecordVote(); numVotes%votesToContributeToBecomeGoodPeer == 0 {
+						conR.Switch.MarkPeerAsGood(peer)
+					}
+				case *BlockPartMessage:
+					if numParts := ps.RecordBlockPart(); numParts%blocksToContributeToBecomeGoodPeer == 0 {
+						conR.Switch.MarkPeerAsGood(peer)
+					}
+				}
+
+			case badPeerInfo:
+				err, peerID := msg.Error, msg.PeerID
+				peer := conR.Switch.Peers().Get(peerID)
+				if peer == nil {
+					conR.Logger.Debug("Attempt to remove non-existent peer",
+						"peer", peerID)
+					continue
+				}
+				// XXX: does this block? should we run this in its own go-routine
+				// to be safe?
+				conR.Switch.StopPeerForError(peer, err)
 			}
 		case <-conR.conS.Quit():
 			return

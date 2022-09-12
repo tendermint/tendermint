@@ -48,6 +48,12 @@ type msgInfo struct {
 	PeerID p2p.ID  `json:"peer_key"`
 }
 
+// indicate to the reactor that a peer should be removed
+type badPeerInfo struct {
+	Error  error  `json:"error"`
+	PeerID p2p.ID `json:"peer_key"`
+}
+
 // internally generated messages which may update the state
 type timeoutInfo struct {
 	Duration time.Duration         `json:"duration"`
@@ -109,9 +115,10 @@ type State struct {
 	internalMsgQueue chan msgInfo
 	timeoutTicker    TimeoutTicker
 
-	// information about about added votes and block parts are written on this channel
+	// information about added votes and block parts, and bad peers, are written on this channel
 	// so statistics can be computed by reactor
-	statsMsgQueue chan msgInfo
+	// Takes a `msgInfo` or a `badPeerInfo`
+	peerInfoQueue chan interface{}
 
 	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
@@ -163,7 +170,7 @@ func NewState(
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
-		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
+		peerInfoQueue:    make(chan interface{}, msgQueueSize),
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
@@ -777,12 +784,16 @@ func (cs *State) receiveRoutine(maxSteps int) {
 					types.ErrVoteInvalidValidatorIndex,
 					types.ErrVoteInvalidValidatorAddress,
 					types.ErrVoteInvalidSignature:
-					//TODO: disconnect from peer. how best to do this ? options:
-					//  - give ConsensusState a reference to ConR or Switch or StopPeer func
-					//  - introduce new StopPeer event for reactor to listen for
-					//  - use the statsMsgQueue (or a new routine/channel)
+
+					// tell reactor to disconnect from peer
+					cs.peerInfoQueue <- badPeerInfo{
+						Error:  err,
+						PeerID: mi.PeerID,
+					}
 				default:
-					//nothing to do
+					// other errors don't necessarily mean the peer is bad,
+					// so there is nothing to do
+					// see https://github.com/tendermint/tendermint/issues/2871
 				}
 			}
 
@@ -861,7 +872,7 @@ func (cs *State) handleMsg(mi msgInfo) (err error) {
 			cs.handleCompleteProposal(msg.Height)
 		}
 		if added {
-			cs.statsMsgQueue <- mi
+			cs.peerInfoQueue <- mi
 		}
 
 		if err != nil && msg.Round != cs.Round {
@@ -880,7 +891,7 @@ func (cs *State) handleMsg(mi msgInfo) (err error) {
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		added, err = cs.tryAddVote(msg.Vote, peerID)
 		if added {
-			cs.statsMsgQueue <- mi
+			cs.peerInfoQueue <- mi
 		}
 
 		// if err == ErrAddingVote {
