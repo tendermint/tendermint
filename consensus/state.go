@@ -768,7 +768,31 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
-			cs.handleMsg(mi)
+			err := cs.handleMsg(mi)
+			if err != nil {
+				cs.Logger.Error(
+					"failed to process message",
+					"height", cs.Height,
+					"round", cs.Round,
+					"peer", peerID,
+					"msg_type", fmt.Sprintf("%T", msg),
+					"err", err,
+				)
+				// if error is due to misbehaviour, disconect from peer
+				// TODO: can we create some higher order type to collect these errors in?
+				switch err {
+				case ErrInvalidProposalSignature,
+					types.ErrVoteInvalidValidatorIndex,
+					types.ErrVoteInvalidValidatorAddress,
+					types.ErrVoteInvalidSignature:
+					//TODO: disconnect from peer. how best to do this ? options:
+					//  - give ConsensusState a reference to ConR or Switch or StopPeer func
+					//  - introduce new StopPeer event for reactor to listen for
+					//  - use the statsMsgQueue (or a new routine/channel)
+				default:
+					//nothing to do
+				}
+			}
 
 		case mi = <-cs.internalMsgQueue:
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
@@ -788,7 +812,18 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			}
 
 			// handles proposals, block parts, votes
-			cs.handleMsg(mi)
+			err := cs.handleMsg(mi)
+			if err != nil {
+				// TODO: why are we erroring on our own messages?
+				// should we panic ?
+				cs.Logger.Error(
+					"failed to process internal message",
+					"height", cs.Height,
+					"round", cs.Round,
+					"msg_type", fmt.Sprintf("%T", msg),
+					"err", err,
+				)
+			}
 
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
 			if err := cs.wal.Write(ti); err != nil {
@@ -807,13 +842,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 }
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
-func (cs *State) handleMsg(mi msgInfo) {
+func (cs *State) handleMsg(mi msgInfo) error {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	var (
-		added bool
-		err   error
-	)
 
 	msg, peerID := mi.Msg, mi.PeerID
 
@@ -821,11 +852,11 @@ func (cs *State) handleMsg(mi msgInfo) {
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
-		err = cs.setProposal(msg.Proposal)
+		return cs.setProposal(msg.Proposal)
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		added, err = cs.addProposalBlockPart(msg, peerID)
+		added, err := cs.addProposalBlockPart(msg, peerID)
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
 		// Previously, this code held the lock from the point at which the final block
@@ -857,11 +888,12 @@ func (cs *State) handleMsg(mi msgInfo) {
 			)
 			err = nil
 		}
+		return err
 
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		added, err = cs.tryAddVote(msg.Vote, peerID)
+		added, err := cs.tryAddVote(msg.Vote, peerID)
 		if added {
 			cs.statsMsgQueue <- mi
 		}
@@ -880,21 +912,11 @@ func (cs *State) handleMsg(mi msgInfo) {
 		// TODO: If rs.Height == vote.Height && rs.Round < vote.Round,
 		// the peer is sending us CatchupCommit precommits.
 		// We could make note of this and help filter in broadcastHasVoteMessage().
+		return err
 
 	default:
 		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
-		return
-	}
-
-	if err != nil {
-		cs.Logger.Error(
-			"failed to process message",
-			"height", cs.Height,
-			"round", cs.Round,
-			"peer", peerID,
-			"msg_type", fmt.Sprintf("%T", msg),
-			"err", err,
-		)
+		return nil
 	}
 }
 
@@ -1892,9 +1914,9 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	return nil
 }
 
-// NOTE: block is not necessarily valid.
-// Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
-// once we have the full block.
+// Once we have the full block, this will asynchronously trigger either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
+// NOTE: block is not necessarily valid. Invalid block means a bad proposer, which
+// we can't punish at the peer layer (could be punished by consensus)
 func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
@@ -1922,6 +1944,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
+		// TODO: can we punish for these or is there a reason they might accidentaly happen?
 		if errors.Is(err, types.ErrPartSetInvalidProof) || errors.Is(err, types.ErrPartSetUnexpectedIndex) {
 			cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
 		}
