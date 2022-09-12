@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/types"
@@ -17,6 +18,8 @@ import (
 
 type State interface {
 	dbm.DB
+	json.Marshaler
+	json.Unmarshaler
 
 	Save(to io.Writer) error
 	Load(from io.Reader) error
@@ -65,10 +68,7 @@ func (state kvState) Copy(destination State) error {
 	return nil
 }
 
-func copyDB(src dbm.DB, dst dbm.DB) error {
-	dstBatch := dst.NewBatch()
-	defer dstBatch.Close()
-
+func resetDB(dst dbm.DB, batch db.Batch) error {
 	// cleanup dest DB first
 	dstIter, err := dst.Iterator(nil, nil)
 	if err != nil {
@@ -83,7 +83,17 @@ func copyDB(src dbm.DB, dst dbm.DB) error {
 		dstIter.Next()
 	}
 	for _, key := range keys {
-		_ = dstBatch.Delete(key) // ignore errors
+		_ = batch.Delete(key) // ignore errors
+	}
+
+	return nil
+}
+func copyDB(src dbm.DB, dst dbm.DB) error {
+	dstBatch := dst.NewBatch()
+	defer dstBatch.Close()
+
+	if err := resetDB(dst, dstBatch); err != nil {
+		return err
 	}
 
 	// write source to dest
@@ -177,6 +187,69 @@ func (state kvState) Save(to io.Writer) error {
 
 	return nil
 }
+func (state kvState) Import(height uint64, jsonBytes []byte) error {
+	return fmt.Errorf("not implemented")
+}
+
+type ExportItem struct {
+	Key   []byte `json:"key"`
+	Value []byte `json:"value"`
+}
+
+type StateExport struct {
+	Items   []ExportItem     `json:"items"`
+	Height  int64            `json:"height"`
+	AppHash tmbytes.HexBytes `json:"app_hash"`
+}
+
+// MarshalJSON implements json.Marshaler
+func (state kvState) MarshalJSON() ([]byte, error) {
+	iter, err := state.DB.Iterator(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer iter.Close()
+
+	export := StateExport{
+		Height:  state.GetHeight(),
+		AppHash: state.GetAppHash(),
+	}
+
+	for iter.Valid() {
+		export.Items = append(export.Items, ExportItem{
+			Key:   iter.Key(),
+			Value: iter.Value(),
+		})
+		iter.Next()
+	}
+	return json.Marshal(&export)
+}
+
+func (state *kvState) UnmarshalJSON(data []byte) error {
+
+	export := StateExport{}
+	if err := json.Unmarshal(data, &export); err != nil {
+		return err
+	}
+
+	state.Height = export.Height
+	state.AppHash = export.AppHash
+
+	batch := state.DB.NewBatch()
+	defer batch.Close()
+
+	if err := resetDB(state.DB, batch); err != nil {
+		return err
+	}
+
+	for _, item := range export.Items {
+		if err := batch.Set(item.Key, item.Value); err != nil {
+			return err
+		}
+	}
+
+	return batch.Write()
+}
 
 func (state *kvState) Close() error {
 	if state.DB != nil {
@@ -187,15 +260,30 @@ func (state *kvState) Close() error {
 
 // StateReader is a wrapper around dbm.DB that provides io.Reader to read a state.
 // Note that you should create a new StateReaderWriter each time you use it.
-type StateReaderWriter struct {
+type dbReaderWriter struct {
 	dbm.DB
 	data *bytes.Buffer
+	key  []byte
 }
 
+func NewDBStateStore(db dbm.DB) io.ReadWriteCloser {
+	return &dbReaderWriter{
+		DB:  db,
+		key: []byte(stateKey),
+	}
+}
+
+// func NewDBSnapshotStore(db dbm.DB) io.ReadWriteCloser {
+// 	return &dbReaderWriter{
+// 		DB:  db,
+// 		key: []byte(snapshotKey),
+// 	}
+// }
+
 // Read implements io.Reader
-func (w *StateReaderWriter) Read(p []byte) (n int, err error) {
+func (w *dbReaderWriter) Read(p []byte) (n int, err error) {
 	if w.data == nil {
-		data, err := w.DB.Get(stateKey)
+		data, err := w.DB.Get(w.key)
 		if err != nil {
 			return 0, err
 		}
@@ -206,13 +294,13 @@ func (w *StateReaderWriter) Read(p []byte) (n int, err error) {
 }
 
 // Write implements io.Writer
-func (w *StateReaderWriter) Write(p []byte) (int, error) {
-	if err := w.DB.Set(stateKey, p); err != nil {
+func (w *dbReaderWriter) Write(p []byte) (int, error) {
+	if err := w.DB.Set(w.key, p); err != nil {
 		return 0, err
 	}
 	return len(p), nil
 }
 
-func (w *StateReaderWriter) Close() error {
+func (w *dbReaderWriter) Close() error {
 	return w.DB.Close()
 }

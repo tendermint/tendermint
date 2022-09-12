@@ -21,7 +21,8 @@ import (
 )
 
 var (
-	stateKey        = []byte("stateKey")
+	stateKey        = "stateKey"
+	snapshotKey     = "stateSnapshotKey"
 	kvPairPrefixKey = []byte("kvPairKey:")
 
 	ProtocolVersion uint64 = 0x1
@@ -92,7 +93,7 @@ func WithStateStore(stateStore io.ReadWriteCloser, interval int64) func(app *App
 func NewApplication(opts ...func(app *Application)) *Application {
 	db := dbm.NewMemDB()
 	state := NewKvState(db)
-	stateStore := &StateReaderWriter{DB: db}
+	stateStore := NewDBStateStore(db)
 
 	app := &Application{
 		logger:              log.NewNopLogger(),

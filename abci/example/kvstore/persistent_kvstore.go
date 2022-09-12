@@ -23,7 +23,7 @@ func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *Persisten
 	if err != nil {
 		panic(fmt.Errorf("cannot open app state store: %w", err))
 	}
-	stateStore := &StateReaderWriter{DB: db}
+	stateStore := NewDBStateStore(db)
 
 	app := NewApplication(
 		WithLogger(logger),
