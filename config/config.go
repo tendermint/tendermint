@@ -319,7 +319,9 @@ func (cfg BaseConfig) DBDir() string {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
-	if !semverRegexp.MatchString(cfg.Version) {
+	// version on old config files aren't set so we can't expect it
+	// always to exist
+	if cfg.Version != "" && !semverRegexp.MatchString(cfg.Version) {
 		return fmt.Errorf("invalid version string: %s", cfg.Version)
 	}
 
