@@ -78,7 +78,7 @@ This phase covers speculative, wide-reaching proposals that are poorly defined a
 
 ## Status
 
-Accepted
+Proposed
 
 ## Consequences
 
