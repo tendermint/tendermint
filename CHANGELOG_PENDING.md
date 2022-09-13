@@ -1,5 +1,27 @@
 # Unreleased Changes
 
+## v0.38.0
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+
+- Blockchain Protocol
+
+### FEATURES
+
+### IMPROVEMENTS
+
+- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+
+### BUG FIXES
+
 ## v0.37.0
 
 Special thanks to external contributors on this release:
@@ -46,7 +68,6 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [proto] \#9356 Migrate from `gogo/protobuf` to `cosmos/gogoproto` (@julienrbrt)
 - [rpc] \#9276 Added `header` and `header_by_hash` queries to the RPC client (@samricotta)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
-- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 
 ### BUG FIXES
 
