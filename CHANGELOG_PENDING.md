@@ -1,5 +1,27 @@
 # Unreleased Changes
 
+## v0.38.0
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+
+- Blockchain Protocol
+
+### FEATURES
+
+### IMPROVEMENTS
+
+- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+
+### BUG FIXES
+
 ## v0.37.0
 
 Special thanks to external contributors on this release:
