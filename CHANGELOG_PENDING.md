@@ -16,6 +16,8 @@
 
 ### FEATURES
 
+- [rpc] support https inside websocket (@RiccardoM, @cmwaters)
+
 ### IMPROVEMENTS
 
 ### BUG FIXES
