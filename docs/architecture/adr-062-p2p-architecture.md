@@ -577,7 +577,9 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates *p2p.Pee
 
 ## Status
 
-Partially implemented ([#5670](https://github.com/tendermint/tendermint/issues/5670))
+Proposed
+
+Was partially implemented in v0.35 ([#5670](https://github.com/tendermint/tendermint/issues/5670))
 
 ## Consequences
 

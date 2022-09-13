@@ -1,3 +1,6 @@
+gen_query_parser:
+	go generate .
+
 fuzzy_test:
 	go get -u -v github.com/dvyukov/go-fuzz/go-fuzz
 	go get -u -v github.com/dvyukov/go-fuzz/go-fuzz-build

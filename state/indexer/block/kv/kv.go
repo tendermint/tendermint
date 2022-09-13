@@ -13,6 +13,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/libs/pubsub/query/syntax"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
 )
@@ -91,10 +92,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	default:
 	}
 
-	conditions, err := q.Conditions()
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse query conditions: %w", err)
-	}
+	conditions := q.Syntax()
 
 	// If there is an exact height query, return the result immediately
 	// (if it exists).
@@ -158,7 +156,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 			continue
 		}
 
-		startKey, err := orderedcode.Append(nil, c.CompositeKey, fmt.Sprintf("%v", c.Operand))
+		startKey, err := orderedcode.Append(nil, c.Tag, c.Arg.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +324,7 @@ LOOP:
 // matched.
 func (idx *BlockerIndexer) match(
 	ctx context.Context,
-	c query.Condition,
+	c syntax.Condition,
 	startKeyBz []byte,
 	filteredHeights map[string][]byte,
 	firstRun bool,
@@ -341,7 +339,7 @@ func (idx *BlockerIndexer) match(
 	tmpHeights := make(map[string][]byte)
 
 	switch {
-	case c.Op == query.OpEqual:
+	case c.Op == syntax.TEq:
 		it, err := dbm.IteratePrefix(idx.store, startKeyBz)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create prefix iterator: %w", err)
@@ -360,8 +358,8 @@ func (idx *BlockerIndexer) match(
 			return nil, err
 		}
 
-	case c.Op == query.OpExists:
-		prefix, err := orderedcode.Append(nil, c.CompositeKey)
+	case c.Op == syntax.TExists:
+		prefix, err := orderedcode.Append(nil, c.Tag)
 		if err != nil {
 			return nil, err
 		}
@@ -387,8 +385,8 @@ func (idx *BlockerIndexer) match(
 			return nil, err
 		}
 
-	case c.Op == query.OpContains:
-		prefix, err := orderedcode.Append(nil, c.CompositeKey)
+	case c.Op == syntax.TContains:
+		prefix, err := orderedcode.Append(nil, c.Tag)
 		if err != nil {
 			return nil, err
 		}
@@ -405,7 +403,7 @@ func (idx *BlockerIndexer) match(
 				continue
 			}
 
-			if strings.Contains(eventValue, c.Operand.(string)) {
+			if strings.Contains(eventValue, c.Arg.Value()) {
 				tmpHeights[string(it.Value())] = it.Value()
 			}
 
