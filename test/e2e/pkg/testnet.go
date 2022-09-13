@@ -105,6 +105,11 @@ func LoadTestnet(file string) (*Testnet, error) {
 	if err != nil {
 		return nil, err
 	}
+	return NewTestnetFromManifest(manifest, file)
+}
+
+// NewTestnetFromManifest creates and validates a testnet from a manifest
+func NewTestnetFromManifest(manifest Manifest, file string) (*Testnet, error) {
 	dir := strings.TrimSuffix(file, filepath.Ext(file))
 
 	// Set up resource generators. These must be deterministic.

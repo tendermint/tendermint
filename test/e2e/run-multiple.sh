@@ -19,7 +19,7 @@ FAILED=()
 
 for MANIFEST in "$@"; do
 	START=$SECONDS
-	echo "==> Running testnet $MANIFEST..."
+	echo "==> Running testnet: $MANIFEST"
 
 	if ! ./build/runner -f "$MANIFEST"; then
 		echo "==> Testnet $MANIFEST failed, dumping manifest..."

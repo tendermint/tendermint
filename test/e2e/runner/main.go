@@ -263,7 +263,7 @@ Does not run any perbutations.
 			}
 
 			chLoadResult := make(chan error)
-			ctx, loadCancel := context.WithCancel(context.Background())
+			ctx, loadCancel := context.WithCancel(cmd.Context())
 			defer loadCancel()
 			go func() {
 				err := Load(ctx, cli.testnet, 1)
@@ -282,7 +282,7 @@ Does not run any perbutations.
 			}
 
 			// we benchmark performance over the next 100 blocks
-			if err := Benchmark(cli.testnet, 100); err != nil {
+			if err := Benchmark(cmd.Context(), cli.testnet, 100); err != nil {
 				return err
 			}
 
