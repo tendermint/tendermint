@@ -15,6 +15,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	mpmocks "github.com/tendermint/tendermint/mempool/mocks"
 	"github.com/tendermint/tendermint/p2p"
@@ -42,7 +43,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 
 	return &types.GenesisDoc{
 		GenesisTime: tmtime.Now(),
-		ChainID:     config.ChainID(),
+		ChainID:     test.DefaultTestChainID,
 		Validators:  validators,
 	}, privValidators
 }
@@ -151,7 +152,7 @@ func newReactor(
 }
 
 func TestNoBlockResponse(t *testing.T) {
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	config = test.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
@@ -213,7 +214,7 @@ func TestNoBlockResponse(t *testing.T) {
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	config = test.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
