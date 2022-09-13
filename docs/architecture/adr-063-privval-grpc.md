@@ -91,8 +91,8 @@ The upgrade of [tmkms](https://github.com/iqlusioninc/tmkms) will be coordinated
 
 ## Status
 
-
-Implemented
+Accepted (tracked in
+[\#9256](https://github.com/tendermint/tendermint/issues/9256))
 
 ### Positive
 
