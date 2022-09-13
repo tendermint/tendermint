@@ -22,7 +22,7 @@ import (
 // Metrics are based of the `benchmarkLength`, the amount of consecutive blocks
 // sampled from in the testnet
 func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64) error {
-	block, _, err := waitForHeight(testnet, 0)
+	block, _, err := waitForHeight(ctx, testnet, 0)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func Benchmark(ctx context.Context, testnet *e2e.Testnet, benchmarkLength int64)
 	// wait for the length of the benchmark period in blocks to pass. We allow 5 seconds for each block
 	// which should be sufficient.
 	waitingTime := time.Duration(benchmarkLength*5) * time.Second
-	endHeight, err := waitForAllNodes(testnet, block.Height+benchmarkLength, waitingTime)
+	endHeight, err := waitForAllNodes(ctx, testnet, block.Height+benchmarkLength, waitingTime)
 	if err != nil {
 		return err
 	}
