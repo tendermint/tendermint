@@ -49,7 +49,7 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.2.1
 	github.com/btcsuite/btcd/btcutil v1.1.2
 	github.com/cosmos/gogoproto v1.4.1
-	github.com/gofrs/uuid v4.2.0+incompatible
+	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/vektra/mockery/v2 v2.14.0
 	gonum.org/v1/gonum v0.12.0
