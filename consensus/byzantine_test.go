@@ -35,6 +35,123 @@ import (
 //----------------------------------------------
 // byzantine failures
 
+// Peer sends an invalid vote and gets removed
+func TestStopBadPeerForError(t *testing.T) {
+	nValidators := 4
+	const byzantineNode = 0
+	const prevoteHeight = int64(2)
+
+	app := newKVStore
+	css, cleanup := randConsensusNet(nValidators, "consensus_byzantine_test", newMockTickerFunc(false), app)
+	defer cleanup()
+
+	// generate a second independent validator with its own genesis
+	css2, cleanup2 := randConsensusNet(3, "consensus_byzantine_test", newMockTickerFunc(false), app)
+	defer cleanup2()
+
+	// overwrite the first validator with the independent second one
+	// so that it will still sign votes but others wont recognize it so signatures will be invalid
+	// XXX: if we overwrite the 0th validator, the test hangs (?!)
+	css[3] = css2[0]
+
+	// initialize the reactors for each of the validators
+	reactors := make([]*Reactor, nValidators)
+	blocksSubs := make([]types.Subscription, 0)
+	eventBuses := make([]*types.EventBus, nValidators)
+	for i := 0; i < nValidators; i++ {
+		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
+		reactors[i].SetLogger(css[i].Logger)
+
+		// eventBus is already started with the cs
+		eventBuses[i] = css[i].eventBus
+		reactors[i].SetEventBus(eventBuses[i])
+
+		blocksSub, err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, 100)
+		require.NoError(t, err)
+		blocksSubs = append(blocksSubs, blocksSub)
+
+		if css[i].state.LastBlockHeight == 0 { // simulate handle initChain in handshake
+			err = css[i].blockExec.Store().Save(css[i].state)
+			require.NoError(t, err)
+		}
+	}
+	// make connected switches and start all reactors
+	p2p.MakeConnectedSwitches(config.P2P, nValidators, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("CONSENSUS", reactors[i])
+		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
+		return s
+	}, p2p.Connect2Switches)
+
+	// test fully connected
+	peerList := reactors[1].Switch.Peers().List()
+	initLength := len(peerList)
+	assert.Equal(t, initLength, nValidators-1)
+
+	// start the consensus reactors
+	for i := 0; i < nValidators; i++ {
+		s := reactors[i].conS.GetState()
+		reactors[i].SwitchToConsensus(s, false)
+	}
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	// wait till everyone makes the first new block
+	// (one of them already has)
+	wg := new(sync.WaitGroup)
+	for i := 0; i < nValidators-1; i++ {
+		wg.Add(1)
+		go func(j int) {
+			<-blocksSubs[j].Out()
+			wg.Done()
+		}(i)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	tick := time.NewTicker(time.Second * 10)
+	select {
+	case <-done:
+	case <-tick.C:
+		for i, reactor := range reactors {
+			t.Logf("Consensus Reactor %v", i)
+			t.Logf("%v", reactor)
+		}
+		t.Fatalf("Timed out waiting for all validators to commit first block")
+	}
+
+	// wait for peer to be removed
+	done2 := make(chan struct{})
+	go func() {
+		for {
+			peerList = reactors[1].Switch.Peers().List()
+			if len(peerList) == initLength {
+				time.Sleep(time.Second)
+				continue
+			}
+			close(done2)
+			return
+		}
+	}()
+
+	tick2 := time.NewTicker(time.Second * 10)
+	select {
+	case <-done2:
+	case <-tick2.C:
+		for i, reactor := range reactors {
+			t.Logf("Consensus Reactor %v", i)
+			t.Logf("%v", reactor)
+		}
+		t.Fatalf("Timed out waiting for peer to be removed")
+	}
+
+	// test we dropped a peer
+	peerList = reactors[1].Switch.Peers().List()
+	assert.Equal(t, len(peerList), initLength-1)
+}
+
 // Byzantine node sends two different prevotes (nil and blockID) to the same validator
 func TestByzantinePrevoteEquivocation(t *testing.T) {
 	const nValidators = 4

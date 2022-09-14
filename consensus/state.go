@@ -778,19 +778,18 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			err := cs.handleMsg(mi)
 			if err != nil {
 				// if error is due to misbehaviour, disconect from peer
-				// TODO: can we create some higher order type to collect these errors in?
-				switch err {
-				case ErrInvalidProposalSignature,
-					types.ErrVoteInvalidValidatorIndex,
-					types.ErrVoteInvalidValidatorAddress,
-					types.ErrVoteInvalidSignature:
+				// TODO: is there a cleaner way to do these checks?
+				if errors.Is(err, ErrInvalidProposalSignature) ||
+					errors.Is(err, types.ErrVoteInvalidSignature) ||
+					errors.Is(err, types.ErrVoteInvalidValidatorAddress) ||
+					errors.Is(err, types.ErrVoteInvalidValidatorIndex) {
 
 					// tell reactor to disconnect from peer
 					cs.peerInfoQueue <- badPeerInfo{
 						Error:  err,
 						PeerID: mi.PeerID,
 					}
-				default:
+				} else {
 					// other errors don't necessarily mean the peer is bad,
 					// so there is nothing to do
 					// see https://github.com/tendermint/tendermint/issues/2871
@@ -2071,7 +2070,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
 			cs.Logger.Info("failed attempting to add vote", "err", err)
-			return added, ErrAddingVote
+			//return added, ErrAddingVote
+			return added, err
 		}
 	}
 
