@@ -1,5 +1,5 @@
 // nolint: gosec
-package app
+package kvstore
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 const (
@@ -82,20 +83,22 @@ func (s *SnapshotStore) saveMetadata() error {
 }
 
 // Create creates a snapshot of the given application state's key/value pairs.
-func (s *SnapshotStore) Create(state *State) (abci.Snapshot, error) {
+func (s *SnapshotStore) Create(state State) (abci.Snapshot, error) {
 	s.Lock()
 	defer s.Unlock()
-	bz, err := state.Export()
+
+	bz, err := json.Marshal(state)
 	if err != nil {
 		return abci.Snapshot{}, err
 	}
+	height := state.GetHeight()
 	snapshot := abci.Snapshot{
-		Height: state.Height,
+		Height: uint64(height),
 		Format: 1,
-		Hash:   hashItems(state.Values, state.Height),
+		Hash:   crypto.Checksum(bz),
 		Chunks: byteChunks(bz),
 	}
-	err = os.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", state.Height)), bz, 0644)
+	err = os.WriteFile(filepath.Join(s.dir, fmt.Sprintf("%v.json", height)), bz, 0644)
 	if err != nil {
 		return abci.Snapshot{}, err
 	}

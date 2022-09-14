@@ -171,7 +171,7 @@ func TestABCIApp(t *testing.T) {
 	// get some info
 	info, err := m.ABCIInfo(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, `{"appHash":""}`, info.Response.GetData())
+	assert.Equal(t, `{"appHash":"0000000000000000000000000000000000000000000000000000000000000000"}`, info.Response.GetData())
 
 	// add a key
 	key, value := "foo", "bar"

@@ -330,6 +330,8 @@ title: Methods
         * A new or modified transaction is marked as `UNMODIFIED` or `REMOVED`.
         * An unmodified transaction is marked as `ADDED`.
         * A transaction is marked as `UNKNOWN`.
+    * `ResponsePrepareProposal.tx_results` contains only results of  `UNMODIFIED` and `ADDED` transactions.
+    `REMOVED` transactions are omitted. The length of `tx_results` can be different than the length of `tx_records`.
     * If Tendermint fails to validate the `ResponsePrepareProposal`, Tendermint will assume the application is faulty and crash.
     * The implementation of `PrepareProposal` can be non-deterministic.
 

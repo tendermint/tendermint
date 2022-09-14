@@ -165,7 +165,7 @@ func TestInfo(t *testing.T) {
 	resInfo, err := proxy.Info(ctx, &RequestInfo)
 	require.NoError(t, err)
 
-	require.Equal(t, `{"appHash":""}`, resInfo.Data, "Expected ResponseInfo with one element {\"appHash\":\"\"} but got something else")
+	require.Equal(t, `{"appHash":"0000000000000000000000000000000000000000000000000000000000000000"}`, resInfo.Data, "Expected ResponseInfo with one element {\"appHash\":\"\"} but got something else")
 }
 
 type noopStoppableClientImpl struct {

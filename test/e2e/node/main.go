@@ -168,7 +168,7 @@ func startRemoteSigner(ctx context.Context, cfg *Config, logger log.Logger) erro
 
 // startApp starts the application server, listening for connections from Tendermint.
 func startApp(ctx context.Context, logger log.Logger, cfg *Config) error {
-	app, err := app.NewApplication(cfg.App())
+	app, err := app.NewApplication(*cfg.App())
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func startApp(ctx context.Context, logger log.Logger, cfg *Config) error {
 //
 // FIXME There is no way to simply load the configuration from a file, so we need to pull in Viper.
 func startNode(ctx context.Context, cfg *Config) error {
-	app, err := app.NewApplication(cfg.App())
+	app, err := app.NewApplication(*cfg.App())
 	if err != nil {
 		return err
 	}

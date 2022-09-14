@@ -25,9 +25,11 @@ func NewPersistentKVStoreApplication(logger log.Logger, dbDir string) *Persisten
 	}
 	stateStore := NewDBStateStore(db)
 
+	cfg := DefaultConfig(dbDir)
 	app := NewApplication(
 		WithLogger(logger),
-		WithStateStore(stateStore, 1),
+		WithStateStore(stateStore),
+		WithConfig(cfg),
 	)
 
 	return &PersistentKVStoreApplication{

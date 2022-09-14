@@ -1,7 +1,6 @@
 package kvstore
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,7 +30,7 @@ type State interface {
 	NextHeightState(db dbm.DB) (State, error)
 
 	GetAppHash() tmbytes.HexBytes
-	UpdateAppHash(lastCommittedState State, txs [][]byte, txResults []*types.ExecTxResult) error
+	UpdateAppHash(lastCommittedState State, txs []*types.TxRecord, txResults []*types.ExecTxResult) error
 }
 
 type kvState struct {
@@ -142,7 +141,7 @@ func (state kvState) GetAppHash() tmbytes.HexBytes {
 	return state.AppHash.Copy()
 }
 
-func (state *kvState) UpdateAppHash(lastCommittedState State, txs [][]byte, txResults []*types.ExecTxResult) error {
+func (state *kvState) UpdateAppHash(lastCommittedState State, txs []*types.TxRecord, txResults []*types.ExecTxResult) error {
 	// UpdateAppHash updates app hash for the current app state.
 	txResultsHash, err := types.TxResultsHash(txResults)
 	if err != nil {
@@ -256,51 +255,4 @@ func (state *kvState) Close() error {
 		return state.DB.Close()
 	}
 	return nil
-}
-
-// StateReader is a wrapper around dbm.DB that provides io.Reader to read a state.
-// Note that you should create a new StateReaderWriter each time you use it.
-type dbReaderWriter struct {
-	dbm.DB
-	data *bytes.Buffer
-	key  []byte
-}
-
-func NewDBStateStore(db dbm.DB) io.ReadWriteCloser {
-	return &dbReaderWriter{
-		DB:  db,
-		key: []byte(stateKey),
-	}
-}
-
-// func NewDBSnapshotStore(db dbm.DB) io.ReadWriteCloser {
-// 	return &dbReaderWriter{
-// 		DB:  db,
-// 		key: []byte(snapshotKey),
-// 	}
-// }
-
-// Read implements io.Reader
-func (w *dbReaderWriter) Read(p []byte) (n int, err error) {
-	if w.data == nil {
-		data, err := w.DB.Get(w.key)
-		if err != nil {
-			return 0, err
-		}
-		w.data = bytes.NewBuffer(data)
-	}
-
-	return w.data.Read(p)
-}
-
-// Write implements io.Writer
-func (w *dbReaderWriter) Write(p []byte) (int, error) {
-	if err := w.DB.Set(w.key, p); err != nil {
-		return 0, err
-	}
-	return len(p), nil
-}
-
-func (w *dbReaderWriter) Close() error {
-	return w.DB.Close()
 }

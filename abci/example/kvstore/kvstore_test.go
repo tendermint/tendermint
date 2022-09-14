@@ -33,15 +33,19 @@ func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []
 	require.Equal(t, 1, len(respPrep.TxResults))
 	require.False(t, respPrep.TxResults[0].IsErr())
 
-	reqFin := &types.RequestFinalizeBlock{Txs: [][]byte{tx}, AppHash: respPrep.AppHash}
+	reqFin := &types.RequestFinalizeBlock{
+		Txs:     [][]byte{tx},
+		AppHash: respPrep.AppHash,
+		Height:  height,
+	}
 	respFin, err := app.FinalizeBlock(ctx, reqFin)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(respFin.Events))
+	require.Equal(t, 1, len(respFin.Events))
 
 	// repeating tx doesn't raise error
 	respFin, err = app.FinalizeBlock(ctx, reqFin)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(respFin.Events))
+	require.Equal(t, 1, len(respFin.Events))
 
 	// commit
 	_, err = app.Commit(ctx)
@@ -193,7 +197,7 @@ func makeApplyBlock(
 		AppHash: respProcessProposal.AppHash,
 	})
 	require.NoError(t, err)
-	require.Len(t, resFinalizeBlock.Events, 0)
+	require.Len(t, resFinalizeBlock.Events, 1)
 
 	_, err = kvstore.Commit(ctx)
 	require.NoError(t, err)
@@ -268,7 +272,7 @@ func TestClientServer(t *testing.T) {
 	logger := log.NewTestingLogger(t)
 
 	// set up socket app
-	kvstore := NewApplication()
+	kvstore := NewApplication(WithLogger(logger.With("module", "app")))
 	client, server, err := makeSocketClientServer(ctx, t, logger, kvstore, "kvstore-socket")
 	require.NoError(t, err)
 	t.Cleanup(func() { cancel(); server.Wait() })
@@ -312,19 +316,21 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, height
 	ar, err := app.FinalizeBlock(ctx, &types.RequestFinalizeBlock{
 		Txs:     [][]byte{tx},
 		AppHash: rpp.AppHash,
+		Height:  height,
 	})
 	require.NoError(t, err)
 	require.Zero(t, ar.RetainHeight)
-	require.Empty(t, ar.Events)
+	require.Len(t, ar.Events, 1)
 
 	// repeating FinalizeBlock doesn't raise error
 	ar, err = app.FinalizeBlock(ctx, &types.RequestFinalizeBlock{
 		Txs:     [][]byte{tx},
 		AppHash: rpp.AppHash,
+		Height:  height,
 	})
 	require.NoError(t, err)
 	assert.Zero(t, ar.RetainHeight)
-	assert.Empty(t, ar.Events)
+	assert.Len(t, ar.Events, 1)
 
 	// commit
 	_, err = app.Commit(ctx)

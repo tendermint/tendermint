@@ -7,7 +7,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/tendermint/tendermint/test/e2e/app"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 )
 
 // Config is the application configuration.
@@ -34,8 +34,8 @@ type Config struct {
 }
 
 // App extracts out the application specific configuration parameters
-func (cfg *Config) App() *app.Config {
-	return &app.Config{
+func (cfg *Config) App() *kvstore.Config {
+	return &kvstore.Config{
 		Dir:              cfg.Dir,
 		SnapshotInterval: cfg.SnapshotInterval,
 		RetainBlocks:     cfg.RetainBlocks,

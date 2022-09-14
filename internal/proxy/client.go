@@ -31,7 +31,7 @@ func ClientFactory(logger log.Logger, addr, transport, dbDir string) (abciclient
 		app := kvstore.NewPersistentKVStoreApplication(logger, dbDir)
 		return abciclient.NewLocalClient(logger, app), app, nil
 	case "e2e":
-		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))
+		app, err := e2e.NewApplication(kvstore.DefaultConfig(dbDir))
 		if err != nil {
 			return nil, noopCloser{}, err
 		}
