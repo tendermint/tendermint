@@ -336,6 +336,17 @@ removal of the old APIs mentioned in [implications](#implications).
 This also means we could potentially release this as a non-breaking change (i.e.
 in a patch release).
 
+## Follow-Up Work
+
+If implemented, we should consider releasing our own RPC companion server with
+easy deployment instructions for people to test it out and compare the
+performance with directly connecting to the Tendermint node.
+
+This RPC companion server could easily implement an interface like that outlined
+in [ADR-075](adr-075), providing the same HTTP- and cursor-based subscription
+mechanism, but storing data to and pulling data from a different database (e.g.
+PostgreSQL).
+
 ## Consequences
 
 ### Positive
