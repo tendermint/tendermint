@@ -56,11 +56,40 @@ Specifically, this mechanism would initially publish:
 
 ## Alternative Approaches
 
-One clear alternative to this would be the approach outlined in [ADR
-075][adr-075]. This approach still unfortunately leaves Tendermint responsible
-for maintaining a query interface and event indexing functionality, increasing
-the long-term maintenance burden of, and the possibility of feature sprawl in,
-that subsystem.
+1. One clear alternative to this would be the approach outlined in [ADR
+   075][adr-075]. This approach:
+
+   1. Still leaves Tendermint responsible for maintaining a query interface and
+      event indexing functionality, increasing the long-term maintenance burden of,
+      and the possibility of feature sprawl in, that subsystem. To overcome this,
+      we could remove the query interface altogether and just always publish all
+      data.
+   2. Only keeps track of a sliding window of events (and does so in-memory), and
+      so does not provide reliable guaranteed delivery of this data. Even just
+      persisting this data will not solve this problem: if we prioritize
+      continued operation of the node over guaranteed delivery of this data, we
+      may eventually run out of disk storage. So here we would need to persist the
+      data _and_ we would need to panic if the sliding window of events fills up.
+   3. Allows for multiple consumers. While desirable from typical web services,
+      Tendermint is a consensus engine and, as such, we should prioritize consensus
+      over providing similar guarantees to a scalable RPC interface (especially
+      since we know this does not scale, and if such a job could just be
+      outsourced). If we have a single consumer, we can easily automatically prune
+      data that was already sent. We could overcome this by limiting the API to a
+      single consumer and single event window.
+
+   Making the requisite modifications to ADR-075 basically converges on the
+   solution outlined in this ADR, except that ADR-075 publishes data via JSON over
+   HTTP while this solution proposes gRPC.
+
+2. We could pick a database that provides real-time notifications of inserts to
+   consumers and just dump the requisite data into that database. Consumers
+   would then need to connect to that database, listen for updates, and then
+   transform/process the data as needed.
+
+   This approach could also inevitably lead to feature sprawl in people wanting
+   us to support multiple different databases. It is also not clear which
+   database would be the best option here.
 
 ## Decision
 
