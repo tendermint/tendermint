@@ -61,7 +61,7 @@ type BlockCommitExecParams struct {
 	EventBus         types.BlockEventPublisher
 	InitialHeight    int64
 	FinalReplayBlock bool
-	Validator        tmproto.ValidatorParams
+	Validator        types.ValidatorParams
 }
 
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
@@ -683,7 +683,7 @@ func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64, state State) (ui
 // validateAndConvertValidatorUpdates validate the validator updates and convert to tendermint types.
 func validateAndConvertValidatorUpdates(
 	validatorUpdates []abci.ValidatorUpdate,
-	validator tmproto.ValidatorParams,
+	validator types.ValidatorParams,
 ) ([]*types.Validator, error) {
 	if err := validateValidatorUpdates(validatorUpdates, validator); err != nil {
 		return nil, fmt.Errorf("error in validator updates: %v", err)
