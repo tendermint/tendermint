@@ -62,7 +62,7 @@ func setupReactors(ctx context.Context, t *testing.T, logger log.Logger, numNode
 	rts.mempoolChannels = rts.network.MakeChannelsNoCleanup(ctx, t, chDesc)
 
 	for nodeID := range rts.network.Nodes {
-		rts.kvstores[nodeID] = kvstore.NewApplication()
+		rts.kvstores[nodeID] = kvstore.NewApplication(kvstore.WithLogger(logger.With("module", "kvstore")))
 
 		client := abciclient.NewLocalClient(logger, rts.kvstores[nodeID])
 		require.NoError(t, client.Start(ctx))
@@ -201,7 +201,7 @@ func TestReactorBroadcastTxs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := log.NewNopLogger()
+	logger := log.NewTestingLogger(t)
 
 	rts := setupReactors(ctx, t, logger, numNodes, uint(numTxs))
 

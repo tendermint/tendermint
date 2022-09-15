@@ -30,8 +30,7 @@ const (
 	storeKey        = "stateStoreKey"
 	kvPairPrefixKey = "kvPairKey:"
 
-	voteExtensionMaxVal int64  = 128
-	voteExtensionKey    string = "extensionSum"
+	voteExtensionMaxVal int64 = 128
 
 	ProtocolVersion uint64 = 0x1
 )
@@ -222,6 +221,10 @@ func (app *Application) InitChain(_ context.Context, req *abci.RequestInitChain)
 func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
+
+	if req.MaxTxBytes <= 0 {
+		return &abci.ResponsePrepareProposal{}, fmt.Errorf("MaxTxBytes must be positive, got: %d", req.MaxTxBytes)
+	}
 
 	txRecords, err := app.processor.PrepareTxs(*req)
 	if err != nil {
@@ -457,7 +460,7 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 	// next height.
 	lastHeight := app.lastCommittedState.GetHeight()
 	if lastHeight == 0 {
-		lastHeight = app.initialHeight
+		lastHeight = app.initialHeight - 1
 	}
 	if req.Height != lastHeight+1 {
 		app.logger.Error(
@@ -622,6 +625,7 @@ func (app *Application) Query(_ context.Context, reqQuery *abci.RequestQuery) (*
 
 		if value == nil {
 			resQuery.Log = "does not exist"
+			resQuery.Code = code.CodeTypeNotFound
 		} else {
 			resQuery.Log = "exists"
 		}
@@ -642,6 +646,7 @@ func (app *Application) Query(_ context.Context, reqQuery *abci.RequestQuery) (*
 
 	if value == nil {
 		resQuery.Log = "does not exist"
+		resQuery.Code = code.CodeTypeNotFound
 	} else {
 		resQuery.Log = "exists"
 	}

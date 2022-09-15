@@ -16,6 +16,7 @@ import (
 	"github.com/dashevo/dashd-go/btcjson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/privval"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -343,7 +344,7 @@ func TestClientMethodCalls(t *testing.T) {
 				require.NoError(t, err)
 				require.True(t, bres.TxResult.IsOK())
 				txh := bres.Height
-				apph := txh + 1 // this is where the tx will be applied to the state
+				apph := txh // this is where the tx will be applied to the state
 
 				// wait before querying
 				err = client.WaitForHeight(ctx, c, apph, nil)
@@ -367,7 +368,8 @@ func TestClientMethodCalls(t *testing.T) {
 				block, err := c.Block(ctx, &apph)
 				require.NoError(t, err)
 				appHash := block.Block.Header.AppHash
-				assert.True(t, len(appHash) > 0)
+				assert.NotEmpty(t, appHash)
+				assert.Contains(t, block.Block.Txs, types.Tx(tx))
 				assert.EqualValues(t, apph, block.Block.Header.Height)
 
 				blockByHash, err := c.BlockByHash(ctx, block.BlockID.Hash)
@@ -387,7 +389,8 @@ func TestClientMethodCalls(t *testing.T) {
 				blockResults, err := c.BlockResults(ctx, &txh)
 				require.NoError(t, err, "%d: %+v", i, err)
 				assert.Equal(t, txh, blockResults.Height)
-				if assert.Equal(t, 1, len(blockResults.TxsResults)) {
+				// kvstore adds a special transaction "extensionSum=1" to each block, so we expect 2 transactions here
+				if assert.Equal(t, 2, len(blockResults.TxsResults)) {
 					// check success code
 					assert.EqualValues(t, 0, blockResults.TxsResults[0].Code)
 				}

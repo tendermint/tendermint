@@ -158,6 +158,8 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	}
 	itxs := txrSet.IncludedTxs()
 
+	// TODO: validate rpp.TxResults
+
 	block = state.MakeBlock(
 		height,
 		itxs,

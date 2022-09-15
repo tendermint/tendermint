@@ -24,14 +24,16 @@ const (
 
 func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []byte, key, value string, height int64) {
 	reqPrep := types.RequestPrepareProposal{
-		Txs:    [][]byte{tx},
-		Height: height,
+		Txs:        [][]byte{tx},
+		Height:     height,
+		MaxTxBytes: 40960,
 	}
 
 	respPrep, err := app.PrepareProposal(ctx, &reqPrep)
 	require.NoError(t, err)
+	assert.Len(t, respPrep.TxRecords, 1)
 	require.Equal(t, 1, len(respPrep.TxResults))
-	require.False(t, respPrep.TxResults[0].IsErr())
+	require.False(t, respPrep.TxResults[0].IsErr(), respPrep.TxResults[0].Log)
 
 	reqFin := &types.RequestFinalizeBlock{
 		Txs:     [][]byte{tx},

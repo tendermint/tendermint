@@ -223,7 +223,7 @@ func (t TxRecordSet) Validate(maxSizeBytes int64, otxs Txs) error {
 	otxsCopy := sortedCopy(otxs)
 
 	if ix, ok := containsAll(otxsCopy, unmodifiedCopy); !ok {
-		return fmt.Errorf("new transaction incorrectly marked as removed, transaction hash: %x", unmodifiedCopy[ix].Hash())
+		return fmt.Errorf("new transaction incorrectly marked as unmodified, transaction hash: %x", unmodifiedCopy[ix].Hash())
 	}
 
 	if ix, ok := containsAll(otxsCopy, removedCopy); !ok {

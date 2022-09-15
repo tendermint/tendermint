@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 
 	abciclient "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/code"
@@ -99,6 +100,11 @@ func mustCheckTx(ctx context.Context, t *testing.T, txmp *TxMempool, spec string
 }
 
 func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx {
+	checkTxCallback := func(resp *abci.ResponseCheckTx) {
+		require.NotNil(t, resp)
+		assert.Equal(t, abci.CodeTypeOK, resp.Code, string(resp.Data))
+	}
+
 	txs := make([]testTx, numTxs)
 	txInfo := TxInfo{SenderID: peerID}
 
@@ -115,7 +121,7 @@ func checkTxs(ctx context.Context, t *testing.T, txmp *TxMempool, numTxs int, pe
 			tx:       []byte(fmt.Sprintf("sender-%d-%d=%X=%d", i, peerID, prefix, priority)),
 			priority: priority,
 		}
-		require.NoError(t, txmp.CheckTx(ctx, txs[i].tx, nil, txInfo))
+		require.NoError(t, txmp.CheckTx(ctx, txs[i].tx, checkTxCallback, txInfo))
 	}
 
 	return txs

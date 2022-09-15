@@ -119,7 +119,7 @@ func (v *SignsRecoverer) recoverVoteExtensionSigs(thresholdSigns *QuorumSigns) e
 			thresholdSigns.ExtensionSigns[i].Extension = v.voteExts[i]
 			thresholdSigns.ExtensionSigns[i].ThresholdSignature, err = bls12381.RecoverThresholdSignatureFromShares(sigs, v.validatorProTxHashes)
 			if err != nil {
-				return fmt.Errorf("error recovering threshold vote-extensin sig: %w", err)
+				return fmt.Errorf("error recovering threshold vote-extension sig: %w", err)
 			}
 		}
 	}

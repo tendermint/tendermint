@@ -158,7 +158,12 @@ func signVote(
 	quorumHash crypto.QuorumHash) *types.Vote {
 	exts := make(types.VoteExtensions)
 	if voteType == tmproto.PrecommitType && !blockID.IsNil() {
-		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte("extension"))
+		proTxHash, _ := vs.GetProTxHash(ctx)
+		defaultExt := fmt.Sprintf("extension=%s", proTxHash)
+		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte(defaultExt))
+		// We add an extension to match default behavior of kvstore app
+		thresholdExt := fmt.Sprintf("threshold-%d", vs.Height)
+		exts.Add(tmproto.VoteExtensionType_THRESHOLD_RECOVER, []byte(thresholdExt))
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, appHash, quorumType, quorumHash, exts)
 	require.NoError(t, err, "failed to sign vote")
