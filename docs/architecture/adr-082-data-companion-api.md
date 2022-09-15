@@ -314,12 +314,17 @@ in a patch release).
 - Paves the way toward greater architectural simplification of Tendermint so it
   can focus on its core duty, consensus, while still facilitating existing use
   cases.
+- Allows us to eventually separate out non-operator-focused RPC functionality
+  from Tendermint entirely, allowing the RPC to scale independently of the
+  consensus engine.
 - Can be rolled out as experimental and opt-in in a non-breaking way.
 - The broad nature of what the API publishes lends itself to reasonable
   long-term stability.
 
 ### Negative
 
+- Keeping existing Tendermint functionality would involve operators having to
+  run an additional process, which increases operational complexity.
 - It is unclear at present as to the impact of the requirement to publish large
   quantities of block/result data on the speed of block execution. This should
   be quantified in production networks as soon as this feature can be rolled out
