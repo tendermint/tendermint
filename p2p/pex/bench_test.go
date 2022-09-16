@@ -9,9 +9,9 @@ import (
 func BenchmarkAddrBook_hash(b *testing.B) {
 	book := &addrBook{
 		ourAddrs:          make(map[string]struct{}),
-		privateIDs:        make(map[p2p.NodeID]struct{}),
-		addrLookup:        make(map[p2p.NodeID]*knownAddress),
-		badPeers:          make(map[p2p.NodeID]*knownAddress),
+		privateIDs:        make(map[p2p.ID]struct{}),
+		addrLookup:        make(map[p2p.ID]*knownAddress),
+		badPeers:          make(map[p2p.ID]*knownAddress),
 		filePath:          "",
 		routabilityStrict: true,
 	}
