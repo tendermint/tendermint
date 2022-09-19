@@ -38,6 +38,7 @@
 ### BUG FIXES
 
 - [docker] \#9462 ensure Docker image uses consistent version of Go
+- [state/indexer] \#7323 Fix missing tx/block indexing when shutdown the node (@jayt106)
 
 ## v0.37.0
 
