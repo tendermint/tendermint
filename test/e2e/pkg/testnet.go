@@ -15,6 +15,7 @@ import (
 
 	"github.com/dashevo/dashd-go/btcjson"
 
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/bls12381"
@@ -76,7 +77,7 @@ type Testnet struct {
 	Dir                    string
 	IP                     *net.IPNet
 	InitialHeight          int64
-	InitialState           map[string]string
+	InitialState           kvstore.StateExport
 	Validators             ValidatorsMap
 	ValidatorUpdates       map[int64]ValidatorsMap
 	Nodes                  []*Node

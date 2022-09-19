@@ -195,7 +195,7 @@ func MakeGenesis(testnet *e2e.Testnet, genesisTime time.Time) (types.GenesisDoc,
 	sort.Slice(genesis.Validators, func(i, j int) bool {
 		return strings.Compare(genesis.Validators[i].Name, genesis.Validators[j].Name) == -1
 	})
-	if len(testnet.InitialState) > 0 {
+	if len(testnet.InitialState.Items) > 0 {
 		appState, err := json.Marshal(testnet.InitialState)
 		if err != nil {
 			return genesis, err

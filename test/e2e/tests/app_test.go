@@ -25,13 +25,13 @@ const (
 // Tests that any initial state given in genesis has made it into the app.
 func TestApp_InitialState(t *testing.T) {
 	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
-		if len(node.Testnet.InitialState) == 0 {
+		if len(node.Testnet.InitialState.Items) == 0 {
 			return
 		}
 
 		client, err := node.Client()
 		require.NoError(t, err)
-		for k, v := range node.Testnet.InitialState {
+		for k, v := range node.Testnet.InitialState.Items {
 			resp, err := client.ABCIQuery(ctx, "", []byte(k))
 			require.NoError(t, err)
 			assert.Equal(t, k, string(resp.Response.Key))
@@ -163,7 +163,7 @@ func TestApp_Tx(t *testing.T) {
 				tx := types.Tx(fmt.Sprintf("%v=%v", key, value))
 
 				err = test.BroadcastTx(client)(ctx, tx)
-				// require.NoError(t, err)
+				require.NoError(t, err)
 
 				hash := tx.Hash()
 

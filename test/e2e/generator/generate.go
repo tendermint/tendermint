@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/types"
 )
@@ -17,9 +19,10 @@ var (
 	testnetCombinations = map[string][]interface{}{
 		"topology": {"single", "quad", "large"},
 		"initialState": {
-			map[string]string{},
-			map[string]string{"initial01": "a", "initial02": "b", "initial03": "c"},
+			"{}",
+			"{\"items\": {\"initial01\": \"a\", \"initial02\": \"b\", \"initial03\": \"c\"}}",
 		},
+
 		"validators": {"genesis", "initchain"},
 		// Tenderdash-specific
 		"initialCoreChainLockedHeight": {0},
@@ -111,9 +114,17 @@ type Options struct {
 
 // generateTestnet generates a single testnet with the given options.
 func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, error) {
+
+	initialState := kvstore.StateExport{}
+	if opt["initialState"] != nil {
+		data := opt["initialState"].(string)
+		if err := json.Unmarshal([]byte(data), &initialState); err != nil {
+			return e2e.Manifest{}, fmt.Errorf("unmarshal initialState: %w", err)
+		}
+	}
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
-		InitialState:     opt["initialState"].(map[string]string),
+		InitialState:     initialState,
 		Validators:       map[string]int64{},
 		ValidatorUpdates: map[string]map[string]int64{},
 		Nodes:            map[string]*e2e.ManifestNode{},

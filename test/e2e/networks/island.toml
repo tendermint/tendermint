@@ -1,5 +1,5 @@
 initial_height = 1000
-initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+initial_state = {items={ initial01 = "a", initial02 = "b", initial03 = "c" }}
 initial_core_chain_locked_height = 3400
 
 [chainlock_updates]

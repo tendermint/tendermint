@@ -63,7 +63,7 @@ type Application struct {
 
 	cfg Config
 
-	initialHeight         int64
+	initialHeight         int64 // height of the first minted block
 	initialCoreLockHeight uint32
 
 	// Snapshots
@@ -89,11 +89,12 @@ func WithLogger(logger log.Logger) func(app *Application) {
 	}
 }
 
-// WithHeight sets last committed height when creating Application
+// WithHeight creates initial state with a given height.
+// Note the `height` should be `genesis.InitialHeight - 1`
+// DEPRECATED - only for testing, as it is overwritten in InitChain.
 func WithHeight(height int64) func(app *Application) {
 	return func(app *Application) {
-		state := app.lastCommittedState.(*kvState)
-		state.Height = height
+		app.lastCommittedState = NewKvState(dbm.NewMemDB(), height)
 	}
 }
 
@@ -136,12 +137,11 @@ func NewApplication(opts ...func(app *Application)) *Application {
 	var err error
 
 	db := dbm.NewMemDB()
-	state := NewKvState(db)
 	stateStore := NewDBStateStore(db)
 
 	app := &Application{
 		logger:              log.NewNopLogger(),
-		lastCommittedState:  state,
+		lastCommittedState:  NewKvState(dbm.NewMemDB(), 0), // initial state to avoid InitChain() in unit tests
 		roundStates:         map[string]State{},
 		validatorSetUpdates: make(map[int64]abci.ValidatorSetUpdate),
 		initialHeight:       1,
@@ -151,10 +151,6 @@ func NewApplication(opts ...func(app *Application)) *Application {
 
 	for _, opt := range opts {
 		opt(app)
-	}
-
-	if err := state.Load(stateStore); err != nil {
-		panic(fmt.Errorf("load state: %w", err))
 	}
 
 	app.snapshots, err = NewSnapshotStore(path.Join(app.cfg.Dir, "snapshots"))
@@ -178,6 +174,14 @@ func (app *Application) InitChain(_ context.Context, req *abci.RequestInitChain)
 		app.initialCoreLockHeight = req.InitialCoreHeight
 	}
 
+	// Loading state.
+	// We start with default, empty state at (initialHeight-1) to show that no block was approved yet.
+	app.lastCommittedState = NewKvState(dbm.NewMemDB(), app.initialHeight-1)
+	// Then, we load state from store if it's avaliable.
+	if err := app.lastCommittedState.Load(app.store); err != nil {
+		return &abci.ResponseInitChain{}, fmt.Errorf("load state: %w", err)
+	}
+	// Then, we allow overwriting of some state fields based on AppStateBytes
 	if len(req.AppStateBytes) > 0 {
 		err := json.Unmarshal(req.AppStateBytes, &app.lastCommittedState)
 		if err != nil {
@@ -188,16 +192,6 @@ func (app *Application) InitChain(_ context.Context, req *abci.RequestInitChain)
 	if req.ValidatorSet != nil {
 		// FIXME: should we move validatorSetUpdates to State?
 		app.validatorSetUpdates[app.initialHeight] = *req.ValidatorSet
-	}
-
-	height := app.initialHeight
-	if app.lastCommittedState.GetHeight() >= height {
-		// We already have some committed state retrieved from req.AppStateBytes
-		height = app.lastCommittedState.GetHeight() + 1
-	}
-
-	if err := app.newHeight(height, make([]byte, crypto.DefaultAppHashSize)); err != nil {
-		return &abci.ResponseInitChain{}, err
 	}
 
 	resp := &abci.ResponseInitChain{
@@ -337,7 +331,7 @@ func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) 
 		return &abci.ResponseCommit{}, fmt.Errorf("no uncommitted finalized block")
 	}
 
-	err := app.newHeight(app.lastCommittedState.GetHeight()+1, app.finalizedAppHash)
+	err := app.newHeight(app.finalizedAppHash)
 	if err != nil {
 		return &abci.ResponseCommit{}, err
 	}
@@ -459,9 +453,6 @@ func (app *Application) ExtendVote(_ context.Context, req *abci.RequestExtendVot
 	// We ignore any requests for vote extensions that don't match our expected
 	// next height.
 	lastHeight := app.lastCommittedState.GetHeight()
-	if lastHeight == 0 {
-		lastHeight = app.initialHeight - 1
-	}
 	if req.Height != lastHeight+1 {
 		app.logger.Error(
 			"got unexpected height in ExtendVote request",
@@ -560,13 +551,15 @@ func (app *Application) Info(_ context.Context, req *abci.RequestInfo) (*abci.Re
 	app.mu.Lock()
 	defer app.mu.Unlock()
 	appHash := app.lastCommittedState.GetAppHash()
-	return &abci.ResponseInfo{
+	resp := &abci.ResponseInfo{
 		Data:             fmt.Sprintf("{\"appHash\":\"%s\"}", appHash.String()),
 		Version:          version.ABCIVersion,
 		AppVersion:       ProtocolVersion,
 		LastBlockHeight:  app.lastCommittedState.GetHeight(),
 		LastBlockAppHash: app.lastCommittedState.GetAppHash(),
-	}, nil
+	}
+	app.logger.Debug("Info", "req", req, "resp", resp)
+	return resp, nil
 }
 
 // CheckTX implements ABCI
@@ -674,17 +667,12 @@ func (app *Application) Close() error {
 }
 
 // newHeight frees resources from previous height and starts new height.
-// `height` shall be new height, and `committedRound` shall be round from previous commit
 // Caller should lock the Application.
-func (app *Application) newHeight(height int64, committedAppHash tmbytes.HexBytes) error {
-	if height != app.lastCommittedState.GetHeight()+1 {
-		return fmt.Errorf("invalid height: expected: %d, got: %d", app.lastCommittedState.GetHeight()+1, height)
-	}
-
+func (app *Application) newHeight(committedAppHash tmbytes.HexBytes) error {
 	// Committed round becomes new state
 	committedState := app.roundStates[committedAppHash.String()]
 	if committedState == nil {
-		committedState = NewKvState(dbm.NewMemDB())
+		return fmt.Errorf("round state with apphash %s not found", committedAppHash.String())
 	}
 	err := committedState.Copy(app.lastCommittedState)
 	if err != nil {
@@ -710,6 +698,10 @@ func (app *Application) resetRoundStates() {
 
 // executeProposal executes transactions and creates new candidate state
 func (app *Application) executeProposal(height int64, txs []*abci.TxRecord) (State, []*abci.ExecTxResult, error) {
+	if height != app.lastCommittedState.GetHeight()+1 {
+		return nil, nil, fmt.Errorf("height mismatch, expected: %d, got: %d", app.lastCommittedState.GetHeight()+1, height)
+	}
+
 	roundState, err := app.lastCommittedState.NextHeightState(dbm.NewMemDB())
 	if err != nil {
 		return nil, nil, err

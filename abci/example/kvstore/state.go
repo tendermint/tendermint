@@ -26,6 +26,7 @@ type State interface {
 	Close() error
 
 	GetHeight() int64
+	incHeight() // IncHeight increments height by 1
 
 	NextHeightState(db dbm.DB) (State, error)
 
@@ -39,10 +40,13 @@ type kvState struct {
 	AppHash tmbytes.HexBytes `json:"app_hash"`
 }
 
-func NewKvState(db dbm.DB) State {
+// NewKvState creates new, empty, uninitialized kvstore State.
+// Use Copy() to populate.
+func NewKvState(db dbm.DB, height int64) State {
 	return &kvState{
 		DB:      db,
 		AppHash: make([]byte, crypto.DefaultAppHashSize),
+		Height:  height,
 	}
 }
 
@@ -122,18 +126,20 @@ func (state kvState) GetHeight() int64 {
 	return state.Height
 }
 
+func (state *kvState) incHeight() {
+	state.Height++
+}
+
 // NextHeightState creates a state at next height with a copy of all key/value pairs.
 // It uses `db` as a backend database.
 func (state kvState) NextHeightState(db dbm.DB) (State, error) {
-	height := state.GetHeight() + 1
-	nextState := NewKvState(db).(*kvState)
+	nextState := NewKvState(db, 1)
 	err := state.Copy(nextState)
-	nextState.Height = height
 	if err != nil {
 		return &kvState{}, fmt.Errorf("cannot copy current state: %w", err)
 	}
-	// overwrite what was set in Copy, as we are at new height
-	nextState.Height = height
+	nextState.incHeight() // height is overwritten in Copy()
+
 	return nextState, nil
 }
 
@@ -190,15 +196,10 @@ func (state kvState) Import(height uint64, jsonBytes []byte) error {
 	return fmt.Errorf("not implemented")
 }
 
-type ExportItem struct {
-	Key   []byte `json:"key"`
-	Value []byte `json:"value"`
-}
-
 type StateExport struct {
-	Items   []ExportItem     `json:"items"`
-	Height  int64            `json:"height"`
-	AppHash tmbytes.HexBytes `json:"app_hash"`
+	Height  *int64            `json:"height,omitempty"`
+	AppHash tmbytes.HexBytes  `json:"app_hash,omitempty"`
+	Items   map[string]string `json:"items,omitempty"` // we store items as string-encoded values
 }
 
 // MarshalJSON implements json.Marshaler
@@ -209,21 +210,29 @@ func (state kvState) MarshalJSON() ([]byte, error) {
 	}
 	defer iter.Close()
 
+	height := state.GetHeight()
+	apphash := state.GetAppHash()
+
 	export := StateExport{
-		Height:  state.GetHeight(),
-		AppHash: state.GetAppHash(),
+		Height:  &height,
+		AppHash: apphash,
+		Items:   nil,
 	}
 
 	for iter.Valid() {
-		export.Items = append(export.Items, ExportItem{
-			Key:   iter.Key(),
-			Value: iter.Value(),
-		})
+		if export.Items == nil {
+			export.Items = map[string]string{}
+		}
+		export.Items[string(iter.Key())] = string(iter.Value())
 		iter.Next()
 	}
+
 	return json.Marshal(&export)
 }
 
+// UnmarshalJSON implements json.Unmarshaler.
+// Note that it unmarshals only existing (non-nil) values.
+// If unmarshaled data contains a nil value (eg. is not present in json), these will stay intact.
 func (state *kvState) UnmarshalJSON(data []byte) error {
 
 	export := StateExport{}
@@ -231,23 +240,33 @@ func (state *kvState) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	state.Height = export.Height
-	state.AppHash = export.AppHash
-
-	batch := state.DB.NewBatch()
-	defer batch.Close()
-
-	if err := resetDB(state.DB, batch); err != nil {
-		return err
+	if export.Height != nil {
+		state.Height = *export.Height
+	}
+	if export.AppHash != nil {
+		state.AppHash = export.AppHash
 	}
 
-	for _, item := range export.Items {
-		if err := batch.Set(item.Key, item.Value); err != nil {
+	if export.Items != nil {
+		batch := state.DB.NewBatch()
+		defer batch.Close()
+
+		if len(export.Items) > 0 {
+			if err := resetDB(state.DB, batch); err != nil {
+				return err
+			}
+			for key, value := range export.Items {
+				if err := batch.Set([]byte(key), []byte(value)); err != nil {
+					return err
+				}
+			}
+		}
+		if err := batch.Write(); err != nil {
 			return err
 		}
 	}
 
-	return batch.Write()
+	return nil
 }
 
 func (state *kvState) Close() error {
