@@ -35,10 +35,8 @@ type Application struct {
 	*kvstore.Application
 	mu sync.Mutex
 
-	logger          log.Logger
-	cfg             *kvstore.Config
-	restoreSnapshot *abci.Snapshot
-	restoreChunks   [][]byte
+	logger log.Logger
+	cfg    *kvstore.Config
 }
 
 // NewApplication creates the application.
@@ -239,7 +237,7 @@ func prepareTxs(req abci.RequestPrepareProposal) ([]*abci.TxRecord, error) {
 	return txRecords, nil
 }
 
-func verifyTx(tx []byte, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
+func verifyTx(tx types.Tx, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
 
 	split := bytes.SplitN(tx, []byte{'='}, 2)
 	k, v := split[0], split[1]

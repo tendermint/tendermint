@@ -7,12 +7,12 @@ import (
 	"io"
 	"io/ioutil"
 
-	db "github.com/tendermint/tm-db"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
+	types1 "github.com/tendermint/tendermint/types"
 )
 
 type State interface {
@@ -20,18 +20,26 @@ type State interface {
 	json.Marshaler
 	json.Unmarshaler
 
-	Save(to io.Writer) error
+	// Save writes full content of this state to some output
+	Save(output io.Writer) error
+	// Load loads state from some input
 	Load(from io.Reader) error
+	// Copy copies the state to dst
 	Copy(dst State) error
+	// Close closes the state and frees up resources
 	Close() error
 
+	// GetHeight returns height of the state
 	GetHeight() int64
-	incHeight() // IncHeight increments height by 1
+	// IncrementHeight increments height by 1
+	IncrementHeight()
 
-	NextHeightState(db dbm.DB) (State, error)
-
+	// GetAppHash returns app hash for the state. You need to call UpdateAppHash() beforehand.
 	GetAppHash() tmbytes.HexBytes
-	UpdateAppHash(lastCommittedState State, txs []*types.TxRecord, txResults []*types.ExecTxResult) error
+
+	// UpdateAppHash regenerates apphash for the state. It accepts transactions and tx results from current round.
+	// It is deterministic for a given state, txs and txResults.
+	UpdateAppHash(lastCommittedState State, txs types1.Txs, txResults []*types.ExecTxResult) error
 }
 
 type kvState struct {
@@ -71,7 +79,7 @@ func (state kvState) Copy(destination State) error {
 	return nil
 }
 
-func resetDB(dst dbm.DB, batch db.Batch) error {
+func resetDB(dst dbm.DB, batch dbm.Batch) error {
 	// cleanup dest DB first
 	dstIter, err := dst.Iterator(nil, nil)
 	if err != nil {
@@ -126,28 +134,15 @@ func (state kvState) GetHeight() int64 {
 	return state.Height
 }
 
-func (state *kvState) incHeight() {
+func (state *kvState) IncrementHeight() {
 	state.Height++
-}
-
-// NextHeightState creates a state at next height with a copy of all key/value pairs.
-// It uses `db` as a backend database.
-func (state kvState) NextHeightState(db dbm.DB) (State, error) {
-	nextState := NewKvState(db, 1)
-	err := state.Copy(nextState)
-	if err != nil {
-		return &kvState{}, fmt.Errorf("cannot copy current state: %w", err)
-	}
-	nextState.incHeight() // height is overwritten in Copy()
-
-	return nextState, nil
 }
 
 func (state kvState) GetAppHash() tmbytes.HexBytes {
 	return state.AppHash.Copy()
 }
 
-func (state *kvState) UpdateAppHash(lastCommittedState State, txs []*types.TxRecord, txResults []*types.ExecTxResult) error {
+func (state *kvState) UpdateAppHash(lastCommittedState State, txs types1.Txs, txResults []*types.ExecTxResult) error {
 	// UpdateAppHash updates app hash for the current app state.
 	txResultsHash, err := types.TxResultsHash(txResults)
 	if err != nil {

@@ -7,34 +7,29 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // PrepareTxsFunc prepares transactions, possibly adding and/or removing some of them
 type PrepareTxsFunc func(req abci.RequestPrepareProposal) ([]*abci.TxRecord, error)
 
 // VerifyTxFunc checks if transaction is correct
-type VerifyTxFunc func(tx []byte, typ abci.CheckTxType) (abci.ResponseCheckTx, error)
+type VerifyTxFunc func(tx types.Tx, typ abci.CheckTxType) (abci.ResponseCheckTx, error)
 
 // ExecTxFunc executes the transaction against some state
-type ExecTxFunc func(tx []byte, roundState State) (abci.ExecTxResult, error)
+type ExecTxFunc func(tx types.Tx, roundState State) (abci.ExecTxResult, error)
 
 func prepareTxs(req abci.RequestPrepareProposal) ([]*abci.TxRecord, error) {
 
 	return substPrepareTx(req.Txs, req.MaxTxBytes), nil
 }
 
-func txs2TxRecords(txs [][]byte) []*abci.TxRecord {
-	ret := make([]*abci.TxRecord, 0, len(txs))
-	for _, tx := range txs {
-		ret = append(ret, &abci.TxRecord{
-			Action: abci.TxRecord_UNMODIFIED,
-			Tx:     tx,
-		})
-	}
-	return ret
+func txRecords2Txs(txRecords []*abci.TxRecord) types.Txs {
+	txRecordSet := types.NewTxRecordSet(txRecords)
+	return txRecordSet.IncludedTxs()
 }
 
-func verifyTx(tx []byte, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
+func verifyTx(tx types.Tx, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
 
 	_, _, err := parseTx(tx)
 	if err != nil {
@@ -48,7 +43,7 @@ func verifyTx(tx []byte, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
 }
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
-func execTx(tx []byte, roundState State) (abci.ExecTxResult, error) {
+func execTx(tx types.Tx, roundState State) (abci.ExecTxResult, error) {
 	if isPrepareTx(tx) {
 		return execPrepareTx(tx)
 	}
@@ -129,7 +124,7 @@ func isPrepareTx(tx []byte) bool {
 }
 
 // parseTx parses a tx in 'key=value' format into a key and value.
-func parseTx(tx []byte) (string, string, error) {
+func parseTx(tx types.Tx) (string, string, error) {
 	parts := bytes.SplitN(tx, []byte("="), 2)
 	switch len(parts) {
 	case 0:

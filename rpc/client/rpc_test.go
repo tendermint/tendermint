@@ -369,7 +369,7 @@ func TestClientMethodCalls(t *testing.T) {
 				require.NoError(t, err)
 				appHash := block.Block.Header.AppHash
 				assert.NotEmpty(t, appHash)
-				assert.Contains(t, block.Block.Txs, types.Tx(tx))
+				assert.EqualValues(t, block.Block.Txs[0], types.Tx(tx))
 				assert.EqualValues(t, apph, block.Block.Header.Height)
 
 				blockByHash, err := c.BlockByHash(ctx, block.BlockID.Hash)
@@ -389,8 +389,7 @@ func TestClientMethodCalls(t *testing.T) {
 				blockResults, err := c.BlockResults(ctx, &txh)
 				require.NoError(t, err, "%d: %+v", i, err)
 				assert.Equal(t, txh, blockResults.Height)
-				// kvstore adds a special transaction "extensionSum=1" to each block, so we expect 2 transactions here
-				if assert.Equal(t, 2, len(blockResults.TxsResults)) {
+				if assert.Equal(t, 1, len(blockResults.TxsResults)) {
 					// check success code
 					assert.EqualValues(t, 0, blockResults.TxsResults[0].Code)
 				}

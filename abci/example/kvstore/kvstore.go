@@ -21,6 +21,7 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 )
 
@@ -114,6 +115,9 @@ func WithConfig(config Config) func(app *Application) {
 		}
 		if config.InitAppInitialCoreHeight != 0 {
 			app.initialCoreLockHeight = config.InitAppInitialCoreHeight
+		}
+		if config.RetainBlocks != 0 {
+			app.RetainBlocks = config.RetainBlocks
 		}
 	}
 }
@@ -244,8 +248,8 @@ func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrep
 	if err != nil {
 		return &abci.ResponsePrepareProposal{}, err
 	}
-
-	roundState, txResults, err := app.executeProposal(req.Height, txRecords)
+	includedTxs := txRecords2Txs(txRecords)
+	roundState, txResults, err := app.executeProposal(req.Height, includedTxs)
 	if err != nil {
 		return &abci.ResponsePrepareProposal{}, err
 	}
@@ -268,7 +272,7 @@ func (app *Application) PrepareProposal(_ context.Context, req *abci.RequestPrep
 }
 
 func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
-	roundState, txResults, err := app.executeProposal(req.Height, txs2TxRecords(req.Txs))
+	roundState, txResults, err := app.executeProposal(req.Height, types.NewTxs(req.Txs))
 	if err != nil {
 		return &abci.ResponseProcessProposal{
 			Status: abci.ResponseProcessProposal_REJECT,
@@ -610,22 +614,23 @@ func (app *Application) resetRoundStates() {
 }
 
 // executeProposal executes transactions and creates new candidate state
-func (app *Application) executeProposal(height int64, txs []*abci.TxRecord) (State, []*abci.ExecTxResult, error) {
+func (app *Application) executeProposal(height int64, txs types.Txs) (State, []*abci.ExecTxResult, error) {
 	if height != app.LastCommittedState.GetHeight()+1 {
 		return nil, nil, fmt.Errorf("height mismatch, expected: %d, got: %d", app.LastCommittedState.GetHeight()+1, height)
 	}
 
-	roundState, err := app.LastCommittedState.NextHeightState(dbm.NewMemDB())
-	if err != nil {
-		return nil, nil, err
+	// Create new round state based on last committed state, with incremented height
+
+	roundState := NewKvState(dbm.NewMemDB(), 0) // height will be overwritten in Copy()
+	if err := app.LastCommittedState.Copy(roundState); err != nil {
+		return nil, nil, fmt.Errorf("cannot copy current state: %w", err)
 	}
+	roundState.IncrementHeight()
+
 	// execute block
 	txResults := make([]*abci.ExecTxResult, 0, len(txs))
 	for _, tx := range txs {
-		if tx.Action == abci.TxRecord_REMOVED {
-			continue // we don't execute removed tx records
-		}
-		result, err := app.execTx(tx.Tx, roundState)
+		result, err := app.execTx(tx, roundState)
 		if err != nil && result.Code == 0 {
 			result = abci.ExecTxResult{Code: code.CodeTypeUnknownError, Log: err.Error()}
 		}
@@ -634,7 +639,7 @@ func (app *Application) executeProposal(height int64, txs []*abci.TxRecord) (Sta
 
 	// Don't update AppHash at genesis height
 	if roundState.GetHeight() != app.initialHeight {
-		if err = roundState.UpdateAppHash(app.LastCommittedState, txs, txResults); err != nil {
+		if err := roundState.UpdateAppHash(app.LastCommittedState, txs, txResults); err != nil {
 			return nil, nil, fmt.Errorf("update apphash: %w", err)
 		}
 	}

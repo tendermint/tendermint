@@ -29,7 +29,7 @@ type Config struct {
 	// RetainBlocks specifies the number of recent blocks to retain. Defaults to
 	// 0, which retains all blocks. Must be greater that PersistInterval,
 	// SnapshotInterval and EvidenceAgeHeight.
-	RetainBlocks uint64 `toml:"retain_blocks"`
+	RetainBlocks int64 `toml:"retain_blocks"`
 
 	// KeyType sets the curve that will be used by validators.
 	// Options are ed25519 & secp256k1
