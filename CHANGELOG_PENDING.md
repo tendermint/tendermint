@@ -19,6 +19,7 @@
 ### IMPROVEMENTS
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [crypto/merkle] \#6513 Optimize HashAlternatives (@marbar3778)
 
 ### BUG FIXES
 
