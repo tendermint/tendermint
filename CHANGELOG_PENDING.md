@@ -19,7 +19,7 @@
 ### IMPROVEMENTS
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
-- [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778)
+- [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778, @jayt106)
 
 ### BUG FIXES
 
