@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
+
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -92,6 +94,26 @@ type Metrics struct {
 	// of the voting power on the network issued prevotes.
 	//metrics:Interval in seconds between the proposal timestamp and the timestamp of the latest prevote in a round where all validators voted.
 	FullPrevoteDelay metrics.Gauge `metrics_labels:"proposer_address"`
+
+	// ProposalReceiveCount is the total number of proposals received by this node
+	// since process start.
+	// The metric is annotated by the status of the proposal from the application,
+	// either 'accepted' or 'rejected'.
+	ProposalReceiveCount metrics.Counter `metrics_labels:"status"`
+
+	// ProposalCreationCount is the total number of proposals created by this node
+	// since process start.
+	ProposalCreateCount metrics.Counter
+
+	// RoundVotingPowerPercent is the percentage of the total voting power received
+	// with a round. The value begins at 0 for each round and approaches 1.0 as
+	// additional voting power is observed. The metric is labeled by vote type.
+	RoundVotingPowerPercent metrics.Gauge
+
+	// LateVotes stores the number of votes that were received by this node that
+	// correspond to earlier heights and rounds than this node is currently
+	// in.
+	LateVotes metrics.Counter
 }
 
 // RecordConsMetrics uses for recording the block related metrics during fast-sync.
@@ -102,10 +124,29 @@ func (m *Metrics) RecordConsMetrics(block *types.Block) {
 	m.CommittedHeight.Set(float64(block.Height))
 }
 
+func (m *Metrics) MarkProposalProcessed(accepted bool) {
+	status := "accepted"
+	if !accepted {
+		status = "rejected"
+	}
+	m.ProposalReceiveCount.With("status", status).Add(1)
+}
+
+func (m *Metrics) MarkVoteReceived(vt tmproto.SignedMsgType, power, totalPower int64) {
+	p := float64(power) / float64(totalPower)
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.RoundVotingPowerPercent.With("vote_type", n).Add(p)
+}
+
 func (m *Metrics) MarkRound(r int32, st time.Time) {
 	m.Rounds.Set(float64(r))
 	roundTime := time.Since(st).Seconds()
 	m.RoundDurationSeconds.Observe(roundTime)
+}
+
+func (m *Metrics) MarkLateVote(vt tmproto.SignedMsgType) {
+	n := strings.ToLower(strings.TrimPrefix(vt.String(), "SIGNED_MSG_TYPE_"))
+	m.LateVotes.With("vote_type", n).Add(1)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {

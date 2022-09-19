@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -27,6 +27,7 @@ var errNegOrZeroHeight = errors.New("negative or zero height")
 type KeyPathFunc func(path string, key []byte) (merkle.KeyPath, error)
 
 // LightClient is an interface that contains functionality needed by Client from the light client.
+//
 //go:generate ../../scripts/mockery_generate.sh LightClient
 type LightClient interface {
 	ChainID() string
@@ -233,7 +234,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	}
 
 	// Validate res.
-	if err := types.ValidateConsensusParams(res.ConsensusParams); err != nil {
+	if err := res.ConsensusParams.ValidateBasic(); err != nil {
 		return nil, err
 	}
 	if res.BlockHeight <= 0 {
@@ -247,7 +248,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	}
 
 	// Verify hash.
-	if cH, tH := types.HashConsensusParams(res.ConsensusParams), l.ConsensusHash; !bytes.Equal(cH, tH) {
+	if cH, tH := res.ConsensusParams.Hash(), l.ConsensusHash; !bytes.Equal(cH, tH) {
 		return nil, fmt.Errorf("params hash %X does not match trusted hash %X",
 			cH, tH)
 	}
@@ -435,6 +436,40 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 	if !bytes.Equal(rH, trustedBlock.LastResultsHash) {
 		return nil, fmt.Errorf("last results %X does not match with trusted last results %X",
 			rH, trustedBlock.LastResultsHash)
+	}
+
+	return res, nil
+}
+
+// Header fetches and verifies the header directly via the light client
+func (c *Client) Header(ctx context.Context, height *int64) (*ctypes.ResultHeader, error) {
+	lb, err := c.updateLightClientIfNeededTo(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ctypes.ResultHeader{Header: lb.Header}, nil
+}
+
+// HeaderByHash calls rpcclient#HeaderByHash and updates the client if it's falling behind.
+func (c *Client) HeaderByHash(ctx context.Context, hash tmbytes.HexBytes) (*ctypes.ResultHeader, error) {
+	res, err := c.next.HeaderByHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := res.Header.ValidateBasic(); err != nil {
+		return nil, err
+	}
+
+	lb, err := c.updateLightClientIfNeededTo(ctx, &res.Header.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	if !bytes.Equal(lb.Header.Hash(), res.Header.Hash()) {
+		return nil, fmt.Errorf("primary header hash does not match trusted header hash. (%X != %X)",
+			lb.Header.Hash(), res.Header.Hash())
 	}
 
 	return res, nil

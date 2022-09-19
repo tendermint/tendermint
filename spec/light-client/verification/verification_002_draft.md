@@ -63,10 +63,10 @@ blockchain.
 - [Part II](#part-ii---sequential-definition-of-the-verification-problem): Introduction
 of the problem addressed by the Lightclient Verification protocol.
     - [Verification Informal Problem
-      statement](#Verification-Informal-Problem-statement): For the general
+      statement](#verification-informal-problem-statement): For the general
       audience, that is, engineers who want to get an overview over what
       the component is doing from a bird's eye view.
-    - [Sequential Problem statement](#Sequential-Problem-statement):
+    - [Sequential Problem statement](#sequential-problem-statement):
       Provides a mathematical definition of the problem statement in
       its sequential form, that is, ignoring the distributed aspect of
       the implementation of the blockchain.
@@ -78,17 +78,17 @@ of the problem addressed by the Lightclient Verification protocol.
     - [Incentives](#incentives): how faulty full nodes may benefit from
     misbehaving and how correct full nodes benefit from cooperating.
   
-    - [Computational Model](#Computational-Model):
+    - [Computational Model](#computational-model):
       timing and correctness assumptions.
 
-    - [Distributed Problem Statement](#Distributed-Problem-Statement):
+    - [Distributed Problem Statement](#distributed-problem-statement):
       temporal properties that formalize safety and liveness
       properties in the distributed setting.
 
 - [Part IV](#part-iv---light-client-verification-protocol):
   Specification of the protocols.
 
-    - [Definitions](#Definitions): Describes inputs, outputs,
+    - [Definitions](#definitions): Describes inputs, outputs,
        variables used by the protocol, auxiliary functions
 
     - [Core Verification](#core-verification): gives an outline of the solution,
@@ -420,9 +420,9 @@ must eventually terminate.
 
 > These definitions imply that if the primary is faulty, a header may or
 > may not be added to *LightStore*. In any case,
-> [**[LCV-DIST-SAFE.2]**](#lcv-dist-safe2) must hold.
-> The invariant [**[LCV-DIST-SAFE.2]**](#lcv-dist-safe2) and the liveness
-> requirement [**[LCV-DIST-LIVE.2]**](#lcv-dist-life)
+> [**[LCV-DIST-SAFE.2]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe2) must hold.
+> The invariant [**[LCV-DIST-SAFE.2]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe2) and the liveness
+> requirement [**[LCV-DIST-LIVE.2]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-life)
 > allow that verified headers are added to *LightStore* whose
 > height was not passed
 > to the verifier (e.g., intermediate headers used in bisection; see below).
@@ -439,16 +439,16 @@ must eventually terminate.
 This specification provides a partial solution to the sequential specification.
 The *Verifier* solves the invariant of the sequential part
 
-[**[LCV-DIST-SAFE.2]**](#lcv-dist-safe2) => [**[LCV-SEQ-SAFE.1]**](#lcv-seq-safe1)
+[**[LCV-DIST-SAFE.2]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe2) => [**[LCV-SEQ-SAFE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe1)
 
 In the case the primary is correct, and *root*  is a recent header in *LightStore*, the verifier satisfies the liveness requirements.
 
 ⋀ *primary is correct*  
 ⋀ *root.header.Time* > *now* - *trustingPeriod*  
-⋀ [**[LCV-A-Comm.1]**](#lcv-a-comm) ⋀ (
+⋀ [**[LCV-A-Comm.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-a-comm) ⋀ (
        ( [**[TMBC-CorrFull.1]**][TMBC-CorrFull-link] ⋀
-         [**[LCV-DIST-LIVE.2]**](#lcv-dist-live2) )
-       ⟹ [**[LCV-SEQ-LIVE.1]**](#lcv-seq-live1)
+         [**[LCV-DIST-LIVE.2]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-live2) )
+       ⟹ [**[LCV-SEQ-LIVE.1]**](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-live1)
 )
 
 # Part IV - Light Client Verification Protocol
@@ -612,7 +612,7 @@ func (ls LightStore) TraceTo(lightBlock LightBlock) (LightBlock, LightStore)
     - returns a **trusted** lightblock `root` from the lightstore with a height
       less than `lightBlock`
     - returns a lightstore that contains lightblocks that constitute a
-      [verification trace](TODOlinkToDetectorSpecOnceThere) from
+      [verification trace](https://github.com/tendermint/tendermint/tree/main/spec/light-client/detection) from
       `root` to `lightBlock` (including `lightBlock`)
 
 ### Inputs
@@ -823,7 +823,7 @@ func VerifyToTarget(primary PeerID, root LightBlock,
 - Error conditions
     - if the precondition is violated
     - if `ValidAndVerified` or `FetchLightBlock` report an error
-    - if [**[LCV-INV-TP.1]**](#LCV-INV-TP.1) is violated
+    - if [**[LCV-INV-TP.1]**](#lcv-inv-tp1) is violated
   
 ### Details of the Functions
 
@@ -927,14 +927,14 @@ For [IBC][ibc-rs] there are two additional challenges:
 
 1. it might be that some "older" header is needed, that is,
 *targetHeight < lightStore.LatestVerified()*.  The
-[supervisor](../supervisor/supervisor.md) checks whether it is in this
+[supervisor](../supervisor/supervisor_002_draft.md) checks whether it is in this
 case by calling `LatestPrevious` and `MinVerified` and if so it calls
 `Backwards`. All these functions are specified below.
 
 2. In order to submit proof of a light client attack, a relayer may
    need to submit a verification trace. This it is important to
    compute such a trace efficiently. That it can be done is based on
-   the invariant [[LCV-INV-LS-ROOT.2]](#LCV-INV-LS-ROOT2) that needs
+   the invariant [[LCV-INV-LS-ROOT.2]](#lcv-inv-ls-root2) that needs
    to be maintained by the light client. In particular
    `VerifyToTarget` and `Backwards` need to take care of setting
    `verification-root`.
@@ -1033,7 +1033,7 @@ func Backwards (primary PeerID, root LightBlock, targetHeight Height)
 
 [[lightclient]] The light client ADR [77d2651 on Dec 27, 2019].
 
-[RPC]: https://docs.tendermint.com/master/rpc/
+[RPC]: https://docs.tendermint.com/v0.34/rpc/
 
 [block]: https://github.com/tendermint/spec/blob/d46cd7f573a2c6a2399fcab2cde981330aa63f37/spec/core/data_structures.md
 
@@ -1048,14 +1048,12 @@ func Backwards (primary PeerID, root LightBlock, targetHeight Height)
 [TMBC-SOUND-DISTR-POSS-COMMIT-link]: #tmbc-sound-distr-poss-commit1
 
 [lightclient]: https://github.com/interchainio/tendermint-rs/blob/e2cb9aca0b95430fca2eac154edddc9588038982/docs/architecture/adr-002-lite-client.md
-[attack-detector]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_001_reviewed.md
-[fullnode]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md
+[attack-detector]: https://github.com/tendermint/tendermint/blob/main/spec/light-client/detection/detection_001_reviewed.md
+[fullnode]: https://github.com/tendermint/tendermint/tree/main/spec/core
 
 [ibc-rs]:https://github.com/informalsystems/ibc-rs
 
-[blockchain-validator-set]: https://github.com/tendermint/spec/blob/master/spec/blockchain/blockchain.md#data-structures
-[fullnode-data-structures]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#data-structures
-
-[FN-ManifestFaulty-link]: https://github.com/tendermint/spec/blob/master/spec/blockchain/fullnode.md#fn-manifestfaulty
+[blockchain-validator-set]: https://github.com/tendermint/tendermint/blob/main/spec/blockchain/blockchain.md#data-structures
+[fullnode-data-structures]: https://github.com/tendermint/tendermint/blob/main/spec/core/data_structures.md
 
 [arXiv]: https://arxiv.org/abs/1807.04938

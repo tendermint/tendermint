@@ -47,8 +47,8 @@ and a list of evidence of malfeasance (ie. signing conflicting votes).
 | Name   | Type              | Description                                                                                                                                                                          | Validation                                               |
 |--------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
 | Header | [Header](#header) | Header corresponding to the block. This field contains information used throughout consensus and other areas of the protocol. To find out what it contains, visit [header] (#header) | Must adhere to the validation rules of [header](#header) |
-| Data       | [Data](#data)                  | Data contains a list of transactions. The contents of the transaction is unknown to Tendermint.                                                                                      | This field can be empty or populated, but no validation is performed. Applications can perform validation on individual transactions prior to block creation using [checkTx](../abci/abci.md#checktx).
-| Evidence   | [EvidenceList](#evidence_list) | Evidence contains a list of infractions committed by validators.                                                                                                                     | Can be empty, but when populated the validations rules from [evidenceList](#evidence_list) apply |
+| Data       | [Data](#data)                  | Data contains a list of transactions. The contents of the transaction is unknown to Tendermint.                                                                                      | This field can be empty or populated, but no validation is performed. Applications can perform validation on individual transactions prior to block creation using [checkTx](https://github.com/tendermint/tendermint/blob/main/spec/abci/abci++_methods.md#checktx).
+| Evidence   | [EvidenceList](#evidencelist) | Evidence contains a list of infractions committed by validators.                                                                                                                     | Can be empty, but when populated the validations rules from [evidenceList](#evidencelist) apply |
 | LastCommit | [Commit](#commit)              | `LastCommit` includes one vote for every validator.  All votes must either be for the previous block, nil or absent. If a vote is for the previous block it must have a valid signature from the corresponding validator. The sum of the voting power of the validators that voted must be greater than 2/3 of the total voting power of the complete validator set. The number of votes in a commit is limited to 10000 (see `types.MaxVotesCount`).                                                                                             | Must be empty for the initial height and must adhere to the validation rules of [commit](#commit).  |
 
 ## Execution
@@ -129,7 +129,7 @@ the data in the current block, the previous block, and the results returned by t
 | NextValidatorHash | slice of bytes (`[]byte`) | MerkleRoot of the next validator set. The validators are first sorted by voting power (descending), then by address (ascending) prior to computing the MerkleRoot.                                                                                                                                                                                                                    | Must  be of length 32                                                                                                                                                                            |
 | ConsensusHash     | slice of bytes (`[]byte`) | Hash of the protobuf encoded consensus parameters.                                                                                                                                                                                                                                                                                                                                    | Must  be of length 32                                                                                                                                                                            |
 | AppHash           | slice of bytes (`[]byte`) | Arbitrary byte array returned by the application after executing and commiting the previous block. It serves as the basis for validating any merkle proofs that comes from the ABCI application and represents the state of the actual application rather than the state of the blockchain itself. The first block's `block.Header.AppHash` is given by `ResponseInitChain.app_hash`. | This hash is determined by the application, Tendermint can not perform validation on it.                                                                                                         |
-| LastResultHash    | slice of bytes (`[]byte`) | `LastResultsHash` is the root hash of a Merkle tree built from `ResponseDeliverTx` responses (only `Code` and `Data` are included. All other fields are ignored).                                                                                                                                                                                                                             | Must  be of length 32. The first block has `block.Header.ResultsHash == MerkleRoot(nil)`, i.e. the hash of an empty input, for RFC-6962 conformance.                                             |
+| LastResultHash    | slice of bytes (`[]byte`) | `LastResultsHash` is the root hash of a Merkle tree built from `ResponseDeliverTx` responses (`Log`,`Info`, `Codespace` and `Events` fields are ignored).                                                                                                                                                                                                                             | Must  be of length 32. The first block has `block.Header.ResultsHash == MerkleRoot(nil)`, i.e. the hash of an empty input, for RFC-6962 conformance.                                             |
 | EvidenceHash      | slice of bytes (`[]byte`) | MerkleRoot of the evidence of Byzantine behavior included in this block.                                                                                                                                                                                                                                                                                                             | Must  be of length 32                                                                                                                                                                            |
 | ProposerAddress   | slice of bytes (`[]byte`) | Address of the original proposer of the block. Validator must be in the current validatorSet.                                                                                                                                                                                                                                                                                         | Must  be of length 20                                                                                                                                                                            |
 
@@ -142,7 +142,7 @@ versioning that this can refer to)
 | Name  | type   | Description                                                                                                     | Validation                                                                                                         |
 |-------|--------|-----------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
 | Block | uint64 | This number represents the version of the block protocol and must be the same throughout an operational network | Must be equal to protocol version being used in a network (`block.Version.Block == state.Version.Consensus.Block`) |
-| App   | uint64 | App version is decided on by the application. Read [here](../abci/abci.md#info)                                 | `block.Version.App == state.Version.Consensus.App`                                                                 |
+| App   | uint64 | App version is decided on by the application. Read [here](https://github.com/tendermint/tendermint/blob/main/spec/abci/abci++_app_requirements.md)                                 | `block.Version.App == state.Version.Consensus.App`                                                                 |
 
 ## BlockID
 
@@ -151,7 +151,7 @@ The `BlockID` contains two distinct Merkle roots of the block. The `BlockID` inc
 | Name          | Type                            | Description                                                                                                                                                      | Validation                                                             |
 |---------------|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------|
 | Hash          | slice of bytes (`[]byte`)       | MerkleRoot of all the fields in the header (ie. `MerkleRoot(header)`.                                                                                            | hash must be of length 32                                              |
-| PartSetHeader | [PartSetHeader](#PartSetHeader) | Used for secure gossiping of the block during consensus, is the MerkleRoot of the complete serialized block cut into parts (ie. `MerkleRoot(MakeParts(block))`). | Must adhere to the validation rules of [PartSetHeader](#PartSetHeader) |
+| PartSetHeader | [PartSetHeader](#partsetheader) | Used for secure gossiping of the block during consensus, is the MerkleRoot of the complete serialized block cut into parts (ie. `MerkleRoot(MakeParts(block))`). | Must adhere to the validation rules of [PartSetHeader](#partsetheader) |
 
 See [MerkleRoot](./encoding.md#MerkleRoot) for details.
 
@@ -210,7 +210,7 @@ to reconstruct the vote set given the validator set.
 | Signature        | [Signature](#signature)     | Signature corresponding to the validators participation in consensus.                                                                                           | The length of the signature must be > 0 and < than  64            |
 
 NOTE: `ValidatorAddress` and `Timestamp` fields may be removed in the future
-(see [ADR-25](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-025-commit.md)).
+(see [ADR-25](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-025-commit.md)).
 
 ## BlockIDFlag
 
@@ -236,7 +236,7 @@ The vote includes information about the validator signing it. When stored in the
 | Height           | uint64                           | Height for which this vote was created for                                                  | Must be > 0                                                                                          |
 | Round            | int32                           | Round that the commit corresponds to.                                                       | Must be > 0                                                                                          |
 | BlockID          | [BlockID](#blockid)             | The blockID of the corresponding block.                                                     | [BlockID](#blockid)                                                                                  |
-| Timestamp        | [Time](#Time)                   | Timestamp represents the time at which a validator signed.                                  | [Time](#time)                                                                                        |
+| Timestamp        | [Time](#time)                   | Timestamp represents the time at which a validator signed.                                  | [Time](#time)                                                                                        |
 | ValidatorAddress | slice of bytes (`[]byte`)       | Address of the validator                                                                    | Length must be equal to 20                                                                           |
 | ValidatorIndex   | int32                           | Index at a specific block height that corresponds to the Index of the validator in the set. | must be > 0                                                                                          |
 | Signature        | slice of bytes (`[]byte`)       | Signature by the validator if they participated in consensus for the associated bock.       | Length of signature must be > 0 and < 64                                                             |
@@ -291,7 +291,7 @@ is locked in POLRound. The message is signed by the validator private key.
 | Round     | int32                           | Round that the commit corresponds to.                                                 | Must be > 0                                             |
 | POLRound  | int64                           | Proof of lock                                                                         | Must be > 0                                             |
 | BlockID   | [BlockID](#blockid)             | The blockID of the corresponding block.                                               | [BlockID](#blockid)                                     |
-| Timestamp | [Time](#Time)                   | Timestamp represents the time at which a validator signed.                            | [Time](#time)                                           |
+| Timestamp | [Time](#time)                   | Timestamp represents the time at which a validator signed.                            | [Time](#time)                                           |
 | Signature | slice of bytes (`[]byte`)       | Signature by the validator if they participated in consensus for the associated bock. | Length of signature must be > 0 and < 64                |
 
 ## SignedMsgType
@@ -342,7 +342,7 @@ in the same round of the same height. Votes are lexicographically sorted on `Blo
 | VoteB            | [Vote](#vote) | The second vote submitted by a validator when they equivocated     | VoteB must adhere to [Vote](#vote) validation rules |
 | TotalVotingPower | int64         | The total power of the validator set at the height of equivocation | Must be equal to nodes own copy of the data         |
 | ValidatorPower   | int64         | Power of the equivocating validator at the height                  | Must be equal to the nodes own copy of the data     |
-| Timestamp        | [Time](#Time) | Time of the block where the equivocation occurred                  | Must be equal to the nodes own copy of the data     |
+| Timestamp        | [Time](#time) | Time of the block where the equivocation occurred                  | Must be equal to the nodes own copy of the data     |
 
 ### LightClientAttackEvidence
 
@@ -353,11 +353,11 @@ and Amnesia. These attacks are exhaustive. You can find a more detailed overview
 
 | Name                 | Type                               | Description                                                          | Validation                                                       |
 |----------------------|------------------------------------|----------------------------------------------------------------------|------------------------------------------------------------------|
-| ConflictingBlock     | [LightBlock](#LightBlock)          | Read Below                                                           | Must adhere to the validation rules of [lightBlock](#lightblock) |
+| ConflictingBlock     | [LightBlock](#lightblock)          | Read Below                                                           | Must adhere to the validation rules of [lightBlock](#lightblock) |
 | CommonHeight         | int64                              | Read Below                                                           | must be > 0                                                      |
-| Byzantine Validators | Array of [Validators](#Validators) | validators that acted maliciously                                    | Read Below                                                       |
+| Byzantine Validators | Array of [Validators](#validator) | validators that acted maliciously                                    | Read Below                                                       |
 | TotalVotingPower     | int64                              | The total power of the validator set at the height of the infraction | Must be equal to the nodes own copy of the data                  |
-| Timestamp            | [Time](#Time)                      | Time of the block where the infraction occurred                      | Must be equal to the nodes own copy of the data                  |
+| Timestamp            | [Time](#time)                      | Time of the block where the infraction occurred                      | Must be equal to the nodes own copy of the data                  |
 
 ## LightBlock
 
@@ -376,7 +376,7 @@ The SignedhHeader is the [header](#header) accompanied by the commit to prove it
 
 | Name   | Type              | Description       | Validation                                                                        |
 |--------|-------------------|-------------------|-----------------------------------------------------------------------------------|
-| Header | [Header](#Header) | [Header](#header) | Header cannot be nil and must adhere to the [Header](#Header) validation criteria |
+| Header | [Header](#header) | [Header](#header) | Header cannot be nil and must adhere to the [Header](#header) validation criteria |
 | Commit | [Commit](#commit) | [Commit](#commit) | Commit cannot be nil and must adhere to the [Commit](#commit) criteria            |
 
 ## ValidatorSet

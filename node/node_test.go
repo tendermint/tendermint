@@ -235,7 +235,9 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	var height int64 = 1
 	state, stateDB, privVals := state(1, height)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	maxBytes := 16384
 	var partSize uint32 = 256
 	maxEvidenceBytes := int64(maxBytes / 2)
@@ -277,7 +279,8 @@ func TestCreateProposalBlock(t *testing.T) {
 	// than can fit in a block
 	var currentBytes int64
 	for currentBytes <= maxEvidenceBytes {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height, time.Now(), privVals[0], "test-chain")
+		require.NoError(t, err)
 		currentBytes += int64(len(ev.Bytes()))
 		evidencePool.ReportConflictingVotes(ev.VoteA, ev.VoteB)
 	}
@@ -305,14 +308,17 @@ func TestCreateProposalBlock(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
 		proposerAddr,
+		nil,
 	)
+	require.NoError(t, err)
 
 	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
+	partSet, err := block.MakePartSet(partSize)
+	require.NoError(t, err)
 	assert.Less(t, partSet.ByteSize(), int64(maxBytes))
 
 	partSetFromHeader := types.NewPartSetFromHeader(partSet.Header())
@@ -340,7 +346,9 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	var height int64 = 1
 	state, stateDB, _ := state(1, height)
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	var maxBytes int64 = 16384
 	var partSize uint32 = 256
 	state.ConsensusParams.Block.MaxBytes = maxBytes
@@ -383,18 +391,21 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	)
 
 	commit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	block, _ := blockExec.CreateProposalBlock(
+	block, err := blockExec.CreateProposalBlock(
 		height,
 		state, commit,
 		proposerAddr,
+		nil,
 	)
+	require.NoError(t, err)
 
 	pb, err := block.ToProto()
 	require.NoError(t, err)
 	assert.Less(t, int64(pb.Size()), maxBytes)
 
 	// check that the part set does not exceed the maximum block size
-	partSet := block.MakePartSet(partSize)
+	partSet, err := block.MakePartSet(partSize)
+	require.NoError(t, err)
 	assert.EqualValues(t, partSet.ByteSize(), int64(pb.Size()))
 }
 
@@ -464,7 +475,9 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	if err := stateStore.Save(s); err != nil {
 		panic(err)
 	}

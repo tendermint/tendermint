@@ -68,17 +68,15 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
-	RPC       *RPCConfig       `mapstructure:"rpc"`
-	P2P       *P2PConfig       `mapstructure:"p2p"`
-	Mempool   *MempoolConfig   `mapstructure:"mempool"`
-	StateSync *StateSyncConfig `mapstructure:"statesync"`
-	BlockSync *BlockSyncConfig `mapstructure:"blocksync"`
-	//TODO(williambanfield): remove this field once v0.37 is released.
-	// https://github.com/tendermint/tendermint/issues/9279
-	DeprecatedFastSyncConfig map[interface{}]interface{} `mapstructure:"fastsync"`
-	Consensus                *ConsensusConfig            `mapstructure:"consensus"`
-	TxIndex                  *TxIndexConfig              `mapstructure:"tx_index"`
-	Instrumentation          *InstrumentationConfig      `mapstructure:"instrumentation"`
+	RPC             *RPCConfig             `mapstructure:"rpc"`
+	P2P             *P2PConfig             `mapstructure:"p2p"`
+	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
+	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
+	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
+	Storage         *StorageConfig         `mapstructure:"storage"`
+	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
+	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -91,6 +89,7 @@ func DefaultConfig() *Config {
 		StateSync:       DefaultStateSyncConfig(),
 		BlockSync:       DefaultBlockSyncConfig(),
 		Consensus:       DefaultConsensusConfig(),
+		Storage:         DefaultStorageConfig(),
 		TxIndex:         DefaultTxIndexConfig(),
 		Instrumentation: DefaultInstrumentationConfig(),
 	}
@@ -106,6 +105,7 @@ func TestConfig() *Config {
 		StateSync:       TestStateSyncConfig(),
 		BlockSync:       TestBlockSyncConfig(),
 		Consensus:       TestConsensusConfig(),
+		Storage:         TestStorageConfig(),
 		TxIndex:         TestTxIndexConfig(),
 		Instrumentation: TestInstrumentationConfig(),
 	}
@@ -151,14 +151,9 @@ func (cfg *Config) ValidateBasic() error {
 	return nil
 }
 
+// CheckDeprecated returns any deprecation warnings. These are printed to the operator on startup
 func (cfg *Config) CheckDeprecated() []string {
 	var warnings []string
-	if cfg.DeprecatedFastSyncConfig != nil {
-		warnings = append(warnings, "[fastsync] table detected. This section has been renamed to [blocksync]. The values in this deprecated section will be disregarded.")
-	}
-	if cfg.BaseConfig.DeprecatedFastSyncMode != nil {
-		warnings = append(warnings, "fast_sync key detected. This key has been renamed to block_sync. The value of this deprecated key will be disregarded.")
-	}
 	return warnings
 }
 
@@ -185,10 +180,6 @@ type BaseConfig struct { //nolint: maligned
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
 	BlockSyncMode bool `mapstructure:"block_sync"`
-
-	//TODO(williambanfield): remove this field once v0.37 is released.
-	// https://github.com/tendermint/tendermint/issues/9279
-	DeprecatedFastSyncMode interface{} `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -1087,11 +1078,41 @@ func (cfg *ConsensusConfig) ValidateBasic() error {
 }
 
 //-----------------------------------------------------------------------------
+// StorageConfig
+
+// StorageConfig allows more fine-grained control over certain storage-related
+// behavior.
+type StorageConfig struct {
+	// Set to false to ensure ABCI responses are persisted. ABCI responses are
+	// required for `/block_results` RPC queries, and to reindex events in the
+	// command-line tool.
+	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
+}
+
+// DefaultStorageConfig returns the default configuration options relating to
+// Tendermint storage optimization.
+func DefaultStorageConfig() *StorageConfig {
+	return &StorageConfig{
+		DiscardABCIResponses: false,
+	}
+}
+
+// TestStorageConfig returns storage configuration that can be used for
+// testing.
+func TestStorageConfig() *StorageConfig {
+	return &StorageConfig{
+		DiscardABCIResponses: false,
+	}
+}
+
+// -----------------------------------------------------------------------------
 // TxIndexConfig
 // Remember that Event has the following structure:
 // type: [
-//  key: value,
-//  ...
+//
+//	key: value,
+//	...
+//
 // ]
 //
 // CompositeKeys are constructed by `type.key`

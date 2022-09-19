@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
+
 	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/types"
 )
@@ -18,7 +19,8 @@ type AppConnConsensus interface {
 	Error() error
 
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
-
+	PrepareProposalSync(types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error)
+	ProcessProposalSync(types.RequestProcessProposal) (*types.ResponseProcessProposal, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(types.RequestDeliverTx) *abcicli.ReqRes
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
@@ -42,8 +44,6 @@ type AppConnQuery interface {
 	EchoSync(string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
-
-	//	SetOptionSync(key string, value string) (res types.Result)
 }
 
 type AppConnSnapshot interface {
@@ -63,6 +63,8 @@ type appConnConsensus struct {
 	appConn abcicli.Client
 }
 
+var _ AppConnConsensus = (*appConnConsensus)(nil)
+
 func NewAppConnConsensus(appConn abcicli.Client, metrics *Metrics) AppConnConsensus {
 	return &appConnConsensus{
 		metrics: metrics,
@@ -81,6 +83,17 @@ func (app *appConnConsensus) Error() error {
 func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "init_chain", "type", "sync"))()
 	return app.appConn.InitChainSync(req)
+}
+
+func (app *appConnConsensus) PrepareProposalSync(
+	req types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "prepare_proposal", "type", "sync"))()
+	return app.appConn.PrepareProposalSync(req)
+}
+
+func (app *appConnConsensus) ProcessProposalSync(req types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "process_proposal", "type", "sync"))()
+	return app.appConn.ProcessProposalSync(req)
 }
 
 func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {

@@ -10,7 +10,7 @@ parent:
 This directory contains work-in-progress English and TLA+ specifications for the Light Client
 protocol. Implementations of the light client can be found in
 [Rust](https://github.com/informalsystems/tendermint-rs/tree/master/light-client) and
-[Go](https://github.com/tendermint/tendermint/tree/master/light).
+[Go](https://github.com/tendermint/tendermint/tree/main/light).
 
 Light clients are assumed to be initialized once from a trusted source
 with a trusted header and validator set. The light client
@@ -19,20 +19,20 @@ verifying a minimal set of data from a network of full nodes (at least one of wh
 
 The light client is decomposed into two main components:
 
-- [Commit Verification](#Commit-Verification) - verify signed headers and associated validator
+- [Commit Verification](#commit-verification) - verify signed headers and associated validator
   set changes from a single full node, called primary
-- [Attack Detection](#Attack-Detection) -  verify commits across multiple full nodes (called secondaries) and detect conflicts (ie. the existence of a lightclient attack)
+- [Attack Detection](#attack-detection) -  verify commits across multiple full nodes (called secondaries) and detect conflicts (ie. the existence of a lightclient attack)
 
 In case a lightclient attack is detected, the lightclient submits evidence to a full node which is responsible for "accountability", that is, punishing attackers:
 
-- [Accountability](#Accountability) - given evidence for an attack, compute a set of validators that are responsible for it.
+- [Accountability](#accountability) - given evidence for an attack, compute a set of validators that are responsible for it.
 
 ## Commit Verification
 
 The [English specification](verification/verification_001_published.md) describes the light client
 commit verification problem in terms of the temporal properties
-[LCV-DIST-SAFE.1](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/verification/verification_001_published.md#lcv-dist-safe1) and
-[LCV-DIST-LIVE.1](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/verification/verification_001_published.md#lcv-dist-live1).
+[LCV-DIST-SAFE.1](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-safe1) and
+[LCV-DIST-LIVE.1](https://github.com/tendermint/tendermint/blob/main/spec/light-client/verification/verification_001_published.md#lcv-dist-live1).
 Commit verification is assumed to operate within the Tendermint Failure Model, where +2/3 of validators are correct for some time period and
 validator sets can change arbitrarily at each height.
 
@@ -136,7 +136,7 @@ termination, which can be model checked with Apalache.
 The `LCD_MC*.tla` files contain concrete parameters for the
 [TLA+ specification](detection/LCDetector_003_draft.tla),
 in order to run the model checker.
-For instance, [LCD_MC4_4_faulty.tla](detection/MC4_4_faulty.tla)
+For instance, [LCD_MC4_4_faulty.tla](./verification/MC4_4_faulty.tla)
 contains the following parameters
 for the nodes, heights, the trusting period, the clock drifts,
 correctness of the nodes, and the ratio of the faulty processes:

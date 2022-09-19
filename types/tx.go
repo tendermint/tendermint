@@ -45,13 +45,8 @@ type Txs []Tx
 // Hash returns the Merkle root hash of the transaction hashes.
 // i.e. the leaves of the tree are the hashes of the txs.
 func (txs Txs) Hash() []byte {
-	// These allocations will be removed once Txs is switched to [][]byte,
-	// ref #2603. This is because golang does not allow type casting slices without unsafe
-	txBzs := make([][]byte, len(txs))
-	for i := 0; i < len(txs); i++ {
-		txBzs[i] = txs[i].Hash()
-	}
-	return merkle.HashFromByteSlices(txBzs)
+	hl := txs.hashList()
+	return merkle.HashFromByteSlices(hl)
 }
 
 // Index returns the index of this transaction in the list, or -1 if not found
@@ -74,22 +69,59 @@ func (txs Txs) IndexByHash(hash []byte) int {
 	return -1
 }
 
-// Proof returns a simple merkle proof for this node.
-// Panics if i < 0 or i >= len(txs)
-// TODO: optimize this!
 func (txs Txs) Proof(i int) TxProof {
-	l := len(txs)
-	bzs := make([][]byte, l)
-	for i := 0; i < l; i++ {
-		bzs[i] = txs[i].Hash()
-	}
-	root, proofs := merkle.ProofsFromByteSlices(bzs)
+	hl := txs.hashList()
+	root, proofs := merkle.ProofsFromByteSlices(hl)
 
 	return TxProof{
 		RootHash: root,
 		Data:     txs[i],
 		Proof:    *proofs[i],
 	}
+}
+
+func (txs Txs) hashList() [][]byte {
+	hl := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		hl[i] = txs[i].Hash()
+	}
+	return hl
+}
+
+// Txs is a slice of transactions. Sorting a Txs value orders the transactions
+// lexicographically.
+func (txs Txs) Len() int      { return len(txs) }
+func (txs Txs) Swap(i, j int) { txs[i], txs[j] = txs[j], txs[i] }
+func (txs Txs) Less(i, j int) bool {
+	return bytes.Compare(txs[i], txs[j]) == -1
+}
+
+func ToTxs(txl [][]byte) Txs {
+	txs := make([]Tx, 0, len(txl))
+	for _, tx := range txl {
+		txs = append(txs, tx)
+	}
+	return txs
+}
+
+func (txs Txs) Validate(maxSizeBytes int64) error {
+	var size int64
+	for _, tx := range txs {
+		size += int64(len(tx))
+		if size > maxSizeBytes {
+			return fmt.Errorf("transaction data size exceeds maximum %d", maxSizeBytes)
+		}
+	}
+	return nil
+}
+
+// ToSliceOfBytes converts a Txs to slice of byte slices.
+func (txs Txs) ToSliceOfBytes() [][]byte {
+	txBzs := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		txBzs[i] = txs[i]
+	}
+	return txBzs
 }
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.

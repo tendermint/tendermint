@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tm-db"
@@ -15,7 +16,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/mempool/mock"
+	mpmocks "github.com/tendermint/tendermint/mempool/mocks"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -52,6 +53,7 @@ type ReactorPair struct {
 }
 
 func newReactor(
+	t *testing.T,
 	logger log.Logger,
 	genDoc *types.GenesisDoc,
 	privVals []types.PrivValidator,
@@ -70,7 +72,9 @@ func newReactor(
 
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	blockStore := store.NewBlockStore(blockDB)
 
 	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
@@ -78,14 +82,28 @@ func newReactor(
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
 
+	mp := &mpmocks.Mempool{}
+	mp.On("Lock").Return()
+	mp.On("Unlock").Return()
+	mp.On("FlushAppConn", mock.Anything).Return(nil)
+	mp.On("Update",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything).Return(nil)
+
 	// Make the Reactor itself.
 	// NOTE we have to create and commit the blocks first because
 	// pool.height is determined from the store.
 	fastSync := true
 	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db)
+	stateStore = sm.NewStore(db, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mock.Mempool{}, sm.EmptyEvidencePool{})
+		mp, sm.EmptyEvidencePool{})
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
@@ -112,9 +130,10 @@ func newReactor(
 				lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
 		}
 
-		thisBlock := makeBlock(blockHeight, state, lastCommit)
+		thisBlock := state.MakeBlock(blockHeight, nil, lastCommit, nil, state.Validators.Proposer.Address)
 
-		thisParts := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		thisParts, err := thisBlock.MakePartSet(types.BlockPartSizeBytes)
+		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
@@ -140,8 +159,8 @@ func TestNoBlockResponse(t *testing.T) {
 
 	reactorPairs := make([]ReactorPair, 2)
 
-	reactorPairs[0] = newReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
-	reactorPairs[1] = newReactor(log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[0] = newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 
 	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
@@ -202,7 +221,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	// Other chain needs a different validator set
 	otherGenDoc, otherPrivVals := randGenesisDoc(1, false, 30)
-	otherChain := newReactor(log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
+	otherChain := newReactor(t, log.TestingLogger(), otherGenDoc, otherPrivVals, maxBlockHeight)
 
 	defer func() {
 		err := otherChain.reactor.Stop()
@@ -213,10 +232,10 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	reactorPairs := make([]ReactorPair, 4)
 
-	reactorPairs[0] = newReactor(log.TestingLogger(), genDoc, privVals, maxBlockHeight)
-	reactorPairs[1] = newReactor(log.TestingLogger(), genDoc, privVals, 0)
-	reactorPairs[2] = newReactor(log.TestingLogger(), genDoc, privVals, 0)
-	reactorPairs[3] = newReactor(log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[0] = newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	reactorPairs[1] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[2] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[3] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 
 	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
@@ -254,7 +273,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	// race, but can't be easily avoided.
 	reactorPairs[3].reactor.store = otherChain.reactor.store
 
-	lastReactorPair := newReactor(log.TestingLogger(), genDoc, privVals, 0)
+	lastReactorPair := newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -276,21 +295,6 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
-}
-
-//----------------------------------------------
-// utility funcs
-
-func makeTxs(height int64) (txs []types.Tx) {
-	for i := 0; i < 10; i++ {
-		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
-	}
-	return txs
-}
-
-func makeBlock(height int64, state sm.State, lastCommit *types.Commit) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), lastCommit, nil, state.Validators.GetProposer().Address)
-	return block
 }
 
 type testApp struct {

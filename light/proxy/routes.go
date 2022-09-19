@@ -25,6 +25,8 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
 		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), ""),
 		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
+		"header":               rpcserver.NewRPCFunc(makeHeaderFunc(c), "height"),
+		"header_by_hash":       rpcserver.NewRPCFunc(makeHeaderByHashFunc(c), "hash"),
 		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
 		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
 		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
@@ -62,7 +64,6 @@ func makeHealthFunc(c *lrpc.Client) rpcHealthFunc {
 
 type rpcStatusFunc func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error)
 
-// nolint: interfacer
 func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		return c.Status(ctx.Context())
@@ -106,6 +107,22 @@ type rpcBlockFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBloc
 func makeBlockFunc(c *lrpc.Client) rpcBlockFunc {
 	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultBlock, error) {
 		return c.Block(ctx.Context(), height)
+	}
+}
+
+type rpcHeaderFunc func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultHeader, error)
+
+func makeHeaderFunc(c *lrpc.Client) rpcHeaderFunc {
+	return func(ctx *rpctypes.Context, height *int64) (*ctypes.ResultHeader, error) {
+		return c.Header(ctx.Context(), height)
+	}
+}
+
+type rpcHeaderByHashFunc func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultHeader, error)
+
+func makeHeaderByHashFunc(c *lrpc.Client) rpcHeaderByHashFunc {
+	return func(ctx *rpctypes.Context, hash []byte) (*ctypes.ResultHeader, error) {
+		return c.HeaderByHash(ctx.Context(), hash)
 	}
 }
 
@@ -259,8 +276,8 @@ type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string,
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
 	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes,
-		height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
-
+		height int64, prove bool,
+	) (*ctypes.ResultABCIQuery, error) {
 		return c.ABCIQueryWithOptions(ctx.Context(), path, data, rpcclient.ABCIQueryOptions{
 			Height: height,
 			Prove:  prove,
@@ -278,7 +295,6 @@ func makeABCIInfoFunc(c *lrpc.Client) rpcABCIInfoFunc {
 
 type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 
-// nolint: interfacer
 func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
 	return func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 		return c.BroadcastEvidence(ctx.Context(), ev)

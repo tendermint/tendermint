@@ -106,7 +106,7 @@ docker containers, modules it calls "chaincode". It uses an
 implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf).
 from a team at IBM that is [augmented to handle potentially
 non-deterministic
-chaincode](https://www.zurich.ibm.com/~cca/papers/sieve.pdf) It is
+chaincode](https://drops.dagstuhl.de/opus/volltexte/2017/7093/pdf/LIPIcs-OPODIS-2016-24.pdf) It is
 possible to implement this docker-based behavior as a ABCI app in
 Tendermint, though extending Tendermint to handle non-determinism
 remains for future work.
@@ -120,7 +120,7 @@ consensus engine, and provides a particular application state.
 ## ABCI Overview
 
 The [Application BlockChain Interface
-(ABCI)](https://github.com/tendermint/tendermint/tree/master/abci)
+(ABCI)](https://github.com/tendermint/tendermint/tree/main/abci)
 allows for Byzantine Fault Tolerant replication of applications
 written in any programming language.
 
@@ -188,7 +188,7 @@ core to the application. The application replies with corresponding
 response messages.
 
 The messages are specified here: [ABCI Message
-Types](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types).
+Types](https://github.com/tendermint/tendermint/blob/main/abci/README.md#message-types).
 
 The **DeliverTx** message is the work horse of the application. Each
 transaction in the blockchain is delivered with this message. The

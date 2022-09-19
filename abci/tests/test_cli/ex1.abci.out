@@ -8,6 +8,14 @@
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
+> prepare_proposal "abc"
+-> code: OK
+-> log: Succeeded. Tx: abc
+
+> process_proposal "abc"
+-> code: OK
+-> status: ACCEPT
+
 > commit 
 -> code: OK
 -> data.hex: 0x0000000000000000
@@ -48,4 +56,26 @@
 -> key.hex: 646566
 -> value: xyz
 -> value.hex: 78797A
+
+> prepare_proposal "preparedef"
+-> code: OK
+-> log: Succeeded. Tx: replacedef
+
+> process_proposal "replacedef"
+-> code: OK
+-> status: ACCEPT
+
+> process_proposal "preparedef"
+-> code: OK
+-> status: REJECT
+
+> prepare_proposal 
+
+> process_proposal 
+-> code: OK
+-> status: ACCEPT
+
+> commit 
+-> code: OK
+-> data.hex: 0x0400000000000000
 

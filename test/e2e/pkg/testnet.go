@@ -1,4 +1,3 @@
-//nolint: gosec
 package e2e
 
 import (
@@ -11,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -25,9 +25,11 @@ const (
 	networkIPv6           = "fd80:b10c::/48"
 )
 
-type Mode string
-type Protocol string
-type Perturbation string
+type (
+	Mode         string
+	Protocol     string
+	Perturbation string
+)
 
 const (
 	ModeValidator Mode = "validator"
@@ -45,21 +47,28 @@ const (
 	PerturbationKill       Perturbation = "kill"
 	PerturbationPause      Perturbation = "pause"
 	PerturbationRestart    Perturbation = "restart"
+
+	EvidenceAgeHeight int64         = 7
+	EvidenceAgeTime   time.Duration = 500 * time.Millisecond
 )
 
 // Testnet represents a single testnet.
 type Testnet struct {
-	Name             string
-	File             string
-	Dir              string
-	IP               *net.IPNet
-	InitialHeight    int64
-	InitialState     map[string]string
-	Validators       map[*Node]int64
-	ValidatorUpdates map[int64]map[*Node]int64
-	Nodes            []*Node
-	KeyType          string
-	ABCIProtocol     string
+	Name                 string
+	File                 string
+	Dir                  string
+	IP                   *net.IPNet
+	InitialHeight        int64
+	InitialState         map[string]string
+	Validators           map[*Node]int64
+	ValidatorUpdates     map[int64]map[*Node]int64
+	Nodes                []*Node
+	KeyType              string
+	Evidence             int
+	ABCIProtocol         string
+	PrepareProposalDelay time.Duration
+	ProcessProposalDelay time.Duration
+	CheckTxDelay         time.Duration
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -113,16 +122,20 @@ func LoadTestnet(file string) (*Testnet, error) {
 	proxyPortGen := newPortGenerator(proxyPortFirst)
 
 	testnet := &Testnet{
-		Name:             filepath.Base(dir),
-		File:             file,
-		Dir:              dir,
-		IP:               ipGen.Network(),
-		InitialHeight:    1,
-		InitialState:     manifest.InitialState,
-		Validators:       map[*Node]int64{},
-		ValidatorUpdates: map[int64]map[*Node]int64{},
-		Nodes:            []*Node{},
-		ABCIProtocol:     manifest.ABCIProtocol,
+		Name:                 filepath.Base(dir),
+		File:                 file,
+		Dir:                  dir,
+		IP:                   ipGen.Network(),
+		InitialHeight:        1,
+		InitialState:         manifest.InitialState,
+		Validators:           map[*Node]int64{},
+		ValidatorUpdates:     map[int64]map[*Node]int64{},
+		Nodes:                []*Node{},
+		Evidence:             manifest.Evidence,
+		ABCIProtocol:         manifest.ABCIProtocol,
+		PrepareProposalDelay: manifest.PrepareProposalDelay,
+		ProcessProposalDelay: manifest.ProcessProposalDelay,
+		CheckTxDelay:         manifest.CheckTxDelay,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -333,6 +346,10 @@ func (n Node) Validate(testnet Testnet) error {
 	if n.StateSync && n.StartAt == 0 {
 		return errors.New("state synced nodes cannot start at the initial height")
 	}
+	if n.RetainBlocks != 0 && n.RetainBlocks < uint64(EvidenceAgeHeight) {
+		return fmt.Errorf("retain_blocks must be greater or equal to max evidence age (%d)",
+			EvidenceAgeHeight)
+	}
 	if n.PersistInterval == 0 && n.RetainBlocks > 0 {
 		return errors.New("persist_interval=0 requires retain_blocks=0")
 	}
@@ -380,7 +397,7 @@ func (t Testnet) ArchiveNodes() []*Node {
 // RandomNode returns a random non-seed node.
 func (t Testnet) RandomNode() *Node {
 	for {
-		node := t.Nodes[rand.Intn(len(t.Nodes))]
+		node := t.Nodes[rand.Intn(len(t.Nodes))] //nolint:gosec
 		if node.Mode != ModeSeed {
 			return node
 		}
@@ -443,7 +460,7 @@ type keyGenerator struct {
 
 func newKeyGenerator(seed int64) *keyGenerator {
 	return &keyGenerator{
-		random: rand.New(rand.NewSource(seed)),
+		random: rand.New(rand.NewSource(seed)), //nolint:gosec
 	}
 }
 

@@ -67,7 +67,7 @@ Next follows a standard block creation cycle, where we enter a new
 round, propose a block, receive more than 2/3 of prevotes, then
 precommits and finally have a chance to commit a block. For details,
 please refer to [Byzantine Consensus
-Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
+Algorithm](https://github.com/tendermint/tendermint/blob/main/spec/consensus/consensus.md).
 
 ```sh
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus
@@ -115,7 +115,7 @@ I[10-04|13:54:30.410] Recheck txs                                  module=mempoo
 Here is the list of modules you may encounter in Tendermint's log and a
 little overview what they do.
 
-- `abci-client` As mentioned in [Application Development Guide](../app-dev/app-development.md), Tendermint acts as an ABCI
+- `abci-client` As mentioned in [Application Development Guide](../app-dev/abci-cli.md), Tendermint acts as an ABCI
   client with respect to the application and maintains 3 connections:
   mempool, consensus and query. The code used by Tendermint Core can
   be found [here](https://github.com/tendermint/tendermint/blob/v0.34.x/abci/client).

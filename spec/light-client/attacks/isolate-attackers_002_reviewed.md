@@ -1,3 +1,4 @@
+<!-- markdown-link-check-disable -->
 # Lightclient Attackers Isolation
 
 Adversarial nodes may have the incentive to lie to a lightclient about the state of a Tendermint blockchain. An attempt to do so is called attack. Light client [verification][verification] checks incoming data by checking a so-called "commit", which is a forwarded set of signed messages that is (supposedly) produced during executing Tendermint consensus. Thus, an attack boils down to creating and signing Tendermint consensus messages in deviation from the Tendermint consensus algorithm rules.
@@ -65,7 +66,7 @@ Here we discuss how to solve the problem of isolating misbehaving processes. We 
 
 ### Outline
 
-We first check whether the conflicting block can indeed be verified from the common height. We then first check whether it was a lunatic attack (violating validity). If this is not the case, we check for equivocation. If this also is not the case, we start the on-chain [accountability protocol](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit).
+We first check whether the conflicting block can indeed be verified from the common height. We then first check whether it was a lunatic attack (violating validity). If this is not the case, we check for equivocation. If this also is not the case, we start the on-chain <!-- markdown-link-check-disable-next-line -->[accountability protocol](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit).
 
 #### **[LCAI-FUNC-MAIN.1]**
 
@@ -144,7 +145,7 @@ func violatesTMValidity(ref Header, ev Header) boolean
 func IsolateAmnesiaAttacker(ev LightClientAttackEvidence, bc Blockchain) []ValidatorAddress
 ```
 
-- Implementation remarks
+- Implementation remarks <!-- markdown-link-check-disable-next-line -->
     - This triggers the [query/response protocol](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit).
 - Expected postcondition
     - returns attackers according to [LCAI-INV-Output.1].

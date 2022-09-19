@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
@@ -22,6 +22,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -158,7 +159,9 @@ LOOP:
 		logger := log.NewNopLogger()
 		blockDB := dbm.NewMemDB()
 		stateDB := blockDB
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
 		privValidator := loadPrivValidator(consensusReplayConfig)
@@ -289,7 +292,7 @@ func (w *crashingWAL) Start() error { return w.next.Start() }
 func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
 
-//------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------
 type testSim struct {
 	GenesisState sm.State
 	Config       *cfg.Config
@@ -361,9 +364,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	require.NoError(t, err)
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempl.TxInfo{})
-	assert.Nil(t, err)
-	propBlock, _ := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	propBlockParts := propBlock.MakePartSet(partSize)
+	assert.NoError(t, err)
+	propBlock, err := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
+	require.NoError(t, err)
+	propBlockParts, err := propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
@@ -391,9 +396,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	require.NoError(t, err)
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil, mempl.TxInfo{})
-	assert.Nil(t, err)
-	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	propBlockParts = propBlock.MakePartSet(partSize)
+	assert.NoError(t, err)
+	propBlock, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
+	require.NoError(t, err)
+	propBlockParts, err = propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 
 	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
@@ -428,9 +435,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil, mempl.TxInfo{})
-	assert.Nil(t, err)
-	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	propBlockParts = propBlock.MakePartSet(partSize)
+	assert.NoError(t, err)
+	propBlock, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
+	require.NoError(t, err)
+	propBlockParts, err = propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss := make([]*validatorStub, nVals+1)
 	copy(newVss, vss[:nVals+1])
@@ -503,9 +512,11 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	incrementHeight(vss...)
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx3, nil, mempl.TxInfo{})
-	assert.Nil(t, err)
-	propBlock, _ = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	propBlockParts = propBlock.MakePartSet(partSize)
+	assert.NoError(t, err)
+	propBlock, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
+	require.NoError(t, err)
+	propBlockParts, err = propBlock.MakePartSet(partSize)
+	require.NoError(t, err)
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss = make([]*validatorStub, nVals+3)
 	copy(newVss, vss[:nVals+3])
@@ -664,7 +675,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		config = sim.Config
 		chain = append([]*types.Block{}, sim.Chain...) // copy chain
 		commits = sim.Commits
-		store = newMockBlockStore(config, genesisState.ConsensusParams)
+		store = newMockBlockStore(t, config, genesisState.ConsensusParams)
 	} else { // test single node
 		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
 		defer os.RemoveAll(testConfig.RootDir)
@@ -689,16 +700,18 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		require.NoError(t, err)
 		pubKey, err := privVal.GetPubKey()
 		require.NoError(t, err)
-		stateDB, genesisState, store = stateAndStore(config, pubKey, kvstore.ProtocolVersion)
+		stateDB, genesisState, store = stateAndStore(t, config, pubKey, kvstore.ProtocolVersion)
 
 	}
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	store.chain = chain
 	store.commits = commits
 
 	state := genesisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	state = buildTMStateFromChain(config, stateStore, state, chain, nBlocks, mode)
+	state = buildTMStateFromChain(t, config, stateStore, state, chain, nBlocks, mode)
 	latestAppHash := state.AppHash
 
 	// make a new client creator
@@ -711,10 +724,12 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
 		stateDB1 := dbm.NewMemDB()
-		stateStore := sm.NewStore(stateDB1)
+		stateStore := sm.NewStore(stateDB1, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
-		buildAppStateFromChain(proxyApp, stateStore, genesisState, chain, nBlocks, mode)
+		buildAppStateFromChain(t, proxyApp, stateStore, genesisState, chain, nBlocks, mode)
 	}
 
 	// Prune block store if requested
@@ -774,19 +789,19 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 }
 
-func applyBlock(stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
+func applyBlock(t *testing.T, stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
-	blkID := types.BlockID{Hash: blk.Hash(), PartSetHeader: blk.MakePartSet(testPartSize).Header()}
+	bps, err := blk.MakePartSet(testPartSize)
+	require.NoError(t, err)
+	blkID := types.BlockID{Hash: blk.Hash(), PartSetHeader: bps.Header()}
 	newState, _, err := blockExec.ApplyBlock(st, blkID, blk)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	return newState
 }
 
-func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
+func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm.Store,
 	state sm.State, chain []*types.Block, nBlocks int, mode uint) {
 	// start a new app without handshake, play nBlocks blocks
 	if err := proxyApp.Start(); err != nil {
@@ -808,18 +823,18 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp)
 		}
 	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp)
 		}
 
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
-			state = applyBlock(stateStore, state, chain[nBlocks-1], proxyApp)
+			state = applyBlock(t, stateStore, state, chain[nBlocks-1], proxyApp)
 		}
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
@@ -828,6 +843,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateStore sm.Store,
 }
 
 func buildTMStateFromChain(
+	t *testing.T,
 	config *cfg.Config,
 	stateStore sm.Store,
 	state sm.State,
@@ -858,19 +874,19 @@ func buildTMStateFromChain(
 	case 0:
 		// sync right up
 		for _, block := range chain {
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp)
 		}
 
 	case 1, 2, 3:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
-			state = applyBlock(stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp)
 		}
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
-		applyBlock(stateStore, state, chain[len(chain)-1], proxyApp)
+		applyBlock(t, stateStore, state, chain[len(chain)-1], proxyApp)
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
 	}
@@ -889,12 +905,16 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 	const appVersion = 0x0
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
-	stateDB, state, store := stateAndStore(config, pubKey, appVersion)
-	stateStore := sm.NewStore(stateDB)
+	stateDB, state, store := stateAndStore(t, config, pubKey, appVersion)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
 	state.LastValidators = state.Validators.Copy()
 	// mode = 0 for committing all the blocks
-	blocks := makeBlocks(3, &state, privVal)
+	blocks, err := test.MakeBlocks(3, state, []types.PrivValidator{privVal})
+	require.NoError(t, err)
+
 	store.chain = blocks
 
 	// 2. Tendermint must panic if app returns wrong hash for the first block
@@ -944,52 +964,6 @@ func TestHandshakePanicsIfAppReturnsWrongAppHash(t *testing.T) {
 			}
 		})
 	}
-}
-
-func makeBlocks(n int, state *sm.State, privVal types.PrivValidator) []*types.Block {
-	blocks := make([]*types.Block, 0)
-
-	var (
-		prevBlock     *types.Block
-		prevBlockMeta *types.BlockMeta
-	)
-
-	appHeight := byte(0x01)
-	for i := 0; i < n; i++ {
-		height := int64(i + 1)
-
-		block, parts := makeBlock(*state, prevBlock, prevBlockMeta, privVal, height)
-		blocks = append(blocks, block)
-
-		prevBlock = block
-		prevBlockMeta = types.NewBlockMeta(block, parts)
-
-		// update state
-		state.AppHash = []byte{appHeight}
-		appHeight++
-		state.LastBlockHeight = height
-	}
-
-	return blocks
-}
-
-func makeBlock(state sm.State, lastBlock *types.Block, lastBlockMeta *types.BlockMeta,
-	privVal types.PrivValidator, height int64) (*types.Block, *types.PartSet) {
-
-	lastCommit := types.NewCommit(height-1, 0, types.BlockID{}, nil)
-	if height > 1 {
-		vote, _ := types.MakeVote(
-			lastBlock.Header.Height,
-			lastBlockMeta.BlockID,
-			state.Validators,
-			privVal,
-			lastBlock.Header.ChainID,
-			time.Now())
-		lastCommit = types.NewCommit(vote.Height, vote.Round,
-			lastBlockMeta.BlockID, []types.CommitSig{vote.CommitSig()})
-	}
-
-	return state.MakeBlock(height, []types.Tx{}, lastCommit, nil, state.Validators.GetProposer().Address)
 }
 
 type badApp struct {
@@ -1143,17 +1117,21 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 
 // fresh state and mock store
 func stateAndStore(
+	t *testing.T,
 	config *cfg.Config,
 	pubKey crypto.PubKey,
-	appVersion uint64) (dbm.DB, sm.State, *mockBlockStore) {
+	appVersion uint64,
+) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(stateDB)
-	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
+	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	require.NoError(t, err)
 	state.Version.Consensus.App = appVersion
-	store := newMockBlockStore(config, state.ConsensusParams)
-	if err := stateStore.Save(state); err != nil {
-		panic(err)
-	}
+	store := newMockBlockStore(t, config, state.ConsensusParams)
+	require.NoError(t, stateStore.Save(state))
+
 	return stateDB, state, store
 }
 
@@ -1162,15 +1140,20 @@ func stateAndStore(
 
 type mockBlockStore struct {
 	config  *cfg.Config
-	params  tmproto.ConsensusParams
+	params  types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
 	base    int64
+	t       *testing.T
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func newMockBlockStore(config *cfg.Config, params tmproto.ConsensusParams) *mockBlockStore {
-	return &mockBlockStore{config, params, nil, nil, 0}
+func newMockBlockStore(t *testing.T, config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
+	return &mockBlockStore{
+		config: config,
+		params: params,
+		t:      t,
+	}
 }
 
 func (bs *mockBlockStore) Height() int64                       { return int64(len(bs.chain)) }
@@ -1181,10 +1164,13 @@ func (bs *mockBlockStore) LoadBlock(height int64) *types.Block { return bs.chain
 func (bs *mockBlockStore) LoadBlockByHash(hash []byte) *types.Block {
 	return bs.chain[int64(len(bs.chain))-1]
 }
+func (bs *mockBlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta { return nil }
 func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	block := bs.chain[height-1]
+	bps, err := block.MakePartSet(types.BlockPartSizeBytes)
+	require.NoError(bs.t, err)
 	return &types.BlockMeta{
-		BlockID: types.BlockID{Hash: block.Hash(), PartSetHeader: block.MakePartSet(types.BlockPartSizeBytes).Header()},
+		BlockID: types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()},
 		Header:  block.Header,
 	}
 }
@@ -1223,8 +1209,10 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
-	stateDB, state, store := stateAndStore(config, pubKey, 0x0)
-	stateStore := sm.NewStore(stateDB)
+	stateDB, state, store := stateAndStore(t, config, pubKey, 0x0)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 
 	oldValAddr := state.Validators.Validators[0].Address
 

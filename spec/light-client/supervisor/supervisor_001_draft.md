@@ -7,7 +7,7 @@ verification specification. So some hyperlinks have to be placed to
 the correct files eventually.
 
 # Light Client Sequential Supervisor
-
+<!-- markdown-link-check-disable -->
 The light client implements a read operation of a
 [header](TMBC-HEADER-link) from the [blockchain](TMBC-SEQ-link), by
 communicating with full nodes, a so-called primary and several
@@ -307,7 +307,7 @@ type LCInitData struct {
 
 where only one of the components must be provided. `GenesisDoc` is
 defined in the [Tendermint
-Types](https://github.com/tendermint/tendermint/blob/master/types/genesis.go).
+Types](https://github.com/tendermint/tendermint/blob/main/types/genesis.go).
 
 #### **[LC-DATA-GENESIS.1]**
 

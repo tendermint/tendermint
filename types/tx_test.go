@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,11 +19,6 @@ func makeTxs(cnt, size int) Txs {
 		txs[i] = tmrand.Bytes(size)
 	}
 	return txs
-}
-
-func randInt(low, high int) int {
-	off := tmrand.Int() % (high - low)
-	return low + off
 }
 
 func TestTxIndex(t *testing.T) {
@@ -148,4 +144,8 @@ func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 			}
 		}
 	}
+}
+
+func randInt(low, high int) int {
+	return rand.Intn(high-low) + low
 }

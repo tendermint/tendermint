@@ -30,13 +30,13 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	result := abci.ResponseDeliverTx{
 		Data: []byte("bar"),
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
 		},
 	}
 
 	// PublishEventTx adds 3 composite keys, so the query below should work
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
-	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -78,18 +78,18 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
 		},
 	}
 
 	// PublishEventNewBlock adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
-	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -133,25 +133,25 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 			{
 				Type: "transfer",
 				Attributes: []abci.EventAttribute{
-					{Key: []byte("sender"), Value: []byte("foo")},
-					{Key: []byte("recipient"), Value: []byte("bar")},
-					{Key: []byte("amount"), Value: []byte("5")},
+					{Key: "sender", Value: "foo"},
+					{Key: "recipient", Value: "bar"},
+					{Key: "amount", Value: "5"},
 				},
 			},
 			{
 				Type: "transfer",
 				Attributes: []abci.EventAttribute{
-					{Key: []byte("sender"), Value: []byte("baz")},
-					{Key: []byte("recipient"), Value: []byte("cat")},
-					{Key: []byte("amount"), Value: []byte("13")},
+					{Key: "sender", Value: "baz"},
+					{Key: "recipient", Value: "cat"},
+					{Key: "amount", Value: "13"},
 				},
 			},
 			{
 				Type: "withdraw.rewards",
 				Attributes: []abci.EventAttribute{
-					{Key: []byte("address"), Value: []byte("bar")},
-					{Key: []byte("source"), Value: []byte("iceman")},
-					{Key: []byte("amount"), Value: []byte("33")},
+					{Key: "address", Value: "bar"},
+					{Key: "source", Value: "iceman"},
+					{Key: "amount", Value: "33"},
 				},
 			},
 		},
@@ -184,7 +184,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		sub, err := eventBus.Subscribe(context.Background(), fmt.Sprintf("client-%d", i), tmquery.MustParse(tc.query))
+		sub, err := eventBus.Subscribe(context.Background(), fmt.Sprintf("client-%d", i), tmquery.MustCompile(tc.query))
 		require.NoError(t, err)
 
 		done := make(chan struct{})
@@ -237,18 +237,18 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	resultBeginBlock := abci.ResponseBeginBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("baz"), Value: []byte("1")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "baz", Value: "1"}}},
 		},
 	}
 	resultEndBlock := abci.ResponseEndBlock{
 		Events: []abci.Event{
-			{Type: "testType", Attributes: []abci.EventAttribute{{Key: []byte("foz"), Value: []byte("2")}}},
+			{Type: "testType", Attributes: []abci.EventAttribute{{Key: "foz", Value: "2"}}},
 		},
 	}
 
 	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
-	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -285,10 +285,11 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 		}
 	})
 
-	ev := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+	ev, err := NewMockDuplicateVoteEvidence(1, time.Now(), "test-chain-id")
+	require.NoError(t, err)
 
 	query := "tm.event='NewEvidence'"
-	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -325,7 +326,7 @@ func TestEventBusPublish(t *testing.T) {
 
 	const numEventsExpected = 14
 
-	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, numEventsExpected)
+	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.All, numEventsExpected)
 	require.NoError(t, err)
 
 	done := make(chan struct{})

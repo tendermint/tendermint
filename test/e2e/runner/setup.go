@@ -1,4 +1,3 @@
-// nolint: gosec
 package main
 
 import (
@@ -52,7 +51,7 @@ func Setup(testnet *e2e.Testnet) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0644)
+	err = os.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0o644) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -75,7 +74,7 @@ func Setup(testnet *e2e.Testnet) error {
 			if node.Mode == e2e.ModeLight && strings.Contains(dir, "app") {
 				continue
 			}
-			err := os.MkdirAll(dir, 0755)
+			err := os.MkdirAll(dir, 0o755)
 			if err != nil {
 				return err
 			}
@@ -91,7 +90,7 @@ func Setup(testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		err = os.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
+		err = os.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0o644) //nolint:gosec
 		if err != nil {
 			return err
 		}
@@ -200,7 +199,7 @@ func MakeGenesis(testnet *e2e.Testnet) (types.GenesisDoc, error) {
 		InitialHeight:   testnet.InitialHeight,
 	}
 	// set the app version to 1
-	genesis.ConsensusParams.Version.AppVersion = 1
+	genesis.ConsensusParams.Version.App = 1
 	for validator, power := range testnet.Validators {
 		genesis.Validators = append(genesis.Validators, types.GenesisValidator{
 			Name:    validator.Name,
@@ -324,16 +323,19 @@ func MakeConfig(node *e2e.Node) (*config.Config, error) {
 // MakeAppConfig generates an ABCI application config for a node.
 func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 	cfg := map[string]interface{}{
-		"chain_id":          node.Testnet.Name,
-		"dir":               "data/app",
-		"listen":            AppAddressUNIX,
-		"mode":              node.Mode,
-		"proxy_port":        node.ProxyPort,
-		"protocol":          "socket",
-		"persist_interval":  node.PersistInterval,
-		"snapshot_interval": node.SnapshotInterval,
-		"retain_blocks":     node.RetainBlocks,
-		"key_type":          node.PrivvalKey.Type(),
+		"chain_id":               node.Testnet.Name,
+		"dir":                    "data/app",
+		"listen":                 AppAddressUNIX,
+		"mode":                   node.Mode,
+		"proxy_port":             node.ProxyPort,
+		"protocol":               "socket",
+		"persist_interval":       node.PersistInterval,
+		"snapshot_interval":      node.SnapshotInterval,
+		"retain_blocks":          node.RetainBlocks,
+		"key_type":               node.PrivvalKey.Type(),
+		"prepare_proposal_delay": node.Testnet.PrepareProposalDelay,
+		"process_proposal_delay": node.Testnet.ProcessProposalDelay,
+		"check_tx_delay":         node.Testnet.CheckTxDelay,
 	}
 	switch node.ABCIProtocol {
 	case e2e.ProtocolUNIX:
@@ -397,5 +399,5 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 	}
 	bz = regexp.MustCompile(`(?m)^trust_height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_height = %v`, height)))
 	bz = regexp.MustCompile(`(?m)^trust_hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_hash = "%X"`, hash)))
-	return os.WriteFile(cfgPath, bz, 0644)
+	return os.WriteFile(cfgPath, bz, 0o644) //nolint:gosec
 }
