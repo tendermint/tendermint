@@ -20,6 +20,8 @@
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 - [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778, @jayt106)
+- [types] \#6120 use batch verification for verifying commits signatures.
+If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature. (@marbar3778)
 
 ### BUG FIXES
 
