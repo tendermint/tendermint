@@ -4,74 +4,23 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-const (
-	VoteExtensionKey string = "extensionSum"
-)
+// PrepareTxsFunc prepares transactions, possibly adding and/or removing some of them
+type PrepareTxsFunc func(req abci.RequestPrepareProposal) ([]*abci.TxRecord, error)
 
-type TxProcessor interface {
-	// PrepareTxs prepares transactions, possibly adding and/or removing some of them
-	PrepareTxs(req abci.RequestPrepareProposal) ([]*abci.TxRecord, error)
-	// VerifyTx checks if transaction is correct
-	VerifyTx(tx []byte, typ abci.CheckTxType) (abci.ResponseCheckTx, error)
-	// Exec executes the transaction against some state
-	ExecTx(tx []byte, roundState State) (abci.ExecTxResult, error)
-}
+// VerifyTxFunc checks if transaction is correct
+type VerifyTxFunc func(tx []byte, typ abci.CheckTxType) (abci.ResponseCheckTx, error)
 
-type txProcessor struct{}
+// ExecTxFunc executes the transaction against some state
+type ExecTxFunc func(tx []byte, roundState State) (abci.ExecTxResult, error)
 
-var _ = TxProcessor(&txProcessor{})
+func prepareTxs(req abci.RequestPrepareProposal) ([]*abci.TxRecord, error) {
 
-func (app *txProcessor) PrepareTxs(req abci.RequestPrepareProposal) ([]*abci.TxRecord, error) {
-	var (
-		totalBytes int64
-		txRecords  []*abci.TxRecord
-	)
-
-	txs := req.Txs
-	extCount := len(req.LocalLastCommit.ThresholdVoteExtensions)
-
-	txRecords = make([]*abci.TxRecord, 0, len(txs)+1)
-	extTxPrefix := VoteExtensionKey + "="
-	extTx := []byte(fmt.Sprintf("%s%d", extTxPrefix, extCount))
-
-	// app.logger.Info("preparing proposal with custom transaction from vote extensions", "tx", extTx)
-
-	// Our generated transaction takes precedence over any supplied
-	// transaction that attempts to modify the "extensionSum" value.
-	for _, tx := range txs {
-		// we only modify transactions if there is at least 1 extension, eg. extCount > 0
-		if extCount > 0 && strings.HasPrefix(string(tx), extTxPrefix) {
-			txRecords = append(txRecords, &abci.TxRecord{
-				Action: abci.TxRecord_REMOVED,
-				Tx:     tx,
-			})
-			totalBytes -= int64(len(tx))
-		} else {
-			txRecords = append(txRecords, &abci.TxRecord{
-				Action: abci.TxRecord_UNMODIFIED,
-				Tx:     tx,
-			})
-			totalBytes += int64(len(tx))
-		}
-	}
-	// we only modify transactions if there is at least 1 extension, eg. extCount > 0
-	if extCount > 0 {
-		if totalBytes+int64(len(extTx)) < req.MaxTxBytes {
-			txRecords = append(txRecords, &abci.TxRecord{
-				Action: abci.TxRecord_ADDED,
-				Tx:     extTx,
-			})
-		}
-	}
-
-	return substPrepareTx(txRecords, req.MaxTxBytes), nil
+	return substPrepareTx(req.Txs, req.MaxTxBytes), nil
 }
 
 func txs2TxRecords(txs [][]byte) []*abci.TxRecord {
@@ -85,9 +34,9 @@ func txs2TxRecords(txs [][]byte) []*abci.TxRecord {
 	return ret
 }
 
-func (app *txProcessor) VerifyTx(tx []byte, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
+func verifyTx(tx []byte, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
 
-	k, v, err := parseTx(tx)
+	_, _, err := parseTx(tx)
 	if err != nil {
 		return abci.ResponseCheckTx{
 			Code: code.CodeTypeEncodingError,
@@ -95,20 +44,13 @@ func (app *txProcessor) VerifyTx(tx []byte, _ abci.CheckTxType) (abci.ResponseCh
 		}, nil
 	}
 
-	if k == VoteExtensionKey {
-		_, err := strconv.Atoi(v)
-		if err != nil {
-			return abci.ResponseCheckTx{Code: code.CodeTypeUnknownError},
-				fmt.Errorf("malformed vote extension transaction %X=%X: %w", k, v, err)
-		}
-	}
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}, nil
 }
 
 // tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
-func (app *txProcessor) ExecTx(tx []byte, roundState State) (abci.ExecTxResult, error) {
+func execTx(tx []byte, roundState State) (abci.ExecTxResult, error) {
 	if isPrepareTx(tx) {
-		return app.execPrepareTx(tx)
+		return execPrepareTx(tx)
 	}
 
 	key, value, err := parseTx(tx)
@@ -139,7 +81,7 @@ func (app *txProcessor) ExecTx(tx []byte, roundState State) (abci.ExecTxResult, 
 
 // execPrepareTx is noop. tx data is considered as placeholder
 // and is substitute at the PrepareProposal.
-func (app *txProcessor) execPrepareTx(tx []byte) (abci.ExecTxResult, error) {
+func execPrepareTx(tx []byte) (abci.ExecTxResult, error) {
 	// noop
 	return abci.ExecTxResult{}, nil
 }
@@ -148,13 +90,13 @@ func (app *txProcessor) execPrepareTx(tx []byte) (abci.ExecTxResult, error) {
 // proposal for transactions with the prefix stripped.
 // It marks all of the original transactions as 'REMOVED' so that
 // Tendermint will remove them from its mempool.
-func substPrepareTx(records []*abci.TxRecord, maxTxBytes int64) []*abci.TxRecord {
-	trs := make([]*abci.TxRecord, 0, len(records))
+func substPrepareTx(txs [][]byte, maxTxBytes int64) []*abci.TxRecord {
+	trs := make([]*abci.TxRecord, 0, len(txs))
 	var removed []*abci.TxRecord
 	var totalBytes int64
-	for _, record := range records {
-		tx := record.Tx
-		action := record.Action
+	for _, item := range txs {
+		tx := item
+		action := abci.TxRecord_UNMODIFIED
 		if isPrepareTx(tx) {
 			// replace tx and add it as REMOVED
 			if action != abci.TxRecord_ADDED {
