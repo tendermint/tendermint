@@ -34,7 +34,12 @@ func (b BatchVerifier) Add(key crypto.PubKey, msg, sig []byte) error {
 	var pk [PubKeySize]byte
 	copy(pk[:], key.Bytes())
 
-	return b.BatchVerifier.Add(signingContext, signature, schnorrkel.NewPublicKey(pk))
+	p, err := schnorrkel.NewPublicKey(pk)
+	if err != nil {
+		return fmt.Errorf("unable to create new public key: %w", err)
+	}
+
+	return b.BatchVerifier.Add(signingContext, signature, p)
 }
 
 func (b BatchVerifier) Verify() bool {
