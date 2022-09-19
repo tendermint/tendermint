@@ -65,7 +65,7 @@ Use "tm-signer-harness help <command>" for more information about that command.`
 		fmt.Println("The UserHomeDir is not defined, setting the default TM Home PATH to \"~/.tendermint\"")
 		defaultTMHome = "~/.tendermint"
 	} else {
-		defaultTMHome = fmt.Sprintf("%s/.tendermint", hd)
+		defaultTMHome = filepath.Join(hd, ".tendermint")
 	}
 
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
