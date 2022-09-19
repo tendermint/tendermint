@@ -19,6 +19,7 @@
 ### IMPROVEMENTS
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 
 ### BUG FIXES
 
