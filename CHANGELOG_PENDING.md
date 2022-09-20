@@ -14,6 +14,9 @@
 
 - Blockchain Protocol
 
+- Data Storage
+  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
+  
 ### FEATURES
 
 ### IMPROVEMENTS
