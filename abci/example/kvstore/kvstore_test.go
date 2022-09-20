@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
+	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
@@ -182,6 +183,12 @@ func makeApplyBlock(
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
+
+	for _, tx := range txs {
+		respCheck, err := kvstore.CheckTx(ctx, &types.RequestCheckTx{Tx: tx, Type: types.CheckTxType_New})
+		require.NoError(t, err)
+		assert.Equal(t, code.CodeTypeOK, respCheck.Code)
+	}
 
 	respProcessProposal, err := kvstore.ProcessProposal(ctx, &types.RequestProcessProposal{
 		Hash:   hash,
@@ -364,4 +371,89 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, height
 	require.Equal(t, key, string(resQuery.Key))
 	require.Equal(t, value, string(resQuery.Value))
 	require.EqualValues(t, info.LastBlockHeight, resQuery.Height)
+}
+
+func TestSnapshots(t *testing.T) {
+	const (
+		genesisHeight    = int64(1000)
+		nSnapshots       = 3
+		snapshotInterval = 3
+	)
+	maxHeight := genesisHeight + nSnapshots*snapshotInterval
+	appHashes := make(map[int64]tmbytes.HexBytes, maxHeight-genesisHeight+1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cfg := DefaultConfig(t.TempDir())
+	cfg.SnapshotInterval = snapshotInterval
+	app := newApp(ctx, t, genesisHeight, WithConfig(cfg))
+
+	for height := genesisHeight; height <= maxHeight; height++ {
+		txs := [][]byte{
+			[]byte(fmt.Sprintf("lastHeight=%d", height)),
+			[]byte(fmt.Sprintf("tx%d=%d", height-genesisHeight+1, height)),
+		}
+		rpp, rfb := makeApplyBlock(ctx, t, app, int(height), txs...)
+		assert.NotNil(t, rpp)
+		assert.NotNil(t, rfb)
+		appHashes[height] = rpp.AppHash
+	}
+
+	snapshots, err := app.ListSnapshots(ctx, &types.RequestListSnapshots{})
+	require.NoError(t, err)
+	assert.Len(t, snapshots.Snapshots, nSnapshots)
+	t.Logf("snapshots: %+v", snapshots.Snapshots)
+
+	recentSnapshot := snapshots.Snapshots[len(snapshots.Snapshots)-1]
+	snapshotHeight := int64(recentSnapshot.Height)
+	assert.Equal(t, maxHeight-(maxHeight%snapshotInterval), snapshotHeight)
+
+	// Now, let's emulate state sync withg the most recent snapshot
+	dstApp := newApp(ctx, t, genesisHeight)
+
+	respOffer, err := dstApp.OfferSnapshot(ctx, &types.RequestOfferSnapshot{
+		Snapshot: recentSnapshot,
+		AppHash:  appHashes[snapshotHeight],
+	})
+	require.NoError(t, err)
+	assert.Equal(t, types.ResponseOfferSnapshot_ACCEPT, respOffer.Result)
+
+	for chunk := uint32(0); chunk < recentSnapshot.Chunks; chunk++ {
+		loaded, err := app.LoadSnapshotChunk(ctx, &types.RequestLoadSnapshotChunk{
+			Height: recentSnapshot.Height,
+			Chunk:  chunk,
+			Format: recentSnapshot.Format,
+		})
+		require.NoError(t, err)
+
+		applied, err := dstApp.ApplySnapshotChunk(ctx, &types.RequestApplySnapshotChunk{
+			Index:  chunk,
+			Chunk:  loaded.Chunk,
+			Sender: "app",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, types.ResponseApplySnapshotChunk_ACCEPT, applied.Result)
+	}
+
+	infoResp, err := dstApp.Info(ctx, &types.RequestInfo{})
+	require.NoError(t, err)
+	assert.EqualValues(t, appHashes[snapshotHeight], infoResp.LastBlockAppHash)
+	assert.EqualValues(t, recentSnapshot.Height, infoResp.LastBlockHeight)
+
+	respQuery, err := dstApp.Query(ctx, &types.RequestQuery{Data: []byte("lastHeight")})
+	require.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%d", recentSnapshot.Height), string(respQuery.Value))
+}
+
+func newApp(ctx context.Context, t *testing.T, genesisHeight int64, opts ...func(*Application)) *Application {
+	app := NewApplication(opts...)
+	t.Cleanup(func() { app.Close() })
+	reqInitChain := &types.RequestInitChain{
+		InitialHeight: genesisHeight,
+	}
+	_, err := app.InitChain(ctx, reqInitChain)
+	require.NoError(t, err)
+
+	return app
 }

@@ -958,8 +958,10 @@ var xxx_messageInfo_RequestListSnapshots proto.InternalMessageInfo
 
 // offers a snapshot to the application
 type RequestOfferSnapshot struct {
+	// The snapshot offered for restoration.
 	Snapshot *Snapshot `protobuf:"bytes,1,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
-	AppHash  []byte    `protobuf:"bytes,2,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
+	// The light client-verified app hash for this height, from the blockchain.
+	AppHash []byte `protobuf:"bytes,2,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
 }
 
 func (m *RequestOfferSnapshot) Reset()         { *m = RequestOfferSnapshot{} }
@@ -1150,7 +1152,7 @@ type RequestPrepareProposal struct {
 	NextValidatorsHash []byte `protobuf:"bytes,7,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash,omitempty"`
 	// Core chain lock height to be used when signing this block.
 	CoreChainLockedHeight uint32 `protobuf:"varint,100,opt,name=core_chain_locked_height,json=coreChainLockedHeight,proto3" json:"core_chain_locked_height,omitempty"`
-	// ProTXHash of the original proposer of the block.
+	// ProTxHash of the original proposer of the block.
 	ProposerProTxHash []byte `protobuf:"bytes,101,opt,name=proposer_pro_tx_hash,json=proposerProTxHash,proto3" json:"proposer_pro_tx_hash,omitempty"`
 	// Proposer's latest available app protocol version.
 	ProposedAppVersion uint64 `protobuf:"varint,102,opt,name=proposed_app_version,json=proposedAppVersion,proto3" json:"proposed_app_version,omitempty"`
@@ -1542,7 +1544,7 @@ type RequestFinalizeBlock struct {
 	NextValidatorsHash []byte `protobuf:"bytes,7,opt,name=next_validators_hash,json=nextValidatorsHash,proto3" json:"next_validators_hash,omitempty"`
 	// Core chain lock height to be used when signing this block.
 	CoreChainLockedHeight uint32 `protobuf:"varint,100,opt,name=core_chain_locked_height,json=coreChainLockedHeight,proto3" json:"core_chain_locked_height,omitempty"`
-	// ProTXHash of the original proposer of the block.
+	// ProTxHash of the original proposer of the block.
 	ProposerProTxHash []byte `protobuf:"bytes,101,opt,name=proposer_pro_tx_hash,json=proposerProTxHash,proto3" json:"proposer_pro_tx_hash,omitempty"`
 	// Proposer's latest available app protocol version.
 	ProposedAppVersion uint64 `protobuf:"varint,102,opt,name=proposed_app_version,json=proposedAppVersion,proto3" json:"proposed_app_version,omitempty"`

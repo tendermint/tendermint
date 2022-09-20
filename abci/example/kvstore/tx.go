@@ -30,7 +30,6 @@ func txRecords2Txs(txRecords []*abci.TxRecord) types.Txs {
 }
 
 func verifyTx(tx types.Tx, _ abci.CheckTxType) (abci.ResponseCheckTx, error) {
-
 	_, _, err := parseTx(tx)
 	if err != nil {
 		return abci.ResponseCheckTx{

@@ -95,8 +95,10 @@ message RequestListSnapshots {}
 
 // offers a snapshot to the application
 message RequestOfferSnapshot {
-  Snapshot snapshot = 1;  // snapshot offered by peers
-  bytes    app_hash = 2;  // light client-verified app hash for snapshot height
+  // The snapshot offered for restoration.
+  Snapshot snapshot = 1;
+  // The light client-verified app hash for this height, from the blockchain.
+  bytes app_hash = 2;
 }
 
 // loads a snapshot chunk
