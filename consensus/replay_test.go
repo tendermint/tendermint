@@ -711,7 +711,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 	state := genesisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	state = buildTMStateFromChain(t, config, stateStore, state, chain, nBlocks, mode)
+	state = buildTMStateFromChain(t, config, stateStore, state, chain, nBlocks, mode, store)
 	latestAppHash := state.AppHash
 
 	// make a new client creator
@@ -729,7 +729,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		})
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
-		buildAppStateFromChain(t, proxyApp, stateStore, genesisState, chain, nBlocks, mode)
+		buildAppStateFromChain(t, proxyApp, stateStore, genesisState, chain, nBlocks, mode, store)
 	}
 
 	// Prune block store if requested
@@ -789,20 +789,20 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 }
 
-func applyBlock(t *testing.T, stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
+func applyBlock(t *testing.T, stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns, bs *mockBlockStore) sm.State {
 	testPartSize := types.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, bs)
 
 	bps, err := blk.MakePartSet(testPartSize)
 	require.NoError(t, err)
 	blkID := types.BlockID{Hash: blk.Hash(), PartSetHeader: bps.Header()}
-	newState, _, err := blockExec.ApplyBlock(st, blkID, blk)
+	newState, err := blockExec.ApplyBlock(st, blkID, blk)
 	require.NoError(t, err)
 	return newState
 }
 
 func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm.Store,
-	state sm.State, chain []*types.Block, nBlocks int, mode uint) {
+	state sm.State, chain []*types.Block, nBlocks int, mode uint, blockStore *mockBlockStore) {
 	// start a new app without handshake, play nBlocks blocks
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -823,18 +823,18 @@ func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp, blockStore)
 		}
 	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp, blockStore)
 		}
 
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
-			state = applyBlock(t, stateStore, state, chain[nBlocks-1], proxyApp)
+			state = applyBlock(t, stateStore, state, chain[nBlocks-1], proxyApp, blockStore)
 		}
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
@@ -849,7 +849,8 @@ func buildTMStateFromChain(
 	state sm.State,
 	chain []*types.Block,
 	nBlocks int,
-	mode uint) sm.State {
+	mode uint,
+	blockStore *mockBlockStore) sm.State {
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(
 		kvstore.NewPersistentKVStoreApplication(
@@ -874,19 +875,19 @@ func buildTMStateFromChain(
 	case 0:
 		// sync right up
 		for _, block := range chain {
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp, blockStore)
 		}
 
 	case 1, 2, 3:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, state, block, proxyApp, blockStore)
 		}
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
-		applyBlock(t, stateStore, state, chain[len(chain)-1], proxyApp)
+		applyBlock(t, stateStore, state, chain[len(chain)-1], proxyApp, blockStore)
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
 	}

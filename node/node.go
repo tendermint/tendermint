@@ -808,6 +808,7 @@ func NewNode(config *cfg.Config,
 		proxyApp.Consensus(),
 		mempool,
 		evidencePool,
+		blockStore,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
