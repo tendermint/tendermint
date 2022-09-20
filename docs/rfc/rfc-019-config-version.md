@@ -1,3 +1,4 @@
+<!-- markdown-link-check-disable -->
 # RFC 019: Configuration File Versioning
 
 ## Changelog

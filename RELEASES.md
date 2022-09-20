@@ -45,7 +45,7 @@ the 0.38.x line.
 1. Start on `main`
 
 2. Ensure that there is a [branch protection
-   rule](https://github.com/tendermint/tendermint/settings/branches) for the
+   rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule) for the
    branch you are about to create (you will need admin access to the repository
    in order to do this).
 
@@ -93,22 +93,14 @@ the 0.38.x line.
 
 After doing these steps, go back to `main` and do the following:
 
-1. Tag `main` as the dev branch for the _next_ minor version release and push
-   it up to GitHub.
-   For example:
-   ```sh
-   git tag -a v0.39.0-dev -m "Development base for Tendermint v0.39."
-   git push origin v0.39.0-dev
-   ```
-
-2. Create a new workflow to run e2e nightlies for the new backport branch. (See
+1. Create a new workflow to run e2e nightlies for the new backport branch. (See
    [e2e-nightly-main.yml][e2e] for an example.)
 
-3. Add a new section to the Mergify config (`.github/mergify.yml`) to enable the
+2. Add a new section to the Mergify config (`.github/mergify.yml`) to enable the
    backport bot to work on this branch, and add a corresponding `S:backport-to-v0.38.x`
    [label](https://github.com/tendermint/tendermint/labels) so the bot can be triggered.
 
-4. Add a new section to the Dependabot config (`.github/dependabot.yml`) to
+3. Add a new section to the Dependabot config (`.github/dependabot.yml`) to
    enable automatic update of Go dependencies on this branch. Copy and edit one
    of the existing branch configurations to set the correct `target-branch`.
 

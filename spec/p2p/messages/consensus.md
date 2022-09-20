@@ -144,6 +144,6 @@ Message is a [`oneof` protobuf type](https://developers.google.com/protocol-buff
 | proposal_pol    | [ProposalPOL](#proposalpol)     |                                        | 4            |
 | block_part      | [BlockPart](#blockpart)         |                                        | 5            |
 | vote            | [Vote](#vote)                   |                                        | 6            |
-| received_vote       | [ReceivedVote](#ReceivedVote)           |                                        | 7            |
+| received_vote   | [ReceivedVote](#receivedvote)	|                                        | 7            |
 | vote_set_maj23  | [VoteSetMaj23](#votesetmaj23)   |                                        | 8            |
 | vote_set_bits   | [VoteSetBits](#votesetbits)     |                                        | 9            |

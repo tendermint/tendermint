@@ -1,4 +1,4 @@
-
+<!-- markdown-link-check-disable -->
 # Lightclient Attackers Isolation
 
 > Warning: This is the beginning of an unfinished draft. Don't continue reading!
@@ -200,12 +200,12 @@ First observe that the first checking in `isolateMisbehavingProcesses` is `viola
 [[detection]] The specification of the light client attack detection mechanism.
 
 [supervisor]:
-https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/supervisor/supervisor_001_draft.md
+https://github.com/tendermint/tendermint/tree/main/spec/light-client/supervisor
 
-[verification]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification_002_draft.md
+[verification]: https://github.com/tendermint/tendermint/tree/main/spec/light-client/verification
 
 [detection]:
-https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md
+https://github.com/tendermint/tendermint/tree/main/spec/light-client/detection
 
 [LC-DATA-EVIDENCE-link]:
 https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/detection/detection_003_reviewed.md#lc-data-evidence1

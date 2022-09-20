@@ -253,14 +253,13 @@ Similarly, you could put the commands in a file and run
 Want to write an app in your favorite language?! We'd be happy
 to add you to our [ecosystem](https://github.com/tendermint/awesome#ecosystem)!
 See [funding](https://github.com/interchainio/funding) opportunities from the
-[Interchain Foundation](https://interchain.io/) for implementations in new languages and more.
+[Interchain Foundation](https://interchain.io) for implementations in new languages and more.
 
 The `abci-cli` is designed strictly for testing and debugging. In a real
 deployment, the role of sending messages is taken by Tendermint, which
 connects to the app using three separate connections, each with its own
 pattern of messages.
 
-For more information, see the [application developers
-guide](./app-development.md). For examples of running an ABCI app with
+For examples of running an ABCI app with
 Tendermint, see the [getting started guide](./getting-started.md).
 Next is the ABCI specification.

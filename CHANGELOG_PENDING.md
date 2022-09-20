@@ -1,5 +1,30 @@
 # Unreleased Changes
 
+## v0.38.0
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+
+- Blockchain Protocol
+
+- Data Storage
+  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
+  
+### FEATURES
+
+### IMPROVEMENTS
+
+- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+
+### BUG FIXES
+
 ## v0.37.0
 
 Special thanks to external contributors on this release:
@@ -41,6 +66,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
 
 ### IMPROVEMENTS
+- [crypto] \#9250 Update to use btcec v2 and the latest btcutil. (@wcsiu)
 
 - [cli] \#9171 add `--hard` flag to rollback command (and a boolean to the `RollbackState` method). This will rollback
   state and remove the last block. This command can be triggered multiple times. The application must also rollback

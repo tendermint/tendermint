@@ -55,7 +55,9 @@ updates:
     schedule:
       interval: weekly
     target-branch: "v0.37.x"
-    open-pull-requests-limit: 10
+    # Only allow automated security-related dependency updates until we cut the
+    # final v0.37.0 release.
+    open-pull-requests-limit: 0
     labels:
       - T:dependencies
       - S:automerge

@@ -25,8 +25,5 @@ Specification of the Tendermint consensus protocol.
 - [Write Ahead Log](./wal.md) - Write ahead log used by the
   consensus state machine to recover from crashes.
 
-The protocol used to gossip consensus messages between peers, which is critical
-for liveness, is described in the [reactors section](../reactors/consensus/consensus.md).
-
 There is also a [stale markdown description](consensus.md) of the consensus state machine
 (TODO update this).

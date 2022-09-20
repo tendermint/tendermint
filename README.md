@@ -70,8 +70,8 @@ See the [install instructions](./docs/introduction/install.md).
 ### Quick Start
 
 - [Single node](./docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](./docs/tools/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](./docs/tools/terraform-and-ansible.md)
+- [Local cluster using docker-compose](./docs/networks/docker-compose.md)
+- [Remote cluster using Terraform and Ansible](./docs/networks/terraform-and-ansible.md)
 
 ## Contributing
 
@@ -145,7 +145,7 @@ Upgrading instructions can be found in [UPGRADING.md](./UPGRADING.md).
 
 ## Join us!
 
-Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
+Tendermint Core is maintained by [Interchain GmbH](https://interchain.io).
 If you'd like to work full-time on Tendermint Core,
 [we're hiring](https://interchain-gmbh.breezy.hr/)!
 
