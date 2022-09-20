@@ -32,8 +32,8 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 // DeliverTx result.
 // More: https://docs.tendermint.com/main/rpc/#/Tx/broadcast_tx_sync
 func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
-	resCh := make(chan *abci.Response, 1)
-	err := env.Mempool.CheckTx(tx, func(res *abci.Response) {
+	resCh := make(chan *abci.ResponseCheckTx, 1)
+	err := env.Mempool.CheckTx(tx, func(res *abci.ResponseCheckTx) {
 		select {
 		case <-ctx.Context().Done():
 		case resCh <- res:
@@ -48,12 +48,11 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 	case <-ctx.Context().Done():
 		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Context().Err())
 	case res := <-resCh:
-		r := res.GetCheckTx()
 		return &ctypes.ResultBroadcastTx{
-			Code:      r.Code,
-			Data:      r.Data,
-			Log:       r.Log,
-			Codespace: r.Codespace,
+			Code:      res.Code,
+			Data:      res.Data,
+			Log:       res.Log,
+			Codespace: res.Codespace,
 			Hash:      tx.Hash(),
 		}, nil
 	}
@@ -87,8 +86,8 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	}()
 
 	// Broadcast tx and wait for CheckTx result
-	checkTxResCh := make(chan *abci.Response, 1)
-	err = env.Mempool.CheckTx(tx, func(res *abci.Response) {
+	checkTxResCh := make(chan *abci.ResponseCheckTx, 1)
+	err = env.Mempool.CheckTx(tx, func(res *abci.ResponseCheckTx) {
 		select {
 		case <-ctx.Context().Done():
 		case checkTxResCh <- res:
@@ -101,25 +100,24 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	select {
 	case <-ctx.Context().Done():
 		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Context().Err())
-	case checkTxResMsg := <-checkTxResCh:
-		checkTxRes := checkTxResMsg.GetCheckTx()
+	case checkTxRes := <-checkTxResCh:
 		if checkTxRes.Code != abci.CodeTypeOK {
 			return &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   *checkTxRes,
-				DeliverTx: abci.ResponseDeliverTx{},
-				Hash:      tx.Hash(),
+				CheckTx:  *checkTxRes,
+				TxResult: abci.ExecTxResult{},
+				Hash:     tx.Hash(),
 			}, nil
 		}
 
 		// Wait for the tx to be included in a block or timeout.
 		select {
 		case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-			deliverTxRes := msg.Data().(types.EventDataTx)
+			txResultEvent := msg.Data().(types.EventDataTx)
 			return &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   *checkTxRes,
-				DeliverTx: deliverTxRes.Result,
-				Hash:      tx.Hash(),
-				Height:    deliverTxRes.Height,
+				CheckTx:  *checkTxRes,
+				TxResult: txResultEvent.Result,
+				Hash:     tx.Hash(),
+				Height:   txResultEvent.Height,
 			}, nil
 		case <-deliverTxSub.Cancelled():
 			var reason string
@@ -131,17 +129,17 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 			err = fmt.Errorf("deliverTxSub was canceled (reason: %s)", reason)
 			env.Logger.Error("Error on broadcastTxCommit", "err", err)
 			return &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   *checkTxRes,
-				DeliverTx: abci.ResponseDeliverTx{},
-				Hash:      tx.Hash(),
+				CheckTx:  *checkTxRes,
+				TxResult: abci.ExecTxResult{},
+				Hash:     tx.Hash(),
 			}, err
 		case <-time.After(env.Config.TimeoutBroadcastTxCommit):
 			err = errors.New("timed out waiting for tx to be included in a block")
 			env.Logger.Error("Error on broadcastTxCommit", "err", err)
 			return &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   *checkTxRes,
-				DeliverTx: abci.ResponseDeliverTx{},
-				Hash:      tx.Hash(),
+				CheckTx:  *checkTxRes,
+				TxResult: abci.ExecTxResult{},
+				Hash:     tx.Hash(),
 			}, err
 		}
 	}
@@ -175,7 +173,7 @@ func NumUnconfirmedTxs(ctx *rpctypes.Context) (*ctypes.ResultUnconfirmedTxs, err
 // be added to the mempool either.
 // More: https://docs.tendermint.com/main/rpc/#/Tx/check_tx
 func CheckTx(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
-	res, err := env.ProxyAppMempool.CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	res, err := env.ProxyAppMempool.CheckTx(context.TODO(), &abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		return nil, err
 	}

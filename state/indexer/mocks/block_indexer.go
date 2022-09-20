@@ -39,11 +39,11 @@ func (_m *BlockIndexer) Has(height int64) (bool, error) {
 }
 
 // Index provides a mock function with given fields: _a0
-func (_m *BlockIndexer) Index(_a0 types.EventDataNewBlockHeader) error {
+func (_m *BlockIndexer) Index(_a0 types.EventDataNewBlock) error {
 	ret := _m.Called(_a0)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(types.EventDataNewBlockHeader) error); ok {
+	if rf, ok := ret.Get(0).(func(types.EventDataNewBlock) error); ok {
 		r0 = rf(_a0)
 	} else {
 		r0 = ret.Error(0)

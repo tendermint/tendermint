@@ -14,7 +14,7 @@ import (
 
 func TestMain(m *testing.M) {
 	// start a tendermint node in the background to test against
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	node := rpctest.StartTendermint(app)
 
 	code := m.Run()
@@ -31,5 +31,5 @@ func TestBroadcastTx(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.CheckTx.Code)
-	require.EqualValues(t, 0, res.DeliverTx.Code)
+	require.EqualValues(t, 0, res.TxResult.Code)
 }

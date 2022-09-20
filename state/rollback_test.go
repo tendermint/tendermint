@@ -84,7 +84,7 @@ func TestRollback(t *testing.T) {
 func TestRollbackNoState(t *testing.T) {
 	stateStore := state.NewStore(dbm.NewMemDB(),
 		state.StoreOptions{
-			DiscardABCIResponses: false,
+			DiscardFinalizeBlockResponses: false,
 		})
 	blockStore := &mocks.BlockStore{}
 
@@ -118,7 +118,7 @@ func TestRollbackDifferentStateHeight(t *testing.T) {
 }
 
 func setupStateStore(t *testing.T, height int64) state.Store {
-	stateStore := state.NewStore(dbm.NewMemDB(), state.StoreOptions{DiscardABCIResponses: false})
+	stateStore := state.NewStore(dbm.NewMemDB(), state.StoreOptions{DiscardFinalizeBlockResponses: false})
 	valSet, _ := types.RandValidatorSet(5, 10)
 
 	params := types.DefaultConsensusParams()

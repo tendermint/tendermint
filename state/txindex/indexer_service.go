@@ -59,11 +59,13 @@ func (is *IndexerService) OnStart() error {
 	go func() {
 		for {
 			msg := <-blockHeadersSub.Out()
-			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
-			height := eventDataHeader.Header.Height
-			batch := NewBatch(eventDataHeader.NumTxs)
+			eventNewBlock := msg.Data().(types.EventDataNewBlock)
+			height := eventNewBlock.Block.Height
+			numTxs := int64(len(eventNewBlock.Block.Data.Txs))
 
-			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
+			batch := NewBatch(numTxs)
+
+			for i := int64(0); i < numTxs; i++ {
 				msg2 := <-txsSub.Out()
 				txResult := msg2.Data().(types.EventDataTx).TxResult
 
@@ -77,7 +79,7 @@ func (is *IndexerService) OnStart() error {
 				}
 			}
 
-			if err := is.blockIdxr.Index(eventDataHeader); err != nil {
+			if err := is.blockIdxr.Index(eventNewBlock); err != nil {
 				is.Logger.Error("failed to index block", "height", height, "err", err)
 			} else {
 				is.Logger.Info("indexed block", "height", height)
@@ -91,7 +93,7 @@ func (is *IndexerService) OnStart() error {
 			if err = is.txIdxr.AddBatch(batch); err != nil {
 				is.Logger.Error("failed to index block txs", "height", height, "err", err)
 			} else {
-				is.Logger.Debug("indexed block txs", "height", height, "num_txs", eventDataHeader.NumTxs)
+				is.Logger.Debug("indexed block txs", "height", height, "num_txs", numTxs)
 			}
 		}
 	}()

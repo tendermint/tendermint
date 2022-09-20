@@ -458,6 +458,7 @@ func (_m *Client) GenesisChunked(_a0 context.Context, _a1 uint) (*coretypes.Resu
 
 	return r0, r1
 }
+
 // Header provides a mock function with given fields: ctx, height
 func (_m *Client) Header(ctx context.Context, height *int64) (*coretypes.ResultHeader, error) {
 	ret := _m.Called(ctx, height)

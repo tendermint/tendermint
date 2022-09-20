@@ -45,7 +45,7 @@ func TestApplyBlock(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
@@ -85,7 +85,7 @@ func TestBeginBlockValidators(t *testing.T) {
 
 	state, stateDB, _ := makeState(2, 2)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 
 	prevHash := state.LastBlockID.Hash
@@ -121,7 +121,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block := makeBlock(state, 2, lastCommit)
 
-		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
+		err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -150,7 +150,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -255,7 +255,7 @@ func TestProcessProposal(t *testing.T) {
 	txs := test.MakeNTxs(height, 10)
 
 	logger := log.NewNopLogger()
-	app := abcimocks.NewBaseMock()
+	app := &abcimocks.Application{}
 	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
 
 	cc := proxy.NewLocalClientCreator(app)
@@ -266,7 +266,7 @@ func TestProcessProposal(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 
 	eventBus := types.NewEventBus()
@@ -473,7 +473,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
@@ -560,7 +560,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -590,7 +590,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 func TestEmptyPrepareProposal(t *testing.T) {
 	const height = 2
 
-	app := abcimocks.NewBaseMock()
+	app := &abcimocks.Application{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
@@ -599,7 +599,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
@@ -635,7 +635,7 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}
@@ -643,11 +643,11 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 
 	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs[2:])
 
-	app := abcimocks.NewBaseMock()
+	app := &abcimocks.Application{}
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		Txs: types.Txs(txs).ToSliceOfBytes(),
+		Txs: txs.ToSliceOfBytes(),
 	})
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -682,7 +682,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}
@@ -690,14 +690,14 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
 
 	txs = txs[2:]
 	txs = append(txs[len(txs)/2:], txs[:len(txs)/2]...)
 
-	app := abcimocks.NewBaseMock()
+	app := &abcimocks.Application{}
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		Txs: types.Txs(txs).ToSliceOfBytes(),
+		Txs: txs.ToSliceOfBytes(),
 	})
 
 	cc := proxy.NewLocalClientCreator(app)
@@ -735,7 +735,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	// limit max block size
 	state.ConsensusParams.Block.MaxBytes = 60 * 1024
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}
@@ -746,11 +746,11 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	maxDataBytes := types.MaxDataBytes(state.ConsensusParams.Block.MaxBytes, 0, nValidators)
 	txs := test.MakeNTxs(height, maxDataBytes/bytesPerTx+2) // +2 so that tx don't fit
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
 
-	app := abcimocks.NewBaseMock()
+	app := &abcimocks.Application{}
 	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		Txs: types.Txs(txs).ToSliceOfBytes(),
+		Txs: txs.ToSliceOfBytes(),
 	})
 
 	cc := proxy.NewLocalClientCreator(app)
@@ -784,7 +784,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}
@@ -792,7 +792,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 
 	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
 
 	cm := &abciclientmocks.Client{}
 	cm.On("SetLogger", mock.Anything).Return()

@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tendermint/tendermint/abci/example/code"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/version"
@@ -77,7 +78,8 @@ type Config struct {
 	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
 	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
 	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
-	// TODO: add vote extension and finalize block delays once completed (@cmwaters)
+	FinalizeBlockDelay   time.Duration `toml:"finalize_block_delay"`
+	// TODO: add vote extension delays once completed (@cmwaters)
 }
 
 func DefaultConfig(dir string) *Config {
@@ -107,17 +109,17 @@ func NewApplication(cfg *Config) (*Application, error) {
 }
 
 // Info implements ABCI.
-func (app *Application) Info(req abci.RequestInfo) abci.ResponseInfo {
-	return abci.ResponseInfo{
+func (app *Application) Info(_ context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
+	return &abci.ResponseInfo{
 		Version:          version.ABCIVersion,
 		AppVersion:       appVersion,
 		LastBlockHeight:  int64(app.state.Height),
 		LastBlockAppHash: app.state.Hash,
-	}
+	}, nil
 }
 
 // Info implements ABCI.
-func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
+func (app *Application) InitChain(_ context.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
 	var err error
 	app.state.initialHeight = uint64(req.InitialHeight)
 	if len(req.AppStateBytes) > 0 {
@@ -126,51 +128,59 @@ func (app *Application) InitChain(req abci.RequestInitChain) abci.ResponseInitCh
 			panic(err)
 		}
 	}
-	resp := abci.ResponseInitChain{
+	resp := &abci.ResponseInitChain{
 		AppHash: app.state.Hash,
 	}
 	if resp.Validators, err = app.validatorUpdates(0); err != nil {
 		panic(err)
 	}
-	return resp
+	return resp, nil
 }
 
 // CheckTx implements ABCI.
-func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *Application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
 	_, _, err := parseTx(req.Tx)
 	if err != nil {
-		return abci.ResponseCheckTx{
-			Code: code.CodeTypeEncodingError,
+		return &abci.ResponseCheckTx{
+			Code: kvstore.CodeTypeEncodingError,
 			Log:  err.Error(),
-		}
+		}, nil
 	}
 
 	if app.cfg.CheckTxDelay != 0 {
 		time.Sleep(app.cfg.CheckTxDelay)
 	}
 
-	return abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
+	return &abci.ResponseCheckTx{Code: kvstore.CodeTypeOK, GasWanted: 1}, nil
 }
 
-// DeliverTx implements ABCI.
-func (app *Application) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	key, value, err := parseTx(req.Tx)
-	if err != nil {
-		panic(err) // shouldn't happen since we verified it in CheckTx
+// FinalizeBlock implements ABCI.
+func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+	var txs = make([]*abci.ExecTxResult, len(req.Txs))
+
+	for i, tx := range req.Txs {
+		key, value, err := parseTx(tx)
+		if err != nil {
+			panic(err) // shouldn't happen since we verified it in CheckTx
+		}
+		app.state.Set(key, value)
+
+		txs[i] = &abci.ExecTxResult{Code: kvstore.CodeTypeOK}
 	}
-	app.state.Set(key, value)
-	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
-}
 
-// EndBlock implements ABCI.
-func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	valUpdates, err := app.validatorUpdates(uint64(req.Height))
 	if err != nil {
 		panic(err)
 	}
 
-	return abci.ResponseEndBlock{
+	if app.cfg.FinalizeBlockDelay != 0 {
+		time.Sleep(app.cfg.FinalizeBlockDelay)
+	}
+
+	return &abci.ResponseFinalizeBlock{
+		TxResults:        txs,
 		ValidatorUpdates: valUpdates,
+		AgreedAppData:    app.state.Finalize(),
 		Events: []abci.Event{
 			{
 				Type: "val_updates",
@@ -186,12 +196,12 @@ func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock
 				},
 			},
 		},
-	}
+	}, nil
 }
 
 // Commit implements ABCI.
-func (app *Application) Commit() abci.ResponseCommit {
-	height, hash, err := app.state.Commit()
+func (app *Application) Commit(_ context.Context, _ *abci.RequestCommit) (*abci.ResponseCommit, error) {
+	height, err := app.state.Commit()
 	if err != nil {
 		panic(err)
 	}
@@ -200,57 +210,60 @@ func (app *Application) Commit() abci.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		app.logger.Info("Created state sync snapshot", "height", snapshot.Height)
+		app.logger.Info("created state sync snapshot", "height", snapshot.Height)
+		err = app.snapshots.Prune(maxSnapshotCount)
+		if err != nil {
+			app.logger.Error("failed to prune snapshots", "err", err)
+		}
 	}
 	retainHeight := int64(0)
 	if app.cfg.RetainBlocks > 0 {
 		retainHeight = int64(height - app.cfg.RetainBlocks + 1)
 	}
-	return abci.ResponseCommit{
-		Data:         hash,
+	return &abci.ResponseCommit{
 		RetainHeight: retainHeight,
-	}
+	}, nil
 }
 
 // Query implements ABCI.
-func (app *Application) Query(req abci.RequestQuery) abci.ResponseQuery {
-	return abci.ResponseQuery{
+func (app *Application) Query(_ context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
+	return &abci.ResponseQuery{
 		Height: int64(app.state.Height),
 		Key:    req.Data,
 		Value:  []byte(app.state.Get(string(req.Data))),
-	}
+	}, nil
 }
 
 // ListSnapshots implements ABCI.
-func (app *Application) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseListSnapshots {
+func (app *Application) ListSnapshots(_ context.Context, req *abci.RequestListSnapshots) (*abci.ResponseListSnapshots, error) {
 	snapshots, err := app.snapshots.List()
 	if err != nil {
 		panic(err)
 	}
-	return abci.ResponseListSnapshots{Snapshots: snapshots}
+	return &abci.ResponseListSnapshots{Snapshots: snapshots}, nil
 }
 
 // LoadSnapshotChunk implements ABCI.
-func (app *Application) LoadSnapshotChunk(req abci.RequestLoadSnapshotChunk) abci.ResponseLoadSnapshotChunk {
+func (app *Application) LoadSnapshotChunk(_ context.Context, req *abci.RequestLoadSnapshotChunk) (*abci.ResponseLoadSnapshotChunk, error) {
 	chunk, err := app.snapshots.LoadChunk(req.Height, req.Format, req.Chunk)
 	if err != nil {
 		panic(err)
 	}
-	return abci.ResponseLoadSnapshotChunk{Chunk: chunk}
+	return &abci.ResponseLoadSnapshotChunk{Chunk: chunk}, nil
 }
 
 // OfferSnapshot implements ABCI.
-func (app *Application) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOfferSnapshot {
+func (app *Application) OfferSnapshot(_ context.Context, req *abci.RequestOfferSnapshot) (*abci.ResponseOfferSnapshot, error) {
 	if app.restoreSnapshot != nil {
 		panic("A snapshot is already being restored")
 	}
 	app.restoreSnapshot = req.Snapshot
 	app.restoreChunks = [][]byte{}
-	return abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}
+	return &abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil
 }
 
 // ApplySnapshotChunk implements ABCI.
-func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
+func (app *Application) ApplySnapshotChunk(_ context.Context, req *abci.RequestApplySnapshotChunk) (*abci.ResponseApplySnapshotChunk, error) {
 	if app.restoreSnapshot == nil {
 		panic("No restore in progress")
 	}
@@ -267,11 +280,11 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 		app.restoreSnapshot = nil
 		app.restoreChunks = nil
 	}
-	return abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
+	return &abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}, nil
 }
 
 func (app *Application) PrepareProposal(
-	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
+	_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
 	txs := make([][]byte, 0, len(req.Txs))
 	var totalBytes int64
 	for _, tx := range req.Txs {
@@ -286,16 +299,16 @@ func (app *Application) PrepareProposal(
 		time.Sleep(app.cfg.PrepareProposalDelay)
 	}
 
-	return abci.ResponsePrepareProposal{Txs: txs}
+	return &abci.ResponsePrepareProposal{Txs: txs}, nil
 }
 
 // ProcessProposal implements part of the Application interface.
 // It accepts any proposal that does not contain a malformed transaction.
-func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+func (app *Application) ProcessProposal(_ context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
 		_, _, err := parseTx(tx)
 		if err != nil {
-			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
+			return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}, nil
 		}
 	}
 
@@ -303,7 +316,7 @@ func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.Re
 		time.Sleep(app.cfg.ProcessProposalDelay)
 	}
 
-	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
+	return &abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil
 }
 
 func (app *Application) Rollback() error {

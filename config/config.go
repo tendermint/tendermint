@@ -1098,14 +1098,14 @@ type StorageConfig struct {
 	// Set to false to ensure ABCI responses are persisted. ABCI responses are
 	// required for `/block_results` RPC queries, and to reindex events in the
 	// command-line tool.
-	DiscardABCIResponses bool `mapstructure:"discard_abci_responses"`
+	DiscardFinalizeBlockResponses bool `mapstructure:"discard_abci_responses"`
 }
 
 // DefaultStorageConfig returns the default configuration options relating to
 // Tendermint storage optimization.
 func DefaultStorageConfig() *StorageConfig {
 	return &StorageConfig{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	}
 }
 
@@ -1113,7 +1113,7 @@ func DefaultStorageConfig() *StorageConfig {
 // testing.
 func TestStorageConfig() *StorageConfig {
 	return &StorageConfig{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	}
 }
 

@@ -14,7 +14,7 @@ import (
 
 func ExampleHTTP_simple() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 	defer rpctest.StopTendermint(node)
 
@@ -36,7 +36,7 @@ func ExampleHTTP_simple() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if bres.CheckTx.IsErr() || bres.DeliverTx.IsErr() {
+	if bres.CheckTx.IsErr() || bres.TxResult.IsErr() {
 		log.Fatal("BroadcastTxCommit transaction failed")
 	}
 
@@ -67,7 +67,7 @@ func ExampleHTTP_simple() {
 
 func ExampleHTTP_batching() {
 	// Start a tendermint node (and kvstore) in the background to test against
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	node := rpctest.StartTendermint(app, rpctest.SuppressStdout, rpctest.RecreateConfig)
 
 	// Create our RPC client

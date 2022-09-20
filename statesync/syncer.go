@@ -318,7 +318,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	s.logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height,
 		"format", snapshot.Format, "hash", snapshot.Hash)
-	resp, err := s.conn.OfferSnapshotSync(abci.RequestOfferSnapshot{
+	resp, err := s.conn.OfferSnapshot(context.TODO(), &abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
 			Format:   snapshot.Format,
@@ -360,7 +360,7 @@ func (s *syncer) applyChunks(chunks *chunkQueue) error {
 			return fmt.Errorf("failed to fetch chunk: %w", err)
 		}
 
-		resp, err := s.conn.ApplySnapshotChunkSync(abci.RequestApplySnapshotChunk{
+		resp, err := s.conn.ApplySnapshotChunk(context.TODO(), &abci.RequestApplySnapshotChunk{
 			Index:  chunk.Index,
 			Chunk:  chunk.Chunk,
 			Sender: string(chunk.Sender),
@@ -476,7 +476,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 
 // verifyApp verifies the sync, checking the app hash, last block height and app version
 func (s *syncer) verifyApp(snapshot *snapshot, appVersion uint64) error {
-	resp, err := s.connQuery.InfoSync(proxy.RequestInfo)
+	resp, err := s.connQuery.Info(context.TODO(), proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}

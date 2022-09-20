@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -12,7 +13,7 @@ import (
 
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/abci/example/code"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
@@ -29,7 +30,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(config, state, privVals[0], kvstore.NewInMemoryApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
@@ -49,7 +50,7 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(config, state, privVals[0], kvstore.NewInMemoryApplication())
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
@@ -66,7 +67,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs := newStateWithConfig(config, state, privVals[0], kvstore.NewInMemoryApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
@@ -113,8 +114,8 @@ func deliverTxsRange(cs *State, start, end int) {
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	blockDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardABCIResponses: false})
-	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], NewCounterApplication(), blockDB)
+	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardFinalizeBlockResponses: false})
+	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], kvstore.NewInMemoryApplication(), blockDB)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
@@ -136,9 +137,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 
 func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
-	app := NewCounterApplication()
+	app := kvstore.NewInMemoryApplication()
 	blockDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardABCIResponses: false})
+	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardFinalizeBlockResponses: false})
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
@@ -147,11 +148,10 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	resDeliver := app.DeliverTx(abci.RequestDeliverTx{Tx: txBytes})
-	assert.False(t, resDeliver.IsErr(), fmt.Sprintf("expected no error. got %v", resDeliver))
-
-	resCommit := app.Commit()
-	assert.True(t, len(resCommit.Data) > 0)
+	res, err := app.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	require.NoError(t, err)
+	assert.False(t, res.TxResults[0].IsErr())
+	assert.True(t, len(res.AgreedAppData) > 0)
 
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})
@@ -159,8 +159,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 		// Try to send the tx through the mempool.
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
-		err := assertMempool(cs.txNotifier).CheckTx(txBytes, func(r *abci.Response) {
-			if r.GetCheckTx().Code != code.CodeTypeBadNonce {
+		err := assertMempool(cs.txNotifier).CheckTx(txBytes, func(r *abci.ResponseCheckTx) {
+			if r.Code != kvstore.CodeTypeBadNonce {
 				t.Errorf("expected checktx to return bad nonce, got %v", r)
 				return
 			}
@@ -201,77 +201,4 @@ func TestMempoolRmBadTx(t *testing.T) {
 		t.Errorf("timed out waiting for tx to be removed")
 		return
 	}
-}
-
-// CounterApplication that maintains a mempool state and resets it upon commit
-type CounterApplication struct {
-	abci.BaseApplication
-
-	txCount        int
-	mempoolTxCount int
-}
-
-func NewCounterApplication() *CounterApplication {
-	return &CounterApplication{}
-}
-
-func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
-	return abci.ResponseInfo{Data: fmt.Sprintf("txs:%v", app.txCount)}
-}
-
-func (app *CounterApplication) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
-	txValue := txAsUint64(req.Tx)
-	if txValue != uint64(app.txCount) {
-		return abci.ResponseDeliverTx{
-			Code: code.CodeTypeBadNonce,
-			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
-	}
-	app.txCount++
-	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
-}
-
-func (app *CounterApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
-	txValue := txAsUint64(req.Tx)
-	if txValue != uint64(app.mempoolTxCount) {
-		return abci.ResponseCheckTx{
-			Code: code.CodeTypeBadNonce,
-			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
-	}
-	app.mempoolTxCount++
-	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
-}
-
-func txAsUint64(tx []byte) uint64 {
-	tx8 := make([]byte, 8)
-	copy(tx8[len(tx8)-len(tx):], tx)
-	return binary.BigEndian.Uint64(tx8)
-}
-
-func (app *CounterApplication) Commit() abci.ResponseCommit {
-	app.mempoolTxCount = app.txCount
-	if app.txCount == 0 {
-		return abci.ResponseCommit{}
-	}
-	hash := make([]byte, 8)
-	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return abci.ResponseCommit{Data: hash}
-}
-
-func (app *CounterApplication) PrepareProposal(
-	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
-	txs := make([][]byte, 0, len(req.Txs))
-	var totalBytes int64
-	for _, tx := range req.Txs {
-		totalBytes += int64(len(tx))
-		if totalBytes > req.MaxTxBytes {
-			break
-		}
-		txs = append(txs, tx)
-	}
-	return abci.ResponsePrepareProposal{Txs: txs}
-}
-
-func (app *CounterApplication) ProcessProposal(
-	req abci.RequestProcessProposal) abci.ResponseProcessProposal {
-	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }

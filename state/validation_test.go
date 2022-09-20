@@ -30,7 +30,7 @@ func TestValidateBlockHeader(t *testing.T) {
 
 	state, stateDB, privVals := makeState(3, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
@@ -115,7 +115,7 @@ func TestValidateBlockCommit(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
@@ -246,7 +246,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 
 	state, stateDB, privVals := makeState(4, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
 

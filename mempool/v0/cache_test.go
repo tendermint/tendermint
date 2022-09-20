@@ -14,7 +14,7 @@ import (
 )
 
 func TestCacheAfterUpdate(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()

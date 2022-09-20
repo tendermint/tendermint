@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	app := kvstore.NewPersistentKVStoreApplication(dir)
+	app := kvstore.NewPersistentApplication(dir)
 	node = rpctest.StartTendermint(app)
 
 	code := m.Run()

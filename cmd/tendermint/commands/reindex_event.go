@@ -41,7 +41,7 @@ reindex from the base block height(inclusive); and the default end-height is 0, 
 the tooling will reindex until the latest block height(inclusive). User can omit
 either or both arguments.
 
-Note: This operation requires ABCI Responses. Do not set DiscardABCIResponses to true if you
+Note: This operation requires ABCI Responses. Do not set DiscardFinalizeBlockResponses to true if you
 want to use this command.
 	`,
 	Example: `
@@ -147,28 +147,28 @@ func eventReIndex(cmd *cobra.Command, args eventReIndexArgs) error {
 				return fmt.Errorf("not able to load block at height %d from the blockstore", i)
 			}
 
-			r, err := args.stateStore.LoadABCIResponses(i)
+			r, err := args.stateStore.LoadFinalizeBlockResponse(i)
 			if err != nil {
 				return fmt.Errorf("not able to load ABCI Response at height %d from the statestore", i)
 			}
 
-			e := types.EventDataNewBlockHeader{
-				Header:           b.Header,
-				NumTxs:           int64(len(b.Txs)),
-				ResultBeginBlock: *r.BeginBlock,
-				ResultEndBlock:   *r.EndBlock,
+			e := types.EventDataNewBlock{
+				Block:               b,
+				ResultFinalizeBlock: *r,
 			}
 
+			numTxs := len(b.Data.Txs)
+
 			var batch *txindex.Batch
-			if e.NumTxs > 0 {
-				batch = txindex.NewBatch(e.NumTxs)
+			if numTxs > 0 {
+				batch = txindex.NewBatch(int64(numTxs))
 
 				for i := range b.Data.Txs {
 					tr := abcitypes.TxResult{
 						Height: b.Height,
 						Index:  uint32(i),
 						Tx:     b.Data.Txs[i],
-						Result: *(r.DeliverTxs[i]),
+						Result: *(r.TxResults[i]),
 					}
 
 					if err = batch.Add(&tr); err != nil {

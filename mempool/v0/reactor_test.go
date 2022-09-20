@@ -99,9 +99,9 @@ func TestReactorConcurrency(t *testing.T) {
 			reactors[0].mempool.Lock()
 			defer reactors[0].mempool.Unlock()
 
-			deliverTxResponses := make([]*abci.ResponseDeliverTx, len(txs))
+			deliverTxResponses := make([]*abci.ExecTxResult, len(txs))
 			for i := range txs {
-				deliverTxResponses[i] = &abci.ResponseDeliverTx{Code: 0}
+				deliverTxResponses[i] = &abci.ExecTxResult{Code: 0}
 			}
 			err := reactors[0].mempool.Update(1, txs, deliverTxResponses, nil, nil)
 			assert.NoError(t, err)
@@ -115,7 +115,7 @@ func TestReactorConcurrency(t *testing.T) {
 
 			reactors[1].mempool.Lock()
 			defer reactors[1].mempool.Unlock()
-			err := reactors[1].mempool.Update(1, []types.Tx{}, make([]*abci.ResponseDeliverTx, 0), nil, nil)
+			err := reactors[1].mempool.Update(1, []types.Tx{}, make([]*abci.ExecTxResult, 0), nil, nil)
 			assert.NoError(t, err)
 		}()
 
@@ -302,7 +302,7 @@ func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 	reactors := make([]*Reactor, n)
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
-		app := kvstore.NewApplication()
+		app := kvstore.NewInMemoryApplication()
 		cc := proxy.NewLocalClientCreator(app)
 		mempool, cleanup := newMempoolWithApp(cc)
 		defer cleanup()

@@ -123,7 +123,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	// default config uses the kvstore app
-	var appVersion = kvstore.ProtocolVersion
+	var appVersion = kvstore.AppVersion
 
 	// check version is set in state
 	state, err := n.stateStore.Load()
@@ -225,7 +225,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewInMemoryApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -236,7 +236,7 @@ func TestCreateProposalBlock(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, privVals := state(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	maxBytes := 16384
 	var partSize uint32 = 256
@@ -336,7 +336,7 @@ func TestCreateProposalBlock(t *testing.T) {
 func TestMaxProposalBlockSize(t *testing.T) {
 	config := cfg.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewInMemoryApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -347,7 +347,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 	var height int64 = 1
 	state, stateDB, _ := state(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	var maxBytes int64 = 16384
 	var partSize uint32 = 256
@@ -476,7 +476,7 @@ func state(nVals int, height int64) (sm.State, dbm.DB, []types.PrivValidator) {
 	// save validators to db for 2 heights
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	if err := stateStore.Save(s); err != nil {
 		panic(err)

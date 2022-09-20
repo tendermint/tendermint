@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"sort"
@@ -138,7 +139,7 @@ func (txmp *TxMempool) FlushAppConn() error {
 	txmp.mtx.Unlock()
 	defer txmp.mtx.Lock()
 
-	return txmp.proxyAppConn.FlushSync()
+	return txmp.proxyAppConn.Flush(context.TODO())
 }
 
 // EnableTxsAvailable enables the mempool to trigger events when transactions
@@ -174,7 +175,7 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} { return txmp.txsAvailable
 // is (strictly) lower than the priority of tx and whose size together exceeds
 // the size of tx, and adds tx instead. If no such transactions exist, tx is
 // discarded.
-func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
+func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.ResponseCheckTx), txInfo mempool.TxInfo) error {
 
 	// During the initial phase of CheckTx, we do not need to modify any state.
 	// A transaction will not actually be added to the mempool until it survives
@@ -218,7 +219,7 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 	}
 
 	// Invoke an ABCI CheckTx for this transaction.
-	rsp, err := txmp.proxyAppConn.CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	rsp, err := txmp.proxyAppConn.CheckTx(context.TODO(), &abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		txmp.cache.Remove(tx)
 		return err
@@ -232,7 +233,7 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 	wtx.SetPeer(txInfo.SenderID)
 	txmp.addNewTransaction(wtx, rsp)
 	if cb != nil {
-		cb(&abci.Response{Value: &abci.Response_CheckTx{CheckTx: rsp}})
+		cb(rsp)
 	}
 	return nil
 }
@@ -367,7 +368,7 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 }
 
 // Update removes all the given transactions from the mempool and the cache,
-// and updates the current block height. The blockTxs and deliverTxResponses
+// and updates the current block height. The blockTxs and txResults
 // must have the same length with each response corresponding to the tx at the
 // same offset.
 //
@@ -380,14 +381,14 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 func (txmp *TxMempool) Update(
 	blockHeight int64,
 	blockTxs types.Txs,
-	deliverTxResponses []*abci.ResponseDeliverTx,
+	txResults []*abci.ExecTxResult,
 	newPreFn mempool.PreCheckFunc,
 	newPostFn mempool.PostCheckFunc,
 ) error {
 	// Safety check: Transactions and responses must match in number.
-	if len(blockTxs) != len(deliverTxResponses) {
+	if len(blockTxs) != len(txResults) {
 		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
-			len(blockTxs), len(deliverTxResponses)))
+			len(blockTxs), len(txResults)))
 	}
 
 	txmp.height = blockHeight
@@ -404,7 +405,7 @@ func (txmp *TxMempool) Update(
 		// Add successful committed transactions to the cache (if they are not
 		// already present).  Transactions that failed to commit are removed from
 		// the cache unless the operator has explicitly requested we keep them.
-		if deliverTxResponses[i].Code == abci.CodeTypeOK {
+		if txResults[i].Code == abci.CodeTypeOK {
 			_ = txmp.cache.Push(tx)
 		} else if !txmp.config.KeepInvalidTxsInCache {
 			txmp.cache.Remove(tx)
@@ -679,7 +680,7 @@ func (txmp *TxMempool) recheckTransactions() {
 			wtx := wtx
 			start(func() error {
 				// The response for this CheckTx is handled by the default recheckTxCallback.
-				rsp, err := txmp.proxyAppConn.CheckTxSync(abci.RequestCheckTx{
+				rsp, err := txmp.proxyAppConn.CheckTx(context.TODO(), &abci.RequestCheckTx{
 					Tx:   wtx.tx,
 					Type: abci.CheckTxType_Recheck,
 				})
@@ -692,7 +693,7 @@ func (txmp *TxMempool) recheckTransactions() {
 				return nil
 			})
 		}
-		_ = txmp.proxyAppConn.FlushAsync()
+		_ = txmp.proxyAppConn.Flush(context.TODO())
 
 		// When recheck is complete, trigger a notification for more transactions.
 		_ = g.Wait()

@@ -35,6 +35,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
@@ -396,8 +397,8 @@ func newStateWithConfigAndBlockStore(
 	// one for mempool, one for consensus
 	mtx := new(tmsync.Mutex)
 
-	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
-	proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
+	proxyAppConnCon := proxy.NewAppConnConsensus(abcicli.NewLocalClient(mtx, app), nil)
+	proxyAppConnMem := proxy.NewAppConnMempool(abcicli.NewLocalClient(mtx, app), nil)
 	// Make Mempool
 	memplMetrics := mempl.NopMetrics()
 
@@ -407,7 +408,7 @@ func newStateWithConfigAndBlockStore(
 	switch config.Mempool.Version {
 	case cfg.MempoolV0:
 		mempool = mempoolv0.NewCListMempool(config.Mempool,
-			proxyAppConnConMem,
+			proxyAppConnMem,
 			state.LastBlockHeight,
 			mempoolv0.WithMetrics(memplMetrics),
 			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
@@ -416,7 +417,7 @@ func newStateWithConfigAndBlockStore(
 		logger := consensusLogger()
 		mempool = mempoolv1.NewTxMempool(logger,
 			config.Mempool,
-			proxyAppConnConMem,
+			proxyAppConnMem,
 			state.LastBlockHeight,
 			mempoolv1.WithMetrics(memplMetrics),
 			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
@@ -432,7 +433,7 @@ func newStateWithConfigAndBlockStore(
 	// Make State
 	stateDB := blockDB
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardABCIResponses: false,
+		DiscardFinalizeBlockResponses: false,
 	})
 	if err := stateStore.Save(state); err != nil { // for save height 1's validators info
 		panic(err)
@@ -463,7 +464,7 @@ func loadPrivValidator(config *cfg.Config) *privval.FilePV {
 }
 
 func randState(nValidators int) (*State, []*validatorStub) {
-	return randStateWithApp(nValidators, kvstore.NewApplication())
+	return randStateWithApp(nValidators, kvstore.NewInMemoryApplication())
 }
 
 func randStateWithApp(nValidators int, app abci.Application) (*State, []*validatorStub) {
@@ -746,8 +747,9 @@ func consensusLogger() log.Logger {
 	}).With("module", "consensus")
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
+func randConsensusNet(t *testing.T, nValidators int, testName string, tickerFunc func() TimeoutTicker,
 	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) ([]*State, cleanupFunc) {
+	t.Helper()
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
@@ -755,7 +757,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-			DiscardABCIResponses: false,
+			DiscardFinalizeBlockResponses: false,
 		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
@@ -766,7 +768,8 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		ensureDir(filepath.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err := app.InitChain(context.Background(), &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 
 		css[i] = newStateWithConfigAndBlockStore(thisConfig, state, privVals[i], app, stateDB)
 		css[i].SetTimeoutTicker(tickerFunc())
@@ -781,6 +784,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(
+	t *testing.T,
 	nValidators,
 	nPeers int,
 	testName string,
@@ -795,7 +799,7 @@ func randConsensusNetWithPeers(
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-			DiscardABCIResponses: false,
+			DiscardFinalizeBlockResponses: false,
 		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
@@ -808,26 +812,19 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-			if err != nil {
-				panic(err)
-			}
-			tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-			if err != nil {
-				panic(err)
-			}
-
-			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
+			tempKeyFile := t.TempDir()
+			tempStateFile := t.TempDir()
+			privVal = privval.GenFilePV(tempKeyFile, tempStateFile)
 		}
 
 		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		if _, ok := app.(*kvstore.PersistentKVStoreApplication); ok {
+		if _, ok := app.(*kvstore.Application); ok {
 			// simulate handshake, receive app version. If don't do this, replay test will fail
-			state.Version.Consensus.App = kvstore.ProtocolVersion
+			state.Version.Consensus.App = kvstore.AppVersion
 		}
-		app.InitChain(abci.RequestInitChain{Validators: vals})
-		// sm.SaveState(stateDB,state)	//height 1's validatorsInfo already saved in LoadStateFromDBOrGenesisDoc above
+		_, err := app.InitChain(context.Background(), &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 
 		css[i] = newStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetTimeoutTicker(tickerFunc())
@@ -932,15 +929,15 @@ func newPersistentKVStore() abci.Application {
 	if err != nil {
 		panic(err)
 	}
-	return kvstore.NewPersistentKVStoreApplication(dir)
+	return kvstore.NewPersistentApplication(dir)
 }
 
 func newKVStore() abci.Application {
-	return kvstore.NewApplication()
+	return kvstore.NewInMemoryApplication()
 }
 
 func newPersistentKVStoreWithPath(dbDir string) abci.Application {
-	return kvstore.NewPersistentKVStoreApplication(dbDir)
+	return kvstore.NewPersistentApplication(dbDir)
 }
 
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {

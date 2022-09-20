@@ -139,7 +139,7 @@ func makeIndexedEvent(compositeKey, value string) abci.Event {
 
 // IndexBlockEvents indexes the specified block header, part of the
 // indexer.EventSink interface.
-func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlockHeader) error {
+func (es *EventSink) IndexBlockEvents(h types.EventDataNewBlock) error {
 	ts := time.Now().UTC()
 
 	return runInTransaction(es.store, func(dbtx *sql.Tx) error {
@@ -150,7 +150,7 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
   VALUES ($1, $2, $3)
   ON CONFLICT DO NOTHING
   RETURNING rowid;
-`, h.Header.Height, es.chainID, ts)
+`, h.Block.Height, es.chainID, ts)
 		if err == sql.ErrNoRows {
 			return nil // we already saw this block; quietly succeed
 		} else if err != nil {
@@ -159,16 +159,13 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
 
 		// Insert the special block meta-event for height.
 		if err := insertEvents(dbtx, blockID, 0, []abci.Event{
-			makeIndexedEvent(types.BlockHeightKey, fmt.Sprint(h.Header.Height)),
+			makeIndexedEvent(types.BlockHeightKey, fmt.Sprint(h.Block.Height)),
 		}); err != nil {
 			return fmt.Errorf("block meta-events: %w", err)
 		}
 		// Insert all the block events. Order is important here,
-		if err := insertEvents(dbtx, blockID, 0, h.ResultBeginBlock.Events); err != nil {
+		if err := insertEvents(dbtx, blockID, 0, h.ResultFinalizeBlock.Events); err != nil {
 			return fmt.Errorf("begin-block events: %w", err)
-		}
-		if err := insertEvents(dbtx, blockID, 0, h.ResultEndBlock.Events); err != nil {
-			return fmt.Errorf("end-block events: %w", err)
 		}
 		return nil
 	})

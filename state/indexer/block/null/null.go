@@ -18,7 +18,7 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 	return false, errors.New(`indexing is disabled (set 'tx_index = "kv"' in config)`)
 }
 
-func (idx *BlockerIndexer) Index(types.EventDataNewBlockHeader) error {
+func (idx *BlockerIndexer) Index(types.EventDataNewBlock) error {
 	return nil
 }
 

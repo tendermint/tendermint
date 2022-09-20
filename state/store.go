@@ -58,16 +58,16 @@ type Store interface {
 	Load() (State, error)
 	// LoadValidators loads the validator set at a given height
 	LoadValidators(int64) (*types.ValidatorSet, error)
-	// LoadABCIResponses loads the abciResponse for a given height
-	LoadABCIResponses(int64) (*tmstate.ABCIResponses, error)
+	// LoadFinalizeBlockResponse loads the abciResponse for a given height
+	LoadFinalizeBlockResponse(int64) (*abci.ResponseFinalizeBlock, error)
 	// LoadLastABCIResponse loads the last abciResponse for a given height
-	LoadLastABCIResponse(int64) (*tmstate.ABCIResponses, error)
+	LoadLastFinalizeBlockResponse(int64) (*abci.ResponseFinalizeBlock, error)
 	// LoadConsensusParams loads the consensus params for a given height
 	LoadConsensusParams(int64) (types.ConsensusParams, error)
 	// Save overwrites the previous state with the updated one
 	Save(State) error
-	// SaveABCIResponses saves ABCIResponses for a given height
-	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
+	// SaveFinalizeBlockResponse saves ABCIResponses for a given height
+	SaveFinalizeBlockResponse(int64, *abci.ResponseFinalizeBlock) error
 	// Bootstrap is used for bootstrapping state when not starting from a initial height.
 	Bootstrap(State) error
 	// PruneStates takes the height from which to start prning and which height stop at
@@ -84,11 +84,11 @@ type dbStore struct {
 }
 
 type StoreOptions struct {
-	// DiscardABCIResponses determines whether or not the store
-	// retains all ABCIResponses. If DiscardABCiResponses is enabled,
+	// DiscardFinalizeBlockResponses determines whether or not the store
+	// retains all ABCIResponses. If DiscardFinalizeBlockResponses is enabled,
 	// the store will maintain only the response object from the latest
 	// height.
-	DiscardABCIResponses bool
+	DiscardFinalizeBlockResponses bool
 }
 
 var _ Store = (*dbStore)(nil)
@@ -364,20 +364,20 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 
 //------------------------------------------------------------------------
 
-// ABCIResponsesResultsHash returns the root hash of a Merkle tree of
-// ResponseDeliverTx responses (see ABCIResults.Hash)
+// TxResultsHash returns the root hash of a Merkle tree of
+// ExecTxResulst responses (see ABCIResults.Hash)
 //
 // See merkle.SimpleHashFromByteSlices
-func ABCIResponsesResultsHash(ar *tmstate.ABCIResponses) []byte {
-	return types.NewResults(ar.DeliverTxs).Hash()
+func TxResultsHash(txResults []*abci.ExecTxResult) []byte {
+	return types.NewResults(txResults).Hash()
 }
 
-// LoadABCIResponses loads the ABCIResponses for the given height from the
-// database. If the node has DiscardABCIResponses set to true, ErrABCIResponsesNotPersisted
+// LoadFinalizeBlockResponse loads the DiscardFinalizeBlockResponses for the given height from the
+// database. If the node has D set to true, ErrABCIResponsesNotPersisted
 // is persisted. If not found, ErrNoABCIResponsesForHeight is returned.
-func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
-	if store.DiscardABCIResponses {
-		return nil, ErrABCIResponsesNotPersisted
+func (store dbStore) LoadFinalizeBlockResponse(height int64) (*abci.ResponseFinalizeBlock, error) {
+	if store.DiscardFinalizeBlockResponses {
+		return nil, ErrFinalizeBlockResponsesNotPersisted
 	}
 
 	buf, err := store.db.Get(calcABCIResponsesKey(height))
@@ -389,25 +389,25 @@ func (store dbStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, er
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
-	abciResponses := new(tmstate.ABCIResponses)
-	err = abciResponses.Unmarshal(buf)
+	resp := new(abci.ResponseFinalizeBlock)
+	err = resp.Unmarshal(buf)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		tmos.Exit(fmt.Sprintf(`LoadABCIResponses: Data has been corrupted or its spec has
+		tmos.Exit(fmt.Sprintf(`LoadFinalizeBlockResponse: Data has been corrupted or its spec has
                 changed: %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 
-	return abciResponses, nil
+	return resp, nil
 }
 
-// LoadLastABCIResponses loads the ABCIResponses from the most recent height.
+// LoadLastFinalizeBlockResponses loads the FinalizeBlockResponses from the most recent height.
 // The height parameter is used to ensure that the response corresponds to the latest height.
 // If not, an error is returned.
 //
 // This method is used for recovering in the case that we called the Commit ABCI
 // method on the application but crashed before persisting the results.
-func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses, error) {
+func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.ResponseFinalizeBlock, error) {
 	bz, err := store.db.Get(lastABCIResponseKey)
 	if err != nil {
 		return nil, err
@@ -417,41 +417,41 @@ func (store dbStore) LoadLastABCIResponse(height int64) (*tmstate.ABCIResponses,
 		return nil, errors.New("no last ABCI response has been persisted")
 	}
 
-	abciResponse := new(tmstate.ABCIResponsesInfo)
-	err = abciResponse.Unmarshal(bz)
+	info := new(tmstate.ABCIResponsesInfo)
+	err = info.Unmarshal(bz)
 	if err != nil {
-		tmos.Exit(fmt.Sprintf(`LoadLastABCIResponses: Data has been corrupted or its spec has
+		tmos.Exit(fmt.Sprintf(`LoadLastFinalizeBlockResponse: Data has been corrupted or its spec has
 			changed: %v\n`, err))
 	}
 
 	// Here we validate the result by comparing its height to the expected height.
-	if height != abciResponse.GetHeight() {
+	if height != info.GetHeight() {
 		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
 	}
 
-	return abciResponse.AbciResponses, nil
+	return info.ResponseFinalizeBlock, nil
 }
 
-// SaveABCIResponses persists the ABCIResponses to the database.
+// SaveFinalizeBlockResponse persists the ResponseFinalizeBlock to the database.
 // This is useful in case we crash after app.Commit and before s.Save().
 // Responses are indexed by height so they can also be loaded later to produce
 // Merkle proofs.
 //
 // CONTRACT: height must be monotonically increasing every time this is called.
-func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCIResponses) error {
-	var dtxs []*abci.ResponseDeliverTx
+func (store dbStore) SaveFinalizeBlockResponse(height int64, resp *abci.ResponseFinalizeBlock) error {
+	var dtxs []*abci.ExecTxResult
 	// strip nil values,
-	for _, tx := range abciResponses.DeliverTxs {
+	for _, tx := range resp.TxResults {
 		if tx != nil {
 			dtxs = append(dtxs, tx)
 		}
 	}
-	abciResponses.DeliverTxs = dtxs
+	resp.TxResults = dtxs
 
 	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
 	// query or to reindex an event using the command line.
-	if !store.DiscardABCIResponses {
-		bz, err := abciResponses.Marshal()
+	if !store.DiscardFinalizeBlockResponses {
+		bz, err := resp.Marshal()
 		if err != nil {
 			return err
 		}
@@ -463,8 +463,8 @@ func (store dbStore) SaveABCIResponses(height int64, abciResponses *tmstate.ABCI
 	// We always save the last ABCI response for crash recovery.
 	// This overwrites the previous saved ABCI Response.
 	response := &tmstate.ABCIResponsesInfo{
-		AbciResponses: abciResponses,
-		Height:        height,
+		ResponseFinalizeBlock: resp,
+		Height:                height,
 	}
 	bz, err := response.Marshal()
 	if err != nil {

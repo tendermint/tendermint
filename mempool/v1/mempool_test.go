@@ -2,6 +2,7 @@ package v1
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
@@ -36,7 +36,7 @@ type testTx struct {
 	priority int64
 }
 
-func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *application) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
 	var (
 		priority int64
 		sender   string
@@ -47,35 +47,35 @@ func (app *application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 	if len(parts) == 3 {
 		v, err := strconv.ParseInt(string(parts[2]), 10, 64)
 		if err != nil {
-			return abci.ResponseCheckTx{
+			return &abci.ResponseCheckTx{
 				Priority:  priority,
 				Code:      100,
 				GasWanted: 1,
-			}
+			}, nil
 		}
 
 		priority = v
 		sender = string(parts[0])
 	} else {
-		return abci.ResponseCheckTx{
+		return &abci.ResponseCheckTx{
 			Priority:  priority,
 			Code:      101,
 			GasWanted: 1,
-		}
+		}, nil
 	}
 
-	return abci.ResponseCheckTx{
+	return &abci.ResponseCheckTx{
 		Priority:  priority,
 		Sender:    sender,
-		Code:      code.CodeTypeOK,
+		Code:      kvstore.CodeTypeOK,
 		GasWanted: 1,
-	}
+	}, nil
 }
 
 func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	t.Helper()
 
-	app := &application{kvstore.NewApplication()}
+	app := &application{kvstore.NewInMemoryApplication()}
 	cc := proxy.NewLocalClientCreator(app)
 
 	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
@@ -97,7 +97,7 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 // its callback has finished executing. It fails t if CheckTx fails.
 func mustCheckTx(t *testing.T, txmp *TxMempool, spec string) {
 	done := make(chan struct{})
-	if err := txmp.CheckTx([]byte(spec), func(*abci.Response) {
+	if err := txmp.CheckTx([]byte(spec), func(*abci.ResponseCheckTx) {
 		close(done)
 	}, mempool.TxInfo{}); err != nil {
 		t.Fatalf("CheckTx for %q failed: %v", spec, err)
@@ -164,9 +164,9 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 		rawTxs[i] = tx.tx
 	}
 
-	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
+	responses := make([]*abci.ExecTxResult, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	// commit half the transactions and ensure we fire an event
@@ -193,9 +193,9 @@ func TestTxMempool_Size(t *testing.T) {
 		rawTxs[i] = tx.tx
 	}
 
-	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
+	responses := make([]*abci.ExecTxResult, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
@@ -288,9 +288,9 @@ func TestTxMempool_Flush(t *testing.T) {
 		rawTxs[i] = tx.tx
 	}
 
-	responses := make([]*abci.ResponseDeliverTx, len(rawTxs[:50]))
+	responses := make([]*abci.ExecTxResult, len(rawTxs[:50]))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
@@ -485,7 +485,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 		for range ticker.C {
 			reapedTxs := txmp.ReapMaxTxs(200)
 			if len(reapedTxs) > 0 {
-				responses := make([]*abci.ResponseDeliverTx, len(reapedTxs))
+				responses := make([]*abci.ExecTxResult, len(reapedTxs))
 				for i := 0; i < len(responses); i++ {
 					var code uint32
 
@@ -495,7 +495,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 						code = abci.CodeTypeOK
 					}
 
-					responses[i] = &abci.ResponseDeliverTx{Code: code}
+					responses[i] = &abci.ExecTxResult{Code: code}
 				}
 
 				txmp.Lock()
@@ -577,9 +577,9 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 
 	// reap 5 txs at the next height -- no txs should expire
 	reapedTxs := txmp.ReapMaxTxs(5)
-	responses := make([]*abci.ResponseDeliverTx, len(reapedTxs))
+	responses := make([]*abci.ExecTxResult, len(reapedTxs))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
@@ -601,9 +601,9 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	// removed. However, we do know that that at most 95 txs can be expired and
 	// removed.
 	reapedTxs = txmp.ReapMaxTxs(5)
-	responses = make([]*abci.ResponseDeliverTx, len(reapedTxs))
+	responses = make([]*abci.ExecTxResult, len(reapedTxs))
 	for i := 0; i < len(responses); i++ {
-		responses[i] = &abci.ResponseDeliverTx{Code: abci.CodeTypeOK}
+		responses[i] = &abci.ExecTxResult{Code: abci.CodeTypeOK}
 	}
 
 	txmp.Lock()
@@ -639,14 +639,12 @@ func TestTxMempool_CheckTxPostCheckError(t *testing.T) {
 			_, err := rng.Read(tx)
 			require.NoError(t, err)
 
-			callback := func(res *abci.Response) {
-				checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
-				require.True(t, ok)
+			callback := func(res *abci.ResponseCheckTx) {
 				expectedErrString := ""
 				if testCase.err != nil {
 					expectedErrString = testCase.err.Error()
 				}
-				require.Equal(t, expectedErrString, checkTxRes.CheckTx.MempoolError)
+				require.Equal(t, expectedErrString, res.MempoolError)
 			}
 			require.NoError(t, txmp.CheckTx(tx, callback, mempool.TxInfo{SenderID: 0}))
 		})

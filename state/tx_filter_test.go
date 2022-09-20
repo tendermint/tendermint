@@ -34,7 +34,7 @@ func TestTxFilter(t *testing.T) {
 		stateDB, err := dbm.NewDB("state", "memdb", os.TempDir())
 		require.NoError(t, err)
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-			DiscardABCIResponses: false,
+			DiscardFinalizeBlockResponses: false,
 		})
 		state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		require.NoError(t, err)
