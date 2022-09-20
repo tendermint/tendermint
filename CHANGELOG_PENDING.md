@@ -25,6 +25,8 @@
 
 ### BUG FIXES
 
+- [docker] \#9462 ensure Docker image uses consistent version of Go
+
 ## v0.37.0
 
 Special thanks to external contributors on this release:
