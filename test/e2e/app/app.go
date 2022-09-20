@@ -37,6 +37,8 @@ type Application struct {
 
 	logger log.Logger
 	cfg    *kvstore.Config
+
+	PreviousCommittedState kvstore.State
 }
 
 // NewApplication creates the application.
@@ -175,6 +177,30 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 	return &abci.ResponseVerifyVoteExtension{
 		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 	}, nil
+}
+
+func (app *Application) FinalizeBlock(ctx context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
+	prevState := kvstore.NewKvState(db.NewMemDB(), app.LastCommittedState.GetHeight())
+	if err := app.LastCommittedState.Copy(prevState); err != nil {
+		return &abci.ResponseFinalizeBlock{}, err
+	}
+	resp, err := app.Application.FinalizeBlock(ctx, req)
+	if err != nil {
+		return &abci.ResponseFinalizeBlock{}, err
+	}
+	app.PreviousCommittedState = prevState
+	return resp, nil
+}
+
+func (app *Application) Rollback() error {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+
+	if app.PreviousCommittedState == nil {
+		return fmt.Errorf("cannot rollback - no previous state found")
+	}
+	app.LastCommittedState = app.PreviousCommittedState
+	return nil
 }
 
 // parseVoteExtension attempts to parse the given extension data into a positive

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/cmd/tenderdash/commands"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/rpc/client/local"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -44,12 +45,12 @@ func TestRollbackIntegration(t *testing.T) {
 
 		require.False(t, node.IsRunning())
 	})
-	// t.Run("Rollback", func(t *testing.T) {
-	// 	time.Sleep(time.Second)
-	// 	require.NoError(t, app.Rollback())
-	// 	height, _, err = commands.RollbackState(cfg)
-	// 	require.NoError(t, err, "%d", height)
-	// })
+	t.Run("Rollback", func(t *testing.T) {
+		time.Sleep(time.Second)
+		require.NoError(t, app.Rollback())
+		height, _, err = commands.RollbackState(cfg)
+		require.NoError(t, err, "%d", height)
+	})
 	t.Run("Restart", func(t *testing.T) {
 		require.True(t, height > 0, "%d", height)
 
