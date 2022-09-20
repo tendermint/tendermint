@@ -158,9 +158,7 @@ func signVote(
 	quorumHash crypto.QuorumHash) *types.Vote {
 	exts := make(types.VoteExtensions)
 	if voteType == tmproto.PrecommitType && !blockID.IsNil() {
-		proTxHash, _ := vs.GetProTxHash(ctx)
-		defaultExt := fmt.Sprintf("extension=%s", proTxHash)
-		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte(defaultExt))
+		exts.Add(tmproto.VoteExtensionType_DEFAULT, []byte("extension"))
 	}
 	v, err := vs.signVote(ctx, voteType, chainID, blockID, appHash, quorumType, quorumHash, exts)
 	require.NoError(t, err, "failed to sign vote")

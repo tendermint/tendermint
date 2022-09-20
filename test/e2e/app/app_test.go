@@ -51,7 +51,7 @@ func TestPrepareFinalize(t *testing.T) {
 		MaxTxBytes: 1024000,
 		Height:     height,
 		Txs: [][]byte{
-			[]byte(kvstore.PreparePrefix + key + "=" + value),
+			[]byte(key + "=" + value),
 		},
 		Time: now,
 	}
@@ -96,6 +96,7 @@ func TestPrepareProposal(t *testing.T) {
 	}{
 		{
 			request: abci.RequestPrepareProposal{
+				Height:     1,
 				Time:       time.Now(),
 				MaxTxBytes: 1024000,
 				Txs: [][]byte{b64(`bG9hZC0zMT1Fd3FuaUNTVlNwWXdBZFI0MGZXbVZJam1qWjR5M0JMdFY3cjVWRUVjaXE2bjlzYVVaY2gzdlZYY3g1MU9STXFpRE1RSVZxSjRCdDlDbzB3NEEySTloT0pvR
