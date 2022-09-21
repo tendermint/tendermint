@@ -1,5 +1,37 @@
 # Unreleased Changes
 
+<<<<<<< HEAD
+=======
+## v0.38.0
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+
+- Blockchain Protocol
+
+- Data Storage
+  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
+  
+### FEATURES
+
+### IMPROVEMENTS
+
+- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
+- [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
+
+### BUG FIXES
+
+- [docker] \#9462 ensure Docker image uses consistent version of Go
+
+>>>>>>> 84bc77cb1 (Ensure Dockerfile stages use consistent Go version (#9462))
 ## v0.37.0
 
 Special thanks to external contributors on this release:
