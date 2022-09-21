@@ -49,11 +49,11 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 // primary key: encode(block.height | height) => encode(height)
 // BeginBlock events: encode(eventType.eventAttr|eventValue|height|begin_block) => encode(height)
 // EndBlock events: encode(eventType.eventAttr|eventValue|height|end_block) => encode(height)
-func (idx *BlockerIndexer) Index(bh types.EventDataNewBlock) error {
+func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockEvents) error {
 	batch := idx.store.NewBatch()
 	defer batch.Close()
 
-	height := bh.Block.Height
+	height := bh.Height
 
 	// 1. index by height
 	key, err := heightKey(height)
@@ -65,7 +65,7 @@ func (idx *BlockerIndexer) Index(bh types.EventDataNewBlock) error {
 	}
 
 	// 2. index block events
-	if err := idx.indexEvents(batch, bh.ResultFinalizeBlock.Events, "begin_block", height); err != nil {
+	if err := idx.indexEvents(batch, bh.Events, "begin_block", height); err != nil {
 		return fmt.Errorf("failed to index BeginBlock events: %w", err)
 	}
 

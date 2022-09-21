@@ -256,7 +256,7 @@ func TestProcessProposal(t *testing.T) {
 
 	logger := log.NewNopLogger()
 	app := &abcimocks.Application{}
-	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	app.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -311,7 +311,7 @@ func TestProcessProposal(t *testing.T) {
 	})
 	block1.Txs = txs
 
-	expectedRpp := abci.RequestProcessProposal{
+	expectedRpp := &abci.RequestProcessProposal{
 		Txs:         block1.Txs.ToSliceOfBytes(),
 		Hash:        block1.Hash(),
 		Height:      block1.Header.Height,
@@ -329,7 +329,7 @@ func TestProcessProposal(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, acceptBlock)
 	app.AssertExpectations(t)
-	app.AssertCalled(t, "ProcessProposal", expectedRpp)
+	app.AssertCalled(t, "ProcessProposal", context.TODO(), expectedRpp)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
@@ -590,7 +590,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 func TestEmptyPrepareProposal(t *testing.T) {
 	const height = 2
 
-	app := &abcimocks.Application{}
+	app := &abci.BaseApplication{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
@@ -646,9 +646,9 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs[2:])
 
 	app := &abcimocks.Application{}
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		Txs: txs.ToSliceOfBytes(),
-	})
+	}, nil)
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
@@ -696,9 +696,9 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	txs = append(txs[len(txs)/2:], txs[:len(txs)/2]...)
 
 	app := &abcimocks.Application{}
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		Txs: txs.ToSliceOfBytes(),
-	})
+	}, nil)
 
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -749,9 +749,9 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
 
 	app := &abcimocks.Application{}
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
 		Txs: txs.ToSliceOfBytes(),
-	})
+	}, nil)
 
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -798,7 +798,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	cm.On("SetLogger", mock.Anything).Return()
 	cm.On("Start").Return(nil)
 	cm.On("Quit").Return(nil)
-	cm.On("PrepareProposalSync", mock.Anything).Return(nil, errors.New("an injected error")).Once()
+	cm.On("PrepareProposal", mock.Anything, mock.Anything).Return(nil, errors.New("an injected error")).Once()
 	cm.On("Stop").Return(nil)
 	cc := &pmocks.ClientCreator{}
 	cc.On("NewABCIClient").Return(cm, nil)

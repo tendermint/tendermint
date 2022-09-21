@@ -193,7 +193,6 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, resp
 			}
 			return
 		}
-		fmt.Println("server has read a message")
 		s.appMtx.Lock()
 		count++
 		resp, err := s.handleRequest(context.TODO(), req)
@@ -213,7 +212,6 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, resp
 func (s *SocketServer) handleRequest(ctx context.Context, req *types.Request) (*types.Response, error) {
 	switch r := req.Value.(type) {
 	case *types.Request_Echo:
-		fmt.Println("server handling request")
 		return types.ToResponseEcho(r.Echo.Message), nil
 	case *types.Request_Flush:
 		return types.ToResponseFlush(), nil
@@ -300,21 +298,18 @@ func (s *SocketServer) handleResponses(closeConn chan error, conn io.Writer, res
 	var bufWriter = bufio.NewWriter(conn)
 	for {
 		var res = <-responses
-		fmt.Println("server writing response")
-		fmt.Println(res)
 		err := types.WriteMessage(res, bufWriter)
 		if err != nil {
-			fmt.Println(err)
 			closeConn <- fmt.Errorf("error writing message: %w", err)
 			return
 		}
-		if _, ok := res.Value.(*types.Response_Flush); ok {
-			err = bufWriter.Flush()
-			if err != nil {
-				closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
-				return
-			}
+
+		err = bufWriter.Flush()
+		if err != nil {
+			closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
+			return
 		}
+
 		// If the application has responded with an exception, the server returns the error
 		// back to the client and closes the connection. The receiving Tendermint client should
 		// log the error and gracefully terminate
@@ -322,6 +317,5 @@ func (s *SocketServer) handleResponses(closeConn chan error, conn io.Writer, res
 			closeConn <- errors.New(e.Exception.Error)
 		}
 		count++
-		fmt.Println("server finished writing response")
 	}
 }

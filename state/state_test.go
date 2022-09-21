@@ -93,8 +93,8 @@ func TestStateSaveLoad(t *testing.T) {
 			loadedState, state))
 }
 
-// TestABCIResponsesSaveLoad tests saving and loading ABCIResponses.
-func TestABCIResponsesSaveLoad1(t *testing.T) {
+// TestFinalizeBlockResponsesSaveLoad1 tests saving and loading ABCIResponses.
+func TestFinalizeBlockResponsesSaveLoad1(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
@@ -120,14 +120,12 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	err := stateStore.SaveFinalizeBlockResponse(block.Height, abciResponses)
 	require.NoError(t, err)
 	loadedABCIResponses, err := stateStore.LoadFinalizeBlockResponse(block.Height)
-	assert.Nil(err)
-	assert.Equal(abciResponses, loadedABCIResponses,
-		fmt.Sprintf("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
-			loadedABCIResponses, abciResponses))
+	assert.NoError(err)
+	assert.Equal(abciResponses, loadedABCIResponses)
 }
 
-// TestResultsSaveLoad tests saving and loading ABCI results.
-func TestABCIResponsesSaveLoad2(t *testing.T) {
+// TestResultsSaveLoad tests saving and loading FinalizeBlock results.
+func TestFinalizeBlockResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
 	assert := assert.New(t)
@@ -192,7 +190,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	for i, tc := range cases {
 		h := int64(i + 1) // last block height, one below what we save
 		responses := &abci.ResponseFinalizeBlock{
-			TxResults: tc.added,
+			TxResults:     tc.added,
+			AgreedAppData: []byte(fmt.Sprintf("%d", h)),
 		}
 		err := stateStore.SaveFinalizeBlockResponse(h, responses)
 		require.NoError(t, err)
@@ -205,7 +204,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		if assert.NoError(err, "%d", i) {
 			t.Log(res)
 			responses := &abci.ResponseFinalizeBlock{
-				TxResults: tc.expected,
+				TxResults:     tc.expected,
+				AgreedAppData: []byte(fmt.Sprintf("%d", h)),
 			}
 			assert.Equal(sm.TxResultsHash(responses.TxResults), sm.TxResultsHash(res.TxResults), "%d", i)
 		}

@@ -18,9 +18,40 @@ func TestBlockIndexer(t *testing.T) {
 	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
 	indexer := blockidxkv.New(store)
 
-	require.NoError(t, indexer.Index(types.EventDataNewBlock{
-		Block: &types.Block{Header: types.Header{Height: 1}},
-		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
+	require.NoError(t, indexer.Index(types.EventDataNewBlockEvents{
+		Height: 1,
+		Events: []abci.Event{
+			{
+				Type: "begin_event",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   "proposer",
+						Value: "FCAA001",
+						Index: true,
+					},
+				},
+			},
+			{
+				Type: "end_event",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   "foo",
+						Value: "100",
+						Index: true,
+					},
+				},
+			},
+		},
+	}))
+
+	for i := 2; i < 12; i++ {
+		var index bool
+		if i%2 == 0 {
+			index = true
+		}
+
+		require.NoError(t, indexer.Index(types.EventDataNewBlockEvents{
+			Height: int64(i),
 			Events: []abci.Event{
 				{
 					Type: "begin_event",
@@ -37,43 +68,8 @@ func TestBlockIndexer(t *testing.T) {
 					Attributes: []abci.EventAttribute{
 						{
 							Key:   "foo",
-							Value: "100",
-							Index: true,
-						},
-					},
-				},
-			},
-		},
-	}))
-
-	for i := 2; i < 12; i++ {
-		var index bool
-		if i%2 == 0 {
-			index = true
-		}
-
-		require.NoError(t, indexer.Index(types.EventDataNewBlock{
-			Block: &types.Block{Header: types.Header{Height: int64(i)}},
-			ResultFinalizeBlock: abci.ResponseFinalizeBlock{
-				Events: []abci.Event{
-					{
-						Type: "begin_event",
-						Attributes: []abci.EventAttribute{
-							{
-								Key:   "proposer",
-								Value: "FCAA001",
-								Index: true,
-							},
-						},
-					},
-					{
-						Type: "end_event",
-						Attributes: []abci.EventAttribute{
-							{
-								Key:   "foo",
-								Value: fmt.Sprintf("%d", i),
-								Index: index,
-							},
+							Value: fmt.Sprintf("%d", i),
+							Index: index,
 						},
 					},
 				},

@@ -25,6 +25,7 @@ type Client interface {
 	types.Application
 
 	Error() error
+	// TODO: remove as this is not implemented
 	Flush(context.Context) error
 	Echo(context.Context, string) (*types.ResponseEcho, error)
 }

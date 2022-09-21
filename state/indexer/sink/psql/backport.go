@@ -77,7 +77,7 @@ func (BackportBlockIndexer) Has(height int64) (bool, error) {
 
 // Index indexes block begin and end events for the specified block.  It is
 // part of the BlockIndexer interface.
-func (b BackportBlockIndexer) Index(block types.EventDataNewBlock) error {
+func (b BackportBlockIndexer) Index(block types.EventDataNewBlockEvents) error {
 	return b.psql.IndexBlockEvents(block)
 }
 

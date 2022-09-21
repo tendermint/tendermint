@@ -11,6 +11,8 @@ import (
 )
 
 func TestClientServerNoAddrPrefix(t *testing.T) {
+	t.Helper()
+
 	addr := "localhost:26658"
 	transport := "socket"
 	app := kvstore.NewInMemoryApplication()
@@ -19,12 +21,19 @@ func TestClientServerNoAddrPrefix(t *testing.T) {
 	assert.NoError(t, err, "expected no error on NewServer")
 	err = server.Start()
 	assert.NoError(t, err, "expected no error on server.Start")
-	defer func() { _ = server.Stop() }()
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	client, err := abciclient.NewClient(addr, transport, true)
 	assert.NoError(t, err, "expected no error on NewClient")
 	err = client.Start()
 	assert.NoError(t, err, "expected no error on client.Start")
-
-	_ = client.Stop()
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 }

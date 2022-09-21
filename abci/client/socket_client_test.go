@@ -32,8 +32,7 @@ func TestCalls(t *testing.T) {
 	}()
 
 	select {
-	case <-time.After(3 * time.Second):
-		fmt.Println("no response arrived")
+	case <-time.After(1 * time.Second):
 		require.Fail(t, "No response arrived")
 	case err, ok := <-resp:
 		require.True(t, ok, "Must not close channel")
@@ -53,17 +52,17 @@ func setupClientServer(t *testing.T, app types.Application) (
 	err := s.Start()
 	require.NoError(t, err)
 
-	c := abcicli.NewSocketClient(addr, true)
-	err = c.Start()
-	require.NoError(t, err)
-
 	t.Cleanup(func() {
 		if err := s.Stop(); err != nil {
 			t.Error(err)
 		}
 	})
+
+	c := abcicli.NewSocketClient(addr, true)
+	err = c.Start()
+	require.NoError(t, err)
+
 	t.Cleanup(func() {
-		fmt.Println("stopping client")
 		if err := c.Stop(); err != nil {
 			t.Error(err)
 		}

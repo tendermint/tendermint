@@ -196,38 +196,15 @@ func TestClientServer(t *testing.T) {
 	defer cancel()
 	// set up socket app
 	kvstore := NewInMemoryApplication()
-	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
+	client, _, err := makeSocketClientServer(t, kvstore, "kvstore-socket")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if err := server.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Cleanup(func() {
-		if err := client.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	runClientTests(ctx, t, client)
 
 	// set up grpc app
 	kvstore = NewInMemoryApplication()
-	gclient, gserver, err := makeGRPCClientServer(kvstore, "/tmp/kvstore-grpc")
+	gclient, _, err := makeGRPCClientServer(kvstore, "/tmp/kvstore-grpc")
 	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		cancel()
-		if err := gserver.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Cleanup(func() {
-		cancel()
-		if err := gclient.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
 
 	runClientTests(ctx, t, gclient)
 }
@@ -273,7 +250,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	}
 }
 
-func makeSocketClientServer(app types.Application, name string) (abcicli.Client, service.Service, error) {
+func makeSocketClientServer(t *testing.T, app types.Application, name string) (abcicli.Client, service.Service, error) {
 	// Start the listener
 	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
@@ -284,15 +261,24 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 		return nil, nil, err
 	}
 
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+
 	// Connect to the socket
 	client := abcicli.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
 	if err := client.Start(); err != nil {
-		if err = server.Stop(); err != nil {
-			return nil, nil, err
-		}
 		return nil, nil, err
 	}
+
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
 
 	return client, server, nil
 }

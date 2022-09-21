@@ -16,7 +16,7 @@ type BlockIndexer interface {
 	Has(height int64) (bool, error)
 
 	// Index indexes BeginBlock and EndBlock events for a given block by its height.
-	Index(types.EventDataNewBlock) error
+	Index(types.EventDataNewBlockEvents) error
 
 	// Search performs a query for block heights that match a given BeginBlock
 	// and Endblock event search criteria.

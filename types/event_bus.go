@@ -135,10 +135,22 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	events := b.validateAndStringifyEvents(data.ResultFinalizeBlock.Events, b.Logger.With("block", data.Block.StringShort()))
+	events := b.validateAndStringifyEvents(data.ResultFinalizeBlock.Events, b.Logger.With("height", data.Block.Height))
 
 	// add predefined new block event
 	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlock)
+
+	return b.pubsub.PublishWithEvents(ctx, data, events)
+}
+
+func (b *EventBus) PublishEventNewBlockEvents(data EventDataNewBlockEvents) error {
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+
+	events := b.validateAndStringifyEvents(data.Events, b.Logger.With("height", data.Height))
+
+	// add predefined new block event
+	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlockEvents)
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }

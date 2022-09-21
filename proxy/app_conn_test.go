@@ -40,7 +40,7 @@ func TestEcho(t *testing.T) {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
-	proxy := NewAppConnMempool(cli, nil)
+	proxy := NewAppConnMempool(cli, NopMetrics())
 	t.Log("Connected")
 
 	for i := 0; i < 1000; i++ {
@@ -81,7 +81,7 @@ func BenchmarkEcho(b *testing.B) {
 		b.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
-	proxy := NewAppConnMempool(cli, nil)
+	proxy := NewAppConnMempool(cli, NopMetrics())
 	b.Log("Connected")
 	b.StartTimer() // Start benchmarking tests
 

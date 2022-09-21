@@ -42,9 +42,21 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		}
 	})
 
-	// publish block with txs
-	err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-		Header: types.Header{Height: 1},
+	// publish block with events
+	err = eventBus.PublishEventNewBlockEvents(types.EventDataNewBlockEvents{
+		Height: 1,
+		Events: []abci.Event{
+			{
+				Type: "begin_event",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   "proposer",
+						Value: "FCAA001",
+						Index: true,
+					},
+				},
+			},
+		},
 		NumTxs: int64(2),
 	})
 	require.NoError(t, err)

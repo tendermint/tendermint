@@ -385,17 +385,33 @@ func (store dbStore) LoadFinalizeBlockResponse(height int64) (*abci.ResponseFina
 		return nil, err
 	}
 	if len(buf) == 0 {
-
 		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
 	resp := new(abci.ResponseFinalizeBlock)
 	err = resp.Unmarshal(buf)
 	if err != nil {
-		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		tmos.Exit(fmt.Sprintf(`LoadFinalizeBlockResponse: Data has been corrupted or its spec has
-                changed: %v\n`, err))
+		// The data might be of the legacy ABCI response type, so
+		// we try to unmarshal that
+		legacyResp := new(tmstate.LegacyABCIResponses)
+		rerr := legacyResp.Unmarshal(buf)
+		if rerr != nil {
+			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+			tmos.Exit(fmt.Sprintf(`LoadFinalizeBlockResponse: Data has been corrupted or its spec has
+					changed: %v\n`, err))
+		}
+		// The state store contains the old format. Migrate to
+		// the new ResponseFinalizeBlock format. Note that the
+		// new struct expects the AgreedAppData which we don't have.
+		resp = &abci.ResponseFinalizeBlock{
+			TxResults:             legacyResp.DeliverTxs,
+			ValidatorUpdates:      legacyResp.EndBlock.ValidatorUpdates,
+			ConsensusParamUpdates: legacyResp.EndBlock.ConsensusParamUpdates,
+			Events:                append(legacyResp.BeginBlock.Events, legacyResp.EndBlock.Events...),
+			// NOTE: AgreedAppData is missing in the response
+		}
 	}
+
 	// TODO: ensure that buf is completely read.
 
 	return resp, nil
@@ -451,6 +467,7 @@ func (store dbStore) SaveFinalizeBlockResponse(height int64, resp *abci.Response
 	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
 	// query or to reindex an event using the command line.
 	if !store.DiscardFinalizeBlockResponses {
+		fmt.Printf("saving response at height %d\n", height)
 		bz, err := resp.Marshal()
 		if err != nil {
 			return err

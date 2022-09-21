@@ -118,7 +118,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], kvstore.NewInMemoryApplication(), blockDB)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
-	newBlockHeaderCh := subscribe(cs.eventBus, types.EventQueryNewBlockHeader)
+	newBlockEventsCh := subscribe(cs.eventBus, types.EventQueryNewBlockEvents)
 
 	const numTxs int64 = 3000
 	go deliverTxsRange(cs, 0, int(numTxs))
@@ -126,9 +126,9 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	startTestRound(cs, cs.Height, cs.Round)
 	for n := int64(0); n < numTxs; {
 		select {
-		case msg := <-newBlockHeaderCh:
-			headerEvent := msg.Data().(types.EventDataNewBlockHeader)
-			n += headerEvent.NumTxs
+		case msg := <-newBlockEventsCh:
+			event := msg.Data().(types.EventDataNewBlockEvents)
+			n += event.NumTxs
 		case <-time.After(30 * time.Second):
 			t.Fatal("Timed out waiting 30s to commit blocks with transactions")
 		}

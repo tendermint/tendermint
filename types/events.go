@@ -18,6 +18,7 @@ const (
 	// All of this data can be fetched through the rpc.
 	EventNewBlock            = "NewBlock"
 	EventNewBlockHeader      = "NewBlockHeader"
+	EventNewBlockEvents      = "NewBlockEvents"
 	EventNewEvidence         = "NewEvidence"
 	EventTx                  = "Tx"
 	EventValidatorSetUpdates = "ValidatorSetUpdates"
@@ -48,6 +49,7 @@ type TMEventData interface {
 func init() {
 	tmjson.RegisterType(EventDataNewBlock{}, "tendermint/event/NewBlock")
 	tmjson.RegisterType(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader")
+	tmjson.RegisterType(EventDataNewBlockEvents{}, "tendermint/event/NewBlockEvents")
 	tmjson.RegisterType(EventDataNewEvidence{}, "tendermint/event/NewEvidence")
 	tmjson.RegisterType(EventDataTx{}, "tendermint/event/Tx")
 	tmjson.RegisterType(EventDataRoundState{}, "tendermint/event/RoundState")
@@ -62,21 +64,24 @@ func init() {
 // but some (an input to a call tx or a receive) are more exotic
 
 type EventDataNewBlock struct {
-	Block   *Block  `json:"block"`
-	BlockID BlockID `json:"block_id"`
-
+	Block               *Block                     `json:"block"`
+	BlockID             BlockID                    `json:"block_id"`
 	ResultFinalizeBlock abci.ResponseFinalizeBlock `json:"result_finalize_block"`
 }
 
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
-	NumTxs int64  `json:"num_txs,string"` // Number of txs in a block
+}
+
+type EventDataNewBlockEvents struct {
+	Height int64        `json:"height"`
+	Events []abci.Event `json:"events"`
+	NumTxs int64        `json:"num_txs,string"` // Number of txs in a block
 }
 
 type EventDataNewEvidence struct {
+	Height   int64    `json:"height"`
 	Evidence Evidence `json:"evidence"`
-
-	Height int64 `json:"height"`
 }
 
 // All txs fire EventDataTx
@@ -145,6 +150,7 @@ var (
 	EventQueryLock                = QueryForEvent(EventLock)
 	EventQueryNewBlock            = QueryForEvent(EventNewBlock)
 	EventQueryNewBlockHeader      = QueryForEvent(EventNewBlockHeader)
+	EventQueryNewBlockEvents      = QueryForEvent(EventNewBlockEvents)
 	EventQueryNewEvidence         = QueryForEvent(EventNewEvidence)
 	EventQueryNewRound            = QueryForEvent(EventNewRound)
 	EventQueryNewRoundStep        = QueryForEvent(EventNewRoundStep)

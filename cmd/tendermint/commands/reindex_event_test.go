@@ -146,8 +146,8 @@ func TestReIndexEvent(t *testing.T) {
 	}
 
 	mockBlockIndexer.
-		On("Index", mock.AnythingOfType("types.EventDataNewBlock")).Return(errors.New("")).Once().
-		On("Index", mock.AnythingOfType("types.EventDataNewBlock")).Return(nil)
+		On("Index", mock.AnythingOfType("types.EventDataNewBlockEvents")).Return(errors.New("")).Once().
+		On("Index", mock.AnythingOfType("types.EventDataNewBlockEvents")).Return(nil)
 
 	mockTxIndexer.
 		On("AddBatch", mock.AnythingOfType("*txindex.Batch")).Return(errors.New("")).Once().

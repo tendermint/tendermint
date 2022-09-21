@@ -62,8 +62,6 @@ func (cli *socketClient) OnStart() error {
 		conn net.Conn
 	)
 
-	fmt.Println("starting socket client")
-
 	for {
 		conn, err = tmnet.Connect(cli.addr)
 		if err != nil {
@@ -86,7 +84,6 @@ func (cli *socketClient) OnStart() error {
 
 // OnStop implements Service by closing connection and flushing all queues.
 func (cli *socketClient) OnStop() {
-	fmt.Println("stopping socket client")
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
@@ -114,9 +111,7 @@ func (cli *socketClient) sendRequestsRoutine(conn io.Writer) {
 			// unsolicited reply.
 			cli.trackRequest(reqres)
 
-			fmt.Println("writing message")
 			if err := types.WriteMessage(reqres.Request, bw); err != nil {
-				fmt.Println(err)
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
 			}
@@ -138,13 +133,10 @@ func (cli *socketClient) recvResponseRoutine(conn io.Reader) {
 
 		var res = &types.Response{}
 
-		fmt.Println("client waiting to read a message")
 		if err := types.ReadMessage(r, res); err != nil {
-			fmt.Println(err)
 			cli.stopForError(fmt.Errorf("read message: %w", err))
 			return
 		}
-		fmt.Println("client finished reading message")
 
 		switch r := res.Value.(type) {
 		case *types.Response_Exception: // app responded with error
@@ -384,7 +376,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 }
 
 func (cli *socketClient) stopForError(err error) {
-	fmt.Printf("stopping for error %v\n", err)
 	if !cli.IsRunning() {
 		return
 	}

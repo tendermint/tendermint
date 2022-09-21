@@ -139,7 +139,7 @@ func TestMain(m *testing.M) {
 func TestIndexing(t *testing.T) {
 	t.Run("IndexBlockEvents", func(t *testing.T) {
 		indexer := &EventSink{store: testDB(), chainID: chainID}
-		require.NoError(t, indexer.IndexBlockEvents(newTestBlock()))
+		require.NoError(t, indexer.IndexBlockEvents(newTestBlockEvents()))
 
 		verifyBlock(t, 1)
 		verifyBlock(t, 2)
@@ -155,7 +155,7 @@ func TestIndexing(t *testing.T) {
 		require.NoError(t, verifyTimeStamp(tableBlocks))
 
 		// Attempting to reindex the same events should gracefully succeed.
-		require.NoError(t, indexer.IndexBlockEvents(newTestBlock()))
+		require.NoError(t, indexer.IndexBlockEvents(newTestBlockEvents()))
 	})
 
 	t.Run("IndexTxEvents", func(t *testing.T) {
@@ -205,16 +205,14 @@ func TestStop(t *testing.T) {
 
 // newTestBlock constructs a fresh copy of a new block event containing
 // known test values to exercise the indexer.
-func newTestBlock() types.EventDataNewBlock {
-	return types.EventDataNewBlock{
-		Block: &types.Block{Header: types.Header{Height: 1}},
-		ResultFinalizeBlock: abci.ResponseFinalizeBlock{
-			Events: []abci.Event{
-				makeIndexedEvent("begin_event.proposer", "FCAA001"),
-				makeIndexedEvent("thingy.whatzit", "O.O"),
-				makeIndexedEvent("end_event.foo", "100"),
-				makeIndexedEvent("thingy.whatzit", "-.O"),
-			},
+func newTestBlockEvents() types.EventDataNewBlockEvents {
+	return types.EventDataNewBlockEvents{
+		Height: 1,
+		Events: []abci.Event{
+			makeIndexedEvent("begin_event.proposer", "FCAA001"),
+			makeIndexedEvent("thingy.whatzit", "O.O"),
+			makeIndexedEvent("end_event.foo", "100"),
+			makeIndexedEvent("thingy.whatzit", "-.O"),
 		},
 	}
 }

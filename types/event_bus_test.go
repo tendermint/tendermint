@@ -83,7 +83,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 	}
 
 	// PublishEventNewBlock adds the tm.event compositeKey, so the query below should work
-	query := "tm.event='NewBlock' AND testType.baz=1 AND testType.foz=2"
+	query := "tm.event='NewBlock' AND testType.baz=1"
 	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
@@ -235,10 +235,9 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		}
 	})
 
-	const numTxs = 100
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
-	query := "tm.event='NewBlockHeader' AND testType.baz=1 AND testType.foz=2"
+	query := "tm.event='NewBlockHeader'"
 	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
 	require.NoError(t, err)
 
@@ -247,13 +246,53 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 		msg := <-headersSub.Out()
 		edt := msg.Data().(EventDataNewBlockHeader)
 		assert.Equal(t, block.Header, edt.Header)
-		assert.Equal(t, numTxs, edt.NumTxs)
 		close(done)
 	}()
 
 	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{
 		Header: block.Header,
-		NumTxs: numTxs,
+	})
+	assert.NoError(t, err)
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatal("did not receive a block header after 1 sec.")
+	}
+}
+
+func TestEventBusPublishEventNewBlockEvents(t *testing.T) {
+	eventBus := NewEventBus()
+	err := eventBus.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := eventBus.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+
+	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
+	query := "tm.event='NewBlockEvents'"
+	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		msg := <-headersSub.Out()
+		edt := msg.Data().(EventDataNewBlockEvents)
+		assert.Equal(t, int64(1), edt.Height)
+		close(done)
+	}()
+
+	err = eventBus.PublishEventNewBlockEvents(EventDataNewBlockEvents{
+		Height: 1,
+		Events: []abci.Event{{
+			Type: "transfer",
+			Attributes: []abci.EventAttribute{{
+				Key:   "currency",
+				Value: "ATOM",
+			}},
+		}},
 	})
 	assert.NoError(t, err)
 
@@ -313,7 +352,7 @@ func TestEventBusPublish(t *testing.T) {
 		}
 	})
 
-	const numEventsExpected = 14
+	const numEventsExpected = 15
 
 	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, numEventsExpected)
 	require.NoError(t, err)
@@ -332,9 +371,11 @@ func TestEventBusPublish(t *testing.T) {
 
 	err = eventBus.Publish(EventNewBlockHeader, EventDataNewBlockHeader{})
 	require.NoError(t, err)
-	err = eventBus.PublishEventNewBlock(EventDataNewBlock{})
+	err = eventBus.PublishEventNewBlock(EventDataNewBlock{Block: &Block{Header: Header{Height: 1}}})
 	require.NoError(t, err)
 	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventNewBlockEvents(EventDataNewBlockEvents{Height: 1})
 	require.NoError(t, err)
 	err = eventBus.PublishEventVote(EventDataVote{})
 	require.NoError(t, err)
@@ -454,6 +495,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 var events = []string{
 	EventNewBlock,
 	EventNewBlockHeader,
+	EventNewBlockEvents,
 	EventNewRound,
 	EventNewRoundStep,
 	EventTimeoutPropose,
@@ -472,6 +514,7 @@ func randEvent() string {
 var queries = []tmpubsub.Query{
 	EventQueryNewBlock,
 	EventQueryNewBlockHeader,
+	EventQueryNewBlockEvents,
 	EventQueryNewRound,
 	EventQueryNewRoundStep,
 	EventQueryTimeoutPropose,
