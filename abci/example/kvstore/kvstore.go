@@ -73,6 +73,7 @@ type Application struct {
 
 	snapshots       *SnapshotStore
 	restoreSnapshot *abci.Snapshot
+	restoreAppHash  tmbytes.HexBytes
 	restoreChunks   [][]byte
 }
 
@@ -397,6 +398,7 @@ func (app *Application) OfferSnapshot(_ context.Context, req *abci.RequestOfferS
 		panic("A snapshot is already being restored")
 	}
 	app.restoreSnapshot = req.Snapshot
+	app.restoreAppHash = req.AppHash
 	app.restoreChunks = [][]byte{}
 	resp := &abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}
 
@@ -410,8 +412,9 @@ func (app *Application) ApplySnapshotChunk(_ context.Context, req *abci.RequestA
 	defer app.mu.Unlock()
 
 	if app.restoreSnapshot == nil {
-		panic("No restore in progress")
+		return &abci.ResponseApplySnapshotChunk{}, fmt.Errorf("no restore in progress")
 	}
+
 	app.restoreChunks = append(app.restoreChunks, req.Chunk)
 	if len(app.restoreChunks) == int(app.restoreSnapshot.Chunks) {
 		bz := []byte{}
@@ -419,11 +422,19 @@ func (app *Application) ApplySnapshotChunk(_ context.Context, req *abci.RequestA
 			bz = append(bz, chunk...)
 		}
 		if err := json.Unmarshal(bz, &app.LastCommittedState); err != nil {
-			panic(err)
+			return &abci.ResponseApplySnapshotChunk{}, fmt.Errorf("cannot unmarshal state: %w", err)
 		}
 
+		app.logger.Info("restored state snapshot",
+			"height", app.LastCommittedState.GetHeight(),
+			"json", string(bz),
+			"apphash", app.LastCommittedState.GetAppHash(),
+			"snapshot_height", app.restoreSnapshot.Height,
+			"snapshot_apphash", app.restoreAppHash,
+		)
 		app.restoreSnapshot = nil
 		app.restoreChunks = nil
+		app.restoreAppHash = nil
 	}
 
 	resp := &abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
@@ -438,7 +449,7 @@ func (app *Application) createSnapshot() error {
 		if _, err := app.snapshots.Create(app.LastCommittedState); err != nil {
 			return fmt.Errorf("create snapshot: %w", err)
 		}
-		app.logger.Info("created state sync snapshot", "height", height)
+		app.logger.Info("created state sync snapshot", "height", height, "apphash", app.LastCommittedState.GetAppHash())
 	}
 
 	if err := app.snapshots.Prune(maxSnapshotCount); err != nil {

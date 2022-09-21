@@ -103,19 +103,11 @@ func (s *stateProviderRPC) AppHash(ctx context.Context, height uint64) (tmbytes.
 	s.Lock()
 	defer s.Unlock()
 
-	// We have to fetch the next height, which contains the app hash for the previous height.
-	header, err := s.verifyLightBlockAtHeight(ctx, height+1, time.Now())
+	header, err := s.verifyLightBlockAtHeight(ctx, height, time.Now())
 	if err != nil {
 		return nil, err
 	}
 
-	// We also try to fetch the blocks at H+2, since we need these
-	// when building the state while restoring the snapshot. This avoids the race
-	// condition where we try to restore a snapshot before H+2 exists.
-	_, err = s.verifyLightBlockAtHeight(ctx, height+2, time.Now())
-	if err != nil {
-		return nil, err
-	}
 	return header.AppHash, nil
 }
 
@@ -251,19 +243,14 @@ func (s *stateProviderP2P) AppHash(ctx context.Context, height uint64) (tmbytes.
 	s.Lock()
 	defer s.Unlock()
 
-	// We have to fetch the next height, which contains the app hash for the previous height.
-	header, err := s.verifyLightBlockAtHeight(ctx, height+1, time.Now())
+	header, err := s.verifyLightBlockAtHeight(ctx, height, time.Now())
+	if err != nil {
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	// We also try to fetch the blocks at H+2, since we need these
-	// when building the state while restoring the snapshot. This avoids the race
-	// condition where we try to restore a snapshot before H+2 exists.
-	_, err = s.verifyLightBlockAtHeight(ctx, height+2, time.Now())
-	if err != nil {
-		return nil, err
-	}
 	return header.AppHash, nil
 }
 
