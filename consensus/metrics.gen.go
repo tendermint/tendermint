@@ -179,13 +179,13 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "round_voting_power_percent",
 			Help:      "RoundVotingPowerPercent is the percentage of the total voting power received with a round. The value begins at 0 for each round and approaches 1.0 as additional voting power is observed. The metric is labeled by vote type.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "vote_type")).With(labelsAndValues...),
 		LateVotes: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "late_votes",
 			Help:      "LateVotes stores the number of votes that were received by this node that correspond to earlier heights and rounds than this node is currently in.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "vote_type")).With(labelsAndValues...),
 	}
 }
 
