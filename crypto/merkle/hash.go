@@ -32,7 +32,11 @@ func leafHashOpt(s hash.Hash, leaf []byte) []byte {
 
 // returns tmhash(0x01 || left || right)
 func innerHash(left []byte, right []byte) []byte {
-	return tmhash.Sum(append(innerPrefix, append(left, right...)...))
+	data := make([]byte, len(innerPrefix)+len(left)+len(right))
+	n := copy(data, innerPrefix)
+	n += copy(data[n:], left)
+	copy(data[n:], right)
+	return tmhash.Sum(data)
 }
 
 func innerHashOpt(s hash.Hash, left []byte, right []byte) []byte {

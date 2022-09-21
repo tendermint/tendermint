@@ -1694,12 +1694,7 @@ func (cs *State) finalizeCommit(height int64) {
 
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE The block.AppHash wont reflect these txs until the next block.
-	var (
-		err          error
-		retainHeight int64
-	)
-
-	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
+	stateCopy, err := cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{
 			Hash:          block.Hash(),
@@ -1713,16 +1708,6 @@ func (cs *State) finalizeCommit(height int64) {
 	}
 
 	fail.Fail() // XXX
-
-	// Prune old heights, if requested by ABCI app.
-	if retainHeight > 0 {
-		pruned, err := cs.pruneBlocks(retainHeight)
-		if err != nil {
-			logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
-		} else {
-			logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
-		}
-	}
 
 	// must be called before we update state
 	cs.recordMetrics(height, block)
@@ -1745,22 +1730,6 @@ func (cs *State) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
-}
-
-func (cs *State) pruneBlocks(retainHeight int64) (uint64, error) {
-	base := cs.blockStore.Base()
-	if retainHeight <= base {
-		return 0, nil
-	}
-	pruned, err := cs.blockStore.PruneBlocks(retainHeight)
-	if err != nil {
-		return 0, fmt.Errorf("failed to prune block store: %w", err)
-	}
-	err = cs.blockExec.Store().PruneStates(base, retainHeight)
-	if err != nil {
-		return 0, fmt.Errorf("failed to prune state database: %w", err)
-	}
-	return pruned, nil
 }
 
 func (cs *State) recordMetrics(height int64, block *types.Block) {
