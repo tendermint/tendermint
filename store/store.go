@@ -521,3 +521,50 @@ func mustEncode(pb proto.Message) []byte {
 	}
 	return bz
 }
+
+//-----------------------------------------------------------------------------
+
+// DeleteLatestBlock removes the block pointed to by height,
+// lowering height by one.
+func (bs *BlockStore) DeleteLatestBlock() error {
+	bs.mtx.RLock()
+	targetHeight := bs.height
+	bs.mtx.RUnlock()
+
+	batch := bs.db.NewBatch()
+	defer batch.Close()
+
+	// delete what we can, skipping what's already missing, to ensure partial
+	// blocks get deleted fully.
+	if meta := bs.LoadBlockMeta(targetHeight); meta != nil {
+		if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
+			return err
+		}
+		for p := 0; p < int(meta.BlockID.PartSetHeader.Total); p++ {
+			if err := batch.Delete(calcBlockPartKey(targetHeight, p)); err != nil {
+				return err
+			}
+		}
+	}
+	if err := batch.Delete(calcBlockCommitKey(targetHeight)); err != nil {
+		return err
+	}
+	if err := batch.Delete(calcSeenCommitKey(targetHeight)); err != nil {
+		return err
+	}
+	// delete last, so as to not leave keys built on meta.BlockID dangling
+	if err := batch.Delete(calcBlockMetaKey(targetHeight)); err != nil {
+		return err
+	}
+
+	bs.mtx.Lock()
+	bs.height = targetHeight - 1
+	bs.mtx.Unlock()
+	bs.saveState()
+
+	err := batch.WriteSync()
+	if err != nil {
+		return fmt.Errorf("failed to delete height %v: %w", targetHeight, err)
+	}
+	return nil
+}

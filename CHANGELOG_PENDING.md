@@ -69,6 +69,9 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 - [crypto] \#9250 Update to use btcec v2 and the latest btcutil. (@wcsiu)
 
+- [cli] \#9171 add `--hard` flag to rollback command (and a boolean to the `RollbackState` method). This will rollback
+  state and remove the last block. This command can be triggered multiple times. The application must also rollback
+  state to the same height. (@tsutsu, @cmwaters)
 - [proto] \#9356 Migrate from `gogo/protobuf` to `cosmos/gogoproto` (@julienrbrt)
 - [rpc] \#9276 Added `header` and `header_by_hash` queries to the RPC client (@samricotta)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
