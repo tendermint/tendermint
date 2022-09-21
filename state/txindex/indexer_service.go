@@ -3,7 +3,6 @@ package txindex
 import (
 	"context"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/types"
@@ -80,18 +79,13 @@ func (is *IndexerService) OnStart() error {
 			if err := is.blockIdxr.Index(eventDataHeader); err != nil {
 				is.Logger.Error("failed to index block", "height", height, "err", err)
 			} else {
-				is.Logger.Info("indexed block", "height", height)
-			}
-
-			batch.Ops, err = DeduplicateBatch(batch.Ops, is.txIdxr)
-			if err != nil {
-				is.Logger.Error("deduplicate batch", "height", height)
+				is.Logger.Info("indexed block exents", "height", height)
 			}
 
 			if err = is.txIdxr.AddBatch(batch); err != nil {
 				is.Logger.Error("failed to index block txs", "height", height, "err", err)
 			} else {
-				is.Logger.Debug("indexed block txs", "height", height, "num_txs", eventDataHeader.NumTxs)
+				is.Logger.Debug("indexed transactions", "height", height, "num_txs", eventDataHeader.NumTxs)
 			}
 		}
 	}()
@@ -103,46 +97,4 @@ func (is *IndexerService) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
 	}
-}
-
-// DeduplicateBatch consider the case of duplicate txs.
-// if the current one under investigation is NOT OK, then we need to check
-// whether there's a previously indexed tx.
-// SKIP the current tx if the previously indexed record is found and successful.
-func DeduplicateBatch(ops []*abci.TxResult, txIdxr TxIndexer) ([]*abci.TxResult, error) {
-	result := make([]*abci.TxResult, 0, len(ops))
-
-	// keep track of successful txs in this block in order to suppress latter ones being indexed.
-	var successfulTxsInThisBlock = make(map[string]struct{})
-
-	for _, txResult := range ops {
-		hash := types.Tx(txResult.Tx).Hash()
-
-		if txResult.Result.IsOK() {
-			successfulTxsInThisBlock[string(hash)] = struct{}{}
-		} else {
-			// if it already appeared in current block and was successful, skip.
-			if _, found := successfulTxsInThisBlock[string(hash)]; found {
-				continue
-			}
-
-			// check if this tx hash is already indexed
-			old, err := txIdxr.Get(hash)
-
-			// if db op errored
-			// Not found is not an error
-			if err != nil {
-				return nil, err
-			}
-
-			// if it's already indexed in an older block and was successful, skip.
-			if old != nil && old.Result.Code == abci.CodeTypeOK {
-				continue
-			}
-		}
-
-		result = append(result, txResult)
-	}
-
-	return result, nil
 }

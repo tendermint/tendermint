@@ -258,6 +258,103 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	}
 }
 
+func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
+	var mockTx = types.Tx("MOCK_TX_HASH")
+
+	testCases := []struct {
+		name         string
+		tx1          *abci.TxResult
+		tx2          *abci.TxResult
+		expOverwrite bool // do we expect the second tx to overwrite the first tx
+	}{
+		{
+			"don't overwrite as a non-zero code was returned and the previous tx was successful",
+			&abci.TxResult{
+				Height: 1,
+				Index:  0,
+				Tx:     mockTx,
+				Result: abci.ResponseDeliverTx{
+					Code: abci.CodeTypeOK,
+				},
+			},
+			&abci.TxResult{
+				Height: 2,
+				Index:  0,
+				Tx:     mockTx,
+				Result: abci.ResponseDeliverTx{
+					Code: abci.CodeTypeOK + 1,
+				},
+			},
+			false,
+		},
+		{
+			"overwrite as the previous tx was also unsuccessful",
+			&abci.TxResult{
+				Height: 1,
+				Index:  0,
+				Tx:     mockTx,
+				Result: abci.ResponseDeliverTx{
+					Code: abci.CodeTypeOK + 1,
+				},
+			},
+			&abci.TxResult{
+				Height: 2,
+				Index:  0,
+				Tx:     mockTx,
+				Result: abci.ResponseDeliverTx{
+					Code: abci.CodeTypeOK + 1,
+				},
+			},
+			true,
+		},
+		{
+			"overwrite as the most recent tx was successful",
+			&abci.TxResult{
+				Height: 1,
+				Index:  0,
+				Tx:     mockTx,
+				Result: abci.ResponseDeliverTx{
+					Code: abci.CodeTypeOK,
+				},
+			},
+			&abci.TxResult{
+				Height: 2,
+				Index:  0,
+				Tx:     mockTx,
+				Result: abci.ResponseDeliverTx{
+					Code: abci.CodeTypeOK,
+				},
+			},
+			true,
+		},
+	}
+
+	hash := types.Tx(mockTx).Hash()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			indexer := NewTxIndex(db.NewMemDB())
+
+			// index the first tx
+			err := indexer.Index(tc.tx1)
+			require.NoError(t, err)
+
+			// index the same tx with different results
+			err = indexer.Index(tc.tx2)
+			require.NoError(t, err)
+
+			res, err := indexer.Get(hash)
+			require.NoError(t, err)
+
+			if tc.expOverwrite {
+				require.Equal(t, tc.tx2, res)
+			} else {
+				require.Equal(t, tc.tx1, res)
+			}
+		})
+	}
+}
+
 func TestTxSearchMultipleTxs(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
