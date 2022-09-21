@@ -115,7 +115,7 @@ func TestApp_Tx(t *testing.T) {
 			},
 		},
 		{
-			Name:     "Commit",
+			Name:     "flushMempool",
 			WaitTime: 15 * time.Second,
 			// TODO: turn this check back on if it can
 			// return reliably. Currently these calls have

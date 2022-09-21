@@ -73,11 +73,6 @@ func (a ABCIApp) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*coretypes
 		return nil, err
 	}
 
-	_, err = a.App.Commit(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	res.TxResult = abci.ExecTxResult{
 		Code: abci.CodeTypeOK,
 	}

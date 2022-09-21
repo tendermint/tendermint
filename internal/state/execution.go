@@ -351,7 +351,7 @@ func (blockExec *BlockExecutor) FinalizeBlock(
 		return state, ErrInvalidBlock{err}
 	}
 	startTime := time.Now().UnixNano()
-	finalizeBlockResponse, err := execBlockWithoutState(ctx, blockExec.appClient, block, blockExec.logger, blockExec.store, -1, state, uncommittedState)
+	fbResp, err := execBlockWithoutState(ctx, blockExec.appClient, block, blockExec.logger, blockExec.store, -1, state)
 	if err != nil {
 		return state, ErrInvalidBlock{err}
 	}
@@ -367,7 +367,7 @@ func (blockExec *BlockExecutor) FinalizeBlock(
 	// in FinalizeResponse.
 	abciResponses := tmstate.ABCIResponses{
 		ProcessProposal: &uncommittedState.response,
-		FinalizeBlock:   finalizeBlockResponse,
+		FinalizeBlock:   fbResp,
 	}
 	if err := blockExec.store.SaveABCIResponses(block.Height, abciResponses); err != nil {
 		return state, err
@@ -383,7 +383,7 @@ func (blockExec *BlockExecutor) FinalizeBlock(
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	retainHeight, err := blockExec.Commit(ctx, state, block, uncommittedState.TxResults)
+	err = blockExec.flushMempool(ctx, state, block, uncommittedState.TxResults)
 	if err != nil {
 		return state, fmt.Errorf("commit failed for application: %w", err)
 	}
@@ -395,28 +395,21 @@ func (blockExec *BlockExecutor) FinalizeBlock(
 		return state, err
 	}
 
-	// Prune old heights, if requested by ABCI app.
-	if retainHeight > 0 {
-		pruned, err := blockExec.pruneBlocks(retainHeight)
-		if err != nil {
-			blockExec.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
-		} else {
-			blockExec.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
-		}
-	}
+	// Prune old heights, if requested by ABCI app
+	blockExec.pruneBlocks(fbResp.RetainHeight)
 
 	// reset the verification cache
 	blockExec.cache = make(map[string]struct{})
 
 	// Events are fired after everything else.
-	// NOTE: if we crash between Commit and Save, events wont be fired during replay
+	// NOTE: if we crash between flushMempool and Save, events wont be fired during replay
 	fireEvents(
 		blockExec.logger,
 		blockExec.eventBus,
 		block,
 		blockID,
 		uncommittedState.TxResults,
-		finalizeBlockResponse,
+		fbResp,
 		&uncommittedState.response,
 		state.Validators)
 
@@ -476,37 +469,29 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 	return nil
 }
 
-// Commit locks the mempool, runs the ABCI Commit message, and updates the
+// flushMempool locks the mempool, runs the ABCI flushMempool message, and updates the
 // mempool.
-// It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).
+// It returns the result of calling abci.flushMempool (the AppHash) and the height to retain (if any).
 // The Mempool must be locked during commit and update because state is
-// typically reset on Commit and old txs must be replayed against committed
+// typically reset on flushMempool and old txs must be replayed against committed
 // state before new txs are run in the mempool, lest they be invalid.
-func (blockExec *BlockExecutor) Commit(
+func (blockExec *BlockExecutor) flushMempool(
 	ctx context.Context,
 	state State,
 	block *types.Block,
 	txResults []*abci.ExecTxResult,
-) (int64, error) {
+) error {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
 	// while mempool is Locked, flush to ensure all async requests have completed
-	// in the ABCI app before Commit.
+	// in the ABCI app before flushMempool.
 	err := blockExec.mempool.FlushAppConn(ctx)
 	if err != nil {
 		blockExec.logger.Error("client error during mempool.FlushAppConn", "err", err)
-		return 0, err
+		return err
 	}
 
-	// Commit block, get hash back
-	res, err := blockExec.appClient.Commit(ctx)
-	if err != nil {
-		blockExec.logger.Error("client error during proxyAppConn.Commit", "err", err)
-		return 0, err
-	}
-
-	// ResponseCommit has no error code - just data
 	blockExec.logger.Info(
 		"committed state",
 		"height", block.Height,
@@ -526,7 +511,7 @@ func (blockExec *BlockExecutor) Commit(
 		state.ConsensusParams.ABCI.RecheckTx,
 	)
 
-	return res.RetainHeight, err
+	return err
 }
 
 func buildLastCommitInfo(block *types.Block, initialHeight int64) abci.CommitInfo {
@@ -702,10 +687,10 @@ func execBlock(
 	return responseFinalizeBlock, nil
 }
 
-//----------------------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------
 // Execute block without state. TODO: eliminate
 // ExecReplayedCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
-// It returns the application root hash (apphash - result of abci.Commit).
+// It returns the application root hash (apphash - result of abci.flushMempool).
 //
 // CONTRACT: Block should already be delivered to the app with PrepareProposal or ProcessProposal
 func ExecReplayedCommitBlock(
@@ -719,16 +704,9 @@ func ExecReplayedCommitBlock(
 	s State,
 	ucState CurrentRoundState,
 ) (*abci.ResponseFinalizeBlock, error) {
-	respFinalizeBlock, err := execBlockWithoutState(ctx, appConn, block, logger, store, initialHeight, s, ucState)
+	respFinalizeBlock, err := execBlockWithoutState(ctx, appConn, block, logger, store, initialHeight, s)
 	if err != nil {
 		return nil, err
-	}
-
-	// Commit block, get hash back
-	res, err := appConn.Commit(ctx)
-	if err != nil {
-		logger.Error("client error during proxyAppConn.Commit", "err", res)
-		return respFinalizeBlock, err
 	}
 
 	// the BlockExecutor condition is using for the final block replay process.
@@ -763,7 +741,6 @@ func execBlockWithoutState(
 	store Store,
 	initialHeight int64,
 	s State,
-	ucState CurrentRoundState,
 ) (*abci.ResponseFinalizeBlock, error) {
 	respFinalizeBlock, err := execBlock(ctx, appConn, block, logger, store, initialHeight, s)
 	if err != nil {
@@ -771,25 +748,28 @@ func execBlockWithoutState(
 		return respFinalizeBlock, err
 	}
 
-	// ResponseCommit has no error or log, just data
 	return respFinalizeBlock, nil
 }
 
-func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64) (uint64, error) {
+func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64) {
+	if retainHeight <= 0 {
+		return
+	}
 	base := blockExec.blockStore.Base()
 	if retainHeight <= base {
-		return 0, nil
+		return
 	}
 	pruned, err := blockExec.blockStore.PruneBlocks(retainHeight)
 	if err != nil {
-		return 0, fmt.Errorf("failed to prune block store: %w", err)
+		blockExec.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
+		return
 	}
-
 	err = blockExec.Store().PruneStates(retainHeight)
 	if err != nil {
-		return 0, fmt.Errorf("failed to prune state store: %w", err)
+		blockExec.logger.Error("failed to prune state store", "retain_height", retainHeight, "err", err)
+		return
 	}
-	return pruned, nil
+	blockExec.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 }
 
 func validatePubKey(pk crypto.PubKey) error {

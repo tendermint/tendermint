@@ -77,7 +77,3 @@ func (app *gRPCApplication) Echo(_ context.Context, req *types.RequestEcho) (*ty
 func (app *gRPCApplication) Flush(_ context.Context, req *types.RequestFlush) (*types.ResponseFlush, error) {
 	return &types.ResponseFlush{}, nil
 }
-
-func (app *gRPCApplication) Commit(ctx context.Context, req *types.RequestCommit) (*types.ResponseCommit, error) {
-	return app.Application.Commit(ctx)
-}

@@ -26,7 +26,6 @@ message Request {
     RequestInitChain           init_chain            = 4;
     RequestQuery               query                 = 5;
     RequestCheckTx             check_tx              = 7;
-    RequestCommit              commit                = 10;
     RequestListSnapshots       list_snapshots        = 11;
     RequestOfferSnapshot       offer_snapshot        = 12;
     RequestLoadSnapshotChunk   load_snapshot_chunk   = 13;
@@ -37,7 +36,7 @@ message Request {
     RequestVerifyVoteExtension verify_vote_extension = 18;
     RequestFinalizeBlock       finalize_block        = 19;
   }
-  reserved 6, 8, 9;  // RequestBeginBlock, RequestDeliverTx, RequestEndBlock
+  reserved 6, 8, 9, 10;  // RequestBeginBlock, RequestDeliverTx, RequestEndBlock, RequestCommit
 }
 
 message RequestEcho {
@@ -87,8 +86,6 @@ message RequestCheckTx {
   bytes       tx   = 1;
   CheckTxType type = 2;
 }
-
-message RequestCommit {}
 
 // lists available snapshots
 message RequestListSnapshots {}
@@ -223,7 +220,6 @@ message Response {
     ResponseInitChain           init_chain            = 5;
     ResponseQuery               query                 = 6;
     ResponseCheckTx             check_tx              = 8;
-    ResponseCommit              commit                = 11;
     ResponseListSnapshots       list_snapshots        = 12;
     ResponseOfferSnapshot       offer_snapshot        = 13;
     ResponseLoadSnapshotChunk   load_snapshot_chunk   = 14;
@@ -234,7 +230,7 @@ message Response {
     ResponseVerifyVoteExtension verify_vote_extension = 19;
     ResponseFinalizeBlock       finalize_block        = 20;
   }
-  reserved 7, 9, 10;  // ResponseBeginBlock, ResponseDeliverTx, ResponseEndBlock
+  reserved 7, 9, 10, 11;  // ResponseBeginBlock, ResponseDeliverTx, ResponseEndBlock, ResponseCommit
 }
 
 // nondeterministic
@@ -300,11 +296,6 @@ message ResponseCheckTx {
 
   // ABCI applications creating a ResponseCheckTX should not set mempool_error.
   string mempool_error = 11;
-}
-
-message ResponseCommit {
-  reserved 1, 2;
-  int64 retain_height = 3;
 }
 
 message ResponseListSnapshots {
@@ -582,7 +573,6 @@ service ABCIApplication {
   rpc Info(RequestInfo) returns (ResponseInfo);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
-  rpc Commit(RequestCommit) returns (ResponseCommit);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);
   rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
   rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);

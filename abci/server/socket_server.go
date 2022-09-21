@@ -213,12 +213,6 @@ func (s *SocketServer) processRequest(ctx context.Context, req *types.Request) (
 			return nil, err
 		}
 		return types.ToResponseCheckTx(res), nil
-	case *types.Request_Commit:
-		res, err := s.app.Commit(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return types.ToResponseCommit(res), nil
 	case *types.Request_Query:
 		res, err := s.app.Query(ctx, r.Query)
 		if err != nil {

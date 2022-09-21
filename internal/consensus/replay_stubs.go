@@ -120,7 +120,3 @@ func (mock *mockProxyApp) FinalizeBlock(_ context.Context, req *abci.RequestFina
 	}
 	return r, nil
 }
-
-func (mock *mockProxyApp) Commit(context.Context) (*abci.ResponseCommit, error) {
-	return &abci.ResponseCommit{}, nil
-}

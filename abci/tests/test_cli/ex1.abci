@@ -4,13 +4,11 @@ prepare_proposal 1 "abc"
 process_proposal 1 "abc"
 finalize_block 1 0000000000000000000000000000000000000000000000000000000000000000 "abc"
 info
-commit
 info
 query "abc"
 prepare_proposal 2 "def=xyz" "ghi=123"
 process_proposal 2 "def=xyz" "ghi=123"
 finalize_block 2 3C868EF29ED961094EE2C48BDD78CDC83C7AA426E763024985AF9F0F569EEFBE "def=xyz" "ghi=123"
-commit
 query "def"
 prepare_proposal 3 "preparedef"
 process_proposal 3 "def"
@@ -18,4 +16,3 @@ process_proposal 3 "preparedef"
 prepare_proposal 3
 process_proposal 3
 finalize_block 3 243BA0AC2622E2E7ACFEF366E85E503ACEBA1C950357436B554CA253492420AB
-commit

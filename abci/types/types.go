@@ -102,16 +102,6 @@ func (r *ResponseQuery) UnmarshalJSON(b []byte) error {
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
-func (r *ResponseCommit) MarshalJSON() ([]byte, error) {
-	s, err := jsonpbMarshaller.MarshalToString(r)
-	return []byte(s), err
-}
-
-func (r *ResponseCommit) UnmarshalJSON(b []byte) error {
-	reader := bytes.NewBuffer(b)
-	return jsonpbUnmarshaller.Unmarshal(reader, r)
-}
-
 func (r *EventAttribute) MarshalJSON() ([]byte, error) {
 	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
@@ -132,7 +122,6 @@ type jsonRoundTripper interface {
 	json.Unmarshaler
 }
 
-var _ jsonRoundTripper = (*ResponseCommit)(nil)
 var _ jsonRoundTripper = (*ResponseQuery)(nil)
 var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
 

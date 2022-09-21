@@ -719,7 +719,6 @@ func (commit *Commit) GetCanonicalVote() *Vote {
 // signing.
 //
 // Panics if valIdx >= commit.Size().
-//
 func (commit *Commit) VoteBlockRequestID() []byte {
 	requestIDMessage := []byte("dpbvote")
 	heightByteArray := make([]byte, 8)
@@ -735,7 +734,6 @@ func (commit *Commit) VoteBlockRequestID() []byte {
 }
 
 // CanonicalVoteVerifySignBytes returns the bytes of the Canonical Vote that is threshold signed.
-//
 func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
 	voteCanonical := commit.GetCanonicalVote()
 	vCanonical := voteCanonical.ToProto()
@@ -743,7 +741,6 @@ func (commit *Commit) CanonicalVoteVerifySignBytes(chainID string) []byte {
 }
 
 // CanonicalVoteVerifySignID returns the signID bytes of the Canonical Vote that is threshold signed.
-//
 func (commit *Commit) CanonicalVoteVerifySignID(chainID string, quorumType btcjson.LLMQType, quorumHash []byte) []byte {
 	voteCanonical := commit.GetCanonicalVote()
 	vCanonical := voteCanonical.ToProto()

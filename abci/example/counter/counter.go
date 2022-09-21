@@ -60,16 +60,6 @@ func (app *Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*
 	return &types.ResponseCheckTx{Code: code.CodeTypeOK}, nil
 }
 
-func (app *Application) Commit(_ context.Context) (*types.ResponseCommit, error) {
-	app.hashCount++
-	if app.txCount == 0 {
-		return &types.ResponseCommit{}, nil
-	}
-	hash := make([]byte, 32)
-	binary.BigEndian.PutUint64(hash[24:], uint64(app.txCount))
-	return &types.ResponseCommit{}, nil
-}
-
 func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (*types.ResponseQuery, error) {
 	switch reqQuery.Path {
 	case "verify-chainlock":

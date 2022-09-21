@@ -29,9 +29,6 @@
 -> data: {"appHash":""}
 -> data.hex: 0x7B2261707048617368223A22227D
 
-> commit
--> code: OK
-
 > info
 -> code: OK
 -> data: {"appHash":"0000000000000000000000000000000000000000000000000000000000000000"}
@@ -62,9 +59,6 @@
 -> status: ACCEPT
 
 > finalize_block 2 3C868EF29ED961094EE2C48BDD78CDC83C7AA426E763024985AF9F0F569EEFBE "def=xyz" "ghi=123"
--> code: OK
-
-> commit
 -> code: OK
 
 > query "def"
@@ -109,8 +103,5 @@
 -> status: ACCEPT
 
 > finalize_block 3 243BA0AC2622E2E7ACFEF366E85E503ACEBA1C950357436B554CA253492420AB
--> code: OK
-
-> commit
 -> code: OK
 

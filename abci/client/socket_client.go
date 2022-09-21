@@ -275,14 +275,6 @@ func (cli *socketClient) Query(ctx context.Context, req *types.RequestQuery) (*t
 	return res.GetQuery(), nil
 }
 
-func (cli *socketClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestCommit())
-	if err != nil {
-		return nil, err
-	}
-	return res.GetCommit(), nil
-}
-
 func (cli *socketClient) InitChain(ctx context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	res, err := cli.doRequest(ctx, types.ToRequestInitChain(req))
 	if err != nil {
@@ -375,8 +367,6 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_Info)
 	case *types.Request_CheckTx:
 		_, ok = res.Value.(*types.Response_CheckTx)
-	case *types.Request_Commit:
-		_, ok = res.Value.(*types.Response_Commit)
 	case *types.Request_Query:
 		_, ok = res.Value.(*types.Response_Query)
 	case *types.Request_InitChain:

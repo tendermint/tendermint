@@ -80,9 +80,6 @@ func TestPrepareFinalize(t *testing.T) {
 	_, err = app.FinalizeBlock(ctx, &reqFinalized)
 	require.NoError(t, err)
 
-	_, err = app.Commit(ctx)
-	require.NoError(t, err)
-
 	respQuery, err := app.Query(ctx, &abci.RequestQuery{
 		Data: []byte("my-tx"),
 	})

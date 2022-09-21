@@ -266,10 +266,6 @@ func (app *testApp) CheckTx(_ context.Context, req *abci.RequestCheckTx) (*abci.
 	return &abci.ResponseCheckTx{}, nil
 }
 
-func (app *testApp) Commit(context.Context) (*abci.ResponseCommit, error) {
-	return &abci.ResponseCommit{RetainHeight: 1}, nil
-}
-
 func (app *testApp) Query(_ context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
 	return &abci.ResponseQuery{}, nil
 }

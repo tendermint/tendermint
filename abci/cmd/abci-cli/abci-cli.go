@@ -131,7 +131,6 @@ func addCommands(cmd *cobra.Command, logger log.Logger) {
 	cmd.AddCommand(prepareBlockCmd)
 	cmd.AddCommand(finalizeBlockCmd)
 	cmd.AddCommand(checkTxCmd)
-	cmd.AddCommand(commitCmd)
 	cmd.AddCommand(versionCmd)
 	cmd.AddCommand(testCmd)
 	cmd.AddCommand(prepareProposalCmd)
@@ -217,14 +216,6 @@ var checkTxCmd = &cobra.Command{
 	Long:  "validate a transaction",
 	Args:  cobra.ExactArgs(1),
 	RunE:  cmdCheckTx,
-}
-
-var commitCmd = &cobra.Command{
-	Use:   "commit",
-	Short: "commit the application state and return the Merkle root hash",
-	Long:  "commit the application state and return the Merkle root hash",
-	Args:  cobra.ExactArgs(0),
-	RunE:  cmdCommit,
 }
 
 var versionCmd = &cobra.Command{
@@ -330,7 +321,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 	return compose(
 		[]func() error{
 			func() error { return servertest.InitChain(ctx, client) },
-			func() error { return servertest.Commit(ctx, client) },
 			func() error {
 				return servertest.ProcessProposal(ctx, client, types.ResponseProcessProposal_ACCEPT, [][]byte{
 					[]byte("abc"),
@@ -341,7 +331,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 			func() error {
 				return servertest.FinalizeBlock(ctx, client, [][]byte{[]byte("abc")})
 			},
-			func() error { return servertest.Commit(ctx, client) },
 			func() error {
 				return servertest.ProcessProposal(ctx, client, types.ResponseProcessProposal_ACCEPT, [][]byte{
 					{0x00},
@@ -351,9 +340,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 			},
 			func() error {
 				return servertest.FinalizeBlock(ctx, client, [][]byte{{0x00}})
-			},
-			func() error {
-				return servertest.Commit(ctx, client)
 			},
 			func() error {
 				return servertest.ProcessProposal(ctx, client, types.ResponseProcessProposal_ACCEPT, [][]byte{
@@ -375,7 +361,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 					code.CodeTypeBadNonce,
 				}, nil, []byte{0, 0, 0, 0, 0, 0, 0, 5})
 			},
-			func() error { return servertest.Commit(ctx, client) },
 			func() error {
 				return servertest.PrepareProposal(ctx, client, [][]byte{
 					{0x01},
@@ -391,7 +376,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 			func() error {
 				return servertest.FinalizeBlock(ctx, client, nil)
 			},
-			func() error { return servertest.Commit(ctx, client) },
 		})
 }
 
@@ -482,8 +466,6 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 	switch strings.ToLower(subCommand) {
 	case "check_tx":
 		return cmdCheckTx(cmd, actualArgs)
-	case "commit":
-		return cmdCommit(cmd, actualArgs)
 	case "prepare_proposal":
 		return cmdPrepareProposal(cmd, actualArgs)
 	case "process_proposal":
@@ -613,16 +595,6 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 		Code: res.Code,
 		Data: res.Data,
 	})
-	return nil
-}
-
-// Get application Merkle root hash
-func cmdCommit(cmd *cobra.Command, args []string) error {
-	_, err := client.Commit(cmd.Context())
-	if err != nil {
-		return err
-	}
-	printResponse(cmd, args, response{})
 	return nil
 }
 

@@ -33,17 +33,6 @@ func InitChain(ctx context.Context, client abciclient.Client) error {
 	return nil
 }
 
-func Commit(ctx context.Context, client abciclient.Client) error {
-	_, err := client.Commit(ctx)
-	if err != nil {
-		fmt.Println("Failed test: Commit")
-		fmt.Printf("error while committing: %v\n", err)
-		return err
-	}
-	fmt.Println("Passed test: Commit")
-	return nil
-}
-
 func ProcessProposal(
 	ctx context.Context,
 	client abciclient.Client,

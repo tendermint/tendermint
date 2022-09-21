@@ -51,12 +51,6 @@ func ToRequestCheckTx(req *RequestCheckTx) *Request {
 	}
 }
 
-func ToRequestCommit() *Request {
-	return &Request{
-		Value: &Request_Commit{&RequestCommit{}},
-	}
-}
-
 func ToRequestQuery(req *RequestQuery) *Request {
 	return &Request{
 		Value: &Request_Query{req},
@@ -152,12 +146,6 @@ func ToResponseInfo(res *ResponseInfo) *Response {
 func ToResponseCheckTx(res *ResponseCheckTx) *Response {
 	return &Response{
 		Value: &Response_CheckTx{res},
-	}
-}
-
-func ToResponseCommit(res *ResponseCommit) *Response {
-	return &Response{
-		Value: &Response_Commit{res},
 	}
 }
 

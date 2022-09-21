@@ -154,11 +154,6 @@ func (app *proxyClient) FinalizeBlock(ctx context.Context, req *types.RequestFin
 	return app.client.FinalizeBlock(ctx, req)
 }
 
-func (app *proxyClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
-	defer addTimeSample(app.metrics.MethodTiming.With("method", "commit", "type", "sync"))()
-	return app.client.Commit(ctx)
-}
-
 func (app *proxyClient) Flush(ctx context.Context) error {
 	defer addTimeSample(app.metrics.MethodTiming.With("method", "flush", "type", "sync"))()
 	return app.client.Flush(ctx)

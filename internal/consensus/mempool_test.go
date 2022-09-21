@@ -211,9 +211,6 @@ func TestMempoolRmBadTx(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, resProcess.TxResults[0].IsErr(), fmt.Sprintf("expected no error. got %v", resFinalize))
 
-	_, err = app.Commit(ctx)
-	require.NoError(t, err)
-
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})
 	go func() {
@@ -326,10 +323,6 @@ func txAsUint64(tx []byte) uint64 {
 	tx8 := make([]byte, 8)
 	copy(tx8[len(tx8)-len(tx):], tx)
 	return binary.BigEndian.Uint64(tx8)
-}
-
-func (app *CounterApplication) Commit(context.Context) (*abci.ResponseCommit, error) {
-	return &abci.ResponseCommit{}, nil
 }
 
 func (app *CounterApplication) PrepareProposal(_ context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {

@@ -50,7 +50,6 @@ type Application struct {
 	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
 	logger       log.Logger
 
-	finalizedAppHash    []byte
 	validatorSetUpdates map[int64]abci.ValidatorSetUpdate
 
 	store Store
@@ -143,7 +142,7 @@ func WithPrepareTxsFunc(prepareTxs PrepareTxsFunc) func(app *Application) {
 	}
 }
 
-// WithStateStore provides Store to persist state every `Config.PersistInterval`` blocks
+// WithStateStore provides Store to persist state every `Config.PersistInterval“ blocks
 func WithStateStore(stateStore Store) func(app *Application) {
 	return func(app *Application) {
 		app.store = stateStore
@@ -308,7 +307,6 @@ func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinali
 		return &abci.ResponseFinalizeBlock{},
 			fmt.Errorf("height mismatch: expected %d, got %d", roundState.GetHeight(), req.Height)
 	}
-	app.finalizedAppHash = appHash
 
 	events := []abci.Event{app.eventValUpdate(req.Height)}
 	resp := &abci.ResponseFinalizeBlock{
@@ -322,7 +320,21 @@ func (app *Application) FinalizeBlock(_ context.Context, req *abci.RequestFinali
 		time.Sleep(time.Duration(app.cfg.FinalizeBlockDelayMS) * time.Millisecond)
 	}
 
-	app.logger.Debug("FinalizeBlock", "req", req, "resp", resp)
+	err := app.newHeight(appHash)
+	if err != nil {
+		return &abci.ResponseFinalizeBlock{}, err
+	}
+
+	if err := app.createSnapshot(); err != nil {
+		return &abci.ResponseFinalizeBlock{}, fmt.Errorf("create snapshot: %w", err)
+	}
+
+	if app.RetainBlocks > 0 && app.LastCommittedState.GetHeight() >= app.RetainBlocks {
+		resp.RetainHeight = app.LastCommittedState.GetHeight() - app.RetainBlocks + 1
+	}
+
+	app.logger.Debug("finalized block", "req", req)
+
 	return resp, nil
 }
 
@@ -344,33 +356,6 @@ func (app *Application) eventValUpdate(height int64) abci.Event {
 	}
 
 	return event
-}
-
-// Commit implements ABCI; DEPRECATED
-func (app *Application) Commit(_ context.Context) (*abci.ResponseCommit, error) {
-	app.mu.Lock()
-	defer app.mu.Unlock()
-
-	if len(app.finalizedAppHash) == 0 {
-		return &abci.ResponseCommit{}, fmt.Errorf("no uncommitted finalized block")
-	}
-
-	err := app.newHeight(app.finalizedAppHash)
-	if err != nil {
-		return &abci.ResponseCommit{}, err
-	}
-
-	if err := app.createSnapshot(); err != nil {
-		return &abci.ResponseCommit{}, fmt.Errorf("create snapshot: %w", err)
-	}
-
-	resp := &abci.ResponseCommit{}
-	if app.RetainBlocks > 0 && app.LastCommittedState.GetHeight() >= app.RetainBlocks {
-		resp.RetainHeight = app.LastCommittedState.GetHeight() - app.RetainBlocks + 1
-	}
-
-	app.logger.Debug("commit", "resp", resp)
-	return resp, nil
 }
 
 // ListSnapshots implements ABCI.
@@ -600,7 +585,6 @@ func (app *Application) newHeight(committedAppHash tmbytes.HexBytes) error {
 	if err := app.persist(); err != nil {
 		return err
 	}
-	app.finalizedAppHash = nil
 
 	return nil
 }
@@ -648,8 +632,8 @@ func (app *Application) executeProposal(height int64, txs types.Txs) (State, []*
 	return roundState, txResults, nil
 }
 
-//---------------------------------------------
-// getValidatorSetUpdate returns validator update at some `height`` that will be applied at `height+1`.
+// ---------------------------------------------
+// getValidatorSetUpdate returns validator update at some `height` that will be applied at `height+1`.
 func (app *Application) getValidatorSetUpdate(height int64) *abci.ValidatorSetUpdate {
 	vsu, ok := app.validatorSetUpdates[height]
 	if !ok {

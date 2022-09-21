@@ -139,10 +139,6 @@ func (cli *grpcClient) Query(ctx context.Context, params *types.RequestQuery) (*
 	return cli.client.Query(ctx, types.ToRequestQuery(params).GetQuery(), grpc.WaitForReady(true))
 }
 
-func (cli *grpcClient) Commit(ctx context.Context) (*types.ResponseCommit, error) {
-	return cli.client.Commit(ctx, types.ToRequestCommit().GetCommit(), grpc.WaitForReady(true))
-}
-
 func (cli *grpcClient) InitChain(ctx context.Context, params *types.RequestInitChain) (*types.ResponseInitChain, error) {
 	return cli.client.InitChain(ctx, types.ToRequestInitChain(params).GetInitChain(), grpc.WaitForReady(true))
 }

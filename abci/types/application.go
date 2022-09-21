@@ -21,8 +21,6 @@ type Application interface {
 	InitChain(context.Context, *RequestInitChain) (*ResponseInitChain, error) // Initialize blockchain w validators/other info from TendermintCore
 	PrepareProposal(context.Context, *RequestPrepareProposal) (*ResponsePrepareProposal, error)
 	ProcessProposal(context.Context, *RequestProcessProposal) (*ResponseProcessProposal, error)
-	// Commit the state and return the application Merkle root hash
-	Commit(context.Context) (*ResponseCommit, error)
 	// Create application specific vote extension
 	ExtendVote(context.Context, *RequestExtendVote) (*ResponseExtendVote, error)
 	// Verify application's vote extension data
@@ -54,10 +52,6 @@ func (BaseApplication) Info(_ context.Context, req *RequestInfo) (*ResponseInfo,
 
 func (BaseApplication) CheckTx(_ context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	return &ResponseCheckTx{Code: CodeTypeOK}, nil
-}
-
-func (BaseApplication) Commit(_ context.Context) (*ResponseCommit, error) {
-	return &ResponseCommit{}, nil
 }
 
 func (BaseApplication) ExtendVote(_ context.Context, req *RequestExtendVote) (*ResponseExtendVote, error) {
