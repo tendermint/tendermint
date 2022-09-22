@@ -622,6 +622,7 @@ func newWSEvents(remote, endpoint string) (*WSEvents, error) {
 		w.redoSubscriptionsAfter(0 * time.Second)
 	}))
 	if err != nil {
+		w.BaseService.Stop()
 		return nil, err
 	}
 	w.ws.SetLogger(w.Logger)

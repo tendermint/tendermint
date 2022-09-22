@@ -709,11 +709,17 @@ func NewNode(config *cfg.Config,
 	metricsProvider MetricsProvider,
 	logger log.Logger,
 	options ...Option,
-) (*Node, error) {
+) (_ *Node, rerr error) {
 	blockStore, stateDB, err := initDBs(config, dbProvider)
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if rerr != nil {
+			stateDB.Close()
+			blockStore.Close()
+		}
+	}()
 
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
@@ -740,6 +746,11 @@ func NewNode(config *cfg.Config,
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if rerr != nil {
+			eventBus.Stop()
+		}
+	}()
 
 	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config,
 		genDoc.ChainID, dbProvider, eventBus, logger)
@@ -1377,7 +1388,7 @@ var genesisDocKey = []byte("genesisDoc")
 func LoadStateFromDBOrGenesisDocProvider(
 	stateDB dbm.DB,
 	genesisDocProvider GenesisDocProvider,
-) (sm.State, *types.GenesisDoc, error) {
+) (_ sm.State, _ *types.GenesisDoc, rerr error) {
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
@@ -1399,6 +1410,12 @@ func LoadStateFromDBOrGenesisDocProvider(
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: false,
 	})
+	defer func() {
+		if rerr != nil {
+			stateStore.Close()
+		}
+	}()
+
 	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		return sm.State{}, nil, err
@@ -1440,7 +1457,7 @@ func createAndStartPrivValidatorSocketClient(
 	listenAddr,
 	chainID string,
 	logger log.Logger,
-) (types.PrivValidator, error) {
+) (_ types.PrivValidator, rerr error) {
 	pve, err := privval.NewSignerListener(listenAddr, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
@@ -1450,6 +1467,11 @@ func createAndStartPrivValidatorSocketClient(
 	if err != nil {
 		return nil, fmt.Errorf("failed to start private validator: %w", err)
 	}
+	defer func() {
+		if rerr != nil {
+			pvsc.Close()
+		}
+	}()
 
 	// try to get a pubkey from private validate first time
 	_, err = pvsc.GetPubKey()

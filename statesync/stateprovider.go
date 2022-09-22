@@ -182,6 +182,7 @@ func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm
 	rpcclient := lightrpc.NewClient(primaryRPC, s.lc)
 	result, err := rpcclient.ConsensusParams(ctx, &currentLightBlock.Height)
 	if err != nil {
+		rpcclient.Stop()
 		return sm.State{}, fmt.Errorf("unable to fetch consensus parameters for height %v: %w",
 			nextLightBlock.Height, err)
 	}

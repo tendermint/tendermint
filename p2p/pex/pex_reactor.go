@@ -663,6 +663,7 @@ func (r *Reactor) crawlPeersRoutine() {
 
 	// Fire periodically
 	ticker := time.NewTicker(crawlPeerPeriod)
+	defer ticker.Stop()
 
 	for {
 		select {

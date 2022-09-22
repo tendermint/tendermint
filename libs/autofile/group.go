@@ -332,6 +332,7 @@ func (g *Group) NewReader(index int) (*GroupReader, error) {
 	r := newGroupReader(g)
 	err := r.SetIndex(index)
 	if err != nil {
+		r.Close()
 		return nil, err
 	}
 	return r, nil

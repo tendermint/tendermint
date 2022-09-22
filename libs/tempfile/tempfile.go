@@ -108,13 +108,14 @@ func WriteFileAtomic(filename string, data []byte, perm os.FileMode) (err error)
 		}
 		break
 	}
-	if i == atomicWriteFileMaxNumWriteAttempts {
-		return fmt.Errorf("could not create atomic write file after %d attempts", i)
-	}
 
 	// Clean up in any case. Defer stacking order is last-in-first-out.
 	defer os.Remove(f.Name())
 	defer f.Close()
+
+	if i == atomicWriteFileMaxNumWriteAttempts {
+		return fmt.Errorf("could not create atomic write file after %d attempts", i)
+	}
 
 	if n, err := f.Write(data); err != nil {
 		return err

@@ -71,6 +71,8 @@ func dumpCmdHandler(_ *cobra.Command, args []string) error {
 	dumpDebugData(outDir, conf, rpc)
 
 	ticker := time.NewTicker(time.Duration(frequency) * time.Second)
+	defer ticker.Stop()
+
 	for range ticker.C {
 		dumpDebugData(outDir, conf, rpc)
 	}

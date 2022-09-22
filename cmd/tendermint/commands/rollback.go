@@ -66,7 +66,7 @@ func RollbackState(config *cfg.Config, removeBlock bool) (int64, []byte, error) 
 	return state.Rollback(blockStore, stateStore, removeBlock)
 }
 
-func loadStateAndBlockStore(config *cfg.Config) (*store.BlockStore, state.Store, error) {
+func loadStateAndBlockStore(config *cfg.Config) (_ *store.BlockStore, _ state.Store, rerr error) {
 	dbType := dbm.BackendType(config.DBBackend)
 
 	if !os.FileExists(filepath.Join(config.DBDir(), "blockstore.db")) {
@@ -79,6 +79,12 @@ func loadStateAndBlockStore(config *cfg.Config) (*store.BlockStore, state.Store,
 		return nil, nil, err
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
+	defer func() {
+		if rerr != nil {
+			blockStoreDB.Close()
+			blockStore.Close()
+		}
+	}()
 
 	if !os.FileExists(filepath.Join(config.DBDir(), "state.db")) {
 		return nil, nil, fmt.Errorf("no statestore found in %v", config.DBDir())

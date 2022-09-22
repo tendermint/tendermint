@@ -32,6 +32,7 @@ const (
 // replay the wal file
 func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
 	consensusState := newConsensusStateForReplay(config, csConfig)
+	defer consensusState.Stop()
 
 	if err := consensusState.ReplayFile(csConfig.WalFile(), console); err != nil {
 		tmos.Exit(fmt.Sprintf("Error during consensus replay: %v", err))
@@ -123,7 +124,7 @@ func newPlayback(fileName string, fp *os.File, cs *State, genState sm.State) *pl
 }
 
 // go back count steps by resetting the state and running (pb.count - count) steps
-func (pb *playback) replayReset(count int, newStepSub types.Subscription) error {
+func (pb *playback) replayReset(count int, newStepSub types.Subscription) (rerr error) {
 	if err := pb.cs.Stop(); err != nil {
 		return err
 	}
@@ -131,6 +132,12 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 
 	newCS := NewState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.txNotifier, pb.cs.evpool)
+	defer func() {
+		if rerr != nil {
+			newCS.Stop()
+		}
+	}()
+
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
 
@@ -141,6 +148,12 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if rerr != nil {
+			fp.Close()
+		}
+	}()
+
 	pb.fp = fp
 	pb.dec = NewWALDecoder(fp)
 	count = pb.count - count
