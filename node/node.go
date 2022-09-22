@@ -808,6 +808,7 @@ func NewNode(config *cfg.Config,
 		proxyApp.Consensus(),
 		mempool,
 		evidencePool,
+		blockStore,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
@@ -1383,6 +1384,11 @@ func LoadStateFromDBOrGenesisDocProvider(
 		genDoc, err = genesisDocProvider()
 		if err != nil {
 			return sm.State{}, nil, err
+		}
+
+		err = genDoc.ValidateAndComplete()
+		if err != nil {
+			return sm.State{}, nil, fmt.Errorf("error in genesis doc: %w", err)
 		}
 		// save genesis doc to prevent a certain class of user errors (e.g. when it
 		// was changed, accidentally or not). Also good for audit trail.
