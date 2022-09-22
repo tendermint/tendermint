@@ -467,7 +467,6 @@ func (store dbStore) SaveFinalizeBlockResponse(height int64, resp *abci.Response
 	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
 	// query or to reindex an event using the command line.
 	if !store.DiscardFinalizeBlockResponses {
-		fmt.Printf("saving response at height %d\n", height)
 		bz, err := resp.Marshal()
 		if err != nil {
 			return err

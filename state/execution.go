@@ -295,8 +295,6 @@ func (blockExec *BlockExecutor) Commit(
 	blockExec.logger.Info(
 		"committed state",
 		"height", block.Height,
-		"num_txs", len(block.Txs),
-		"agreed_data", fmt.Sprintf("%X", abciResponse.AgreedAppData),
 	)
 
 	// Update mempool.
@@ -344,7 +342,7 @@ func execBlockOnProxyApp(
 		return nil, fmt.Errorf("expected tx results length to match size of transactions in block. Expected %d, got %d", len(block.Data.Txs), len(resp.TxResults))
 	}
 
-	logger.Info("executed block", "height", block.Height, "agreed_data", resp.AgreedAppData)
+	logger.Info("executed block", "height", block.Height, "agreed__app_data", resp.AgreedAppData)
 	return resp, nil
 }
 

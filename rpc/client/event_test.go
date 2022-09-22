@@ -156,12 +156,6 @@ func testTxEventsSent(t *testing.T, broadcastMethod string) {
 	}
 }
 
-// Test HTTPClient resubscribes upon disconnect && subscription error.
-// Test Local client resubscribes upon subscription error.
-func TestClientsResubscribe(t *testing.T) {
-	// TODO(melekes)
-}
-
 func TestHTTPReturnsErrorIfClientIsNotRunning(t *testing.T) {
 	c := getHTTPClient()
 
