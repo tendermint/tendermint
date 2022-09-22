@@ -104,7 +104,7 @@ func newReactor(
 		DiscardABCIResponses: false,
 	})
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mp, sm.EmptyEvidencePool{})
+		mp, sm.EmptyEvidencePool{}, blockStore)
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
@@ -137,7 +137,7 @@ func newReactor(
 		require.NoError(t, err)
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
 			panic(fmt.Errorf("error apply block: %w", err))
 		}

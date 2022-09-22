@@ -108,12 +108,12 @@ type Metrics struct {
 	// RoundVotingPowerPercent is the percentage of the total voting power received
 	// with a round. The value begins at 0 for each round and approaches 1.0 as
 	// additional voting power is observed. The metric is labeled by vote type.
-	RoundVotingPowerPercent metrics.Gauge
+	RoundVotingPowerPercent metrics.Gauge `metrics_labels:"vote_type"`
 
 	// LateVotes stores the number of votes that were received by this node that
 	// correspond to earlier heights and rounds than this node is currently
 	// in.
-	LateVotes metrics.Counter
+	LateVotes metrics.Counter `metrics_labels:"vote_type"`
 }
 
 // RecordConsMetrics uses for recording the block related metrics during fast-sync.

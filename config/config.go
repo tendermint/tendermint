@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
+
+	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -60,6 +63,9 @@ var (
 
 	minSubscriptionBufferSize     = 100
 	defaultSubscriptionBufferSize = 200
+
+	// taken from https://semver.org/
+	semverRegexp = regexp.MustCompile(`^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -68,18 +74,15 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
-	RPC       *RPCConfig       `mapstructure:"rpc"`
-	P2P       *P2PConfig       `mapstructure:"p2p"`
-	Mempool   *MempoolConfig   `mapstructure:"mempool"`
-	StateSync *StateSyncConfig `mapstructure:"statesync"`
-	BlockSync *BlockSyncConfig `mapstructure:"blocksync"`
-	//TODO(williambanfield): remove this field once v0.37 is released.
-	// https://github.com/tendermint/tendermint/issues/9279
-	DeprecatedFastSyncConfig map[interface{}]interface{} `mapstructure:"fastsync"`
-	Consensus                *ConsensusConfig            `mapstructure:"consensus"`
-	Storage                  *StorageConfig              `mapstructure:"storage"`
-	TxIndex                  *TxIndexConfig              `mapstructure:"tx_index"`
-	Instrumentation          *InstrumentationConfig      `mapstructure:"instrumentation"`
+	RPC             *RPCConfig             `mapstructure:"rpc"`
+	P2P             *P2PConfig             `mapstructure:"p2p"`
+	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	StateSync       *StateSyncConfig       `mapstructure:"statesync"`
+	BlockSync       *BlockSyncConfig       `mapstructure:"blocksync"`
+	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
+	Storage         *StorageConfig         `mapstructure:"storage"`
+	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
+	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -154,14 +157,9 @@ func (cfg *Config) ValidateBasic() error {
 	return nil
 }
 
+// CheckDeprecated returns any deprecation warnings. These are printed to the operator on startup
 func (cfg *Config) CheckDeprecated() []string {
 	var warnings []string
-	if cfg.DeprecatedFastSyncConfig != nil {
-		warnings = append(warnings, "[fastsync] table detected. This section has been renamed to [blocksync]. The values in this deprecated section will be disregarded.")
-	}
-	if cfg.BaseConfig.DeprecatedFastSyncMode != nil {
-		warnings = append(warnings, "fast_sync key detected. This key has been renamed to block_sync. The value of this deprecated key will be disregarded.")
-	}
 	return warnings
 }
 
@@ -170,6 +168,11 @@ func (cfg *Config) CheckDeprecated() []string {
 
 // BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct { //nolint: maligned
+
+	// The version of the Tendermint binary that created
+	// or last modified the config file
+	Version string `mapstructure:"version"`
+
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
@@ -185,10 +188,6 @@ type BaseConfig struct { //nolint: maligned
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
 	BlockSyncMode bool `mapstructure:"block_sync"`
-
-	//TODO(williambanfield): remove this field once v0.37 is released.
-	// https://github.com/tendermint/tendermint/issues/9279
-	DeprecatedFastSyncMode interface{} `mapstructure:"fast_sync"`
 
 	// Database backend: goleveldb | cleveldb | boltdb | rocksdb
 	// * goleveldb (github.com/syndtr/goleveldb - most popular implementation)
@@ -247,6 +246,7 @@ type BaseConfig struct { //nolint: maligned
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
+		Version:            version.TMCoreSemVer,
 		Genesis:            defaultGenesisJSONPath,
 		PrivValidatorKey:   defaultPrivValKeyPath,
 		PrivValidatorState: defaultPrivValStatePath,
@@ -259,7 +259,7 @@ func DefaultBaseConfig() BaseConfig {
 		BlockSyncMode:      true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
-		DBPath:             "data",
+		DBPath:             defaultDataDir,
 	}
 }
 
@@ -300,6 +300,12 @@ func (cfg BaseConfig) DBDir() string {
 // ValidateBasic performs basic validation (checking param bounds, etc.) and
 // returns an error if any check fails.
 func (cfg BaseConfig) ValidateBasic() error {
+	// version on old config files aren't set so we can't expect it
+	// always to exist
+	if cfg.Version != "" && !semverRegexp.MatchString(cfg.Version) {
+		return fmt.Errorf("invalid version string: %s", cfg.Version)
+	}
+
 	switch cfg.LogFormat {
 	case LogFormatPlain, LogFormatJSON:
 	default:
