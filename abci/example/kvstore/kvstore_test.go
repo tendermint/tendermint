@@ -46,9 +46,8 @@ func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []
 	require.Equal(t, 1, len(respFin.Events))
 
 	// repeating tx doesn't raise error
-	respFin, err = app.FinalizeBlock(ctx, reqFin)
-	require.NoError(t, err)
-	require.Equal(t, 1, len(respFin.Events))
+	_, err = app.FinalizeBlock(ctx, reqFin)
+	require.Error(t, err)
 
 	info, err := app.Info(ctx, &types.RequestInfo{})
 	require.NoError(t, err)
@@ -324,16 +323,6 @@ func testClient(ctx context.Context, t *testing.T, app abciclient.Client, height
 	require.NoError(t, err)
 	require.Zero(t, ar.RetainHeight)
 	require.Len(t, ar.Events, 1)
-
-	// repeating FinalizeBlock doesn't raise error
-	ar, err = app.FinalizeBlock(ctx, &types.RequestFinalizeBlock{
-		Txs:     [][]byte{tx},
-		AppHash: rpp.AppHash,
-		Height:  height,
-	})
-	require.NoError(t, err)
-	assert.Zero(t, ar.RetainHeight)
-	assert.Len(t, ar.Events, 1)
 
 	info, err := app.Info(ctx, &types.RequestInfo{})
 	require.NoError(t, err)
