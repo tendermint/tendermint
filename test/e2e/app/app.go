@@ -68,26 +68,6 @@ func NewApplication(cfg kvstore.Config) (*Application, error) {
 	return &app, nil
 }
 
-// validatorUpdates generates a validator set update.
-func (app *Application) chainLockUpdate(height uint64) (*types1.CoreChainLock, error) {
-	updates := app.cfg.ChainLockUpdates[fmt.Sprintf("%v", height)]
-	if len(updates) == 0 {
-		return nil, nil
-	}
-
-	chainLockUpdateString := app.cfg.ChainLockUpdates[fmt.Sprintf("%v", height)]
-	if len(chainLockUpdateString) == 0 {
-		return nil, fmt.Errorf("chainlockUpdate must be set")
-	}
-	chainlockUpdateHeight, err := strconv.Atoi(chainLockUpdateString)
-	if err != nil {
-		return nil, fmt.Errorf("invalid number chainlockUpdate value %q: %w", chainLockUpdateString, err)
-	}
-	chainLock := types.NewMockChainLock(uint32(chainlockUpdateHeight))
-	return chainLock.ToProto(), nil
-
-}
-
 // ExtendVote will produce vote extensions in the form of random numbers to
 // demonstrate vote extension nondeterminism.
 //
