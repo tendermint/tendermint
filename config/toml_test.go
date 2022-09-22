@@ -1,4 +1,4 @@
-package config
+package config_test
 
 import (
 	"os"
@@ -7,13 +7,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test"
 )
 
 func ensureFiles(t *testing.T, rootDir string, files ...string) {
 	for _, f := range files {
-		p := rootify(rootDir, f)
+		p := filepath.Join(rootDir, f)
 		_, err := os.Stat(p)
-		assert.Nil(t, err, p)
+		assert.NoError(t, err, p)
 	}
 }
 
@@ -26,10 +29,10 @@ func TestEnsureRoot(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// create root dir
-	EnsureRoot(tmpDir)
+	config.EnsureRoot(tmpDir)
 
 	// make sure config is set properly
-	data, err := os.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
+	data, err := os.ReadFile(filepath.Join(tmpDir, config.DefaultConfigDir, config.DefaultConfigFileName))
 	require.Nil(err)
 
 	assertValidConfig(t, string(data))
@@ -40,22 +43,20 @@ func TestEnsureRoot(t *testing.T) {
 func TestEnsureTestRoot(t *testing.T) {
 	require := require.New(t)
 
-	testName := "ensureTestRoot"
-
 	// create root dir
-	cfg := ResetTestRoot(testName)
+	cfg := test.ResetTestRoot("ensureTestRoot")
 	defer os.RemoveAll(cfg.RootDir)
 	rootDir := cfg.RootDir
 
 	// make sure config is set properly
-	data, err := os.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
+	data, err := os.ReadFile(filepath.Join(rootDir, config.DefaultConfigDir, config.DefaultConfigFileName))
 	require.Nil(err)
 
 	assertValidConfig(t, string(data))
 
 	// TODO: make sure the cfg returned and testconfig are the same!
-	baseConfig := DefaultBaseConfig()
-	ensureFiles(t, rootDir, defaultDataDir, baseConfig.Genesis, baseConfig.PrivValidatorKey, baseConfig.PrivValidatorState)
+	baseConfig := config.DefaultBaseConfig()
+	ensureFiles(t, rootDir, config.DefaultDataDir, baseConfig.Genesis, baseConfig.PrivValidatorKey, baseConfig.PrivValidatorState)
 }
 
 func assertValidConfig(t *testing.T, configFile string) {
