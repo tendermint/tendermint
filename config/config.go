@@ -259,7 +259,7 @@ func DefaultBaseConfig() BaseConfig {
 		BlockSyncMode:      true,
 		FilterPeers:        false,
 		DBBackend:          "goleveldb",
-		DBPath:             defaultDataDir,
+		DBPath:             DefaultDataDir,
 	}
 }
 
