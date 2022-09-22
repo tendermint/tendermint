@@ -269,8 +269,8 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
  if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
   return ErrVoteInvalidValidatorAddress
  }
-
- if !pubKey.VerifyBytes(types.VoteSignBytes(chainID), vote.Signature) {
+ v := vote.ToProto()
+ if !pubKey.VerifyBytes(types.VoteSignBytes(chainID, v), vote.Signature) {
   return ErrVoteInvalidSignature
  }
  return nil
