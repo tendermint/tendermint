@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
@@ -78,7 +78,7 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	app := &application{kvstore.NewApplication()}
 	cc := proxy.NewLocalClientCreator(app)
 
-	cfg := config.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
+	cfg := test.ResetTestRoot(strings.ReplaceAll(t.Name(), "/", "|"))
 	cfg.Mempool.CacheSize = cacheSize
 
 	appConnMem, err := cc.NewABCIClient()

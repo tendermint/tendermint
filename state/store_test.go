@@ -11,9 +11,9 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/test"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	sm "github.com/tendermint/tendermint/state"
@@ -50,7 +50,7 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	config := cfg.ResetTestRoot("state_")
+	config := test.ResetTestRoot("state_")
 	defer os.RemoveAll(config.RootDir)
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
