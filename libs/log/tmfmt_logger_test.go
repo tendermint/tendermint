@@ -21,37 +21,37 @@ func TestTMFmtLogger(t *testing.T) {
 	if err := logger.Log("hello", "world"); err != nil {
 		t.Fatal(err)
 	}
-	assert.Regexp(t, regexp.MustCompile(`N\[.+\] unknown \s+ hello=world\n$`), buf.String())
+	assert.Regexp(t, regexp.MustCompile(`NONE \[.+\] unknown \s+ hello=world\n$`), buf.String())
 
 	buf.Reset()
 	if err := logger.Log("a", 1, "err", errors.New("error")); err != nil {
 		t.Fatal(err)
 	}
-	assert.Regexp(t, regexp.MustCompile(`N\[.+\] unknown \s+ a=1 err=error\n$`), buf.String())
+	assert.Regexp(t, regexp.MustCompile(`NONE \[.+\] unknown \s+ a=1 err=error\n$`), buf.String())
 
 	buf.Reset()
 	if err := logger.Log("std_map", map[int]int{1: 2}, "my_map", mymap{0: 0}); err != nil {
 		t.Fatal(err)
 	}
-	assert.Regexp(t, regexp.MustCompile(`N\[.+\] unknown \s+ std_map=map\[1:2\] my_map=special_behavior\n$`), buf.String())
+	assert.Regexp(t, regexp.MustCompile(`NONE \[.+\] unknown \s+ std_map=map\[1:2\] my_map=special_behavior\n$`), buf.String())
 
 	buf.Reset()
 	if err := logger.Log("level", "error"); err != nil {
 		t.Fatal(err)
 	}
-	assert.Regexp(t, regexp.MustCompile(`E\[.+\] unknown \s+\n$`), buf.String())
+	assert.Regexp(t, regexp.MustCompile(`ERROR\[.+\] unknown \s+\n$`), buf.String())
 
 	buf.Reset()
 	if err := logger.Log("_msg", "Hello"); err != nil {
 		t.Fatal(err)
 	}
-	assert.Regexp(t, regexp.MustCompile(`N\[.+\] Hello \s+\n$`), buf.String())
+	assert.Regexp(t, regexp.MustCompile(`NONE \[.+\] Hello \s+\n$`), buf.String())
 
 	buf.Reset()
 	if err := logger.Log("module", "main", "module", "crypto", "module", "wire"); err != nil {
 		t.Fatal(err)
 	}
-	assert.Regexp(t, regexp.MustCompile(`N\[.+\] unknown \s+module=wire\s+\n$`), buf.String())
+	assert.Regexp(t, regexp.MustCompile(`NONE \[.+\] unknown \s+module=wire\s+\n$`), buf.String())
 }
 
 func BenchmarkTMFmtLoggerSimple(b *testing.B) {
