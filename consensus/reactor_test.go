@@ -161,8 +161,8 @@ func TestReactorWithEvidence(t *testing.T) {
 		mtx := new(tmsync.Mutex)
 		memplMetrics := mempl.NopMetrics()
 		// one for mempool, one for consensus
-		proxyAppConnCon := proxy.NewAppConnConsensus(abcicli.NewLocalClient(mtx, app), nil)
-		proxyAppConnMem := proxy.NewAppConnMempool(abcicli.NewLocalClient(mtx, app), nil)
+		proxyAppConnCon := proxy.NewAppConnConsensus(abcicli.NewLocalClient(mtx, app), proxy.NopMetrics())
+		proxyAppConnMem := proxy.NewAppConnMempool(abcicli.NewLocalClient(mtx, app), proxy.NopMetrics())
 
 		// Make Mempool
 		var mempool mempl.Mempool

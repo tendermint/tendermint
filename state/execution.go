@@ -342,7 +342,7 @@ func execBlockOnProxyApp(
 		return nil, fmt.Errorf("expected tx results length to match size of transactions in block. Expected %d, got %d", len(block.Data.Txs), len(resp.TxResults))
 	}
 
-	logger.Info("executed block", "height", block.Height, "agreed__app_data", resp.AgreedAppData)
+	logger.Info("executed block", "height", block.Height, "agreed_app_data", resp.AgreedAppData)
 	return resp, nil
 }
 
