@@ -2,12 +2,11 @@ echo hello
 info
 prepare_proposal "abc"
 process_proposal "abc"
+finalize_block "abc"
 commit
-deliver_tx "abc"
 info
-commit
 query "abc"
-deliver_tx "def=xyz"
+finalize_block "def=xyz" "ghi=123"
 commit
 query "def"
 prepare_proposal "preparedef"

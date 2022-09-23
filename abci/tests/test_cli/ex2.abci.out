@@ -4,16 +4,31 @@
 > check_tx 0xff
 -> code: OK
 
-> deliver_tx 0x00
+> finalize_block 0x00
+-> code: OK
+-> code: OK
+-> data.hex: 0x0200000000000000
+
+> commit 
 -> code: OK
 
 > check_tx 0x00
 -> code: OK
 
-> deliver_tx 0x01
+> finalize_block 0x01
+-> code: OK
+-> code: OK
+-> data.hex: 0x0400000000000000
+
+> commit 
 -> code: OK
 
-> deliver_tx 0x04
+> finalize_block 0x04
+-> code: OK
+-> code: OK
+-> data.hex: 0x0600000000000000
+
+> commit 
 -> code: OK
 
 > info 

@@ -1,7 +1,10 @@
 check_tx 0x00
 check_tx 0xff
-deliver_tx 0x00
+finalize_block 0x00
+commit
 check_tx 0x00
-deliver_tx 0x01
-deliver_tx 0x04
+finalize_block 0x01
+commit
+finalize_block 0x04
+commit
 info
