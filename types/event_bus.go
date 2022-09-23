@@ -256,6 +256,10 @@ func (NopEventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) erro
 	return nil
 }
 
+func (NopEventBus) PublishEventNewBlockEvents(data EventDataNewBlockEvents) error {
+	return nil
+}
+
 func (NopEventBus) PublishEventNewEvidence(evidence EventDataNewEvidence) error {
 	return nil
 }

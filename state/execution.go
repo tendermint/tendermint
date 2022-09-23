@@ -521,6 +521,14 @@ func fireEvents(
 		logger.Error("failed publishing new block header", "err", err)
 	}
 
+	if err := eventBus.PublishEventNewBlockEvents(types.EventDataNewBlockEvents{
+		Height: block.Height,
+		Events: abciResponse.Events,
+		NumTxs: int64(len(block.Txs)),
+	}); err != nil {
+		logger.Error("failed publishing new block events", "err", err)
+	}
+
 	if len(block.Evidence.Evidence) != 0 {
 		for _, ev := range block.Evidence.Evidence {
 			if err := eventBus.PublishEventNewEvidence(types.EventDataNewEvidence{

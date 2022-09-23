@@ -259,10 +259,6 @@ func (mem *CListMempool) CheckTx(
 
 	mem.addNewTransaction(tx, txInfo.SenderID, txInfo.SenderP2PID, cb, resp)
 
-	if cb != nil {
-		cb(resp)
-	}
-
 	return nil
 }
 
