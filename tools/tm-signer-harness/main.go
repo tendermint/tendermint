@@ -22,8 +22,6 @@ const (
 	defaultExtractKeyOutput = "./signing.key"
 )
 
-var defaultTMHome string
-
 var logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 // Command line flags
@@ -60,14 +58,7 @@ Use "tm-signer-harness help <command>" for more information about that command.`
 		fmt.Println("")
 	}
 
-	hd, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Println("The UserHomeDir is not defined, setting the default TM Home PATH to \"~/.tendermint\"")
-		defaultTMHome = "~/.tendermint"
-	} else {
-		defaultTMHome = filepath.Join(hd, ".tendermint")
-	}
-
+	defaultTMHome := internal.ExpandPath("~/.tendermint")
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
 	runCmd.IntVar(&flagAcceptRetries,
 		"accept-retries",
