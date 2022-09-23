@@ -485,6 +485,7 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #######################################################
 ###         Storage Configuration Options           ###
 #######################################################
+[storage]
 
 # Set to true to discard ABCI responses from the state store, which can save a
 # considerable amount of disk space. Set to false to ensure ABCI responses are
