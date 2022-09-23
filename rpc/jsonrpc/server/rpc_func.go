@@ -25,29 +25,38 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 
 // Function introspection
 
+// FuncOptions provides the arguments for the RPCFunc
+type FuncOptions struct {
+	Ws        bool // websocket only
+	Cacheable bool // cacheable is a bool value to allow the client proxy server to cache the RPC results
+}
+
+var CacheFuncOpts = FuncOptions{
+	Cacheable: true,
+}
+
 // RPCFunc contains the introspected type information for a function
 type RPCFunc struct {
 	f        reflect.Value  // underlying rpc function
 	args     []reflect.Type // type of each function arg
 	returns  []reflect.Type // type of each return arg
 	argNames []string       // name of each argument
-	ws       bool           // websocket only
-	cache    bool           // allow the RPC response can be cached by the proxy cache server
+	opts     FuncOptions    // options of the RPCFunc
 }
 
 // NewRPCFunc wraps a function for introspection.
 // f is the function, args are comma separated argument names
-// cache is a bool value to allow the client proxy server to cache the RPC results
-func NewRPCFunc(f interface{}, args string, cache bool) *RPCFunc {
-	return newRPCFunc(f, args, false, cache)
+func NewRPCFunc(f interface{}, args string, opts FuncOptions) *RPCFunc {
+	return newRPCFunc(f, args, opts)
 }
 
 // NewWSRPCFunc wraps a function for introspection and use in the websockets.
 func NewWSRPCFunc(f interface{}, args string) *RPCFunc {
-	return newRPCFunc(f, args, true, false)
+	opts := FuncOptions{Ws: true}
+	return newRPCFunc(f, args, opts)
 }
 
-func newRPCFunc(f interface{}, args string, ws bool, c bool) *RPCFunc {
+func newRPCFunc(f interface{}, args string, opts FuncOptions) *RPCFunc {
 	var argNames []string
 	if args != "" {
 		argNames = strings.Split(args, ",")
@@ -57,8 +66,7 @@ func newRPCFunc(f interface{}, args string, ws bool, c bool) *RPCFunc {
 		args:     funcArgTypes(f),
 		returns:  funcReturnTypes(f),
 		argNames: argNames,
-		ws:       ws,
-		cache:    c,
+		opts:     opts,
 	}
 }
 

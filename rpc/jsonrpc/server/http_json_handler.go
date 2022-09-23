@@ -81,7 +81,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				continue
 			}
 			rpcFunc, ok := funcMap[request.Method]
-			if !ok || rpcFunc.ws {
+			if !ok || rpcFunc.opts.Ws {
 				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
 				c = false
 				continue
@@ -114,7 +114,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			}
 			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 
-			if c && !rpcFunc.cache {
+			if c && !rpcFunc.opts.Cacheable {
 				c = false
 			}
 		}
