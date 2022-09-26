@@ -22,3 +22,7 @@
 
 ### BUG FIXES
 
+- [config] \#9483 Calling `tendermint init` would incorrectly leave out the new
+  `[storage]` section delimiter in the generated configuration file - this has
+  now been fixed
+
