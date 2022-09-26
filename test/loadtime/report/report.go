@@ -21,6 +21,12 @@ type BlockStore interface {
 	LoadBlock(int64) *types.Block
 }
 
+// DataPoint contains the set of data collected for each transaction.
+type DataPoint struct {
+	Duration  time.Duration
+	BlockTime time.Time
+}
+
 // Report contains the data calculated from reading the timestamped transactions
 // of each block found in the blockstore.
 type Report struct {
@@ -38,7 +44,7 @@ type Report struct {
 	// All contains all data points gathered from all valid transactions.
 	// The order of the contents of All is not guaranteed to be match the order of transactions
 	// in the chain.
-	All []time.Duration
+	All []DataPoint
 
 	// used for calculating average during report creation.
 	sum int64
@@ -62,7 +68,7 @@ func (rs *Reports) ErrorCount() int {
 	return rs.errorCount
 }
 
-func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, conns, rate, size uint64) {
+func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, bt time.Time, conns, rate, size uint64) {
 	r, ok := rs.s[id]
 	if !ok {
 		r = Report{
@@ -75,7 +81,7 @@ func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, conns, rate, size
 		}
 		rs.s[id] = r
 	}
-	r.All = append(r.All, l)
+	r.All = append(r.All, DataPoint{Duration: l, BlockTime: bt})
 	if l > r.Max {
 		r.Max = l
 	}
@@ -116,6 +122,7 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 	type payloadData struct {
 		id                      uuid.UUID
 		l                       time.Duration
+		bt                      time.Time
 		connections, rate, size uint64
 		err                     error
 	}
@@ -150,10 +157,11 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 				}
 
 				l := b.bt.Sub(p.Time.AsTime())
-				b := (*[16]byte)(p.Id)
+				idb := (*[16]byte)(p.Id)
 				pdc <- payloadData{
 					l:           l,
-					id:          uuid.UUID(*b),
+					bt:          b.bt,
+					id:          uuid.UUID(*idb),
 					connections: p.Connections,
 					rate:        p.Rate,
 					size:        p.Size,
@@ -194,16 +202,16 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 			reports.addError()
 			continue
 		}
-		reports.addDataPoint(pd.id, pd.l, pd.connections, pd.rate, pd.size)
+		reports.addDataPoint(pd.id, pd.l, pd.bt, pd.connections, pd.rate, pd.size)
 	}
 	reports.calculateAll()
 	return reports, nil
 }
 
-func toFloat(in []time.Duration) []float64 {
+func toFloat(in []DataPoint) []float64 {
 	r := make([]float64, len(in))
 	for i, v := range in {
-		r[i] = float64(int64(v))
+		r[i] = float64(int64(v.Duration))
 	}
 	return r
 }
