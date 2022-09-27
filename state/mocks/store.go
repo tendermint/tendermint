@@ -198,12 +198,12 @@ func (_m *Store) LoadValidators(_a0 int64) (*types.ValidatorSet, error) {
 }
 
 // PruneStates provides a mock function with given fields: _a0, _a1
-func (_m *Store) PruneStates(_a0 int64, _a1 int64) error {
-	ret := _m.Called(_a0, _a1)
+func (_m *Store) PruneStates(_a0 int64, _a1 int64, _a2 int64) error {
+	ret := _m.Called(_a0, _a1, _a2)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(int64, int64) error); ok {
-		r0 = rf(_a0, _a1)
+	if rf, ok := ret.Get(0).(func(int64, int64, int64) error); ok {
+		r0 = rf(_a0, _a1, _a2)
 	} else {
 		r0 = ret.Error(0)
 	}
