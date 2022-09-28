@@ -36,6 +36,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
+  - [config] \#9491 Add new event subscription options and defaults. (@creachadair)
   - [config] \#9259 Rename the fastsync section and the fast_sync key blocksync and block_sync respectively
 
 - Apps
