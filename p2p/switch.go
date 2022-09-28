@@ -370,6 +370,12 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	// https://github.com/tendermint/tendermint/issues/3338
 	if sw.peers.Remove(peer) {
 		sw.metrics.Peers.Add(float64(-1))
+	} else {
+		// Removing the peer has failed so we set a flag to mark that a removal was attempted
+		// This is done to avoid the corner case of adding a peer when this error happens before the
+		// AddPeer routine has finished
+		peer.SetAttemptedRemoval()
+		sw.Logger.Info("error on peer removal", ",", "peer", peer.ID())
 	}
 }
 
@@ -824,6 +830,11 @@ func (sw *Switch) addPeer(p Peer) error {
 	// so that if Receive errors, we will find the peer and remove it.
 	// Add should not err since we already checked peers.Has().
 	if err := sw.peers.Add(p); err != nil {
+		switch err.(type) {
+		case ErrTransportClosed:
+			sw.Logger.Error("Error starting peer ", " err ", err.Error(), "peer has already errored and removal "+
+				" was attempted ", "peer", p.ID())
+		}
 		return err
 	}
 	sw.metrics.Peers.Add(float64(1))

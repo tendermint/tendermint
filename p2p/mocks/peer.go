@@ -53,6 +53,20 @@ func (_m *Peer) Get(_a0 string) interface{} {
 	return r0
 }
 
+// GetAttemptedRemoval provides a mock function with given fields:
+func (_m *Peer) GetAttemptedRemoval() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // ID provides a mock function with given fields:
 func (_m *Peer) ID() p2p.ID {
 	ret := _m.Called()
@@ -237,6 +251,11 @@ func (_m *Peer) Send(_a0 byte, _a1 []byte) bool {
 // Set provides a mock function with given fields: _a0, _a1
 func (_m *Peer) Set(_a0 string, _a1 interface{}) {
 	_m.Called(_a0, _a1)
+}
+
+// SetAttemptedRemoval provides a mock function with given fields:
+func (_m *Peer) SetAttemptedRemoval() {
+	_m.Called()
 }
 
 // SetLogger provides a mock function with given fields: _a0
