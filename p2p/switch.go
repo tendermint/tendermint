@@ -831,7 +831,7 @@ func (sw *Switch) addPeer(p Peer) error {
 	// Add should not err since we already checked peers.Has().
 	if err := sw.peers.Add(p); err != nil {
 		switch err.(type) {
-		case ErrTransportClosed:
+		case ErrPeerRemoval:
 			sw.Logger.Error("Error starting peer ", " err ", err.Error(), "peer has already errored and removal "+
 				" was attempted ", "peer", p.ID())
 		}

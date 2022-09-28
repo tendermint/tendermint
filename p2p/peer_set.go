@@ -48,7 +48,7 @@ func (ps *PeerSet) Add(peer Peer) error {
 		return ErrSwitchDuplicatePeerID{peer.ID()}
 	}
 	if peer.GetAttemptedRemoval() {
-		return ErrTransportClosed{}
+		return ErrPeerRemoval{}
 	}
 
 	index := len(ps.list)
