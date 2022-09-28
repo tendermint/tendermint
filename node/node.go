@@ -49,7 +49,6 @@ import (
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
-
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof" //nolint: gosec // securely exposed on separate, optional port
@@ -1135,7 +1134,9 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 					}
 				}),
 				rpcserver.ReadLimit(config.MaxBodyBytes),
+				rpcserver.WriteChanCapacity(n.config.RPC.WebSocketWriteBufferSize),
 			)
+			wm.SetLogger(wmLogger)
 			mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		}
 		listener, err := rpcserver.Listen(
