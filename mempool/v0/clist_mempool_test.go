@@ -81,7 +81,7 @@ func ensureNoFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
-		panic("Expected not to fire")
+		t.Fatal("Expected not to fire")
 	case <-timer.C:
 	}
 }
