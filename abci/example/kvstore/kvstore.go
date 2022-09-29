@@ -119,15 +119,13 @@ func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain
 // As this is called frequently, it's preferably to keep the check as stateless and as quick as possible.
 // Here we check that the transaction has the correctly key=value format.
 func (app *Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	if !isValidTx(req.Tx) {
-		return &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}, nil
-	}
-
 	// If it is a validator update transaction, check that it is correctly formatted
 	if isValidatorTx(req.Tx) {
 		if _, _, err := parseValidatorTx(req.Tx); err != nil {
 			return &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}, nil
 		}
+	} else if !isValidTx(req.Tx) {
+		return &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}, nil
 	}
 
 	return &types.ResponseCheckTx{Code: CodeTypeOK, GasWanted: 1}, nil

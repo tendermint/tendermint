@@ -188,6 +188,8 @@ func TestCheckTx(t *testing.T) {
 	defer cancel()
 	kvstore := NewInMemoryApplication()
 
+	val := RandVal(1)
+
 	testCases := []struct {
 		expCode uint32
 		tx      []byte
@@ -198,11 +200,15 @@ func TestCheckTx(t *testing.T) {
 		{CodeTypeInvalidTxFormat, []byte("=hello")},
 		{CodeTypeInvalidTxFormat, []byte("hello=")},
 		{CodeTypeOK, []byte("a=b")},
+		{CodeTypeInvalidTxFormat, []byte("val=hello")},
+		{CodeTypeInvalidTxFormat, []byte("val=hi!5")},
+		{CodeTypeOK, MakeValSetChangeTx(val.PubKey, 10)},
 	}
 
 	for idx, tc := range testCases {
 		resp, err := kvstore.CheckTx(ctx, &types.RequestCheckTx{Tx: tc.tx})
 		require.NoError(t, err, idx)
+		fmt.Println(string(tc.tx))
 		require.Equal(t, tc.expCode, resp.Code, idx)
 	}
 }
@@ -336,3 +342,8 @@ func runClientTests(ctx context.Context, t *testing.T, client abcicli.Client) {
 	tx = []byte(testKey + "=" + testValue)
 	testKVStore(ctx, t, client, tx, testKey, testValue)
 }
+
+ func TestTxGeneration(t *testing.T) {
+	require.Len(t, NewRandomTx(20), 20)
+	require.Len(t, NewRandomTxs(10), 10)
+ }

@@ -17,7 +17,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
-	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
@@ -170,8 +169,10 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	// Broadcast a tx, which has the max size
 	// => ensure it's received by the second reactor.
-	tx1 := tmrand.Bytes(config.Mempool.MaxTxBytes)
-	err := reactors[0].mempool.CheckTx(tx1, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
+	tx1 := kvstore.NewRandomTx(config.Mempool.MaxTxBytes)
+	err := reactors[0].mempool.CheckTx(tx1, func (resp *abci.ResponseCheckTx) {
+		require.False(t, resp.IsErr())
+	}, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.NoError(t, err)
 	waitForTxsOnReactors(t, []types.Tx{tx1}, reactors)
 
@@ -180,8 +181,10 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 
 	// Broadcast a tx, which is beyond the max size
 	// => ensure it's not sent
-	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
-	err = reactors[0].mempool.CheckTx(tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
+	tx2 := kvstore.NewRandomTx(config.Mempool.MaxTxBytes + 1)
+	err = reactors[0].mempool.CheckTx(tx2, func (resp *abci.ResponseCheckTx) {
+		require.False(t, resp.IsErr())
+	}, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.Error(t, err)
 }
 

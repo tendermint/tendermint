@@ -2,7 +2,6 @@ package v0
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	mrand "math/rand"
@@ -22,7 +21,6 @@ import (
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
@@ -83,7 +81,7 @@ func ensureNoFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
-		t.Fatal("Expected not to fire")
+		panic("Expected not to fire")
 	case <-timer.C:
 	}
 }
@@ -101,12 +99,8 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 	txs := make(types.Txs, count)
 	txInfo := mempool.TxInfo{SenderID: peerID}
 	for i := 0; i < count; i++ {
-		txBytes := make([]byte, 20)
+		txBytes := kvstore.NewRandomTx(20)
 		txs[i] = txBytes
-		_, err := rand.Read(txBytes)
-		if err != nil {
-			t.Error(err)
-		}
 		if err := mp.CheckTx(txBytes, nil, txInfo); err != nil {
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
@@ -214,9 +208,10 @@ func TestMempoolUpdate(t *testing.T) {
 
 	// 1. Adds valid txs to the cache
 	{
-		err := mp.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+		tx1 := kvstore.NewTxFromId(1)
+		err := mp.Update(1, []types.Tx{tx1}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
-		err = mp.CheckTx([]byte{0x01}, nil, mempool.TxInfo{})
+		err = mp.CheckTx(tx1, nil, mempool.TxInfo{})
 		if assert.Error(t, err) {
 			assert.Equal(t, mempool.ErrTxInCache, err)
 		}
@@ -224,22 +219,24 @@ func TestMempoolUpdate(t *testing.T) {
 
 	// 2. Removes valid txs from the mempool
 	{
-		err := mp.CheckTx([]byte{0x02}, nil, mempool.TxInfo{})
+		tx2 := kvstore.NewTxFromId(2)
+		err := mp.CheckTx(tx2, nil, mempool.TxInfo{})
 		require.NoError(t, err)
-		err = mp.Update(1, []types.Tx{[]byte{0x02}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+		err = mp.Update(1, []types.Tx{tx2}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
 		assert.Zero(t, mp.Size())
 	}
 
 	// 3. Removes invalid transactions from the cache and the mempool (if present)
 	{
-		err := mp.CheckTx([]byte{0x03}, nil, mempool.TxInfo{})
+		tx3 := kvstore.NewTxFromId(3)
+		err := mp.CheckTx(tx3, nil, mempool.TxInfo{})
 		require.NoError(t, err)
-		err = mp.Update(1, []types.Tx{[]byte{0x03}}, abciResponses(1, 1), nil, nil)
+		err = mp.Update(1, []types.Tx{tx3}, abciResponses(1, 1), nil, nil)
 		require.NoError(t, err)
 		assert.Zero(t, mp.Size())
 
-		err = mp.CheckTx([]byte{0x03}, nil, mempool.TxInfo{})
+		err = mp.CheckTx(tx3, nil, mempool.TxInfo{})
 		require.NoError(t, err)
 	}
 }
@@ -352,7 +349,7 @@ func TestTxsAvailable(t *testing.T) {
 	// call update with half the txs.
 	// it should fire once now for the new height
 	// since there are still txs left
-	committedTxs, txs := txs[:50], txs[50:]
+	committedTxs, remainingTxs := txs[:50], txs[50:]
 	if err := mp.Update(1, committedTxs, abciResponses(len(committedTxs), abci.CodeTypeOK), nil, nil); err != nil {
 		t.Error(err)
 	}
@@ -364,7 +361,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left
-	committedTxs = append(txs, moreTxs...)
+	committedTxs = append(remainingTxs, moreTxs...)
 	if err := mp.Update(2, committedTxs, abciResponses(len(committedTxs), abci.CodeTypeOK), nil, nil); err != nil {
 		t.Error(err)
 	}
@@ -392,10 +389,7 @@ func TestSerialReap(t *testing.T) {
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.
 		for i := start; i < end; i++ {
-
-			// This will succeed
-			txBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(txBytes, uint64(i))
+			txBytes := kvstore.NewTx(fmt.Sprintf("%d", i), "true")
 			err := mp.CheckTx(txBytes, nil, mempool.TxInfo{})
 			_, cached := cacheMap[string(txBytes)]
 			if cached {
@@ -417,11 +411,9 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	updateRange := func(start, end int) {
-		txs := make([]types.Tx, 0)
+		txs := make(types.Txs, end - start) 
 		for i := start; i < end; i++ {
-			txBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			txs = append(txs, txBytes)
+			txs[i - start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
 		}
 		if err := mp.Update(0, txs, abciResponses(len(txs), abci.CodeTypeOK), nil, nil); err != nil {
 			t.Error(err)
@@ -430,7 +422,12 @@ func TestSerialReap(t *testing.T) {
 
 	commitRange := func(start, end int) {
 		// Deliver some txs in a block
-		res, err := appConnCon.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: test.MakeNTxs(10, 8).ToSliceOfBytes()})
+		txs := make([][]byte, end - start) 
+		for i := start; i < end; i++ {
+			txs[i - start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
+		}
+
+		res, err := appConnCon.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: txs})
 		if err != nil {
 			t.Errorf("client error committing tx: %v", err)
 		}
@@ -537,7 +534,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	cfg := config.ResetTestRoot("mempool_test")
 
-	cfg.Mempool.MaxTxsBytes = 10
+	cfg.Mempool.MaxTxsBytes = 100
 	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
 	defer cleanup()
 
@@ -545,32 +542,32 @@ func TestMempoolTxsBytes(t *testing.T) {
 	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 2. len(tx) after CheckTx
-	err := mp.CheckTx([]byte{0x01}, nil, mempool.TxInfo{})
+	tx1 := kvstore.NewRandomTx(10)
+	err := mp.CheckTx(tx1, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mp.SizeBytes())
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 	// 3. zero again after tx is removed by Update
-	err = mp.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+	err = mp.Update(1, []types.Tx{tx1}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
 	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 4. zero after Flush
-	err = mp.CheckTx([]byte{0x02, 0x03}, nil, mempool.TxInfo{})
+	tx2 := kvstore.NewRandomTx(20)
+	err = mp.CheckTx(tx2, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 2, mp.SizeBytes())
+	assert.EqualValues(t, 20, mp.SizeBytes())
 
 	mp.Flush()
 	assert.EqualValues(t, 0, mp.SizeBytes())
-
+	
 	// 5. ErrMempoolIsFull is returned when/if MaxTxsBytes limit is reached.
-	err = mp.CheckTx(
-		[]byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04},
-		nil,
-		mempool.TxInfo{},
-	)
+	tx3 := kvstore.NewRandomTx(100)
+	err = mp.CheckTx(tx3, nil, mempool.TxInfo{})
 	require.NoError(t, err)
 
-	err = mp.CheckTx([]byte{0x05}, nil, mempool.TxInfo{})
+	tx4 := kvstore.NewRandomTx(10)
+	err = mp.CheckTx(tx4, nil, mempool.TxInfo{})
 	if assert.Error(t, err) {
 		assert.IsType(t, mempool.ErrMempoolIsFull{}, err)
 	}
@@ -582,12 +579,11 @@ func TestMempoolTxsBytes(t *testing.T) {
 	mp, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
 
-	txBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(txBytes, uint64(0))
+	txBytes := kvstore.NewRandomTx(10)
 
 	err = mp.CheckTx(txBytes, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 8, mp.SizeBytes())
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
@@ -610,16 +606,16 @@ func TestMempoolTxsBytes(t *testing.T) {
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	err = mp.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 8, mp.SizeBytes())
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 	// 7. Test RemoveTxByKey function
-	err = mp.CheckTx([]byte{0x06}, nil, mempool.TxInfo{})
+	err = mp.CheckTx(tx1, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 9, mp.SizeBytes())
+	assert.EqualValues(t, 20, mp.SizeBytes())
 	assert.Error(t, mp.RemoveTxByKey(types.Tx([]byte{0x07}).Key()))
-	assert.EqualValues(t, 9, mp.SizeBytes())
-	assert.NoError(t, mp.RemoveTxByKey(types.Tx([]byte{0x06}).Key()))
-	assert.EqualValues(t, 8, mp.SizeBytes())
+	assert.EqualValues(t, 20, mp.SizeBytes())
+	assert.NoError(t, mp.RemoveTxByKey(types.Tx(tx1).Key()))
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 }
 
@@ -647,7 +643,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	txLen := 200
 	txs := make([]types.Tx, nTxs)
 	for i := 0; i < nTxs; i++ {
-		txs[i] = tmrand.Bytes(txLen)
+		txs[i] = kvstore.NewRandomTx(txLen)
 	}
 
 	// simulate a group of peers sending them over and over
