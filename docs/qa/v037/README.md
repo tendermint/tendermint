@@ -15,10 +15,10 @@ For further details, see [this paragraph](../v034/README.md#finding-the-saturati
 in the baseline version.
 
 The following table summarizes the results for v0.37.x, for the different experiments
-(extracted from file `./v037_report_tabbed.txt`).
+(extracted from file [`v037_report_tabbed.txt`](./v037_report_tabbed.txt)).
 
 |        |  c=4 |  c=8 | c=16 |
-| :---:  | ---: | ---: | ---: |
+| :---   | ---: | ---: | ---: |
 | r=20   |  148 |  288 |  591 |
 | r=200  | 1519 | 3087 | 6198 |
 | r=400  | 3094 | 6231 | 8698 |
@@ -28,7 +28,7 @@ The following table summarizes the results for v0.37.x, for the different experi
 For comparison, this is the table with the baseline version.
 
 |        |  c=4 |  c=8 | c=16 |
-| :---:  | ---: | ---: | ---: |
+| :---   | ---: | ---: | ---: |
 | r=20   |  144 |  309 |  632 |
 | r=200  | 1547 | 3195 | 5958 |
 | r=400  | 3102 | 6110 | 8526 |

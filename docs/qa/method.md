@@ -126,11 +126,11 @@ The Core team should improve it at every iteration to increase the amount of aut
       endfor
     endfor
     legend(legends, "location", "northeastoutside");
-    xlabel ("experiment time (s)");
-    ylabel ("latency (s)");
+    xlabel("experiment time (s)");
+    ylabel("latency (s)");
     axis([0, 100, 0, 15], "tic");
     t = sprintf("200-node testnet - %s", release);
-    title (t);
+    title(t);
     ```
 
 10. Use Octave's GUI menu to save the plot (e.g. as `.svg`)

@@ -16,10 +16,10 @@ from being stable: the load runner tries to produce slightly more transactions t
 be processed by the testnet.
 
 The following table summarizes the results for v0.34.x, for the different experiments
-(extracted from file `./v034_report_tabbed.txt`).
+(extracted from file [`v034_report_tabbed.txt`](./v034_report_tabbed.txt)).
 
 |        |  c=4 |  c=8 | c=16 |
-| :---:  | ---: | ---: | ---: |
+| :---   | ---: | ---: | ---: |
 | r=20   |  144 |  309 |  632 |
 | r=200  | 1547 | 3195 | 5958 |
 | r=400  | 3102 | 6110 | 8526 |
@@ -123,4 +123,5 @@ The best metric from Prometheus to gauge CPU utilization is `load1`, as it usual
 It is contained between 0.3 and 4.2 at all nodes.
 
 # Rotating Node Testnet
+
 TODO
