@@ -1,10 +1,10 @@
-> check_tx 0x00
+> check_tx "abc"
+-> code: 2
+
+> check_tx "def=567"
 -> code: OK
 
-> check_tx 0xff
--> code: OK
-
-> finalize_block 0x00
+> finalize_block "def=567"
 -> code: OK
 -> code: OK
 -> data.hex: 0x0200000000000000
@@ -12,10 +12,7 @@
 > commit 
 -> code: OK
 
-> check_tx 0x00
--> code: OK
-
-> finalize_block 0x01
+> finalize_block "hello=world"
 -> code: OK
 -> code: OK
 -> data.hex: 0x0400000000000000
@@ -23,7 +20,7 @@
 > commit 
 -> code: OK
 
-> finalize_block 0x04
+> finalize_block "first=second"
 -> code: OK
 -> code: OK
 -> data.hex: 0x0600000000000000

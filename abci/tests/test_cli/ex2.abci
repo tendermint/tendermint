@@ -1,10 +1,9 @@
-check_tx 0x00
-check_tx 0xff
-finalize_block 0x00
+check_tx "abc"
+check_tx "def=567"
+finalize_block "def=567"
 commit
-check_tx 0x00
-finalize_block 0x01
+finalize_block "hello=world"
 commit
-finalize_block 0x04
+finalize_block "first=second"
 commit
 info

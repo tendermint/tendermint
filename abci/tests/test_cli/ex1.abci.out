@@ -8,15 +8,15 @@
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
 
-> prepare_proposal "abc"
+> prepare_proposal "abc=123"
 -> code: OK
--> log: Succeeded. Tx: abc
+-> log: Succeeded. Tx: abc=123
 
-> process_proposal "abc"
+> process_proposal "abc=123"
 -> code: OK
 -> status: ACCEPT
 
-> finalize_block "abc"
+> finalize_block "abc=123"
 -> code: OK
 -> code: OK
 -> data.hex: 0x0200000000000000
@@ -32,11 +32,11 @@
 > query "abc"
 -> code: OK
 -> log: exists
--> height: 1
+-> height: 0
 -> key: abc
 -> key.hex: 616263
--> value: abc
--> value.hex: 616263
+-> value: 123
+-> value.hex: 313233
 
 > finalize_block "def=xyz" "ghi=123"
 -> code: OK
@@ -50,30 +50,9 @@
 > query "def"
 -> code: OK
 -> log: exists
--> height: 2
+-> height: 0
 -> key: def
 -> key.hex: 646566
 -> value: xyz
 -> value.hex: 78797A
-
-> prepare_proposal "preparedef"
--> code: OK
--> log: Succeeded. Tx: replacedef
-
-> process_proposal "replacedef"
--> code: OK
--> status: ACCEPT
-
-> process_proposal "preparedef"
--> code: OK
--> status: REJECT
-
-> prepare_proposal 
-
-> process_proposal 
--> code: OK
--> status: ACCEPT
-
-> commit 
--> code: OK
 

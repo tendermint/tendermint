@@ -1,17 +1,12 @@
 echo hello
 info
-prepare_proposal "abc"
-process_proposal "abc"
-finalize_block "abc"
+prepare_proposal "abc=123"
+process_proposal "abc=123"
+finalize_block "abc=123"
 commit
 info
 query "abc"
 finalize_block "def=xyz" "ghi=123"
 commit
 query "def"
-prepare_proposal "preparedef"
-process_proposal "replacedef"
-process_proposal "preparedef"
-prepare_proposal
-process_proposal
-commit
+
