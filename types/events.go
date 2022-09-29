@@ -177,7 +177,7 @@ func QueryForEvent(eventType string) tmpubsub.Query {
 type BlockEventPublisher interface {
 	PublishEventNewBlock(block EventDataNewBlock) error
 	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
-	PublishEventNewBlockEvents(header EventDataNewBlockEvents) error
+	PublishEventNewBlockEvents(events EventDataNewBlockEvents) error
 	PublishEventNewEvidence(evidence EventDataNewEvidence) error
 	PublishEventTx(EventDataTx) error
 	PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates) error

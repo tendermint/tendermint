@@ -2,9 +2,15 @@ package kvstore
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
+	"strings"
 
 	"github.com/tendermint/tendermint/abci/types"
+	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
+	"github.com/tendermint/tendermint/libs/rand"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 // RandVal creates one random validator, with a key derived
@@ -36,4 +42,32 @@ func InitKVStore(ctx context.Context, app *Application) error {
 		Validators: RandVals(1),
 	})
 	return err
+}
+
+// Create a new transaction
+func NewTx(key, value string) []byte {
+	return []byte(strings.Join([]string{key, value}, "="))
+}
+
+func NewRandomTx() []byte {
+	return NewTx(rand.Str(5), rand.Str(10))
+}
+
+func NewRandomTxs(n int) [][]byte {
+	txs := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		txs[i] = NewRandomTx()
+	}
+	return txs
+}
+
+// Create a transaction to add/remove/update a validator
+// To remove, set power to 0.
+func MakeValSetChangeTx(pubkey crypto.PublicKey, power int64) []byte {
+	pk, err := cryptoencoding.PubKeyFromProto(pubkey)
+	if err != nil {
+		panic(err)
+	}
+	pubStr := base64.StdEncoding.EncodeToString(pk.Bytes())
+	return []byte(fmt.Sprintf("%s%s!%d", ValidatorPrefix, pubStr, power))
 }

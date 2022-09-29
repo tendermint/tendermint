@@ -22,66 +22,32 @@ import (
 var (
 	stateKey        = []byte("stateKey")
 	kvPairPrefixKey = []byte("kvPairKey:")
-
-	AppVersion uint64 = 0x1
 )
 
-type State struct {
-	db      dbm.DB
-	Size    int64  `json:"size"`
-	Height  int64  `json:"height"`
-	AppHash []byte `json:"app_hash"`
-}
-
-func loadState(db dbm.DB) State {
-	var state State
-	state.db = db
-	stateBytes, err := db.Get(stateKey)
-	if err != nil {
-		panic(err)
-	}
-	if len(stateBytes) == 0 {
-		return state
-	}
-	err = json.Unmarshal(stateBytes, &state)
-	if err != nil {
-		panic(err)
-	}
-	return state
-}
-
-func saveState(state State) {
-	stateBytes, err := json.Marshal(state)
-	if err != nil {
-		panic(err)
-	}
-	err = state.db.Set(stateKey, stateBytes)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func prefixKey(key []byte) []byte {
-	return append(kvPairPrefixKey, key...)
-}
-
-//---------------------------------------------------
+const (
+	ValidatorPrefix        = "val="
+	AppVersion      uint64 = 1
+)
 
 var _ types.Application = (*Application)(nil)
 
+// Application is the kvstore state machine. It complies with the abci.Application interface.
+// It takes transactions in the form of key=value and saves them in a database. This is
+// a somewhat trivial example as there is no real state execution
 type Application struct {
 	types.BaseApplication
 
 	state        State
 	RetainBlocks int64 // blocks to retain after commit (via ResponseCommit.RetainHeight)
-	txToRemove   map[string]struct{}
+	stagedTxs    [][]byte
 	logger       log.Logger
 
 	// validator set
-	ValUpdates         []types.ValidatorUpdate
+	valUpdates         []types.ValidatorUpdate
 	valAddrToPubKeyMap map[string]cryptoproto.PublicKey
 }
 
+// NewApplication creates an instance of the kvstore from the provided database
 func NewApplication(db dbm.DB) *Application {
 	return &Application{
 		logger:             log.NewNopLogger(),
@@ -90,6 +56,7 @@ func NewApplication(db dbm.DB) *Application {
 	}
 }
 
+// NewPersistentApplication creates a new application using the goleveldb database engine
 func NewPersistentApplication(dbDir string) *Application {
 	name := "kvstore"
 	db, err := dbm.NewGoLevelDB(name, dbDir)
@@ -99,81 +66,137 @@ func NewPersistentApplication(dbDir string) *Application {
 	return NewApplication(db)
 }
 
+// NewInMemoryApplication creates a new application from an in memory database.
+// Nothing will be persisted.
 func NewInMemoryApplication() *Application {
 	return NewApplication(dbm.NewMemDB())
 }
 
-func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
-	for _, v := range req.Validators {
-		r := app.updateValidator(v)
-		if r.IsErr() {
-			app.logger.Error("error updating validators", "r", r)
-			panic("problem updating validators")
+// Info returns information about the state of the application. This is generally used everytime a Tendermint instance
+// begins and let's the application know what Tendermint versions it's interacting with. Based from this information,
+// Tendermint will ensure it is in sync with the application by potentially replaying the blocks it has. If the
+// Application returns a 0 appBlockHeight, Tendermint will call InitChain to initialize the application with consensus related data
+func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
+	appHash := make([]byte, 8)
+	binary.PutVarint(appHash, app.state.Size)
+
+	// Tendermint expects the application to persist validators, on start-up we need to reload them to memory if they exist
+	if len(app.valAddrToPubKeyMap) == 0 && app.state.Height > 0 {
+		validators := app.getValidators()
+		for _, v := range validators {
+			pubkey, err := cryptoencoding.PubKeyFromProto(v.PubKey)
+			if err != nil {
+				panic(fmt.Errorf("can't decode public key: %w", err))
+			}
+			app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
 		}
 	}
-	return &types.ResponseInitChain{}, nil
-}
 
-func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
 	return &types.ResponseInfo{
 		Data:             fmt.Sprintf("{\"size\":%v}", app.state.Size),
 		Version:          version.ABCIVersion,
 		AppVersion:       AppVersion,
 		LastBlockHeight:  app.state.Height,
-		LastBlockAppHash: app.state.AppHash,
+		LastBlockAppHash: appHash,
 	}, nil
 }
 
-// tx is either "val:pubkey!power" or "key=value" or just arbitrary bytes
-func (app *Application) handleTx(tx []byte) *types.ExecTxResult {
-	// if it starts with "val:", update the validator set
-	// format is "val:pubkey!power"
-	if isValidatorTx(tx) {
-		// update validators in the merkle tree
-		// and in app.ValUpdates
-		return app.execValidatorTx(tx)
+// InitChain takes the genesis validators and stores them in the kvstore. It returns the application hash in the
+// case that the application starts prepopulated with values. This method is called whenever a new instance of the application
+// starts (i.e. app height = 0).
+func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain) (*types.ResponseInitChain, error) {
+	for _, v := range req.Validators {
+		app.updateValidator(v)
 	}
-
-	if isPrepareTx(tx) {
-		return app.execPrepareTx(tx)
-	}
-
-	var key, value string
-	parts := bytes.Split(tx, []byte("="))
-	if len(parts) == 2 {
-		key, value = string(parts[0]), string(parts[1])
-	} else {
-		key, value = string(tx), string(tx)
-	}
-
-	err := app.state.db.Set(prefixKey([]byte(key)), []byte(value))
-	if err != nil {
-		panic(err)
-	}
-	app.state.Size++
-
-	events := []types.Event{
-		{
-			Type: "app",
-			Attributes: []types.EventAttribute{
-				{Key: "creator", Value: "Cosmoshi Netowoko", Index: true},
-				{Key: "key", Value: key, Index: true},
-				{Key: "index_key", Value: "index is working", Index: true},
-				{Key: "noindex_key", Value: "index is working", Index: false},
-			},
-		},
-	}
-
-	return &types.ExecTxResult{Code: CodeTypeOK, Events: events}
+	appHash := make([]byte, 8)
+	binary.PutVarint(appHash, app.state.Size)
+	return &types.ResponseInitChain{
+		AppHash: appHash,
+	}, nil
 }
 
-func (app *Application) Close() error {
-	return app.state.db.Close()
+// CheckTx handles inbound transactions or in the case of recheckTx assesses old transaction validity after a state transition.
+// As this is called frequently, it's preferably to keep the check as stateless and as quick as possible.
+// Here we check that the transaction has the correctly key=value format.
+func (app *Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	if !isValidTx(req.Tx) {
+		return &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}, nil
+	}
+
+	// If it is a validator update transaction, check that it is correctly formatted
+	if isValidatorTx(req.Tx) {
+		if _, _, err := parseValidatorTx(req.Tx); err != nil {
+			return &types.ResponseCheckTx{Code: CodeTypeInvalidTxFormat}, nil
+		}
+	}
+
+	return &types.ResponseCheckTx{Code: CodeTypeOK, GasWanted: 1}, nil
 }
 
+// Tx must have a format like key:value or key=value. That is:
+// - it must have one and only one ":" or "="
+// - It must not begin or end with these special characters
+func isValidTx(tx []byte) bool {
+	if bytes.Count(tx, []byte(":")) == 1 && bytes.Count(tx, []byte("=")) == 0 {
+		if !bytes.HasPrefix(tx, []byte(":")) && !bytes.HasSuffix(tx, []byte(":")) {
+			return true
+		}
+	} else if bytes.Count(tx, []byte("=")) == 1 && bytes.Count(tx, []byte(":")) == 0 {
+		if !bytes.HasPrefix(tx, []byte("=")) && !bytes.HasSuffix(tx, []byte("=")) {
+			return true
+		}
+	}
+	return false
+}
+
+// PrepareProposal is called when the node is a proposer. Tendermint stages a set of transactions to the application. As the
+// KVStore has two accepted formats, `:` and `=`, we modify all instances of `:` with `=` to make it consistent. Note: this is
+// quite a trivial example of transaction modification.
+// NOTE: we assume that Tendermint will never provide more transactions than can fit in a block.
+func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
+	return &types.ResponsePrepareProposal{Txs: app.substPrepareTx(req.Txs)}, nil
+}
+
+// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
+// proposal for transactions with the prefix stripped.
+func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
+	txs := make([][]byte, len(blockData))
+	for idx, tx := range blockData {
+		txs[idx] = bytes.Replace(tx, []byte(":"), []byte("="), 1)
+	}
+	return txs
+}
+
+// ProcessProposal is called whenever a node receives a complete proposal. It allows the application to validate the proposal.
+// For the KVStore we check that each transaction has the valid tx format:
+// - Contains one and only one `=`
+// - `=` is not the first or last byte.
+// - if key is `val` that the validator update transaction is also valid
+func (app *Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+	for _, tx := range req.Txs {
+		if len(tx) < 3 ||
+			bytes.Count(tx, []byte("=")) != 1 ||
+			bytes.HasPrefix(tx, []byte("=")) ||
+			bytes.HasSuffix(tx, []byte("=")) {
+			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
+		}
+		if isValidatorTx(tx) {
+			if _, _, err := parseValidatorTx(tx); err != nil {
+				return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
+			}
+		}
+	}
+	return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}, nil
+}
+
+// FinalizeBlock executes the block against the application state. It punishes validators who equivocated and
+// updates validators according to transactions in a block. The rest of the transactions are regular key value
+// updates and are cached in memory and will be persisted once Commit is called.
+// ConsensusParams are never changed.
 func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	// reset valset changes
-	app.ValUpdates = make([]types.ValidatorUpdate, 0)
+	app.valUpdates = make([]types.ValidatorUpdate, 0)
+	app.stagedTxs = make([][]byte, 0)
 
 	// Punish validators who committed equivocation.
 	for _, ev := range req.Misbehavior {
@@ -194,29 +217,61 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 
 	respTxs := make([]*types.ExecTxResult, len(req.Txs))
 	for i, tx := range req.Txs {
-		respTxs[i] = app.handleTx(tx)
+		if isValidatorTx(tx) {
+			pubKey, power, err := parseValidatorTx(tx)
+			if err != nil {
+				panic(err)
+			}
+			app.valUpdates = append(app.valUpdates, types.UpdateValidator(pubKey, power, ""))
+		} else {
+			app.stagedTxs = append(app.stagedTxs, tx)
+		}
+		respTxs[i] = &types.ExecTxResult{
+			Code: CodeTypeOK,
+			// With every transaction we can emit a series of events. To make it simple, we just emit the same events.
+			Events: []types.Event{
+				{
+					Type: "app",
+					Attributes: []types.EventAttribute{
+						{Key: "creator", Value: "Cosmoshi Netowoko", Index: true},
+						{Key: "index_key", Value: "index is working", Index: true},
+						{Key: "noindex_key", Value: "index is working", Index: false},
+					},
+				},
+			},
+		}
+		app.state.Size++
 	}
 
-	// Using a memdb - just return the big endian size of the db
-	appHash := make([]byte, 8)
-	binary.PutVarint(appHash, app.state.Size)
-	app.state.AppHash = appHash
-	app.state.Height++
+	app.state.Height = req.Height
 
-	return &types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.ValUpdates, AgreedAppData: appHash}, nil
+	return &types.ResponseFinalizeBlock{TxResults: respTxs, ValidatorUpdates: app.valUpdates, AgreedAppData: app.state.Hash()}, nil
 }
 
-func (app *Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	if req.Type == types.CheckTxType_Recheck {
-		if _, ok := app.txToRemove[string(req.Tx)]; ok {
-			return &types.ResponseCheckTx{Code: CodeTypeExecuted, GasWanted: 1}, nil
+// Commit is called after FinalizeBlock and after Tendermint state which includes the updates to
+// AppHash, ConsensusParams and ValidatorSet has occurred.
+// The KVStore persists the validator updates and the new key values
+func (app *Application) Commit(_ context.Context, _ *types.RequestCommit) (*types.ResponseCommit, error) {
+
+	// apply the validator updates to state (note this is really the validator set at h + 2)
+	for _, valUpdate := range app.valUpdates {
+		app.updateValidator(valUpdate)
+	}
+
+	// persist all the staged txs in the kvstore
+	for _, tx := range app.stagedTxs {
+		parts := bytes.Split(tx, []byte("="))
+		if len(parts) != 2 {
+			panic(fmt.Sprintf("unexpected tx format. Expected 2 got %d: %s", len(parts), parts))
+		}
+		key, value := string(parts[0]), string(parts[1])
+		err := app.state.db.Set(prefixKey([]byte(key)), []byte(value))
+		if err != nil {
+			panic(err)
 		}
 	}
-	return &types.ResponseCheckTx{Code: CodeTypeOK, GasWanted: 1}, nil
-}
 
-func (app *Application) Commit(_ context.Context, _ *types.RequestCommit) (*types.ResponseCommit, error) {
-	// empty out the set of transactions to remove via rechecktx
+	// persist the state (i.e. size and height)
 	saveState(app.state)
 
 	resp := &types.ResponseCommit{}
@@ -231,7 +286,7 @@ func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (
 	resQuery := &types.ResponseQuery{}
 
 	if reqQuery.Path == "/val" {
-		key := []byte("val:" + string(reqQuery.Data))
+		key := []byte(ValidatorPrefix + string(reqQuery.Data))
 		value, err := app.state.db.Get(key)
 		if err != nil {
 			panic(err)
@@ -278,23 +333,79 @@ func (app *Application) Query(_ context.Context, reqQuery *types.RequestQuery) (
 	return resQuery, nil
 }
 
-func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	return &types.ResponsePrepareProposal{Txs: app.substPrepareTx(req.Txs, req.MaxTxBytes)}, nil
+func (app *Application) Close() error {
+	return app.state.db.Close()
 }
 
-func (app *Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
-	for _, tx := range req.Txs {
-		if len(tx) == 0 || isPrepareTx(tx) {
-			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
-		}
+func isValidatorTx(tx []byte) bool {
+	return strings.HasPrefix(string(tx), ValidatorPrefix)
+}
+
+func parseValidatorTx(tx []byte) ([]byte, int64, error) {
+	tx = tx[len(ValidatorPrefix):]
+
+	//  get the pubkey and power
+	pubKeyAndPower := strings.Split(string(tx), "!")
+	if len(pubKeyAndPower) != 2 {
+		return nil, 0, fmt.Errorf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)
 	}
-	return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}, nil
+	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
+
+	// decode the pubkey
+	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Pubkey (%s) is invalid base64", pubkeyS)
+	}
+
+	// decode the power
+	power, err := strconv.ParseInt(powerS, 10, 64)
+	if err != nil {
+		return nil, 0, fmt.Errorf("Power (%s) is not an int", powerS)
+	}
+
+	if power < 0 {
+		return nil, 0, fmt.Errorf("Power can not be less than 0, got %d", power)
+	}
+
+	return pubkey, power, nil
 }
 
-//---------------------------------------------
-// update validators
+// add, update, or remove a validator
+func (app *Application) updateValidator(v types.ValidatorUpdate) {
+	pubkey, err := cryptoencoding.PubKeyFromProto(v.PubKey)
+	if err != nil {
+		panic(fmt.Errorf("can't decode public key: %w", err))
+	}
+	key := []byte(ValidatorPrefix + string(pubkey.Bytes()))
 
-func (app *Application) Validators() (validators []types.ValidatorUpdate) {
+	if v.Power == 0 {
+		// remove validator
+		hasKey, err := app.state.db.Has(key)
+		if err != nil {
+			panic(err)
+		}
+		if !hasKey {
+			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
+			panic(fmt.Sprintf("Cannot remove non-existent validator %s", pubStr))
+		}
+		if err = app.state.db.Delete(key); err != nil {
+			panic(err)
+		}
+		delete(app.valAddrToPubKeyMap, string(pubkey.Address()))
+	} else {
+		// add or update validator
+		value := bytes.NewBuffer(make([]byte, 0))
+		if err := types.WriteMessage(&v, value); err != nil {
+			panic(err)
+		}
+		if err = app.state.db.Set(key, value.Bytes()); err != nil {
+			panic(err)
+		}
+		app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
+	}
+}
+
+func (app *Application) getValidators() (validators []types.ValidatorUpdate) {
 	itr, err := app.state.db.Iterator(nil, nil)
 	if err != nil {
 		panic(err)
@@ -315,130 +426,54 @@ func (app *Application) Validators() (validators []types.ValidatorUpdate) {
 	return
 }
 
-func MakeValSetChangeTx(pubkey cryptoproto.PublicKey, power int64) []byte {
-	pk, err := cryptoencoding.PubKeyFromProto(pubkey)
+// -----------------------------
+
+type State struct {
+	db dbm.DB
+	// Size is essentially the amount of transactions that have been processes.
+	// This is used for the appHash
+	Size   int64 `json:"size"`
+	Height int64 `json:"height"`
+}
+
+func loadState(db dbm.DB) State {
+	var state State
+	state.db = db
+	stateBytes, err := db.Get(stateKey)
 	if err != nil {
 		panic(err)
 	}
-	pubStr := base64.StdEncoding.EncodeToString(pk.Bytes())
-	return []byte(fmt.Sprintf("val:%s!%d", pubStr, power))
-}
-
-func isValidatorTx(tx []byte) bool {
-	return strings.HasPrefix(string(tx), ValidatorSetChangePrefix)
-}
-
-// format is "val:pubkey!power"
-// pubkey is a base64-encoded 32-byte ed25519 key
-func (app *Application) execValidatorTx(tx []byte) *types.ExecTxResult {
-	tx = tx[len(ValidatorSetChangePrefix):]
-
-	//  get the pubkey and power
-	pubKeyAndPower := strings.Split(string(tx), "!")
-	if len(pubKeyAndPower) != 2 {
-		return &types.ExecTxResult{
-			Code: CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)}
+	if len(stateBytes) == 0 {
+		return state
 	}
-	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
-
-	// decode the pubkey
-	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
+	err = json.Unmarshal(stateBytes, &state)
 	if err != nil {
-		return &types.ExecTxResult{
-			Code: CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Pubkey (%s) is invalid base64", pubkeyS)}
+		panic(err)
 	}
+	return state
+}
 
-	// decode the power
-	power, err := strconv.ParseInt(powerS, 10, 64)
+func saveState(state State) {
+	stateBytes, err := json.Marshal(state)
 	if err != nil {
-		return &types.ExecTxResult{
-			Code: CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
+		panic(err)
 	}
-
-	// update
-	return app.updateValidator(types.UpdateValidator(pubkey, power, ""))
-}
-
-// add, update, or remove a validator
-func (app *Application) updateValidator(v types.ValidatorUpdate) *types.ExecTxResult {
-	pubkey, err := cryptoencoding.PubKeyFromProto(v.PubKey)
+	err = state.db.Set(stateKey, stateBytes)
 	if err != nil {
-		panic(fmt.Errorf("can't decode public key: %w", err))
+		panic(err)
 	}
-	key := []byte("val:" + string(pubkey.Bytes()))
-
-	if v.Power == 0 {
-		// remove validator
-		hasKey, err := app.state.db.Has(key)
-		if err != nil {
-			panic(err)
-		}
-		if !hasKey {
-			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
-			return &types.ExecTxResult{
-				Code: CodeTypeUnauthorized,
-				Log:  fmt.Sprintf("Cannot remove non-existent validator %s", pubStr)}
-		}
-		if err = app.state.db.Delete(key); err != nil {
-			panic(err)
-		}
-		delete(app.valAddrToPubKeyMap, string(pubkey.Address()))
-	} else {
-		// add or update validator
-		value := bytes.NewBuffer(make([]byte, 0))
-		if err := types.WriteMessage(&v, value); err != nil {
-			return &types.ExecTxResult{
-				Code: CodeTypeEncodingError,
-				Log:  fmt.Sprintf("error encoding validator: %v", err)}
-		}
-		if err = app.state.db.Set(key, value.Bytes()); err != nil {
-			panic(err)
-		}
-		app.valAddrToPubKeyMap[string(pubkey.Address())] = v.PubKey
-	}
-
-	// we only update the changes array if we successfully updated the tree
-	app.ValUpdates = append(app.ValUpdates, v)
-
-	return &types.ExecTxResult{Code: CodeTypeOK}
 }
 
-// -----------------------------
-
-const (
-	PreparePrefix = "prepare"
-	ReplacePrefix = "replace"
-
-	ValidatorSetChangePrefix string = "val:"
-)
-
-func isPrepareTx(tx []byte) bool { return bytes.HasPrefix(tx, []byte(PreparePrefix)) }
-
-// execPrepareTx is noop. tx data is considered as placeholder
-// and is substitute at the PrepareProposal.
-func (app *Application) execPrepareTx(tx []byte) *types.ExecTxResult {
-	// noop
-	return &types.ExecTxResult{}
+// Hash returns the hash of the application state. This is computed
+// as the size or number of transactions processed within the state. Note that this isn't
+// a strong gaurantee of state machine replication because states could
+// have different kv values but still have the same size.
+func (s State) Hash() []byte {
+	appHash := make([]byte, 8)
+	binary.PutVarint(appHash, s.Size)
+	return appHash
 }
 
-// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
-// proposal for transactions with the prefix stripped.
-func (app *Application) substPrepareTx(blockData [][]byte, maxTxBytes int64) [][]byte {
-	txs := make([][]byte, 0, len(blockData))
-	var totalBytes int64
-	for _, tx := range blockData {
-		txMod := tx
-		if isPrepareTx(tx) {
-			txMod = bytes.Replace(tx, []byte(PreparePrefix), []byte(ReplacePrefix), 1)
-		}
-		totalBytes += int64(len(txMod))
-		if totalBytes > maxTxBytes {
-			break
-		}
-		txs = append(txs, txMod)
-	}
-	return txs
+func prefixKey(key []byte) []byte {
+	return append(kvPairPrefixKey, key...)
 }

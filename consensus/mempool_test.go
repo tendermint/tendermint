@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -30,7 +31,11 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], kvstore.NewInMemoryApplication())
+	app := kvstore.NewInMemoryApplication()
+	resp, err := app.Info(context.Background(), proxy.RequestInfo)
+	require.NoError(t, err)
+	state.AppHash = resp.LastBlockAppHash
+	cs := newStateWithConfig(config, state, privVals[0], app)
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
@@ -38,7 +43,7 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 
 	ensureNewEventOnChannel(newBlockCh) // first block gets committed
 	ensureNoNewEventOnChannel(newBlockCh)
-	deliverTxsRange(cs, 0, 1)
+	deliverTxsRange(t, cs, 0, 1)
 	ensureNewEventOnChannel(newBlockCh) // commit txs
 	ensureNewEventOnChannel(newBlockCh) // commit updated app hash
 	ensureNoNewEventOnChannel(newBlockCh)
@@ -50,7 +55,11 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
 	state, privVals := randGenesisState(1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], kvstore.NewInMemoryApplication())
+	app := kvstore.NewInMemoryApplication()
+	resp, err := app.Info(context.Background(), proxy.RequestInfo)
+	require.NoError(t, err)
+	state.AppHash = resp.LastBlockAppHash
+	cs := newStateWithConfig(config, state, privVals[0], app)
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
@@ -91,7 +100,7 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	round = 0
 
 	ensureNewRound(newRoundCh, height, round) // first round at next height
-	deliverTxsRange(cs, 0, 1)                 // we deliver txs, but dont set a proposal so we get the next round
+	deliverTxsRange(t, cs, 0, 1)                 // we deliver txs, but dont set a proposal so we get the next round
 	ensureNewTimeout(timeoutCh, height, round, cs.config.TimeoutPropose.Nanoseconds())
 
 	round++                                   // moving to the next round
@@ -99,15 +108,11 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	ensureNewEventOnChannel(newBlockCh)       // now we can commit the block
 }
 
-func deliverTxsRange(cs *State, start, end int) {
+func deliverTxsRange(t *testing.T, cs *State, start, end int) {
 	// Deliver some txs.
 	for i := start; i < end; i++ {
-		txBytes := make([]byte, 8)
-		binary.BigEndian.PutUint64(txBytes, uint64(i))
-		err := assertMempool(cs.txNotifier).CheckTx(txBytes, nil, mempl.TxInfo{})
-		if err != nil {
-			panic(fmt.Sprintf("Error after CheckTx: %v", err))
-		}
+		err := assertMempool(cs.txNotifier).CheckTx(kvstore.NewTx(fmt.Sprintf("%d", i), "true"), nil, mempl.TxInfo{})
+		require.NoError(t, err)
 	}
 }
 
@@ -121,7 +126,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	newBlockEventsCh := subscribe(cs.eventBus, types.EventQueryNewBlockEvents)
 
 	const numTxs int64 = 3000
-	go deliverTxsRange(cs, 0, int(numTxs))
+	go deliverTxsRange(t, cs, 0, int(numTxs))
 
 	startTestRound(cs, cs.Height, cs.Round)
 	for n := int64(0); n < numTxs; {
@@ -148,7 +153,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
-	res, err := app.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
+	res, err := app.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: [][]byte{kvstore.NewTx("key", "value")}})
 	require.NoError(t, err)
 	assert.False(t, res.TxResults[0].IsErr())
 	assert.True(t, len(res.AgreedAppData) > 0)
@@ -160,7 +165,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
 		err := assertMempool(cs.txNotifier).CheckTx(txBytes, func(r *abci.ResponseCheckTx) {
-			if r.Code != kvstore.CodeTypeBadNonce {
+			if r.Code != kvstore.CodeTypeInvalidTxFormat {
 				t.Errorf("expected checktx to return bad nonce, got %v", r)
 				return
 			}

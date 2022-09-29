@@ -478,7 +478,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	proposal1.Signature = p1.Signature
 
 	// some new transactions come in (this ensures that the proposals are different)
-	deliverTxsRange(cs, 0, 1)
+	deliverTxsRange(t, cs, 0, 1)
 
 	// Create a new proposal block from state/txs from the mempool.
 	block2, err := cs.createProposalBlock()

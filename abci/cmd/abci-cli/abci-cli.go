@@ -319,7 +319,7 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 				return servertest.FinalizeBlock(ctx, client, [][]byte{
 					[]byte("abc"),
 				}, []uint32{
-					kvstore.CodeTypeBadNonce,
+					kvstore.CodeTypeInvalidTxFormat,
 				}, nil, nil)
 			},
 			func() error { return servertest.Commit(ctx, client) },
@@ -340,12 +340,12 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 					{0x00, 0x00, 0x04},
 					{0x00, 0x00, 0x06},
 				}, []uint32{
-					kvstore.CodeTypeBadNonce,
+					kvstore.CodeTypeInvalidTxFormat,
 					kvstore.CodeTypeOK,
 					kvstore.CodeTypeOK,
 					kvstore.CodeTypeOK,
 					kvstore.CodeTypeOK,
-					kvstore.CodeTypeBadNonce,
+					kvstore.CodeTypeInvalidTxFormat,
 				}, nil, []byte{0, 0, 0, 0, 0, 0, 0, 5})
 			},
 			func() error { return servertest.Commit(ctx, client) },
