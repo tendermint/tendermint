@@ -208,7 +208,7 @@ func TestMempoolUpdate(t *testing.T) {
 
 	// 1. Adds valid txs to the cache
 	{
-		tx1 := kvstore.NewTxFromId(1)
+		tx1 := kvstore.NewTxFromID(1)
 		err := mp.Update(1, []types.Tx{tx1}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
 		err = mp.CheckTx(tx1, nil, mempool.TxInfo{})
@@ -219,7 +219,7 @@ func TestMempoolUpdate(t *testing.T) {
 
 	// 2. Removes valid txs from the mempool
 	{
-		tx2 := kvstore.NewTxFromId(2)
+		tx2 := kvstore.NewTxFromID(2)
 		err := mp.CheckTx(tx2, nil, mempool.TxInfo{})
 		require.NoError(t, err)
 		err = mp.Update(1, []types.Tx{tx2}, abciResponses(1, abci.CodeTypeOK), nil, nil)
@@ -229,7 +229,7 @@ func TestMempoolUpdate(t *testing.T) {
 
 	// 3. Removes invalid transactions from the cache and the mempool (if present)
 	{
-		tx3 := kvstore.NewTxFromId(3)
+		tx3 := kvstore.NewTxFromID(3)
 		err := mp.CheckTx(tx3, nil, mempool.TxInfo{})
 		require.NoError(t, err)
 		err = mp.Update(1, []types.Tx{tx3}, abciResponses(1, 1), nil, nil)
@@ -411,9 +411,9 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	updateRange := func(start, end int) {
-		txs := make(types.Txs, end - start) 
+		txs := make(types.Txs, end-start)
 		for i := start; i < end; i++ {
-			txs[i - start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
+			txs[i-start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
 		}
 		if err := mp.Update(0, txs, abciResponses(len(txs), abci.CodeTypeOK), nil, nil); err != nil {
 			t.Error(err)
@@ -422,9 +422,9 @@ func TestSerialReap(t *testing.T) {
 
 	commitRange := func(start, end int) {
 		// Deliver some txs in a block
-		txs := make([][]byte, end - start) 
+		txs := make([][]byte, end-start)
 		for i := start; i < end; i++ {
-			txs[i - start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
+			txs[i-start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
 		}
 
 		res, err := appConnCon.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: txs})
@@ -560,7 +560,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 
 	mp.Flush()
 	assert.EqualValues(t, 0, mp.SizeBytes())
-	
+
 	// 5. ErrMempoolIsFull is returned when/if MaxTxsBytes limit is reached.
 	tx3 := kvstore.NewRandomTx(100)
 	err = mp.CheckTx(tx3, nil, mempool.TxInfo{})

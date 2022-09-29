@@ -172,16 +172,15 @@ func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
 // - if key is `val` that the validator update transaction is also valid
 func (app *Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
-		if len(tx) < 3 ||
-			bytes.Count(tx, []byte("=")) != 1 ||
-			bytes.HasPrefix(tx, []byte("=")) ||
-			bytes.HasSuffix(tx, []byte("=")) {
-			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
-		}
 		if isValidatorTx(tx) {
 			if _, _, err := parseValidatorTx(tx); err != nil {
 				return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
 			}
+		} else if len(tx) < 3 ||
+			bytes.Count(tx, []byte("=")) != 1 ||
+			bytes.HasPrefix(tx, []byte("=")) ||
+			bytes.HasSuffix(tx, []byte("=")) {
+			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
 		}
 	}
 	return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}, nil
@@ -345,24 +344,24 @@ func parseValidatorTx(tx []byte) ([]byte, int64, error) {
 	//  get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "!")
 	if len(pubKeyAndPower) != 2 {
-		return nil, 0, fmt.Errorf("Expected 'pubkey!power'. Got %v", pubKeyAndPower)
+		return nil, 0, fmt.Errorf("expected 'pubkey!power'. Got %v", pubKeyAndPower)
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 
 	// decode the pubkey
 	pubkey, err := base64.StdEncoding.DecodeString(pubkeyS)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Pubkey (%s) is invalid base64", pubkeyS)
+		return nil, 0, fmt.Errorf("pubkey (%s) is invalid base64", pubkeyS)
 	}
 
 	// decode the power
 	power, err := strconv.ParseInt(powerS, 10, 64)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Power (%s) is not an int", powerS)
+		return nil, 0, fmt.Errorf("power (%s) is not an int", powerS)
 	}
 
 	if power < 0 {
-		return nil, 0, fmt.Errorf("Power can not be less than 0, got %d", power)
+		return nil, 0, fmt.Errorf("power can not be less than 0, got %d", power)
 	}
 
 	return pubkey, power, nil
@@ -464,7 +463,7 @@ func saveState(state State) {
 
 // Hash returns the hash of the application state. This is computed
 // as the size or number of transactions processed within the state. Note that this isn't
-// a strong gaurantee of state machine replication because states could
+// a strong guarantee of state machine replication because states could
 // have different kv values but still have the same size.
 func (s State) Hash() []byte {
 	appHash := make([]byte, 8)

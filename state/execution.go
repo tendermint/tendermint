@@ -215,7 +215,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// validate the validator updates and convert to tendermint types
 	err = validateValidatorUpdates(abciResponse.ValidatorUpdates, state.ConsensusParams.Validator)
 	if err != nil {
-		return state, 0, fmt.Errorf("error in validator updates: %v", err)
+		return state, 0, fmt.Errorf("error in validator updates: %w", err)
 	}
 
 	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciResponse.ValidatorUpdates)
@@ -233,13 +233,13 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponse, validatorUpdates)
 	if err != nil {
-		return state, 0, fmt.Errorf("commit failed for application: %v", err)
+		return state, 0, fmt.Errorf("failed to update state: %w", err)
 	}
 
 	// Lock mempool, commit app state, update mempoool.
 	retainHeight, err := blockExec.Commit(state, block, abciResponse)
 	if err != nil {
-		return state, 0, fmt.Errorf("commit failed for application: %v", err)
+		return state, 0, fmt.Errorf("commit failed for application: %w", err)
 	}
 
 	// Update evpool with the latest state.

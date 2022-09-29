@@ -38,6 +38,7 @@ func testKVStore(ctx context.Context, t *testing.T, app types.Application, tx []
 	require.Equal(t, uint32(0), checkTxResp.Code)
 
 	ppResp, err := app.PrepareProposal(ctx, &types.RequestPrepareProposal{Txs: [][]byte{tx}})
+	require.NoError(t, err)
 	require.Len(t, ppResp.Txs, 1)
 	req := &types.RequestFinalizeBlock{Height: 1, Txs: ppResp.Txs}
 	ar, err := app.FinalizeBlock(ctx, req)
@@ -343,7 +344,7 @@ func runClientTests(ctx context.Context, t *testing.T, client abcicli.Client) {
 	testKVStore(ctx, t, client, tx, testKey, testValue)
 }
 
- func TestTxGeneration(t *testing.T) {
+func TestTxGeneration(t *testing.T) {
 	require.Len(t, NewRandomTx(20), 20)
 	require.Len(t, NewRandomTxs(10), 10)
- }
+}

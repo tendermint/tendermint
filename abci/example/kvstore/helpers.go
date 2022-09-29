@@ -8,7 +8,6 @@ import (
 
 	"github.com/tendermint/tendermint/abci/types"
 	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
-	"github.com/tendermint/tendermint/libs/rand"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
@@ -53,7 +52,7 @@ func NewRandomTx(size int) []byte {
 	if size < 4 {
 		panic("random tx size must be greater than 3")
 	}
-	return NewTx(rand.Str(2), rand.Str(size - 3))
+	return NewTx(tmrand.Str(2), tmrand.Str(size-3))
 }
 
 func NewRandomTxs(n int) [][]byte {
@@ -64,8 +63,8 @@ func NewRandomTxs(n int) [][]byte {
 	return txs
 }
 
-func NewTxFromId(i int) []byte {
-	return []byte(fmt.Sprintf("%d=%d", i))
+func NewTxFromID(i int) []byte {
+	return []byte(fmt.Sprintf("%d=%d", i, i))
 }
 
 // Create a transaction to add/remove/update a validator

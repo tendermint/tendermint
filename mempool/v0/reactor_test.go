@@ -170,7 +170,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Broadcast a tx, which has the max size
 	// => ensure it's received by the second reactor.
 	tx1 := kvstore.NewRandomTx(config.Mempool.MaxTxBytes)
-	err := reactors[0].mempool.CheckTx(tx1, func (resp *abci.ResponseCheckTx) {
+	err := reactors[0].mempool.CheckTx(tx1, func(resp *abci.ResponseCheckTx) {
 		require.False(t, resp.IsErr())
 	}, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.NoError(t, err)
@@ -182,7 +182,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	// Broadcast a tx, which is beyond the max size
 	// => ensure it's not sent
 	tx2 := kvstore.NewRandomTx(config.Mempool.MaxTxBytes + 1)
-	err = reactors[0].mempool.CheckTx(tx2, func (resp *abci.ResponseCheckTx) {
+	err = reactors[0].mempool.CheckTx(tx2, func(resp *abci.ResponseCheckTx) {
 		require.False(t, resp.IsErr())
 	}, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.Error(t, err)

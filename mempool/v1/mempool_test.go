@@ -120,7 +120,7 @@ func checkTxs(t *testing.T, txmp *TxMempool, numTxs int, peerID uint16) []testTx
 			tx:       []byte(fmt.Sprintf("sender-%d-%d=%d", i, peerID, priority)),
 			priority: priority,
 		}
-		require.NoError(t, txmp.CheckTx(txs[i].tx, func (resp *abci.ResponseCheckTx) {
+		require.NoError(t, txmp.CheckTx(txs[i].tx, func(resp *abci.ResponseCheckTx) {
 			require.False(t, resp.IsErr(), txs[i].tx)
 		}, txInfo))
 	}
@@ -405,13 +405,13 @@ func TestTxMempool_CheckTxExceedsMaxSize(t *testing.T) {
 	txmp := setup(t, 0)
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	tx := kvstore.NewRandomTx(txmp.config.MaxTxBytes+1)
+	tx := kvstore.NewRandomTx(txmp.config.MaxTxBytes + 1)
 	_, err := rng.Read(tx)
 	require.NoError(t, err)
 
 	require.Error(t, txmp.CheckTx(tx, nil, mempool.TxInfo{SenderID: 0}))
 
-	tx = kvstore.NewRandomTx(txmp.config.MaxTxBytes-1)
+	tx = kvstore.NewRandomTx(txmp.config.MaxTxBytes - 1)
 	_, err = rng.Read(tx)
 	require.NoError(t, err)
 
