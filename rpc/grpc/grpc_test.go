@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 func TestBroadcastTx(t *testing.T) {
 	res, err := rpctest.GetGRPCClient().BroadcastTx(
 		context.Background(),
-		&core_grpc.RequestBroadcastTx{Tx: []byte("this is a tx")},
+		&core_grpc.RequestBroadcastTx{Tx: kvstore.NewTx("hello", "world")},
 	)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.CheckTx.Code)

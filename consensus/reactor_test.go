@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"runtime"
-	// "runtime/pprof"
 	"sync"
 	"testing"
 	"time"
@@ -681,12 +679,6 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 	case <-time.After(timeout):
 		panic(fmt.Sprintf("Timed out waiting for all validators (got %d / %d) to commit a block", counter, n))
 	}
-}
-
-func capture() {
-	trace := make([]byte, 10240000)
-	count := runtime.Stack(trace, true)
-	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
 }
 
 //-------------------------------------------------------------
