@@ -247,7 +247,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// send a tx
-	if err := assertMempool(css[3].txNotifier).CheckTx(kvstore.NewTxFromID(1), func (resp *abci.ResponseCheckTx) {
+	if err := assertMempool(css[3].txNotifier).CheckTx(kvstore.NewTxFromID(1), func(resp *abci.ResponseCheckTx) {
 		require.False(t, resp.IsErr())
 	}, mempl.TxInfo{}); err != nil {
 		t.Error(err)
@@ -441,29 +441,29 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		<-blocksSubs[j].Out()
 	}, css)
 
-	t.Run("Testing adding one validator", func (t *testing.T) {
+	t.Run("Testing adding one validator", func(t *testing.T) {
 		newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
 		assert.NoError(t, err)
 		valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
 		assert.NoError(t, err)
 		newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-	
+
 		// wait till everyone makes block 2
 		// ensure the commit includes all validators
 		// send newValTx to change vals in block 3
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx1)
-	
+
 		// wait till everyone makes block 3.
 		// it includes the commit for block 2, which is by the original validator set
 		waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, newValidatorTx1)
-	
+
 		// wait till everyone makes block 4.
 		// it includes the commit for block 3, which is by the original validator set
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
-	
+
 		// the commits for block 4 should be with the updated validator set
 		activeVals[string(newValidatorPubKey1.Address())] = struct{}{}
-		
+
 		// wait till everyone makes block 5
 		// it includes the commit for block 4, which should have the updated validator set
 		waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
@@ -476,12 +476,12 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 		require.NoError(t, err)
 		updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 		previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
-	
+
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, updateValidatorTx1)
 		waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, updateValidatorTx1)
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
 		waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, blocksSubs, css)
-	
+
 		if css[nVals].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
 			t.Errorf(
 				"expected voting power to change (before: %d, after: %d)",
@@ -502,8 +502,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	require.NoError(t, err)
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
-	t.Run("Testing adding two validators at once", func (t *testing.T) {
-	
+	t.Run("Testing adding two validators at once", func(t *testing.T) {
+
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, newValidatorTx2, newValidatorTx3)
 		waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, newValidatorTx2, newValidatorTx3)
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
@@ -515,7 +515,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	t.Run("Testing removing two validators at once", func(t *testing.T) {
 		removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
 		removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-	
+
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css, removeValidatorTx2, removeValidatorTx3)
 		waitForAndValidateBlockWithTx(t, nPeers, activeVals, blocksSubs, css, removeValidatorTx2, removeValidatorTx3)
 		waitForAndValidateBlock(t, nPeers, activeVals, blocksSubs, css)
@@ -563,7 +563,7 @@ func waitForAndValidateBlock(
 
 		// optionally add transactions for the next block
 		for _, tx := range txs {
-			err := assertMempool(css[j].txNotifier).CheckTx(tx, func (resp *abci.ResponseCheckTx) {
+			err := assertMempool(css[j].txNotifier).CheckTx(tx, func(resp *abci.ResponseCheckTx) {
 				require.False(t, resp.IsErr())
 			}, mempl.TxInfo{})
 			require.NoError(t, err)
