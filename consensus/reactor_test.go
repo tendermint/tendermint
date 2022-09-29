@@ -653,14 +653,12 @@ func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 }
 
 func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
-	counter := 0
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
 		go func(j int) {
 			f(j)
 			wg.Done()
-			counter++
 		}(i)
 	}
 
@@ -677,7 +675,7 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*State) {
 	select {
 	case <-done:
 	case <-time.After(timeout):
-		panic(fmt.Sprintf("Timed out waiting for all validators (got %d / %d) to commit a block", counter, n))
+		panic("Timed out waiting for all validators to commit a block")
 	}
 }
 
