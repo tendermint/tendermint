@@ -105,8 +105,8 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 //
 // If a transaction is indexed with the same hash as a previous transaction, it will
 // be overwritten unless the tx result was NOT OK and the prior result was OK i.e.
-// more transactions that successfully executed overwrite transaction that failed
-// or successfult yet older transactions.
+// more transactions that successfully executed overwrite transactions that failed
+// or successful yet older transactions.
 func (txi *TxIndex) Index(result *abci.TxResult) error {
 	b := txi.store.NewBatch()
 	defer b.Close()
