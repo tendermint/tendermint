@@ -4,7 +4,7 @@ title: Method
 ---
 
 The (first iteration of the) QA process as described [here][releases] is applied to version v0.34.x
-in order to have a set of results acting as benckmarking baseline.
+in order to have a set of results acting as benchmarking baseline.
 This baseline is then compared with results obtained in later versions.
 
 Out of the testnet-based test cases described in [releases][releases] we are focusing on two of them:
@@ -12,13 +12,9 @@ _200 Node Test_, and _Rotating Nodes Test_.
 
 [releases]: https://github.com/tendermint/tendermint/blob/v0.37.x/RELEASES.md#large-scale-testnets
 
-# 200 Node Testnet
+# Software Dependencies
 
-## Running the test
-
-This section explains how the tests were carried out for reproducibility purposes.
-
-### Infrastructure Requirements
+## Infrastructure Requirements to Run the Tests
 
 * An account at Digital Ocean (DO), with a high droplet limit (>202)
 * The machine to orchestrate the tests should have the following installed:
@@ -28,14 +24,31 @@ This section explains how the tests were carried out for reproducibility purpose
     * [Terraform CLI][Terraform]
     * [Ansible CLI][Ansible]
 
-### Steps
+[testnet-repo]: https://github.com/interchainio/tendermint-testnet
+[Ansible]: https://docs.ansible.com/ansible/latest/index.html
+[Terraform]: https://www.terraform.io/docs
+[doctl]: https://docs.digitalocean.com/reference/doctl/how-to/install/
 
-1. Follow steps 1-4 of the `README.md` at the top of the testnet repository to configure Terraform, and `doctl`.
-2. Copy file `testnet200.toml` onto `testnet200.toml` (do NOT commit this change)
+## Requirements for Result Extraction
+
+* Matlab or Octave
+* Prometheus server installed
+* blockstore DB of one of the full nodes in the testnet
+* Prometheus DB
+
+# 200 Node Testnet
+
+## Running the test
+
+This section explains how the tests were carried out for reproducibility purposes.
+
+1. [If you haven't done it before]
+   Follow steps 1-4 of the `README.md` at the top of the testnet repository to configure Terraform, and `doctl`.
+2. Copy file `testnet200.toml` onto `testnet.toml` (do NOT commit this change)
 3. Set variable `VERSION_TAG` to the git hash that is to be tested.
 4. Follow steps 5-10 of the `README.md` to configure and start the 200 node testnet
     * WARNING: Do NOT forget to run `make terraform-destroy` as soon as you are done with the tests
-5. As a sanity check, connect to the Prometheus node and check the graph for the `tendermint_consensus_height` metric.
+5. As a sanity check, connect to the Prometheus node's web interface and check the graph for the `tendermint_consensus_height` metric.
    All nodes should be increasing their heights.
 6. `ssh` into the `testnet-load-runner` and run script XXXXX
     * This will take about 40 mins to run
@@ -46,22 +59,10 @@ This section explains how the tests were carried out for reproducibility purpose
     * the Prometheus database from the Prometheus node
 9. **Run `make terraform-destroy`**
 
-[testnet-repo]: https://github.com/interchainio/tendermint-testnet
-[Ansible]: https://docs.ansible.com/ansible/latest/index.html
-[Terraform]: https://www.terraform.io/docs
-[doctl]: https://docs.digitalocean.com/reference/doctl/how-to/install/
-
 ## Result Extraction
 
 The method for extracting the results described here is highly manual (and exploratory) at this stage.
 The Core team should improve it at every iteration to increase the amount of automation.
-
-### Requirements
-
-* Matlab or Octave
-* Prometheus server installed
-* blockstore DB of one of the full nodes in the testnet
-* Prometheus DB
 
 ### Steps
 
@@ -149,5 +150,33 @@ The Core team should improve it at every iteration to increase the amount of aut
 4. Introduce the metrics you want to gather or plot.
 
 # Rotating Node Testnet
+
+## Running the test
+
+This section explains how the tests were carried out for reproducibility purposes.
+
+1. [If you haven't done it before]
+   Follow steps 1-4 of the `README.md` at the top of the testnet repository to configure Terraform, and `doctl`.
+2. Copy file `testnet_rotating.toml` onto `testnet.toml` (do NOT commit this change)
+3. Set variable `VERSION_TAG` to the git hash that is to be tested.
+4. Run `make terraform-apply EPHEMERAL_SIZE=25`
+    * WARNING: Do NOT forget to run `make terraform-destroy` as soon as you are done with the tests
+5. Follow steps 6-10 of the `README.md` to configure and start the "stable" part of the rotating node testnet
+6. As a sanity check, connect to the Prometheus node's web interface and check the graph for the `tendermint_consensus_height` metric.
+   All nodes should be increasing their heights.
+7. `ssh` into the `testnet-load-runner` and edit script YYYYYY
+    * Set the right IP
+    * Edit the parameters of the `load` process to have a duration of 4 hours (`-T 14400`)
+    * Launch the script
+8. Run `make rotate` to start the scripts that creates the ephemeral nodes, and kills them when they are caught up.
+    * WARNING: If you run this command from your laptop, the laptop needs to be up and connected for the 4 hours
+      that the test lasts.
+9. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
+10. Verify that the data was collected without errors
+    * all Tendermint nodes' blockstore DB
+    * the Prometheus database from the Prometheus node
+11. **Run `make terraform-destroy`**
+
+## Result Extraction
 
 TODO
