@@ -17,6 +17,9 @@
 - Data Storage
   - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
   
+- Tooling
+  - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+
 ### FEATURES
 
 ### IMPROVEMENTS
@@ -26,6 +29,8 @@
 - [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
 
 ### BUG FIXES
+
+- [docker] \#9462 ensure Docker image uses consistent version of Go
 
 ## v0.37.0
 
