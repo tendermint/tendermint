@@ -147,7 +147,9 @@ It is contained between 0.5 and 4 at all nodes.
 
 ## Test Result
 
-**PASS (2022-09-23)**
+**Result: PASS**
+Date: 2022-09-23
+Version: b9480d0ec79c53b06344148afc6589f895d0abbf
 
 # Rotating Node Testnet
 

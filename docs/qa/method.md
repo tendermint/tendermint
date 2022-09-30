@@ -32,18 +32,19 @@ This section explains how the tests were carried out for reproducibility purpose
 
 1. Follow steps 1-4 of the `README.md` at the top of the testnet repository to configure Terraform, and `doctl`.
 2. Copy file `testnet200.toml` onto `testnet200.toml` (do NOT commit this change)
-3. Follow steps 5-10 of the `README.md` to configure and start the 200 node testnet
+3. Set variable `VERSION_TAG` to the git hash that is to be tested.
+4. Follow steps 5-10 of the `README.md` to configure and start the 200 node testnet
     * WARNING: Do NOT forget to run `make terraform-destroy` as soon as you are done with the tests
-4. As a sanity check, connect to the Prometheus node and check the graph for the `tendermint_consensus_height` metric.
+5. As a sanity check, connect to the Prometheus node and check the graph for the `tendermint_consensus_height` metric.
    All nodes should be increasing their heights.
-5. `ssh` into the `testnet-load-runner` and run script XXXXX
+6. `ssh` into the `testnet-load-runner` and run script XXXXX
     * This will take about 40 mins to run
     * It is running 90-seconds-long experiments in a loop with different loads
-6. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
-7. Verify that the data was collected without errors
+7. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
+8. Verify that the data was collected without errors
     * all Tendermint nodes' blockstore DB
     * the Prometheus database from the Prometheus node
-8. **Run `make terraform-destroy`**
+9. **Run `make terraform-destroy`**
 
 [testnet-repo]: https://github.com/interchainio/tendermint-testnet
 [Ansible]: https://docs.ansible.com/ansible/latest/index.html

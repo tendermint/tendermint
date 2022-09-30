@@ -122,6 +122,12 @@ The best metric from Prometheus to gauge CPU utilization is `load1`, as it usual
 
 It is contained between 0.3 and 4.2 at all nodes.
 
+## Test Result
+
+**Result: N/A**
+Date: 2022-09-23
+Version: a41c5eec1109121376de3d32379613856d4a47dd
+
 # Rotating Node Testnet
 
 TODO
