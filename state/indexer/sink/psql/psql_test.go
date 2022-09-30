@@ -211,7 +211,7 @@ func TestIndexing(t *testing.T) {
 			}
 		})
 
-		service := txindex.NewIndexerService(indexer.TxIndexer(), indexer.BlockIndexer(), eventBus)
+		service := txindex.NewIndexerService(indexer.TxIndexer(), indexer.BlockIndexer(), eventBus, true)
 		err = service.Start()
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -242,6 +242,9 @@ func TestIndexing(t *testing.T) {
 		}
 		err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
 		require.NoError(t, err)
+
+		time.Sleep(100 * time.Millisecond)
+		require.True(t, service.IsRunning())
 	})
 }
 
