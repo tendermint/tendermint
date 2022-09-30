@@ -53,8 +53,8 @@ func (_m *Peer) Get(_a0 string) interface{} {
 	return r0
 }
 
-// GetAttemptedRemoval provides a mock function with given fields:
-func (_m *Peer) GetAttemptedRemoval() bool {
+// GetRemovalFailed provides a mock function with given fields:
+func (_m *Peer) GetRemovalFailed() bool {
 	ret := _m.Called()
 
 	var r0 bool
@@ -253,14 +253,14 @@ func (_m *Peer) Set(_a0 string, _a1 interface{}) {
 	_m.Called(_a0, _a1)
 }
 
-// SetAttemptedRemoval provides a mock function with given fields:
-func (_m *Peer) SetAttemptedRemoval() {
-	_m.Called()
-}
-
 // SetLogger provides a mock function with given fields: _a0
 func (_m *Peer) SetLogger(_a0 log.Logger) {
 	_m.Called(_a0)
+}
+
+// SetRemovalFailed provides a mock function with given fields:
+func (_m *Peer) SetRemovalFailed() {
+	_m.Called()
 }
 
 // SocketAddr provides a mock function with given fields:

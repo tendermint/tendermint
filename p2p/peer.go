@@ -40,8 +40,8 @@ type Peer interface {
 	Set(string, interface{})
 	Get(string) interface{}
 
-	SetAttemptedRemoval()
-	GetAttemptedRemoval() bool
+	SetRemovalFailed()
+	GetRemovalFailed() bool
 }
 
 //----------------------------------------------------------
@@ -322,11 +322,11 @@ func (p *peer) CloseConn() error {
 	return p.peerConn.conn.Close()
 }
 
-func (p *peer) SetAttemptedRemoval() {
+func (p *peer) SetRemovalFailed() {
 	p.removalAttemptFailed = true
 }
 
-func (p *peer) GetAttemptedRemoval() bool {
+func (p *peer) GetRemovalFailed() bool {
 	return p.removalAttemptFailed
 }
 

@@ -68,5 +68,5 @@ func (mp *Peer) RemoteIP() net.IP            { return mp.ip }
 func (mp *Peer) SocketAddr() *p2p.NetAddress { return mp.addr }
 func (mp *Peer) RemoteAddr() net.Addr        { return &net.TCPAddr{IP: mp.ip, Port: 8800} }
 func (mp *Peer) CloseConn() error            { return nil }
-func (mp *Peer) SetAttemptedRemoval()        {}
-func (mp *Peer) GetAttemptedRemoval() bool   { return false }
+func (mp *Peer) SetRemovalFailed()           {}
+func (mp *Peer) GetRemovalFailed() bool      { return false }

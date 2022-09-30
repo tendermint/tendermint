@@ -47,7 +47,7 @@ func (ps *PeerSet) Add(peer Peer) error {
 	if ps.lookup[peer.ID()] != nil {
 		return ErrSwitchDuplicatePeerID{peer.ID()}
 	}
-	if peer.GetAttemptedRemoval() {
+	if peer.GetRemovalFailed() {
 		return ErrPeerRemoval{}
 	}
 
