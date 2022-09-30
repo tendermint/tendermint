@@ -375,7 +375,7 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 		// This is done to avoid the corner case of adding a peer when this error happens before the
 		// AddPeer routine has finished
 		peer.SetRemovalFailed()
-		sw.Logger.Info("error on peer removal", ",", "peer", peer.ID())
+		sw.Logger.Debug("error on peer removal", ",", "peer", peer.ID())
 	}
 }
 
