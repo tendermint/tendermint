@@ -74,8 +74,8 @@ func TestApplyBlock(t *testing.T) {
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
-// TestBeginBlockValidators ensures we send absent validators list.
-func TestBeginBlockValidators(t *testing.T) {
+// TestFinalizeBlockValidators ensures we send absent validators list.
+func TestFinalizeBlockValidators(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -121,7 +121,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		// block for height 2
 		block := makeBlock(state, 2, lastCommit)
 
-		err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
+		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -139,8 +139,8 @@ func TestBeginBlockValidators(t *testing.T) {
 	}
 }
 
-// TestBeginBlockByzantineValidators ensures we send byzantine validators list.
-func TestBeginBlockByzantineValidators(t *testing.T) {
+// TestFinalizeBlockByzantineValidators ensures we send byzantine validators list.
+func TestFinalizeBlockByzantineValidators(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())

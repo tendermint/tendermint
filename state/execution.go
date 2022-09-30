@@ -570,19 +570,19 @@ func ExecCommitBlock(
 	logger log.Logger,
 	store Store,
 	initialHeight int64,
-) error {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+) ([]byte, error) {
+	resp, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
 	if err != nil {
 		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
-		return err
+		return nil, err
 	}
 
 	// Commit block, get hash back
-	res, err := appConnConsensus.Commit(context.TODO())
+	_, err = appConnConsensus.Commit(context.TODO())
 	if err != nil {
-		logger.Error("client error during proxyAppConn.CommitSync", "err", res)
-		return err
+		logger.Error("client error during proxyAppConn.CommitSync", "err", err)
+		return nil, err
 	}
 
-	return nil
+	return resp.AgreedAppData, nil
 }
