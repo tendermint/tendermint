@@ -329,7 +329,7 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 		},
 	}
 
-	hash := types.Tx(mockTx).Hash()
+	hash := mockTx.Hash()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
