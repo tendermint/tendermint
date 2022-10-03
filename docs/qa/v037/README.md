@@ -115,7 +115,7 @@ Most heights took just one round, but some nodes needed to advance to round 1 at
 
 ![rounds-bl](../v034/v034_r400c8_rounds.png)
 
-### Blocks Produced per Minute
+### Blocks Produced per Minute, Transactions Processed per Minute
 
 The blocks produced per minute are the gradient of this plot.
 
@@ -124,9 +124,21 @@ The blocks produced per minute are the gradient of this plot.
 Over a period of 2 minutes, the height goes from 680 to 748.
 This result in an average of 34 blocks produced per minute.
 
-**This plot yields similar results to the baseline**:
+The transactions processed per minute are the gradient of this plot.
+
+![total-txs](./v037_r400c8_total-txs.png)
+
+Over a period of 2 minutes, the total goes from 25362 to 31472 transactions,
+resulting in 3055 transactions per minute. However, we can see in the plot that
+all transactions in the load are process long before the two minutes.
+If we adjust the time window when transactions are processed (approx. 92 seconds),
+we obtain 3984 transactions per minute.
+
+**These plots yield similar results to the baseline**:
 
 ![heights-bl](../v034/v034_r400c8_heights.png)
+
+![total-txs](../v034/v034_r400c8_total-txs.png)
 
 ### Memory resident set size
 
