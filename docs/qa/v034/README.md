@@ -130,7 +130,9 @@ The average over all processes oscillates around 230 MiB and does not demonstrat
 
 ### CPU utilization
 
-The best metric from Prometheus to gauge CPU utilization is `load1`, as it usually appears in the output of `top`.
+The best metric from Prometheus to gauge CPU utilization in a Unix machine is `load1`,
+as it usually appears in the
+[output of `top`](https://www.digitalocean.com/community/tutorials/load-average-in-linux).
 
 ![load1](./v034_r400c8_load1.png)
 
