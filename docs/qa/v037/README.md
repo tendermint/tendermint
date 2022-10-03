@@ -17,6 +17,9 @@ in the baseline version.
 The following table summarizes the results for v0.37.x, for the different experiments
 (extracted from file [`v037_report_tabbed.txt`](./v037_report_tabbed.txt)).
 
+The X axis of this table is `c`, the number of connections created by the load runner process to the target node.
+The Y axis of this table is `r`, the rate or number of transactions issued per second. 
+
 |        |  c=4 |  c=8 | c=16 |
 | :---   | ---: | ---: | ---: |
 | r=20   |  148 |  288 |  591 |
@@ -68,12 +71,13 @@ This section further examines key metrics for this experiment extracted from Pro
 
 ### Mempool Size
 
-The mempool size was stable and homogeneous at all full nodes.
+The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous 
+at all full nodes. It did not exhibit any unconstrained growth.
 The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools.
 
 ![mempool-cumulative](./v037_r400c8_mempool_size.png)
 
-The plot below shows evolution of the average over all full nodes, which seems to oscillate around 140 outstanding transactions.
+The plot below shows evolution of the average over all full nodes, which oscillate around 140 outstanding transactions.
 
 ![mempool-avg](./v037_r400c8_mempool_size_avg.png)
 
@@ -123,7 +127,7 @@ Resident Set Size of all monitored processes is plotted below.
 
 ![rss](./v037_r400c8_rss.png)
 
-The average over all processes oscillates around 210 MiB.
+The average over all processes oscillates around 210 MiB and does not demonstrate unconstrained growth
 
 ![rss-avg](./v037_r400c8_rss_avg.png)
 

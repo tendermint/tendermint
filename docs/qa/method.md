@@ -3,11 +3,11 @@ order: 1
 title: Method
 ---
 
-The (first iteration of the) QA process as described [here][releases] is applied to version v0.34.x
+The (first iteration of the) QA process as described [in the RELEASES.md document][releases] is applied to version v0.34.x
 in order to have a set of results acting as benchmarking baseline.
 This baseline is then compared with results obtained in later versions.
 
-Out of the testnet-based test cases described in [releases][releases] we are focusing on two of them:
+Out of the testnet-based test cases described in [the releases document][releases] we are focusing on two of them:
 _200 Node Test_, and _Rotating Nodes Test_.
 
 [releases]: https://github.com/tendermint/tendermint/blob/v0.37.x/RELEASES.md#large-scale-testnets
@@ -32,9 +32,11 @@ _200 Node Test_, and _Rotating Nodes Test_.
 ## Requirements for Result Extraction
 
 * Matlab or Octave
-* Prometheus server installed
+* [Prometheus][prometheus] server installed
 * blockstore DB of one of the full nodes in the testnet
 * Prometheus DB
+
+[prometheus]: https://prometheus.io/
 
 # 200 Node Testnet
 

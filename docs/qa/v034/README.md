@@ -58,11 +58,13 @@ for all experiments.
 As we can see, even the experiments beyond the saturation diagonal managed to maintain
 transaction latency within stable limits. Our interpretation for this is that
 contention within Tendermint was propagated, via the websockets, to the load runner,
-hence the latter could not produce the target load, but a fraction of it.
+hence the load runner could not produce the target load, but a fraction of it.
 
-Further examination of the Prometheus data, showed that indeed the mempool, while big
-was not growing without control. Finally, the test script made sure that, at the end
-of an experiment, the mempool was empty.
+Further examination of the Prometheus data, showed that the mempool contained many transactions
+at steady state, but did not grow much without quickly returning to this steady state. This demonstrates
+that the transactions were able to be processed by the Tendermint network at least as quickly as they
+were submitted to the mempool. Finally, the test script made sure that, at the end of an experiment, the 
+mempool was empty so that all transactions submitted to the chain were processed.
 
 This plot can we used as a baseline to compare with other releases.
 
@@ -110,7 +112,7 @@ Resident Set Size of all monitored processes is plotted below.
 
 ![rss](./v034_r400c8_rss.png)
 
-The average over all processes oscillates around 230 MiB.
+The average over all processes oscillates around 230 MiB and does not demonstrate unconstrained growth.
 
 ![rss-avg](./v034_r400c8_rss_avg.png)
 

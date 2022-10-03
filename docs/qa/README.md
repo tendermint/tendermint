@@ -14,8 +14,8 @@ at the time the Quality Assurance process was applied for that release.
 
 File [method](./method.md) keeps track of the process followed to obtain the results
 used to decide if a release is passing the Quality Assurance process.
-The results obtained in each release are stored in its own directory.
-At the moment these are the releases that underwent a Quality Assurance process.
+The results obtained in each release are stored in their own directory.
+The following releases have undergone the Quality Assurance process:
 
 * [v0.34.21](./v034)
 * [v0.37.x](./v037), with v.34.21 acting as a baseline
