@@ -122,19 +122,19 @@ The transactions processed per minute are the gradient of this plot.
 
 ![total-txs](./v034_r400c8_total-txs.png)
 
-Over a period of 2 minutes, the total goes from 22581 to 28812 transactions,
-resulting in 3115 transactions per minute. However, we can see in the plot that
+Over a period of 2 minutes, the total goes from 25362 to 31472 transactions,
+resulting in 3055 transactions per minute. However, we can see in the plot that
 all transactions in the load are process long before the two minutes.
-If we adjust the time window when transactions are processed (approx. 93 seconds),
-we obtain 4063 transactions per minute.
+If we adjust the time window when transactions are processed (approx. 92 seconds),
+we obtain 3984 transactions per minute.
 
-### Memory resident set size
+### Memory Resident Set Size
 
 Resident Set Size of all monitored processes is plotted below.
 
 ![rss](./v034_r400c8_rss.png)
 
-The average over all processes oscillates around 230 MiB and does not demonstrate unconstrained growth.
+The average over all processes oscillates around 420 MiB and does not demonstrate unconstrained growth.
 
 ![rss-avg](./v034_r400c8_rss_avg.png)
 
