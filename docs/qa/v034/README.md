@@ -18,6 +18,9 @@ be processed by the testnet.
 The following table summarizes the results for v0.34.x, for the different experiments
 (extracted from file [`v034_report_tabbed.txt`](./v034_report_tabbed.txt)).
 
+The X axis of this table is `c`, the number of connections created by the load runner process to the target node.
+The Y axis of this table is `r`, the rate or number of transactions issued per second.
+
 |        |  c=4 |  c=8 | c=16 |
 | :---   | ---: | ---: | ---: |
 | r=20   |  144 |  309 |  632 |
@@ -48,6 +51,11 @@ At this point, we chose an experiment with an important load but below the satur
 in order to further study the performance of this release.
 **The chosen experiment is `r=400,c=8`**.
 
+This is a plot of the CPU load of the load runner for `r=400,c=8`,
+where we can see that the load (average over 1 minute) stays below 1 most of the time.
+
+![load-load-runner](./v034_r400c8_load-runner.png)
+
 ## Examining latencies
 
 The method described [here](../method.md) allows us to plot the latencies of transactions
@@ -55,15 +63,16 @@ for all experiments.
 
 ![all-latencies](./all.svg)
 
-As we can see, even the experiments beyond the saturation diagonal managed to maintain
-transaction latency within stable limits. Our interpretation for this is that
-contention within Tendermint was propagated, via the websockets, to the load runner,
+As we can see, even the experiments beyond the saturation diagonal managed to keep
+transaction latency stable (i.e. not constantly increasing).
+Our interpretation for this is that contention within Tendermint was propagated,
+via the websockets, to the load runner,
 hence the load runner could not produce the target load, but a fraction of it.
 
 Further examination of the Prometheus data, showed that the mempool contained many transactions
 at steady state, but did not grow much without quickly returning to this steady state. This demonstrates
 that the transactions were able to be processed by the Tendermint network at least as quickly as they
-were submitted to the mempool. Finally, the test script made sure that, at the end of an experiment, the 
+were submitted to the mempool. Finally, the test script made sure that, at the end of an experiment, the
 mempool was empty so that all transactions submitted to the chain were processed.
 
 This plot can we used as a baseline to compare with other releases.
@@ -75,14 +84,17 @@ This section further examines key metrics for this experiment extracted from Pro
 
 ### Mempool Size
 
-The mempool size was stable and homogeneous at all full nodes.
+The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous
+at all full nodes. It did not exhibit any unconstrained growth.
 The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools.
 
 ![mempool-cumulative](./v034_r400c8_mempool_size.png)
 
-The plot below shows evolution of the average over all full nodes, which seems to oscillate around 140 outstanding transactions.
+The plot below shows evolution of the average over all full nodes, which oscillate around 140 outstanding transactions.
 
 ![mempool-avg](./v034_r400c8_mempool_size_avg.png)
+
+The peaks observed coincide with the moments when some nodes process to round 1 of consensus (see below).
 
 ### Peers
 

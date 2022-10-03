@@ -18,7 +18,7 @@ The following table summarizes the results for v0.37.x, for the different experi
 (extracted from file [`v037_report_tabbed.txt`](./v037_report_tabbed.txt)).
 
 The X axis of this table is `c`, the number of connections created by the load runner process to the target node.
-The Y axis of this table is `r`, the rate or number of transactions issued per second. 
+The Y axis of this table is `r`, the rate or number of transactions issued per second.
 
 |        |  c=4 |  c=8 | c=16 |
 | :---   | ---: | ---: | ---: |
@@ -50,6 +50,11 @@ which is at the same place as the baseline. For more details on the saturation p
 The experiment chosen to examine Prometheus metrics is the same as in the baseline:
 **`r=400,c=8`**.
 
+This is a plot of the CPU load of the load runner for `r=400,c=8`,
+where we can see that the load (average over 1 minute) stays below 1 most of the time.
+
+![load-load-runner](./v037_r400c8_load-runner.png)
+
 ## Examining latencies
 
 The method described [here](../method.md) allows us to plot the latencies of transactions
@@ -71,7 +76,7 @@ This section further examines key metrics for this experiment extracted from Pro
 
 ### Mempool Size
 
-The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous 
+The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous
 at all full nodes. It did not exhibit any unconstrained growth.
 The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools.
 
@@ -80,6 +85,8 @@ The plot below shows the evolution over time of the cumulative number of transac
 The plot below shows evolution of the average over all full nodes, which oscillate around 140 outstanding transactions.
 
 ![mempool-avg](./v037_r400c8_mempool_size_avg.png)
+
+The peaks observed coincide with the moments when some nodes process to round 1 of consensus (see below).
 
 **These plots yield similar results to the baseline**:
 
@@ -127,7 +134,7 @@ Resident Set Size of all monitored processes is plotted below.
 
 ![rss](./v037_r400c8_rss.png)
 
-The average over all processes oscillates around 210 MiB and does not demonstrate unconstrained growth
+The average over all processes oscillates around 210 MiB and does not demonstrate unconstrained growth.
 
 ![rss-avg](./v037_r400c8_rss_avg.png)
 
