@@ -8,6 +8,8 @@ import (
 )
 
 // Verify that the event data types satisfy their shared interface.
+// TODO: add EventDataBlockSyncStatus and EventDataStateSyncStatus
+// when backport #6700 and #6755.
 var (
 	_ TMEventData = EventDataCompleteProposal{}
 	_ TMEventData = EventDataNewBlock{}
