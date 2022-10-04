@@ -25,6 +25,7 @@ type BlockStore interface {
 type DataPoint struct {
 	Duration  time.Duration
 	BlockTime time.Time
+	Hash      []byte
 }
 
 // Report contains the data calculated from reading the timestamped transactions
@@ -68,7 +69,7 @@ func (rs *Reports) ErrorCount() int {
 	return rs.errorCount
 }
 
-func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, bt time.Time, conns, rate, size uint64) {
+func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, bt time.Time, hash []byte, conns, rate, size uint64) {
 	r, ok := rs.s[id]
 	if !ok {
 		r = Report{
@@ -81,7 +82,7 @@ func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, bt time.Time, con
 		}
 		rs.s[id] = r
 	}
-	r.All = append(r.All, DataPoint{Duration: l, BlockTime: bt})
+	r.All = append(r.All, DataPoint{Duration: l, BlockTime: bt, Hash: hash})
 	if l > r.Max {
 		r.Max = l
 	}
@@ -204,7 +205,7 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 			reports.addError()
 			continue
 		}
-		reports.addDataPoint(pd.id, pd.l, pd.bt, pd.connections, pd.rate, pd.size)
+		reports.addDataPoint(pd.id, pd.l, pd.bt, pd.hash, pd.connections, pd.rate, pd.size)
 	}
 	reports.calculateAll()
 	return reports, nil
