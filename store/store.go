@@ -311,7 +311,7 @@ func (bs *BlockStore) PruneBlocks(height int64, state sm.State) (uint64, int64, 
 		}
 
 
-		// This logic is in place to protect data that proves malicious behaviour.
+		// This logic is in place to protect data that proves malicious behavior.
 		// Instead of pruning all blocks we only prune the meta and commit data
 		// if the evidence has exceeded the block height.
 
