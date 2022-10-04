@@ -4,7 +4,7 @@ OUTPUT?=$(BUILDDIR)/tendermint
 
 BUILD_TAGS?=tendermint
 
-COMMIT_HASH := $(shell git rev-parse HEAD)
+COMMIT_HASH := $(shell git rev-parse --short HEAD)
 LD_FLAGS = -X github.com/tendermint/tendermint/version.TMGitCommitHash=$(COMMIT_HASH)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
