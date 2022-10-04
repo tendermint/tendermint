@@ -361,6 +361,7 @@ FOR_LOOP:
 
 			firstParts, err := first.MakePartSet(types.BlockPartSizeBytes)
 			if err != nil {
+				panic("this error")
 				bcR.Logger.Error("failed to make ",
 					"height", first.Height,
 					"err", err.Error())
