@@ -5,6 +5,7 @@ package mocks
 import (
 	mock "github.com/stretchr/testify/mock"
 	state "github.com/tendermint/tendermint/state"
+
 	types "github.com/tendermint/tendermint/types"
 )
 
