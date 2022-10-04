@@ -123,11 +123,12 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 		id                      uuid.UUID
 		l                       time.Duration
 		bt                      time.Time
+		hash                    []byte
 		connections, rate, size uint64
 		err                     error
 	}
 	type txData struct {
-		tx []byte
+		tx types.Tx
 		bt time.Time
 	}
 	reports := &Reports{
@@ -161,6 +162,7 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 				pdc <- payloadData{
 					l:           l,
 					bt:          b.bt,
+					hash:        b.tx.Hash(),
 					id:          uuid.UUID(*idb),
 					connections: p.Connections,
 					rate:        p.Rate,
