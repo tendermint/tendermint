@@ -68,9 +68,9 @@ type Store interface {
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
-	// Bootstrap is used for bootstrapping state when not starting from a initial height.
+	// Bootstrap is used for bootstrapping state when not starting from a initial height
 	Bootstrap(State) error
-	// PruneStates takes the height from which to start prning and which height stop at
+	// PruneStates takes the height from which to start pruning and which height stop at
 	PruneStates(int64, int64, int64) error
 	// Close closes the connection with the database
 	Close() error

@@ -311,13 +311,13 @@ func (bs *BlockStore) PruneBlocks(height int64, state sm.State) (uint64, int64, 
 		}
 
 		// This logic is in place to protect data that proves malicious behavior.
-		// Instead of pruning all blocks we only prune the meta and commit data
-		// if the evidence has exceeded the block height.
+		// If the height is within the evidence age, we continue to persist the header and commit data.
 
 		if evidencePoint == height && !evidence.IsEvidenceExpired(state.LastBlockHeight, state.LastBlockTime, h, meta.Header.Time, state.ConsensusParams.Evidence) {
 			evidencePoint = h
 		}
 
+		// if height is beyond the evidence point we dont delete the header
 		if h < evidencePoint {
 			if err := batch.Delete(calcBlockMetaKey(h)); err != nil {
 				return 0, -1, err
@@ -326,6 +326,7 @@ func (bs *BlockStore) PruneBlocks(height int64, state sm.State) (uint64, int64, 
 		if err := batch.Delete(calcBlockHashKey(meta.BlockID.Hash)); err != nil {
 			return 0, -1, err
 		}
+		// if height is beyond the evidence point we dont delete the commit data
 		if h < evidencePoint {
 			if err := batch.Delete(calcBlockCommitKey(h)); err != nil {
 				return 0, -1, err

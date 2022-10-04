@@ -35,7 +35,6 @@ func (evpool *Pool) verify(evidence types.Evidence) error {
 	}
 
 	// checking if evidence is expired calculated using the block evidence time and height
-
 	if IsEvidenceExpired(height, state.LastBlockTime, evidence.Height(), evTime, evidenceParams) {
 		return fmt.Errorf(
 			"evidence from height %d (created at: %v) is too old; min height is %d and evidence can not be older than %v",

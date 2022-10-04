@@ -182,10 +182,6 @@ func TestPruneStates(t *testing.T) {
 					require.NoError(t, err, "validators height %v", h)
 					require.NotNil(t, vals)
 				} else {
-					fmt.Println(sliceToMap(tc.expectVals))
-					fmt.Println(h)
-					fmt.Println(vals)
-					fmt.Println(expectABCI)
 					require.Error(t, err, "validators height %v", h)
 					require.Equal(t, sm.ErrNoValSetForHeight{Height: h}, err)
 				}
