@@ -338,7 +338,7 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 		"abci", version.ABCISemVer,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
-		"commit_hash", version.TMGitCommitHash, 
+		"commit_hash", version.TMGitCommitHash,
 	)
 
 	// If the state and software differ in block version, at least log it.
