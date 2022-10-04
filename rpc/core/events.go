@@ -2,10 +2,13 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/internal/eventlog"
+	"github.com/tendermint/tendermint/internal/eventlog/cursor"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -127,4 +130,136 @@ func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 		return nil, err
 	}
 	return &ctypes.ResultUnsubscribe{}, nil
+}
+
+// Events applies a query to the event log. If an event log is not enabled,
+// Events reports an error. Otherwise, it filters the current contents of the
+// log to return matching events.
+//
+// Events returns up to maxItems of the newest eligible event items. An item is
+// eligible if it is older than before (or before is zero), it is newer than
+// after (or after is zero), and its data matches the filter. A nil filter
+// matches all event data.
+//
+// If before is zero and no eligible event items are available, Events waits
+// for up to waitTime for a matching item to become available. The wait is
+// terminated early if ctx ends.
+//
+// If maxItems ≤ 0, a default positive number of events is chosen. The values
+// of maxItems and waitTime may be capped to sensible internal maxima without
+// reporting an error to the caller.
+func Events(ctx context.Context,
+	filter *ctypes.EventFilter,
+	maxItems int,
+	before, after cursor.Cursor,
+	waitTime time.Duration,
+) (*ctypes.ResultEvents, error) {
+	if env.EventLog == nil {
+		return nil, errors.New("the event log is not enabled")
+	}
+
+	// Parse and validate parameters.
+	if maxItems <= 0 {
+		maxItems = 10
+	} else if maxItems > 100 {
+		maxItems = 100
+	}
+
+	const maxWaitTime = 30 * time.Second
+	if waitTime > maxWaitTime {
+		waitTime = maxWaitTime
+	}
+
+	query := tmquery.All
+	if filter != nil && filter.Query != "" {
+		q, err := tmquery.New(filter.Query)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter query: %w", err)
+		}
+		query = q
+	}
+
+	var info eventlog.Info
+	var items []*eventlog.Item
+	var err error
+	accept := func(itm *eventlog.Item) error {
+		// N.B. We accept up to one item more than requested, so we can tell how
+		// to set the "more" flag in the response.
+		if len(items) > maxItems {
+			return eventlog.ErrStopScan
+		}
+		match, err := query.MatchesEvents(itm.Events)
+		if err != nil {
+			return fmt.Errorf("matches failed: %v", err)
+		}
+		if cursorInRange(itm.Cursor, before, after) && match {
+			items = append(items, itm)
+		}
+		return nil
+	}
+
+	if waitTime > 0 && before.IsZero() {
+		ctx, cancel := context.WithTimeout(ctx, waitTime)
+		defer cancel()
+
+		// Long poll. The loop here is because new items may not match the query,
+		// and we want to keep waiting until we have relevant results (or time out).
+		cur := after
+		for len(items) == 0 {
+			info, err = env.EventLog.WaitScan(ctx, cur, accept)
+			if err != nil {
+				// Don't report a timeout as a request failure.
+				if errors.Is(err, context.DeadlineExceeded) {
+					err = nil
+				}
+				break
+			}
+			cur = info.Newest
+		}
+	} else {
+		// Quick poll, return only what is already available.
+		info, err = env.EventLog.Scan(accept)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	more := len(items) > maxItems
+	if more {
+		items = items[:len(items)-1]
+	}
+	enc, err := marshalItems(items)
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultEvents{
+		Items:  enc,
+		More:   more,
+		Oldest: cursorString(info.Oldest),
+		Newest: cursorString(info.Newest),
+	}, nil
+}
+
+func cursorString(c cursor.Cursor) string {
+	if c.IsZero() {
+		return ""
+	}
+	return c.String()
+}
+
+func cursorInRange(c, before, after cursor.Cursor) bool {
+	return (before.IsZero() || c.Before(before)) && (after.IsZero() || after.Before(c))
+}
+
+func marshalItems(items []*eventlog.Item) ([]*ctypes.EventItem, error) {
+	out := make([]*ctypes.EventItem, len(items))
+	for i, itm := range items {
+		v, err := json.Marshal(itm.Data)
+		if err != nil {
+			return nil, fmt.Errorf("encoding event data: %w", err)
+		}
+		out[i] = &ctypes.EventItem{Cursor: itm.Cursor.String(), Event: itm.Type}
+		out[i].Data = v
+	}
+	return out, nil
 }

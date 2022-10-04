@@ -332,6 +332,16 @@ func TestCompiledMatches(t *testing.T) {
 				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
 					tc.s, tc.events, got, tc.matches)
 			}
+
+			got, err = c.MatchesEvents(query.ExpandEvents(tc.events))
+			if err != nil {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got error %v",
+					tc.s, tc.events, err)
+			}
+			if got != tc.matches {
+				t.Errorf("Query: %#q\nInput: %+v\nMatches: got %v, want %v",
+					tc.s, tc.events, got, tc.matches)
+			}
 		})
 	}
 }
