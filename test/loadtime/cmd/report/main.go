@@ -87,7 +87,7 @@ func toCSVRecords(rs []report.Report) [][]string {
 	}
 	res := make([][]string, total+1)
 
-	res[0] = []string{"experiment_id", "duration_ns", "block_time", "connections", "rate", "size"}
+	res[0] = []string{"experiment_id", "block_time", "duration_ns", "tx_hash", "connections", "rate", "size"}
 	offset := 1
 	for _, r := range rs {
 		idStr := r.ID.String()
