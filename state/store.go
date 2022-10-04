@@ -70,10 +70,10 @@ type Store interface {
 	Save(State) error
 	// SaveABCIResponses saves ABCIResponses for a given height
 	SaveABCIResponses(int64, *tmstate.ABCIResponses) error
-	// Bootstrap is used for bootstrapping state when not starting from a initial height.
+	// Bootstrap is used for bootstrapping state when not starting from a initial height
 	Bootstrap(State) error
-	// PruneStates takes the height from which to start prning and which height stop at
-	PruneStates(int64, int64) error
+	// PruneStates takes the height from which to start pruning and which height stop at
+	PruneStates(int64, int64, int64) error
 	// Close closes the connection with the database
 	Close() error
 }
@@ -240,14 +240,15 @@ func (store dbStore) Bootstrap(state State) error {
 // encoding not preserving ordering: https://github.com/tendermint/tendermint/issues/4567
 // This will cause some old states to be left behind when doing incremental partial prunes,
 // specifically older checkpoints and LastHeightChanged targets.
-func (store dbStore) PruneStates(from int64, to int64) error {
+func (store dbStore) PruneStates(from int64, to int64, evidenceThresholdHeight int64) error {
 	if from <= 0 || to <= 0 {
 		return fmt.Errorf("from height %v and to height %v must be greater than 0", from, to)
 	}
 	if from >= to {
 		return fmt.Errorf("from height %v must be lower than to height %v", from, to)
 	}
-	valInfo, err := loadValidatorsInfo(store.db, to)
+
+	valInfo, err := loadValidatorsInfo(store.db, min(to, evidenceThresholdHeight))
 	if err != nil {
 		return fmt.Errorf("validators at height %v not found: %w", to, err)
 	}
@@ -301,12 +302,14 @@ func (store dbStore) PruneStates(from int64, to int64) error {
 					return err
 				}
 			}
-		} else {
+		} else if h < evidenceThresholdHeight {
 			err = batch.Delete(calcValidatorsKey(h))
 			if err != nil {
 				return err
 			}
 		}
+		// else we keep the validator set because we might need
+		// it later on for evidence verification
 
 		if keepParams[h] {
 			p, err := store.loadConsensusParamsInfo(h)
@@ -660,4 +663,11 @@ func (store dbStore) saveConsensusParamsInfo(nextHeight, changeHeight int64, par
 
 func (store dbStore) Close() error {
 	return store.db.Close()
+}
+
+func min(a int64, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }
