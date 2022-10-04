@@ -21,14 +21,14 @@ var VersionCmd = &cobra.Command{
 				BlockProtocol uint64 `json:"block_protocol"`
 				P2PProtocol   uint64 `json:"p2p_protocol"`
 			}{
-				Tendermint:    version.TMCoreSemVer,
-				ABCI:          version.ABCIVersion,
+				Tendermint:    version.TMGitVer,
+				ABCI:          version.ABCISemVer,
 				BlockProtocol: version.BlockProtocol,
 				P2PProtocol:   version.P2PProtocol,
 			}, "", "  ")
 			fmt.Println(string(values))
 		} else {
-			fmt.Println(version.TMCoreSemVer)
+			fmt.Println(version.TMGitVer)
 		}
 	},
 }

@@ -4,6 +4,8 @@ OUTPUT?=$(BUILDDIR)/tendermint
 
 BUILD_TAGS?=tendermint
 
+VERSION := $(shell git describe)
+LD_FLAGS = -X github.com/tendermint/tendermint/version.TMGitVer=$(VERSION)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 CGO_ENABLED ?= 0

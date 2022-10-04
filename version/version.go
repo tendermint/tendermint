@@ -5,9 +5,11 @@ const (
 	// when not using git describe. It is formatted with semantic versioning.
 	TMCoreSemVer = "0.38.0-dev"
 	// ABCISemVer is the semantic version of the ABCI protocol
-	ABCISemVer = "1.0.0"
-
+	ABCISemVer  = "1.0.0"
 	ABCIVersion = ABCISemVer
+	// TMGitVer uses git describe and includes the commit hash which is helpful
+	// for the engineering team when working with the tendermint binary
+	TMGitVer = TMCoreSemVer
 )
 
 var (
