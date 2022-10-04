@@ -256,6 +256,19 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
+<<<<<<< HEAD
+=======
+	// Prune old heights, if requested by ABCI app.
+	if retainHeight > 0 {
+		pruned, err := blockExec.pruneBlocks(retainHeight, state)
+		if err != nil {
+			blockExec.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
+		} else {
+			blockExec.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+		}
+	}
+
+>>>>>>> abbeb919d (Use evidence period when pruning (#9505))
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
@@ -625,3 +638,24 @@ func ExecCommitBlock(
 	// ResponseCommit has no error or log, just data
 	return res.Data, nil
 }
+<<<<<<< HEAD
+=======
+
+func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64, state State) (uint64, error) {
+	base := blockExec.blockStore.Base()
+	if retainHeight <= base {
+		return 0, nil
+	}
+
+	amountPruned, prunedHeaderHeight, err := blockExec.blockStore.PruneBlocks(retainHeight, state)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prune block store: %w", err)
+	}
+
+	err = blockExec.Store().PruneStates(base, retainHeight, prunedHeaderHeight)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prune state store: %w", err)
+	}
+	return amountPruned, nil
+}
+>>>>>>> abbeb919d (Use evidence period when pruning (#9505))
