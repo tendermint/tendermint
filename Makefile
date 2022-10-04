@@ -4,14 +4,8 @@ OUTPUT?=$(BUILDDIR)/tendermint
 
 BUILD_TAGS?=tendermint
 
-# If building a release, please checkout the version tag to get the correct version setting
-ifneq ($(shell git symbolic-ref -q --short HEAD),)
-VERSION := unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
-else
-VERSION := $(shell git describe)
-endif
-
-LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
+COMMIT_HASH := $(shell git rev-parse --short HEAD)
+LD_FLAGS = -X github.com/tendermint/tendermint/version.TMGitCommitHash=$(COMMIT_HASH)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 CGO_ENABLED ?= 0
