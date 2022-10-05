@@ -32,6 +32,7 @@ const (
 	maxTotalRequesters        = 600
 	maxPendingRequests        = maxTotalRequesters
 	maxPendingRequestsPerPeer = 20
+	requestRetrySeconds       = 15
 
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
 	// enough. If a peer is not sending us data at at least that rate, we
@@ -612,18 +613,16 @@ OUTER_LOOP:
 		bpr.peerID = peer.id
 		bpr.mtx.Unlock()
 
+		to := time.NewTimer(requestRetrySeconds * time.Second)
 		// Send request and wait.
-		bpr.pool.sendRequest(bpr.height, peer.id)
 	WAIT_LOOP:
 		for {
+			bpr.pool.sendRequest(bpr.height, peer.id)
 			select {
-			case <-bpr.pool.Quit():
-				if err := bpr.Stop(); err != nil {
-					bpr.Logger.Error("Error stopped requester", "err", err)
-				}
-				return
-			case <-bpr.Quit():
-				return
+			case <-to.C:
+				bpr.pool.Logger.Debug("Retrying block pool request after timeout", "height", bpr.height, "peer", bpr.peerID)
+				to.Reset(requestRetrySeconds * time.Second)
+				continue WAIT_LOOP
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {
 					bpr.reset()
@@ -633,9 +632,26 @@ OUTER_LOOP:
 				}
 			case <-bpr.gotBlockCh:
 				// We got a block!
-				// Continue the for-loop and wait til Quit.
-				continue WAIT_LOOP
+				// Exit the for loop and wait until we receive a quit signal.
+				break WAIT_LOOP
+			case <-bpr.pool.Quit():
+				if err := bpr.Stop(); err != nil {
+					bpr.Logger.Error("Error stopped requester", "err", err)
+				}
+				return
+			case <-bpr.Quit():
+				return
 			}
+		}
+
+		select {
+		case <-bpr.pool.Quit():
+			if err := bpr.Stop(); err != nil {
+				bpr.Logger.Error("Error stopped requester", "err", err)
+			}
+			return
+		case <-bpr.Quit():
+			return
 		}
 	}
 }
