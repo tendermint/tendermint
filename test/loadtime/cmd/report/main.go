@@ -95,11 +95,7 @@ func toCSVRecords(rs []report.Report) [][]string {
 		rateStr := strconv.FormatInt(int64(r.Rate), 10)
 		sizeStr := strconv.FormatInt(int64(r.Size), 10)
 		for i, v := range r.All {
-<<<<<<< HEAD
-			res[offset+i] = []string{idStr, strconv.FormatInt(int64(v.Duration), 10), strconv.FormatInt(v.BlockTime.UnixNano(), 10), connStr, rateStr, sizeStr} //nolint: lll
-=======
 			res[offset+i] = []string{idStr, strconv.FormatInt(v.BlockTime.UnixNano(), 10), strconv.FormatInt(int64(v.Duration), 10), fmt.Sprintf("%X", v.Hash), connStr, rateStr, sizeStr}
->>>>>>> cdd3479f2 (Extend the load report tool to include transactions' hashes (#9509))
 		}
 		offset += len(r.All)
 	}
