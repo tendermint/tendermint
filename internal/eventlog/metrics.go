@@ -37,3 +37,9 @@ func PrometheusMetrics(ns string, fields ...string) *Metrics {
 		}, labels).With(fields...),
 	}
 }
+
+func NopMetrics() *Metrics {
+	return &Metrics{
+		numItemsGauge: discard{},
+	}
+}
