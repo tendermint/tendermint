@@ -25,4 +25,4 @@
 - [config] \#9483 Calling `tendermint init` would incorrectly leave out the new
   `[storage]` section delimiter in the generated configuration file - this has
   now been fixed
-
+- [p2p] \#9500 prevent peers who have errored being added to the peer_set (@jmalicevic)
