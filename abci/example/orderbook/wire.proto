@@ -3,6 +3,19 @@ syntax = "proto3";
 package orderbook;
 option go_package = "github.com/tendermint/tendermint/abci/example/orderbook";
 
+
+message OrderAsk {
+    uint64 quantity = 1;
+    uint64 ask_price = 2;
+	Account owner = 3;   
+}
+
+message OrderBid {
+    uint64 quantity = 1;
+    uint64 max_price = 2;
+	Account owner = 3;   
+}
+
 message Pair {
     // the denomination that the buyer receives i.e. EUR
     string buyers_denomination = 1;
@@ -44,4 +57,3 @@ message MatchedOrder {
     repeated bytes buyer_signature = 5;
     uint64 seller_id = 6;
     repeated bytes seller_signature = 7;
-}

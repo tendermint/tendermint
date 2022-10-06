@@ -21,11 +21,10 @@ type StateMachine struct {
 	db dbm.DB
 
 	// in-memory state
-	accounts map[uint64]*Account
-	commodities map[uint64]*Commodity
-	
+	accounts    map[uint64]*Account
+	commodities map[string]*Commodity
 	// app-side mempool
-	markets map[string]*Market // i.e. ATOM/USDC 
+	markets map[string]*Market // i.e. ATOM/USDC
 }
 
 func New() *StateMachine {
@@ -62,30 +61,52 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 		//check there is no other account with the same public key
 
-	case *Msg_MsgPlaceOrder:
+	case *Msg_MsgBid:
 
-		if err := m.MsgPlaceOrder.ValidateBasic(); err != nil {
+		if err := m.MsgBid.ValidateBasic(); err != nil {
 			return types.ResponseCheckTx{Code: 3, Log: err.Error()}
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgPlaceOrder.Order.Owner]; !ok {
+		if _, ok := sm.accounts[m.MsgBid.Order.Owner.Index]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
-	
+
 		// check the commodity exists
-		if _, ok := sm.commodities[m.MsgPlaceOrder.Order.QuantityOutbound]; !ok {
+		if _, ok := sm.commodities[m.MsgBid.Pair.OutboundCommodityDenom]; !ok {
 			return types.ResponseCheckTx{Code: 4}
+		}
+
+		// check if pair is registered
+		if _, ok := sm.markets[m.MsgBid.Pair.String()]; !ok {
+			return types.ResponseCheckTx{Code: 4}
+		}
+
+	case *Msg_MsgAsk:
+
+		if err := m.MsgAsk.ValidateBasic(); err != nil {
+			return types.ResponseCheckTx{Code: 3, Log: err.Error()}
+		}
+
+		// check if account exists
+		if _, ok := sm.accounts[m.MsgAsk.Order.Owner.Index]; !ok {
+			return types.ResponseCheckTx{Code: 4}
+		}
+
+		// check the commodity exists
+		if _, ok := sm.commodities[m.MsgAsk.Pair.OutboundCommodityDenom]; !ok {
+			return types.ResponseCheckTx{Code: 4}
+		}
+
+		// check if pair is registered
+		if _, ok := sm.markets[m.MsgAsk.Pair.String()]; !ok {
+			return types.ResponseCheckTx{Code: 4}
+
 		}
 
 		// check the commodity has a high enough quantity
-		if err := sm.commodities[m.MsgPlaceOrder.Pair].Quantity >= m.MsgPlaceOrder.Order.QuantityOutbound; !ok {
-
-		}
-		
-		// check if pair is registered
-		if _, ok := sm.markets[m.MsgPlaceOrder.Pair.String()]; !ok {
-			return types.ResponseCheckTx{Code: 4}
+		if err := m.MsgAsk.Quantity >= sm.commodities[m.MsgAsk.Pair.OutboundCommodityDenom].Quantity; !ok {
+			return types.ResponseCheckTx{Code: 4, Log: err.Error()}
 		}
 
 	default:
@@ -149,7 +170,7 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 		Status: types.ResponseProcessProposal_ACCEPT}
 }
 
-func (msg *MsgPlaceOrder) ValidateBasic() error {
+func (msg *MsgBid) ValidateBasic() error {
 	if err := msg.Order.ValidateBasic(); err != nil {
 		return err
 	}
@@ -161,6 +182,29 @@ func (msg *MsgPlaceOrder) ValidateBasic() error {
 	if len(msg.Signature) != ed25519.SignatureSize {
 		return errors.New("invalid signature size")
 	}
+
+	//quantity to be more than 0
+	// price to not be 0
+
+	return nil
+}
+
+func (msg *MsgAsk) ValidateBasic() error {
+	if err := msg.Order.ValidateBasic(); err != nil {
+		return err
+	}
+
+	if err := msg.Pair.ValidateBasic(); err != nil {
+		return err
+	}
+
+	if len(msg.Signature) != ed25519.SignatureSize {
+		return errors.New("invalid signature size")
+	}
+
+
+	//quantity to be more than 0
+	// price to not be 0
 
 	return nil
 }
@@ -190,7 +234,7 @@ func (msg *MsgRegisterPair) ValidateBasic() error {
 }
 
 func (c *Commodity) ValidateBasic() error {
-	if c.Quantity <= 0  {
+	if c.Quantity <= 0 {
 		return errors.New("quantity must be greater than zero")
 	}
 }
@@ -207,12 +251,24 @@ func (p *Pair) ValidateBasic() error {
 	return nil
 }
 
-func (o *Order) ValidateBasic() error {
-	if o.QuantityOutbound == 0 {
+func (o *OrderBid) ValidateBasic() error {
+	if o.Quantity == 0 {
 		return errors.New("quantity outbound must be non zero")
 	}
 
-	if o.MinPrice <= 0 {
+	if o.MaxPrice <= 0 {
+		return errors.New("min price must be greater than 0")
+	}
+
+	return nil
+}
+
+func (o *OrderAsk) ValidateBasic() error {
+	if o.Quantity == 0 {
+		return errors.New("quantity outbound must be non zero")
+	}
+
+	if o.AskPrice <= 0 {
 		return errors.New("min price must be greater than 0")
 	}
 
