@@ -115,20 +115,21 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *eventlog.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics) {
+	return func(chainID string) (*cs.Metrics, *eventlog.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				eventlog.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				proxy.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics(), proxy.NopMetrics()
+		return cs.NopMetrics(), eventlog.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics(), proxy.NopMetrics()
 	}
 }
 
@@ -727,7 +728,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics, abciMetrics := metricsProvider(genDoc.ChainID)
+	csMetrics, eventLogMetrics, p2pMetrics, memplMetrics, smMetrics, abciMetrics := metricsProvider(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, abciMetrics)
@@ -742,6 +743,19 @@ func NewNode(config *cfg.Config,
 	eventBus, err := createAndStartEventBus(logger)
 	if err != nil {
 		return nil, err
+	}
+
+	var eventLog *eventlog.Log
+	if w := config.RPC.EventLogWindowSize; w > 0 {
+		var err error
+		eventLog, err = eventlog.New(eventlog.LogSettings{
+			WindowSize: w,
+			MaxItems:   config.RPC.EventLogMaxItems,
+			Metrics:    eventLogMetrics,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("initializing event log: %w", err)
+		}
 	}
 
 	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config,
@@ -927,6 +941,7 @@ func NewNode(config *cfg.Config,
 		indexerService:   indexerService,
 		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+		eventLog:         eventLog,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
