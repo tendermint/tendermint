@@ -54,7 +54,7 @@
 // Define some routes
 //
 //	  var Routes = map[string]*rpcserver.RPCFunc{
-//		    "status": rpcserver.NewRPCFunc(Status, "arg", false),
+//		    "status": rpcserver.NewRPCFunc(Status, "arg"),
 //	  }
 //
 // An rpc function:
