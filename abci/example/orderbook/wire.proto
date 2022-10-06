@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package orderbook;
+option go_package = "github.com/tendermint/tendermint/abci/example/orderbook";
+
+message Order {
+    uint64 quantity_outbound = 1;
+    double limit_price = 2;
+	uint64 owner = 3;   
+}
+
+message Pair {
+    string inbound_commodity_denom = 1;
+    string outbound_commodity_denom = 2;
+}
+
+message Commodity {
+    string denom = 1;
+    uint64 quantity = 2;    
+}
+
+message Account {
+    uint64 index = 1;
+	repeated bytes public_key = 2;
+    repeated Commodity commodities = 3;
+}
+
+message TradeSet {
+    Pair pair = 1; // ATOM/USDC
+    repeated MatchedOrder matched_orders = 2;
+
+}
+
+message MatchedOrder {
+    Order buy_order = 1;
+    repeated bytes buyer_signature = 2;
+    Order sell_order = 3;
+    repeated bytes seller_signature = 4;
+}
