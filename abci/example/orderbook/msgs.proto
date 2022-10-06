@@ -8,15 +8,15 @@ import "wire.proto";
 message MsgBid {
     Pair pair  = 1;
     double max_price = 2;
-    double quantity = 3;
+    uint64 quantity = 3;
     uint64 account_id = 4;
-    repeated bytes signature = 4;
+    repeated bytes signature = 5;
 }
 
 message MsgAsk {
     Pair pair  = 1;
-    double min_price = 2;
-    double quantity = 3;
+    double price = 2;
+    uint64 quantity = 3;
     uint64 account_id = 4;
     repeated bytes signature = 5;
 }
@@ -33,8 +33,9 @@ message MsgRegisterPair {
 message Msg {
     //a Msg has to be one of the below
     oneof sum {
-        MsgPlaceOrder msg_place_order = 1;
-        MsgRegisterPair msg_register_pair = 2;
-        MsgCreateAccount msg_create_account = 3;
+        MsgBid msg_bid = 1;
+        MsgAsk msg_ask = 2;
+        MsgRegisterPair msg_register_pair = 3;
+        MsgCreateAccount msg_create_account = 4;
     }
 }

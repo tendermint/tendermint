@@ -3,15 +3,11 @@ syntax = "proto3";
 package orderbook;
 option go_package = "github.com/tendermint/tendermint/abci/example/orderbook";
 
-message Order {
-    uint64 quantity_outbound = 1;
-    double limit_price = 2;
-	uint64 owner = 3;   
-}
-
 message Pair {
-    string inbound_commodity_denom = 1;
-    string outbound_commodity_denom = 2;
+    // the denomination that the buyer receives i.e. EUR
+    string buyers_denomination = 1;
+    // the denomination that the seller receives i.e. USD
+    string sellers_denomination = 2;
 }
 
 message Commodity {
@@ -22,18 +18,30 @@ message Commodity {
 message Account {
     uint64 index = 1;
 	repeated bytes public_key = 2;
+    // the set of commodities that the account has
     repeated Commodity commodities = 3;
 }
 
+// TradeSet is the transaction that eventually is committed in a block
+// It is derived from a group of MsgBid and MsgAsk's 
 message TradeSet {
-    Pair pair = 1; // ATOM/USDC
+    Pair pair = 1; // i.e. EUR/USD
+    // the set of matched trades for that peer 
     repeated MatchedOrder matched_orders = 2;
-
 }
 
 message MatchedOrder {
-    Order buy_order = 1;
-    repeated bytes buyer_signature = 2;
-    Order sell_order = 3;
-    repeated bytes seller_signature = 4;
+    // the quantity the buyer receives and the seller gives
+    uint64 quantity = 1;
+    // the price the buyer pays for the quantity. The seller receives
+    // price * quantity of the sellers denomination (i.e. USD)
+    double price = 2;
+    uint64 buyer_id = 3; 
+    // the limit the buyer was willing to pay for. This must be more or
+    // equal to the price. We use this to prove with the signature that
+    // the buyer actually wanted to pay that much for the commodity
+    double buyer_limit = 4;
+    repeated bytes buyer_signature = 5;
+    uint64 seller_id = 6;
+    repeated bytes seller_signature = 7;
 }
