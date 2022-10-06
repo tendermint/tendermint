@@ -24,8 +24,6 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 }
 
 // Function introspection
-
-// FuncOptions provides the arguments for the RPCFunc
 const (
 	Cacheable = "cacheable"
 	Ws        = "ws"
@@ -37,7 +35,7 @@ type RPCFunc struct {
 	args     []reflect.Type         // type of each function arg
 	returns  []reflect.Type         // type of each return arg
 	argNames []string               // name of each argument
-	opts     map[string]interface{} // options of the RPCFunc
+	opts     map[string]interface{} // options of RPCFunc
 }
 
 // NewRPCFunc wraps a function for introspection.
@@ -47,8 +45,9 @@ func NewRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
 }
 
 // NewWSRPCFunc wraps a function for introspection and use in the websockets.
-func NewWSRPCFunc(f interface{}, args string) *RPCFunc {
-	return newRPCFunc(f, args, Ws)
+func NewWSRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
+	options = append(options, Ws)
+	return newRPCFunc(f, args, options...)
 }
 
 func newRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
