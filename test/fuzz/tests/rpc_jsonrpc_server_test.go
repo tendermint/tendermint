@@ -21,9 +21,9 @@ func FuzzRPCJSONRPCServer(f *testing.F) {
 		I int    `json:"i"`
 	}
 	var rpcFuncMap = map[string]*rpcserver.RPCFunc{
-		"c": rpcserver.NewRPCFunc(func(ctx *rpctypes.Context, args *args, opts rpcserver.FuncOptions) (string, error) {
+		"c": rpcserver.NewRPCFunc(func(ctx *rpctypes.Context, args *args, options ...string) (string, error) {
 			return "foo", nil
-		}, "args", rpcserver.FuncOptions{}),
+		}, "args"),
 	}
 
 	mux := http.NewServeMux()

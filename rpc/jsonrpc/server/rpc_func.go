@@ -26,41 +26,47 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 // Function introspection
 
 // FuncOptions provides the arguments for the RPCFunc
-type FuncOptions struct {
-	Ws        bool // websocket only
-	Cacheable bool // cacheable is a bool value to allow the client proxy server to cache the RPC results
-}
-
-var CacheFuncOpts = FuncOptions{
-	Cacheable: true,
-}
+const (
+	Cacheable = "cacheable"
+	Ws        = "ws"
+)
 
 // RPCFunc contains the introspected type information for a function
 type RPCFunc struct {
-	f        reflect.Value  // underlying rpc function
-	args     []reflect.Type // type of each function arg
-	returns  []reflect.Type // type of each return arg
-	argNames []string       // name of each argument
-	opts     FuncOptions    // options of the RPCFunc
+	f        reflect.Value          // underlying rpc function
+	args     []reflect.Type         // type of each function arg
+	returns  []reflect.Type         // type of each return arg
+	argNames []string               // name of each argument
+	opts     map[string]interface{} // options of the RPCFunc
 }
 
 // NewRPCFunc wraps a function for introspection.
 // f is the function, args are comma separated argument names
-func NewRPCFunc(f interface{}, args string, opts FuncOptions) *RPCFunc {
-	return newRPCFunc(f, args, opts)
+func NewRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
+	return newRPCFunc(f, args, options...)
 }
 
 // NewWSRPCFunc wraps a function for introspection and use in the websockets.
 func NewWSRPCFunc(f interface{}, args string) *RPCFunc {
-	opts := FuncOptions{Ws: true}
-	return newRPCFunc(f, args, opts)
+	return newRPCFunc(f, args, Ws)
 }
 
-func newRPCFunc(f interface{}, args string, opts FuncOptions) *RPCFunc {
+func newRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
 	var argNames []string
 	if args != "" {
 		argNames = strings.Split(args, ",")
 	}
+
+	opts := make(map[string]interface{})
+	for _, opt := range options {
+		switch opt {
+		case Ws: // Ws indicates the rpc connection is using a websocket connection
+			opts[Ws] = true
+		case Cacheable: // Cacheable is a bool value to allow the client proxy server to cache the RPC results
+			opts[Cacheable] = true
+		}
+	}
+
 	return &RPCFunc{
 		f:        reflect.ValueOf(f),
 		args:     funcArgTypes(f),
