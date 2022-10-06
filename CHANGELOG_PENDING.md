@@ -51,3 +51,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)
 - [docker] \#9073 enable cross platform build using docker buildx
 - [docker] \#9462 ensure Docker image uses consistent version of Go
+- [p2p] \#9500 prevent peers who have errored being added to the peer_set (@jmalicevic)
