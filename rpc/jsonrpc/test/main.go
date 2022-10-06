@@ -12,7 +12,7 @@ import (
 )
 
 var routes = map[string]*rpcserver.RPCFunc{
-	"hello_world": rpcserver.NewRPCFunc(HelloWorld, "name,num", rpcserver.FuncOptions{}),
+	"hello_world": rpcserver.NewRPCFunc(HelloWorld, "name,num"),
 }
 
 func HelloWorld(ctx *rpctypes.Context, name string, num int) (Result, error) {
