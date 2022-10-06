@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -242,7 +241,7 @@ func TestRPCResponseCache(t *testing.T) {
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
 	require.Equal(t, "max-age=31536000", res.Header.Get("Cache-control"))
 
-	_, err := ioutil.ReadAll(res.Body)
+	_, err := io.ReadAll(res.Body)
 	res.Body.Close()
 	require.Nil(t, err, "reading from the body should not give back an error")
 
@@ -257,7 +256,9 @@ func TestRPCResponseCache(t *testing.T) {
 	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
 	require.Equal(t, "", res.Header.Get("Cache-control"))
 
-	_, err = ioutil.ReadAll(res.Body)
+	_, err = io.ReadAll(res.Body)
+
+	//_, err = ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	require.Nil(t, err, "reading from the body should not give back an error")
 }
