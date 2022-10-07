@@ -264,7 +264,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	// Prune old heights, if requested by ABCI app.
 	if retainHeight > 0 {
-		pruned, err := blockExec.pruneBlocks(retainHeight)
+		pruned, err := blockExec.pruneBlocks(retainHeight, state)
 		if err != nil {
 			blockExec.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
 		} else {
@@ -642,19 +642,20 @@ func ExecCommitBlock(
 	return res.Data, nil
 }
 
-func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64) (uint64, error) {
+func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64, state State) (uint64, error) {
 	base := blockExec.blockStore.Base()
 	if retainHeight <= base {
 		return 0, nil
 	}
-	pruned, err := blockExec.blockStore.PruneBlocks(retainHeight)
+
+	amountPruned, prunedHeaderHeight, err := blockExec.blockStore.PruneBlocks(retainHeight, state)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune block store: %w", err)
 	}
 
-	err = blockExec.Store().PruneStates(base, retainHeight)
+	err = blockExec.Store().PruneStates(base, retainHeight, prunedHeaderHeight)
 	if err != nil {
 		return 0, fmt.Errorf("failed to prune state store: %w", err)
 	}
-	return pruned, nil
+	return amountPruned, nil
 }

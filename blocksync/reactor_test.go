@@ -146,13 +146,13 @@ func newReactor(
 	}
 
 	bcReactor := NewReactor(state.Copy(), blockExec, blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	bcReactor.SetLogger(logger.With("module", "blocksync"))
 
 	return ReactorPair{bcReactor, proxyApp}
 }
 
 func TestNoBlockResponse(t *testing.T) {
-	config = test.ResetTestRoot("blockchain_reactor_test")
+	config = test.ResetTestRoot("blocksync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
@@ -164,7 +164,7 @@ func TestNoBlockResponse(t *testing.T) {
 	reactorPairs[1] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 
 	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		s.AddReactor("BLOCKSYNC", reactorPairs[i].reactor)
 		return s
 
 	}, p2p.Connect2Switches)
@@ -214,7 +214,7 @@ func TestNoBlockResponse(t *testing.T) {
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
-	config = test.ResetTestRoot("blockchain_reactor_test")
+	config = test.ResetTestRoot("blocksync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
@@ -239,7 +239,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	reactorPairs[3] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
 
 	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		s.AddReactor("BLOCKSYNC", reactorPairs[i].reactor)
 		return s
 
 	}, p2p.Connect2Switches)
@@ -278,7 +278,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
+		s.AddReactor("BLOCKSYNC", reactorPairs[len(reactorPairs)-1].reactor)
 		return s
 
 	}, p2p.Connect2Switches)...)
