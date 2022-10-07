@@ -59,6 +59,9 @@ func (mp mockPeer) TrySend(byte, []byte) bool { return true }
 func (mp mockPeer) Set(string, interface{}) {}
 func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
+func (mp mockPeer) SetRemovalFailed()      {}
+func (mp mockPeer) GetRemovalFailed() bool { return false }
+
 type mockBlockStore struct {
 	blocks map[int64]*types.Block
 }
