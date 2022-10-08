@@ -1395,8 +1395,8 @@ func TestProcessProposalAccept(t *testing.T) {
 			if testCase.accept {
 				status = abci.ResponseProcessProposal_ACCEPT
 			}
-			m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: status})
-			m.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{}).Maybe()
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: status}, nil)
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil).Maybe()
 			cs1, _ := randStateWithApp(4, m)
 			height, round := cs1.Height, cs1.Round
 

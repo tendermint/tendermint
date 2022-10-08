@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"testing"
 	"time"
 
@@ -23,10 +22,10 @@ import (
 	"github.com/tendermint/tendermint/abci/types/mocks"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/mempool"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -111,8 +110,12 @@ func sendTxs(ctx context.Context, cs *State) {
 		case <-ctx.Done():
 			return
 		default:
-			tx := []byte{byte(i)}
-			if err := assertMempool(cs.txNotifier).CheckTx(tx, nil, mempl.TxInfo{}); err != nil {
+			tx := kvstore.NewTxFromID(i)
+			if err := assertMempool(cs.txNotifier).CheckTx(tx, func(resp *abci.ResponseCheckTx) {
+				if resp.Code != 0 {
+					panic(fmt.Sprintf("Unexpected code: %d, log: %s", resp.Code, resp.Log))
+				}
+			}, mempl.TxInfo{}); err != nil {
 				panic(err)
 			}
 			i++
@@ -294,24 +297,8 @@ func (w *crashingWAL) Stop() error  { return w.next.Stop() }
 func (w *crashingWAL) Wait()        { w.next.Wait() }
 
 // ------------------------------------------------------------------------------------------
-type testSim struct {
-	GenesisState sm.State
-	Config       *cfg.Config
-	Chain        []*types.Block
-	Commits      []*types.Commit
-	CleanupFunc  cleanupFunc
-}
 
-const (
-	numBlocks = 6
-)
-
-var (
-	mempool = emptyMempool{}
-	evpool  = sm.EmptyEvidencePool{}
-
-	sim testSim
-)
+const numBlocks = 6
 
 //---------------------------------------
 // Test handshake/replay
@@ -322,305 +309,32 @@ var (
 // 3 - save block and committed with truncated block store and state behind
 var modes = []uint{0, 1, 2, 3}
 
-// This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
-func TestSimulateValidatorsChange(t *testing.T) {
-	nPeers := 7
-	nVals := 4
-	css, genDoc, config, cleanup := randConsensusNetWithPeers(
-		t,
-		nVals,
-		nPeers,
-		"replay_test",
-		newMockTickerFunc(true),
-		newPersistentKVStoreWithPath)
-	sim.Config = config
-	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
-	sim.CleanupFunc = cleanup
-
-	partSize := types.BlockPartSizeBytes
-
-	newRoundCh := subscribe(css[0].eventBus, types.EventQueryNewRound)
-	proposalCh := subscribe(css[0].eventBus, types.EventQueryCompleteProposal)
-
-	vss := make([]*validatorStub, nPeers)
-	for i := 0; i < nPeers; i++ {
-		vss[i] = newValidatorStub(css[i].privValidator, int32(i))
-	}
-	height, round := css[0].Height, css[0].Round
-
-	// start the machine
-	startTestRound(css[0], height, round)
-	incrementHeight(vss...)
-	ensureNewRound(newRoundCh, height, 0)
-	ensureNewProposal(proposalCh, height, round)
-	rs := css[0].GetRoundState()
-	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
-	ensureNewRound(newRoundCh, height+1, 0)
-
-	// HEIGHT 2
-	height++
-	incrementHeight(vss...)
-	newValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
-	require.NoError(t, err)
-	valPubKey1ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey1)
-	require.NoError(t, err)
-	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempl.TxInfo{})
-	assert.NoError(t, err)
-	propBlock, err := css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	require.NoError(t, err)
-	propBlockParts, err := propBlock.MakePartSet(partSize)
-	require.NoError(t, err)
-	blockID := types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-
-	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
-	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
-	proposal.Signature = p.Signature
-
-	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
-	ensureNewProposal(proposalCh, height, round)
-	rs = css[0].GetRoundState()
-	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
-	ensureNewRound(newRoundCh, height+1, 0)
-
-	// HEIGHT 3
-	height++
-	incrementHeight(vss...)
-	updateValidatorPubKey1, err := css[nVals].privValidator.GetPubKey()
-	require.NoError(t, err)
-	updatePubKey1ABCI, err := cryptoenc.PubKeyToProto(updateValidatorPubKey1)
-	require.NoError(t, err)
-	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
-	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil, mempl.TxInfo{})
-	assert.NoError(t, err)
-	propBlock, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	require.NoError(t, err)
-	propBlockParts, err = propBlock.MakePartSet(partSize)
-	require.NoError(t, err)
-	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-
-	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
-	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
-	proposal.Signature = p.Signature
-
-	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
-	ensureNewProposal(proposalCh, height, round)
-	rs = css[0].GetRoundState()
-	signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:nVals]...)
-	ensureNewRound(newRoundCh, height+1, 0)
-
-	// HEIGHT 4
-	height++
-	incrementHeight(vss...)
-	newValidatorPubKey2, err := css[nVals+1].privValidator.GetPubKey()
-	require.NoError(t, err)
-	newVal2ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey2)
-	require.NoError(t, err)
-	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx2, nil, mempl.TxInfo{})
-	assert.Nil(t, err)
-	newValidatorPubKey3, err := css[nVals+2].privValidator.GetPubKey()
-	require.NoError(t, err)
-	newVal3ABCI, err := cryptoenc.PubKeyToProto(newValidatorPubKey3)
-	require.NoError(t, err)
-	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
-	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil, mempl.TxInfo{})
-	assert.NoError(t, err)
-	propBlock, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	require.NoError(t, err)
-	propBlockParts, err = propBlock.MakePartSet(partSize)
-	require.NoError(t, err)
-	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	newVss := make([]*validatorStub, nVals+1)
-	copy(newVss, vss[:nVals+1])
-	sort.Sort(ValidatorStubsByPower(newVss))
-
-	valIndexFn := func(cssIdx int) int {
-		for i, vs := range newVss {
-			vsPubKey, err := vs.GetPubKey()
-			require.NoError(t, err)
-
-			cssPubKey, err := css[cssIdx].privValidator.GetPubKey()
-			require.NoError(t, err)
-
-			if vsPubKey.Equals(cssPubKey) {
-				return i
-			}
-		}
-		panic(fmt.Sprintf("validator css[%d] not found in newVss", cssIdx))
-	}
-
-	selfIndex := valIndexFn(0)
-
-	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
-	p = proposal.ToProto()
-	if err := vss[3].SignProposal(config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
-	proposal.Signature = p.Signature
-
-	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
-	ensureNewProposal(proposalCh, height, round)
-
-	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx2, nil, mempl.TxInfo{})
-	assert.Nil(t, err)
-
-	rs = css[0].GetRoundState()
-	for i := 0; i < nVals+1; i++ {
-		if i == selfIndex {
-			continue
-		}
-		signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
-	}
-
-	ensureNewRound(newRoundCh, height+1, 0)
-
-	// HEIGHT 5
-	height++
-	incrementHeight(vss...)
-	// Reflect the changes to vss[nVals] at height 3 and resort newVss.
-	newVssIdx := valIndexFn(nVals)
-	newVss[newVssIdx].VotingPower = 25
-	sort.Sort(ValidatorStubsByPower(newVss))
-	selfIndex = valIndexFn(0)
-	ensureNewProposal(proposalCh, height, round)
-	rs = css[0].GetRoundState()
-	for i := 0; i < nVals+1; i++ {
-		if i == selfIndex {
-			continue
-		}
-		signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
-	}
-	ensureNewRound(newRoundCh, height+1, 0)
-
-	// HEIGHT 6
-	height++
-	incrementHeight(vss...)
-	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
-	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx3, nil, mempl.TxInfo{})
-	assert.NoError(t, err)
-	propBlock, err = css[0].createProposalBlock() // changeProposer(t, cs1, vs2)
-	require.NoError(t, err)
-	propBlockParts, err = propBlock.MakePartSet(partSize)
-	require.NoError(t, err)
-	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
-	newVss = make([]*validatorStub, nVals+3)
-	copy(newVss, vss[:nVals+3])
-	sort.Sort(ValidatorStubsByPower(newVss))
-
-	selfIndex = valIndexFn(0)
-	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
-	p = proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
-		t.Fatal("failed to sign bad proposal", err)
-	}
-	proposal.Signature = p.Signature
-
-	// set the proposal block
-	if err := css[0].SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
-		t.Fatal(err)
-	}
-	ensureNewProposal(proposalCh, height, round)
-	rs = css[0].GetRoundState()
-	for i := 0; i < nVals+3; i++ {
-		if i == selfIndex {
-			continue
-		}
-		signAddVotes(css[0], tmproto.PrecommitType, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), newVss[i])
-	}
-	ensureNewRound(newRoundCh, height+1, 0)
-
-	sim.Chain = make([]*types.Block, 0)
-	sim.Commits = make([]*types.Commit, 0)
-	for i := 1; i <= numBlocks; i++ {
-		sim.Chain = append(sim.Chain, css[0].blockStore.LoadBlock(int64(i)))
-		sim.Commits = append(sim.Commits, css[0].blockStore.LoadBlockCommit(int64(i)))
-	}
-}
-
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m, false)
-	}
-	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m, true)
+		testHandshakeReplay(t, config, 0, m)
 	}
 }
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 2, m, false)
-	}
-	for _, m := range modes {
-		testHandshakeReplay(t, config, 2, m, true)
+		testHandshakeReplay(t, config, 2, m)
 	}
 }
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks-1, m, false)
-	}
-	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks-1, m, true)
+		testHandshakeReplay(t, config, numBlocks-1, m)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks, m, false)
+		testHandshakeReplay(t, config, numBlocks, m)
 	}
-	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks, m, true)
-	}
-}
-
-// Test mockProxyApp should not panic when app return ABCIResponses with some empty ResponseDeliverTx
-func TestMockProxyApp(t *testing.T) {
-	sim.CleanupFunc() // clean the test env created in TestSimulateValidatorsChange
-	var validTxs, invalidTxs = 0, 0
-
-	assert.NotPanics(t, func() {
-		abciResWithEmptyDeliverTx := &abci.ResponseFinalizeBlock{
-			TxResults: []*abci.ExecTxResult{},
-		}
-
-		// called when SaveFinalizeBlockResponse:
-		bytes, err := proto.Marshal(abciResWithEmptyDeliverTx)
-		require.NoError(t, err)
-		loadedBlockResp := new(abci.ResponseFinalizeBlock)
-
-		// this also happens sm.LoadFinalizeBlockResponse
-		err = proto.Unmarshal(bytes, loadedBlockResp)
-		require.NoError(t, err)
-
-		mock := newMockProxyApp(loadedBlockResp)
-
-		someTx := []byte("tx")
-		_, err = mock.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: [][]byte{someTx}})
-		require.NoError(t, err)
-	})
-	assert.True(t, validTxs == 1)
-	assert.True(t, invalidTxs == 0)
 }
 
 func tempWALWithData(data []byte) string {
@@ -640,63 +354,64 @@ func tempWALWithData(data []byte) string {
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks.
 // Then restart the app and sync it up with the remaining blocks
-func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint, testValidatorsChange bool) {
-	var chain []*types.Block
-	var commits []*types.Commit
-	var store *mockBlockStore
-	var stateDB dbm.DB
-	var genesisState sm.State
-	if testValidatorsChange {
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
-		defer os.RemoveAll(testConfig.RootDir)
-		stateDB = dbm.NewMemDB()
+func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint) {
+	var (
+		chain        []*types.Block
+		commits      []*types.Commit
+		store        *mockBlockStore
+		stateDB      dbm.DB
+		genesisState sm.State
+		mempool      = emptyMempool{}
+		evpool       = sm.EmptyEvidencePool{}
+	)
 
-		genesisState = sim.GenesisState
-		config = sim.Config
-		chain = append([]*types.Block{}, sim.Chain...) // copy chain
-		commits = sim.Commits
-		store = newMockBlockStore(t, config, genesisState.ConsensusParams)
-	} else { // test single node
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
-		defer os.RemoveAll(testConfig.RootDir)
-		walBody, err := WALWithNBlocks(t, numBlocks)
-		require.NoError(t, err)
-		walFile := tempWALWithData(walBody)
-		config.Consensus.SetWalFile(walFile)
+	testConfig := ResetConfig(fmt.Sprintf("%d_%d_s", nBlocks, mode))
+	t.Cleanup(func() {
+		_ = os.RemoveAll(testConfig.RootDir)
+	})
+	walBody, err := WALWithNBlocks(t, numBlocks)
+	require.NoError(t, err)
+	walFile := tempWALWithData(walBody)
+	config.Consensus.SetWalFile(walFile)
 
-		privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
 
-		wal, err := NewWAL(walFile)
-		require.NoError(t, err)
-		wal.SetLogger(log.TestingLogger())
-		err = wal.Start()
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			if err := wal.Stop(); err != nil {
-				t.Error(err)
-			}
-		})
-		chain, commits, err = makeBlockchainFromWAL(wal)
-		require.NoError(t, err)
-		pubKey, err := privVal.GetPubKey()
-		require.NoError(t, err)
-		stateDB, genesisState, store = stateAndStore(t, config, pubKey, kvstore.AppVersion)
+	wal, err := NewWAL(walFile)
+	require.NoError(t, err)
+	wal.SetLogger(log.TestingLogger())
+	err = wal.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if err := wal.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	chain, commits, err = makeBlockchainFromWAL(wal)
+	require.NoError(t, err)
+	pubKey, err := privVal.GetPubKey()
+	require.NoError(t, err)
+	stateDB, genesisState, store = stateAndStore(t, config, pubKey, kvstore.AppVersion)
 
-	}
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardFinalizeBlockResponses: false,
+	})
+	t.Cleanup(func() {
+		_ = stateStore.Close()
 	})
 	store.chain = chain
 	store.commits = commits
 
 	state := genesisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	state = buildTMStateFromChain(t, config, stateStore, state, chain, nBlocks, mode)
+	state = buildTMStateFromChain(t, config, stateStore, mempool, evpool, state, chain, nBlocks, mode)
 	latestAppHash := state.AppHash
 
 	// make a new client creator
 	kvstoreApp := kvstore.NewPersistentApplication(
 		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
+	t.Cleanup(func() {
+		_ = kvstoreApp.Close()
+	})
 
 	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
 	if nBlocks > 0 {
@@ -709,7 +424,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		})
 		err := stateStore.Save(genesisState)
 		require.NoError(t, err)
-		buildAppStateFromChain(t, proxyApp, stateStore, genesisState, chain, nBlocks, mode)
+		buildAppStateFromChain(t, proxyApp, stateStore, mempool, evpool, genesisState, chain, nBlocks, mode)
 	}
 
 	// Prune block store if requested
@@ -735,7 +450,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		}
 	})
 
-	err := handshaker.Handshake(proxyApp)
+	err = handshaker.Handshake(proxyApp)
 	if expectError {
 		require.Error(t, err)
 		return
@@ -769,7 +484,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 }
 
-func applyBlock(t *testing.T, stateStore sm.Store, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
+func applyBlock(t *testing.T, stateStore sm.Store, mempool mempool.Mempool, evpool sm.EvidencePool, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
 	testPartSize := types.BlockPartSizeBytes
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
@@ -781,7 +496,7 @@ func applyBlock(t *testing.T, stateStore sm.Store, st sm.State, blk *types.Block
 	return newState
 }
 
-func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm.Store,
+func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm.Store, mempool mempool.Mempool, evpool sm.EvidencePool,
 	state sm.State, chain []*types.Block, nBlocks int, mode uint) {
 	// start a new app without handshake, play nBlocks blocks
 	if err := proxyApp.Start(); err != nil {
@@ -803,18 +518,18 @@ func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, mempool, evpool, state, block, proxyApp)
 		}
 	case 1, 2, 3:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, mempool, evpool, state, block, proxyApp)
 		}
 
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
-			state = applyBlock(t, stateStore, state, chain[nBlocks-1], proxyApp)
+			state = applyBlock(t, stateStore, mempool, evpool, state, chain[nBlocks-1], proxyApp)
 		}
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
@@ -826,6 +541,8 @@ func buildTMStateFromChain(
 	t *testing.T,
 	config *cfg.Config,
 	stateStore sm.Store,
+	mempool mempool.Mempool,
+	evpool sm.EvidencePool,
 	state sm.State,
 	chain []*types.Block,
 	nBlocks int,
@@ -854,19 +571,19 @@ func buildTMStateFromChain(
 	case 0:
 		// sync right up
 		for _, block := range chain {
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, mempool, evpool, state, block, proxyApp)
 		}
 
 	case 1, 2, 3:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
-			state = applyBlock(t, stateStore, state, block, proxyApp)
+			state = applyBlock(t, stateStore, mempool, evpool, state, block, proxyApp)
 		}
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
-		applyBlock(t, stateStore, state, chain[len(chain)-1], proxyApp)
+		applyBlock(t, stateStore, mempool, evpool, state, chain[len(chain)-1], proxyApp)
 	default:
 		panic(fmt.Sprintf("unknown mode %v", mode))
 	}
@@ -1182,6 +899,9 @@ func TestHandshakeUpdatesValidators(t *testing.T) {
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
 	app := &mocks.Application{}
+	app.On("Info", mock.Anything, mock.Anything).Return(&abci.ResponseInfo{
+		LastBlockHeight: 0,
+	}, nil)
 	app.On("InitChain", mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{
 		Validators: types.TM2PB.ValidatorUpdates(vals),
 	}, nil)
