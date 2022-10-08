@@ -802,6 +802,7 @@ func randConsensusNetWithPeers(
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 			DiscardFinalizeBlockResponses: false,
 		})
+		t.Cleanup(func() { _ = stateStore.Close() })
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		configRootDirs = append(configRootDirs, thisConfig.RootDir)
@@ -813,9 +814,16 @@ func randConsensusNetWithPeers(
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			tempKeyFile := t.TempDir()
-			tempStateFile := t.TempDir()
-			privVal = privval.GenFilePV(tempKeyFile, tempStateFile)
+			tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
+			if err != nil {
+				panic(err)
+			}
+			tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
+			if err != nil {
+				panic(err)
+			}
+
+			privVal = privval.GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 		}
 
 		app := appFunc(path.Join(config.DBDir(), fmt.Sprintf("%s_%d", testName, i)))

@@ -26,7 +26,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/mempool"
-	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -115,7 +114,7 @@ func sendTxs(ctx context.Context, cs *State) {
 				if resp.Code != 0 {
 					panic(fmt.Sprintf("Unexpected code: %d, log: %s", resp.Code, resp.Log))
 				}
-			}, mempl.TxInfo{}); err != nil {
+			}, mempool.TxInfo{}); err != nil {
 				panic(err)
 			}
 			i++

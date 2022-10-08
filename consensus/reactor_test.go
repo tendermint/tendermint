@@ -409,7 +409,6 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	t.Skip()
 	nPeers := 7
 	nVals := 4
 	css, _, _, cleanup := randConsensusNetWithPeers(
@@ -563,6 +562,7 @@ func waitForAndValidateBlock(
 		for _, tx := range txs {
 			err := assertMempool(css[j].txNotifier).CheckTx(tx, func(resp *abci.ResponseCheckTx) {
 				require.False(t, resp.IsErr())
+				fmt.Println(resp)
 			}, mempl.TxInfo{})
 			require.NoError(t, err)
 		}
