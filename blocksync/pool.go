@@ -603,7 +603,7 @@ OUTER_LOOP:
 			}
 			peer = bpr.pool.pickIncrAvailablePeer(bpr.height)
 			if peer == nil {
-				// log.Info("No peers available", "height", height)
+				bpr.Logger.Debug("No peers available", "height", bpr.height)
 				time.Sleep(requestIntervalMS * time.Millisecond)
 				continue PICK_PEER_LOOP
 			}
@@ -615,14 +615,21 @@ OUTER_LOOP:
 
 		to := time.NewTimer(requestRetrySeconds * time.Second)
 		// Send request and wait.
+		bpr.pool.sendRequest(bpr.height, peer.id)
 	WAIT_LOOP:
 		for {
-			bpr.pool.sendRequest(bpr.height, peer.id)
 			select {
+			case <-bpr.pool.Quit():
+				if err := bpr.Stop(); err != nil {
+					bpr.Logger.Error("Error stopped requester", "err", err)
+				}
+				return
+			case <-bpr.Quit():
+				return
 			case <-to.C:
-				bpr.pool.Logger.Debug("Retrying block pool request after timeout", "height", bpr.height, "peer", bpr.peerID)
+				bpr.Logger.Debug("Retrying block request after timeout", "height", bpr.height, "peer", bpr.peerID)
 				to.Reset(requestRetrySeconds * time.Second)
-				continue WAIT_LOOP
+				continue OUTER_LOOP
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {
 					bpr.reset()
@@ -632,26 +639,9 @@ OUTER_LOOP:
 				}
 			case <-bpr.gotBlockCh:
 				// We got a block!
-				// Exit the for loop and wait until we receive a quit signal.
-				break WAIT_LOOP
-			case <-bpr.pool.Quit():
-				if err := bpr.Stop(); err != nil {
-					bpr.Logger.Error("Error stopped requester", "err", err)
-				}
-				return
-			case <-bpr.Quit():
-				return
+				// Continue the for-loop and wait til Quit.
+				continue WAIT_LOOP
 			}
-		}
-
-		select {
-		case <-bpr.pool.Quit():
-			if err := bpr.Stop(); err != nil {
-				bpr.Logger.Error("Error stopped requester", "err", err)
-			}
-			return
-		case <-bpr.Quit():
-			return
 		}
 	}
 }
