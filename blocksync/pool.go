@@ -628,7 +628,7 @@ OUTER_LOOP:
 				return
 			case <-to.C:
 				bpr.Logger.Debug("Retrying block request after timeout", "height", bpr.height, "peer", bpr.peerID)
-				to.Reset(requestRetrySeconds * time.Second)
+				// Simulate a redo
 				bpr.reset()
 				continue OUTER_LOOP
 			case peerID := <-bpr.redoCh:
