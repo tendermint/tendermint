@@ -140,7 +140,7 @@ func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 		{
 			ID:                  BlocksyncChannel,
 			Priority:            5,
-			SendQueueCapacity:   30,
+			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: MaxMsgSize,
 		},
