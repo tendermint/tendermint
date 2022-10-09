@@ -32,7 +32,7 @@ const (
 	maxTotalRequesters        = 600
 	maxPendingRequests        = maxTotalRequesters
 	maxPendingRequestsPerPeer = 20
-	requestRetrySeconds       = 15
+	requestRetrySeconds       = 30
 
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
 	// enough. If a peer is not sending us data at at least that rate, we
