@@ -146,7 +146,7 @@ type blockSyncReactor interface {
 // result in replacing it with the custom one.
 //
 //   - MEMPOOL
-//   - BLOCKCHAIN
+//   - BLOCKSYNC
 //   - CONSENSUS
 //   - EVIDENCE
 //   - PEX
@@ -303,7 +303,7 @@ func createAndStartIndexerService(
 		blockIndexer = &blockidxnull.BlockerIndexer{}
 	}
 
-	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus)
+	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus, false)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	if err := indexerService.Start(); err != nil {
@@ -335,8 +335,10 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	// Log the version info.
 	logger.Info("Version info",
 		"tendermint_version", version.TMCoreSemVer,
+		"abci", version.ABCISemVer,
 		"block", version.BlockProtocol,
 		"p2p", version.P2PProtocol,
+		"commit_hash", version.TMGitCommitHash,
 	)
 
 	// If the state and software differ in block version, at least log it.
@@ -439,7 +441,7 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	return evidenceReactor, evidencePool, nil
 }
 
-func createBlockchainReactor(config *cfg.Config,
+func createBlocksyncReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
@@ -455,7 +457,7 @@ func createBlockchainReactor(config *cfg.Config,
 		return nil, fmt.Errorf("unknown fastsync version %s", config.BlockSync.Version)
 	}
 
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	bcReactor.SetLogger(logger.With("module", "blocksync"))
 	return bcReactor, nil
 }
 
@@ -582,7 +584,7 @@ func createSwitch(config *cfg.Config,
 	)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
-	sw.AddReactor("BLOCKCHAIN", bcReactor)
+	sw.AddReactor("BLOCKSYNC", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 	sw.AddReactor("STATESYNC", stateSyncReactor)
@@ -801,7 +803,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// make block executor for consensus and blockchain reactors to execute blocks
+	// make block executor for consensus and blocksync reactors to execute blocks
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
 		logger.With("module", "state"),
@@ -812,10 +814,10 @@ func NewNode(config *cfg.Config,
 		sm.BlockExecutorWithMetrics(smMetrics),
 	)
 
-	// Make BlockchainReactor. Don't start block sync if we're doing a state sync first.
-	bcReactor, err := createBlockchainReactor(config, state, blockExec, blockStore, blockSync && !stateSync, logger)
+	// Make BlocksyncReactor. Don't start block sync if we're doing a state sync first.
+	bcReactor, err := createBlocksyncReactor(config, state, blockExec, blockStore, blockSync && !stateSync, logger)
 	if err != nil {
-		return nil, fmt.Errorf("could not create blockchain reactor: %w", err)
+		return nil, fmt.Errorf("could not create blocksync reactor: %w", err)
 	}
 
 	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
@@ -988,7 +990,7 @@ func (n *Node) OnStart() error {
 	if n.stateSync {
 		bcR, ok := n.bcReactor.(blockSyncReactor)
 		if !ok {
-			return fmt.Errorf("this blockchain reactor does not support switching from state sync")
+			return fmt.Errorf("this blocksync reactor does not support switching from state sync")
 		}
 		err := startStateSync(n.stateSyncReactor, bcR, n.consensusReactor, n.stateSyncProvider,
 			n.config.StateSync, n.config.BlockSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
