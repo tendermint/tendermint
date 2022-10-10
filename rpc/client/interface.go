@@ -124,7 +124,7 @@ type EventsClient interface {
 }
 
 // TODO(creachadair): This interface should be removed once the streaming event
-// interface is removed in Tendermint v0.37.
+// interface is removed in Tendermint v0.39.
 type SubscriptionClient interface {
 	// Subscribe issues a subscription request for the given subscriber ID and
 	// query. This method does not block: If subscription fails, it reports an
