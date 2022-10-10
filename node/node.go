@@ -894,7 +894,13 @@ func NewNode(config *cfg.Config,
 	if config.RPC.PprofListenAddress != "" {
 		go func() {
 			logger.Info("Starting pprof server", "laddr", config.RPC.PprofListenAddress)
-			logger.Error("pprof server error", "err", http.ListenAndServe(config.RPC.PprofListenAddress, nil))
+			s := &http.Server{
+				Addr:              config.RPC.PprofListenAddress,
+				ReadHeaderTimeout: readHeaderTimeout,
+			}
+			if err := s.ListenAndServe(); err != http.ErrServerClosed {
+				logger.Error("pprof server error", "err", err)
+			}
 		}()
 	}
 
