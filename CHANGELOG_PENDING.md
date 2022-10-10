@@ -26,3 +26,4 @@
   `[storage]` section delimiter in the generated configuration file - this has
   now been fixed
 - [p2p] \#9500 prevent peers who have errored being added to the peer_set (@jmalicevic)
+- [indexer] \#9473 fix bug that caused the psql indexer to index empty blocks whenever one of the transactions returned a non zero code. The relevant deduplication logic has been moved within the kv indexer only (@cmwaters)
