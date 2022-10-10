@@ -104,6 +104,18 @@ func ToRequestProcessProposal(req *RequestProcessProposal) *Request {
 	}
 }
 
+func ToRequestExtendVote(req *RequestExtendVote) *Request {
+	return &Request{
+		Value: &Request_ExtendVote{req},
+	}
+}
+
+func ToRequestVerifyVoteExtension(req *RequestVerifyVoteExtension) *Request {
+	return &Request{
+		Value: &Request_VerifyVoteExtension{req},
+	}
+}
+
 func ToRequestFinalizeBlock(req *RequestFinalizeBlock) *Request {
 	return &Request{
 		Value: &Request_FinalizeBlock{req},
@@ -193,6 +205,18 @@ func ToResponsePrepareProposal(res *ResponsePrepareProposal) *Response {
 func ToResponseProcessProposal(res *ResponseProcessProposal) *Response {
 	return &Response{
 		Value: &Response_ProcessProposal{res},
+	}
+}
+
+func ToResponseExtendVote(res *ResponseExtendVote) *Response {
+	return &Response{
+		Value: &Response_ExtendVote{res},
+	}
+}
+
+func ToResponseVerifyVoteExtension(res *ResponseVerifyVoteExtension) *Response {
+	return &Response{
+		Value: &Response_VerifyVoteExtension{res},
 	}
 }
 

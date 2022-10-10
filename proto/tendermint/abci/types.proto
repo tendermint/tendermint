@@ -30,6 +30,8 @@ service ABCI {
       returns (ResponseApplySnapshotChunk);
   rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
   rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
+  rpc ExtendVote(RequestExtendVote) returns (ResponseExtendVote);
+  rpc VerifyVoteExtension(RequestVerifyVoteExtension) returns (ResponseVerifyVoteExtension);
   rpc FinalizeBlock(RequestFinalizeBlock) returns (ResponseFinalizeBlock);
 }
 
@@ -38,20 +40,22 @@ service ABCI {
 
 message Request {
   oneof value {
-    RequestEcho               echo                 = 1;
-    RequestFlush              flush                = 2;
-    RequestInfo               info                 = 3;
-    RequestInitChain          init_chain           = 5;
-    RequestQuery              query                = 6;
-    RequestCheckTx            check_tx             = 8;
-    RequestCommit             commit               = 11;
-    RequestListSnapshots      list_snapshots       = 12;
-    RequestOfferSnapshot      offer_snapshot       = 13;
-    RequestLoadSnapshotChunk  load_snapshot_chunk  = 14;
-    RequestApplySnapshotChunk apply_snapshot_chunk = 15;
-    RequestPrepareProposal    prepare_proposal     = 16;
-    RequestProcessProposal    process_proposal     = 17;
-    RequestFinalizeBlock      finalize_block       = 20;
+    RequestEcho                echo                  = 1;
+    RequestFlush               flush                 = 2;
+    RequestInfo                info                  = 3;
+    RequestInitChain           init_chain            = 5;
+    RequestQuery               query                 = 6;
+    RequestCheckTx             check_tx              = 8;
+    RequestCommit              commit                = 11;
+    RequestListSnapshots       list_snapshots        = 12;
+    RequestOfferSnapshot       offer_snapshot        = 13;
+    RequestLoadSnapshotChunk   load_snapshot_chunk   = 14;
+    RequestApplySnapshotChunk  apply_snapshot_chunk  = 15;
+    RequestPrepareProposal     prepare_proposal      = 16;
+    RequestProcessProposal     process_proposal      = 17;
+    RequestExtendVote          extend_vote           = 18;
+    RequestVerifyVoteExtension verify_vote_extension = 19;
+    RequestFinalizeBlock       finalize_block        = 20;
   }
   reserved 4, 7, 9, 10;  // SetOption, BeginBlock, DeliverTx, EndBlock
 }
@@ -149,6 +153,24 @@ message RequestProcessProposal {
   bytes proposer_address = 8;
 }
 
+// Extends a vote with application-injected data
+message RequestExtendVote {
+  // the hash of the block of data that this vote will be signing
+  bytes block_hash = 1;
+  // the height of the block that this vote will be signing
+  int64 height = 2;
+}
+
+// Verify the vote extension
+message RequestVerifyVoteExtension {
+  // the hash of the block of data that this received vote corresponds to
+  bytes block_hash = 1;
+  // the validator that signed the vote extension
+  bytes validator_address = 2;
+  int64 height            = 3;
+  bytes vote_extension    = 4;
+}
+
 message RequestFinalizeBlock {
   repeated bytes       txs                 = 1;
   CommitInfo           decided_last_commit = 2 [(gogoproto.nullable) = false];
@@ -167,21 +189,23 @@ message RequestFinalizeBlock {
 
 message Response {
   oneof value {
-    ResponseException          exception            = 1;
-    ResponseEcho               echo                 = 2;
-    ResponseFlush              flush                = 3;
-    ResponseInfo               info                 = 4;
-    ResponseInitChain          init_chain           = 6;
-    ResponseQuery              query                = 7;
-    ResponseCheckTx            check_tx             = 9;
-    ResponseCommit             commit               = 12;
-    ResponseListSnapshots      list_snapshots       = 13;
-    ResponseOfferSnapshot      offer_snapshot       = 14;
-    ResponseLoadSnapshotChunk  load_snapshot_chunk  = 15;
-    ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
-    ResponsePrepareProposal    prepare_proposal     = 17;
-    ResponseProcessProposal    process_proposal     = 18;
-    ResponseFinalizeBlock      finalize_block       = 21;
+    ResponseException           exception             = 1;
+    ResponseEcho                echo                  = 2;
+    ResponseFlush               flush                 = 3;
+    ResponseInfo                info                  = 4;
+    ResponseInitChain           init_chain            = 6;
+    ResponseQuery               query                 = 7;
+    ResponseCheckTx             check_tx              = 9;
+    ResponseCommit              commit                = 12;
+    ResponseListSnapshots       list_snapshots        = 13;
+    ResponseOfferSnapshot       offer_snapshot        = 14;
+    ResponseLoadSnapshotChunk   load_snapshot_chunk   = 15;
+    ResponseApplySnapshotChunk  apply_snapshot_chunk  = 16;
+    ResponsePrepareProposal     prepare_proposal      = 17;
+    ResponseProcessProposal     process_proposal      = 18;
+    ResponseExtendVote          extend_vote           = 19;
+    ResponseVerifyVoteExtension verify_vote_extension = 20;
+    ResponseFinalizeBlock       finalize_block        = 21;
   }
   reserved 5, 8, 10, 11;  // SetOption, BeginBlock, DeliverTx, EndBlock
 }
@@ -299,6 +323,24 @@ message ResponseProcessProposal {
   }
 }
 
+message ResponseExtendVote {
+  bytes vote_extension = 1;
+}
+
+message ResponseVerifyVoteExtension {
+  VerifyStatus status = 1;
+
+  enum VerifyStatus {
+    UNKNOWN = 0;
+    ACCEPT  = 1;
+    // Rejecting the vote extension will reject the entire precommit by the sender.
+    // Incorrectly implementing this thus has liveness implications as it may affect
+    // tendermint's ability to receive 2/3+ valid votes to finalize the block.
+    // Honest nodes should never be rejected.
+    REJECT = 2;
+  }
+}
+
 message ResponseFinalizeBlock {
   // set of block events emmitted as part of executing the block
   repeated Event events = 1
@@ -323,6 +365,9 @@ message CommitInfo {
   repeated VoteInfo votes = 2 [(gogoproto.nullable) = false];
 }
 
+// ExtendedCommitInfo is similar to CommitInfo except that it is only used in
+// the PrepareProposal request such that Tendermint can provide vote extensions
+// to the application.
 message ExtendedCommitInfo {
   // The round at which the block proposer decided in the previous height.
   int32 round = 1;
@@ -397,9 +442,12 @@ message VoteInfo {
 }
 
 message ExtendedVoteInfo {
-  Validator validator         = 1 [(gogoproto.nullable) = false];
-  bool      signed_last_block = 2;
-  bytes     vote_extension    = 3;  // Reserved for future use
+  // The validator that sent the vote.
+  Validator validator = 1 [(gogoproto.nullable) = false];
+  // Indicates whether the validator signed the last block, allowing for rewards based on validator availability.
+  bool signed_last_block = 2;
+  // Non-deterministic extension provided by the sending validator's application.
+  bytes vote_extension = 3;
 }
 
 enum MisbehaviorType {
