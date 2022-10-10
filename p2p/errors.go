@@ -145,13 +145,6 @@ func (e ErrTransportClosed) Error() string {
 	return "transport has been closed"
 }
 
-// ErrPeerRemoval is raised when attempting to remove a peer results in an error.
-type ErrPeerRemoval struct{}
-
-func (e ErrPeerRemoval) Error() string {
-	return "peer removal failed"
-}
-
 //-------------------------------------------------------------------
 
 type ErrNetAddressNoID struct {
