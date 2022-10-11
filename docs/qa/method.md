@@ -168,7 +168,8 @@ This section explains how the tests were carried out for reproducibility purpose
    All nodes should be increasing their heights.
 7. On a different shell,
     * run `make runload ROTATE_CONNECTIONS=X ROTATE_TX_RATE=Y`
-    * `X` and `Y` should reflect a load below the saturation point (see, e.g., [this report](./v034/README.md) for further info)
+    * `X` and `Y` should reflect a load below the saturation point (see, e.g.,
+      [this paragraph](./v034/README.md#finding-the-saturation-point) for further info)
 8. Run `make rotate` to start the script that creates the ephemeral nodes, and kills them when they are caught up.
     * WARNING: If you run this command from your laptop, the laptop needs to be up and connected for full length
       of the experiment.
