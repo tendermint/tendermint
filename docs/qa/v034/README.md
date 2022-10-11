@@ -54,14 +54,14 @@ in order to further study the performance of this release.
 This is a plot of the CPU load of the load runner for `r=400,c=8`,
 where we can see that the load (average over 1 minute) stays below 1 most of the time.
 
-![load-load-runner](./v034_r400c8_load-runner.png)
+![load-load-runner](./img/v034_r400c8_load-runner.png)
 
 ## Examining latencies
 
 The method described [here](../method.md) allows us to plot the latencies of transactions
 for all experiments.
 
-![all-latencies](./all.svg)
+![all-latencies](./img/v034_r400c8_latencies.png)
 
 As we can see, even the experiments beyond the saturation diagonal managed to keep
 transaction latency stable (i.e. not constantly increasing).
@@ -88,11 +88,11 @@ The mempool size, a count of the number of transactions in the mempool, was show
 at all full nodes. It did not exhibit any unconstrained growth.
 The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools.
 
-![mempool-cumulative](./v034_r400c8_mempool_size.png)
+![mempool-cumulative](./img/v034_r400c8_mempool_size.png)
 
 The plot below shows evolution of the average over all full nodes, which oscillate around 140 outstanding transactions.
 
-![mempool-avg](./v034_r400c8_mempool_size_avg.png)
+![mempool-avg](./img/v034_r400c8_mempool_size_avg.png)
 
 The peaks observed coincide with the moments when some nodes process to round 1 of consensus (see below).
 
@@ -101,26 +101,26 @@ The peaks observed coincide with the moments when some nodes process to round 1 
 The number of peers was stable at all nodes.
 It was higher for the seed nodes (around 140) than for the rest (between 21 and 71).
 
-![peers](./v034_r400c8_peers.png)
+![peers](./img/v034_r400c8_peers.png)
 
 ### Consensus Rounds per Height
 
 Most heights took just one round, but some nodes needed to advance to round 1 at some point.
 
-![rounds](./v034_r400c8_rounds.png)
+![rounds](./img/v034_r400c8_rounds.png)
 
 ### Blocks Produced per Minute, Transactions Processed per Minute
 
 The blocks produced per minute are the gradient of this plot.
 
-![heights](./v034_r400c8_heights.png)
+![heights](./img/v034_r400c8_heights.png)
 
 Over a period of 2 minutes, the height goes from 967 to 1033.
-This result in an average of 33 blocks produced per minute.
+This results in an average of 33 blocks produced per minute.
 
 The transactions processed per minute are the gradient of this plot.
 
-![total-txs](./v034_r400c8_total-txs.png)
+![total-txs](./img/v034_r400c8_total-txs.png)
 
 Over a period of 2 minutes, the total goes from 25362 to 31472 transactions,
 resulting in 3055 transactions per minute. However, we can see in the plot that
@@ -132,11 +132,11 @@ we obtain 3984 transactions per minute.
 
 Resident Set Size of all monitored processes is plotted below.
 
-![rss](./v034_r400c8_rss.png)
+![rss](./img/v034_r400c8_rss.png)
 
 The average over all processes oscillates around 420 MiB and does not demonstrate unconstrained growth.
 
-![rss-avg](./v034_r400c8_rss_avg.png)
+![rss-avg](./img/v034_r400c8_rss_avg.png)
 
 ### CPU utilization
 
@@ -144,16 +144,106 @@ The best metric from Prometheus to gauge CPU utilization in a Unix machine is `l
 as it usually appears in the
 [output of `top`](https://www.digitalocean.com/community/tutorials/load-average-in-linux).
 
-![load1](./v034_r400c8_load1.png)
+![load1](./img/v034_r400c8_load1.png)
 
 It is contained between 0.3 and 4.2 at all nodes.
 
 ## Test Result
 
 **Result: N/A**
+
 Date: 2022-09-23
+
 Version: a41c5eec1109121376de3d32379613856d4a47dd
 
 # Rotating Node Testnet
 
-TODO
+We reuse the work done on the 200 node testnet where we found the saturation point,
+and will thus focus on the load `c=4,r=800`.
+
+# Latencies
+
+The plot of all latencies can be seen in the following plot.
+
+![rotating-all-latencies](./img/v034_rotating_latencies.png)
+
+We can observe there are some very high latencies, towards the end of the test.
+Upon suspicion that they are duplicate transactions, we examined the latencies
+raw file and discovered there are more than 100K duplicate transactions.
+
+The following plot shows the latencies file where all duplicate transactions have
+been removed, i.e., only the first occurrence of a duplicate transaction is kept.
+
+![rotating-all-latencies-uniq](./img/v034_rotating_latencies_uniq.png)
+
+This problem, existing in `v0.34.x`, will need to be addressed.
+
+## Prometheus Metrics
+
+The set of metrics shown here are less than for the 200 node experiment.
+We are only interested in those for which the catch-up process (blocksync) may have an impact.
+
+### Blocks and Transactions per minute
+
+Just as shown for the 200 node test, the blocks produced per minute are the gradient of this plot.
+
+![rotating-heights](./img/v034_rotating_heights.png)
+
+Over a period of 5229 seconds, the height goes from 2 to 3638.
+This results in an average of 41 blocks produced per minute.
+
+The following plot shows only the heights reported by ephemeral nodes
+(which are also included in the plot above). Note that the _height_ metric
+is only showed _once the node has switched to consensus_, hence the gaps
+when nodes are killed, wiped out, started from scratch, and catching up.
+
+![rotating-heights-ephe](./img/v034_rotating_heights_ephe.png)
+
+The transactions processed per minute are the gradient of this plot.
+
+![rotating-total-txs](./img/v034_rotating_total-txs.png)
+
+The small lines we see periodically close to `y=0` are the transactions that
+ephemeral nodes start processing when they are caught up.
+
+Over a period of 5229 minutes, the total goes from 0 to 387697 transactions,
+resulting in 4449 transactions per minute. We can see some abrupt changes in
+the plot's gradient. This will need to be investigated.
+
+### Peers
+
+The plot below shows the evolution in peers throughout the experiment.
+The periodic changes observed are due to the ephemeral nodes being stopped,
+wiped out, and recreated.
+
+![rotating-peers](./img/v034_rotating_peers.png)
+
+The validators' plots are concentrated at the higher part of the graph, whereas the ephemeral nodes
+are mostly at the lower part.
+
+### Memory Resident Set Size
+
+The average Resident Set Size (RSS) over all processes seems stable, and slightly growing toward the end.
+This might be related to the increased in transaction load observed above.
+
+![rotating-rss-avg](./img/v034_rotating_rss_avg.png)
+
+The memory taken by the validators and the ephemeral nodes (when they are up) is comparable.
+
+### CPU utilization
+
+The plot shows metric `load1` for all nodes.
+
+![rotating-load1](./img/v034_rotating_load1.png)
+
+It is contained under 5 most of the time, which is considered normal load.
+The purple line, which follows a different pattern is the validator receiving all
+transactions, via RPC, from the load runner process.
+
+## Test Result
+
+**Result: N/A**
+
+Date: 2022-10-10
+
+Version: a28c987f5a604ff66b515dd415270063e6fb069d

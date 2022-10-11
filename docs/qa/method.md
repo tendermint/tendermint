@@ -70,8 +70,8 @@ The Core team should improve it at every iteration to increase the amount of aut
 
 1. Unzip the blockstore into a directory
 2. Extract the latency report and the raw latencies for all the experiments. Run these commands from the directory containing the blockstore
-    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@5fe1a7241 --database-type goleveldb --data-dir ./ > results/report.txt`
-    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@5fe1a7241 --database-type goleveldb --data-dir ./ --csv results/raw.csv`
+    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@4f3e87b2e --database-type goleveldb --data-dir ./ > results/report.txt`
+    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@4f3e87b2e --database-type goleveldb --data-dir ./ --csv results/raw.csv`
 3. File `report.txt` contains an unordered list of experiments with varying concurrent connections and transaction rate
     * Create files `report04.txt`, `report08.txt`, `report16.txt` and, for each experiment in file `report.txt`,
       copy its related lines to the filename that matches the number of connections.
@@ -89,7 +89,7 @@ The Core team should improve it at every iteration to increase the amount of aut
         echo $i $j $c "$uuids[$c]"
         filename=c${i}_r${j}
         grep $uuids[$c] raw.csv > ${filename}.csv
-        cat ${filename}.csv | tr , ' ' | awk '{ print $3, $2 }' > ${filename}.dat 
+        cat ${filename}.csv | tr , ' ' | awk '{ print $2, $3 }' > ${filename}.dat
         c=$(expr $c + 1)
       done
     done
@@ -139,14 +139,14 @@ The Core team should improve it at every iteration to increase the amount of aut
     title(t);
     ```
 
-10. Use Octave's GUI menu to save the plot (e.g. as `.svg`)
+10. Use Octave's GUI menu to save the plot (e.g. as `.png`)
 
 11. Repeat steps 9 and 10 to obtain as many plots as deemed necessary.
 
 ### Extracting Prometheus Metrics
 
 1. Stop the prometheus server if it is running as a service (e.g. a `systemd` unit).
-2. Unzip the prometheus database retrieved from the testnet, and move it to replace the 
+2. Unzip the prometheus database retrieved from the testnet, and move it to replace the
    local prometheus database.
 3. Start the prometheus server and make sure no error logs appear at start up.
 4. Introduce the metrics you want to gather or plot.
@@ -166,19 +166,29 @@ This section explains how the tests were carried out for reproducibility purpose
 5. Follow steps 6-10 of the `README.md` to configure and start the "stable" part of the rotating node testnet
 6. As a sanity check, connect to the Prometheus node's web interface and check the graph for the `tendermint_consensus_height` metric.
    All nodes should be increasing their heights.
-7. `ssh` into the `testnet-load-runner` and edit script YYYYYY
-    * Set the right IP
-    * Edit the parameters of the `load` process to have a duration of 4 hours (`-T 14400`)
-    * Launch the script
-8. Run `make rotate` to start the scripts that creates the ephemeral nodes, and kills them when they are caught up.
-    * WARNING: If you run this command from your laptop, the laptop needs to be up and connected for the 4 hours
-      that the test lasts.
-9. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
-10. Verify that the data was collected without errors
+7. On a different shell,
+    * run `make runload ROTATE_CONNECTIONS=X ROTATE_TX_RATE=Y`
+    * `X` and `Y` should reflect a load below the saturation point (see, e.g., [this report](./v034/README.md) for further info)
+8. Run `make rotate` to start the script that creates the ephemeral nodes, and kills them when they are caught up.
+    * WARNING: If you run this command from your laptop, the laptop needs to be up and connected for full length
+      of the experiment.
+9. When the height of the chain reaches 3000, stop the `make rotate` script
+10. When the rotate script has made two iterations (i.e., all ephemeral nodes have caught up twice)
+    after height 3000 was reached, stop `make rotate`
+11. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
+12. Verify that the data was collected without errors
     * all Tendermint nodes' blockstore DB
     * the Prometheus database from the Prometheus node
-11. **Run `make terraform-destroy`**
+    * for extra care, you can run `zip -T` on the `prometheus.zip` file and one of the `blockstore.db.zip` files
+13. **Run `make terraform-destroy`**
+
+Steps 8 to 10 are highly manual at the moment and will be improved in next iterations.
 
 ## Result Extraction
 
-TODO
+In order to obtain a latency plot, follow the instructions above for the 200 node experiment, but:
+
+* The `results.txt` file contains only one experiment
+* Therefore, no need for any `for` loops
+
+As for prometheus, the same method as for the 200 node experiment can be applied.
