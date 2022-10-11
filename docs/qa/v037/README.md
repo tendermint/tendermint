@@ -86,7 +86,7 @@ The plot below shows evolution of the average over all full nodes, which oscilla
 
 ![mempool-avg](./img/v037_r400c8_mempool_size_avg.png)
 
-The peaks observed coincide with the moments when some nodes process to round 1 of consensus (see below).
+The peaks observed coincide with the moments when some nodes reached to round 1 of consensus (see below).
 
 **These plots yield similar results to the baseline**:
 

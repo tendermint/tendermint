@@ -87,6 +87,8 @@ This section further examines key metrics for this experiment extracted from Pro
 The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous
 at all full nodes. It did not exhibit any unconstrained growth.
 The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools.
+The two spikes that can be observed correspond to a period where consensus instances reached round 1
+at some nodes.
 
 ![mempool-cumulative](./img/v034_r400c8_mempool_size.png)
 
