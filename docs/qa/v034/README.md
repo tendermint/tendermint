@@ -16,7 +16,7 @@ from being stable: the load runner tries to produce slightly more transactions t
 be processed by the testnet.
 
 The following table summarizes the results for v0.34.x, for the different experiments
-(extracted from file [`v034_report_tabbed.txt`](./v034_report_tabbed.txt)).
+(extracted from file [`v034_report_tabbed.txt`](./img/v034_report_tabbed.txt)).
 
 The X axis of this table is `c`, the number of connections created by the load runner process to the target node.
 The Y axis of this table is `r`, the rate or number of transactions issued per second.

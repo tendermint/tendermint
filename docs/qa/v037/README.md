@@ -15,7 +15,7 @@ For further details, see [this paragraph](../v034/README.md#finding-the-saturati
 in the baseline version.
 
 The following table summarizes the results for v0.37.x, for the different experiments
-(extracted from file [`v037_report_tabbed.txt`](./v037_report_tabbed.txt)).
+(extracted from file [`v037_report_tabbed.txt`](./img/v037_report_tabbed.txt)).
 
 The X axis of this table is `c`, the number of connections created by the load runner process to the target node.
 The Y axis of this table is `r`, the rate or number of transactions issued per second.
@@ -86,7 +86,7 @@ The plot below shows evolution of the average over all full nodes, which oscilla
 
 ![mempool-avg](./img/v037_r400c8_mempool_size_avg.png)
 
-The peaks observed coincide with the moments when some nodes reached to round 1 of consensus (see below).
+The peaks observed coincide with the moments when some nodes reached round 1 of consensus (see below).
 
 **These plots yield similar results to the baseline**:
 
