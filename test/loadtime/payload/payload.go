@@ -28,7 +28,10 @@ func NewBytes(p *Payload) ([]byte, error) {
 	if p.Size < uint64(us) {
 		return nil, fmt.Errorf("configured size %d not large enough to fit unpadded transaction of size %d", p.Size, us)
 	}
-	p.Padding = make([]byte, p.Size-uint64(us))
+
+	// We halve the padding size because we transform the TX to hex
+	// We add 1 to account for the initial padding byte
+	p.Padding = make([]byte, (p.Size-uint64(us))/2+1) //
 	_, err = rand.Read(p.Padding)
 	if err != nil {
 		return nil, err
@@ -37,10 +40,11 @@ func NewBytes(p *Payload) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	h := []byte(fmt.Sprintf("%X", b))
 
 	// prepend a single key so that the kv store only ever stores a single
 	// transaction instead of storing all tx and ballooning in size.
-	return append([]byte(keyPrefix), b...), nil
+	return append([]byte(keyPrefix), h...), nil
 }
 
 // FromBytes extracts a paylod from the byte representation of the payload.
@@ -83,5 +87,6 @@ func CalculateUnpaddedSize(p *Payload) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return len(b) + len(keyPrefix), nil
+	h := []byte(fmt.Sprintf("%X", b))
+	return len(h) + len(keyPrefix), nil
 }
