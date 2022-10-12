@@ -50,17 +50,17 @@ func NewBytes(p *Payload) ([]byte, error) {
 // FromBytes leaves the padding untouched, returning it to the caller to handle
 // or discard per their preference.
 func FromBytes(b []byte) (*Payload, error) {
-	tr_h := bytes.TrimPrefix(b, []byte(keyPrefix))
-	if bytes.Equal(b, tr_h) {
+	trH := bytes.TrimPrefix(b, []byte(keyPrefix))
+	if bytes.Equal(b, trH) {
 		return nil, fmt.Errorf("payload bytes missing key prefix '%s'", keyPrefix)
 	}
-	tr_b, err := hex.DecodeString(string(tr_h))
+	trB, err := hex.DecodeString(string(trH))
 	if err != nil {
 		return nil, err
 	}
 
 	p := &Payload{}
-	err = proto.Unmarshal(tr_b, p)
+	err = proto.Unmarshal(trB, p)
 	if err != nil {
 		return nil, err
 	}
