@@ -59,6 +59,7 @@ type syncer struct {
 	tempDir       string
 	chunkFetchers int32
 	retryTimeout  time.Duration
+	restoreHeight uint64
 
 	mtx    tmsync.RWMutex
 	chunks *chunkQueue
@@ -83,6 +84,7 @@ func newSyncer(
 		tempDir:       tempDir,
 		chunkFetchers: cfg.ChunkFetchers,
 		retryTimeout:  cfg.ChunkRequestTimeout,
+		restoreHeight: cfg.RestoreHeight,
 	}
 }
 
@@ -313,6 +315,37 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format,
 		"hash", log.NewLazySprintf("%X", snapshot.Hash))
+
+	return state, commit, nil
+}
+
+// LocalSync restores stateStore and blockStore state which is not included in the snapshot
+// This function assumes that the implicit trusted local snapshot chunks have already been applied
+// State restoration depends on heights after the restored snapshot so the RPC dependency remains
+func (s *syncer) LocalSync() (sm.State, *types.Commit, error) {
+	pctx, pcancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer pcancel()
+
+	// Optimistically build new state, so we don't discover any light client failures at the end.
+	state, err := s.stateProvider.State(pctx, s.restoreHeight)
+	if err != nil {
+		s.logger.Info("failed to fetch and verify tendermint state", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
+	}
+	commit, err := s.stateProvider.Commit(pctx, s.restoreHeight)
+	if err != nil {
+		s.logger.Info("failed to fetch and verify commit", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
+	}
+
+	// Done! 🎉
+	s.logger.Info("🎉 Local Snapshot Restored", "height", s.restoreHeight)
 
 	return state, commit, nil
 }
