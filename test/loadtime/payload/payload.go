@@ -1,7 +1,9 @@
 package payload
 
 import (
+	"bytes"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"math"
 
@@ -28,8 +30,7 @@ func NewBytes(p *Payload) ([]byte, error) {
 	}
 
 	// We halve the padding size because we transform the TX to hex
-	// We add 1 to account for the initial padding byte
-	p.Padding = make([]byte, (p.Size-uint64(us))/2+1)
+	p.Padding = make([]byte, (p.Size-uint64(us))/2)
 	_, err = rand.Read(p.Padding)
 	if err != nil {
 		return nil, err
@@ -38,7 +39,7 @@ func NewBytes(p *Payload) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := []byte(fmt.Sprintf("%X", b))
+	h := []byte(hex.EncodeToString(b))
 
 	// prepend a single key so that the kv store only ever stores a single
 	// transaction instead of storing all tx and ballooning in size.
@@ -49,13 +50,13 @@ func NewBytes(p *Payload) ([]byte, error) {
 // FromBytes leaves the padding untouched, returning it to the caller to handle
 // or discard per their preference.
 func FromBytes(b []byte) (*Payload, error) {
-	tr_b := make([]byte, (len(b)-len(keyPrefix)+1)/2)
-	n, err := fmt.Sscanf(string(b), keyPrefix+"%X", &tr_b)
+	tr_h := bytes.TrimPrefix(b, []byte(keyPrefix))
+	if bytes.Equal(b, tr_h) {
+		return nil, fmt.Errorf("payload bytes missing key prefix '%s'", keyPrefix)
+	}
+	tr_b, err := hex.DecodeString(string(tr_h))
 	if err != nil {
 		return nil, err
-	}
-	if n != 1 {
-		return nil, fmt.Errorf("Invalid # of elements in TX payload (1 != %d)", n)
 	}
 
 	p := &Payload{}
@@ -90,6 +91,6 @@ func CalculateUnpaddedSize(p *Payload) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	h := []byte(fmt.Sprintf("%X", b))
+	h := []byte(hex.EncodeToString(b))
 	return len(h) + len(keyPrefix), nil
 }
