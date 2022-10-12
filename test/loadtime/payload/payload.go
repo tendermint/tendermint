@@ -1,9 +1,7 @@
 package payload
 
 import (
-	"bytes"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"math"
 
@@ -51,13 +49,8 @@ func NewBytes(p *Payload) ([]byte, error) {
 // FromBytes leaves the padding untouched, returning it to the caller to handle
 // or discard per their preference.
 func FromBytes(b []byte) (*Payload, error) {
-	tr_h := bytes.TrimPrefix(b, []byte(keyPrefix))
-	if bytes.Equal(b, tr_h) {
-		return nil, errors.New("payload bytes missing key prefix")
-	}
-
-	tr_b := make([]byte, (len(tr_h)+1)/2)
-	n, err := fmt.Sscanf(string(tr_h), "%X", &tr_b)
+	tr_b := make([]byte, (len(b)-len(keyPrefix)+1)/2)
+	n, err := fmt.Sscanf(string(b), keyPrefix+"%X", &tr_b)
 	if err != nil {
 		return nil, err
 	}
