@@ -51,12 +51,22 @@ func NewBytes(p *Payload) ([]byte, error) {
 // FromBytes leaves the padding untouched, returning it to the caller to handle
 // or discard per their preference.
 func FromBytes(b []byte) (*Payload, error) {
-	p := &Payload{}
-	tr := bytes.TrimPrefix(b, []byte(keyPrefix))
-	if bytes.Equal(b, tr) {
+	tr_h := bytes.TrimPrefix(b, []byte(keyPrefix))
+	if bytes.Equal(b, tr_h) {
 		return nil, errors.New("payload bytes missing key prefix")
 	}
-	err := proto.Unmarshal(tr, p)
+
+	var tr_b string
+	n, err := fmt.Sscanf("%X", string(tr_h), tr_b)
+	if err != nil {
+		return nil, err
+	}
+	if n != 1 {
+		return nil, fmt.Errorf("Invalid # of elements in TX payload (1 != %d)", n)
+	}
+
+	p := &Payload{}
+	err = proto.Unmarshal(tr_h, p)
 	if err != nil {
 		return nil, err
 	}
