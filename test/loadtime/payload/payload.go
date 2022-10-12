@@ -56,8 +56,8 @@ func FromBytes(b []byte) (*Payload, error) {
 		return nil, errors.New("payload bytes missing key prefix")
 	}
 
-	var tr_b string
-	n, err := fmt.Sscanf("%X", string(tr_h), tr_b)
+	tr_b := make([]byte, (len(tr_h)+1)/2)
+	n, err := fmt.Sscanf(string(tr_h), "%X", &tr_b)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func FromBytes(b []byte) (*Payload, error) {
 	}
 
 	p := &Payload{}
-	err = proto.Unmarshal(tr_h, p)
+	err = proto.Unmarshal(tr_b, p)
 	if err != nil {
 		return nil, err
 	}
