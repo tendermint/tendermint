@@ -623,8 +623,10 @@ OUTER_LOOP:
 				if err := bpr.Stop(); err != nil {
 					bpr.Logger.Error("Error stopped requester", "err", err)
 				}
+				to.Stop()
 				return
 			case <-bpr.Quit():
+				to.Stop()
 				return
 			case <-to.C:
 				bpr.Logger.Debug("Retrying block request after timeout", "height", bpr.height, "peer", bpr.peerID)
@@ -633,6 +635,7 @@ OUTER_LOOP:
 				continue OUTER_LOOP
 			case peerID := <-bpr.redoCh:
 				if peerID == bpr.peerID {
+					to.Stop()
 					bpr.reset()
 					continue OUTER_LOOP
 				} else {
@@ -641,6 +644,7 @@ OUTER_LOOP:
 			case <-bpr.gotBlockCh:
 				// We got a block!
 				// Continue the for-loop and wait til Quit.
+				to.Stop()
 				continue WAIT_LOOP
 			}
 		}
