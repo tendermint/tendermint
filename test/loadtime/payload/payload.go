@@ -12,6 +12,7 @@ import (
 )
 
 const keyPrefix = "a="
+const maxPayloadSize = 4 * 1024 * 1024
 
 // NewBytes generates a new payload and returns the encoded representation of
 // the payload as a slice of bytes. NewBytes uses the fields on the Options
@@ -25,12 +26,16 @@ func NewBytes(p *Payload) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.Size < uint64(us) {
-		return nil, fmt.Errorf("configured size %d not large enough to fit unpadded transaction of size %d", p.Size, us)
+	if p.Size > maxPayloadSize {
+		return nil, fmt.Errorf("configured size %d is too large (>%d)", p.Size, maxPayloadSize)
+	}
+	pSize := int(p.Size)
+	if pSize < us {
+		return nil, fmt.Errorf("configured size %d not large enough to fit unpadded transaction of size %d", pSize, us)
 	}
 
 	// We halve the padding size because we transform the TX to hex
-	p.Padding = make([]byte, (p.Size-uint64(us))/uint64(2))
+	p.Padding = make([]byte, (pSize-us)/2)
 	_, err = rand.Read(p.Padding)
 	if err != nil {
 		return nil, err
