@@ -30,7 +30,7 @@ func NewBytes(p *Payload) ([]byte, error) {
 	}
 
 	// We halve the padding size because we transform the TX to hex
-	p.Padding = make([]byte, (p.Size-uint64(us))/2)
+	p.Padding = make([]byte, (p.Size-uint64(us))/uint64(2))
 	_, err = rand.Read(p.Padding)
 	if err != nil {
 		return nil, err
