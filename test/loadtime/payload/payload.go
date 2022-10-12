@@ -29,7 +29,7 @@ func NewBytes(p *Payload) ([]byte, error) {
 	if p.Size > maxPayloadSize {
 		return nil, fmt.Errorf("configured size %d is too large (>%d)", p.Size, maxPayloadSize)
 	}
-	pSize := int(p.Size)
+	pSize := int(p.Size) // #nosec -- The "if" above makes this cast safe
 	if pSize < us {
 		return nil, fmt.Errorf("configured size %d not large enough to fit unpadded transaction of size %d", pSize, us)
 	}
