@@ -127,6 +127,10 @@ func (c *Local) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Res
 	return core.ConsensusParams(c.ctx, height)
 }
 
+func (c *Local) Events(ctx context.Context, req *ctypes.RequestEvents) (*ctypes.ResultEvents, error) {
+	return core.Events(c.ctx, req.Filter.Query, req.MaxItems, req.Before, req.After, req.WaitTime)
+}
+
 func (c *Local) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
 	return core.Health(c.ctx)
 }

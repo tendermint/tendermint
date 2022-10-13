@@ -41,6 +41,7 @@ type Client struct {
 	client.EvidenceClient
 	client.MempoolClient
 	service.Service
+	client.SubscriptionClient
 }
 
 var _ client.Client = Client{}
