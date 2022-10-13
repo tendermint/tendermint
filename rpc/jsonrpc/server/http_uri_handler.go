@@ -63,7 +63,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			}
 			return
 		}
-		if err := WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(dummyID, result)); err != nil {
+		if err := WriteRPCResponseHTTP(w, rpcFunc.cache, types.NewRPCSuccessResponse(dummyID, result)); err != nil {
 			logger.Error("failed to write response", "res", result, "err", err)
 			return
 		}

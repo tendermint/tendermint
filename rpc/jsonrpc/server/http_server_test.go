@@ -112,7 +112,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 	// one argument
 	w := httptest.NewRecorder()
-	err := WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	err := WriteRPCResponseHTTP(w, true, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
 	require.NoError(t, err)
 	resp := w.Result()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -120,6 +120,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "max-age=31536000", resp.Header.Get("Cache-control"))
 	assert.Equal(t, `{
   "jsonrpc": "2.0",
   "id": -1,
@@ -131,6 +132,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	// multiple arguments
 	w = httptest.NewRecorder()
 	err = WriteRPCResponseHTTP(w,
+		false,
 		types.NewRPCSuccessResponse(id, &sampleResult{"hello"}),
 		types.NewRPCSuccessResponse(id, &sampleResult{"world"}))
 	require.NoError(t, err)

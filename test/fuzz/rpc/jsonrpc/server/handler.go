@@ -13,7 +13,7 @@ import (
 )
 
 var rpcFuncMap = map[string]*rs.RPCFunc{
-	"c": rs.NewRPCFunc(func(s string, i int) (string, int) { return "foo", 200 }, "s,i"),
+	"c": rs.NewRPCFunc(func(s string, i int) (string, int) { return "foo", 200 }, "s,i", false),
 }
 var mux *http.ServeMux
 
