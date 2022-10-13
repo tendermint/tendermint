@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -32,25 +33,25 @@ func newTestApp() proxy.AppConns {
 }
 
 func makeAndCommitGoodBlock(
+	t *testing.T,
 	state sm.State,
 	height int64,
 	lastCommit *types.Commit,
 	proposerAddr []byte,
 	blockExec *sm.BlockExecutor,
 	privVals map[string]types.PrivValidator,
-	evidence []types.Evidence) (sm.State, types.BlockID, *types.Commit, error) {
+	evidence []types.Evidence) (sm.State, types.BlockID, *types.ExtendedCommit) {
+	t.Helper()
+
 	// A good block passes
 	state, blockID, err := makeAndApplyGoodBlock(state, height, lastCommit, proposerAddr, blockExec, evidence)
-	if err != nil {
-		return state, types.BlockID{}, nil, err
-	}
+	require.NoError(t, err)
 
 	// Simulate a lastCommit for this block from all validators for the next height
-	commit, err := makeValidCommit(height, blockID, state.Validators, privVals)
-	if err != nil {
-		return state, types.BlockID{}, nil, err
-	}
-	return state, blockID, commit, nil
+	extCommit, _ := makeValidExtendedCommit(t, height, blockID, state.Validators, privVals)
+	require.NoError(t, err)
+
+	return state, blockID, extCommit
 }
 
 func makeAndApplyGoodBlock(state sm.State, height int64, lastCommit *types.Commit, proposerAddr []byte,
@@ -83,22 +84,29 @@ func makeBlock(state sm.State, height int64, c *types.Commit) *types.Block {
 	)
 }
 
-func makeValidCommit(
+func makeValidExtendedCommit(
+	t *testing.T,
 	height int64,
 	blockID types.BlockID,
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
-) (*types.Commit, error) {
-	sigs := make([]types.CommitSig, 0)
+) (*types.ExtendedCommit, []*types.Vote) {
+	t.Helper()
+	sigs := make([]types.ExtendedCommitSig, vals.Size())
+	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
-		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
-		if err != nil {
-			return nil, err
-		}
-		sigs = append(sigs, vote.CommitSig())
+		vote, err := test.MakeVote(privVals[val.Address.String()], chainID, int32(i), height, 0, 2, blockID, time.Now())
+		require.NoError(t, err)
+		sigs[i] = vote.ExtendedCommitSig()
+		votes[i] = vote
 	}
-	return types.NewCommit(height, 0, blockID, sigs), nil
+
+	return &types.ExtendedCommit{
+		Height:             height,
+		BlockID:            blockID,
+		ExtendedSignatures: sigs,
+	}, votes
 }
 
 func makeState(nVals, height int) (sm.State, dbm.DB, map[string]types.PrivValidator) {

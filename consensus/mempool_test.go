@@ -30,12 +30,12 @@ func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(1, false, 10)
+	state, privVals := makeGenesisState(t, genesisStateArgs{validators: 1})
 	app := kvstore.NewInMemoryApplication()
 	resp, err := app.Info(context.Background(), proxy.RequestInfo)
 	require.NoError(t, err)
 	state.AppHash = resp.LastBlockAppHash
-	cs := newStateWithConfig(config, state, privVals[0], app)
+	cs := newState(t, config, state, privVals[0], app)
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
@@ -54,12 +54,12 @@ func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 
 	config.Consensus.CreateEmptyBlocksInterval = ensureTimeout
-	state, privVals := randGenesisState(1, false, 10)
+	state, privVals := makeGenesisState(t, genesisStateArgs{validators: 1})
 	app := kvstore.NewInMemoryApplication()
 	resp, err := app.Info(context.Background(), proxy.RequestInfo)
 	require.NoError(t, err)
 	state.AppHash = resp.LastBlockAppHash
-	cs := newStateWithConfig(config, state, privVals[0], app)
+	cs := newState(t, config, state, privVals[0], app)
 
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 
@@ -75,8 +75,8 @@ func TestMempoolProgressInHigherRound(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	defer os.RemoveAll(config.RootDir)
 	config.Consensus.CreateEmptyBlocks = false
-	state, privVals := randGenesisState(1, false, 10)
-	cs := newStateWithConfig(config, state, privVals[0], kvstore.NewInMemoryApplication())
+	state, privVals := makeGenesisState(t, genesisStateArgs{validators: 1})
+	cs := newState(t, config, state, privVals[0], kvstore.NewInMemoryApplication())
 	assertMempool(cs.txNotifier).EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
@@ -117,10 +117,10 @@ func deliverTxsRange(t *testing.T, cs *State, start, end int) {
 }
 
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
-	state, privVals := randGenesisState(1, false, 10)
-	blockDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardFinalizeBlockResponses: false})
-	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], kvstore.NewInMemoryApplication(), blockDB)
+	cfg := ResetConfig(t.Name())
+	state, privVals := makeGenesisState(t, genesisStateArgs{validators: 1})
+	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{DiscardFinalizeBlockResponses: false})
+	cs := newState(t, cfg, state, privVals[0], kvstore.NewInMemoryApplication())
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 	newBlockEventsCh := subscribe(cs.eventBus, types.EventQueryNewBlockEvents)
@@ -141,11 +141,12 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 }
 
 func TestMempoolRmBadTx(t *testing.T) {
-	state, privVals := randGenesisState(1, false, 10)
+	cfg := ResetConfig(t.Name())
+	state, privVals := makeGenesisState(t, genesisStateArgs{validators: 1})
 	app := kvstore.NewInMemoryApplication()
 	blockDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardFinalizeBlockResponses: false})
-	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
+	cs := newState(t, cfg, state, privVals[0], app)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 

@@ -25,6 +25,7 @@ type BlockStore interface {
 	LoadBlock(height int64) *types.Block
 
 	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
+	SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenExtendedCommit *types.ExtendedCommit)
 
 	PruneBlocks(height int64) (uint64, error)
 

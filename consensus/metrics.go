@@ -95,6 +95,12 @@ type Metrics struct {
 	//metrics:Interval in seconds between the proposal timestamp and the timestamp of the latest prevote in a round where all validators voted.
 	FullPrevoteDelay metrics.Gauge `metrics_labels:"proposer_address"`
 
+	// VoteExtensionReceiveCount is the number of vote extensions received by this
+	// node. The metric is annotated by the status of the vote extension from the
+	// application, either 'accepted' or 'rejected'.
+	//metrics:Number of vote extensions received labeled by application response status.
+	VoteExtensionReceiveCount metrics.Counter `metrics_labels:"status"`
+
 	// ProposalReceiveCount is the total number of proposals received by this node
 	// since process start.
 	// The metric is annotated by the status of the proposal from the application,
@@ -130,6 +136,14 @@ func (m *Metrics) MarkProposalProcessed(accepted bool) {
 		status = "rejected"
 	}
 	m.ProposalReceiveCount.With("status", status).Add(1)
+}
+
+func (m *Metrics) MarkVoteExtensionReceived(accepted bool) {
+	status := "accepted"
+	if !accepted {
+		status = "rejected"
+	}
+	m.VoteExtensionReceiveCount.With("status", status).Add(1)
 }
 
 func (m *Metrics) MarkVoteReceived(vt tmproto.SignedMsgType, power, totalPower int64) {

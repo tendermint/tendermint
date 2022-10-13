@@ -195,6 +195,11 @@ func (_m *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	_m.Called(block, blockParts, seenCommit)
 }
 
+// SaveBlockWithExtendedCommit provides a mock function with given fields: block, blockParts, seenExtendedCommit
+func (_m *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenExtendedCommit *types.ExtendedCommit) {
+	_m.Called(block, blockParts, seenExtendedCommit)
+}
+
 // Size provides a mock function with given fields:
 func (_m *BlockStore) Size() int64 {
 	ret := _m.Called()

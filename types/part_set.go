@@ -145,6 +145,12 @@ func PartSetHeaderFromProto(ppsh *tmproto.PartSetHeader) (*PartSetHeader, error)
 	return psh, psh.ValidateBasic()
 }
 
+// IsProtoPartSetHeaderZero is similar to the IsZero function for
+// PartSetHeader, but for the Protobuf representation.
+func IsProtoPartSetHeaderZero(ppsh *tmproto.PartSetHeader) bool {
+	return ppsh.Total == 0 && len(ppsh.Hash) == 0
+}
+
 //-------------------------------------
 
 type PartSet struct {

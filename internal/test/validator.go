@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"sort"
 	"testing"
 
@@ -10,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func Validator(ctx context.Context, votingPower int64) (*types.Validator, types.PrivValidator, error) {
+func Validator(votingPower int64) (*types.Validator, types.PrivValidator, error) {
 	privVal := types.NewMockPV()
 	pubKey, err := privVal.GetPubKey()
 	if err != nil {
@@ -21,7 +20,7 @@ func Validator(ctx context.Context, votingPower int64) (*types.Validator, types.
 	return val, privVal, nil
 }
 
-func ValidatorSet(ctx context.Context, t *testing.T, numValidators int, votingPower int64) (*types.ValidatorSet, []types.PrivValidator) {
+func ValidatorSet(t *testing.T, numValidators int, votingPower int64) (*types.ValidatorSet, []types.PrivValidator) {
 	var (
 		valz           = make([]*types.Validator, numValidators)
 		privValidators = make([]types.PrivValidator, numValidators)
@@ -29,7 +28,7 @@ func ValidatorSet(ctx context.Context, t *testing.T, numValidators int, votingPo
 	t.Helper()
 
 	for i := 0; i < numValidators; i++ {
-		val, privValidator, err := Validator(ctx, votingPower)
+		val, privValidator, err := Validator(votingPower)
 		require.NoError(t, err)
 		valz[i] = val
 		privValidators[i] = privValidator

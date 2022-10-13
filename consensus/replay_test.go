@@ -20,7 +20,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/abci/types/mocks"
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
@@ -32,21 +32,6 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
-
-func TestMain(m *testing.M) {
-	config = ResetConfig("consensus_reactor_test")
-	consensusReplayConfig = ResetConfig("consensus_replay_test")
-	configStateTest := ResetConfig("consensus_state_test")
-	configMempoolTest := ResetConfig("consensus_mempool_test")
-	configByzantineTest := ResetConfig("consensus_byzantine_test")
-	code := m.Run()
-	os.RemoveAll(config.RootDir)
-	os.RemoveAll(consensusReplayConfig.RootDir)
-	os.RemoveAll(configStateTest.RootDir)
-	os.RemoveAll(configMempoolTest.RootDir)
-	os.RemoveAll(configByzantineTest.RootDir)
-	os.Exit(code)
-}
 
 // These tests ensure we can always recover from failure at any part of the consensus process.
 // There are two general failure scenarios: failure during consensus, and failure while applying the block.
@@ -63,17 +48,17 @@ func TestMain(m *testing.M) {
 // and which ones we need the wal for - then we'd also be able to only flush the
 // wal writer when we need to, instead of with every message.
 
-func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
-	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
+func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *config.Config,
+	lastBlockHeight int64, stateStore sm.Store) {
 	logger := log.TestingLogger()
 	state, _ := stateStore.LoadFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
-	cs := newStateWithConfigAndBlockStore(
+	cs := newState(
+		t,
 		consensusReplayConfig,
 		state,
 		privValidator,
 		kvstore.NewInMemoryApplication(),
-		blockDB,
 	)
 	cs.SetLogger(logger)
 
@@ -148,7 +133,7 @@ func TestWALCrash(t *testing.T) {
 	}
 }
 
-func crashWALandCheckLiveness(t *testing.T, consensusReplayConfig *cfg.Config,
+func crashWALandCheckLiveness(t *testing.T, cfg *config.Config,
 	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
@@ -160,20 +145,19 @@ LOOP:
 
 		// create consensus state from a clean slate
 		logger := log.NewNopLogger()
-		blockDB := dbm.NewMemDB()
-		stateDB := blockDB
+		stateDB := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 			DiscardFinalizeBlockResponses: false,
 		})
-		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
+		state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 		require.NoError(t, err)
-		privValidator := loadPrivValidator(consensusReplayConfig)
-		cs := newStateWithConfigAndBlockStore(
-			consensusReplayConfig,
+		privValidator := loadPrivValidator(cfg)
+		cs := newState(
+			t,
+			cfg,
 			state,
 			privValidator,
 			kvstore.NewInMemoryApplication(),
-			blockDB,
 		)
 		cs.SetLogger(logger)
 
@@ -205,7 +189,7 @@ LOOP:
 			t.Logf("WAL panicked: %v", err)
 
 			// make sure we can make blocks after a crash
-			startNewStateAndWaitForBlock(t, consensusReplayConfig, cs.Height, blockDB, stateStore)
+			startNewStateAndWaitForBlock(t, cfg, cs.Height, stateStore)
 
 			// stop consensus state and transactions sender (initFn)
 			cs.Stop() //nolint:errcheck // Logging this error causes failure
@@ -311,28 +295,28 @@ var modes = []uint{0, 1, 2, 3}
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m)
+		testHandshakeReplay(t, 0, m)
 	}
 }
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 2, m)
+		testHandshakeReplay(t, 2, m)
 	}
 }
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks-1, m)
+		testHandshakeReplay(t, numBlocks-1, m)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks, m)
+		testHandshakeReplay(t, numBlocks, m)
 	}
 }
 
@@ -353,7 +337,7 @@ func tempWALWithData(data []byte) string {
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks.
 // Then restart the app and sync it up with the remaining blocks
-func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint) {
+func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	var (
 		chain        []*types.Block
 		commits      []*types.Commit
@@ -364,16 +348,16 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 		evpool       = sm.EmptyEvidencePool{}
 	)
 
-	testConfig := ResetConfig(fmt.Sprintf("%d_%d_s", nBlocks, mode))
+	testConfig := ResetConfig(fmt.Sprintf("handhsake_%d_%d", nBlocks, mode))
 	t.Cleanup(func() {
 		_ = os.RemoveAll(testConfig.RootDir)
 	})
 	walBody, err := WALWithNBlocks(t, numBlocks)
 	require.NoError(t, err)
 	walFile := tempWALWithData(walBody)
-	config.Consensus.SetWalFile(walFile)
+	testConfig.Consensus.SetWalFile(walFile)
 
-	privVal := privval.LoadFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile())
+	privVal := privval.LoadFilePV(testConfig.PrivValidatorKeyFile(), testConfig.PrivValidatorStateFile())
 
 	wal, err := NewWAL(walFile)
 	require.NoError(t, err)
@@ -389,7 +373,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	require.NoError(t, err)
 	pubKey, err := privVal.GetPubKey()
 	require.NoError(t, err)
-	stateDB, genesisState, store = stateAndStore(t, config, pubKey, kvstore.AppVersion)
+	stateDB, genesisState, store = stateAndStore(t, testConfig, pubKey, kvstore.AppVersion)
 
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardFinalizeBlockResponses: false,
@@ -402,12 +386,12 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 
 	state := genesisState.Copy()
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	state = buildTMStateFromChain(t, config, stateStore, mempool, evpool, state, chain, nBlocks, mode)
+	state = buildTMStateFromChain(t, testConfig, stateStore, mempool, evpool, state, chain, nBlocks, mode)
 	latestAppHash := state.AppHash
 
 	// make a new client creator
 	kvstoreApp := kvstore.NewPersistentApplication(
-		filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
+		filepath.Join(testConfig.DBDir(), fmt.Sprintf("replay_test_%d_%d_a", nBlocks, mode)))
 	t.Cleanup(func() {
 		_ = kvstoreApp.Close()
 	})
@@ -436,7 +420,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	}
 
 	// now start the app using the handshake - it should sync
-	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	genDoc, _ := sm.MakeGenesisDocFromFile(testConfig.GenesisFile())
 	handshaker := NewHandshaker(stateStore, state, store, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
@@ -538,7 +522,7 @@ func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm
 
 func buildTMStateFromChain(
 	t *testing.T,
-	config *cfg.Config,
+	cfg *config.Config,
 	stateStore sm.Store,
 	mempool mempool.Mempool,
 	evpool sm.EvidencePool,
@@ -549,7 +533,7 @@ func buildTMStateFromChain(
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(
 		kvstore.NewPersistentApplication(
-			filepath.Join(config.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
+			filepath.Join(cfg.DBDir(), fmt.Sprintf("replay_test_%d_%d_t", nBlocks, mode))))
 	proxyApp := proxy.NewAppConns(clientCreator, proxy.NopMetrics())
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -814,7 +798,7 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 // fresh state and mock store
 func stateAndStore(
 	t *testing.T,
-	config *cfg.Config,
+	cfg *config.Config,
 	pubKey crypto.PubKey,
 	appVersion uint64,
 ) (dbm.DB, sm.State, *mockBlockStore) {
@@ -822,10 +806,10 @@ func stateAndStore(
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardFinalizeBlockResponses: false,
 	})
-	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
 	require.NoError(t, err)
 	state.Version.Consensus.App = appVersion
-	store := newMockBlockStore(t, config, state.ConsensusParams)
+	store := newMockBlockStore(t, cfg, state.ConsensusParams)
 	require.NoError(t, stateStore.Save(state))
 
 	return stateDB, state, store
@@ -835,7 +819,7 @@ func stateAndStore(
 // mock block store
 
 type mockBlockStore struct {
-	config  *cfg.Config
+	cfg     *config.Config
 	params  types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
@@ -844,9 +828,9 @@ type mockBlockStore struct {
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func newMockBlockStore(t *testing.T, config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
+func newMockBlockStore(t *testing.T, cfg *config.Config, params types.ConsensusParams) *mockBlockStore {
 	return &mockBlockStore{
-		config: config,
+		cfg:    cfg,
 		params: params,
 		t:      t,
 	}
@@ -872,6 +856,8 @@ func (bs *mockBlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 }
 func (bs *mockBlockStore) LoadBlockPart(height int64, index int) *types.Part { return nil }
 func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
+}
+func (bs *mockBlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts *types.PartSet, seenExtCommit *types.ExtendedCommit) {
 }
 func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return bs.commits[height-1]

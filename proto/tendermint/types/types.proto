@@ -89,7 +89,7 @@ message Data {
   repeated bytes txs = 1;
 }
 
-// Vote represents a prevote, precommit, or commit vote from validators for
+// Vote represents a prevote or precommit vote from validators for
 // consensus.
 message Vote {
   SignedMsgType type     = 1;
@@ -101,7 +101,14 @@ message Vote {
       [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   bytes validator_address = 6;
   int32 validator_index   = 7;
-  bytes signature         = 8;
+  // signature of
+  bytes signature = 8;
+  // Vote extension provided by the application. Only valid for precommit
+  // messages.
+  bytes extension = 9;
+  // separate signature over the extension bytes. This enables backwards compatibility.
+  // Only valid for precommit messages.
+  bytes extension_signature = 10;
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.

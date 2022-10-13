@@ -18,8 +18,7 @@ import (
 // Ensure a testnet makes blocks
 func TestReactorInvalidPrecommit(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(t, N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
-	defer cleanup()
+	css, _, _ := makeNetwork(t, makeNetworkArgs{})
 
 	for i := 0; i < 4; i++ {
 		ticker := NewTimeoutTicker()

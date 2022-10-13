@@ -751,8 +751,9 @@ func TestValidatorSet_VerifyCommit_CheckAllSignatures(t *testing.T) {
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
+	commit := extCommit.ToCommit()
 
 	// malleate 4th signature
 	vote := voteSet.GetByIndex(3)
@@ -776,8 +777,9 @@ func TestValidatorSet_VerifyCommitLight_ReturnsAsSoonAsMajorityOfVotingPowerSign
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
+	commit := extCommit.ToCommit()
 
 	// malleate 4th signature (3 signatures are enough for 2/3+)
 	vote := voteSet.GetByIndex(3)
@@ -799,8 +801,9 @@ func TestValidatorSet_VerifyCommitLightTrusting_ReturnsAsSoonAsTrustLevelOfVotin
 	)
 
 	voteSet, valSet, vals := randVoteSet(h, 0, tmproto.PrecommitType, 4, 10)
-	commit, err := MakeCommit(blockID, h, 0, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(blockID, h, 0, voteSet, vals, time.Now())
 	require.NoError(t, err)
+	commit := extCommit.ToCommit()
 
 	// malleate 3rd signature (2 signatures are enough for 1/3+ trust level)
 	vote := voteSet.GetByIndex(2)
@@ -1521,10 +1524,11 @@ func TestValidatorSet_VerifyCommitLightTrusting(t *testing.T) {
 	var (
 		blockID                       = makeBlockIDRandom()
 		voteSet, originalValset, vals = randVoteSet(1, 1, tmproto.PrecommitType, 6, 1)
-		commit, err                   = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
+		extCommit, err                = makeExtCommit(blockID, 1, 1, voteSet, vals, time.Now())
 		newValSet, _                  = RandValidatorSet(2, 1)
 	)
 	require.NoError(t, err)
+	commit := extCommit.ToCommit()
 
 	testCases := []struct {
 		valSet *ValidatorSet
@@ -1562,9 +1566,10 @@ func TestValidatorSet_VerifyCommitLightTrustingErrorsOnOverflow(t *testing.T) {
 	var (
 		blockID               = makeBlockIDRandom()
 		voteSet, valSet, vals = randVoteSet(1, 1, tmproto.PrecommitType, 1, MaxTotalVotingPower)
-		commit, err           = MakeCommit(blockID, 1, 1, voteSet, vals, time.Now())
+		extCommit, err        = makeExtCommit(blockID, 1, 1, voteSet, vals, time.Now())
 	)
 	require.NoError(t, err)
+	commit := extCommit.ToCommit()
 
 	err = valSet.VerifyCommitLightTrusting("test_chain_id", commit,
 		tmmath.Fraction{Numerator: 25, Denominator: 55})

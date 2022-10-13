@@ -622,8 +622,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 		sm.EmptyEvidencePool{},
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
-	require.NoError(t, err)
+	commit, _ := makeValidExtendedCommit(t, height, types.BlockID{}, state.Validators, privVals)
 	_, err = blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
 }
@@ -663,8 +662,7 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 		evpool,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
-	require.NoError(t, err)
+	commit, _ := makeValidExtendedCommit(t, height, types.BlockID{}, state.Validators, privVals)
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
 
@@ -714,8 +712,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 		evpool,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
-	require.NoError(t, err)
+	commit, _ := makeValidExtendedCommit(t, height, types.BlockID{}, state.Validators, privVals)
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
@@ -767,8 +764,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 		evpool,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
-	require.NoError(t, err)
+	commit, _ := makeValidExtendedCommit(t, height, types.BlockID{}, state.Validators, privVals)
 
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.Nil(t, block)
@@ -815,8 +811,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 		evpool,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
-	require.NoError(t, err)
+	commit, _ := makeValidExtendedCommit(t, height, types.BlockID{}, state.Validators, privVals)
 
 	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, nil)
 	require.Nil(t, block)

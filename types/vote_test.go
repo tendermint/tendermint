@@ -219,13 +219,13 @@ func TestVoteVerify(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
+	expected := `Precommit{12345/02 by 56789:6AF1F4111082 for 384230313032333338364333 <000000000000> & 0 <000000000000> @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
+	expected = `Prevote{12345/02 by 56789:6AF1F4111082 for 384230313032333338364333 <000000000000> @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}
@@ -259,7 +259,11 @@ func TestVoteValidateBasic(t *testing.T) {
 			vote.Signature = v.Signature
 			require.NoError(t, err)
 			tc.malleateVote(vote)
-			assert.Equal(t, tc.expectErr, vote.ValidateBasic() != nil, "Validate Basic had an unexpected result")
+			if tc.expectErr {
+				require.Error(t, vote.ValidateBasic())
+			} else {
+				require.NoError(t, vote.ValidateBasic())
+			}
 		})
 	}
 }

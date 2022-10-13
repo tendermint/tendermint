@@ -875,7 +875,7 @@ func (commit *Commit) ValidateBasic() error {
 	}
 
 	if commit.Height >= 1 {
-		if commit.BlockID.IsZero() {
+		if commit.BlockID.IsNil() {
 			return errors.New("commit cannot be for nil block")
 		}
 
@@ -985,6 +985,360 @@ func CommitFromProto(cp *tmproto.Commit) (*Commit, error) {
 	commit.BlockID = *bi
 
 	return commit, commit.ValidateBasic()
+}
+
+//-------------------------------------
+
+// ExtendedCommitSig contains a commit signature along with its corresponding
+// vote extension and vote extension signature.
+type ExtendedCommitSig struct {
+	CommitSig                 // Commit signature
+	Extension          []byte // Vote extension
+	ExtensionSignature []byte // Vote extension signature
+}
+
+// NewExtendedCommitSigAbsent returns new ExtendedCommitSig with
+// BlockIDFlagAbsent. Other fields are all empty.
+func NewExtendedCommitSigAbsent() ExtendedCommitSig {
+	return ExtendedCommitSig{CommitSig: NewCommitSigAbsent()}
+}
+
+// String returns a string representation of an ExtendedCommitSig.
+//
+// 1. commit sig
+// 2. first 6 bytes of vote extension
+// 3. first 6 bytes of vote extension signature
+func (ecs ExtendedCommitSig) String() string {
+	return fmt.Sprintf("ExtendedCommitSig{%s with %X %X}",
+		ecs.CommitSig,
+		tmbytes.Fingerprint(ecs.Extension),
+		tmbytes.Fingerprint(ecs.ExtensionSignature),
+	)
+}
+
+// ValidateBasic checks whether the structure is well-formed.
+func (ecs ExtendedCommitSig) ValidateBasic() error {
+	if err := ecs.CommitSig.ValidateBasic(); err != nil {
+		return err
+	}
+
+	if ecs.BlockIDFlag == BlockIDFlagCommit {
+		if len(ecs.Extension) > MaxVoteExtensionSize {
+			return fmt.Errorf("vote extension is too big (max: %d)", MaxVoteExtensionSize)
+		}
+		if len(ecs.ExtensionSignature) > MaxSignatureSize {
+			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
+		}
+		return nil
+	}
+
+	if len(ecs.ExtensionSignature) == 0 && len(ecs.Extension) != 0 {
+		return errors.New("vote extension signature absent on vote with extension")
+	}
+	return nil
+}
+
+// EnsureExtensions validates that a vote extensions signature is present for
+// this ExtendedCommitSig.
+func (ecs ExtendedCommitSig) EnsureExtension() error {
+	if ecs.BlockIDFlag == BlockIDFlagCommit && len(ecs.ExtensionSignature) == 0 {
+		return errors.New("vote extension data is missing")
+	}
+	return nil
+}
+
+// ToProto converts the ExtendedCommitSig to its Protobuf representation.
+func (ecs *ExtendedCommitSig) ToProto() *tmproto.ExtendedCommitSig {
+	if ecs == nil {
+		return nil
+	}
+
+	return &tmproto.ExtendedCommitSig{
+		BlockIdFlag:        tmproto.BlockIDFlag(ecs.BlockIDFlag),
+		ValidatorAddress:   ecs.ValidatorAddress,
+		Timestamp:          ecs.Timestamp,
+		Signature:          ecs.Signature,
+		Extension:          ecs.Extension,
+		ExtensionSignature: ecs.ExtensionSignature,
+	}
+}
+
+// FromProto populates the ExtendedCommitSig with values from the given
+// Protobuf representation. Returns an error if the ExtendedCommitSig is
+// invalid.
+func (ecs *ExtendedCommitSig) FromProto(ecsp tmproto.ExtendedCommitSig) error {
+	ecs.BlockIDFlag = BlockIDFlag(ecsp.BlockIdFlag)
+	ecs.ValidatorAddress = ecsp.ValidatorAddress
+	ecs.Timestamp = ecsp.Timestamp
+	ecs.Signature = ecsp.Signature
+	ecs.Extension = ecsp.Extension
+	ecs.ExtensionSignature = ecsp.ExtensionSignature
+
+	return ecs.ValidateBasic()
+}
+
+//-------------------------------------
+
+// ExtendedCommit is similar to Commit, except that its signatures also retain
+// their corresponding vote extensions and vote extension signatures.
+type ExtendedCommit struct {
+	Height             int64
+	Round              int32
+	BlockID            BlockID
+	ExtendedSignatures []ExtendedCommitSig
+
+	bitArray *bits.BitArray
+}
+
+// Clone creates a deep copy of this extended commit.
+func (ec *ExtendedCommit) Clone() *ExtendedCommit {
+	sigs := make([]ExtendedCommitSig, len(ec.ExtendedSignatures))
+	copy(sigs, ec.ExtendedSignatures)
+	ecc := *ec
+	ecc.ExtendedSignatures = sigs
+	return &ecc
+}
+
+// ToExtendedVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if signatures from the ExtendedCommit can't be added to the voteset.
+// Panics if any of the votes have invalid or absent vote extension data.
+// Inverse of VoteSet.MakeExtendedCommit().
+func (ec *ExtendedCommit) ToExtendedVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewExtendedVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+	ec.addSigsToVoteSet(voteSet)
+	return voteSet
+}
+
+// ToVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if signatures from the ExtendedCommit can't be added to the voteset.
+// Inverse of VoteSet.MakeExtendedCommit().
+func (ec *ExtendedCommit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewVoteSet(chainID, ec.Height, ec.Round, tmproto.PrecommitType, vals)
+	ec.addSigsToVoteSet(voteSet)
+	return voteSet
+}
+
+// addSigsToVoteSet adds all of the signature to voteSet.
+func (ec *ExtendedCommit) addSigsToVoteSet(voteSet *VoteSet) {
+	for idx, ecs := range ec.ExtendedSignatures {
+		if ecs.BlockIDFlag == BlockIDFlagAbsent {
+			continue // OK, some precommits can be missing.
+		}
+		vote := ec.GetExtendedVote(int32(idx))
+		if err := vote.ValidateBasic(); err != nil {
+			panic(fmt.Errorf("failed to validate vote reconstructed from LastCommit: %w", err))
+		}
+		added, err := voteSet.AddVote(vote)
+		if !added || err != nil {
+			panic(fmt.Errorf("failed to reconstruct vote set from extended commit: %w", err))
+		}
+	}
+}
+
+// ToVoteSet constructs a VoteSet from the Commit and validator set.
+// Panics if signatures from the commit can't be added to the voteset.
+// Inverse of VoteSet.MakeCommit().
+func (commit *Commit) ToVoteSet(chainID string, vals *ValidatorSet) *VoteSet {
+	voteSet := NewVoteSet(chainID, commit.Height, commit.Round, tmproto.PrecommitType, vals)
+	for idx, cs := range commit.Signatures {
+		if cs.BlockIDFlag == BlockIDFlagAbsent {
+			continue // OK, some precommits can be missing.
+		}
+		vote := commit.GetVote(int32(idx))
+		if err := vote.ValidateBasic(); err != nil {
+			panic(fmt.Errorf("failed to validate vote reconstructed from commit: %w", err))
+		}
+		added, err := voteSet.AddVote(vote)
+		if !added || err != nil {
+			panic(fmt.Errorf("failed to reconstruct vote set from commit: %w", err))
+		}
+	}
+	return voteSet
+}
+
+// EnsureExtensions validates that a vote extensions signature is present for
+// every ExtendedCommitSig in the ExtendedCommit.
+func (ec *ExtendedCommit) EnsureExtensions() error {
+	for _, ecs := range ec.ExtendedSignatures {
+		if err := ecs.EnsureExtension(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// StripExtensions removes all VoteExtension data from an ExtendedCommit. This
+// is useful when dealing with an ExendedCommit but vote extension data is
+// expected to be absent.
+func (ec *ExtendedCommit) StripExtensions() bool {
+	stripped := false
+	for idx := range ec.ExtendedSignatures {
+		if len(ec.ExtendedSignatures[idx].Extension) > 0 || len(ec.ExtendedSignatures[idx].ExtensionSignature) > 0 {
+			stripped = true
+		}
+		ec.ExtendedSignatures[idx].Extension = nil
+		ec.ExtendedSignatures[idx].ExtensionSignature = nil
+	}
+	return stripped
+}
+
+// ToCommit converts an ExtendedCommit to a Commit by removing all vote
+// extension-related fields.
+func (ec *ExtendedCommit) ToCommit() *Commit {
+	cs := make([]CommitSig, len(ec.ExtendedSignatures))
+	for idx, ecs := range ec.ExtendedSignatures {
+		cs[idx] = ecs.CommitSig
+	}
+	return &Commit{
+		Height:     ec.Height,
+		Round:      ec.Round,
+		BlockID:    ec.BlockID,
+		Signatures: cs,
+	}
+}
+
+// GetExtendedVote converts the ExtendedCommitSig for the given validator
+// index to a Vote with a vote extensions.
+// It panics if valIndex is out of range.
+func (ec *ExtendedCommit) GetExtendedVote(valIndex int32) *Vote {
+	ecs := ec.ExtendedSignatures[valIndex]
+	return &Vote{
+		Type:               tmproto.PrecommitType,
+		Height:             ec.Height,
+		Round:              ec.Round,
+		BlockID:            ecs.BlockID(ec.BlockID),
+		Timestamp:          ecs.Timestamp,
+		ValidatorAddress:   ecs.ValidatorAddress,
+		ValidatorIndex:     valIndex,
+		Signature:          ecs.Signature,
+		Extension:          ecs.Extension,
+		ExtensionSignature: ecs.ExtensionSignature,
+	}
+}
+
+// Type returns the vote type of the extended commit, which is always
+// VoteTypePrecommit
+// Implements VoteSetReader.
+func (ec *ExtendedCommit) Type() byte { return byte(tmproto.PrecommitType) }
+
+// GetHeight returns height of the extended commit.
+// Implements VoteSetReader.
+func (ec *ExtendedCommit) GetHeight() int64 { return ec.Height }
+
+// GetRound returns height of the extended commit.
+// Implements VoteSetReader.
+func (ec *ExtendedCommit) GetRound() int32 { return ec.Round }
+
+// Size returns the number of signatures in the extended commit.
+// Implements VoteSetReader.
+func (ec *ExtendedCommit) Size() int {
+	if ec == nil {
+		return 0
+	}
+	return len(ec.ExtendedSignatures)
+}
+
+// BitArray returns a BitArray of which validators voted for BlockID or nil in
+// this extended commit.
+// Implements VoteSetReader.
+func (ec *ExtendedCommit) BitArray() *bits.BitArray {
+	if ec.bitArray == nil {
+		ec.bitArray = bits.NewBitArray(len(ec.ExtendedSignatures))
+		for i, extCommitSig := range ec.ExtendedSignatures {
+			// TODO: need to check the BlockID otherwise we could be counting conflicts,
+			//       not just the one with +2/3 !
+			ec.bitArray.SetIndex(i, extCommitSig.BlockIDFlag != BlockIDFlagAbsent)
+		}
+	}
+	return ec.bitArray
+}
+
+// GetByIndex returns the vote corresponding to a given validator index.
+// Panics if `index >= extCommit.Size()`.
+// Implements VoteSetReader.
+func (ec *ExtendedCommit) GetByIndex(valIdx int32) *Vote {
+	return ec.GetExtendedVote(valIdx)
+}
+
+// IsCommit returns true if there is at least one signature.
+// Implements VoteSetReader.
+func (ec *ExtendedCommit) IsCommit() bool {
+	return len(ec.ExtendedSignatures) != 0
+}
+
+// ValidateBasic checks whether the extended commit is well-formed. Does not
+// actually check the cryptographic signatures.
+func (ec *ExtendedCommit) ValidateBasic() error {
+	if ec.Height < 0 {
+		return errors.New("negative Height")
+	}
+	if ec.Round < 0 {
+		return errors.New("negative Round")
+	}
+
+	if ec.Height >= 1 {
+		if ec.BlockID.IsNil() {
+			return errors.New("commit cannot be for nil block")
+		}
+
+		if len(ec.ExtendedSignatures) == 0 {
+			return errors.New("no signatures in commit")
+		}
+		for i, extCommitSig := range ec.ExtendedSignatures {
+			if err := extCommitSig.ValidateBasic(); err != nil {
+				return fmt.Errorf("wrong ExtendedCommitSig #%d: %v", i, err)
+			}
+		}
+	}
+	return nil
+}
+
+// ToProto converts ExtendedCommit to protobuf
+func (ec *ExtendedCommit) ToProto() *tmproto.ExtendedCommit {
+	if ec == nil {
+		return nil
+	}
+
+	c := new(tmproto.ExtendedCommit)
+	sigs := make([]tmproto.ExtendedCommitSig, len(ec.ExtendedSignatures))
+	for i := range ec.ExtendedSignatures {
+		sigs[i] = *ec.ExtendedSignatures[i].ToProto()
+	}
+	c.ExtendedSignatures = sigs
+
+	c.Height = ec.Height
+	c.Round = ec.Round
+	c.BlockID = ec.BlockID.ToProto()
+
+	return c
+}
+
+// ExtendedCommitFromProto constructs an ExtendedCommit from the given Protobuf
+// representation. It returns an error if the extended commit is invalid.
+func ExtendedCommitFromProto(ecp *tmproto.ExtendedCommit) (*ExtendedCommit, error) {
+	if ecp == nil {
+		return nil, errors.New("nil ExtendedCommit")
+	}
+
+	extCommit := new(ExtendedCommit)
+
+	bi, err := BlockIDFromProto(&ecp.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	sigs := make([]ExtendedCommitSig, len(ecp.ExtendedSignatures))
+	for i := range ecp.ExtendedSignatures {
+		if err := sigs[i].FromProto(ecp.ExtendedSignatures[i]); err != nil {
+			return nil, err
+		}
+	}
+	extCommit.ExtendedSignatures = sigs
+	extCommit.Height = ecp.Height
+	extCommit.Round = ecp.Round
+	extCommit.BlockID = *bi
+
+	return extCommit, extCommit.ValidateBasic()
 }
 
 //-----------------------------------------------------------------------------
@@ -1167,6 +1521,17 @@ type BlockID struct {
 	PartSetHeader PartSetHeader    `json:"parts"`
 }
 
+func NewBlockID(hash []byte, header PartSetHeader) BlockID {
+	return BlockID{
+		Hash:          hash,
+		PartSetHeader: header,
+	}
+}
+
+func NilBlockID() BlockID {
+	return NewBlockID(nil, PartSetHeader{})
+}
+
 // Equals returns true if the BlockID matches the given BlockID
 func (blockID BlockID) Equals(other BlockID) bool {
 	return bytes.Equal(blockID.Hash, other.Hash) &&
@@ -1196,8 +1561,8 @@ func (blockID BlockID) ValidateBasic() error {
 	return nil
 }
 
-// IsZero returns true if this is the BlockID of a nil block.
-func (blockID BlockID) IsZero() bool {
+// IsNil returns true if this is the BlockID of a nil block.
+func (blockID BlockID) IsNil() bool {
 	return len(blockID.Hash) == 0 &&
 		blockID.PartSetHeader.IsZero()
 }
@@ -1248,4 +1613,10 @@ func BlockIDFromProto(bID *tmproto.BlockID) (*BlockID, error) {
 	blockID.Hash = bID.Hash
 
 	return blockID, blockID.ValidateBasic()
+}
+
+// IsProtoBlockIDNil is similar to the IsNil function on BlockID, but for the
+// Protobuf representation.
+func IsProtoBlockIDNil(bID *tmproto.BlockID) bool {
+	return len(bID.Hash) == 0 && IsProtoPartSetHeaderZero(&bID.PartSetHeader)
 }

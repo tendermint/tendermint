@@ -162,6 +162,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "full_prevote_delay",
 			Help:      "Interval in seconds between the proposal timestamp and the timestamp of the latest prevote in a round where all validators voted.",
 		}, append(labels, "proposer_address")).With(labelsAndValues...),
+		VoteExtensionReceiveCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "vote_extension_receive_count",
+			Help:      "Number of vote extensions received labeled by application response status.",
+		}, append(labels, "status")).With(labelsAndValues...),
 		ProposalReceiveCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
@@ -215,6 +221,7 @@ func NopMetrics() *Metrics {
 		BlockGossipPartsReceived:  discard.NewCounter(),
 		QuorumPrevoteDelay:        discard.NewGauge(),
 		FullPrevoteDelay:          discard.NewGauge(),
+		VoteExtensionReceiveCount: discard.NewCounter(),
 		ProposalReceiveCount:      discard.NewCounter(),
 		ProposalCreateCount:       discard.NewCounter(),
 		RoundVotingPowerPercent:   discard.NewGauge(),

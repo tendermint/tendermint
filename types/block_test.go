@@ -38,14 +38,14 @@ func TestBlockAddEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, txs, commit, evList)
+	block := MakeBlock(h, txs, extCommit.ToCommit(), evList)
 	require.NotNil(t, block)
 	require.Equal(t, 1, len(block.Evidence.Evidence))
 	require.NotNil(t, block.EvidenceHash)
@@ -59,8 +59,9 @@ func TestBlockValidateBasic(t *testing.T) {
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
+	commit := extCommit.ToCommit()
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
@@ -131,14 +132,14 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(512)
+	partSet, err := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.ToCommit(), evList).MakePartSet(512)
 	require.NoError(t, err)
 
 	assert.NotNil(t, partSet)
@@ -151,14 +152,14 @@ func TestBlockHashesTo(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	ev, err := NewMockDuplicateVoteEvidenceWithValidator(h, time.Now(), vals[0], "block-test-chain")
 	require.NoError(t, err)
 	evList := []Evidence{ev}
 
-	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
+	block := MakeBlock(h, []Tx{Tx("Hello World")}, extCommit.ToCommit(), evList)
 	block.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
@@ -230,7 +231,7 @@ func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	commit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
 	assert.Equal(t, h-1, commit.Height)
@@ -438,11 +439,11 @@ func randCommit(now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, now)
+	extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, now)
 	if err != nil {
 		panic(err)
 	}
-	return commit
+	return extCommit.ToCommit()
 }
 
 func hexBytesFromString(s string) bytes.HexBytes {
@@ -514,13 +515,144 @@ func TestBlockMaxDataBytesNoEvidence(t *testing.T) {
 	}
 }
 
+// TestVoteSetToExtendedCommit tests that the extended commit produced from a
+// vote set contains the same vote information as the vote set. The test ensures
+// that the MakeExtendedCommit method behaves as expected, whether vote extensions
+// are present in the original votes or not.
+func TestVoteSetToExtendedCommit(t *testing.T) {
+	for _, testCase := range []struct {
+		name             string
+		includeExtension bool
+	}{
+		{
+			name:             "no extensions",
+			includeExtension: false,
+		},
+		{
+			name:             "with extensions",
+			includeExtension: true,
+		},
+	} {
+
+		t.Run(testCase.name, func(t *testing.T) {
+			blockID := makeBlockIDRandom()
+
+			_, valSet, vals := randVoteSet(10, 1, tmproto.PrecommitType, 10, 1)
+			var voteSet *VoteSet
+			if testCase.includeExtension {
+				voteSet = NewExtendedVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
+			} else {
+				voteSet = NewVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
+			}
+			for i := 0; i < len(vals); i++ {
+				pubKey, err := vals[i].GetPubKey()
+				require.NoError(t, err)
+				vote := &Vote{
+					ValidatorAddress: pubKey.Address(),
+					ValidatorIndex:   int32(i),
+					Height:           3,
+					Round:            1,
+					Type:             tmproto.PrecommitType,
+					BlockID:          blockID,
+					Timestamp:        time.Now(),
+				}
+				v := vote.ToProto()
+				err = vals[i].SignVote(voteSet.ChainID(), v)
+				require.NoError(t, err)
+				vote.Signature = v.Signature
+				if testCase.includeExtension {
+					vote.ExtensionSignature = v.ExtensionSignature
+				}
+				added, err := voteSet.AddVote(vote)
+				require.NoError(t, err)
+				require.True(t, added)
+			}
+			ec := voteSet.MakeExtendedCommit()
+
+			for i := int32(0); int(i) < len(vals); i++ {
+				vote1 := voteSet.GetByIndex(i)
+				vote2 := ec.GetExtendedVote(i)
+
+				vote1bz, err := vote1.ToProto().Marshal()
+				require.NoError(t, err)
+				vote2bz, err := vote2.ToProto().Marshal()
+				require.NoError(t, err)
+				assert.Equal(t, vote1bz, vote2bz)
+			}
+		})
+	}
+}
+
+// TestExtendedCommitToVoteSet tests that the vote set produced from an extended commit
+// contains the same vote information as the extended commit. The test ensures
+// that the ToVoteSet method behaves as expected, whether vote extensions
+// are present in the original votes or not.
+func TestExtendedCommitToVoteSet(t *testing.T) {
+	for _, testCase := range []struct {
+		name             string
+		includeExtension bool
+	}{
+		{
+			name:             "no extensions",
+			includeExtension: false,
+		},
+		{
+			name:             "with extensions",
+			includeExtension: true,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			lastID := makeBlockIDRandom()
+			h := int64(3)
+
+			voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+			extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+			assert.NoError(t, err)
+
+			if !testCase.includeExtension {
+				for i := 0; i < len(vals); i++ {
+					v := voteSet.GetByIndex(int32(i))
+					v.Extension = nil
+					v.ExtensionSignature = nil
+					extCommit.ExtendedSignatures[i].Extension = nil
+					extCommit.ExtendedSignatures[i].ExtensionSignature = nil
+				}
+			}
+
+			chainID := voteSet.ChainID()
+			var voteSet2 *VoteSet
+			if testCase.includeExtension {
+				voteSet2 = extCommit.ToExtendedVoteSet(chainID, valSet)
+			} else {
+				voteSet2 = extCommit.ToVoteSet(chainID, valSet)
+			}
+
+			for i := int32(0); int(i) < len(vals); i++ {
+				vote1 := voteSet.GetByIndex(i)
+				vote2 := voteSet2.GetByIndex(i)
+				vote3 := extCommit.GetExtendedVote(i)
+
+				vote1bz, err := vote1.ToProto().Marshal()
+				require.NoError(t, err)
+				vote2bz, err := vote2.ToProto().Marshal()
+				require.NoError(t, err)
+				vote3bz, err := vote3.ToProto().Marshal()
+				require.NoError(t, err)
+				assert.Equal(t, vote1bz, vote2bz)
+				assert.Equal(t, vote1bz, vote3bz)
+			}
+		})
+	}
+}
+
 func TestCommitToVoteSet(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
 	voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	assert.NoError(t, err)
+	commit := extCommit.ToCommit()
 
 	chainID := voteSet.ChainID()
 	voteSet2 := CommitToVoteSet(chainID, commit, valSet)
@@ -587,12 +719,12 @@ func TestCommitToVoteSetWithVotesForNilBlock(t *testing.T) {
 		}
 
 		if tc.valid {
-			commit := voteSet.MakeCommit() // panics without > 2/3 valid votes
-			assert.NotNil(t, commit)
-			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, commit)
+			extCommit := voteSet.MakeExtendedCommit() // panics without > 2/3 valid votes
+			assert.NotNil(t, extCommit)
+			err := valSet.VerifyCommit(voteSet.ChainID(), blockID, height-1, extCommit.ToCommit())
 			assert.Nil(t, err)
 		} else {
-			assert.Panics(t, func() { voteSet.MakeCommit() })
+			assert.Panics(t, func() { voteSet.MakeExtendedCommit() })
 		}
 	}
 }

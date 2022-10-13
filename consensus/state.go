@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -1211,16 +1212,16 @@ func (cs *State) createProposalBlock() (*types.Block, error) {
 		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
-	var commit *types.Commit
+	var lastExtCommit *types.ExtendedCommit
 	switch {
 	case cs.Height == cs.state.InitialHeight:
 		// We're creating a proposal for the first block.
 		// The commit is empty, but not nil.
-		commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+		lastExtCommit = &types.ExtendedCommit{}
 
 	case cs.LastCommit.HasTwoThirdsMajority():
 		// Make the commit from LastCommit
-		commit = cs.LastCommit.MakeCommit()
+		lastExtCommit = cs.LastCommit.MakeExtendedCommit()
 
 	default: // This shouldn't happen.
 		return nil, errors.New("propose step; cannot propose anything without commit for the previous block")
@@ -1234,7 +1235,7 @@ func (cs *State) createProposalBlock() (*types.Block, error) {
 
 	proposerAddr := cs.privValidatorPubKey.Address()
 
-	ret, err := cs.blockExec.CreateProposalBlock(cs.Height, cs.state, commit, proposerAddr, cs.LastCommit.GetVotes())
+	ret, err := cs.blockExec.CreateProposalBlock(cs.Height, cs.state, lastExtCommit, proposerAddr, cs.LastCommit.GetVotes())
 	if err != nil {
 		panic(err)
 	}
@@ -1656,9 +1657,12 @@ func (cs *State) finalizeCommit(height int64) {
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
 		// but may differ from the LastCommit included in the next block
-		precommits := cs.Votes.Precommits(cs.CommitRound)
-		seenCommit := precommits.MakeCommit()
-		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
+		seenExtendedCommit := cs.Votes.Precommits(cs.CommitRound).MakeExtendedCommit()
+		if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(block.Height) {
+			cs.blockStore.SaveBlockWithExtendedCommit(block, blockParts, seenExtendedCommit)
+		} else {
+			cs.blockStore.SaveBlock(block, blockParts, seenExtendedCommit.ToCommit())
+		}
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
 		logger.Debug("calling finalizeCommit on already stored block", "height", block.Height)
@@ -1968,7 +1972,7 @@ func (cs *State) handleCompleteProposal(blockHeight int64) {
 	// Update Valid* if we can.
 	prevotes := cs.Votes.Prevotes(cs.Round)
 	blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
-	if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+	if hasTwoThirds && !blockID.IsNil() && (cs.ValidRound < cs.Round) {
 		if cs.ProposalBlock.HashesTo(blockID.Hash) {
 			cs.Logger.Debug(
 				"updating valid block to new proposal block",
@@ -2097,6 +2101,48 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 	if vote.Height != cs.Height {
 		cs.Logger.Debug("vote ignored and not added", "vote_height", vote.Height, "cs_height", cs.Height, "peer", peerID)
 		return
+	}
+
+	// Check to see if the chain is configured to extend votes.
+	if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+		// The chain is configured to extend votes, check that the vote is
+		// not for a nil block and verify the extensions signature against the
+		// corresponding public key.
+
+		var myAddr []byte
+		if cs.privValidatorPubKey != nil {
+			myAddr = cs.privValidatorPubKey.Address()
+		}
+		// Verify VoteExtension if precommit and not nil
+		// https://github.com/tendermint/tendermint/issues/8487
+		if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
+			!bytes.Equal(vote.ValidatorAddress, myAddr) { // Skip the VerifyVoteExtension call if the vote was issued by this validator.
+
+			// The core fields of the vote message were already validated in the
+			// consensus reactor when the vote was received.
+			// Here, we verify the signature of the vote extension included in the vote
+			// message.
+			_, val := cs.state.Validators.GetByIndex(vote.ValidatorIndex)
+			if err := vote.VerifyExtension(cs.state.ChainID, val.PubKey); err != nil {
+				return false, fmt.Errorf("invalid vote extension: %w; vote: %v", err, vote)
+			}
+
+			err := cs.blockExec.VerifyVoteExtension(context.TODO(), vote)
+			cs.metrics.MarkVoteExtensionReceived(err == nil)
+			if err != nil {
+				return false, fmt.Errorf("application rejected vote extension: %w", err)
+			}
+		}
+	} else {
+		// Vote extensions are not enabled on the network.
+		// strip the extension data from the vote in case any is present.
+		//
+		// TODO punish a peer if it sent a vote with an extension when the feature
+		// is disabled on the network.
+		// https://github.com/tendermint/tendermint/issues/8565
+		if hadExtension := vote.StripExtension(); hadExtension {
+			cs.Logger.Error("vote included extension data but vote extensions are not enabled; extension ignored", "peer", peerID)
+		}
 	}
 
 	height := cs.Height
@@ -2260,9 +2306,30 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
+	if msgType == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+		// if the signedMessage type is for a non-nil precommit, add
+		// VoteExtension
+		if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+			ext, err := cs.blockExec.ExtendVote(context.TODO(), vote)
+			if err != nil {
+				return nil, err
+			}
+			vote.Extension = ext
+		}
+	}
+
 	v := vote.ToProto()
 	err := cs.privValidator.SignVote(cs.state.ChainID, v)
 	vote.Signature = v.Signature
+	// append the extension signature if expect it
+	if msgType == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
+		cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+		// defensively check that the signer correctly signed the vote extension
+		if len(v.ExtensionSignature) == 0 {
+			panic(fmt.Sprintf("expected signer to sign vote extension but empty signature returned (%d/%d)", vote.Height, vote.Round))
+		}
+		vote.ExtensionSignature = v.ExtensionSignature
+	}
 	vote.Timestamp = v.Timestamp
 
 	return vote, err

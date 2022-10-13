@@ -9,8 +9,8 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-func MakeCommit(blockID BlockID, height int64, round int32,
-	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*Commit, error) {
+func makeExtCommit(blockID BlockID, height int64, round int32,
+	voteSet *VoteSet, validators []PrivValidator, now time.Time) (*ExtendedCommit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
@@ -34,7 +34,7 @@ func MakeCommit(blockID BlockID, height int64, round int32,
 		}
 	}
 
-	return voteSet.MakeCommit(), nil
+	return voteSet.MakeExtendedCommit(), nil
 }
 
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {

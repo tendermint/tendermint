@@ -91,11 +91,11 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 	for i := 1; i <= amount; i++ {
 		if i%lightClientEvidenceRatio == 0 {
 			ev, err = generateLightClientAttackEvidence(
-				ctx, privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
+				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		} else {
 			ev, err = generateDuplicateVoteEvidence(
-				ctx, privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
+				privVals, evidenceHeight, valSet, testnet.Name, blockRes.Block.Time,
 			)
 		}
 		if err != nil {
@@ -142,7 +142,6 @@ func getPrivateValidatorKeys(testnet *e2e.Testnet) ([]types.MockPV, error) {
 // creates evidence of a lunatic attack. The height provided is the common height.
 // The forged height happens 2 blocks later.
 func generateLightClientAttackEvidence(
-	ctx context.Context,
 	privVals []types.MockPV,
 	height int64,
 	vals *types.ValidatorSet,
@@ -157,7 +156,7 @@ func generateLightClientAttackEvidence(
 
 	// add a new bogus validator and remove an existing one to
 	// vary the validator set slightly
-	pv, conflictingVals, err := mutateValidatorSet(ctx, privVals, vals)
+	pv, conflictingVals, err := mutateValidatorSet(privVals, vals)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +192,6 @@ func generateLightClientAttackEvidence(
 // generateDuplicateVoteEvidence picks a random validator from the val set and
 // returns duplicate vote evidence against the validator
 func generateDuplicateVoteEvidence(
-	ctx context.Context,
 	privVals []types.MockPV,
 	height int64,
 	vals *types.ValidatorSet,
@@ -286,9 +284,9 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 	}
 }
 
-func mutateValidatorSet(ctx context.Context, privVals []types.MockPV, vals *types.ValidatorSet,
+func mutateValidatorSet(privVals []types.MockPV, vals *types.ValidatorSet,
 ) ([]types.PrivValidator, *types.ValidatorSet, error) {
-	newVal, newPrivVal, err := test.Validator(ctx, 10)
+	newVal, newPrivVal, err := test.Validator(10)
 	if err != nil {
 		return nil, nil, err
 	}

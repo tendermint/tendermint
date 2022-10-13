@@ -3,16 +3,25 @@ package test
 import (
 	"time"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 )
 
+func ConsensusParams() *types.ConsensusParams {
+	c := types.DefaultConsensusParams()
+	// enable vote extensions
+	c.ABCI.VoteExtensionsEnableHeight = 1
+	return c
+}
+
 func GenesisDoc(
-	config *cfg.Config,
+	chainID string,
 	time time.Time,
 	validators []*types.Validator,
 	consensusParams *types.ConsensusParams,
 ) *types.GenesisDoc {
+	if chainID == "" {
+		chainID = DefaultTestChainID
+	}
 
 	genesisValidators := make([]types.GenesisValidator, len(validators))
 
@@ -26,7 +35,7 @@ func GenesisDoc(
 	return &types.GenesisDoc{
 		GenesisTime:     time,
 		InitialHeight:   1,
-		ChainID:         config.ChainID(),
+		ChainID:         chainID,
 		Validators:      genesisValidators,
 		ConsensusParams: consensusParams,
 	}

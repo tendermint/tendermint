@@ -15,6 +15,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"
@@ -23,7 +24,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
@@ -42,10 +43,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	const byzantineNode = 0
 	const prevoteHeight = int64(2)
 	testName := "consensus_byzantine_test"
-	tickerFunc := newMockTickerFunc(true)
-	appFunc := newKVStore
 
-	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	state, privVals := makeGenesisState(t, genesisStateArgs{validators: nValidators})
 	css := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -54,11 +53,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 			DiscardFinalizeBlockResponses: false,
 		})
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
-		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
-		defer os.RemoveAll(thisConfig.RootDir)
-		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		app := appFunc()
+		cfg := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
+		defer os.RemoveAll(cfg.RootDir)
+		ensureDir(path.Dir(cfg.Consensus.WalFile()), 0700) // dir for wal
+		app := kvstore.NewInMemoryApplication()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		_, err := app.InitChain(context.Background(), &abci.RequestInitChain{Validators: vals})
 		require.NoError(t, err)
@@ -74,16 +72,16 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		// Make Mempool
 		var mempool mempl.Mempool
 
-		switch thisConfig.Mempool.Version {
-		case cfg.MempoolV0:
-			mempool = mempoolv0.NewCListMempool(config.Mempool,
+		switch cfg.Mempool.Version {
+		case config.MempoolV0:
+			mempool = mempoolv0.NewCListMempool(cfg.Mempool,
 				proxyAppConnMem,
 				state.LastBlockHeight,
 				mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
 				mempoolv0.WithPostCheck(sm.TxPostCheck(state)))
-		case cfg.MempoolV1:
+		case config.MempoolV1:
 			mempool = mempoolv1.NewTxMempool(logger,
-				config.Mempool,
+				cfg.Mempool,
 				proxyAppConnMem,
 				state.LastBlockHeight,
 				mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
@@ -91,7 +89,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			)
 		}
 
-		if thisConfig.Consensus.WaitForTxs() {
+		if cfg.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
 		}
 
@@ -103,7 +101,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+		cs := NewState(cfg.Consensus, state, blockExec, blockStore, mempool, evpool)
 		cs.SetLogger(cs.Logger)
 		// set private validator
 		pv := privVals[i]
@@ -115,7 +113,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		require.NoError(t, err)
 		cs.SetEventBus(eventBus)
 
-		cs.SetTimeoutTicker(tickerFunc())
+		cs.SetTimeoutTicker(newMockTickerFunc(true)())
 		cs.SetLogger(logger)
 
 		css[i] = cs
@@ -143,7 +141,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		}
 	}
 	// make connected switches and start all reactors
-	p2p.MakeConnectedSwitches(config.P2P, nValidators, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(config.TestP2PConfig(), nValidators, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("CONSENSUS", reactors[i])
 		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
 		return s
@@ -190,22 +188,22 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			panic("entered createProposalBlock with privValidator being nil")
 		}
 
-		var commit *types.Commit
+		var commit *types.ExtendedCommit
 		switch {
 		case lazyProposer.Height == lazyProposer.state.InitialHeight:
 			// We're creating a proposal for the first block.
 			// The commit is empty, but not nil.
-			commit = types.NewCommit(0, 0, types.BlockID{}, nil)
+			commit = &types.ExtendedCommit{}
 		case lazyProposer.LastCommit.HasTwoThirdsMajority():
 			// Make the commit from LastCommit
-			commit = lazyProposer.LastCommit.MakeCommit()
+			commit = lazyProposer.LastCommit.MakeExtendedCommit()
 		default: // This shouldn't happen.
 			lazyProposer.Logger.Error("enterPropose: Cannot propose anything: No commit for the previous block")
 			return
 		}
 
 		// omit the last signature in the commit
-		commit.Signatures[len(commit.Signatures)-1] = types.NewCommitSigAbsent()
+		commit.ExtendedSignatures[len(commit.ExtendedSignatures)-1] = types.NewExtendedCommitSigAbsent()
 
 		if lazyProposer.privValidatorPubKey == nil {
 			// If this node is a validator & proposer in the current round, it will
@@ -303,22 +301,20 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 // B sees a commit, A doesn't.
 // Heal partition and ensure A sees the commit
 func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
-	N := 4
 	logger := consensusLogger().With("test", "byzantine")
-	app := newKVStore
-	css, cleanup := randConsensusNet(t, N, "consensus_byzantine_test", newMockTickerFunc(false), app)
-	defer cleanup()
+	css, _, cfg := makeNetwork(t, makeNetworkArgs{})
+	n := len(css)
 
 	// give the byzantine validator a normal ticker
 	ticker := NewTimeoutTicker()
 	ticker.SetLogger(css[0].Logger)
 	css[0].SetTimeoutTicker(ticker)
 
-	switches := make([]*p2p.Switch, N)
+	switches := make([]*p2p.Switch, n)
 	p2pLogger := logger.With("module", "p2p")
-	for i := 0; i < N; i++ {
+	for i := 0; i < n; i++ {
 		switches[i] = p2p.MakeSwitch(
-			config.P2P,
+			cfg.P2P,
 			i,
 			"foo", "1.0.0",
 			func(i int, sw *p2p.Switch) *p2p.Switch {
@@ -327,9 +323,9 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 
-	blocksSubs := make([]types.Subscription, N)
-	reactors := make([]p2p.Reactor, N)
-	for i := 0; i < N; i++ {
+	blocksSubs := make([]types.Subscription, n)
+	reactors := make([]p2p.Reactor, n)
+	for i := 0; i < n; i++ {
 
 		// enable txs so we can create different proposals
 		assertMempool(css[i].txNotifier).EnableTxsAvailable()
@@ -383,7 +379,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		}
 	}()
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(cfg.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
 		// ignore new switch s, we already made ours
 		switches[i].AddReactor("CONSENSUS", reactors[i])
 		return switches[i]
@@ -397,7 +393,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 
 	// start the non-byz state machines.
 	// note these must be started before the byz
-	for i := 1; i < N; i++ {
+	for i := 1; i < n; i++ {
 		cr := reactors[i].(*Reactor)
 		cr.SwitchToConsensus(cr.conS.GetState(), false)
 	}
@@ -430,7 +426,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait till everyone makes the first new block
 	// (one of them already has)
 	wg := new(sync.WaitGroup)
-	for i := 1; i < N-1; i++ {
+	for i := 1; i < n-1; i++ {
 		wg.Add(1)
 		go func(j int) {
 			<-blocksSubs[j].Out()
@@ -448,10 +444,6 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	select {
 	case <-done:
 	case <-tick.C:
-		for i, reactor := range reactors {
-			t.Logf("Consensus Reactor %v", i)
-			t.Logf("%v", reactor)
-		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}
 }

@@ -59,11 +59,12 @@ there's only a limited number of peers.
 NOTE: Assumes that the sum total of voting power does not exceed MaxUInt64.
 */
 type VoteSet struct {
-	chainID       string
-	height        int64
-	round         int32
-	signedMsgType tmproto.SignedMsgType
-	valSet        *ValidatorSet
+	chainID           string
+	height            int64
+	round             int32
+	signedMsgType     tmproto.SignedMsgType
+	valSet            *ValidatorSet
+	extensionsEnabled bool
 
 	mtx           tmsync.Mutex
 	votesBitArray *bits.BitArray
@@ -93,6 +94,16 @@ func NewVoteSet(chainID string, height int64, round int32,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
 		peerMaj23s:    make(map[P2PID]BlockID),
 	}
+}
+
+// NewExtendedVoteSet constructs a vote set with additional vote verification logic.
+// The VoteSet constructed with NewExtendedVoteSet verifies the vote extension
+// data for every vote added to the set.
+func NewExtendedVoteSet(chainID string, height int64, round int32,
+	signedMsgType tmproto.SignedMsgType, valSet *ValidatorSet) *VoteSet {
+	vs := NewVoteSet(chainID, height, round, signedMsgType, valSet)
+	vs.extensionsEnabled = true
+	return vs
 }
 
 func (voteSet *VoteSet) ChainID() string {
@@ -611,36 +622,41 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 //--------------------------------------------------------------------------------
 // Commit
 
-// MakeCommit constructs a Commit from the VoteSet. It only includes precommits
-// for the block, which has 2/3+ majority, and nil.
+// MakeExtendedCommit constructs a Commit from the VoteSet. It only includes
+// precommits for the block, which has 2/3+ majority, and nil.
 //
 // Panics if the vote type is not PrecommitType or if there's no +2/3 votes for
 // a single block.
-func (voteSet *VoteSet) MakeCommit() *Commit {
+func (voteSet *VoteSet) MakeExtendedCommit() *ExtendedCommit {
 	if voteSet.signedMsgType != tmproto.PrecommitType {
-		panic("Cannot MakeCommit() unless VoteSet.Type is PrecommitType")
+		panic("Cannot MakeExtendCommit() unless VoteSet.Type is PrecommitType")
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
 	// Make sure we have a 2/3 majority
 	if voteSet.maj23 == nil {
-		panic("Cannot MakeCommit() unless a blockhash has +2/3")
+		panic("Cannot MakeExtendCommit() unless a blockhash has +2/3")
 	}
 
-	// For every validator, get the precommit
-	commitSigs := make([]CommitSig, len(voteSet.votes))
+	// For every validator, get the precommit with extensions
+	sigs := make([]ExtendedCommitSig, len(voteSet.votes))
 	for i, v := range voteSet.votes {
-		commitSig := v.CommitSig()
+		sig := v.ExtendedCommitSig()
 		// if block ID exists but doesn't match, exclude sig
-		if commitSig.ForBlock() && !v.BlockID.Equals(*voteSet.maj23) {
-			commitSig = NewCommitSigAbsent()
+		if sig.BlockIDFlag == BlockIDFlagCommit && !v.BlockID.Equals(*voteSet.maj23) {
+			sig = NewExtendedCommitSigAbsent()
 		}
 
-		commitSigs[i] = commitSig
+		sigs[i] = sig
 	}
 
-	return NewCommit(voteSet.GetHeight(), voteSet.GetRound(), *voteSet.maj23, commitSigs)
+	return &ExtendedCommit{
+		Height:             voteSet.GetHeight(),
+		Round:              voteSet.GetRound(),
+		BlockID:            *voteSet.maj23,
+		ExtendedSignatures: sigs,
+	}
 }
 
 //--------------------------------------------------------------------------------

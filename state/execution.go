@@ -1,7 +1,9 @@
 package state
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -94,7 +96,7 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 func (blockExec *BlockExecutor) CreateProposalBlock(
 	height int64,
 	state State,
-	commit *types.Commit,
+	lastExtCommit *types.ExtendedCommit,
 	proposerAddr []byte,
 	votes []*types.Vote,
 ) (*types.Block, error) {
@@ -108,14 +110,14 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 	maxDataBytes := types.MaxDataBytes(maxBytes, evSize, state.Validators.Size())
 
 	txs := blockExec.mempool.ReapMaxBytesMaxGas(maxDataBytes, maxGas)
+	commit := lastExtCommit.ToCommit()
 	block := state.MakeBlock(height, txs, commit, evidence, proposerAddr)
 
-	localLastCommit := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
 	rpp, err := blockExec.proxyApp.PrepareProposal(context.TODO(),
 		&abci.RequestPrepareProposal{
 			MaxTxBytes:         maxDataBytes,
 			Txs:                block.Txs.ToSliceOfBytes(),
-			LocalLastCommit:    extendedCommitInfo(localLastCommit, votes),
+			LocalLastCommit:    buildExtendedCommitInfo(lastExtCommit, blockExec.store, state.InitialHeight, state.ConsensusParams.ABCI),
 			Misbehavior:        block.Evidence.Evidence.ToABCI(),
 			Height:             block.Height,
 			Time:               block.Time,
@@ -309,6 +311,35 @@ func (blockExec *BlockExecutor) Commit(
 	return res.RetainHeight, err
 }
 
+func (blockExec *BlockExecutor) ExtendVote(ctx context.Context, vote *types.Vote) ([]byte, error) {
+	resp, err := blockExec.proxyApp.ExtendVote(ctx, &abci.RequestExtendVote{
+		BlockHash: vote.BlockID.Hash,
+		Height:    vote.Height,
+	})
+	if err != nil {
+		panic(fmt.Errorf("ExtendVote call failed: %w", err))
+	}
+	return resp.VoteExtension, nil
+}
+
+func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *types.Vote) error {
+	resp, err := blockExec.proxyApp.VerifyVoteExtension(ctx, &abci.RequestVerifyVoteExtension{
+		BlockHash:        vote.BlockID.Hash,
+		ValidatorAddress: vote.ValidatorAddress,
+		Height:           vote.Height,
+		VoteExtension:    vote.Extension,
+	})
+	if err != nil {
+		panic(fmt.Errorf("VerifyVoteExtension call failed: %w", err))
+	}
+
+	if !resp.IsOK() {
+		return errors.New("invalid vote extension")
+	}
+
+	return nil
+}
+
 //---------------------------------------------------------
 // Helper functions for executing blocks and updating state
 
@@ -387,21 +418,75 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
-func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
-	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
-	for i := range vs {
-		vs[i] = abci.ExtendedVoteInfo{
-			Validator:       c.Votes[i].Validator,
-			SignedLastBlock: c.Votes[i].SignedLastBlock,
-			/*
-				TODO: Include vote extensions information when implementing vote extensions.
-				VoteExtension:   []byte{},
-			*/
+// buildExtendedCommitInfo populates an ABCI extended commit from the
+// corresponding Tendermint extended commit ec, using the stored validator set
+// from ec.  It requires ec to include the original precommit votes along with
+// the vote extensions from the last commit.
+//
+// For heights below the initial height, for which we do not have the required
+// data, it returns an empty record.
+//
+// Assumes that the commit signatures are sorted according to validator index.
+func buildExtendedCommitInfo(ec *types.ExtendedCommit, store Store, initialHeight int64, ap types.ABCIParams) abci.ExtendedCommitInfo {
+	if ec.Height < initialHeight {
+		// There are no extended commits for heights below the initial height.
+		return abci.ExtendedCommitInfo{}
+	}
+
+	valSet, err := store.LoadValidators(ec.Height)
+	if err != nil {
+		panic(fmt.Errorf("failed to load validator set at height %d, initial height %d: %w", ec.Height, initialHeight, err))
+	}
+
+	var (
+		ecSize    = ec.Size()
+		valSetLen = len(valSet.Validators)
+	)
+
+	// Ensure that the size of the validator set in the extended commit matches
+	// the size of the validator set in the state store.
+	if ecSize != valSetLen {
+		panic(fmt.Errorf(
+			"extended commit size (%d) does not match validator set length (%d) at height %d\n\n%v\n\n%v",
+			ecSize, valSetLen, ec.Height, ec.ExtendedSignatures, valSet.Validators,
+		))
+	}
+
+	votes := make([]abci.ExtendedVoteInfo, ecSize)
+	for i, val := range valSet.Validators {
+		ecs := ec.ExtendedSignatures[i]
+
+		// Absent signatures have empty validator addresses, but otherwise we
+		// expect the validator addresses to be the same.
+		if ecs.BlockIDFlag != types.BlockIDFlagAbsent && !bytes.Equal(ecs.ValidatorAddress, val.Address) {
+			panic(fmt.Errorf("validator address of extended commit signature in position %d (%s) does not match the corresponding validator's at height %d (%s)",
+				i, ecs.ValidatorAddress, ec.Height, val.Address,
+			))
+		}
+
+		var ext []byte
+		// Check if vote extensions were enabled during the commit's height: ec.Height.
+		// ec is the commit from the previous height, so if extensions were enabled
+		// during that height, we ensure they are present and deliver the data to
+		// the proposer. If they were not enabled during this previous height, we
+		// will not deliver extension data.
+		if ap.VoteExtensionsEnabled(ec.Height) && ecs.BlockIDFlag == types.BlockIDFlagCommit {
+			if err := ecs.EnsureExtension(); err != nil {
+				panic(fmt.Errorf("commit at height %d received with missing vote extensions data", ec.Height))
+			}
+			ext = ecs.Extension
+		}
+
+		votes[i] = abci.ExtendedVoteInfo{
+			Validator:       types.TM2PB.Validator(val),
+			SignedLastBlock: ecs.BlockIDFlag != types.BlockIDFlagAbsent,
+			VoteExtension:   ext,
 		}
 	}
+
 	return abci.ExtendedCommitInfo{
-		Round: c.Round,
-		Votes: vs,
+		Round: ec.Round,
+		Votes: votes,
 	}
 }
 

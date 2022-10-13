@@ -13,7 +13,11 @@ import (
 )
 
 const (
-	nilVoteStr string = "nil-Vote"
+	absentVoteStr string = "Vote{absent}"
+	nilVoteStr    string = "nil"
+
+	// The maximum supported number of bytes in a vote extension.
+	MaxVoteExtensionSize int = 1024 * 1024
 )
 
 var (
@@ -24,6 +28,7 @@ var (
 	ErrVoteInvalidBlockHash          = errors.New("invalid block hash")
 	ErrVoteNonDeterministicSignature = errors.New("non-deterministic signature")
 	ErrVoteNil                       = errors.New("nil vote")
+	ErrVoteExtensionAbsent           = errors.New("expected vote extension is absent")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -48,14 +53,16 @@ type Address = crypto.Address
 // Vote represents a prevote, precommit, or commit vote from validators for
 // consensus.
 type Vote struct {
-	Type             tmproto.SignedMsgType `json:"type"`
-	Height           int64                 `json:"height"`
-	Round            int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
-	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
-	Timestamp        time.Time             `json:"timestamp"`
-	ValidatorAddress Address               `json:"validator_address"`
-	ValidatorIndex   int32                 `json:"validator_index"`
-	Signature        []byte                `json:"signature"`
+	Type               tmproto.SignedMsgType `json:"type"`
+	Height             int64                 `json:"height"`
+	Round              int32                 `json:"round"`    // assume there will not be greater than 2_147_483_647 rounds
+	BlockID            BlockID               `json:"block_id"` // zero if vote is nil.
+	Timestamp          time.Time             `json:"timestamp"`
+	ValidatorAddress   Address               `json:"validator_address"`
+	ValidatorIndex     int32                 `json:"validator_index"`
+	Signature          []byte                `json:"signature"`
+	Extension          []byte                `json:"extension"`
+	ExtensionSignature []byte                `json:"extension_signature"`
 }
 
 // CommitSig converts the Vote to a CommitSig.
@@ -68,7 +75,7 @@ func (vote *Vote) CommitSig() CommitSig {
 	switch {
 	case vote.BlockID.IsComplete():
 		blockIDFlag = BlockIDFlagCommit
-	case vote.BlockID.IsZero():
+	case vote.BlockID.IsNil():
 		blockIDFlag = BlockIDFlagNil
 	default:
 		panic(fmt.Sprintf("Invalid vote %v - expected BlockID to be either empty or complete", vote))
@@ -82,6 +89,31 @@ func (vote *Vote) CommitSig() CommitSig {
 	}
 }
 
+// StripExtension removes any extension data from the vote. Useful if the
+// chain has not enabled vote extensions.
+// Returns true if extension data was present before stripping and false otherwise.
+func (vote *Vote) StripExtension() bool {
+	stripped := len(vote.Extension) > 0 || len(vote.ExtensionSignature) > 0
+	vote.Extension = nil
+	vote.ExtensionSignature = nil
+	return stripped
+}
+
+// ExtendedCommitSig attempts to construct an ExtendedCommitSig from this vote.
+// Panics if either the vote extension signature is missing or if the block ID
+// is not either empty or complete.
+func (vote *Vote) ExtendedCommitSig() ExtendedCommitSig {
+	if vote == nil {
+		return NewExtendedCommitSigAbsent()
+	}
+
+	return ExtendedCommitSig{
+		CommitSig:          vote.CommitSig(),
+		Extension:          vote.Extension,
+		ExtensionSignature: vote.ExtensionSignature,
+	}
+}
+
 // VoteSignBytes returns the proto-encoding of the canonicalized Vote, for
 // signing. Panics is the marshaling fails.
 //
@@ -92,6 +124,21 @@ func (vote *Vote) CommitSig() CommitSig {
 // See CanonicalizeVote
 func VoteSignBytes(chainID string, vote *tmproto.Vote) []byte {
 	pb := CanonicalizeVote(chainID, vote)
+	bz, err := protoio.MarshalDelimited(&pb)
+	if err != nil {
+		panic(err)
+	}
+
+	return bz
+}
+
+// VoteExtensionSignBytes returns the proto-encoding of the canonicalized vote
+// extension for signing. Panics if the marshaling fails.
+//
+// Similar to VoteSignBytes, the encoded Protobuf message is varint
+// length-prefixed for backwards-compatibility with the Amino encoding.
+func VoteExtensionSignBytes(chainID string, vote *tmproto.Vote) []byte {
+	pb := CanonicalizeVoteExtension(chainID, vote)
 	bz, err := protoio.MarshalDelimited(&pb)
 	if err != nil {
 		panic(err)
@@ -118,38 +165,91 @@ func (vote *Vote) Copy() *Vote {
 // 9. timestamp
 func (vote *Vote) String() string {
 	if vote == nil {
-		return nilVoteStr
+		return absentVoteStr
 	}
 
-	var typeString string
+	var blockHashString string
+	if len(vote.BlockID.Hash) > 0 {
+		blockHashString = fmt.Sprintf("%X", tmbytes.Fingerprint(vote.BlockID.Hash))
+	} else {
+		blockHashString = nilVoteStr
+	}
+
 	switch vote.Type {
 	case tmproto.PrevoteType:
-		typeString = "Prevote"
+		return fmt.Sprintf("Prevote{%v/%02d by %v:%X for %X <%X> @ %s}",
+			vote.Height,
+			vote.Round,
+			vote.ValidatorIndex,
+			tmbytes.Fingerprint(vote.ValidatorAddress),
+			blockHashString,
+			tmbytes.Fingerprint(vote.Signature),
+			CanonicalTime(vote.Timestamp),
+		)
 	case tmproto.PrecommitType:
-		typeString = "Precommit"
+		return fmt.Sprintf("Precommit{%v/%02d by %v:%X for %X <%X> & %d <%X> @ %s}",
+			vote.Height,
+			vote.Round,
+			vote.ValidatorIndex,
+			tmbytes.Fingerprint(vote.ValidatorAddress),
+			blockHashString,
+			tmbytes.Fingerprint(vote.Signature),
+			len(vote.Extension),
+			tmbytes.Fingerprint(vote.Extension),
+			CanonicalTime(vote.Timestamp),
+		)
 	default:
 		panic("Unknown vote type")
 	}
-
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
-		vote.ValidatorIndex,
-		tmbytes.Fingerprint(vote.ValidatorAddress),
-		vote.Height,
-		vote.Round,
-		vote.Type,
-		typeString,
-		tmbytes.Fingerprint(vote.BlockID.Hash),
-		tmbytes.Fingerprint(vote.Signature),
-		CanonicalTime(vote.Timestamp),
-	)
 }
 
-func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
+func (vote *Vote) verifyAndReturnProto(chainID string, pubKey crypto.PubKey) (*tmproto.Vote, error) {
 	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
-		return ErrVoteInvalidValidatorAddress
+		return nil, ErrVoteInvalidValidatorAddress
 	}
 	v := vote.ToProto()
 	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
+		return nil, ErrVoteInvalidSignature
+	}
+	return v, nil
+}
+
+// Verify checks whether the signature associated with this vote corresponds to
+// the given chain ID and public key. This function does not validate vote
+// extension signatures - to do so, use VerifyWithExtension instead.
+func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
+	_, err := vote.verifyAndReturnProto(chainID, pubKey)
+	return err
+}
+
+// VerifyVoteAndExtension performs the same verification as Verify, but
+// additionally checks whether the vote extension signature corresponds to the
+// given chain ID and public key. We only verify vote extension signatures for
+// precommits.
+func (vote *Vote) VerifyVoteAndExtension(chainID string, pubKey crypto.PubKey) error {
+	v, err := vote.verifyAndReturnProto(chainID, pubKey)
+	if err != nil {
+		return err
+	}
+	// We only verify vote extension signatures for non-nil precommits.
+	if vote.Type == tmproto.PrecommitType && !IsProtoBlockIDNil(&v.BlockID) {
+		extSignBytes := VoteExtensionSignBytes(chainID, v)
+		if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+			return ErrVoteInvalidSignature
+		}
+	}
+	return nil
+}
+
+// VerifyExtension checks whether the vote extension signature corresponds to the
+// given chain ID and public key.
+func (vote *Vote) VerifyExtension(chainID string, pubKey crypto.PubKey) error {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsNil() {
+		return nil
+	}
+	v := vote.ToProto()
+	extSignBytes := VoteExtensionSignBytes(chainID, v)
+	if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil
@@ -161,8 +261,8 @@ func (vote *Vote) ValidateBasic() error {
 		return errors.New("invalid Type")
 	}
 
-	if vote.Height < 0 {
-		return errors.New("negative Height")
+	if vote.Height <= 0 {
+		return errors.New("negative or zero Height")
 	}
 
 	if vote.Round < 0 {
@@ -177,7 +277,7 @@ func (vote *Vote) ValidateBasic() error {
 
 	// BlockID.ValidateBasic would not err if we for instance have an empty hash but a
 	// non-empty PartsSetHeader:
-	if !vote.BlockID.IsZero() && !vote.BlockID.IsComplete() {
+	if !vote.BlockID.IsNil() && !vote.BlockID.IsComplete() {
 		return fmt.Errorf("blockID must be either empty or complete, got: %v", vote.BlockID)
 	}
 
@@ -198,7 +298,50 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
+	// We should only ever see vote extensions in non-nil precommits, otherwise
+	// this is a violation of the specification.
+	// https://github.com/tendermint/tendermint/issues/8487
+	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsNil()) {
+		if len(vote.Extension) > 0 {
+			return errors.New("unexpected vote extension")
+		}
+		if len(vote.ExtensionSignature) > 0 {
+			return errors.New("unexpected vote extension signature")
+		}
+	} else {
+		// It's possible that this vote has vote extensions but
+		// they could also be disabled and thus not present thus
+		// we can't do all checks
+		if len(vote.ExtensionSignature) > MaxSignatureSize {
+			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
+		}
+
+		// NOTE: extended votes should have a signature regardless of
+		// of whether there is any data in the extension or not however
+		// we don't know if extensions are enabled so we can only
+		// enforce the signature when extension size is no nil
+		if len(vote.ExtensionSignature) == 0 && len(vote.Extension) != 0 {
+			return fmt.Errorf("vote extension signature absent on vote with extension")
+		}
+	}
+
 	return nil
+}
+
+// EnsureExtension checks for the presence of extensions signature data
+// on precommit vote types.
+func (vote *Vote) EnsureExtension() error {
+	// We should always see vote extension signatures in non-nil precommits
+	if vote.Type != tmproto.PrecommitType {
+		return nil
+	}
+	if vote.BlockID.IsNil() {
+		return nil
+	}
+	if len(vote.ExtensionSignature) > 0 {
+		return nil
+	}
+	return ErrVoteExtensionAbsent
 }
 
 // ToProto converts the handwritten type to proto generated type
@@ -209,14 +352,16 @@ func (vote *Vote) ToProto() *tmproto.Vote {
 	}
 
 	return &tmproto.Vote{
-		Type:             vote.Type,
-		Height:           vote.Height,
-		Round:            vote.Round,
-		BlockID:          vote.BlockID.ToProto(),
-		Timestamp:        vote.Timestamp,
-		ValidatorAddress: vote.ValidatorAddress,
-		ValidatorIndex:   vote.ValidatorIndex,
-		Signature:        vote.Signature,
+		Type:               vote.Type,
+		Height:             vote.Height,
+		Round:              vote.Round,
+		BlockID:            vote.BlockID.ToProto(),
+		Timestamp:          vote.Timestamp,
+		ValidatorAddress:   vote.ValidatorAddress,
+		ValidatorIndex:     vote.ValidatorIndex,
+		Signature:          vote.Signature,
+		Extension:          vote.Extension,
+		ExtensionSignature: vote.ExtensionSignature,
 	}
 }
 
@@ -248,15 +393,17 @@ func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 		return nil, err
 	}
 
-	vote := new(Vote)
-	vote.Type = pv.Type
-	vote.Height = pv.Height
-	vote.Round = pv.Round
-	vote.BlockID = *blockID
-	vote.Timestamp = pv.Timestamp
-	vote.ValidatorAddress = pv.ValidatorAddress
-	vote.ValidatorIndex = pv.ValidatorIndex
-	vote.Signature = pv.Signature
-
+	vote := &Vote{
+		Type:               pv.Type,
+		Height:             pv.Height,
+		Round:              pv.Round,
+		BlockID:            *blockID,
+		Timestamp:          pv.Timestamp,
+		ValidatorAddress:   pv.ValidatorAddress,
+		ValidatorIndex:     pv.ValidatorIndex,
+		Signature:          pv.Signature,
+		Extension:          pv.Extension,
+		ExtensionSignature: pv.ExtensionSignature,
+	}
 	return vote, vote.ValidateBasic()
 }
