@@ -52,13 +52,14 @@ This section explains how the tests were carried out for reproducibility purpose
     * WARNING: Do NOT forget to run `make terraform-destroy` as soon as you are done with the tests
 5. As a sanity check, connect to the Prometheus node's web interface and check the graph for the `tendermint_consensus_height` metric.
    All nodes should be increasing their heights.
-6. `ssh` into the `testnet-load-runner` and run script XXXXX
+6. `ssh` into the `testnet-load-runner`, then copy script `script/200-node-loadscript.sh` and run it from the load runner node.
     * This will take about 40 mins to run
     * It is running 90-seconds-long experiments in a loop with different loads
 7. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
 8. Verify that the data was collected without errors
-    * all Tendermint nodes' blockstore DB
+    * at least one blockstore DB for a Tendermint validator
     * the Prometheus database from the Prometheus node
+    * for extra care, you can run `zip -T` on the `prometheus.zip` file and (one of) the `blockstore.db.zip` file(s)
 9. **Run `make terraform-destroy`**
 
 ## Result Extraction
@@ -70,25 +71,25 @@ The Core team should improve it at every iteration to increase the amount of aut
 
 1. Unzip the blockstore into a directory
 2. Extract the latency report and the raw latencies for all the experiments. Run these commands from the directory containing the blockstore
-    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@4f3e87b2e --database-type goleveldb --data-dir ./ > results/report.txt`
-    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@4f3e87b2e --database-type goleveldb --data-dir ./ --csv results/raw.csv`
+    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@3ec6e424d --database-type goleveldb --data-dir ./ > results/report.txt`
+    * `go run github.com/tendermint/tendermint/test/loadtime/cmd/report@3ec6e424d --database-type goleveldb --data-dir ./ --csv results/raw.csv`
 3. File `report.txt` contains an unordered list of experiments with varying concurrent connections and transaction rate
-    * Create files `report04.txt`, `report08.txt`, `report16.txt` and, for each experiment in file `report.txt`,
+    * Create files `report01.txt`, `report02.txt`, `report04.txt` and, for each experiment in file `report.txt`,
       copy its related lines to the filename that matches the number of connections.
-    * Sort the experiments in `report04.txt` in ascending tx rate order. Likewise for `report08.txt` and `report16.txt`.
-4. Generate file `report_tabbed.txt` by showing the contents `report04.txt`, `report08.txt`, `report16.txt` side by side
+    * Sort the experiments in `report01.txt` in ascending tx rate order. Likewise for `report02.txt` and `report04.txt`.
+4. Generate file `report_tabbed.txt` by showing the contents `report01.txt`, `report02.txt`, `report04.txt` side by side
    * This effectively creates a table where rows are a particular tx rate and columns are a particular number of websocket connections.
 5. Extract the raw latencies from file `raw.csv` using the following bash loop. This creates a `.csv` file and a `.dat` file per experiment.
    The format of the `.dat` files is amenable to loading them as matrices in Octave
 
     ```bash
-    uuids=($(cat report04.txt report08.txt report16.txt | grep '^Experiment ID: ' | awk '{ print $3 }')) 
+    uuids=($(cat report01.txt report02.txt report04.txt | grep '^Experiment ID: ' | awk '{ print $3 }'))
     c=1
-    for i in 04 08 16; do
-      for j in 0020 0200 0400 0800 1200; do
-        echo $i $j $c "$uuids[$c]"
+    for i in 01 02 04; do
+      for j in 0025 0050 0100 0200; do
+        echo $i $j $c "${uuids[$c]}"
         filename=c${i}_r${j}
-        grep $uuids[$c] raw.csv > ${filename}.csv
+        grep ${uuids[$c]} raw.csv > ${filename}.csv
         cat ${filename}.csv | tr , ' ' | awk '{ print $2, $3 }' > ${filename}.dat
         c=$(expr $c + 1)
       done
@@ -99,8 +100,8 @@ The Core team should improve it at every iteration to increase the amount of aut
 7. Load all `.dat` files generated in step 5 into matrices using this Octave code snippet
 
     ```octave
-    conns =  { "04"; "08"; "16" };
-    rates =  { "0020"; "0200"; "0400"; "0800"; "1200" };
+    conns =  { "01"; "02"; "04" };
+    rates =  { "0025"; "0050"; "0100"; "0200" };
     for i = 1:length(conns)
       for j = 1:length(rates)
         filename = strcat("c", conns{i}, "_r", rates{j}, ".dat");
@@ -134,14 +135,19 @@ The Core team should improve it at every iteration to increase the amount of aut
     legend(legends, "location", "northeastoutside");
     xlabel("experiment time (s)");
     ylabel("latency (s)");
-    axis([0, 100, 0, 15], "tic");
     t = sprintf("200-node testnet - %s", release);
     title(t);
     ```
 
-10. Use Octave's GUI menu to save the plot (e.g. as `.png`)
+10. Consider adjusting the axis, in case you want to compare your results to the baseline, for instance
 
-11. Repeat steps 9 and 10 to obtain as many plots as deemed necessary.
+    ```octave
+    axis([0, 100, 0, 30], "tic");
+    ```
+
+11. Use Octave's GUI menu to save the plot (e.g. as `.png`)
+
+12. Repeat steps 9 and 10 to obtain as many plots as deemed necessary.
 
 ### Extracting Prometheus Metrics
 
@@ -178,9 +184,9 @@ This section explains how the tests were carried out for reproducibility purpose
     after height 3000 was reached, stop `make rotate`
 11. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
 12. Verify that the data was collected without errors
-    * all Tendermint nodes' blockstore DB
+    * at least one blockstore DB for a Tendermint validator
     * the Prometheus database from the Prometheus node
-    * for extra care, you can run `zip -T` on the `prometheus.zip` file and one of the `blockstore.db.zip` files
+    * for extra care, you can run `zip -T` on the `prometheus.zip` file and (one of) the `blockstore.db.zip` file(s)
 13. **Run `make terraform-destroy`**
 
 Steps 8 to 10 are highly manual at the moment and will be improved in next iterations.

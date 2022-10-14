@@ -6,6 +6,16 @@ parent:
   order: 2
 ---
 
+# Issues discovered
+
+During this iteration of the QA process, the following issues were found:
+
+* [critical, fixed] #9533. This bug caused full nodes to sometimes get stuck when blocksyncing, requiring a manual restart to unblock them.
+* [critical, fixed] #9539. `loadtime` is very likely to include more than one "=" character in transactions, with is rejected by the e2e application.
+* [non-critical, not fixed] #9548. Full nodes can go over 50 connected peers, which is not intended by the default configuration.
+* [non-critical, not fixed] #9537. With the default mempool cache setting, duplicated transactions are not rejected when gossipped and eventually flood all mempools.
+  The 200 node testnets were thus run with a value of 200000 (as opposed to the default 10000)
+
 # 200 Node Testnet
 
 ## Finding the Saturation Point
@@ -20,141 +30,138 @@ The following table summarizes the results for v0.37.x, for the different experi
 The X axis of this table is `c`, the number of connections created by the load runner process to the target node.
 The Y axis of this table is `r`, the rate or number of transactions issued per second.
 
-|        |  c=4 |  c=8 | c=16 |
-| :---   | ---: | ---: | ---: |
-| r=20   |  148 |  288 |  591 |
-| r=200  | 1519 | 3087 | 6198 |
-| r=400  | 3094 | 6231 | 8698 |
-| r=800  | 6155 | 8444 | 8407 |
-| r=1200 | 8290 | 8448 | 8666 |
+|        |  c=1  |  c=2  |  c=4  |
+| :---   | ----: | ----: | ----: |
+| r=25   |  2225 | 4450  | 8900  |
+| r=50   |  4450 | 8900  | 17800 |
+| r=100  |  8900 | 17800 | 35600 |
+| r=200  | 17800 | 35600 | 38660 |
 
 For comparison, this is the table with the baseline version.
 
-|        |  c=4 |  c=8 | c=16 |
-| :---   | ---: | ---: | ---: |
-| r=20   |  144 |  309 |  632 |
-| r=200  | 1547 | 3195 | 5958 |
-| r=400  | 3102 | 6110 | 8526 |
-| r=800  | 6231 | 8224 | 8653 |
-| r=1200 | 7978 | 8368 | 9087 |
+|        |  c=1  |  c=2  |  c=4  |
+| :---   | ----: | ----: | ----: |
+| r=25   |  2225 | 4450  | 8900  |
+| r=50   |  4450 | 8900  | 17800 |
+| r=100  |  8900 | 17800 | 35400 |
+| r=200  | 17800 | 35600 | 37358 |
 
-The saturation point is a diagonal across:
+The saturation point is beyond the diagonal:
 
-* `r=1200,c=4`
-* `r=800,c=8`
-* `r=400,c=16`
+* `r=200,c=2`
+* `r=100,c=4`
 
 which is at the same place as the baseline. For more details on the saturation point, see
 [this paragraph](../v034/README.md#finding-the-saturation-point) in the baseline version.
 
 The experiment chosen to examine Prometheus metrics is the same as in the baseline:
-**`r=400,c=8`**.
+**`r=200,c=2`**.
 
-This is a plot of the CPU load of the load runner for `r=400,c=8`,
-where we can see that the load (average over 1 minute) stays below 1 most of the time.
-
-![load-load-runner](./img/v037_r400c8_load-runner.png)
+The load runner's CPU load was negligible (near 0) when running `r=200,c=2`.
 
 ## Examining latencies
 
 The method described [here](../method.md) allows us to plot the latencies of transactions
 for all experiments.
 
-![all-latencies](./img/v037_r400c8_latencies.png)
+![all-latencies](./img/v037_200node_latencies.png)
 
 The data seen in the plot is similar to that of the baseline.
 
-![all-latencies-bl](../v034/img/v034_r400c8_latencies.png)
+![all-latencies-bl](../v034/img/v034_200node_latencies.png)
 
 Therefore, for further details on these plots,
 see [this paragraph](../v034/README.md#examining-latencies) in the baseline version.
 
 ## Prometheus Metrics on the Chosen Experiment
 
-As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=400,c=8`.
+As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=200,c=2`.
 This section further examines key metrics for this experiment extracted from Prometheus data.
 
 ### Mempool Size
 
 The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous
 at all full nodes. It did not exhibit any unconstrained growth.
-The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools.
+The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools
+at a given time.
 
-![mempool-cumulative](./img/v037_r400c8_mempool_size.png)
+![mempool-cumulative](./img/v037_r200c2_mempool_size.png)
 
-The plot below shows evolution of the average over all full nodes, which oscillate around 140 outstanding transactions.
+The plot below shows evolution of the average over all full nodes, which oscillate between 1500 and 2000 outstanding transactions.
 
-![mempool-avg](./img/v037_r400c8_mempool_size_avg.png)
+![mempool-avg](./img/v037_r200c2_mempool_size_avg.png)
 
 The peaks observed coincide with the moments when some nodes reached round 1 of consensus (see below).
 
 **These plots yield similar results to the baseline**:
 
-![mempool-cumulative-bl](../v034/img/v034_r400c8_mempool_size.png)
+![mempool-cumulative-bl](../v034/img/v034_r200c2_mempool_size.png)
 
-![mempool-avg-bl](../v034/img/v034_r400c8_mempool_size_avg.png)
+![mempool-avg-bl](../v034/img/v034_r200c2_mempool_size_avg.png)
 
 ### Peers
 
 The number of peers was stable at all nodes.
-It was higher for the seed nodes (around 140) than for the rest (between 25 and 68).
+It was higher for the seed nodes (around 140) than for the rest (between 16 and 78).
 
-![peers](./img/v037_r400c8_peers.png)
+![peers](./img/v037_r200c2_peers.png)
+
+Just as in the baseline, the fact that non-seed nodes reach more than 50 peers is due to #9548.
 
 **This plot yields similar results to the baseline**:
 
-![peers-bl](../v034/img/v034_r400c8_peers.png)
+![peers-bl](../v034/img/v034_r200c2_peers.png)
 
 ### Consensus Rounds per Height
 
 Most heights took just one round, but some nodes needed to advance to round 1 at some point.
 
-![rounds](./img/v037_r400c8_rounds.png)
+![rounds](./img/v037_r200c2_rounds.png)
 
 **This plot yields slightly better results than the baseline**:
 
-![rounds-bl](../v034/img/v034_r400c8_rounds.png)
+![rounds-bl](../v034/img/v034_r200c2_rounds.png)
 
 ### Blocks Produced per Minute, Transactions Processed per Minute
 
 The blocks produced per minute are the gradient of this plot.
 
-![heights](./img/v037_r400c8_heights.png)
+![heights](./img/v037_r200c2_heights.png)
 
-Over a period of 2 minutes, the height goes from 680 to 748.
-This results in an average of 34 blocks produced per minute.
+Over a period of 2 minutes, the height goes from 477 to 524.
+This results in an average of 23.5 blocks produced per minute.
 
 The transactions processed per minute are the gradient of this plot.
 
-![total-txs](./img/v037_r400c8_total-txs.png)
+![total-txs](./img/v037_r200c2_total-txs.png)
 
-Over a period of 2 minutes, the total goes from 22581 to 28812 transactions,
-resulting in 3115 transactions per minute. However, we can see in the plot that
+Over a period of 2 minutes, the total goes from 64525 to 100125 transactions,
+resulting in 17800 transactions per minute. However, we can see in the plot that
 all transactions in the load are process long before the two minutes.
-If we adjust the time window when transactions are processed (approx. 93 seconds),
-we obtain 4063 transactions per minute.
+If we adjust the time window when transactions are processed (approx. 90 seconds),
+we obtain 23733 transactions per minute.
 
 **These plots yield similar results to the baseline**:
 
-![heights-bl](../v034/img/v034_r400c8_heights.png)
+![heights-bl](../v034/img/v034_r200c2_heights.png)
 
-![total-txs](../v034/img/v034_r400c8_total-txs.png)
+![total-txs](../v034/img/v034_r200c2_total-txs.png)
 
 ### Memory Resident Set Size
 
 Resident Set Size of all monitored processes is plotted below.
 
-![rss](./img/v037_r400c8_rss.png)
+![rss](./img/v037_r200c2_rss.png)
 
 The average over all processes oscillates around 380 MiB and does not demonstrate unconstrained growth.
 
-![rss-avg](./img/v037_r400c8_rss_avg.png)
+![rss-avg](./img/v037_r200c2_rss_avg.png)
 
 **These plots yield similar results to the baseline**:
 
-![rss-bl](../v034/img/v034_r400c8_rss.png)
+![rss-bl](../v034/img/v034_r200c2_rss.png)
 
-![rss-avg-bl](../v034/img/v034_r400c8_rss_avg.png)
+![rss-avg-bl](../v034/img/v034_r200c2_rss_avg.png)
 
 ### CPU utilization
 
@@ -162,25 +169,29 @@ The best metric from Prometheus to gauge CPU utilization in a Unix machine is `l
 as it usually appears in the
 [output of `top`](https://www.digitalocean.com/community/tutorials/load-average-in-linux).
 
-![load1](./img/v037_r400c8_load1.png)
+![load1](./img/v037_r200c2_load1.png)
 
-It is contained between 0.5 and 4 at all nodes.
+It is contained below 5 on most nodes.
 
 **This plot yields similar results to the baseline**:
 
-![load1](../v034/img/v034_r400c8_load1.png)
+![load1](../v034/img/v034_r200c2_load1.png)
 
 ## Test Result
 
 **Result: PASS**
 
-Date: 2022-09-23
+Date: 2022-10-14
 
 Version: b9480d0ec79c53b06344148afc6589f895d0abbf
 
 # Rotating Node Testnet
 
 We use the same load as in the baseline: `c=4,r=800`.
+
+Just as in the baseline tests, the version of Tendermint used for these tests is affected by #9539.
+See this paragraph in the [baseline report](../v034/README.md#rotating-node-testnet) for further details.
+Finally, note that this setup allows for a fairer comparison between this version and the baseline.
 
 # Latencies
 

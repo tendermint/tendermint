@@ -21,47 +21,47 @@ The following table summarizes the results for v0.34.x, for the different experi
 The X axis of this table is `c`, the number of connections created by the load runner process to the target node.
 The Y axis of this table is `r`, the rate or number of transactions issued per second.
 
-|        |  c=4 |  c=8 | c=16 |
-| :---   | ---: | ---: | ---: |
-| r=20   |  144 |  309 |  632 |
-| r=200  | 1547 | 3195 | 5958 |
-| r=400  | 3102 | 6110 | 8526 |
-| r=800  | 6231 | 8224 | 8653 |
-| r=1200 | 7978 | 8368 | 9087 |
+|        |  c=1  |  c=2  |  c=4  |
+| :---   | ----: | ----: | ----: |
+| r=25   |  2225 | 4450  | 8900  |
+| r=50   |  4450 | 8900  | 17800 |
+| r=100  |  8900 | 17800 | 35600 |
+| r=200  | 17800 | 35600 | 38660 |
 
 The table shows the number of 1024-byte-long transactions that were produced by the load runner,
 and processed by Tendermint, during the 90 seconds of the experiment's duration.
-Each cell in the table refers to an experiment with a particular number of websocket connections
-to a chosen validator (`c`), and the number of transactions per second that the load runner
+Each cell in the table refers to an experiment with a particular number of websocket connections (`c`)
+to a chosen validator, and the number of transactions per second that the load runner
 tries to produce (`r`). Note that the overall load is $c \cdot r$.
 
-We can see that the saturation point is a diagonal (given that the overall load is de product
-of the rate and the number of connections) that spans cells
+We can see that the saturation point is beyond the diagonal that spans cells
 
-* `r=1200,c=4`
-* `r=800,c=8`
-* `r=400,c=16`
+* `r=200,c=2`
+* `r=100,c=4`
 
-These experiments and all others below the diagonal they form have in common that the total
+given that the total transactions should be close to the product of the rate, the number of connections,
+and the experiment time (89 seconds, since the last batch never gets sent).
+
+All experiments below the saturation diagonal (`r=200,c=4`) have in common that the total
 number of transactions processed is noticeably less than the product $c \cdot r \cdot 90$,
 which is the expected number of transactions when the system is able to deal well with the
 load.
 
-At this point, we chose an experiment with an important load but below the saturation point,
+At this point, we chose an experiment at the limit of the saturation diagonal,
 in order to further study the performance of this release.
-**The chosen experiment is `r=400,c=8`**.
+**The chosen experiment is `r=200,c=2`**.
 
-This is a plot of the CPU load of the load runner for `r=400,c=8`,
-where we can see that the load (average over 1 minute) stays below 1 most of the time.
+This is a plot of the CPU load of the load runner for `r=200,c=2`,
+where we can see that the load (average over 1 minute) stays close to 0 most of the time.
 
-![load-load-runner](./img/v034_r400c8_load-runner.png)
+![load-load-runner](./img/v034_r200c2_load-runner.png)
 
 ## Examining latencies
 
 The method described [here](../method.md) allows us to plot the latencies of transactions
 for all experiments.
 
-![all-latencies](./img/v034_r400c8_latencies.png)
+![all-latencies](./img/v034_200node_latencies.png)
 
 As we can see, even the experiments beyond the saturation diagonal managed to keep
 transaction latency stable (i.e. not constantly increasing).
@@ -69,76 +69,87 @@ Our interpretation for this is that contention within Tendermint was propagated,
 via the websockets, to the load runner,
 hence the load runner could not produce the target load, but a fraction of it.
 
-Further examination of the Prometheus data, showed that the mempool contained many transactions
+Further examination of the Prometheus data (see below), showed that the mempool contained many transactions
 at steady state, but did not grow much without quickly returning to this steady state. This demonstrates
 that the transactions were able to be processed by the Tendermint network at least as quickly as they
 were submitted to the mempool. Finally, the test script made sure that, at the end of an experiment, the
 mempool was empty so that all transactions submitted to the chain were processed.
 
-This plot can we used as a baseline to compare with other releases.
+Finally, the number of points present in the plot appears to be much less than expected given the
+number of transactions in each experiment, particularly close to or above the saturation diagonal.
+This is a visual effect of the plot; what appear to be points in the plot are actually potentially huge
+clusters of points. To corroborate this, we have zoomed in the plot above by setting (carefully chosen)
+tiny axis intervals. The cluster shown below looks like a single point in the plot above.
+
+![all-latencies-zoomed](./img/v034_200node_latencies_zoomed.png)
+
+The plot of latencies can we used as a baseline to compare with other releases.
 
 ## Prometheus Metrics on the Chosen Experiment
 
-As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=400,c=8`.
+As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=200,c=2`.
 This section further examines key metrics for this experiment extracted from Prometheus data.
 
 ### Mempool Size
 
 The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous
 at all full nodes. It did not exhibit any unconstrained growth.
-The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools.
+The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools
+at a given time.
 The two spikes that can be observed correspond to a period where consensus instances reached round 1
 at some nodes.
 
-![mempool-cumulative](./img/v034_r400c8_mempool_size.png)
+![mempool-cumulative](./img/v034_r200c2_mempool_size.png)
 
-The plot below shows evolution of the average over all full nodes, which oscillate around 140 outstanding transactions.
+The plot below shows evolution of the average over all full nodes, which oscillates between 1500 and 2000
+outstanding transactions.
 
-![mempool-avg](./img/v034_r400c8_mempool_size_avg.png)
+![mempool-avg](./img/v034_r200c2_mempool_size_avg.png)
 
 The peaks observed coincide with the moments when some nodes process to round 1 of consensus (see below).
 
 ### Peers
 
 The number of peers was stable at all nodes.
-It was higher for the seed nodes (around 140) than for the rest (between 21 and 71).
+It was higher for the seed nodes (around 140) than for the rest (between 21 and 74).
+The fact that non-seed nodes reach more than 50 peers is due to #9548.
 
-![peers](./img/v034_r400c8_peers.png)
+![peers](./img/v034_r200c2_peers.png)
 
 ### Consensus Rounds per Height
 
 Most heights took just one round, but some nodes needed to advance to round 1 at some point.
 
-![rounds](./img/v034_r400c8_rounds.png)
+![rounds](./img/v034_r200c2_rounds.png)
 
 ### Blocks Produced per Minute, Transactions Processed per Minute
 
 The blocks produced per minute are the gradient of this plot.
 
-![heights](./img/v034_r400c8_heights.png)
+![heights](./img/v034_r200c2_heights.png)
 
-Over a period of 2 minutes, the height goes from 967 to 1033.
-This results in an average of 33 blocks produced per minute.
+Over a period of 2 minutes, the height goes from 530 to 569.
+This results in an average of 19.5 blocks produced per minute.
 
 The transactions processed per minute are the gradient of this plot.
 
-![total-txs](./img/v034_r400c8_total-txs.png)
+![total-txs](./img/v034_r200c2_total-txs.png)
 
-Over a period of 2 minutes, the total goes from 25362 to 31472 transactions,
-resulting in 3055 transactions per minute. However, we can see in the plot that
-all transactions in the load are process long before the two minutes.
-If we adjust the time window when transactions are processed (approx. 92 seconds),
-we obtain 3984 transactions per minute.
+Over a period of 2 minutes, the total goes from 64525 to 100125 transactions,
+resulting in 17800 transactions per minute. However, we can see in the plot that
+all transactions in the load are processed long before the two minutes.
+If we adjust the time window when transactions are processed (approx. 105 seconds),
+we obtain 20343 transactions per minute.
 
 ### Memory Resident Set Size
 
 Resident Set Size of all monitored processes is plotted below.
 
-![rss](./img/v034_r400c8_rss.png)
+![rss](./img/v034_r200c2_rss.png)
 
-The average over all processes oscillates around 420 MiB and does not demonstrate unconstrained growth.
+The average over all processes oscillates around 4201.2 GiB and does not demonstrate unconstrained growth.
 
-![rss-avg](./img/v034_r400c8_rss_avg.png)
+![rss-avg](./img/v034_r200c2_rss_avg.png)
 
 ### CPU utilization
 
@@ -146,22 +157,26 @@ The best metric from Prometheus to gauge CPU utilization in a Unix machine is `l
 as it usually appears in the
 [output of `top`](https://www.digitalocean.com/community/tutorials/load-average-in-linux).
 
-![load1](./img/v034_r400c8_load1.png)
+![load1](./img/v034_r200c2_load1.png)
 
-It is contained between 0.3 and 4.2 at all nodes.
+It is contained in most cases below 5, which is generally considered acceptable load.
 
 ## Test Result
 
 **Result: N/A**
 
-Date: 2022-09-23
+Date: 2022-10-14
 
-Version: a41c5eec1109121376de3d32379613856d4a47dd
+Version: 3ec6e424d6ae4c96867c2dcf8310572156068bb6
 
 # Rotating Node Testnet
 
-We reuse the work done on the 200 node testnet where we found the saturation point,
-and will thus focus on the load `c=4,r=800`.
+For this testnet, we will use a load that can safely be considered below the saturation
+point for the size of this testnet (between 13 and 38 nodes): `c=4,r=800`.
+
+N.B.: The version of Tendermint used for these tests is affected by #9539.
+However, the reduced load that reaches the mempools is orthogonal to functionality
+we are focusing on here.
 
 # Latencies
 
