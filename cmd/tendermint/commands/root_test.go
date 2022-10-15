@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,9 +17,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
-var (
-	defaultRoot = os.ExpandEnv("$HOME/.some/test/dir")
-)
+var defaultRoot = os.ExpandEnv("$HOME/.some/test/dir")
 
 // clearConfig clears env vars, the given root dir, and resets viper.
 func clearConfig(dir string) {
@@ -88,7 +85,6 @@ func TestRootHome(t *testing.T) {
 }
 
 func TestRootFlagsEnv(t *testing.T) {
-
 	// defaults
 	defaults := cfg.DefaultConfig()
 	defaultLogLvl := defaults.LogLevel
@@ -116,7 +112,6 @@ func TestRootFlagsEnv(t *testing.T) {
 }
 
 func TestRootConfig(t *testing.T) {
-
 	// write non-default config
 	nonDefaultLogLvl := "abc:debug"
 	cvals := map[string]string{
@@ -140,7 +135,7 @@ func TestRootConfig(t *testing.T) {
 
 		// XXX: path must match cfg.defaultConfigPath
 		configFilePath := filepath.Join(defaultRoot, "config")
-		err := tmos.EnsureDir(configFilePath, 0700)
+		err := tmos.EnsureDir(configFilePath, 0o700)
 		require.Nil(t, err)
 
 		// write the non-defaults to a different path
@@ -168,5 +163,5 @@ func WriteConfigVals(dir string, vals map[string]string) error {
 		data += fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
 	cfile := filepath.Join(dir, "config.toml")
-	return ioutil.WriteFile(cfile, []byte(data), 0600)
+	return os.WriteFile(cfile, []byte(data), 0o600)
 }

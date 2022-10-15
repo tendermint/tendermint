@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	dbm "github.com/tendermint/tm-db"
@@ -15,7 +15,7 @@ import (
 )
 
 func BenchmarkTxSearch(b *testing.B) {
-	dbDir, err := ioutil.TempDir("", "benchmark_tx_search_test")
+	dbDir, err := os.MkdirTemp("", "benchmark_tx_search_test")
 	if err != nil {
 		b.Errorf("failed to create temporary directory: %s", err)
 	}

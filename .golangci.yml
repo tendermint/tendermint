@@ -37,7 +37,6 @@ linters:
     - unconvert
     # - unparam
     # - unused
-    - varcheck
     # - whitespace
     # - wsl
   disable:
@@ -68,5 +67,3 @@ linters-settings:
     locale: US
     ignore-words:
       - behaviour
-
-
