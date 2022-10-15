@@ -6,7 +6,9 @@ parent:
   order: 2
 ---
 
-# Issues discovered
+# v0.37.x
+
+## Issues discovered
 
 During this iteration of the QA process, the following issues were found:
 
@@ -16,9 +18,9 @@ During this iteration of the QA process, the following issues were found:
 * [non-critical, not fixed] #9537. With the default mempool cache setting, duplicated transactions are not rejected when gossipped and eventually flood all mempools.
   The 200 node testnets were thus run with a value of 200000 (as opposed to the default 10000)
 
-# 200 Node Testnet
+## 200 Node Testnet
 
-## Finding the Saturation Point
+### Finding the Saturation Point
 
 The first goal is to identify the saturation point and compare it with the baseline (v0.34.x).
 For further details, see [this paragraph](../v034/README.md#finding-the-saturation-point)
@@ -59,7 +61,7 @@ The experiment chosen to examine Prometheus metrics is the same as in the baseli
 
 The load runner's CPU load was negligible (near 0) when running `r=200,c=2`.
 
-## Examining latencies
+### Examining latencies
 
 The method described [here](../method.md) allows us to plot the latencies of transactions
 for all experiments.
@@ -73,12 +75,12 @@ The data seen in the plot is similar to that of the baseline.
 Therefore, for further details on these plots,
 see [this paragraph](../v034/README.md#examining-latencies) in the baseline version.
 
-## Prometheus Metrics on the Chosen Experiment
+### Prometheus Metrics on the Chosen Experiment
 
 As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=200,c=2`.
 This section further examines key metrics for this experiment extracted from Prometheus data.
 
-### Mempool Size
+#### Mempool Size
 
 The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous
 at all full nodes. It did not exhibit any unconstrained growth.
@@ -99,7 +101,7 @@ The peaks observed coincide with the moments when some nodes reached round 1 of 
 
 ![mempool-avg-bl](../v034/img/v034_r200c2_mempool_size_avg.png)
 
-### Peers
+#### Peers
 
 The number of peers was stable at all nodes.
 It was higher for the seed nodes (around 140) than for the rest (between 16 and 78).
@@ -112,7 +114,7 @@ Just as in the baseline, the fact that non-seed nodes reach more than 50 peers i
 
 ![peers-bl](../v034/img/v034_r200c2_peers.png)
 
-### Consensus Rounds per Height
+#### Consensus Rounds per Height
 
 Most heights took just one round, but some nodes needed to advance to round 1 at some point.
 
@@ -122,7 +124,7 @@ Most heights took just one round, but some nodes needed to advance to round 1 at
 
 ![rounds-bl](../v034/img/v034_r200c2_rounds.png)
 
-### Blocks Produced per Minute, Transactions Processed per Minute
+#### Blocks Produced per Minute, Transactions Processed per Minute
 
 The blocks produced per minute are the gradient of this plot.
 
@@ -147,7 +149,7 @@ we obtain 23733 transactions per minute.
 
 ![total-txs](../v034/img/v034_r200c2_total-txs.png)
 
-### Memory Resident Set Size
+#### Memory Resident Set Size
 
 Resident Set Size of all monitored processes is plotted below.
 
@@ -163,7 +165,7 @@ The average over all processes oscillates around 380 MiB and does not demonstrat
 
 ![rss-avg-bl](../v034/img/v034_r200c2_rss_avg.png)
 
-### CPU utilization
+#### CPU utilization
 
 The best metric from Prometheus to gauge CPU utilization in a Unix machine is `load1`,
 as it usually appears in the
@@ -177,7 +179,7 @@ It is contained below 5 on most nodes.
 
 ![load1](../v034/img/v034_r200c2_load1.png)
 
-## Test Result
+### Test Result
 
 **Result: PASS**
 
@@ -185,7 +187,7 @@ Date: 2022-10-14
 
 Version: b9480d0ec79c53b06344148afc6589f895d0abbf
 
-# Rotating Node Testnet
+## Rotating Node Testnet
 
 We use the same load as in the baseline: `c=4,r=800`.
 
@@ -193,7 +195,7 @@ Just as in the baseline tests, the version of Tendermint used for these tests is
 See this paragraph in the [baseline report](../v034/README.md#rotating-node-testnet) for further details.
 Finally, note that this setup allows for a fairer comparison between this version and the baseline.
 
-# Latencies
+### Latencies
 
 The plot of all latencies can be seen here.
 
@@ -208,12 +210,12 @@ transactions. This is because the problem with duplicate transactions
 detected during the baseline experiment did not show up for `v0.37`,
 which is _not_ proof that the problem is not present in `v0.37`.
 
-## Prometheus Metrics
+### Prometheus Metrics
 
 The set of metrics shown here match those shown on the baseline (`v0.34`) for the same experiment.
 We also show the baseline results for comparison.
 
-### Blocks and Transactions per minute
+#### Blocks and Transactions per minute
 
 The blocks produced per minute are the gradient of this plot.
 
@@ -247,7 +249,7 @@ For comparison, this is the baseline plot.
 
 ![rotating-total-txs-bl](../v034/img/v034_rotating_total-txs.png)
 
-### Peers
+#### Peers
 
 The plot below shows the evolution of the number of peers throughout the experiment.
 
@@ -261,7 +263,7 @@ The plotted values and their evolution are comparable in both plots.
 
 For further details on these plots, see the baseline report.
 
-### Memory Resident Set Size
+#### Memory Resident Set Size
 
 The average Resident Set Size (RSS) over all processes looks slightly more stable
 on `v0.37` (first plot) than on the baseline (second plot).
@@ -273,7 +275,7 @@ on `v0.37` (first plot) than on the baseline (second plot).
 The memory taken by the validators and the ephemeral nodes when they are up is comparable (not shown in the plots),
 just as observed in the baseline.
 
-### CPU utilization
+#### CPU utilization
 
 The plot shows metric `load1` for all nodes.
 
@@ -289,7 +291,7 @@ correspond to the validators receiving all transactions, via RPC, from the load 
 In both cases, they oscillate around 5 (normal load). The main difference is that other
 nodes are generally less loaded in `v0.37`.
 
-## Test Result
+### Test Result
 
 **Result: PASS**
 

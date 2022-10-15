@@ -6,9 +6,11 @@ parent:
   order: 2
 ---
 
-# 200 Node Testnet
+# v0.34.x
 
-## Finding the Saturation Point
+## 200 Node Testnet
+
+### Finding the Saturation Point
 
 The first goal when examining the results of the tests is identifying the saturation point.
 The saturation point is a setup with a transaction load big enough to prevent the testnet
@@ -56,7 +58,7 @@ where we can see that the load (average over 1 minute) stays close to 0 most of 
 
 ![load-load-runner](./img/v034_r200c2_load-runner.png)
 
-## Examining latencies
+### Examining latencies
 
 The method described [here](../method.md) allows us to plot the latencies of transactions
 for all experiments.
@@ -85,12 +87,12 @@ tiny axis intervals. The cluster shown below looks like a single point in the pl
 
 The plot of latencies can we used as a baseline to compare with other releases.
 
-## Prometheus Metrics on the Chosen Experiment
+### Prometheus Metrics on the Chosen Experiment
 
 As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=200,c=2`.
 This section further examines key metrics for this experiment extracted from Prometheus data.
 
-### Mempool Size
+#### Mempool Size
 
 The mempool size, a count of the number of transactions in the mempool, was shown to be stable and homogeneous
 at all full nodes. It did not exhibit any unconstrained growth.
@@ -108,7 +110,7 @@ outstanding transactions.
 
 The peaks observed coincide with the moments when some nodes process to round 1 of consensus (see below).
 
-### Peers
+#### Peers
 
 The number of peers was stable at all nodes.
 It was higher for the seed nodes (around 140) than for the rest (between 21 and 74).
@@ -116,13 +118,13 @@ The fact that non-seed nodes reach more than 50 peers is due to #9548.
 
 ![peers](./img/v034_r200c2_peers.png)
 
-### Consensus Rounds per Height
+#### Consensus Rounds per Height
 
 Most heights took just one round, but some nodes needed to advance to round 1 at some point.
 
 ![rounds](./img/v034_r200c2_rounds.png)
 
-### Blocks Produced per Minute, Transactions Processed per Minute
+#### Blocks Produced per Minute, Transactions Processed per Minute
 
 The blocks produced per minute are the gradient of this plot.
 
@@ -141,7 +143,7 @@ all transactions in the load are processed long before the two minutes.
 If we adjust the time window when transactions are processed (approx. 105 seconds),
 we obtain 20343 transactions per minute.
 
-### Memory Resident Set Size
+#### Memory Resident Set Size
 
 Resident Set Size of all monitored processes is plotted below.
 
@@ -151,7 +153,7 @@ The average over all processes oscillates around 4201.2 GiB and does not demonst
 
 ![rss-avg](./img/v034_r200c2_rss_avg.png)
 
-### CPU utilization
+#### CPU utilization
 
 The best metric from Prometheus to gauge CPU utilization in a Unix machine is `load1`,
 as it usually appears in the
@@ -161,7 +163,7 @@ as it usually appears in the
 
 It is contained in most cases below 5, which is generally considered acceptable load.
 
-## Test Result
+### Test Result
 
 **Result: N/A**
 
@@ -178,7 +180,7 @@ N.B.: The version of Tendermint used for these tests is affected by #9539.
 However, the reduced load that reaches the mempools is orthogonal to functionality
 we are focusing on here.
 
-## Latencies
+### Latencies
 
 The plot of all latencies can be seen in the following plot.
 
@@ -195,12 +197,12 @@ been removed, i.e., only the first occurrence of a duplicate transaction is kept
 
 This problem, existing in `v0.34.x`, will need to be addressed.
 
-## Prometheus Metrics
+### Prometheus Metrics
 
 The set of metrics shown here are less than for the 200 node experiment.
 We are only interested in those for which the catch-up process (blocksync) may have an impact.
 
-### Blocks and Transactions per minute
+#### Blocks and Transactions per minute
 
 Just as shown for the 200 node test, the blocks produced per minute are the gradient of this plot.
 
@@ -227,7 +229,7 @@ Over a period of 5229 minutes, the total goes from 0 to 387697 transactions,
 resulting in 4449 transactions per minute. We can see some abrupt changes in
 the plot's gradient. This will need to be investigated.
 
-### Peers
+#### Peers
 
 The plot below shows the evolution in peers throughout the experiment.
 The periodic changes observed are due to the ephemeral nodes being stopped,
@@ -238,7 +240,7 @@ wiped out, and recreated.
 The validators' plots are concentrated at the higher part of the graph, whereas the ephemeral nodes
 are mostly at the lower part.
 
-### Memory Resident Set Size
+#### Memory Resident Set Size
 
 The average Resident Set Size (RSS) over all processes seems stable, and slightly growing toward the end.
 This might be related to the increased in transaction load observed above.
@@ -247,7 +249,7 @@ This might be related to the increased in transaction load observed above.
 
 The memory taken by the validators and the ephemeral nodes (when they are up) is comparable.
 
-### CPU utilization
+#### CPU utilization
 
 The plot shows metric `load1` for all nodes.
 
@@ -257,7 +259,7 @@ It is contained under 5 most of the time, which is considered normal load.
 The purple line, which follows a different pattern is the validator receiving all
 transactions, via RPC, from the load runner process.
 
-## Test Result
+### Test Result
 
 **Result: N/A**
 
