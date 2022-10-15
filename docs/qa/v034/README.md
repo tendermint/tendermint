@@ -169,7 +169,7 @@ Date: 2022-10-14
 
 Version: 3ec6e424d6ae4c96867c2dcf8310572156068bb6
 
-# Rotating Node Testnet
+## Rotating Node Testnet
 
 For this testnet, we will use a load that can safely be considered below the saturation
 point for the size of this testnet (between 13 and 38 nodes): `c=4,r=800`.
@@ -178,7 +178,7 @@ N.B.: The version of Tendermint used for these tests is affected by #9539.
 However, the reduced load that reaches the mempools is orthogonal to functionality
 we are focusing on here.
 
-# Latencies
+## Latencies
 
 The plot of all latencies can be seen in the following plot.
 
