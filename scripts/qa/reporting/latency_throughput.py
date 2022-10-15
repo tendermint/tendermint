@@ -65,7 +65,7 @@ def plot_latency_vs_throughput(input_files,
         tr = np.array(throughput_rates[c])
         al = np.array(avg_latencies[c])
         label = '%d connection%s' % (c, '' if c == 1 else 's')
-        ax.plot(tr, al, label=label)
+        ax.plot(tr, al, 'o-', label=label)
 
     ax.set_title(title)
     ax.set_xlabel('Throughput rate (tx/s)')
