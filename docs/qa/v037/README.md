@@ -12,11 +12,16 @@ parent:
 
 During this iteration of the QA process, the following issues were found:
 
-* [critical, fixed] #9533. This bug caused full nodes to sometimes get stuck when blocksyncing, requiring a manual restart to unblock them.
-* [critical, fixed] #9539. `loadtime` is very likely to include more than one "=" character in transactions, with is rejected by the e2e application.
-* [non-critical, not fixed] #9548. Full nodes can go over 50 connected peers, which is not intended by the default configuration.
-* [non-critical, not fixed] #9537. With the default mempool cache setting, duplicated transactions are not rejected when gossipped and eventually flood all mempools.
-  The 200 node testnets were thus run with a value of 200000 (as opposed to the default 10000)
+* (critical, fixed) [\#9533] - This bug caused full nodes to sometimes get stuck
+  when blocksyncing, requiring a manual restart to unblock them.
+* (critical, fixed) [\#9539] - `loadtime` is very likely to include more than
+  one "=" character in transactions, with is rejected by the e2e application.
+* (non-critical, not fixed) [\#9548] - Full nodes can go over 50 connected
+  peers, which is not intended by the default configuration.
+* (non-critical, not fixed) [\#9537] - With the default mempool cache setting,
+  duplicated transactions are not rejected when gossipped and eventually flood
+  all mempools. The 200 node testnets were thus run with a value of 200000 (as
+  opposed to the default 10000)
 
 ## 200 Node Testnet
 
@@ -298,3 +303,8 @@ nodes are generally less loaded in `v0.37`.
 Date: 2022-10-10
 
 Version: 155110007b9d8b83997a799016c1d0844c8efbaf
+
+[\#9533]: https://github.com/tendermint/tendermint/pull/9533
+[\#9539]: https://github.com/tendermint/tendermint/issues/9539
+[\#9548]: https://github.com/tendermint/tendermint/issues/9548
+[\#9537]: https://github.com/tendermint/tendermint/issues/9537
