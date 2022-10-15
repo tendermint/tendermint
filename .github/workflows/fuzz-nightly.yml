@@ -9,11 +9,11 @@ jobs:
   fuzz-nightly-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
-          go-version: '1.15'
+          go-version: '1.18'
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install go-fuzz
         working-directory: test/fuzz
@@ -45,14 +45,14 @@ jobs:
         continue-on-error: true
 
       - name: Archive crashers
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: crashers
           path: test/fuzz/**/crashers
           retention-days: 1
 
       - name: Archive suppressions
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: suppressions
           path: test/fuzz/**/suppressions
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Notify Slack if any crashers
-        uses: rtCamp/action-slack-notify@ae4223259071871559b6e9d08b24a63d71b3f0c0
+        uses: rtCamp/action-slack-notify@f565a63638bd3615e76249bffab00fcb9dab90f7
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SLACK_CHANNEL: tendermint-internal

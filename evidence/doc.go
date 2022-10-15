@@ -3,7 +3,7 @@ Package evidence handles all evidence storage and gossiping from detection to bl
 For the different types of evidence refer to the `evidence.go` file in the types package
 or https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md.
 
-Gossiping
+# Gossiping
 
 The core functionality begins with the evidence reactor (see reactor.
 go) which operates both the sending and receiving of evidence.
@@ -29,7 +29,7 @@ There are two buckets that evidence can be stored in: Pending & Committed.
 
 All evidence is proto encoded to disk.
 
-Proposing
+# Proposing
 
 When a new block is being proposed (in state/execution.go#CreateProposalBlock),
 `PendingEvidence(maxBytes)` is called to send up to the maxBytes of uncommitted evidence, from the evidence store,
@@ -42,12 +42,11 @@ Once the proposed evidence is submitted,
 the evidence is marked as committed and is moved from the broadcasted set to the committed set.
 As a result it is also removed from the concurrent list so that it is no longer gossiped.
 
-Minor Functionality
+# Minor Functionality
 
 As all evidence (including POLC's) are bounded by an expiration date, those that exceed this are no longer needed
 and hence pruned. Currently, only committed evidence in which a marker to the height that the evidence was committed
 and hence very small is saved. All updates are made from the `Update(block, state)` function which should be called
 when a new block is committed.
-
 */
 package evidence

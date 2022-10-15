@@ -21,6 +21,10 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
+
+	cfg "github.com/tendermint/tendermint/config"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -46,7 +50,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		logger := consensusLogger().With("test", "byzantine", "validator", i)
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
@@ -58,14 +64,31 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
 
-		// one for mempool, one for consensus
 		mtx := new(tmsync.Mutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+		// one for mempool, one for consensus
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
 
 		// Make Mempool
-		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+		var mempool mempl.Mempool
+
+		switch thisConfig.Mempool.Version {
+		case cfg.MempoolV0:
+			mempool = mempoolv0.NewCListMempool(config.Mempool,
+				proxyAppConnConMem,
+				state.LastBlockHeight,
+				mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+				mempoolv0.WithPostCheck(sm.TxPostCheck(state)))
+		case cfg.MempoolV1:
+			mempool = mempoolv1.NewTxMempool(logger,
+				config.Mempool,
+				proxyAppConnConMem,
+				state.LastBlockHeight,
+				mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+				mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+			)
+		}
+
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
 		}
@@ -399,7 +422,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// wait for someone in the big partition (B) to make a block
 	<-blocksSubs[ind2].Out()
 
-	t.Log("A block has been committed. Healing partition")
+	t.Logf("A block has been committed. Healing partition")
 	p2p.Connect2Switches(switches, ind0, ind1)
 	p2p.Connect2Switches(switches, ind0, ind2)
 
@@ -425,8 +448,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	case <-done:
 	case <-tick.C:
 		for i, reactor := range reactors {
-			t.Log(fmt.Sprintf("Consensus Reactor %v", i))
-			t.Log(fmt.Sprintf("%v", reactor))
+			t.Logf(fmt.Sprintf("Consensus Reactor %v", i))
+			t.Logf(fmt.Sprintf("%v", reactor))
 		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}

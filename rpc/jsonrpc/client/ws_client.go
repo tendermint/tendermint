@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	metrics "github.com/rcrowley/go-metrics"
 
+	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -29,7 +30,7 @@ const (
 // the remote server.
 //
 // WSClient is safe for concurrent use by multiple goroutines.
-type WSClient struct { // nolint: maligned
+type WSClient struct { //nolint: maligned
 	conn *websocket.Conn
 
 	Address  string // IP:PORT or /path/to/socket
@@ -264,7 +265,7 @@ func (c *WSClient) dial() error {
 		Proxy:   http.ProxyFromEnvironment,
 	}
 	rHeader := http.Header{}
-	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader) // nolint:bodyclose
+	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader) //nolint:bodyclose
 	if err != nil {
 		return err
 	}
@@ -511,7 +512,7 @@ func (c *WSClient) readRoutine() {
 		// c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it sends unlimited Quit signals to stop
 		// both readRoutine and writeRoutine
 
-		c.Logger.Info("got response", "id", response.ID, "result", fmt.Sprintf("%X", response.Result))
+		c.Logger.Info("got response", "id", response.ID, "result", log.NewLazySprintf("%X", response.Result))
 
 		select {
 		case <-c.Quit():

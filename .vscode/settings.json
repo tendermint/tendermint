@@ -5,4 +5,5 @@
       "--proto_path=${workspaceRoot}/third_party/proto"
     ]
   }
+  
 }

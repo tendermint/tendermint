@@ -1,10 +1,6 @@
 # Unreleased Changes
 
-## v0.34.20
-
-Special thanks to external contributors on this release:
-
-Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermint).
+## v0.34.22
 
 ### BREAKING CHANGES
 
@@ -23,3 +19,4 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 
 ### BUG FIXES
+

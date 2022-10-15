@@ -1,0 +1,21 @@
+name: Protobuf Lint
+on:
+  pull_request:
+    paths:
+      - 'proto/**'
+  push:
+    branches:
+      - v0.34.x
+    paths:
+      - 'proto/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v3
+      - uses: bufbuild/buf-setup-action@v1.6.0
+      - uses: bufbuild/buf-lint-action@v1
+        with:
+          input: 'proto'

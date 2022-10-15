@@ -56,3 +56,9 @@ test/fuzz/**/corpus
 test/fuzz/**/crashers
 test/fuzz/**/suppressions
 test/fuzz/**/*.zip
+*.aux
+*.bbl
+*.blg
+*.pdf
+*.gz
+*.dvi

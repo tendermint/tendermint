@@ -29,6 +29,8 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -136,7 +138,9 @@ func TestReactorWithEvidence(t *testing.T) {
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		stateStore := sm.NewStore(stateDB)
+		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+			DiscardABCIResponses: false,
+		})
 		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
@@ -152,14 +156,33 @@ func TestReactorWithEvidence(t *testing.T) {
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
 
-		// one for mempool, one for consensus
 		mtx := new(tmsync.Mutex)
-		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+		memplMetrics := mempl.NopMetrics()
+		// one for mempool, one for consensus
 		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
 
 		// Make Mempool
-		mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+		var mempool mempl.Mempool
+
+		switch config.Mempool.Version {
+		case cfg.MempoolV0:
+			mempool = mempoolv0.NewCListMempool(config.Mempool,
+				proxyAppConnConMem,
+				state.LastBlockHeight,
+				mempoolv0.WithMetrics(memplMetrics),
+				mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+				mempoolv0.WithPostCheck(sm.TxPostCheck(state)))
+		case cfg.MempoolV1:
+			mempool = mempoolv1.NewTxMempool(logger,
+				config.Mempool,
+				proxyAppConnConMem,
+				state.LastBlockHeight,
+				mempoolv1.WithMetrics(memplMetrics),
+				mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+				mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+			)
+		}
 		if thisConfig.Consensus.WaitForTxs() {
 			mempool.EnableTxsAvailable()
 		}
@@ -668,7 +691,7 @@ func capture() {
 // Ensure basic validation of structs is functioning
 
 func TestNewRoundStepMessageValidateBasic(t *testing.T) {
-	testCases := []struct { // nolint: maligned
+	testCases := []struct {
 		expectErr              bool
 		messageRound           int32
 		messageLastCommitRound int32
@@ -707,7 +730,7 @@ func TestNewRoundStepMessageValidateBasic(t *testing.T) {
 
 func TestNewRoundStepMessageValidateHeight(t *testing.T) {
 	initialHeight := int64(10)
-	testCases := []struct { // nolint: maligned
+	testCases := []struct { //nolint: maligned
 		expectErr              bool
 		messageLastCommitRound int32
 		messageHeight          int64
@@ -857,7 +880,7 @@ func TestHasVoteMessageValidateBasic(t *testing.T) {
 		invalidSignedMsgType tmproto.SignedMsgType = 0x03
 	)
 
-	testCases := []struct { // nolint: maligned
+	testCases := []struct { //nolint: maligned
 		expectErr     bool
 		messageRound  int32
 		messageIndex  int32
@@ -902,7 +925,7 @@ func TestVoteSetMaj23MessageValidateBasic(t *testing.T) {
 		},
 	}
 
-	testCases := []struct { // nolint: maligned
+	testCases := []struct { //nolint: maligned
 		expectErr      bool
 		messageRound   int32
 		messageHeight  int64

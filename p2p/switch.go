@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cmap"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -261,7 +262,7 @@ func (sw *Switch) OnStop() {
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
-	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
+	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", log.NewLazySprintf("%X", msgBytes))
 
 	peers := sw.peers.List()
 	var wg sync.WaitGroup
@@ -378,8 +379,8 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 // to the PEX/Addrbook to find the peer with the addr again
 // NOTE: this will keep trying even if the handshake or auth fails.
 // TODO: be more explicit with error types so we only retry on certain failures
-//  - ie. if we're getting ErrDuplicatePeer we can stop
-//  	because the addrbook got us the peer back already
+//   - ie. if we're getting ErrDuplicatePeer we can stop
+//     because the addrbook got us the peer back already
 func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 	if sw.reconnecting.Has(string(addr.ID)) {
 		return

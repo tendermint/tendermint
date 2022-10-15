@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	_ "net/http/pprof" //nolint: gosec // securely exposed on separate, optional port
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +32,8 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/light"
 	mempl "github.com/tendermint/tendermint/mempool"
+	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
+	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
@@ -94,6 +96,8 @@ type DBContext struct {
 
 // DBProvider takes a DBContext and returns an instantiated DB.
 type DBProvider func(*DBContext) (dbm.DB, error)
+
+const readHeaderTimeout = 10 * time.Second
 
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the ctx.Config.
@@ -172,12 +176,12 @@ type fastSyncReactor interface {
 // WARNING: using any name from the below list of the existing reactors will
 // result in replacing it with the custom one.
 //
-//  - MEMPOOL
-//  - BLOCKCHAIN
-//  - CONSENSUS
-//  - EVIDENCE
-//  - PEX
-//  - STATESYNC
+//   - MEMPOOL
+//   - BLOCKCHAIN
+//   - CONSENSUS
+//   - EVIDENCE
+//   - PEX
+//   - STATESYNC
 func CustomReactors(reactors map[string]p2p.Reactor) Option {
 	return func(n *Node) {
 		for name, reactor := range reactors {
@@ -238,7 +242,7 @@ type Node struct {
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         p2p.Reactor       // for fast-syncing
-	mempoolReactor    *mempl.Reactor    // for gossipping transactions
+	mempoolReactor    p2p.Reactor       // for gossipping transactions
 	mempool           mempl.Mempool
 	stateSync         bool                    // whether the node should state sync on startup
 	stateSyncReactor  *statesync.Reactor      // for hosting and restoring state sync snapshots
@@ -378,24 +382,56 @@ func onlyValidatorIsUs(state sm.State, pubKey crypto.PubKey) bool {
 }
 
 func createMempoolAndMempoolReactor(config *cfg.Config, proxyApp proxy.AppConns,
-	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (*mempl.Reactor, *mempl.CListMempool) {
+	state sm.State, memplMetrics *mempl.Metrics, logger log.Logger) (p2p.Reactor, mempl.Mempool) {
 
-	mempool := mempl.NewCListMempool(
-		config.Mempool,
-		proxyApp.Mempool(),
-		state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics),
-		mempl.WithPreCheck(sm.TxPreCheck(state)),
-		mempl.WithPostCheck(sm.TxPostCheck(state)),
-	)
-	mempoolLogger := logger.With("module", "mempool")
-	mempoolReactor := mempl.NewReactor(config.Mempool, mempool)
-	mempoolReactor.SetLogger(mempoolLogger)
+	switch config.Mempool.Version {
+	case cfg.MempoolV1:
+		mp := mempoolv1.NewTxMempool(
+			logger,
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv1.WithMetrics(memplMetrics),
+			mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
+		)
 
-	if config.Consensus.WaitForTxs() {
-		mempool.EnableTxsAvailable()
+		reactor := mempoolv1.NewReactor(
+			config.Mempool,
+			mp,
+		)
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactor, mp
+
+	case cfg.MempoolV0:
+		mp := mempoolv0.NewCListMempool(
+			config.Mempool,
+			proxyApp.Mempool(),
+			state.LastBlockHeight,
+			mempoolv0.WithMetrics(memplMetrics),
+			mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
+			mempoolv0.WithPostCheck(sm.TxPostCheck(state)),
+		)
+
+		mp.SetLogger(logger)
+		mp.SetLogger(logger)
+
+		reactor := mempoolv0.NewReactor(
+			config.Mempool,
+			mp,
+		)
+		if config.Consensus.WaitForTxs() {
+			mp.EnableTxsAvailable()
+		}
+
+		return reactor, mp
+
+	default:
+		return nil, nil
 	}
-	return mempoolReactor, mempool
 }
 
 func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
@@ -405,8 +441,11 @@ func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
 	if err != nil {
 		return nil, nil, err
 	}
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
+	})
 	evidenceLogger := logger.With("module", "evidence")
-	evidencePool, err := evidence.NewPool(evidenceDB, sm.NewStore(stateDB), blockStore)
+	evidencePool, err := evidence.NewPool(evidenceDB, stateStore, blockStore)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -441,7 +480,7 @@ func createConsensusReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
-	mempool *mempl.CListMempool,
+	mempool mempl.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *consensus.Metrics,
@@ -545,7 +584,7 @@ func createSwitch(config *cfg.Config,
 	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
 	peerFilters []p2p.PeerFilterFunc,
-	mempoolReactor *mempl.Reactor,
+	mempoolReactor p2p.Reactor,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *statesync.Reactor,
 	consensusReactor *cs.Reactor,
@@ -695,7 +734,9 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 
 	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
 	if err != nil {
@@ -947,13 +988,6 @@ func (n *Node) OnStart() error {
 
 	n.isListening = true
 
-	if n.config.Mempool.WalEnabled() {
-		err = n.mempool.InitWAL()
-		if err != nil {
-			return fmt.Errorf("init mempool WAL: %w", err)
-		}
-	}
-
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
@@ -999,11 +1033,6 @@ func (n *Node) OnStop() {
 	// now stop the reactors
 	if err := n.sw.Stop(); err != nil {
 		n.Logger.Error("Error closing switch", "err", err)
-	}
-
-	// stop mempool WAL
-	if n.config.Mempool.WalEnabled() {
-		n.mempool.CloseWAL()
 	}
 
 	if err := n.transport.Close(); err != nil {
@@ -1193,6 +1222,7 @@ func (n *Node) startPrometheusServer(addr string) *http.Server {
 				promhttp.HandlerOpts{MaxRequestsInFlight: n.config.Instrumentation.MaxOpenConnections},
 			),
 		),
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
@@ -1224,7 +1254,7 @@ func (n *Node) ConsensusReactor() *cs.Reactor {
 }
 
 // MempoolReactor returns the Node's mempool reactor.
-func (n *Node) MempoolReactor() *mempl.Reactor {
+func (n *Node) MempoolReactor() p2p.Reactor {
 	return n.mempoolReactor
 }
 
@@ -1374,7 +1404,9 @@ func LoadStateFromDBOrGenesisDocProvider(
 		// was changed, accidentally or not). Also good for audit trail.
 		saveGenesisDoc(stateDB, genDoc)
 	}
-	stateStore := sm.NewStore(stateDB)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
 	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {
 		return sm.State{}, nil, err
