@@ -427,7 +427,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 			RecvMessageCapacity: 100,
 		},
 	}
-	customBlockchainReactor := p2pmock.NewReactor()
+	customBlocksyncReactor := p2pmock.NewReactor()
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
@@ -440,7 +440,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		log.TestingLogger(),
-		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKCHAIN": customBlockchainReactor}),
+		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKSYNC": customBlocksyncReactor}),
 	)
 	require.NoError(t, err)
 
@@ -451,8 +451,8 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 	assert.True(t, cr.IsRunning())
 	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
 
-	assert.True(t, customBlockchainReactor.IsRunning())
-	assert.Equal(t, customBlockchainReactor, n.Switch().Reactor("BLOCKCHAIN"))
+	assert.True(t, customBlocksyncReactor.IsRunning())
+	assert.Equal(t, customBlocksyncReactor, n.Switch().Reactor("BLOCKSYNC"))
 
 	channels := n.NodeInfo().(p2p.DefaultNodeInfo).Channels
 	assert.Contains(t, channels, mempl.MempoolChannel)

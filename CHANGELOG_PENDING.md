@@ -90,8 +90,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778 & @Yawning)
 - [types] \#6120 use batch verification for verifying commits signatures. (@marbar3778 & @cmwaters & @Yawning)
     - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature.
+- [state] \#9505 Added logic so when pruning, the evidence period is taken into consideration and only deletes unecessary data (@samricotta)
 
 ### BUG FIXES
 
 - [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)
 - [docker] \#9073 enable cross platform build using docker buildx
+- [blocksync] \#9518 handle the case when the sending queue is full: retry block request after a timeout
