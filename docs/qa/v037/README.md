@@ -13,7 +13,9 @@ parent:
 During this iteration of the QA process, the following issues were found:
 
 * (critical, fixed) [\#9533] - This bug caused full nodes to sometimes get stuck
-  when blocksyncing, requiring a manual restart to unblock them.
+  when blocksyncing, requiring a manual restart to unblock them. Importantly,
+  this bug was also present in v0.34.x and the fix was also backported in
+  [\#9534].
 * (critical, fixed) [\#9539] - `loadtime` is very likely to include more than
   one "=" character in transactions, with is rejected by the e2e application.
 * (non-critical, not fixed) [\#9548] - Full nodes can go over 50 connected
@@ -305,6 +307,7 @@ Date: 2022-10-10
 Version: 155110007b9d8b83997a799016c1d0844c8efbaf
 
 [\#9533]: https://github.com/tendermint/tendermint/pull/9533
+[\#9534]: https://github.com/tendermint/tendermint/pull/9534
 [\#9539]: https://github.com/tendermint/tendermint/issues/9539
 [\#9548]: https://github.com/tendermint/tendermint/issues/9548
 [\#9537]: https://github.com/tendermint/tendermint/issues/9537
