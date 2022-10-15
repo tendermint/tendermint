@@ -17,5 +17,5 @@ used to decide if a release is passing the Quality Assurance process.
 The results obtained in each release are stored in their own directory.
 The following releases have undergone the Quality Assurance process:
 
-* [v0.34.21](./v034)
-* [v0.37.x](./v037), with v.34.21 acting as a baseline
+* [v0.34.21](./v034/)
+* [v0.37.x](./v037/), with v.34.21 acting as a baseline
