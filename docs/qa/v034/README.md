@@ -87,6 +87,12 @@ tiny axis intervals. The cluster shown below looks like a single point in the pl
 
 The plot of latencies can we used as a baseline to compare with other releases.
 
+The following plot summarizes average latencies versus overall throughputs
+across different numbers of WebSocket connections to the node into which
+transactions are being loaded.
+
+![latency-vs-throughput](./img/v034_latency_throughput.png)
+
 ### Prometheus Metrics on the Chosen Experiment
 
 As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=200,c=2`.

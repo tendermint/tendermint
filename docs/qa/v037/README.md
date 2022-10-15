@@ -82,6 +82,16 @@ The data seen in the plot is similar to that of the baseline.
 Therefore, for further details on these plots,
 see [this paragraph](../v034/README.md#examining-latencies) in the baseline version.
 
+The following plot summarizes average latencies versus overall throughputs
+across different numbers of WebSocket connections to the node into which
+transactions are being loaded.
+
+![latency-vs-throughput](./img/v037_latency_throughput.png)
+
+This is similar to that of the baseline plot:
+
+![latency-vs-throughput-bl](../v034/img/v034_latency_throughput.png)
+
 ### Prometheus Metrics on the Chosen Experiment
 
 As mentioned [above](#finding-the-saturation-point), the chosen experiment is `r=200,c=2`.

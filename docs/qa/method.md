@@ -151,6 +151,11 @@ The Core team should improve it at every iteration to increase the amount of aut
 
 12. Repeat steps 9 and 10 to obtain as many plots as deemed necessary.
 
+13. To generate a latency vs throughput plot, using the CSV files generated in
+    step 5, follow the instructions for the [`latency_throughput.py`] script.
+
+[`latency_throughput.py`]: ../../scripts/qa/reporting/README.md
+
 #### Extracting Prometheus Metrics
 
 1. Stop the prometheus server if it is running as a service (e.g. a `systemd` unit).
