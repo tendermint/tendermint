@@ -3,6 +3,8 @@ order: 1
 title: Method
 ---
 
+# Method
+
 The (first iteration of the) QA process as described [in the RELEASES.md document][releases] is applied to version v0.34.x
 in order to have a set of results acting as benchmarking baseline.
 This baseline is then compared with results obtained in later versions.
@@ -12,9 +14,9 @@ _200 Node Test_, and _Rotating Nodes Test_.
 
 [releases]: https://github.com/tendermint/tendermint/blob/v0.37.x/RELEASES.md#large-scale-testnets
 
-# Software Dependencies
+## Software Dependencies
 
-## Infrastructure Requirements to Run the Tests
+### Infrastructure Requirements to Run the Tests
 
 * An account at Digital Ocean (DO), with a high droplet limit (>202)
 * The machine to orchestrate the tests should have the following installed:
@@ -29,7 +31,7 @@ _200 Node Test_, and _Rotating Nodes Test_.
 [Terraform]: https://www.terraform.io/docs
 [doctl]: https://docs.digitalocean.com/reference/doctl/how-to/install/
 
-## Requirements for Result Extraction
+### Requirements for Result Extraction
 
 * Matlab or Octave
 * [Prometheus][prometheus] server installed
@@ -38,9 +40,9 @@ _200 Node Test_, and _Rotating Nodes Test_.
 
 [prometheus]: https://prometheus.io/
 
-# 200 Node Testnet
+## 200 Node Testnet
 
-## Running the test
+### Running the test
 
 This section explains how the tests were carried out for reproducibility purposes.
 
@@ -62,12 +64,12 @@ This section explains how the tests were carried out for reproducibility purpose
     * for extra care, you can run `zip -T` on the `prometheus.zip` file and (one of) the `blockstore.db.zip` file(s)
 9. **Run `make terraform-destroy`**
 
-## Result Extraction
+### Result Extraction
 
 The method for extracting the results described here is highly manual (and exploratory) at this stage.
 The Core team should improve it at every iteration to increase the amount of automation.
 
-### Steps
+#### Steps
 
 1. Unzip the blockstore into a directory
 2. Extract the latency report and the raw latencies for all the experiments. Run these commands from the directory containing the blockstore
@@ -149,7 +151,7 @@ The Core team should improve it at every iteration to increase the amount of aut
 
 12. Repeat steps 9 and 10 to obtain as many plots as deemed necessary.
 
-### Extracting Prometheus Metrics
+#### Extracting Prometheus Metrics
 
 1. Stop the prometheus server if it is running as a service (e.g. a `systemd` unit).
 2. Unzip the prometheus database retrieved from the testnet, and move it to replace the
@@ -157,9 +159,9 @@ The Core team should improve it at every iteration to increase the amount of aut
 3. Start the prometheus server and make sure no error logs appear at start up.
 4. Introduce the metrics you want to gather or plot.
 
-# Rotating Node Testnet
+## Rotating Node Testnet
 
-## Running the test
+### Running the test
 
 This section explains how the tests were carried out for reproducibility purposes.
 
@@ -191,7 +193,7 @@ This section explains how the tests were carried out for reproducibility purpose
 
 Steps 8 to 10 are highly manual at the moment and will be improved in next iterations.
 
-## Result Extraction
+### Result Extraction
 
 In order to obtain a latency plot, follow the instructions above for the 200 node experiment, but:
 
