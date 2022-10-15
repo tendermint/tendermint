@@ -6,6 +6,8 @@ parent:
   order: 2
 ---
 
+# Tendermint Quality Assurance
+
 This directory keeps track of the process followed by the Tendermint Core team
 for Quality Assurance before cutting a release.
 This directory is to live in multiple branches. On each release branch,
@@ -17,5 +19,5 @@ used to decide if a release is passing the Quality Assurance process.
 The results obtained in each release are stored in their own directory.
 The following releases have undergone the Quality Assurance process:
 
-* [v0.34.21](./v034/)
-* [v0.37.x](./v037/), with v.34.21 acting as a baseline
+* [v0.34.x](./v034/), which was tested just before releasing v0.34.22
+* [v0.37.x](./v037/), with v.34.x acting as a baseline
