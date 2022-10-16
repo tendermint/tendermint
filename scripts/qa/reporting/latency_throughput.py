@@ -24,11 +24,6 @@ def main():
         description="Renders a latency vs throughput diagram "
         "for a set of transactions provided by the loadtime reporting tool",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-d',
-                        '--duration',
-                        type=float,
-                        default=DEFAULT_DURATION,
-                        help='Duration of experiment, in seconds')
     parser.add_argument('-t',
                         '--title',
                         default=DEFAULT_TITLE,
@@ -47,16 +42,11 @@ def main():
                         level=logging.INFO)
     plot_latency_vs_throughput(args.input_csv_file,
                                args.output_image,
-                               duration=args.duration,
                                title=args.title)
 
 
-def plot_latency_vs_throughput(input_files,
-                               output_image,
-                               duration=DEFAULT_DURATION,
-                               title=DEFAULT_TITLE):
-    avg_latencies, throughput_rates = parse_input_files(input_files,
-                                                        duration=duration)
+def plot_latency_vs_throughput(input_files, output_image, title=DEFAULT_TITLE):
+    avg_latencies, throughput_rates = process_input_files(input_files, )
 
     fig, ax = plt.subplots()
 
@@ -75,88 +65,99 @@ def plot_latency_vs_throughput(input_files,
     plt.savefig(output_image)
 
 
-def parse_input_files(input_files, duration=DEFAULT_DURATION):
-    total_txs = 0
-    # Per-connection latency vs throughput rates
-    latency_throughput = {}
+def process_input_files(input_files):
+    # Experimental data from which we will derive the latency vs throughput
+    # statistics
+    experiments = {}
 
     for input_file in input_files:
         logging.info('Reading %s...' % input_file)
-        latencies_sum = 0.0
-        connections = None
-        experiment_id = None
-        tx_count = 0
 
         with open(input_file, 'rt') as inf:
-            reader = csv.reader(inf)
-            for row in reader:
-                # We don't always have the header row
-                if row[0] == 'experiment_id':
-                    continue
+            reader = csv.DictReader(inf)
+            for tx in reader:
+                experiments = process_tx(experiments, tx)
 
-                tx = {
-                    'experiment_id': row[0],
-                    'block_time': int(row[1]),
-                    'duration_ns': int(row[2]),
-                    'tx_hash': row[3],
-                    'connections': int(row[4]),
-                    'rate': int(row[5]),
-                    'size': int(row[6]),
-                }
-                if experiment_id is None:
-                    experiment_id = tx['experiment_id']
-                elif experiment_id != tx['experiment_id']:
-                    logging.error(
-                        'Cannot have multiple experiment IDs in the same input'
-                        ' file. Found %s and %s in %s' %
-                        (experiment_id, tx['experiment_id'], input_file))
-                    sys.exit(1)
+    return compute_experiments_stats(experiments)
 
-                if connections is None:
-                    connections = tx['connections']
-                elif connections != tx['connections']:
-                    logging.error(
-                        'Cannot have multiple numbers of connections in the '
-                        'same input file. Found %s and %s in %s' %
-                        (connections, tx['connections'], input_file))
-                    sys.exit(1)
 
-                # Latency durations are in nanoseconds - convert to seconds
-                latencies_sum += tx['duration_ns'] / (10**9)
-                tx_count += 1
+def process_tx(experiments, tx):
+    exp_id = tx['experiment_id']
+    # Block time is nanoseconds from the epoch - convert to seconds
+    block_time = float(tx['block_time']) / (10**9)
+    # Duration is also in nanoseconds - convert to seconds
+    duration = float(tx['duration_ns']) / (10**9)
+    connections = int(tx['connections'])
+    rate = int(tx['rate'])
 
-        if connections not in latency_throughput:
-            latency_throughput[connections] = []
+    if exp_id not in experiments:
+        experiments[exp_id] = {
+            'connections': connections,
+            'rate': rate,
+            'block_time_min': block_time,
+            'block_time_max': block_time,
+            'total_latencies': duration,
+            'tx_count': 1,
+        }
+        logging.info('Found experiment %s with rate=%d, connections=%d' %
+                     (exp_id, rate, connections))
+    else:
+        # Validation
+        for field in ['connections', 'rate']:
+            val = int(tx[field])
+            if val != experiments[exp_id][field]:
+                raise Exception(
+                    'Found multiple distinct values for field '
+                    '"%s" for the same experiment (%s): %d and %d' %
+                    (field, exp_id, val, experiments[exp_id][field]))
 
-        avg_latency = latencies_sum / tx_count
-        throughput_rate = tx_count / duration
-        latency_throughput[connections].append({
-            'avg_latency':
-            avg_latency,
-            'throughput_rate':
-            throughput_rate,
+        if block_time < experiments[exp_id]['block_time_min']:
+            experiments[exp_id]['block_time_min'] = block_time
+        if block_time > experiments[exp_id]['block_time_max']:
+            experiments[exp_id]['block_time_max'] = block_time
+
+        experiments[exp_id]['total_latencies'] += duration
+        experiments[exp_id]['tx_count'] += 1
+
+    return experiments
+
+
+def compute_experiments_stats(experiments):
+    """Compute average latency vs throughput rate statistics from the given
+    experiments"""
+    stats = {}
+
+    # Compute average latency and throughput rate for each experiment
+    for exp_id, exp in experiments.items():
+        conns = exp['connections']
+        avg_latency = exp['total_latencies'] / exp['tx_count']
+        throughput_rate = exp['tx_count'] / (exp['block_time_max'] -
+                                             exp['block_time_min'])
+        if conns not in stats:
+            stats[conns] = []
+
+        stats[conns].append({
+            'avg_latency': avg_latency,
+            'throughput_rate': throughput_rate,
         })
-        total_txs += tx_count
 
-    # Sort data points for each connection in order of ascending throughput
-    # rate and extract the data series separately
-    connections = sorted(latency_throughput.keys())
+    # Sort stats for each number of connections in order of increasing
+    # throughput rate, and then extract average latencies and throughput rates
+    # as separate data series.
+    conns = sorted(stats.keys())
     avg_latencies = {}
     throughput_rates = {}
-    for c in connections:
-        latency_throughput[c] = sorted(latency_throughput[c],
-                                       key=lambda lt: lt['throughput_rate'])
+    for c in conns:
+        stats[c] = sorted(stats[c], key=lambda s: s['throughput_rate'])
         avg_latencies[c] = []
         throughput_rates[c] = []
-        for lt in latency_throughput[c]:
-            avg_latencies[c].append(lt['avg_latency'])
-            throughput_rates[c].append(lt['throughput_rate'])
-            logging.info('Connections = %d\tThroughput rate = %.6f tx/sec'
-                         '\tAvg latency = %.6fs' %
-                         (c, lt['throughput_rate'], lt['avg_latency']))
-
-    logging.info('Read %d transactions from %d file(s)' %
-                 (total_txs, len(input_files)))
+        for s in stats[c]:
+            avg_latencies[c].append(s['avg_latency'])
+            throughput_rates[c].append(s['throughput_rate'])
+            logging.info('For %d connection(s): '
+                         'throughput rate = %.6f tx/s\t'
+                         'average latency = %.6fs' %
+                         (c, s['throughput_rate'], s['avg_latency']))
 
     return (avg_latencies, throughput_rates)
 

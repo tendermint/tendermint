@@ -31,25 +31,18 @@ pip install -r requirements.txt
 
 ### Running
 
-Let's say your execution of the loadtime reporting tool resulted in a set of
-files: `c01_r0025.csv`, `c01_r0050.csv`, etc. and these files are related to
-a load test against Tendermint v0.34.x.
-
-By default the script assumes you ran each experiment for 90 seconds, but you
-can override this (see the script usage instructions).
-
 ```bash
-# While the virtual environment is activated (see the Setup steps)
-# This will generate a plot in a PNG file called 'tm034.png' in the current
-# directory. The default title of the plot is overridden below, but the default
-# duration of 90s is assumed (use the -d flag to override this).
+# Do the following while ensuring that the virtual environment is activated (see
+# the Setup steps).
 #
-# Also assumes your shell can expand the syntax used in the final parameter,
-# which lists all of the input CSV files to process.
+# This will generate a plot in a PNG file called 'tm034.png' in the current
+# directory based on the reporting tool CSV output in the "raw.csv" file. The
+# default title of the plot is overridden below.
+
 ./latency_throughput.py \
     -t 'Tendermint v0.34.x Latency vs Throughput' \
     ./tm034.png \
-    /path/to/csv/files/c0{1,2,4}_r0{025,050,100,200}.csv
+    /path/to/csv/files/raw.csv
 ```
 
 [matplotlib]: https://matplotlib.org/
