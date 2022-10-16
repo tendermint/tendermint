@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 DEFAULT_TITLE = "Tendermint latency vs throughput"
-DEFAULT_DURATION = 90.0
 
 
 def main():
