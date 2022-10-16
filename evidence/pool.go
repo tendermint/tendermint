@@ -183,6 +183,7 @@ func (evpool *Pool) ReportConflictingVotes(voteA, voteB *types.Vote) {
 		VoteA: voteA,
 		VoteB: voteB,
 	})
+	evpool.logger.Error("received conflicting votes")
 }
 
 // CheckEvidence takes an array of evidence from a block and verifies all the evidence there.

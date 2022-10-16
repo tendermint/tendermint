@@ -98,10 +98,6 @@ func newReactor(
 	// NOTE we have to create and commit the blocks first because
 	// pool.height is determined from the store.
 	fastSync := true
-	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
-	})
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mp, sm.EmptyEvidencePool{})
 	if err = stateStore.Save(state); err != nil {

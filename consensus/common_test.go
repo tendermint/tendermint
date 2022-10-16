@@ -47,34 +47,6 @@ const (
 	ensureTimeout = time.Millisecond * 200
 )
 
-// A cleanupFunc cleans up any config / test files created for a particular
-// test.
-type cleanupFunc func()
-
-func configSetup(t *testing.T) *config.Config {
-	t.Helper()
-
-	cfg := ResetConfig("consensus_reactor_test")
-	t.Cleanup(func() { os.RemoveAll(cfg.RootDir) })
-
-	consensusReplayConfig := ResetConfig("consensus_replay_test")
-	t.Cleanup(func() { os.RemoveAll(consensusReplayConfig.RootDir) })
-
-	configStateTest := ResetConfig("consensus_state_test")
-	t.Cleanup(func() { os.RemoveAll(configStateTest.RootDir) })
-
-	configMempoolTest := ResetConfig("consensus_mempool_test")
-	t.Cleanup(func() { os.RemoveAll(configMempoolTest.RootDir) })
-
-	configByzantineTest := ResetConfig("consensus_byzantine_test")
-	t.Cleanup(func() { os.RemoveAll(configByzantineTest.RootDir) })
-
-	walDir := filepath.Dir(cfg.Consensus.WalFile())
-	ensureDir(walDir, 0700)
-
-	return cfg
-}
-
 func ensureDir(dir string, mode os.FileMode) {
 	if err := tmos.EnsureDir(dir, mode); err != nil {
 		panic(err)
@@ -433,8 +405,10 @@ func makeState(t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
 		app = args.application
 	}
 	if args.config == nil {
-		args.config = configSetup(t)
+		args.config = config.TestConfig()
 	}
+	args.config.SetRoot(t.TempDir())
+
 	cp := test.ConsensusParams()
 	if args.consensusParams != nil {
 		cp = args.consensusParams
@@ -567,6 +541,7 @@ func makeNetwork(t *testing.T, args makeNetworkArgs) ([]*State, []types.PrivVali
 	if args.config == nil {
 		args.config = config.TestConfig()
 	}
+	args.config.SetRoot(t.TempDir())
 
 	if args.appfactory == nil {
 		args.appfactory = func() abci.Application {

@@ -1822,7 +1822,7 @@ func TestVoteExtensionEnableHeight(t *testing.T) {
 			}
 			r := &abci.ResponseFinalizeBlock{AgreedAppData: []byte("hashyHash")}
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
-			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+			m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 			cs1, vss := makeState(t, makeStateArgs{application: m})
 			cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
 			height, round := cs1.Height, cs1.Round
