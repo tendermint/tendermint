@@ -2,6 +2,61 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.21
+
+Release highlights include:
+
+- A new `[storage]` configuration section and flag `discard_abci_responses`,
+  which, if enabled, discards all ABCI responses except the latest one in order
+  to reduce disk space usage in the state store. When enabled, the
+  `block_results` RPC endpoint can no longer function and will return an error.
+- A new CLI command, `reindex-event`, to re-index block and tx events to the
+  event sinks. You can run this command when the event store backend
+  dropped/disconnected or you want to replace the backend. When
+  `discard_abci_responses` is enabled, you will not be able to use this command.
+
+Special thanks to external contributors on this release: @rootwarp & @animart
+
+### FEATURES
+
+- [cli] [\#9083](https://github.com/tendermint/tendermint/issues/9083) Backport command to reindex missed events (@cmwaters)
+- [cli] [\#9107](https://github.com/tendermint/tendermint/issues/9107) Add the `p2p.external-address` argument to set the node P2P external address (@amimart)
+
+### IMPROVEMENTS
+
+- [config] [\#9054](https://github.com/tendermint/tendermint/issues/9054) `discard_abci_responses` flag added to discard all ABCI
+  responses except the last in order to save on storage space in the state
+  store (@samricotta)
+
+### BUG FIXES
+
+- [mempool] [\#9033](https://github.com/tendermint/tendermint/issues/9033) Rework lock discipline to mitigate callback deadlocks in the
+  priority mempool
+- [cli] [\#9103](https://github.com/tendermint/tendermint/issues/9103) fix unsafe-reset-all for working with home path (@rootwarp)
+
+## v0.34.20
+
+Special thanks to external contributors on this release: @joeabbey @yihuang
+
+This release introduces a prioritized mempool. Further notes can be found in UPGRADING.md.
+
+NOTE: There's a known issue when combining the prioritized mempool with the ABCI socket client, that the team are curently working to resolve. Read more about the issue [here](https://github.com/tendermint/tendermint/pull/9030).
+
+### BUG FIXES
+
+- [blocksync] [\#8496](https://github.com/tendermint/tendermint/pull/8496) validate block against state before persisting it to disk (@cmwaters)
+- [indexer] [#8625](https://github.com/tendermint/tendermint/pull/8625) Fix overriding tx index of duplicated txs. (@yihuang)
+- [mempool] [\#8962](https://github.com/tendermint/tendermint/issues/8962) Backport priority mempool fixes from v0.35.x to v0.34.x (@creachadair).
+
+### FEATURES
+
+- [cli] [\#8674] Add command to force compact goleveldb databases (@cmwaters)
+- [mempool] [\#8695] Port back the priority mempool. (@alexanderbez, @jmalicevic, @cmwaters)
+
+### IMPROVEMENTS
+
+- [logging] [\#8845](https://github.com/tendermint/tendermint/issues/8845) Add "Lazy" Stringers to defer Sprintf and Hash until logs print. (@joeabbey)
+
 ## v0.34.19
 
 ### BUG FIXES

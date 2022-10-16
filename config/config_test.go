@@ -140,8 +140,8 @@ func TestFastSyncConfigValidateBasic(t *testing.T) {
 	assert.Error(t, cfg.ValidateBasic())
 }
 
+// nolint: lll
 func TestConsensusConfig_ValidateBasic(t *testing.T) {
-	// nolint: lll
 	testcases := map[string]struct {
 		modify    func(*ConsensusConfig)
 		expectErr bool
@@ -166,6 +166,7 @@ func TestConsensusConfig_ValidateBasic(t *testing.T) {
 		"PeerQueryMaj23SleepDuration negative": {func(c *ConsensusConfig) { c.PeerQueryMaj23SleepDuration = -1 }, true},
 		"DoubleSignCheckHeight negative":       {func(c *ConsensusConfig) { c.DoubleSignCheckHeight = -1 }, true},
 	}
+
 	for desc, tc := range testcases {
 		tc := tc // appease linter
 		t.Run(desc, func(t *testing.T) {

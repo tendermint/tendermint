@@ -2,13 +2,28 @@
 
 This guide provides instructions for upgrading to specific versions of Tendermint Core.
 
+## v0.34.20
+
+### Feature: Priority Mempool
+
+This release backports an implementation of the Priority Mempool from the v0.35
+branch. This implementation of the mempool permits the application to set a
+priority on each transaction during CheckTx, and during block selection the
+highest-priority transactions are chosen (subject to the constraints on size
+and gas cost).
+
+Operators can enable the priority mempool by setting `mempool.version` to
+`"v1"` in the `config.toml`. For more technical details about the priority
+mempool, see [ADR 067: Mempool
+Refactor](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-067-mempool-refactor.md).
+
 ## v0.34.0
 
 **Upgrading to Tendermint 0.34 requires a blockchain restart.**
 This release is not compatible with previous blockchains due to changes to
 the encoding format (see "Protocol Buffers," below) and the block header (see "Blockchain Protocol").
 
-Note also that Tendermint 0.34 also requires Go 1.15 or higher. 
+Note also that Tendermint 0.34 also requires Go 1.15 or higher.
 
 ### ABCI Changes
 
@@ -112,7 +127,7 @@ Tendermint 0.34 includes new and updated consensus parameters.
 
 #### Evidence Parameters
 
-* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB). 
+* `MaxBytes`, which caps the total amount of evidence. The default is 1048576 (1 MB).
 
 ### Crypto
 
@@ -188,7 +203,7 @@ blockchains, we recommend that you check the chain ID.
 
 ### Version
 
-Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time. 
+Version is now set through Go linker flags `ld_flags`. Applications that are using tendermint as a library should set this at compile time.
 
 Example:
 
@@ -196,7 +211,7 @@ Example:
 go install -mod=readonly -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(go list -m github.com/tendermint/tendermint | sed  's/ /\@/g') -s -w " -trimpath ./cmd
 ```
 
-Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`. 
+Additionally, the exported constant `version.Version` is now `version.TMCoreSemVer`.
 
 ## v0.33.4
 
