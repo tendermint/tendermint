@@ -7,20 +7,12 @@ import "wire.proto";
 
 message MsgBid {
     Pair pair  = 1;
-    double max_price = 2;
-    uint64 quantity = 3;
-    uint64 account_id = 4;
-    repeated bytes signature = 5;
-    OrderBid order = 6;
+    OrderBid bid_order = 2;
 }
 
 message MsgAsk {
     Pair pair  = 1;
-    double min_price = 2;
-    uint64 quantity = 3;
-    uint64 account_id = 4;
-    repeated bytes signature = 5;
-    OrderAsk order = 6;
+    OrderAsk ask_order = 2;
 }
 
 message MsgCreateAccount {
