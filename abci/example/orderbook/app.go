@@ -78,7 +78,7 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgBid.AccountId]; !ok {
+		if _, ok := sm.accounts[m.MsgBid.BidOrder.OwnerId]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
@@ -96,7 +96,7 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgAsk.AccountId]; !ok {
+		if _, ok := sm.accounts[m.MsgAsk.AskOrder.Owner]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
@@ -112,7 +112,7 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check the account has a  enough quantity
-		if err := m.MsgAsk.Quantity >= sm.commodities[m.MsgAsk.Pair.OutboundCommodityDenom].Quantity; !ok {
+		if err := m.MsgAsk.AskOrder.Quantity >= sm.commodities[m.MsgAsk.Pair.SellersDenomination].Quantity; !ok {
 			return types.ResponseCheckTx{Code: 4, Log: err.Error()}
 		}
 
@@ -193,7 +193,7 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 }
 
 func (msg *MsgBid) ValidateBasic() error {
-	if err := msg.Order.ValidateBasic(); err != nil {
+	if err := msg.BidOrder.ValidateBasic(); err != nil {
 		return err
 	}
 
@@ -201,7 +201,7 @@ func (msg *MsgBid) ValidateBasic() error {
 		return err
 	}
 
-	if len(msg.Signature) != ed25519.SignatureSize {
+	if len(msg.BidOrder.Signature) != ed25519.SignatureSize {
 		return errors.New("invalid signature size")
 	}
 
@@ -212,7 +212,7 @@ func (msg *MsgBid) ValidateBasic() error {
 }
 
 func (msg *MsgAsk) ValidateBasic() error {
-	if err := msg.Order.ValidateBasic(); err != nil {
+	if err := msg.AskOrder.ValidateBasic(); err != nil {
 		return err
 	}
 
@@ -220,7 +220,7 @@ func (msg *MsgAsk) ValidateBasic() error {
 		return err
 	}
 
-	if len(msg.Signature) != ed25519.SignatureSize {
+	if len(msg.AskOrder.Signature) != ed25519.SignatureSize {
 		return errors.New("invalid signature size")
 	}
 
@@ -262,11 +262,11 @@ func (c *Commodity) ValidateBasic() error {
 }
 
 func (p *Pair) ValidateBasic() error {
-	if p.InboundCommodityDenom == "" || p.OutboundCommodityDenom == "" {
+	if p.BuyersDenomination == "" || p.SellersDenomination == "" {
 		return errors.New("inbound and outbound commodities must be present")
 	}
 
-	if p.InboundCommodityDenom == p.OutboundCommodityDenom {
+	if p.BuyersDenomination == p.SellersDenomination {
 		return errors.New("commodities must not be the same")
 	}
 
@@ -274,7 +274,7 @@ func (p *Pair) ValidateBasic() error {
 }
 
 func (o *OrderBid) ValidateBasic() error {
-	if o.Quantity == 0 {
+	if o.MaxQuantity == 0 {
 		return errors.New("quantity outbound must be non zero")
 	}
 
