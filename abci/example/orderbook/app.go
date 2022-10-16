@@ -13,17 +13,24 @@ import (
 
 var _ types.Application = (*StateMachine)(nil)
 
+const Version = 1;
+
 //TO DO: Error codes
 
 type StateMachine struct {
-
 	// persisted state
 	db dbm.DB
 
 	// in-memory state
 	accounts    map[uint64]*Account
 	commodities map[string]*Commodity
-	// app-side mempool
+
+	// ephemeral state (not used for the app hash) but for
+	// convienience
+	pairs map[string]struct{} // lookup pairs
+	commodity map[string]struct{} // lookup commodities
+
+	// app-side mempool (also emphemeral)
 	markets map[string]*Market // i.e. ATOM/USDC
 }
 
@@ -36,6 +43,9 @@ func (sm *StateMachine) Info(req types.RequestInfo) types.ResponseInfo {
 }
 
 func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+	
+	// execute the trade i.e. update everyone's accounts
+
 	return types.ResponseDeliverTx{Code: 0}
 }
 
@@ -51,7 +61,7 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 	// validations for each msg below
 	switch m := msg.Sum.(type) {
 	case *Msg_MsgRegisterPair:
-		//mustnt already have the same pair
+		// mustnt already have the same pair (also the reverse pairing)
 		// inbound can also be outbound for pair
 
 	case *Msg_MsgCreateAccount:
@@ -68,19 +78,16 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgBid.Order.Owner.Index]; !ok {
+		if _, ok := sm.accounts[m.MsgBid.AccountId]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
-		// check the commodity exists
-		if _, ok := sm.commodities[m.MsgBid.Pair.OutboundCommodityDenom]; !ok {
+		// check the pair exists
+		if _, ok := sm.pairs[m.MsgBid.Pair.String()]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
-		// check if pair is registered
-		if _, ok := sm.markets[m.MsgBid.Pair.String()]; !ok {
-			return types.ResponseCheckTx{Code: 4}
-		}
+		// check that the account has enough funds to support the bid (quantity * max_price)
 
 	case *Msg_MsgAsk:
 
@@ -89,12 +96,12 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgAsk.Order.Owner.Index]; !ok {
+		if _, ok := sm.accounts[m.MsgAsk.AccountId]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
-		// check the commodity exists
-		if _, ok := sm.commodities[m.MsgAsk.Pair.OutboundCommodityDenom]; !ok {
+		// check the pair exists
+		if _, ok := sm.pairs[m.MsgAsk.Pair.String()]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
@@ -104,7 +111,7 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 
 		}
 
-		// check the commodity has a high enough quantity
+		// check the account has a  enough quantity
 		if err := m.MsgAsk.Quantity >= sm.commodities[m.MsgAsk.Pair.OutboundCommodityDenom].Quantity; !ok {
 			return types.ResponseCheckTx{Code: 4, Log: err.Error()}
 		}
@@ -153,19 +160,34 @@ func (sm *StateMachine) ApplySnapshotChunk(req types.RequestApplySnapshotChunk) 
 }
 
 func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-	txs := make([][]byte, 0, len(req.Txs))
-	var totalBytes int64
-	for _, tx := range req.Txs {
-		totalBytes += int64(len(tx))
-		if totalBytes > req.MaxTxBytes {
-			break
+
+	// fetch and match all the bids and asks for each market
+	for _, market := range sm.markets {
+		tradeSet, err := market.Match()
+
+		for _, matchedOrder := range tradeSet.MatchedOrders {
+			
+			// validate the trade:
+			// does the buyer and seller have sufficient funds
+
+			// add it to the set of txs
+
+			
 		}
-		txs = append(txs, tx)
+
+		txs = append(txs, trades)
 	}
-	return types.ResponsePrepareProposal{Txs: txs}
+
+	// loop through the transactions provided by tendermint and look out for register pair and create account.
+	// those should still be added.
+
+	return types.ResponsePrepareProposal{Txs: req.Txs}
 }
 
 func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
+
+	// validate everything!!!!
+
 	return types.ResponseProcessProposal{
 		Status: types.ResponseProcessProposal_ACCEPT}
 }

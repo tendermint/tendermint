@@ -10,11 +10,17 @@ type Market struct {
 	sellingOrders LowestPriceOrderList // i.e. selling EUR for USD or  buying USD for EUR
 }
 
-func (m *Market) AddOrder(o Order) error {
-
+func (m *Market) AddBid(b MsgBid) error {
+	return nil
 }
 
-func (m *Market) Match()
+func (m *Market) AddAsk(a MsgAsk) error {
+	return nil
+}
+
+func (m *Market) Match() (*TradeSet, error) {
+	return nil, nil
+} 
 
 
 
