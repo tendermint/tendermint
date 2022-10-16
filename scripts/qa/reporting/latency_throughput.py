@@ -94,6 +94,9 @@ def process_tx(experiments, tx):
             'connections': connections,
             'rate': rate,
             'block_time_min': block_time,
+            # We keep track of the latency associated with the minimum block
+            # time to estimate the start time of the experiment
+            'block_time_min_duration': duration,
             'block_time_max': block_time,
             'total_latencies': duration,
             'tx_count': 1,
@@ -112,6 +115,7 @@ def process_tx(experiments, tx):
 
         if block_time < experiments[exp_id]['block_time_min']:
             experiments[exp_id]['block_time_min'] = block_time
+            experiments[exp_id]['block_time_min_duration'] = duration
         if block_time > experiments[exp_id]['block_time_max']:
             experiments[exp_id]['block_time_max'] = block_time
 
@@ -130,8 +134,9 @@ def compute_experiments_stats(experiments):
     for exp_id, exp in experiments.items():
         conns = exp['connections']
         avg_latency = exp['total_latencies'] / exp['tx_count']
-        throughput_rate = exp['tx_count'] / (exp['block_time_max'] -
-                                             exp['block_time_min'])
+        exp_start_time = exp['block_time_min'] - exp['block_time_min_duration']
+        exp_duration = exp['block_time_max'] - exp_start_time
+        throughput_rate = exp['tx_count'] / exp_duration
         if conns not in stats:
             stats[conns] = []
 
