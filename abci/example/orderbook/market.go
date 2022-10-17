@@ -5,7 +5,7 @@ import (
 )
 
 type Market struct {
-	pair       Pair      // i.e. EUR/USD (a market is bidirectional)
+	pair       Pair       // i.e. EUR/USD (a market is bidirectional)
 	askOrders  *AskOrders // i.e. buying EUR for USD
 	lowestAsk  float64
 	bidOrders  *BidOrders // i.e. selling EUR for USD or  buying USD for EUR
@@ -13,27 +13,35 @@ type Market struct {
 }
 
 func NewMarket(p Pair) *Market {
-	return &Market{pair: p}
+	askOrders := make(AskOrders, 0)
+	bidOrders := make(BidOrders, 0)
+	return &Market{pair: p, askOrders: &askOrders, bidOrders: &bidOrders}
 }
 
-func (m *Market) AddBid(b OrderBid) {
+func (m *Market) AddBid(b *OrderBid) {
 	heap.Push(m.bidOrders, b)
 	if b.MaxPrice > m.highestBid {
 		m.highestBid = b.MaxPrice
 	}
 }
 
-func (m *Market) AddAsk(a OrderAsk) {
+func (m *Market) AddAsk(a *OrderAsk) {
 	heap.Push(m.askOrders, a)
-	if a.AskPrice < m.lowestAsk {
+	if a.AskPrice < m.lowestAsk || m.lowestAsk == 0 {
 		m.lowestAsk = a.AskPrice
 	}
 }
 
 // Match takes the set of bids and asks and matches them together.
 // A bid matches an ask when the MaxPrice is greater than the AskPrice
-// and the MaxQuantity is greater than the quantity. 
+// and the MaxQuantity is greater than the quantity.
 func (m *Market) Match() *TradeSet {
+	// if one side doesn't have any orders than there is nothing to match
+	// and we return early
+	if m.askOrders.Len() == 0 || m.bidOrders.Len() == 0 {
+		return nil
+	}
+
 	if m.highestBid < m.lowestAsk {
 		// no orders match, we return early.
 		return nil
@@ -44,13 +52,27 @@ func (m *Market) Match() *TradeSet {
 	asks := make([]*OrderAsk, 0)
 
 	// get all the bids that are greater than the lowest ask. In order from heighest bid to lowest bid
-	for bid := heap.Pop(m.bidOrders).(*OrderBid); bid.MaxPrice >= m.lowestAsk; bid = heap.Pop(m.bidOrders).(*OrderBid) {
-		bids = append(bids, bid)
+	for m.bidOrders.Len() > 0 {
+		bid := heap.Pop(m.bidOrders).(*OrderBid)
+		if bid.MaxPrice < m.lowestAsk {
+			// we've reached the limit, push the bid back and break the loop
+			heap.Push(m.bidOrders, bid)
+			break
+		} else {
+			bids = append(bids, bid)
+		}
 	}
 
 	// get all the asks that are lower than the highest bid in the bids set. Ordered from lowest to highest ask
-	for ask := heap.Pop(m.askOrders).(*OrderAsk); ask.AskPrice <= bids[0].MaxPrice; ask = heap.Pop(m.askOrders).(*OrderAsk) {
-		asks = append(asks, ask)
+	for m.askOrders.Len() > 0 {
+		ask := heap.Pop(m.askOrders).(*OrderAsk)
+		if ask.AskPrice > bids[0].MaxPrice {
+			// the ask price is greater than the highest bid; push the ask back and break theh loop
+			heap.Push(m.askOrders, ask)
+			break
+		} else {
+			asks = append(asks, ask)
+		}
 	}
 
 	// this is to keep track of the index of the bids that have been matched
@@ -63,7 +85,12 @@ OUTER_LOOP:
 		ask := asks[i]
 
 		// start with the highest bid and increment down since we're more likely to find a match
-		for j := 0 ; j < len(bids); j++ {
+		for j := len(bids) - 1; j >= 0; j-- {
+			if _, ok := reserved[j]; ok {
+				// skip over the bids that have already been reserved
+				continue
+			}
+
 			bid := bids[j]
 			if bid.MaxPrice >= ask.AskPrice {
 				if bid.MaxQuantity >= ask.Quantity {
@@ -87,12 +114,19 @@ OUTER_LOOP:
 		heap.Push(m.askOrders, ask)
 	}
 
+	// if all available asks were matched then
+	// we never have the opportunity to update the lowest ask.
+	// Now we reset it to 0
+	if m.askOrders.Len() == 0 {
+		m.lowestAsk = 0
+	}
+
 	// add back the unmatched bids to the heap so they can be matched again in a later round.
 	// We also neeed to recalculate the new highest bid. First we tackle an edge case whereby all
 	// selected bids were matched. In this case we grab the next highest and set that as the new
 	// highest bid
 	m.highestBid = 0
-	if len(reserved) == len(bids) {
+	if len(reserved) == len(bids) && m.bidOrders.Len() > 0 {
 		newHighestBid := heap.Pop(m.bidOrders).(*OrderBid)
 		m.highestBid = newHighestBid.MaxPrice
 		heap.Push(m.bidOrders, newHighestBid)
@@ -106,6 +140,9 @@ OUTER_LOOP:
 		}
 	}
 
+	if len(t.MatchedOrders) == 0 {
+		return nil
+	}
 	return t
 }
 
