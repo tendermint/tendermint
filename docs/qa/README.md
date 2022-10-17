@@ -20,4 +20,3 @@ The results obtained in each release are stored in their own directory.
 The following releases have undergone the Quality Assurance process:
 
 * [v0.34.x](./v034/), which was tested just before releasing v0.34.22
-* [v0.37.x](./v037/), with v.34.x acting as a baseline
