@@ -5,11 +5,14 @@ title: Method
 
 # Method
 
-The (first iteration of the) QA process as described [in the RELEASES.md document][releases] is applied to version v0.34.x
-in order to have a set of results acting as benchmarking baseline.
+This document provides a detailed description of the QA process.
+It is intended to be used by engineers reproducing the experimental setup for future tests of Tendermint.
+
+The (first iteration of the) QA process as described [in the RELEASES.md document][releases]
+was applied to version v0.34.x in order to have a set of results acting as benchmarking baseline.
 This baseline is then compared with results obtained in later versions.
 
-Out of the testnet-based test cases described in [the releases document][releases] we are focusing on two of them:
+Out of the testnet-based test cases described in [the releases document][releases] we focused on two of them:
 _200 Node Test_, and _Rotating Nodes Test_.
 
 [releases]: https://github.com/tendermint/tendermint/blob/v0.37.x/RELEASES.md#large-scale-testnets
@@ -48,14 +51,16 @@ This section explains how the tests were carried out for reproducibility purpose
 
 1. [If you haven't done it before]
    Follow steps 1-4 of the `README.md` at the top of the testnet repository to configure Terraform, and `doctl`.
-2. Copy file `testnet200.toml` onto `testnet.toml` (do NOT commit this change)
+2. Copy file `testnets/testnet200.toml` onto `testnet.toml` (do NOT commit this change)
 3. Set variable `VERSION_TAG` to the git hash that is to be tested.
 4. Follow steps 5-10 of the `README.md` to configure and start the 200 node testnet
-    * WARNING: Do NOT forget to run `make terraform-destroy` as soon as you are done with the tests
+    * WARNING: Do NOT forget to run `make terraform-destroy` as soon as you are done with the tests (see step 9)
 5. As a sanity check, connect to the Prometheus node's web interface and check the graph for the `tendermint_consensus_height` metric.
    All nodes should be increasing their heights.
 6. `ssh` into the `testnet-load-runner`, then copy script `script/200-node-loadscript.sh` and run it from the load runner node.
-    * This will take about 40 mins to run
+    * Before running it, you need to edit the script to provide the IP address of a full node.
+      This node will receive all transactions from the load runner node.
+    * This script will take about 40 mins to run
     * It is running 90-seconds-long experiments in a loop with different loads
 7. Run `make retrieve-data` to gather all relevant data from the testnet into the orchestrating machine
 8. Verify that the data was collected without errors
@@ -63,6 +68,7 @@ This section explains how the tests were carried out for reproducibility purpose
     * the Prometheus database from the Prometheus node
     * for extra care, you can run `zip -T` on the `prometheus.zip` file and (one of) the `blockstore.db.zip` file(s)
 9. **Run `make terraform-destroy`**
+    * Don't forget to type `yes`! Otherwise you're in trouble.
 
 ### Result Extraction
 

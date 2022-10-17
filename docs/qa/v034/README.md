@@ -48,13 +48,15 @@ All experiments below the saturation diagonal (`r=200,c=4`) have in common that 
 number of transactions processed is noticeably less than the product $c \cdot r \cdot 90$,
 which is the expected number of transactions when the system is able to deal well with the
 load.
+With `r=200,c=4`, we obtained 38660 whereas the theoretical number of transactions should
+have been $200 \cdot 4 \cdot 89 = 71200$.
 
 At this point, we chose an experiment at the limit of the saturation diagonal,
 in order to further study the performance of this release.
 **The chosen experiment is `r=200,c=2`**.
 
-This is a plot of the CPU load of the load runner for `r=200,c=2`,
-where we can see that the load (average over 1 minute) stays close to 0 most of the time.
+This is a plot of the CPU load (average over 1 minute, as output by `top`) of the load runner for `r=200,c=2`,
+where we can see that the load stays close to 0 most of the time.
 
 ![load-load-runner](./img/v034_r200c2_load-runner.png)
 
@@ -155,7 +157,7 @@ Resident Set Size of all monitored processes is plotted below.
 
 ![rss](./img/v034_r200c2_rss.png)
 
-The average over all processes oscillates around 4201.2 GiB and does not demonstrate unconstrained growth.
+The average over all processes oscillates around 1.2 GiB and does not demonstrate unconstrained growth.
 
 ![rss-avg](./img/v034_r200c2_rss_avg.png)
 
@@ -171,7 +173,7 @@ It is contained in most cases below 5, which is generally considered acceptable 
 
 ### Test Result
 
-**Result: N/A**
+**Result: N/A** (v0.34.x is the baseline)
 
 Date: 2022-10-14
 
@@ -180,7 +182,7 @@ Version: 3ec6e424d6ae4c96867c2dcf8310572156068bb6
 ## Rotating Node Testnet
 
 For this testnet, we will use a load that can safely be considered below the saturation
-point for the size of this testnet (between 13 and 38 nodes): `c=4,r=800`.
+point for the size of this testnet (between 13 and 38 full nodes): `c=4,r=800`.
 
 N.B.: The version of Tendermint used for these tests is affected by #9539.
 However, the reduced load that reaches the mempools is orthogonal to functionality
@@ -201,7 +203,9 @@ been removed, i.e., only the first occurrence of a duplicate transaction is kept
 
 ![rotating-all-latencies-uniq](./img/v034_rotating_latencies_uniq.png)
 
-This problem, existing in `v0.34.x`, will need to be addressed.
+This problem, existing in `v0.34.x`, will need to be addressed, perhaps in the same way
+we addressed it when running the 200 node test with high loads: increasing the `cache_size`
+configuration parameter.
 
 ### Prometheus Metrics
 
