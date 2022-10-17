@@ -119,6 +119,45 @@ func TestMultiOrderMatching(t *testing.T) {
 			expectedLowestAsk: 0,
 			expectedHighestBid: 40,
 		},
+		{
+			bids: []*orderbook.OrderBid{
+				testBid(60, 20),
+				testBid(80, 5),
+			},
+			asks: []*orderbook.OrderAsk{
+				testAsk(60, 15),
+				testAsk(70, 10),
+				testAsk(50, 20),
+			},
+			expected: []*orderbook.MatchedOrder{
+				{
+					OrderAsk: testAsk(60, 15),
+					OrderBid: testBid(60, 20),
+				},
+			}, 
+			expectedLowestAsk: 50,
+			expectedHighestBid: 80,
+		},
+		{
+			bids: []*orderbook.OrderBid{
+				testBid(60, 20),
+				testBid(80, 5),
+			},
+			asks: []*orderbook.OrderAsk{},
+			expected: []*orderbook.MatchedOrder{}, 
+			expectedLowestAsk: 0,
+			expectedHighestBid: 80,
+		},
+		{
+			bids: []*orderbook.OrderBid{},
+			asks: []*orderbook.OrderAsk{
+				testAsk(70, 10),
+				testAsk(50, 20),
+			},
+			expected: []*orderbook.MatchedOrder{}, 
+			expectedLowestAsk: 50,
+			expectedHighestBid: 0,
+		},
 	}
 
 	for idx, tc := range testcases {
