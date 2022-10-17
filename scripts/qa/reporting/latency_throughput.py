@@ -58,7 +58,7 @@ def plot_latency_vs_throughput(input_files, output_image, title=DEFAULT_TITLE):
 
     ax.set_title(title)
     ax.set_xlabel('Throughput rate (tx/s)')
-    ax.set_ylabel('Average latency (s)')
+    ax.set_ylabel('Average transaction latency (s)')
 
     plt.legend(loc='upper left')
     plt.savefig(output_image)
