@@ -7,14 +7,14 @@ option go_package = "github.com/tendermint/tendermint/abci/example/orderbook";
 message OrderAsk {
     double quantity = 1;
     double ask_price = 2;
-	uint64 owner = 3;
+	uint64 owner_id = 3;
     bytes signature = 4; 
 }
 
 message OrderBid {
     double max_quantity = 1;
     double max_price = 2;
-	uint64 owner = 3;
+	uint64 owner_id = 3;
     bytes signature = 4;
 }
 
