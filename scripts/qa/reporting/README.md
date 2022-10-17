@@ -37,7 +37,7 @@ pip install -r requirements.txt
 #
 # This will generate a plot in a PNG file called 'tm034.png' in the current
 # directory based on the reporting tool CSV output in the "raw.csv" file. The
-# default title of the plot is overridden below.
+# '-t' flag overrides the default title at the top of the plot.
 
 ./latency_throughput.py \
     -t 'Tendermint v0.34.x Latency vs Throughput' \
