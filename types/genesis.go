@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -43,6 +44,8 @@ type GenesisDoc struct {
 	Validators      []GenesisValidator `json:"validators,omitempty"`
 	AppHash         tmbytes.HexBytes   `json:"app_hash"`
 	AppState        json.RawMessage    `json:"app_state,omitempty"`
+	// only constructs Hash when load the genesis from file
+	Hash string `json:"-"`
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
@@ -120,6 +123,13 @@ func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 		return nil, err
 	}
 
+	hash, err := HashFromJson(jsonBlob)
+	if err != nil {
+		return nil, err
+	}
+
+	genDoc.Hash = hash
+
 	return &genDoc, err
 }
 
@@ -134,4 +144,14 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 		return nil, fmt.Errorf("error reading GenesisDoc at %s: %w", genDocFile, err)
 	}
 	return genDoc, nil
+}
+
+// HashFromJson hash the JSON data to a hex string
+func HashFromJson(jsonRaw []byte) (string, error) {
+	hasher := tmhash.New()
+	if _, err := hasher.Write(jsonRaw); err != nil {
+		return "", err
+	}
+
+	return tmbytes.HexBytes(hasher.Sum(nil)).String(), nil
 }

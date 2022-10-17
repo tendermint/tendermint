@@ -125,7 +125,8 @@ func TestGenesisSaveAs(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(tmpfile.Name())
 
-	genDoc := randomGenesisDoc()
+	genDoc, err := randomGenesisDoc()
+	require.NoError(t, err)
 
 	// save
 	err = genDoc.SaveAs(tmpfile.Name())
@@ -147,13 +148,14 @@ func TestGenesisSaveAs(t *testing.T) {
 }
 
 func TestGenesisValidatorHash(t *testing.T) {
-	genDoc := randomGenesisDoc()
+	genDoc, err := randomGenesisDoc()
+	require.NoError(t, err)
 	assert.NotEmpty(t, genDoc.ValidatorHash())
 }
 
-func randomGenesisDoc() *GenesisDoc {
+func randomGenesisDoc() (*GenesisDoc, error) {
 	pubkey := ed25519.GenPrivKey().PubKey()
-	return &GenesisDoc{
+	gd := &GenesisDoc{
 		GenesisTime:     tmtime.Now(),
 		ChainID:         "abc",
 		InitialHeight:   1000,
@@ -161,4 +163,18 @@ func randomGenesisDoc() *GenesisDoc {
 		ConsensusParams: DefaultConsensusParams(),
 		AppHash:         []byte{1, 2, 3},
 	}
+
+	bz, err := tmjson.MarshalIndent(gd, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	hash, err := HashFromJson(bz)
+	if err != nil {
+		return nil, err
+	}
+
+	gd.Hash = hash
+
+	return gd, nil
 }

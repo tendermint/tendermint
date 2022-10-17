@@ -120,6 +120,7 @@ func GenesisChunked(ctx *rpctypes.Context, chunk uint) (*ctypes.ResultGenesisChu
 		TotalChunks: len(env.genChunks),
 		ChunkNumber: id,
 		Data:        env.genChunks[id],
+		GenesisHash: env.GenesisHash,
 	}, nil
 }
 

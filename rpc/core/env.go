@@ -100,6 +100,8 @@ type Environment struct {
 
 	// cache of chunked genesis data.
 	genChunks []string
+
+	GenesisHash string
 }
 
 //----------------------------------------------

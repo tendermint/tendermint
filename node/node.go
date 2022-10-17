@@ -1086,7 +1086,8 @@ func (n *Node) ConfigureRPC() error {
 
 		Logger: n.Logger.With("module", "rpc"),
 
-		Config: *n.config.RPC,
+		Config:      *n.config.RPC,
+		GenesisHash: n.genesisDoc.Hash,
 	})
 	if err := rpccore.InitGenesisChunks(); err != nil {
 		return err
@@ -1422,12 +1423,21 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
 	}
+
+	hash, err := types.HashFromJson(b)
+	if err != nil {
+		panic(fmt.Sprintf("failed to hash the json raw data: %v", err))
+	}
+
+	genDoc.Hash = hash
+
 	return genDoc, nil
 }
 
 // panics if failed to marshal the given genesis document
 func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
-	b, err := tmjson.Marshal(genDoc)
+	// use MarshalIndent to unify the json raw data same as the exported genesis file
+	b, err := tmjson.MarshalIndent(genDoc, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to save genesis doc due to marshaling error: %w", err)
 	}

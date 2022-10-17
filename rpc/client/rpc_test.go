@@ -192,9 +192,21 @@ func TestGenesisChunked(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	var gh string
 	for _, c := range GetClients() {
+		if len(gh) == 0 {
+			genesis, err := c.Genesis(ctx)
+			require.NoError(t, err)
+
+			bz, err := tmjson.MarshalIndent(genesis.Genesis, "", "  ")
+			require.NoError(t, err)
+			gh, err = types.HashFromJson(bz)
+			require.NoError(t, err)
+		}
+
 		first, err := c.GenesisChunked(ctx, 0)
 		require.NoError(t, err)
+		require.Equal(t, first.GenesisHash, gh)
 
 		decoded := make([]string, 0, first.TotalChunks)
 		for i := 0; i < first.TotalChunks; i++ {

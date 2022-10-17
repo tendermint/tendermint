@@ -31,6 +31,7 @@ type ResultGenesisChunk struct {
 	ChunkNumber int    `json:"chunk"`
 	TotalChunks int    `json:"total"`
 	Data        string `json:"data"`
+	GenesisHash string `json:"genesis_hash"`
 }
 
 // Single block (with meta)

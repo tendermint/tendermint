@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 
 	"github.com/tendermint/tendermint/config"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmos "github.com/tendermint/tendermint/libs/os"
+	"github.com/tendermint/tendermint/types"
 )
 
 func ResetTestRoot(testName string) *config.Config {
@@ -32,7 +34,23 @@ func ResetTestRootWithChainID(testName string, chainID string) *config.Config {
 			chainID = DefaultTestChainID
 		}
 		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		tmos.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
+
+		// format and validate the testGenesisFmt for generalized the writing data
+		testDoc := &types.GenesisDoc{}
+		if err = tmjson.Unmarshal([]byte(testGenesis), testDoc); err != nil {
+			panic(err)
+		}
+
+		if err := testDoc.ValidateAndComplete(); err != nil {
+			panic(err)
+		}
+
+		bz, err := tmjson.MarshalIndent(testDoc, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+
+		tmos.MustWriteFile(genesisFilePath, bz, 0644)
 	}
 	// we always overwrite the priv val
 	tmos.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
