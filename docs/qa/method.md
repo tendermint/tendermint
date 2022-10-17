@@ -52,7 +52,7 @@ This section explains how the tests were carried out for reproducibility purpose
 1. [If you haven't done it before]
    Follow steps 1-4 of the `README.md` at the top of the testnet repository to configure Terraform, and `doctl`.
 2. Copy file `testnets/testnet200.toml` onto `testnet.toml` (do NOT commit this change)
-3. Set variable `VERSION_TAG` to the git hash that is to be tested.
+3. Set the variable `VERSION_TAG` in the `Makefile` to the git hash that is to be tested.
 4. Follow steps 5-10 of the `README.md` to configure and start the 200 node testnet
     * WARNING: Do NOT forget to run `make terraform-destroy` as soon as you are done with the tests (see step 9)
 5. As a sanity check, connect to the Prometheus node's web interface and check the graph for the `tendermint_consensus_height` metric.

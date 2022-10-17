@@ -34,7 +34,7 @@ The table shows the number of 1024-byte-long transactions that were produced by 
 and processed by Tendermint, during the 90 seconds of the experiment's duration.
 Each cell in the table refers to an experiment with a particular number of websocket connections (`c`)
 to a chosen validator, and the number of transactions per second that the load runner
-tries to produce (`r`). Note that the overall load is $c \cdot r$.
+tries to produce (`r`). Note that the overall load that the tool attempts to generate is $c \cdot r$.
 
 We can see that the saturation point is beyond the diagonal that spans cells
 
@@ -45,7 +45,7 @@ given that the total transactions should be close to the product of the rate, th
 and the experiment time (89 seconds, since the last batch never gets sent).
 
 All experiments below the saturation diagonal (`r=200,c=4`) have in common that the total
-number of transactions processed is noticeably less than the product $c \cdot r \cdot 90$,
+number of transactions processed is noticeably less than the product $c \cdot r \cdot 89$,
 which is the expected number of transactions when the system is able to deal well with the
 load.
 With `r=200,c=4`, we obtained 38660 whereas the theoretical number of transactions should
@@ -106,7 +106,7 @@ The mempool size, a count of the number of transactions in the mempool, was show
 at all full nodes. It did not exhibit any unconstrained growth.
 The plot below shows the evolution over time of the cumulative number of transactions inside all full nodes' mempools
 at a given time.
-The two spikes that can be observed correspond to a period where consensus instances reached round 1
+The two spikes that can be observed correspond to a period where consensus instances proceeded beyond the initial round
 at some nodes.
 
 ![mempool-cumulative](./img/v034_r200c2_mempool_size.png)
@@ -116,7 +116,7 @@ outstanding transactions.
 
 ![mempool-avg](./img/v034_r200c2_mempool_size_avg.png)
 
-The peaks observed coincide with the moments when some nodes process to round 1 of consensus (see below).
+The peaks observed coincide with the moments when some nodes proceeded beyond the initial round of consensus (see below).
 
 #### Peers
 
@@ -134,14 +134,14 @@ Most heights took just one round, but some nodes needed to advance to round 1 at
 
 #### Blocks Produced per Minute, Transactions Processed per Minute
 
-The blocks produced per minute are the gradient of this plot.
+The blocks produced per minute are the slope of this plot.
 
 ![heights](./img/v034_r200c2_heights.png)
 
 Over a period of 2 minutes, the height goes from 530 to 569.
 This results in an average of 19.5 blocks produced per minute.
 
-The transactions processed per minute are the gradient of this plot.
+The transactions processed per minute are the slope of this plot.
 
 ![total-txs](./img/v034_r200c2_total-txs.png)
 
