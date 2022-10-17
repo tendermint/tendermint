@@ -16,17 +16,17 @@ func NewMarket(p Pair) *Market {
 	return &Market{pair: p}
 }
 
-func (m *Market) AddBid(b MsgBid) {
+func (m *Market) AddBid(b OrderBid) {
 	heap.Push(m.bidOrders, b)
-	if b.BidOrder.MaxPrice > m.highestBid {
-		m.highestBid = b.BidOrder.MaxPrice
+	if b.MaxPrice > m.highestBid {
+		m.highestBid = b.MaxPrice
 	}
 }
 
-func (m *Market) AddAsk(a MsgAsk) {
+func (m *Market) AddAsk(a OrderAsk) {
 	heap.Push(m.askOrders, a)
-	if a.AskOrder.AskPrice < m.lowestAsk {
-		m.lowestAsk = a.AskOrder.AskPrice
+	if a.AskPrice < m.lowestAsk {
+		m.lowestAsk = a.AskPrice
 	}
 }
 

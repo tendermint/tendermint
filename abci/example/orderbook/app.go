@@ -96,7 +96,7 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgAsk.AskOrder.Owner]; !ok {
+		if _, ok := sm.accounts[m.MsgAsk.AskOrder.OwnerId]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
@@ -112,8 +112,8 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check the account has a  enough quantity
-		if err := m.MsgAsk.AskOrder.Quantity >= sm.commodities[m.MsgAsk.Pair.SellersDenomination].Quantity; !ok {
-			return types.ResponseCheckTx{Code: 4, Log: err.Error()}
+		if m.MsgAsk.AskOrder.Quantity > sm.commodities[m.MsgAsk.Pair.SellersDenomination].Quantity {
+			return types.ResponseCheckTx{Code: 4}
 		}
 
 	default:
@@ -162,21 +162,21 @@ func (sm *StateMachine) ApplySnapshotChunk(req types.RequestApplySnapshotChunk) 
 func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
 
 	// fetch and match all the bids and asks for each market
-	for _, market := range sm.markets {
-		tradeSet, err := market.Match()
+	// for _, market := range sm.markets {
+	// 	tradeSet, err := market.Match()
 
-		for _, matchedOrder := range tradeSet.MatchedOrders {
+	// 	for _, matchedOrder := range tradeSet.MatchedOrders {
 			
-			// validate the trade:
-			// does the buyer and seller have sufficient funds
+	// 		// validate the trade:
+	// 		// does the buyer and seller have sufficient funds
 
-			// add it to the set of txs
+	// 		// add it to the set of txs
 
 			
-		}
+	// 	}
 
-		txs = append(txs, trades)
-	}
+	// 	txs = append(txs, trades)
+	// }
 
 	// loop through the transactions provided by tendermint and look out for register pair and create account.
 	// those should still be added.
@@ -259,6 +259,8 @@ func (c *Commodity) ValidateBasic() error {
 	if c.Quantity <= 0 {
 		return errors.New("quantity must be greater than zero")
 	}
+
+	return nil
 }
 
 func (p *Pair) ValidateBasic() error {
