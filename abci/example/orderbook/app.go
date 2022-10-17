@@ -173,23 +173,44 @@ func (sm *StateMachine) ApplySnapshotChunk(req types.RequestApplySnapshotChunk) 
 
 func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
 
+	// declare transaction with the size of 0
+	txs := make([][]byte, 0)
+
 	// fetch and match all the bids and asks for each market
-	
+	for _, market := range sm.markets {
+		TradeSet := market.Match(); 
+		// tradesets into bytes and bytes into a transaction
+		if TradeSet == nil {
+			continue
+		}
+		bz, err := proto.Marshal(TradeSet) 
+		if err != nil {
+			return  err
+		}
+	}
 
+	// pull in for every single pair
 
-	// for _, market := range sm.markets {
-	// 	tradeSet, err := market.Match()
+	// does the buyer and seller have sufficient funds
+	for _, matchedOrder := range tradeSet.MatchedOrders {
+		bidOwner := sm.accounts[matchedOrder.OrderBid.OwnerId]
+		askOwner := sm.accounts[matchedOrder.OrderAsk.OwnerId]
 
-	// 	for _, matchedOrder := range tradeSet.MatchedOrders {
+		askCommodities := askOwner.Commodities[tradeSet.Pairs.SellersDenomination]
+		buyCommodities := askOwner.Commodities[tradeSet.Pairs.BuyersDenomination]
+
+		// if bidowner commodities quantity - askowner commodities quantity != 0 then continue
+		if bidOwner.Commodities[askCommodities.String()] 
+	}
 
 	// 		// validate the trade:
-	// 		// does the buyer and seller have sufficient funds
+	// 		
 
 	// 		// add it to the set of txs
 
 	// 	}
 
-	// 	txs = append(txs, trades)
+	// 	
 	// }
 
 	// loop through the transactions provided by tendermint and look out for register pair and create account.
@@ -198,7 +219,7 @@ func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.
 	return types.ResponsePrepareProposal{Txs: req.Txs}
 }
 
-// Validating everything
+// Validate matched order
 func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
 	var msg = new(Msg)
 
