@@ -3,7 +3,7 @@ package orderbook
 import (
 	"errors"
 	"fmt"
-	
+
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
@@ -111,5 +111,14 @@ func (o *OrderAsk) ValidateBasic() error {
 		return errors.New("min price must be greater than 0")
 	}
 
+	return nil
+}
+
+func (a *Account) FindCommidity(denom string) *Commodity {
+	for _, c := range a.Commodities {
+		if c.Denom == denom {
+			return c
+		}
+	}
 	return nil
 }

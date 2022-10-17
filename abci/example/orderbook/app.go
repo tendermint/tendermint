@@ -1,6 +1,8 @@
 package orderbook
 
 import (
+	"fmt"
+
 	"github.com/cosmos/gogoproto/proto"
 	dbm "github.com/tendermint/tm-db"
 
@@ -19,7 +21,6 @@ type StateMachine struct {
 
 	// in-memory state
 	accounts    map[uint64]*Account
-	commodities map[string]*Commodity
 
 	// ephemeral state (not used for the app hash) but for
 	// convienience
@@ -36,13 +37,6 @@ func New() *StateMachine {
 
 func (sm *StateMachine) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{}
-}
-
-func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
-	
-	// execute the trade i.e. update everyone's accounts
-
-	return types.ResponseDeliverTx{Code: 0}
 }
 
 // CheckTx to be stateless
@@ -92,7 +86,8 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgAsk.AskOrder.OwnerId]; !ok {
+		account, ok := sm.accounts[m.MsgAsk.AskOrder.OwnerId]
+		if !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
@@ -108,7 +103,16 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check the account has a  enough quantity
-		if m.MsgAsk.AskOrder.Quantity > sm.commodities[m.MsgAsk.Pair.SellersDenomination].Quantity {
+		found := false
+		for _, commodity := range account.Commodities {
+			if commodity.Denom == m.MsgAsk.Pair.SellersDenomination {
+				if m.MsgAsk.AskOrder.Quantity > commodity.Quantity {
+					return types.ResponseCheckTx{Code: 4}
+				}
+				found = true
+			}
+		}
+		if !found {
 			return types.ResponseCheckTx{Code: 4}
 		}
 
@@ -133,6 +137,18 @@ func (sm *StateMachine) InitChain(req types.RequestInitChain) types.ResponseInit
 
 func (sm *StateMachine) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	return types.ResponseBeginBlock{}
+}
+
+func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+	tradeSet := new(TradeSet)
+	if err := proto.Unmarshal(req.Tx, tradeSet); err != nil {
+		panic(fmt.Sprintf("unmarshalling tx: %w", err))
+	}
+
+
+
+
+	return types.ResponseDeliverTx{Code: 0}
 }
 
 func (sm *StateMachine) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
