@@ -39,24 +39,6 @@ func (sm *StateMachine) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{}
 }
 
-<<<<<<< HEAD
-||||||| parent of b74494053 (process proposal checks)
-func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
-	
-	// execute the trade i.e. update everyone's accounts
-
-	return types.ResponseDeliverTx{Code: 0}
-}
-
-=======
-func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
-
-	// execute the trade i.e. update everyone's accounts
-
-	return types.ResponseDeliverTx{Code: 0}
-}
-
->>>>>>> b74494053 (process proposal checks)
 // CheckTx to be stateless
 func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	var msg = new(Msg)
