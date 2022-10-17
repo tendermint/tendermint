@@ -11,7 +11,7 @@ import (
 
 var _ types.Application = (*StateMachine)(nil)
 
-const Version = 1;
+const Version = 1
 
 //TO DO: Error codes
 
@@ -24,7 +24,7 @@ type StateMachine struct {
 
 	// ephemeral state (not used for the app hash) but for
 	// convienience
-	pairs map[string]struct{} // lookup pairs
+	pairs     map[string]struct{} // lookup pairs
 	commodity map[string]struct{} // lookup commodities
 
 	// app-side mempool (also emphemeral)
@@ -39,6 +39,24 @@ func (sm *StateMachine) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{}
 }
 
+<<<<<<< HEAD
+||||||| parent of b74494053 (process proposal checks)
+func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+	
+	// execute the trade i.e. update everyone's accounts
+
+	return types.ResponseDeliverTx{Code: 0}
+}
+
+=======
+func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
+
+	// execute the trade i.e. update everyone's accounts
+
+	return types.ResponseDeliverTx{Code: 0}
+}
+
+>>>>>>> b74494053 (process proposal checks)
 // CheckTx to be stateless
 func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	var msg = new(Msg)
@@ -174,17 +192,19 @@ func (sm *StateMachine) ApplySnapshotChunk(req types.RequestApplySnapshotChunk) 
 func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
 
 	// fetch and match all the bids and asks for each market
+	
+
+
 	// for _, market := range sm.markets {
 	// 	tradeSet, err := market.Match()
 
 	// 	for _, matchedOrder := range tradeSet.MatchedOrders {
-			
+
 	// 		// validate the trade:
 	// 		// does the buyer and seller have sufficient funds
 
 	// 		// add it to the set of txs
 
-			
 	// 	}
 
 	// 	txs = append(txs, trades)
@@ -196,9 +216,34 @@ func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.
 	return types.ResponsePrepareProposal{Txs: req.Txs}
 }
 
+// Validating everything
 func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
+	var msg = new(Msg)
 
-	// validate everything!!!!
+	err := proto.Unmarshal(req.Txs[], msg)
+	if err != nil {
+		return types.ResponseCheckTx{Code: 1} // decoding error
+	}
+
+	// check if there is more than one account
+	if ok := len(sm.accounts) >= 1; !ok {
+		return types.ResponseProcessProposal{Code: 4}
+	}
+
+	// check if there is more than one commodity
+	if ok := len(sm.commodities) >= 1; !ok {
+		return types.ResponseProcessProposal{Code: 4}
+	}
+
+	// check if there is more than one pair
+	if ok := len(sm.pairs) >= 1; !ok {
+		return types.ResponseProcessProposal{Code: 4}
+	}
+
+	// check if there is a market
+	if ok := len(sm.markets) >= 1; !ok {
+		return types.ResponseProcessProposal{Code: 4}
+	}
 
 	return types.ResponseProcessProposal{
 		Status: types.ResponseProcessProposal_ACCEPT}
