@@ -15,7 +15,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// MsgToProto takes a consensus message type and returns the proto defined consensus message
+// MsgToProto takes a consensus message type and returns the proto defined consensus message.
 func MsgToProto(msg Message) (*tmcons.Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: message is nil")
@@ -141,6 +141,14 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 	}
 
 	return &pb, nil
+}
+
+func MustMsgToProto(msg Message) *tmcons.Message {
+	m, err := MsgToProto(msg)
+	if err != nil {
+		panic(err)
+	}
+	return m
 }
 
 // MsgFromProto takes a consensus proto message and returns the native go type

@@ -297,6 +297,12 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	// simulate switch calling Receive before AddPeer
 	assert.Panics(t, func() {
 		reactor.Receive(StateChannel, peer, msg)
+		reactor.NewReceive(p2p.Envelope{
+			ChannelID: StateChannel,
+			Src:       peer,
+			Message: MustMsgToProto(&HasVoteMessage{Height: 1,
+				Round: 1, Index: 1, Type: tmproto.PrevoteType}),
+		})
 	})
 }
 

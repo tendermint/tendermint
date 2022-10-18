@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,6 +24,8 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/tendermint/tendermint/proto/tendermint/p2p"
+	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 var (
@@ -135,24 +138,59 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Lets send some messages
-	ch0Msg := []byte("channel zero")
-	ch1Msg := []byte("channel foo")
-	ch2Msg := []byte("channel bar")
+	ch0Msg := &p2pproto.Message{
+		Sum: &p2pproto.Message_PexAddrs{
+			PexAddrs: &p2pproto.PexAddrs{
+				Addrs: []p2p.NetAddress{
+					{
+						ID: "0",
+					},
+				},
+			},
+		},
+	}
+	ch1Msg := &p2pproto.Message{
+		Sum: &p2pproto.Message_PexAddrs{
+			PexAddrs: &p2pproto.PexAddrs{
+				Addrs: []p2p.NetAddress{
+					{
+						ID: "1",
+					},
+				},
+			},
+		},
+	}
+	ch2Msg := &p2pproto.Message{
+		Sum: &p2pproto.Message_PexAddrs{
+			PexAddrs: &p2pproto.PexAddrs{
+				Addrs: []p2p.NetAddress{
+					{
+						ID: "2",
+					},
+				},
+			},
+		},
+	}
+	s1.NewBroadcast(Envelope{ChannelID: byte(0x00), Message: ch0Msg})
+	s1.NewBroadcast(Envelope{ChannelID: byte(0x01), Message: ch1Msg})
+	s1.NewBroadcast(Envelope{ChannelID: byte(0x02), Message: ch2Msg})
 
-	s1.Broadcast(byte(0x00), ch0Msg)
-	s1.Broadcast(byte(0x01), ch1Msg)
-	s1.Broadcast(byte(0x02), ch2Msg)
-
+	msgBytes, err := proto.Marshal(ch0Msg)
+	require.NoError(t, err)
 	assertMsgReceivedWithTimeout(t,
-		ch0Msg,
+		msgBytes,
 		byte(0x00),
 		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	msgBytes, err = proto.Marshal(ch1Msg)
+	require.NoError(t, err)
 	assertMsgReceivedWithTimeout(t,
-		ch1Msg,
+		msgBytes,
 		byte(0x01),
 		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	msgBytes, err = proto.Marshal(ch2Msg)
+	require.NoError(t, err)
 	assertMsgReceivedWithTimeout(t,
-		ch2Msg,
+		msgBytes,
 		byte(0x02),
 		s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 }
@@ -429,7 +467,10 @@ func TestSwitchStopPeerForError(t *testing.T) {
 
 	// send messages to the peer from sw1
 	p := sw1.Peers().List()[0]
-	p.Send(0x1, []byte("here's a message to send"))
+	p.Send(Envelope{
+		ChannelID: 0x1,
+		Message:   &p2p.Message{},
+	})
 
 	// stop sw2. this should cause the p to fail,
 	// which results in calling StopPeerForError internally
@@ -824,7 +865,7 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	// Send random message from foo channel to another
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
-		successChan := s1.Broadcast(chID, []byte("test data"))
+		successChan := s1.NewBroadcast(Envelope{ChannelID: chID})
 		for s := range successChan {
 			if s {
 				numSuccess++
