@@ -123,7 +123,7 @@ func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 		return nil, err
 	}
 
-	hash, err := HashFromJson(jsonBlob)
+	hash, err := HashFromJSON(jsonBlob)
 	if err != nil {
 		return nil, err
 	}
@@ -146,8 +146,8 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	return genDoc, nil
 }
 
-// HashFromJson hash the JSON data to a hex string
-func HashFromJson(jsonRaw []byte) (string, error) {
+// HashFromJSON hash the JSON data to a hex string
+func HashFromJSON(jsonRaw []byte) (string, error) {
 	hasher := tmhash.New()
 	if _, err := hasher.Write(jsonRaw); err != nil {
 		return "", err

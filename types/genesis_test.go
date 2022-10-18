@@ -169,7 +169,7 @@ func randomGenesisDoc() (*GenesisDoc, error) {
 		return nil, err
 	}
 
-	hash, err := HashFromJson(bz)
+	hash, err := HashFromJSON(bz)
 	if err != nil {
 		return nil, err
 	}

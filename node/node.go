@@ -1424,7 +1424,7 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 		panic(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, b))
 	}
 
-	hash, err := types.HashFromJson(b)
+	hash, err := types.HashFromJSON(b)
 	if err != nil {
 		panic(fmt.Sprintf("failed to hash the json raw data: %v", err))
 	}

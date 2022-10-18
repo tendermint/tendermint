@@ -200,7 +200,7 @@ func TestGenesisChunked(t *testing.T) {
 
 			bz, err := tmjson.MarshalIndent(genesis.Genesis, "", "  ")
 			require.NoError(t, err)
-			gh, err = types.HashFromJson(bz)
+			gh, err = types.HashFromJSON(bz)
 			require.NoError(t, err)
 		}
 
