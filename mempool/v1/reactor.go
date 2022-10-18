@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -133,6 +135,7 @@ func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			ID:                  mempool.MempoolChannel,
 			Priority:            5,
 			RecvMessageCapacity: batchMsg.Size(),
+			MessageType:         &protomem.Message{},
 		},
 	}
 }
@@ -153,18 +156,18 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
-func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := memR.decodeMsg(msgBytes)
+func (memR *Reactor) Receive(e p2p.Envelope) {
+	msg, err := protoToMsg(e.Message)
 	if err != nil {
-		memR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		memR.Switch.StopPeerForError(src, err)
+		memR.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
+		memR.Switch.StopPeerForError(e.Src, err)
 		return
 	}
-	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
+	memR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID, "msg", msg)
 
-	txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(src)}
-	if src != nil {
-		txInfo.SenderP2PID = src.ID()
+	txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(e.Src)}
+	if e.Src != nil {
+		txInfo.SenderP2PID = e.Src.ID()
 	}
 	for _, tx := range msg.Txs {
 		err = memR.mempool.CheckTx(tx, nil, txInfo)
@@ -233,18 +236,14 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// NOTE: Transaction batching was disabled due to
 		// https://github.com/tendermint/tendermint/issues/5796
 		if !memTx.HasPeer(peerID) {
-			msg := protomem.Message{
-				Sum: &protomem.Message_Txs{
-					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
+			success := peer.Send(p2p.Envelope{
+				ChannelID: mempool.MempoolChannel,
+				Message: &protomem.Message{
+					Sum: &protomem.Message_Txs{
+						Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
+					},
 				},
-			}
-
-			bz, err := msg.Marshal()
-			if err != nil {
-				panic(err)
-			}
-
-			success := peer.Send(mempool.MempoolChannel, bz)
+			})
 			if !success {
 				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue
@@ -268,13 +267,18 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 //-----------------------------------------------------------------------------
 // Messages
 
-func (memR *Reactor) decodeMsg(bz []byte) (TxsMessage, error) {
+func decodeMsg(bz []byte) (TxsMessage, error) {
 	msg := protomem.Message{}
 	err := msg.Unmarshal(bz)
 	if err != nil {
 		return TxsMessage{}, err
 	}
 
+	return protoToMsg(&msg)
+}
+
+func protoToMsg(m proto.Message) (TxsMessage, error) {
+	msg := m.(*protomem.Message)
 	var message TxsMessage
 
 	if i, ok := msg.Sum.(*protomem.Message_Txs); ok {

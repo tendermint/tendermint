@@ -5,6 +5,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
+
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
@@ -34,8 +36,8 @@ type Peer interface {
 	Status() tmconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
-	Send(byte, []byte) bool
-	TrySend(byte, []byte) bool
+	Send(Envelope) bool
+	TrySend(Envelope) bool
 
 	Set(string, interface{})
 	Get(string) interface{}
@@ -132,6 +134,7 @@ func newPeer(
 	mConfig tmconn.MConnConfig,
 	nodeInfo NodeInfo,
 	reactorsByCh map[byte]Reactor,
+	msgTypeByChID map[byte]proto.Message,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	options ...PeerOption,
@@ -149,6 +152,7 @@ func newPeer(
 		pc.conn,
 		p,
 		reactorsByCh,
+		msgTypeByChID,
 		chDescs,
 		onPeerError,
 		mConfig,
@@ -249,19 +253,23 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
-func (p *peer) Send(chID byte, msgBytes []byte) bool {
+func (p *peer) Send(e Envelope) bool {
 	if !p.IsRunning() {
 		// see Switch#Broadcast, where we fetch the list of peers and loop over
 		// them - while we're looping, one peer may be removed and stopped.
 		return false
-	} else if !p.hasChannel(chID) {
+	} else if !p.hasChannel(e.ChannelID) {
 		return false
 	}
-	res := p.mconn.Send(chID, msgBytes)
+	msgBytes, err := proto.Marshal(e.Message)
+	if err != nil {
+		panic(err) // Q: should this panic or error?
+	}
+	res := p.mconn.Send(e.ChannelID, msgBytes)
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
+			"chID", fmt.Sprintf("%#x", e.ChannelID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 	}
@@ -270,17 +278,21 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
 // false if the send queue is full.
-func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
+func (p *peer) TrySend(e Envelope) bool {
 	if !p.IsRunning() {
 		return false
-	} else if !p.hasChannel(chID) {
+	} else if !p.hasChannel(e.ChannelID) {
 		return false
 	}
-	res := p.mconn.TrySend(chID, msgBytes)
+	msgBytes, err := proto.Marshal(e.Message)
+	if err != nil {
+		panic(err)
+	}
+	res := p.mconn.TrySend(e.ChannelID, msgBytes)
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
+			"chID", fmt.Sprintf("%#x", e.ChannelID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 	}
@@ -384,6 +396,7 @@ func createMConnection(
 	conn net.Conn,
 	p *peer,
 	reactorsByCh map[byte]Reactor,
+	msgTypeByChID map[byte]proto.Message,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	config tmconn.MConnConfig,
@@ -396,12 +409,24 @@ func createMConnection(
 			// which does onPeerError.
 			panic(fmt.Sprintf("Unknown channel %X", chID))
 		}
+		mt := msgTypeByChID[chID]
+		msg := proto.Clone(mt)
+		err := proto.Unmarshal(msgBytes, msg)
+		if err != nil {
+			// TODO(williambanfield) add a log line
+			return
+		}
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-		reactor.Receive(chID, p, msgBytes)
+		p.metrics.MessageReceiveBytesTotal.With("message_type", "tmp").Add(float64(len(msgBytes)))
+		reactor.Receive(Envelope{
+			ChannelID: chID,
+			Src:       p,
+			Message:   msg,
+		})
 	}
 
 	onError := func(r interface{}) {

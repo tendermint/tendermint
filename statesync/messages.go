@@ -18,6 +18,15 @@ const (
 
 // mustEncodeMsg encodes a Protobuf message, panicing on error.
 func mustEncodeMsg(pb proto.Message) []byte {
+	msg := mustWrapToProto(pb)
+	bz, err := proto.Marshal(msg)
+	if err != nil {
+		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
+	}
+	return bz
+}
+
+func mustWrapToProto(pb proto.Message) proto.Message {
 	msg := ssproto.Message{}
 	switch pb := pb.(type) {
 	case *ssproto.ChunkRequest:
@@ -31,11 +40,7 @@ func mustEncodeMsg(pb proto.Message) []byte {
 	default:
 		panic(fmt.Errorf("unknown message type %T", pb))
 	}
-	bz, err := msg.Marshal()
-	if err != nil {
-		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
-	}
-	return bz
+	return &msg
 }
 
 // decodeMsg decodes a Protobuf message.
@@ -45,6 +50,10 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	return msgFromProto(pb)
+}
+
+func msgFromProto(pb *ssproto.Message) (proto.Message, error) {
 	switch msg := pb.Sum.(type) {
 	case *ssproto.Message_ChunkRequest:
 		return msg.ChunkRequest, nil

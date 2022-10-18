@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cmap"
-	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -69,16 +69,17 @@ type PeerFilterFunc func(IPeerSet, Peer) error
 type Switch struct {
 	service.BaseService
 
-	config       *config.P2PConfig
-	reactors     map[string]Reactor
-	chDescs      []*conn.ChannelDescriptor
-	reactorsByCh map[byte]Reactor
-	peers        *PeerSet
-	dialing      *cmap.CMap
-	reconnecting *cmap.CMap
-	nodeInfo     NodeInfo // our node info
-	nodeKey      *NodeKey // our node privkey
-	addrBook     AddrBook
+	config        *config.P2PConfig
+	reactors      map[string]Reactor
+	chDescs       []*conn.ChannelDescriptor
+	reactorsByCh  map[byte]Reactor
+	msgTypeByChID map[byte]proto.Message
+	peers         *PeerSet
+	dialing       *cmap.CMap
+	reconnecting  *cmap.CMap
+	nodeInfo      NodeInfo // our node info
+	nodeKey       *NodeKey // our node privkey
+	addrBook      AddrBook
 	// peers addresses with whom we'll maintain constant connection
 	persistentPeersAddrs []*NetAddress
 	unconditionalPeerIDs map[ID]struct{}
@@ -113,6 +114,7 @@ func NewSwitch(
 		reactors:             make(map[string]Reactor),
 		chDescs:              make([]*conn.ChannelDescriptor, 0),
 		reactorsByCh:         make(map[byte]Reactor),
+		msgTypeByChID:        make(map[byte]proto.Message),
 		peers:                NewPeerSet(),
 		dialing:              cmap.NewCMap(),
 		reconnecting:         cmap.NewCMap(),
@@ -164,6 +166,7 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 		}
 		sw.chDescs = append(sw.chDescs, chDesc)
 		sw.reactorsByCh[chID] = reactor
+		sw.msgTypeByChID[chID] = chDesc.MessageType
 	}
 	sw.reactors[name] = reactor
 	reactor.SetSwitch(sw)
@@ -182,6 +185,7 @@ func (sw *Switch) RemoveReactor(name string, reactor Reactor) {
 			}
 		}
 		delete(sw.reactorsByCh, chDesc.ID)
+		delete(sw.msgTypeByChID, chDesc.ID)
 	}
 	delete(sw.reactors, name)
 	reactor.SetSwitch(nil)
@@ -261,8 +265,8 @@ func (sw *Switch) OnStop() {
 // closed once msg bytes are sent to all peers (or time out).
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
-func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
-	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", log.NewLazySprintf("%X", msgBytes))
+func (sw *Switch) Broadcast(e Envelope) chan bool {
+	sw.Logger.Debug("Broadcast", "channel", e.ChannelID)
 
 	peers := sw.peers.List()
 	var wg sync.WaitGroup
@@ -272,7 +276,7 @@ func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 	for _, peer := range peers {
 		go func(p Peer) {
 			defer wg.Done()
-			success := p.Send(chID, msgBytes)
+			success := p.Send(e)
 			successChan <- success
 		}(peer)
 	}
@@ -623,11 +627,12 @@ func (sw *Switch) IsPeerPersistent(na *NetAddress) bool {
 func (sw *Switch) acceptRoutine() {
 	for {
 		p, err := sw.transport.Accept(peerConfig{
-			chDescs:      sw.chDescs,
-			onPeerError:  sw.StopPeerForError,
-			reactorsByCh: sw.reactorsByCh,
-			metrics:      sw.metrics,
-			isPersistent: sw.IsPeerPersistent,
+			chDescs:       sw.chDescs,
+			onPeerError:   sw.StopPeerForError,
+			reactorsByCh:  sw.reactorsByCh,
+			msgTypeByChID: sw.msgTypeByChID,
+			metrics:       sw.metrics,
+			isPersistent:  sw.IsPeerPersistent,
 		})
 		if err != nil {
 			switch err := err.(type) {
@@ -726,11 +731,12 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	}
 
 	p, err := sw.transport.Dial(*addr, peerConfig{
-		chDescs:      sw.chDescs,
-		onPeerError:  sw.StopPeerForError,
-		isPersistent: sw.IsPeerPersistent,
-		reactorsByCh: sw.reactorsByCh,
-		metrics:      sw.metrics,
+		chDescs:       sw.chDescs,
+		onPeerError:   sw.StopPeerForError,
+		isPersistent:  sw.IsPeerPersistent,
+		reactorsByCh:  sw.reactorsByCh,
+		msgTypeByChID: sw.msgTypeByChID,
+		metrics:       sw.metrics,
 	})
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {

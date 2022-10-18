@@ -94,7 +94,10 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 		peers := sw.Peers().List()
 		for _, peer := range peers {
 			cs.Logger.Info("Sending bad vote", "block", blockHash, "peer", peer)
-			peer.Send(VoteChannel, MustEncode(&VoteMessage{precommit}))
+			peer.Send(p2p.Envelope{
+				Message:   MustMsgToProto(&VoteMessage{precommit}),
+				ChannelID: VoteChannel,
+			})
 		}
 	}()
 }
