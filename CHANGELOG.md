@@ -30,8 +30,7 @@ Special thanks to external contributors on this release: @RiccardoM
   been moved within the kv indexer only (@cmwaters)
 - [blocksync] [\#9518](https://github.com/tendermint/tendermint/issues/9518) A
   block sync stall was observed during our QA process whereby the node was
-  unable to make progress for a long period and then eventually recovered.
-  Handling the case when the sending queue is full fixes this.
+  unable to make progress. Retrying block requests after a timeout fixes this.
 
 ## v0.34.21
 
