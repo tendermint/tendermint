@@ -15,7 +15,7 @@ enum BlockIDFlag {
   option (gogoproto.goproto_enum_prefix)   = false;
 
   BLOCK_ID_FLAG_UNKNOWN = 0 [(gogoproto.enumvalue_customname) = "BlockIDFlagUnknown"];  // indiciates an error condition
-  BLOCK_ID_FLAG_ABSENT  = 1 [(gogoproto.enumvalue_customname) = "BlockIDFlagAbsent"];   // voted for another block or did not vote
+  BLOCK_ID_FLAG_ABSENT  = 1 [(gogoproto.enumvalue_customname) = "BlockIDFlagAbsent"];   // the vote was not received
   BLOCK_ID_FLAG_COMMIT  = 2 [(gogoproto.enumvalue_customname) = "BlockIDFlagCommit"];   // voted for the block that received the majority
   BLOCK_ID_FLAG_NIL     = 3 [(gogoproto.enumvalue_customname) = "BlockIDFlagNil"];      // voted for nil
 }
