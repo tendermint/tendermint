@@ -41,7 +41,7 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			testnet, err := e2e.LoadTestnet(file)
+			testnet, err := e2e.LoadTestnet(file, e2e.InfrastructureData{})
 			if err != nil {
 				return err
 			}
