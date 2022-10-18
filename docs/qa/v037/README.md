@@ -18,6 +18,8 @@ During this iteration of the QA process, the following issues were found:
   [\#9534].
 * (critical, fixed) [\#9539] - `loadtime` is very likely to include more than
   one "=" character in transactions, with is rejected by the e2e application.
+* (critical, fixed) [\#9581] - Absent prometheus label makes Tendermint crash
+  when enabling Prometheus metric collection
 * (non-critical, not fixed) [\#9548] - Full nodes can go over 50 connected
   peers, which is not intended by the default configuration.
 * (non-critical, not fixed) [\#9537] - With the default mempool cache setting,
@@ -202,7 +204,7 @@ It is contained below 5 on most nodes.
 
 Date: 2022-10-14
 
-Version: b9480d0ec79c53b06344148afc6589f895d0abbf
+Version: 1cf9d8e276afe8595cba960b51cd056514965fd1
 
 ## Rotating Node Testnet
 
@@ -321,3 +323,4 @@ Version: 155110007b9d8b83997a799016c1d0844c8efbaf
 [\#9539]: https://github.com/tendermint/tendermint/issues/9539
 [\#9548]: https://github.com/tendermint/tendermint/issues/9548
 [\#9537]: https://github.com/tendermint/tendermint/issues/9537
+[\#9581]: https://github.com/tendermint/tendermint/issues/9581
