@@ -88,7 +88,7 @@ func NewCLI() *CLI {
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
-			if err := Setup(cli.testnet, e2e.InfrastructureData{}); err != nil {
+			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
 
@@ -164,7 +164,7 @@ func NewCLI() *CLI {
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Setup(cli.testnet, e2e.InfrastructureData{})
+			return Setup(cli.testnet)
 		},
 	})
 
@@ -174,7 +174,7 @@ func NewCLI() *CLI {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := os.Stat(cli.testnet.Dir)
 			if os.IsNotExist(err) {
-				err = Setup(cli.testnet, e2e.InfrastructureData{})
+				err = Setup(cli.testnet)
 			}
 			if err != nil {
 				return err
@@ -297,7 +297,7 @@ Does not run any perbutations.
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
-			if err := Setup(cli.testnet, e2e.InfrastructureData{}); err != nil {
+			if err := Setup(cli.testnet); err != nil {
 				return err
 			}
 
