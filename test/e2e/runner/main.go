@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -59,6 +60,15 @@ func NewCLI() *CLI {
 				if err != nil {
 					return err
 				}
+			case "digital-ocean":
+				p, err := cmd.Flags().GetString("infrastructure-data")
+				if err != nil {
+					return err
+				}
+				if p == "" {
+					return errors.New("'--infrastructure-data' must be set when using the 'digital-ocean' infrastructure-type")
+				}
+				ifd, err = e2e.InfrastructureDataFromFile(p)
 			// TODO(williambanfield): add a section that implements the 'digital-ocean' infrastructure-type
 			default:
 				return fmt.Errorf("unknown infrastructure type '%s'", t)

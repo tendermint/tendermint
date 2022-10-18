@@ -1,8 +1,10 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 )
 
 // InfrastructureData contains the relevant information for a set of existing
@@ -39,6 +41,16 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 		ifd.Instances[name] = InstanceData{
 			IPAddress: ipGen.Next(),
 		}
+	}
+	return ifd, nil
+}
+
+func InfrastructureDataFromFile(p string) (InfrastructureData, error) {
+	ifd := InfrastructureData{}
+	b, err := os.ReadFile(p)
+	err = json.Unmarshal(b, &ifd)
+	if err != nil {
+		return InfrastructureData{}, err
 	}
 	return ifd, nil
 }
