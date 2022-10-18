@@ -12,6 +12,8 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra/docker"
 )
 
 const randomSeed = 2308084734268
@@ -27,6 +29,7 @@ type CLI struct {
 	root     *cobra.Command
 	testnet  *e2e.Testnet
 	preserve bool
+	infp     infra.Provider
 }
 
 // NewCLI sets up the CLI.
@@ -47,13 +50,13 @@ func NewCLI() *CLI {
 				return err
 			}
 
-			t, err := cmd.Flags().GetString("infrastructure-type")
+			inft, err := cmd.Flags().GetString("infrastructure-type")
 			if err != nil {
 				return err
 			}
 
 			var ifd e2e.InfrastructureData
-			switch t {
+			switch inft {
 			case "docker":
 				var err error
 				ifd, err = e2e.NewDockerInfrastructureData(m)
@@ -73,7 +76,7 @@ func NewCLI() *CLI {
 					return err
 				}
 			default:
-				return fmt.Errorf("unknown infrastructure type '%s'", t)
+				return fmt.Errorf("unknown infrastructure type '%s'", inft)
 			}
 
 			testnet, err := e2e.LoadTestnet(file, ifd)
@@ -82,13 +85,17 @@ func NewCLI() *CLI {
 			}
 
 			cli.testnet = testnet
+			cli.infp = &infra.NoopProvider{}
+			if inft == "docker" {
+				cli.infp = &docker.Provider{Testnet: testnet}
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
-			if err := Setup(cli.testnet); err != nil {
+			if err := Setup(cli.testnet, cli.infp); err != nil {
 				return err
 			}
 
@@ -164,7 +171,7 @@ func NewCLI() *CLI {
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Setup(cli.testnet)
+			return Setup(cli.testnet, cli.infp)
 		},
 	})
 
@@ -174,7 +181,7 @@ func NewCLI() *CLI {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := os.Stat(cli.testnet.Dir)
 			if os.IsNotExist(err) {
-				err = Setup(cli.testnet)
+				err = Setup(cli.testnet, cli.infp)
 			}
 			if err != nil {
 				return err
@@ -297,7 +304,7 @@ Does not run any perbutations.
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
-			if err := Setup(cli.testnet); err != nil {
+			if err := Setup(cli.testnet, cli.infp); err != nil {
 				return err
 			}
 
