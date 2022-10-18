@@ -55,7 +55,7 @@ func NewCLI() *CLI {
 			switch t {
 			case "docker":
 				var err error
-				ifd, err = e2e.NewDockerInfrastructure(m)
+				ifd, err = e2e.NewDockerInfrastructureData(m)
 				if err != nil {
 					return err
 				}

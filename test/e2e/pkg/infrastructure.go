@@ -22,7 +22,7 @@ type InstanceData struct {
 	IPAddress net.IP `json:"ip_address"`
 }
 
-func NewDockerInfrastructure(m Manifest) (InfrastructureData, error) {
+func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 	netAddress := networkIPv4
 	if m.IPv6 {
 		netAddress = networkIPv6

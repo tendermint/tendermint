@@ -81,7 +81,7 @@ func loadTestnet(t *testing.T) e2e.Testnet {
 	}
 	m, err := e2e.LoadManifest(manifest)
 	require.NoError(t, err)
-	ifd, err := e2e.NewDockerInfrastructure(m)
+	ifd, err := e2e.NewDockerInfrastructureData(m)
 	require.NoError(t, err)
 
 	testnet, err := e2e.LoadTestnet(manifest, ifd)
