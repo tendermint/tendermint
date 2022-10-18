@@ -21,8 +21,11 @@ import (
 const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
-	networkIPv4           = "10.186.73.0/24"
-	networkIPv6           = "fd80:b10c::/48"
+	dockerIPv4CIDR        = "10.186.73.0/24"
+	dockerIPv6CIDR        = "fd80:b10c::/48"
+
+	globalIPv4CIDR = "0.0.0.0/0"
+	globalIPv6CIDR = "0:0::/0"
 )
 
 type (
@@ -108,9 +111,20 @@ func LoadTestnet(file string, ifd InfrastructureData) (*Testnet, error) {
 	dir := strings.TrimSuffix(file, filepath.Ext(file))
 
 	// Set up resource generators. These must be deterministic.
-	netAddress := networkIPv4
-	if manifest.IPv6 {
-		netAddress = networkIPv6
+	var netAddress string
+	switch ifd.Provider {
+	case "docker":
+		netAddress = dockerIPv4CIDR
+		if manifest.IPv6 {
+			netAddress = dockerIPv6CIDR
+		}
+	default:
+		// TODO(williambanfield): add list of CIDR blocks to the infrastructure
+		// data struct to allow tighter validation of IP addresses.
+		netAddress = globalIPv4CIDR
+		if manifest.IPv6 {
+			netAddress = globalIPv6CIDR
+		}
 	}
 	_, ipNet, err := net.ParseCIDR(netAddress)
 	if err != nil {

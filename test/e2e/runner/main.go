@@ -69,7 +69,6 @@ func NewCLI() *CLI {
 					return errors.New("'--infrastructure-data' must be set when using the 'digital-ocean' infrastructure-type")
 				}
 				ifd, err = e2e.InfrastructureDataFromFile(p)
-			// TODO(williambanfield): add a section that implements the 'digital-ocean' infrastructure-type
 			default:
 				return fmt.Errorf("unknown infrastructure type '%s'", t)
 			}

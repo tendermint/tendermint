@@ -11,6 +11,11 @@ import (
 // infrastructure that is to be used for running a testnet.
 type InfrastructureData struct {
 
+	// Provider is the name of infrastructure provider backing the testnet.
+	// For example, 'docker' if it is running locally in a docker network or
+	// 'digital-ocean', 'aws', 'google', etc. if it is from a cloud provider.
+	Provider string `json:"provider"`
+
 	// Instances is a map of all of the machine instances on which to run
 	// processes for a testnet.
 	// The key of the map is the name of the instance, which each must correspond
@@ -25,9 +30,9 @@ type InstanceData struct {
 }
 
 func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
-	netAddress := networkIPv4
+	netAddress := dockerIPv4CIDR
 	if m.IPv6 {
-		netAddress = networkIPv6
+		netAddress = dockerIPv6CIDR
 	}
 	_, ipNet, err := net.ParseCIDR(netAddress)
 	if err != nil {
@@ -35,6 +40,7 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 	}
 	ipGen := newIPGenerator(ipNet)
 	ifd := InfrastructureData{
+		Provider:  "docker",
 		Instances: make(map[string]InstanceData),
 	}
 	for name := range m.Nodes {
