@@ -45,10 +45,25 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			ifd, err := e2e.NewDockerInfrastructure(m)
+
+			t, err := cmd.Flags().GetString("infrastructure-type")
 			if err != nil {
 				return err
 			}
+
+			var ifd e2e.InfrastructureData
+			switch t {
+			case "docker":
+				var err error
+				ifd, err = e2e.NewDockerInfrastructure(m)
+				if err != nil {
+					return err
+				}
+			// TODO(williambanfield): add a section that implements the 'digital-ocean' infrastructure-type
+			default:
+				return fmt.Errorf("unknown infrastructure type '%s'", t)
+			}
+
 			testnet, err := e2e.LoadTestnet(file, ifd)
 			if err != nil {
 				return err
@@ -125,6 +140,10 @@ func NewCLI() *CLI {
 
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
 	_ = cli.root.MarkPersistentFlagRequired("file")
+
+	cli.root.PersistentFlags().StringP("infrastructure-type", "", "docker", "Backing infrastructure used to run the testnet. Either 'digital-ocean' or 'docker'")
+
+	cli.root.PersistentFlags().StringP("infrastructure-data", "", "", "path to the json file containing the infrastructure data. Only used if the 'infrastructure-type' is set to a value other than 'docker'")
 
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
