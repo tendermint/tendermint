@@ -156,12 +156,16 @@ func LoadTestnet(file string, ifd InfrastructureData) (*Testnet, error) {
 
 	for _, name := range nodeNames {
 		nodeManifest := manifest.Nodes[name]
+		ind, ok := ifd.Instances[name]
+		if !ok {
+			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
+		}
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
-			IP:               ipGen.Next(),
+			IP:               ind.IPAddress,
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
 			Database:         "goleveldb",

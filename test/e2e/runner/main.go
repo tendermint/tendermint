@@ -41,7 +41,15 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			testnet, err := e2e.LoadTestnet(file, e2e.InfrastructureData{})
+			m, err := e2e.LoadManifest(file)
+			if err != nil {
+				return err
+			}
+			ifd, err := e2e.NewDockerInfrastructure(m)
+			if err != nil {
+				return err
+			}
+			testnet, err := e2e.LoadTestnet(file, ifd)
 			if err != nil {
 				return err
 			}

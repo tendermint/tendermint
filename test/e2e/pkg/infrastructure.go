@@ -1,6 +1,9 @@
 package e2e
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
 
 // InfrastructureData contains the relevant information for a set of existing
 // infrastructure that is to be used for running a testnet.
@@ -17,4 +20,25 @@ type InfrastructureData struct {
 // one of the nodes in the testnet.
 type InstanceData struct {
 	IPAddress net.IP `json:"ip_address"`
+}
+
+func NewDockerInfrastructure(m Manifest) (InfrastructureData, error) {
+	netAddress := networkIPv4
+	if m.IPv6 {
+		netAddress = networkIPv6
+	}
+	_, ipNet, err := net.ParseCIDR(netAddress)
+	if err != nil {
+		return InfrastructureData{}, fmt.Errorf("invalid IP network address %q: %w", netAddress, err)
+	}
+	ipGen := newIPGenerator(ipNet)
+	ifd := InfrastructureData{
+		Instances: make(map[string]InstanceData),
+	}
+	for name := range m.Nodes {
+		ifd.Instances[name] = InstanceData{
+			IPAddress: ipGen.Next(),
+		}
+	}
+	return ifd, nil
 }

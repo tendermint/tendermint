@@ -79,8 +79,12 @@ func loadTestnet(t *testing.T) e2e.Testnet {
 	if testnet, ok := testnetCache[manifest]; ok {
 		return testnet
 	}
+	m, err := e2e.LoadManifest(manifest)
+	require.NoError(t, err)
+	ifd, err := e2e.NewDockerInfrastructure(m)
+	require.NoError(t, err)
 
-	testnet, err := e2e.LoadTestnet(manifest)
+	testnet, err := e2e.LoadTestnet(manifest, ifd)
 	require.NoError(t, err)
 	testnetCache[manifest] = *testnet
 	return *testnet
