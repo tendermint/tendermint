@@ -511,6 +511,6 @@ func (s *syncer) verifyApp(snapshot *snapshot, appVersion uint64) error {
 		return errVerifyFailed
 	}
 
-	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", snapshot.trustedAppHash)
+	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", log.NewLazySprintf("%X", snapshot.trustedAppHash))
 	return nil
 }
