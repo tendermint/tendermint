@@ -277,7 +277,11 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	hook := func() {
 		r.Logger.Debug("Requesting snapshots from known peers")
 		// Request snapshots from all currently connected peers
-		r.Switch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
+		e := p2p.Envelope{
+			ChannelID: SnapshotChannel,
+			Message:   toWrappedProto(&ssproto.SnapshotsRequest{}),
+		}
+		r.Switch.NewBroadcast(e)
 	}
 
 	hook()

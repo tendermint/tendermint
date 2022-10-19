@@ -39,9 +39,6 @@ type Peer interface {
 	NewSend(Envelope) bool
 	NewTrySend(Envelope) bool
 
-	Send(byte, []byte) bool
-	TrySend(byte, []byte) bool
-
 	Set(string, interface{})
 	Get(string) interface{}
 
