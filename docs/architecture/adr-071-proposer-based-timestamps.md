@@ -61,7 +61,7 @@ The following protocols and application features require a reliable source of ti
 * Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/tendermint/blob/v0.37.x/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
 * Tendermint Evidence validity is determined [either in terms of heights or in terms of time](https://github.com/tendermint/tendermint/blob/8029cf7a0fcc89a5004e173ec065aa48ad5ba3c8/spec/consensus/evidence.md#verification).
 * Unbonding of staked assets in the Cosmos Hub [occurs after a period of 21 days](https://github.com/cosmos/governance/blob/ce75de4019b0129f6efcbb0e752cd2cc9e6136d3/params-change/Staking.md#unbondingtime).
-* IBC packets can use either a [timestamp or a height to timeout packet delivery](https://docs.cosmos.network/v0.44/ibc/overview.html#acknowledgements)
+* IBC packets can use either a [timestamp or a height to timeout packet delivery](https://docs.cosmos.network/v0.45/ibc/overview.html#acknowledgements)
 
 Finally, inflation distribution in the Cosmos Hub uses an approximation of time to calculate an annual percentage rate.
 This approximation of time is calculated using [block heights with an estimated number of blocks produced in a year](https://github.com/cosmos/governance/blob/master/params-change/Mint.md#blocksperyear).
