@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proto/tendermint/p2p"
 
 	"github.com/tendermint/tendermint/config"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
@@ -70,7 +71,7 @@ func TestPeerSend(t *testing.T) {
 	})
 
 	assert.True(p.CanSend(testCh))
-	assert.True(p.Send(Envelope{ChannelID: testCh}))
+	assert.True(p.Send(Envelope{ChannelID: testCh, Message: &p2p.Message{}}))
 }
 
 func createOutboundPeerAndPerformHandshake(

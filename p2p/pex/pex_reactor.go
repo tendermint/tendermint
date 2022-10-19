@@ -350,7 +350,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 	r.requestsSent.Set(id, struct{}{})
 	e := p2p.Envelope{
 		ChannelID: PexChannel,
-		Message:   &tmp2p.PexRequest{},
+		Message:   toWrappedProto(&tmp2p.PexRequest{}),
 	}
 	p.Send(e)
 }
@@ -412,7 +412,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
 	e := p2p.Envelope{
 		ChannelID: PexChannel,
-		Message:   &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)},
+		Message:   toWrappedProto(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}),
 	}
 	p.Send(e)
 }
@@ -777,6 +777,15 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 
 // mustEncode proto encodes a tmp2p.Message
 func mustEncode(pb proto.Message) []byte {
+	msg := toWrappedProto(pb)
+	bz, err := proto.Marshal(msg)
+	if err != nil {
+		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
+	}
+	return bz
+}
+
+func toWrappedProto(pb proto.Message) proto.Message {
 	msg := tmp2p.Message{}
 	switch pb := pb.(type) {
 	case *tmp2p.PexRequest:
@@ -786,12 +795,7 @@ func mustEncode(pb proto.Message) []byte {
 	default:
 		panic(fmt.Sprintf("Unknown message type %T", pb))
 	}
-
-	bz, err := msg.Marshal()
-	if err != nil {
-		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
-	}
-	return bz
+	return &msg
 }
 
 func decodeMsg(bz []byte) (proto.Message, error) {
