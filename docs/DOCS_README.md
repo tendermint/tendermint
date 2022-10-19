@@ -99,4 +99,4 @@ configuration file that we can update with PRs.
 Because the build processes are identical (as is the information contained
 herein), this file should be kept in sync as much as possible with its
 [counterpart in the Cosmos SDK
-repo](https://github.com/cosmos/cosmos-sdk/blob/master/docs/DOCS_README.md).
+repo](https://github.com/cosmos/cosmos-sdk/blob/main/docs/README.md).
