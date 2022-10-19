@@ -470,7 +470,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	e := Envelope{
 		ChannelID: 0x1,
 	}
-	p.NewSend(e)
+	p.Send(e)
 
 	// stop sw2. this should cause the p to fail,
 	// which results in calling StopPeerForError internally

@@ -130,7 +130,7 @@ func (s *syncer) AddPeer(peer p2p.Peer) {
 		ChannelID: SnapshotChannel,
 		Message:   toWrappedProto(&ssproto.SnapshotsRequest{}),
 	}
-	peer.NewSend(e)
+	peer.Send(e)
 }
 
 // RemovePeer removes a peer from the pool.
@@ -479,7 +479,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 			Index:  chunk,
 		},
 	}
-	peer.NewSend(e)
+	peer.Send(e)
 }
 
 // verifyApp verifies the sync, checking the app hash, last block height and app version

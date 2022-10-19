@@ -171,7 +171,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 						Message:   p,
 						ChannelID: VoteChannel,
 					}
-					peer.NewSend(e)
+					peer.Send(e)
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
 					p, err := MsgToProto(&VoteMessage{prevote2})
@@ -180,7 +180,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 						Message:   p,
 						ChannelID: VoteChannel,
 					}
-					peer.NewSend(e)
+					peer.Send(e)
 				}
 			}
 		} else {
@@ -541,7 +541,7 @@ func sendProposalAndParts(
 		ChannelID: DataChannel,
 		Message:   p,
 	}
-	peer.NewSend(e)
+	peer.Send(e)
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
@@ -559,7 +559,7 @@ func sendProposalAndParts(
 			ChannelID: DataChannel,
 			Message:   p,
 		}
-		peer.NewSend(e)
+		peer.Send(e)
 	}
 
 	// votes
@@ -575,7 +575,7 @@ func sendProposalAndParts(
 		ChannelID: VoteChannel,
 		Message:   p,
 	}
-	peer.NewSend(e)
+	peer.Send(e)
 	p, err = MsgToProto(&VoteMessage{precommit})
 	if err != nil {
 		panic(err)
@@ -584,7 +584,7 @@ func sendProposalAndParts(
 		ChannelID: VoteChannel,
 		Message:   p,
 	}
-	peer.NewSend(e)
+	peer.Send(e)
 }
 
 //----------------------------------------

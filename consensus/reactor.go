@@ -302,7 +302,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			if err != nil {
 				panic(err)
 			}
-			src.NewTrySend(p2p.Envelope{
+			src.TrySend(p2p.Envelope{
 				ChannelID: VoteSetBitsChannel,
 				Message:   p,
 			})
@@ -498,7 +498,7 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 					ChannelID: StateChannel, struct{ ConsensusMessage }{msg},
 					Message: p,
 				}
-				peer.NewTrySend(e)
+				peer.TrySend(e)
 			} else {
 				// Height doesn't match
 				// TODO: check a field, maybe CatchupCommitRound?
@@ -530,7 +530,7 @@ func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 		ChannelID: StateChannel,
 		Message:   p,
 	}
-	peer.NewSend(e)
+	peer.Send(e)
 }
 
 func (conR *Reactor) updateRoundStateRoutine() {
@@ -584,7 +584,7 @@ OUTER_LOOP:
 					ChannelID: DataChannel,
 					Message:   p,
 				}
-				if peer.NewSend(e) {
+				if peer.Send(e) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
 				continue OUTER_LOOP
@@ -641,7 +641,7 @@ OUTER_LOOP:
 					ChannelID: DataChannel,
 					Message:   p,
 				}
-				if peer.NewSend(e) {
+				if peer.Send(e) {
 					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
 				}
@@ -666,7 +666,7 @@ OUTER_LOOP:
 					ChannelID: DataChannel,
 					Message:   p,
 				}
-				peer.NewSend(e)
+				peer.Send(e)
 			}
 			continue OUTER_LOOP
 		}
@@ -718,7 +718,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			ChannelID: DataChannel,
 			Message:   p,
 		}
-		if peer.NewSend(e) {
+		if peer.Send(e) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
 			logger.Debug("Sending block part for catchup failed")
@@ -890,7 +890,7 @@ OUTER_LOOP:
 						ChannelID: StateChannel,
 						Message:   p,
 					}
-					peer.NewTrySend(e)
+					peer.TrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -915,7 +915,7 @@ OUTER_LOOP:
 						ChannelID: StateChannel,
 						Message:   p,
 					}
-					peer.NewTrySend(e)
+					peer.TrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -941,7 +941,7 @@ OUTER_LOOP:
 						ChannelID: StateChannel,
 						Message:   p,
 					}
-					peer.NewTrySend(e)
+					peer.TrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -969,7 +969,7 @@ OUTER_LOOP:
 						ChannelID: StateChannel,
 						Message:   p,
 					}
-					peer.NewTrySend(e)
+					peer.TrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -1194,7 +1194,7 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 			ChannelID: VoteChannel,
 			Message:   p,
 		}
-		if ps.peer.NewSend(e) {
+		if ps.peer.Send(e) {
 			ps.SetHasVote(vote)
 			return true
 		}

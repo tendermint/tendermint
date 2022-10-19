@@ -101,7 +101,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 				Message:   p,
 				ChannelID: VoteChannel,
 			}
-			peer.NewSend(e)
+			peer.Send(e)
 		}
 	}()
 }

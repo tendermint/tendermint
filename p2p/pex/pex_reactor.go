@@ -352,7 +352,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 		ChannelID: PexChannel,
 		Message:   &tmp2p.PexRequest{},
 	}
-	p.NewSend(e)
+	p.Send(e)
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -414,7 +414,7 @@ func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
 		ChannelID: PexChannel,
 		Message:   &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)},
 	}
-	p.NewSend(e)
+	p.Send(e)
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.

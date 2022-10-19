@@ -134,7 +134,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 				ChannelID: EvidenceChannel,
 				Message:   evp,
 			}
-			success := peer.NewSend(e)
+			success := peer.Send(e)
 			if !success {
 				time.Sleep(peerRetryMessageIntervalMS * time.Millisecond)
 				continue

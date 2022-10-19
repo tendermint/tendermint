@@ -156,7 +156,7 @@ func (bcR *Reactor) AddPeer(peer p2p.Peer) {
 			Height: bcR.store.Height(),
 		},
 	}
-	peer.NewSend(e)
+	peer.Send(e)
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -191,7 +191,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 			Message:   wm,
 		}
 
-		return src.NewTrySend(e)
+		return src.TrySend(e)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
@@ -206,7 +206,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 		Message:   wm,
 	}
 
-	return src.NewTrySend(e)
+	return src.TrySend(e)
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
@@ -250,7 +250,7 @@ func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			ChannelID: BlocksyncChannel,
 			Message:   wm,
 		}
-		src.NewTrySend(e)
+		src.TrySend(e)
 	case *bcproto.StatusResponse:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
@@ -305,7 +305,7 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 					ChannelID: BlocksyncChannel,
 					Message:   wm,
 				}
-				queued := peer.NewTrySend(e)
+				queued := peer.TrySend(e)
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}

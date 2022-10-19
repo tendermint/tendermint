@@ -243,7 +243,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 				},
 			}
 
-			success := peer.NewSend(e)
+			success := peer.Send(e)
 			if !success {
 				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue

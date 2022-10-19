@@ -140,7 +140,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 						Metadata: snapshot.Metadata,
 					},
 				}
-				src.NewSend(e)
+				src.Send(e)
 			}
 
 		case *ssproto.SnapshotsResponse:
@@ -196,7 +196,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 					Missing: resp.Chunk == nil,
 				}),
 			}
-			src.NewSend(e)
+			src.Send(e)
 
 		case *ssproto.ChunkResponse:
 			r.mtx.RLock()
