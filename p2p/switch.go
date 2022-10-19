@@ -303,7 +303,7 @@ func (sw *Switch) NewBroadcast(e Envelope) chan bool {
 	for _, peer := range peers {
 		go func(p Peer) {
 			defer wg.Done()
-			success := p.NewSend(e)
+			success := p.Send(e)
 			successChan <- success
 		}(peer)
 	}
