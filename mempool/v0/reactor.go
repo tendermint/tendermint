@@ -234,18 +234,15 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// https://github.com/tendermint/tendermint/issues/5796
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			msg := protomem.Message{
-				Sum: &protomem.Message_Txs{
-					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
+			e := p2p.Envelope{
+				ChannelID: mempool.MempoolChannel,
+				Message: &protomem.Message{
+					Sum: &protomem.Message_Txs{
+						Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
+					},
 				},
 			}
-
-			bz, err := msg.Marshal()
-			if err != nil {
-				panic(err)
-			}
-
-			success := peer.Send(mempool.MempoolChannel, bz)
+			success := peer.NewSend(e)
 			if !success {
 				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue

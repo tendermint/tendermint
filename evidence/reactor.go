@@ -126,11 +126,15 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		evis := evR.prepareEvidenceMessage(peer, ev)
 		if len(evis) > 0 {
 			evR.Logger.Debug("Gossiping evidence to peer", "ev", ev, "peer", peer)
-			msgBytes, err := encodeMsg(evis)
+			evp, err := evidenceListToProto(evis)
 			if err != nil {
 				panic(err)
 			}
-			success := peer.Send(EvidenceChannel, msgBytes)
+			e := p2p.Envelope{
+				ChannelID: EvidenceChannel,
+				Message:   evp,
+			}
+			success := peer.NewSend(e)
 			if !success {
 				time.Sleep(peerRetryMessageIntervalMS * time.Millisecond)
 				continue
@@ -224,6 +228,23 @@ func encodeMsg(evis []types.Evidence) ([]byte, error) {
 	}
 
 	return epl.Marshal()
+}
+
+// encodemsg takes a array of evidence
+// returns the byte encoding of the List Message
+func evidenceListToProto(evis []types.Evidence) (*tmproto.EvidenceList, error) {
+	evi := make([]tmproto.Evidence, len(evis))
+	for i := 0; i < len(evis); i++ {
+		ev, err := types.EvidenceToProto(evis[i])
+		if err != nil {
+			return nil, err
+		}
+		evi[i] = *ev
+	}
+	epl := tmproto.EvidenceList{
+		Evidence: evi,
+	}
+	return &epl, nil
 }
 
 // decodemsg takes an array of bytes

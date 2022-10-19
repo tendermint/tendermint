@@ -38,6 +38,23 @@ func mustEncodeMsg(pb proto.Message) []byte {
 	return bz
 }
 
+func toWrappedProto(pb proto.Message) proto.Message {
+	msg := ssproto.Message{}
+	switch pb := pb.(type) {
+	case *ssproto.ChunkRequest:
+		msg.Sum = &ssproto.Message_ChunkRequest{ChunkRequest: pb}
+	case *ssproto.ChunkResponse:
+		msg.Sum = &ssproto.Message_ChunkResponse{ChunkResponse: pb}
+	case *ssproto.SnapshotsRequest:
+		msg.Sum = &ssproto.Message_SnapshotsRequest{SnapshotsRequest: pb}
+	case *ssproto.SnapshotsResponse:
+		msg.Sum = &ssproto.Message_SnapshotsResponse{SnapshotsResponse: pb}
+	default:
+		panic(fmt.Errorf("unknown message type %T", pb))
+	}
+	return &msg
+}
+
 // decodeMsg decodes a Protobuf message.
 func decodeMsg(bz []byte) (proto.Message, error) {
 	pb := &ssproto.Message{}

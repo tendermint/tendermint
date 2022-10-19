@@ -165,10 +165,22 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for i, peer := range peerList {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
-					peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote1}))
+					p, err := MsgToProto(&VoteMessage{prevote1})
+					require.NoError(t, err)
+					e := p2p.Envelope{
+						Message:   p,
+						ChannelID: VoteChannel,
+					}
+					peer.NewSend(e)
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
-					peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote2}))
+					p, err := MsgToProto(&VoteMessage{prevote2})
+					require.NoError(t, err)
+					e := p2p.Envelope{
+						Message:   p,
+						ChannelID: VoteChannel,
+					}
+					peer.NewSend(e)
 				}
 			}
 		} else {
@@ -521,7 +533,15 @@ func sendProposalAndParts(
 ) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
-	peer.Send(DataChannel, MustEncode(msg))
+	p, err := MsgToProto(msg)
+	if err != nil {
+		panic(err)
+	}
+	e := p2p.Envelope{
+		ChannelID: DataChannel,
+		Message:   p,
+	}
+	peer.NewSend(e)
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
@@ -531,7 +551,15 @@ func sendProposalAndParts(
 			Round:  round,  // This tells peer that this part applies to us.
 			Part:   part,
 		}
-		peer.Send(DataChannel, MustEncode(msg))
+		p, err := MsgToProto(msg)
+		if err != nil {
+			panic(err)
+		}
+		e := p2p.Envelope{
+			ChannelID: DataChannel,
+			Message:   p,
+		}
+		peer.NewSend(e)
 	}
 
 	// votes
@@ -539,9 +567,24 @@ func sendProposalAndParts(
 	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
-
-	peer.Send(VoteChannel, MustEncode(&VoteMessage{prevote}))
-	peer.Send(VoteChannel, MustEncode(&VoteMessage{precommit}))
+	p, err = MsgToProto(&VoteMessage{prevote})
+	if err != nil {
+		panic(err)
+	}
+	e = p2p.Envelope{
+		ChannelID: VoteChannel,
+		Message:   p,
+	}
+	peer.NewSend(e)
+	p, err = MsgToProto(&VoteMessage{precommit})
+	if err != nil {
+		panic(err)
+	}
+	e = p2p.Envelope{
+		ChannelID: VoteChannel,
+		Message:   p,
+	}
+	peer.NewSend(e)
 }
 
 //----------------------------------------

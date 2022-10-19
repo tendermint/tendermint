@@ -130,13 +130,17 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			for _, snapshot := range snapshots {
 				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
 					"format", snapshot.Format, "peer", src.ID())
-				src.Send(chID, mustEncodeMsg(&ssproto.SnapshotsResponse{
-					Height:   snapshot.Height,
-					Format:   snapshot.Format,
-					Chunks:   snapshot.Chunks,
-					Hash:     snapshot.Hash,
-					Metadata: snapshot.Metadata,
-				}))
+				e := p2p.Envelope{
+					ChannelID: chID,
+					Message: &ssproto.SnapshotsResponse{
+						Height:   snapshot.Height,
+						Format:   snapshot.Format,
+						Chunks:   snapshot.Chunks,
+						Hash:     snapshot.Hash,
+						Metadata: snapshot.Metadata,
+					},
+				}
+				src.NewSend(e)
 			}
 
 		case *ssproto.SnapshotsResponse:
@@ -182,13 +186,17 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", src.ID())
-			src.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkResponse{
-				Height:  msg.Height,
-				Format:  msg.Format,
-				Index:   msg.Index,
-				Chunk:   resp.Chunk,
-				Missing: resp.Chunk == nil,
-			}))
+			e := p2p.Envelope{
+				ChannelID: ChunkChannel,
+				Message: toWrappedProto(&ssproto.ChunkResponse{
+					Height:  msg.Height,
+					Format:  msg.Format,
+					Index:   msg.Index,
+					Chunk:   resp.Chunk,
+					Missing: resp.Chunk == nil,
+				}),
+			}
+			src.NewSend(e)
 
 		case *ssproto.ChunkResponse:
 			r.mtx.RLock()

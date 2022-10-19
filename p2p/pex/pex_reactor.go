@@ -348,7 +348,11 @@ func (r *Reactor) RequestAddrs(p Peer) {
 	}
 	r.Logger.Debug("Request addrs", "from", p)
 	r.requestsSent.Set(id, struct{}{})
-	p.Send(PexChannel, mustEncode(&tmp2p.PexRequest{}))
+	e := p2p.Envelope{
+		ChannelID: PexChannel,
+		Message:   &tmp2p.PexRequest{},
+	}
+	p.NewSend(e)
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -406,7 +410,11 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, mustEncode(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}))
+	e := p2p.Envelope{
+		ChannelID: PexChannel,
+		Message:   &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)},
+	}
+	p.NewSend(e)
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.

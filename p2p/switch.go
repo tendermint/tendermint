@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
@@ -293,11 +292,7 @@ func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) NewBroadcast(e Envelope) chan bool {
-	msgBytes, err := proto.Marshal(e.Message)
-	if err != nil {
-		panic(err)
-	}
-	sw.Logger.Debug("Broadcast", "channel", e.ChannelID, "msgBytes", log.NewLazySprintf("%X", msgBytes))
+	sw.Logger.Debug("Broadcast", "channel", e.ChannelID)
 
 	peers := sw.peers.List()
 	var wg sync.WaitGroup
@@ -307,7 +302,7 @@ func (sw *Switch) NewBroadcast(e Envelope) chan bool {
 	for _, peer := range peers {
 		go func(p Peer) {
 			defer wg.Done()
-			success := p.Send(e.ChannelID, msgBytes)
+			success := p.NewSend(e)
 			successChan <- success
 		}(peer)
 	}
