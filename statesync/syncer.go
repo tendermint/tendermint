@@ -498,8 +498,8 @@ func (s *syncer) verifyApp(snapshot *snapshot, appVersion uint64) error {
 	}
 	if !bytes.Equal(snapshot.trustedAppHash, resp.LastBlockAppHash) {
 		s.logger.Error("appHash verification failed",
-			"expected", snapshot.trustedAppHash,
-			"actual", resp.LastBlockAppHash)
+			"expected", fmt.Sprintf("%X", snapshot.trustedAppHash),
+			"actual", fmt.Sprintf("%X", resp.LastBlockAppHash))
 		return errVerifyFailed
 	}
 	if uint64(resp.LastBlockHeight) != snapshot.Height {
@@ -511,6 +511,6 @@ func (s *syncer) verifyApp(snapshot *snapshot, appVersion uint64) error {
 		return errVerifyFailed
 	}
 
-	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", log.NewLazySprintf("%X", snapshot.trustedAppHash))
+	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", fmt.Sprintf("%X", snapshot.trustedAppHash))
 	return nil
 }
