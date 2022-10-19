@@ -473,11 +473,11 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
 	e := p2p.Envelope{
 		ChannelID: ChunkChannel,
-		Message: &ssproto.ChunkRequest{
+		Message: toWrappedProto(&ssproto.ChunkRequest{
 			Height: snapshot.Height,
 			Format: snapshot.Format,
 			Index:  chunk,
-		},
+		}),
 	}
 	peer.Send(e)
 }
