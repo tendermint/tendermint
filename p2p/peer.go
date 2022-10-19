@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
+	"google.golang.org/protobuf/proto"
 
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
@@ -262,12 +263,15 @@ func (p *peer) NewSend(e Envelope) bool {
 	} else if !p.hasChannel(e.ChannelID) {
 		return false
 	}
-	msgBytes := MustEncode(e.Message)
-	res := p.mconn.Send(e.chID, msgBytes)
+	msgBytes, err := proto.Marshal(e.Message)
+	if err != nil {
+		panic(err)
+	}
+	res := p.mconn.Send(e.ChannelID, msgBytes)
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
+			"chID", fmt.Sprintf("%#x", e.ChannelID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 	}
