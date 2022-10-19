@@ -140,10 +140,18 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 			peer := &p2pmocks.Peer{}
 			if len(tc.expectResponses) > 0 {
 				peer.On("ID").Return(p2p.ID("id"))
-				peer.On("Send", SnapshotChannel, mock.Anything).Run(func(args mock.Arguments) {
-					msg, err := decodeMsg(args[1].([]byte))
+				peer.On("Send", mock.MatchedBy(func(i interface{}) bool {
+					e, ok := i.(p2p.Envelope)
+					return ok && e.ChannelID == SnapshotChannel
+				})).Run(func(args mock.Arguments) {
+					e := args[0].(p2p.Envelope)
+
+					// Marshal to simulate a wire roundtrip.
+					bz, err := proto.Marshal(e.Message)
 					require.NoError(t, err)
-					responses = append(responses, msg.(*ssproto.SnapshotsResponse))
+					err = proto.Unmarshal(bz, e.Message)
+					require.NoError(t, err)
+					responses = append(responses, e.Message.(*ssproto.Message).GetSnapshotsResponse())
 				}).Return(true)
 			}
 
