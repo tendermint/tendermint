@@ -149,12 +149,17 @@ func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *Reactor) AddPeer(peer p2p.Peer) {
+	msg, err := toWrappedMessage(&bcproto.StatusResponse{
+		Base:   bcR.store.Base(),
+		Height: bcR.store.Height(),
+	})
+	if err != nil {
+		bcR.Logger.Error("could not convert msg to proto", "err", err)
+		return
+	}
 	e := p2p.Envelope{
 		ChannelID: BlocksyncChannel,
-		Message: &bcproto.StatusResponse{
-			Base:   bcR.store.Base(),
-			Height: bcR.store.Height(),
-		},
+		Message:   msg,
 	}
 	peer.Send(e)
 	// it's OK if send fails. will try later in poolRoutine

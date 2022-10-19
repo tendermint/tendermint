@@ -21,24 +21,12 @@ const (
 
 // EncodeMsg encodes a Protobuf message
 func EncodeMsg(pb proto.Message) ([]byte, error) {
-	msg := bcproto.Message{}
-
-	switch pb := pb.(type) {
-	case *bcproto.BlockRequest:
-		msg.Sum = &bcproto.Message_BlockRequest{BlockRequest: pb}
-	case *bcproto.BlockResponse:
-		msg.Sum = &bcproto.Message_BlockResponse{BlockResponse: pb}
-	case *bcproto.NoBlockResponse:
-		msg.Sum = &bcproto.Message_NoBlockResponse{NoBlockResponse: pb}
-	case *bcproto.StatusRequest:
-		msg.Sum = &bcproto.Message_StatusRequest{StatusRequest: pb}
-	case *bcproto.StatusResponse:
-		msg.Sum = &bcproto.Message_StatusResponse{StatusResponse: pb}
-	default:
-		return nil, fmt.Errorf("unknown message type %T", pb)
+	msg, err := toWrappedMessage(pb)
+	if err != nil {
+		return nil, err
 	}
 
-	bz, err := proto.Marshal(&msg)
+	bz, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal %T: %w", pb, err)
 	}
