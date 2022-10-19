@@ -706,11 +706,28 @@ type MempoolConfig struct {
 	// WARNING: There's a known memory leak with the prioritized mempool
 	// that the team are working on. Read more here:
 	// https://github.com/tendermint/tendermint/issues/8775
-	Version   string `mapstructure:"version"`
-	RootDir   string `mapstructure:"home"`
-	Recheck   bool   `mapstructure:"recheck"`
-	Broadcast bool   `mapstructure:"broadcast"`
-	WalPath   string `mapstructure:"wal_dir"`
+	Version string `mapstructure:"version"`
+	// RootDir is the root directory for all data. This should be configured via
+	// the $TMHOME env variable or --home cmd flag rather than overriding this
+	// struct field.
+	RootDir string `mapstructure:"home"`
+	// Recheck (default: true) defines whether Tendermint should recheck the
+	// validity for all remaining transaction in the mempool after a block.
+	// Since a block affects the application state, some transactions in the
+	// mempool may become invalid. If this does not apply to your application,
+	// you can disable rechecking.
+	Recheck bool `mapstructure:"recheck"`
+	// Broadcast (default: true) defines whether the mempool should relay
+	// transactions to other peers. Setting this to false will stop the mempool
+	// from relaying transactions to other peers until they are included in a
+	// block. In other words, if Broadcast is disabled, only the peer you send
+	// the tx to will see it until it is included in a block.
+	Broadcast bool `mapstructure:"broadcast"`
+	// WalPath (default: "") configures the location of the Write Ahead Log
+	// (WAL) for the mempool. The WAL is disabled by default. To enable, set
+	// WalPath to where you want the WAL to be written (e.g.
+	// "data/mempool.wal").
+	WalPath string `mapstructure:"wal_dir"`
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
 	// Limit the total size of all txs in the mempool.
