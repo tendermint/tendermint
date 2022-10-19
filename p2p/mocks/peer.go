@@ -123,6 +123,34 @@ func (_m *Peer) IsRunning() bool {
 	return r0
 }
 
+// NewSend provides a mock function with given fields: _a0
+func (_m *Peer) NewSend(_a0 p2p.Envelope) bool {
+	ret := _m.Called(_a0)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(p2p.Envelope) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// NewTrySend provides a mock function with given fields: _a0
+func (_m *Peer) NewTrySend(_a0 p2p.Envelope) bool {
+	ret := _m.Called(_a0)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(p2p.Envelope) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // NodeInfo provides a mock function with given fields:
 func (_m *Peer) NodeInfo() p2p.NodeInfo {
 	ret := _m.Called()
