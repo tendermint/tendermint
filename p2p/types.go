@@ -9,6 +9,6 @@ type ChannelDescriptor = conn.ChannelDescriptor
 type ConnectionStatus = conn.ConnectionStatus
 
 type Envelope struct {
-	ChID    byte
-	Message proto.Message
+	ChannelID byte
+	Message   proto.Message
 }
