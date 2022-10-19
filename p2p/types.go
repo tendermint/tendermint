@@ -9,6 +9,8 @@ type ChannelDescriptor = conn.ChannelDescriptor
 type ConnectionStatus = conn.ConnectionStatus
 
 type Envelope struct {
+	// Src is set when the message was sent by a remote peer.
+	Src       Peer
 	ChannelID byte
 	Message   proto.Message
 }
