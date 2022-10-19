@@ -724,6 +724,7 @@ type ChannelDescriptor struct {
 	SendQueueCapacity   int
 	RecvBufferCapacity  int
 	RecvMessageCapacity int
+	MessageType         reflect.Type
 }
 
 func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
