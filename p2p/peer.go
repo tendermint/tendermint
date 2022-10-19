@@ -5,10 +5,11 @@ import (
 	"net"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
+
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	"google.golang.org/protobuf/proto"
 
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
@@ -35,10 +36,8 @@ type Peer interface {
 	Status() tmconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
-	/*
-		NewSend(Envelope) bool
-		NewTrySend(Envelope) bool
-	*/
+	NewSend(Envelope) bool
+	NewTrySend(Envelope) bool
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -253,7 +252,7 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 	return p.mconn.Status()
 }
 
-// Send msg bytes to the channel identified by chID byte. Returns false if the
+// NewSend msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
 func (p *peer) NewSend(e Envelope) bool {
 	if !p.IsRunning() {
@@ -293,6 +292,31 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
+		}
+		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+	}
+	return res
+}
+
+// NewSend msg bytes to the channel identified by chID byte. Returns false if the
+// send queue is full after timeout, specified by MConnection.
+func (p *peer) NewTrySend(e Envelope) bool {
+	if !p.IsRunning() {
+		// see Switch#Broadcast, where we fetch the list of peers and loop over
+		// them - while we're looping, one peer may be removed and stopped.
+		return false
+	} else if !p.hasChannel(e.ChannelID) {
+		return false
+	}
+	msgBytes, err := proto.Marshal(e.Message)
+	if err != nil {
+		panic(err)
+	}
+	res := p.mconn.TrySend(e.ChannelID, msgBytes)
+	if res {
+		labels := []string{
+			"peer_id", string(p.ID()),
+			"chID", fmt.Sprintf("%#x", e.ChannelID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 	}

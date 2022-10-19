@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
@@ -273,6 +274,40 @@ func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 		go func(p Peer) {
 			defer wg.Done()
 			success := p.Send(chID, msgBytes)
+			successChan <- success
+		}(peer)
+	}
+
+	go func() {
+		wg.Wait()
+		close(successChan)
+	}()
+
+	return successChan
+}
+
+// NewBroadcast runs a go routine for each attempted send, which will block trying
+// to send for defaultSendTimeoutSeconds. Returns a channel which receives
+// success values for each attempted send (false if times out). Channel will be
+// closed once msg bytes are sent to all peers (or time out).
+//
+// NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
+func (sw *Switch) NewBroadcast(e Envelope) chan bool {
+	msgBytes, err := proto.Marshal(e.Message)
+	if err != nil {
+		panic(err)
+	}
+	sw.Logger.Debug("Broadcast", "channel", e.ChannelID, "msgBytes", log.NewLazySprintf("%X", msgBytes))
+
+	peers := sw.peers.List()
+	var wg sync.WaitGroup
+	wg.Add(len(peers))
+	successChan := make(chan bool, len(peers))
+
+	for _, peer := range peers {
+		go func(p Peer) {
+			defer wg.Done()
+			success := p.Send(e.ChannelID, msgBytes)
 			successChan <- success
 		}(peer)
 	}

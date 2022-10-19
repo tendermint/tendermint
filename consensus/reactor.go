@@ -292,15 +292,19 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			default:
 				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
 			}
+			p, err := MsgToProto(&VoteSetBitsMessage{
+				Height:  msg.Height,
+				Round:   msg.Round,
+				Type:    msg.Type,
+				BlockID: msg.BlockID,
+				Votes:   ourVotes,
+			})
+			if err != nil {
+				panic(err)
+			}
 			src.NewTrySend(p2p.Envelope{
 				ChannelID: VoteSetBitsChannel,
-				Message: MsgToProto(&VoteSetBitsMessage{
-					Height:  msg.Height,
-					Round:   msg.Round,
-					Type:    msg.Type,
-					BlockID: msg.BlockID,
-					Votes:   ourVotes,
-				}),
+				Message:   p,
 			})
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
@@ -433,7 +437,15 @@ func (conR *Reactor) unsubscribeFromBroadcastEvents() {
 
 func (conR *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
-	conR.Switch.Broadcast(StateChannel, MustEncode(nrsMsg))
+	p, err := MsgToProto(nrsMsg)
+	if err != nil {
+		panic(err)
+	}
+	e := p2p.Envelope{
+		ChannelID: StateChannel,
+		Message:   p,
+	}
+	conR.Switch.NewBroadcast(e)
 }
 
 func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
@@ -444,7 +456,15 @@ func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
 		BlockParts:         rs.ProposalBlockParts.BitArray(),
 		IsCommit:           rs.Step == cstypes.RoundStepCommit,
 	}
-	conR.Switch.Broadcast(StateChannel, MustEncode(csMsg))
+	p, err := MsgToProto(csMsg)
+	if err != nil {
+		panic(err)
+	}
+	e := p2p.Envelope{
+		ChannelID: StateChannel,
+		Message:   p,
+	}
+	conR.Switch.NewBroadcast(e)
 }
 
 // Broadcasts HasVoteMessage to peers that care.
@@ -455,7 +475,15 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 		Type:   vote.Type,
 		Index:  vote.ValidatorIndex,
 	}
-	conR.Switch.Broadcast(StateChannel, MustEncode(msg))
+	p, err := MsgToProto(msg)
+	if err != nil {
+		panic(err) // todo update the broadcast logic.
+	}
+	e := p2p.Envelope{
+		ChannelID: StateChannel,
+		Message:   p,
+	}
+	conR.Switch.NewBroadcast(e)
 	/*
 		// TODO: Make this broadcast more selective.
 		for _, peer := range conR.Switch.Peers().List() {
@@ -466,7 +494,11 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 			prs := ps.GetRoundState()
 			if prs.Height == vote.Height {
 				// TODO: Also filter on round?
-				peer.TrySend(StateChannel, struct{ ConsensusMessage }{msg})
+				e := p2p.Envelope{
+					ChannelID: StateChannel, struct{ ConsensusMessage }{msg},
+					Message: p,
+				}
+				peer.NewTrySend(e)
 			} else {
 				// Height doesn't match
 				// TODO: check a field, maybe CatchupCommitRound?
@@ -490,7 +522,15 @@ func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) 
 func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 	rs := conR.getRoundState()
 	nrsMsg := makeRoundStepMessage(rs)
-	peer.Send(StateChannel, MustEncode(nrsMsg))
+	p, err := MsgToProto(nrsMsg)
+	if err != nil {
+		panic(err)
+	}
+	e := p2p.Envelope{
+		ChannelID: StateChannel,
+		Message:   p,
+	}
+	peer.NewSend(e)
 }
 
 func (conR *Reactor) updateRoundStateRoutine() {
@@ -535,7 +575,16 @@ OUTER_LOOP:
 					Part:   part,
 				}
 				logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round)
-				if peer.Send(DataChannel, MustEncode(msg)) {
+				p, err := MsgToProto(msg)
+				if err != nil {
+					panic(err)
+
+				}
+				e := p2p.Envelope{
+					ChannelID: DataChannel,
+					Message:   p,
+				}
+				if peer.NewSend(e) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
 				continue OUTER_LOOP
@@ -583,7 +632,16 @@ OUTER_LOOP:
 			{
 				msg := &ProposalMessage{Proposal: rs.Proposal}
 				logger.Debug("Sending proposal", "height", prs.Height, "round", prs.Round)
-				if peer.Send(DataChannel, MustEncode(msg)) {
+				p, err := MsgToProto(msg)
+				if err != nil {
+					panic(err)
+
+				}
+				e := p2p.Envelope{
+					ChannelID: DataChannel,
+					Message:   p,
+				}
+				if peer.NewSend(e) {
 					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
 				}
@@ -599,7 +657,16 @@ OUTER_LOOP:
 					ProposalPOL:      rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray(),
 				}
 				logger.Debug("Sending POL", "height", prs.Height, "round", prs.Round)
-				peer.Send(DataChannel, MustEncode(msg))
+				p, err := MsgToProto(msg)
+				if err != nil {
+					panic(err)
+
+				}
+				e := p2p.Envelope{
+					ChannelID: DataChannel,
+					Message:   p,
+				}
+				peer.NewSend(e)
 			}
 			continue OUTER_LOOP
 		}
@@ -642,7 +709,16 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			Part:   part,
 		}
 		logger.Debug("Sending block part for catchup", "round", prs.Round, "index", index)
-		if peer.Send(DataChannel, MustEncode(msg)) {
+		p, err := MsgToProto(msg)
+		if err != nil {
+			panic(err)
+
+		}
+		e := p2p.Envelope{
+			ChannelID: DataChannel,
+			Message:   p,
+		}
+		if peer.NewSend(e) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
 			logger.Debug("Sending block part for catchup failed")
@@ -801,12 +877,20 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					p, err := MsgToProto(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
 						Type:    tmproto.PrevoteType,
 						BlockID: maj23,
-					}))
+					})
+					if err != nil {
+						panic(err)
+					}
+					e := p2p.Envelope{
+						ChannelID: StateChannel,
+						Message:   p,
+					}
+					peer.NewTrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -818,12 +902,20 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					p, err := MsgToProto(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
 						Type:    tmproto.PrecommitType,
 						BlockID: maj23,
-					}))
+					})
+					if err != nil {
+						panic(err)
+					}
+					e := p2p.Envelope{
+						ChannelID: StateChannel,
+						Message:   p,
+					}
+					peer.NewTrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -835,12 +927,21 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
 				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					p, err := MsgToProto(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.ProposalPOLRound,
 						Type:    tmproto.PrevoteType,
 						BlockID: maj23,
-					}))
+					})
+					if err != nil {
+						panic(err)
+					}
+
+					e := p2p.Envelope{
+						ChannelID: StateChannel,
+						Message:   p,
+					}
+					peer.NewTrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -855,12 +956,20 @@ OUTER_LOOP:
 			if prs.CatchupCommitRound != -1 && prs.Height > 0 && prs.Height <= conR.conS.blockStore.Height() &&
 				prs.Height >= conR.conS.blockStore.Base() {
 				if commit := conR.conS.LoadCommit(prs.Height); commit != nil {
-					peer.TrySend(StateChannel, MustEncode(&VoteSetMaj23Message{
+					p, err := MsgToProto(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   commit.Round,
 						Type:    tmproto.PrecommitType,
 						BlockID: commit.BlockID,
-					}))
+					})
+					if err != nil {
+						panic(err)
+					}
+					e := p2p.Envelope{
+						ChannelID: StateChannel,
+						Message:   p,
+					}
+					peer.NewTrySend(e)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -1076,7 +1185,16 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		msg := &VoteMessage{vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
-		if ps.peer.Send(VoteChannel, MustEncode(msg)) {
+		p, err := MsgToProto(msg)
+		if err != nil {
+			panic(err)
+
+		}
+		e := p2p.Envelope{
+			ChannelID: VoteChannel,
+			Message:   p,
+		}
+		if ps.peer.NewSend(e) {
 			ps.SetHasVote(vote)
 			return true
 		}
