@@ -130,7 +130,6 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			for _, snapshot := range snapshots {
 				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
 					"format", snapshot.Format, "peer", src.ID())
-				m := mustEncodeMsg()
 				e := p2p.Envelope{
 					ChannelID: chID,
 					Message: toWrappedProto(&ssproto.SnapshotsResponse{

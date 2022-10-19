@@ -469,6 +469,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	p := sw1.Peers().List()[0]
 	e := Envelope{
 		ChannelID: 0x1,
+		Message:   &p2p.Message{},
 	}
 	p.Send(e)
 

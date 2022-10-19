@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -53,10 +54,18 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 			peer.On("ID").Return(p2p.ID("id"))
 			var response *ssproto.ChunkResponse
 			if tc.expectResponse != nil {
-				peer.On("Send", ChunkChannel, mock.Anything).Run(func(args mock.Arguments) {
-					msg, err := decodeMsg(args[1].([]byte))
+				peer.On("Send", mock.MatchedBy(func(i interface{}) bool {
+					e, ok := i.(p2p.Envelope)
+					return ok && e.ChannelID == ChunkChannel
+				})).Run(func(args mock.Arguments) {
+					e := args[0].(p2p.Envelope)
+
+					// Marshal to simulate a wire roundtrip.
+					bz, err := proto.Marshal(e.Message)
 					require.NoError(t, err)
-					response = msg.(*ssproto.ChunkResponse)
+					err = proto.Unmarshal(bz, e.Message)
+					require.NoError(t, err)
+					response = e.Message.(*ssproto.Message).GetChunkResponse()
 				}).Return(true)
 			}
 
