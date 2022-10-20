@@ -158,11 +158,11 @@ func (bcR *Reactor) AddPeer(peer p2p.Peer) {
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 		return
 	}
-	e := p2p.Envelope{
+
+	peer.Send(p2p.Envelope{
 		ChannelID: BlocksyncChannel,
 		Message:   msg,
-	}
-	peer.Send(e)
+	})
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -192,12 +192,11 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("could not convert msg to proto message", "err", err)
 			return false
 		}
-		e := p2p.Envelope{
+
+		return src.TrySend(p2p.Envelope{
 			ChannelID: BlocksyncChannel,
 			Message:   wm,
-		}
-
-		return src.TrySend(e)
+		})
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
@@ -207,12 +206,11 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 		return false
 	}
-	e := p2p.Envelope{
+
+	return src.TrySend(p2p.Envelope{
 		ChannelID: BlocksyncChannel,
 		Message:   wm,
-	}
-
-	return src.TrySend(e)
+	})
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
@@ -252,11 +250,11 @@ func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			bcR.Logger.Error("could not convert msg to proto message", "err", err)
 			return
 		}
-		e := p2p.Envelope{
+
+		src.TrySend(p2p.Envelope{
 			ChannelID: BlocksyncChannel,
 			Message:   wm,
-		}
-		src.TrySend(e)
+		})
 	case *bcproto.StatusResponse:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
@@ -307,11 +305,10 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 					bcR.Logger.Error("could not convert msg to proto", "err", err)
 					continue
 				}
-				e := p2p.Envelope{
+				queued := peer.TrySend(p2p.Envelope{
 					ChannelID: BlocksyncChannel,
 					Message:   wm,
-				}
-				queued := peer.TrySend(e)
+				})
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}
