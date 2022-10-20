@@ -165,20 +165,16 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for i, peer := range peerList {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
-					p := MustConvertMsgToProto(&VoteMessage{prevote1})
-					e := p2p.Envelope{
-						Message:   p,
+					peer.Send(p2p.Envelope{
+						Message:   MustConvertMsgToProto(&VoteMessage{prevote1}),
 						ChannelID: VoteChannel,
-					}
-					peer.Send(e)
+					})
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
-					p := MustConvertMsgToProto(&VoteMessage{prevote2})
-					e := p2p.Envelope{
-						Message:   p,
+					peer.Send(p2p.Envelope{
+						Message:   MustConvertMsgToProto(&VoteMessage{prevote2}),
 						ChannelID: VoteChannel,
-					}
-					peer.Send(e)
+					})
 				}
 			}
 		} else {
@@ -531,12 +527,10 @@ func sendProposalAndParts(
 ) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
-	p := MustConvertMsgToProto(msg)
-	e := p2p.Envelope{
+	peer.Send(p2p.Envelope{
 		ChannelID: DataChannel,
-		Message:   p,
-	}
-	peer.Send(e)
+		Message:   MustConvertMsgToProto(msg),
+	})
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
@@ -546,12 +540,10 @@ func sendProposalAndParts(
 			Round:  round,  // This tells peer that this part applies to us.
 			Part:   part,
 		}
-		p := MustConvertMsgToProto(msg)
-		e := p2p.Envelope{
+		peer.Send(p2p.Envelope{
 			ChannelID: DataChannel,
-			Message:   p,
-		}
-		peer.Send(e)
+			Message:   MustConvertMsgToProto(msg),
+		})
 	}
 
 	// votes
@@ -559,18 +551,14 @@ func sendProposalAndParts(
 	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
-	p = MustConvertMsgToProto(&VoteMessage{prevote})
-	e = p2p.Envelope{
+	peer.Send(p2p.Envelope{
 		ChannelID: VoteChannel,
-		Message:   p,
-	}
-	peer.Send(e)
-	p = MustConvertMsgToProto(&VoteMessage{precommit})
-	e = p2p.Envelope{
+		Message:   MustConvertMsgToProto(&VoteMessage{prevote}),
+	})
+	peer.Send(p2p.Envelope{
 		ChannelID: VoteChannel,
-		Message:   p,
-	}
-	peer.Send(e)
+		Message:   MustConvertMsgToProto(&VoteMessage{precommit}),
+	})
 }
 
 //----------------------------------------
