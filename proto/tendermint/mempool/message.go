@@ -8,6 +8,7 @@ import (
 )
 
 var _ p2p.Wrapper = &Txs{}
+var _ p2p.Unwrapper = &Message{}
 
 // Wrap implements the p2p Wrapper interface and wraps a mempool message.
 func (m *Txs) Wrap() (proto.Message, error) {
