@@ -237,7 +237,7 @@ func (r *Reactor) logErrAddrBook(err error) {
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
-func (r *Reactor) NewReceive(e p2p.Envelope) {
+func (r *Reactor) Receive(e p2p.Envelope) {
 	msg, err := msgFromProto(e.Message)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)

@@ -156,7 +156,7 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
-func (memR *Reactor) NewReceive(e p2p.Envelope) {
+func (memR *Reactor) Receive(e p2p.Envelope) {
 	msg, err := msgFromProto(e.Message)
 	if err != nil {
 		memR.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)

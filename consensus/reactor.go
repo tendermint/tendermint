@@ -227,7 +227,7 @@ func (conR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Peer state updates can happen in parallel, but processing of
 // proposals, block parts, and votes are ordered by the receiveRoutine
 // NOTE: blocks on consensus state for proposals, block parts, and votes
-func (conR *Reactor) NewReceive(e p2p.Envelope) {
+func (conR *Reactor) Receive(e p2p.Envelope) {
 	if !conR.IsRunning() {
 		conR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID)
 		return

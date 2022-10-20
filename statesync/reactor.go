@@ -101,8 +101,8 @@ func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	}
 }
 
-// NewReceive implements p2p.Reactor.
-func (r *Reactor) NewReceive(e p2p.Envelope) {
+// Receive implements p2p.Reactor.
+func (r *Reactor) Receive(e p2p.Envelope) {
 	if !r.IsRunning() {
 		return
 	}
