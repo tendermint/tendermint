@@ -19,7 +19,7 @@ const (
 		BlockResponseMessageFieldKeySize
 )
 
-func MustWrapMessage(pb proto.Message) proto.Message {
+func wrapMsg(pb proto.Message) (proto.Message, error) {
 	msg := bcproto.Message{}
 
 	switch pb := pb.(type) {
@@ -34,10 +34,10 @@ func MustWrapMessage(pb proto.Message) proto.Message {
 	case *bcproto.StatusResponse:
 		msg.Sum = &bcproto.Message_StatusResponse{StatusResponse: pb}
 	default:
-		panic(fmt.Errorf("unknown message type %T", pb))
+		return nil, fmt.Errorf("unknown message type %T", pb)
 	}
 
-	return &msg
+	return &msg, nil
 }
 
 // DecodeMsg decodes a Protobuf message.
