@@ -420,6 +420,13 @@ func createMConnection(
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
 		}
+		if w, ok := msg.(Wrapper); ok {
+			msg, err = w.Unwrap()
+			if err != nil {
+				// TODO(williambanfield) add error log line.
+				return
+			}
+		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageReceiveBytesTotal.With("message_type", "tmp").Add(float64(len(msgBytes)))
 		reactor.Receive(Envelope{
