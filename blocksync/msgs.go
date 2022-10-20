@@ -48,7 +48,10 @@ func DecodeMsg(bz []byte) (proto.Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	return UnwrapMessage(pb)
+}
 
+func UnwrapMessage(pb *bcproto.Message) (proto.Message, error) {
 	switch msg := pb.Sum.(type) {
 	case *bcproto.Message_BlockRequest:
 		return msg.BlockRequest, nil
