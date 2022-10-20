@@ -216,24 +216,6 @@ type PeerState interface {
 
 // encodemsg takes a array of evidence
 // returns the byte encoding of the List Message
-func encodeMsg(evis []types.Evidence) ([]byte, error) {
-	evi := make([]tmproto.Evidence, len(evis))
-	for i := 0; i < len(evis); i++ {
-		ev, err := types.EvidenceToProto(evis[i])
-		if err != nil {
-			return nil, err
-		}
-		evi[i] = *ev
-	}
-	epl := tmproto.EvidenceList{
-		Evidence: evi,
-	}
-
-	return epl.Marshal()
-}
-
-// encodemsg takes a array of evidence
-// returns the byte encoding of the List Message
 func evidenceListToProto(evis []types.Evidence) (*tmproto.EvidenceList, error) {
 	evi := make([]tmproto.Evidence, len(evis))
 	for i := 0; i < len(evis); i++ {
@@ -249,31 +231,6 @@ func evidenceListToProto(evis []types.Evidence) (*tmproto.EvidenceList, error) {
 	return &epl, nil
 }
 
-// decodemsg takes an array of bytes
-// returns an array of evidence
-func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
-	lm := tmproto.EvidenceList{}
-	if err := lm.Unmarshal(bz); err != nil {
-		return nil, err
-	}
-
-	evis = make([]types.Evidence, len(lm.Evidence))
-	for i := 0; i < len(lm.Evidence); i++ {
-		ev, err := types.EvidenceFromProto(&lm.Evidence[i])
-		if err != nil {
-			return nil, err
-		}
-		evis[i] = ev
-	}
-
-	for i, ev := range evis {
-		if err := ev.ValidateBasic(); err != nil {
-			return nil, fmt.Errorf("invalid evidence (#%d): %v", i, err)
-		}
-	}
-
-	return evis, nil
-}
 func evidenceListFromProto(m proto.Message) ([]types.Evidence, error) {
 	lm := m.(*tmproto.EvidenceList)
 

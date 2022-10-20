@@ -65,7 +65,7 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 					require.NoError(t, err)
 					err = proto.Unmarshal(bz, e.Message)
 					require.NoError(t, err)
-					response = e.Message.(*ssproto.Message).GetChunkResponse()
+					response = e.Message.(*ssproto.ChunkResponse)
 				}).Return(true)
 			}
 
@@ -80,10 +80,10 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 				}
 			})
 
-			r.NewReceive(p2p.Envelope{
+			r.Receive(p2p.Envelope{
 				ChannelID: ChunkChannel,
 				Src:       peer,
-				Message:   mustWrapToProto(tc.request),
+				Message:   tc.request,
 			})
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponse, response)
@@ -155,7 +155,7 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 					require.NoError(t, err)
 					err = proto.Unmarshal(bz, e.Message)
 					require.NoError(t, err)
-					responses = append(responses, e.Message.(*ssproto.Message).GetSnapshotsResponse())
+					responses = append(responses, e.Message.(*ssproto.SnapshotsResponse))
 				}).Return(true)
 			}
 
@@ -170,12 +170,11 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 				}
 			})
 
-			r.NewReceive(p2p.Envelope{
+			r.Receive(p2p.Envelope{
 				ChannelID: SnapshotChannel,
 				Src:       peer,
-				Message:   mustWrapToProto(&ssproto.SnapshotsRequest{}),
+				Message:   &ssproto.SnapshotsRequest{},
 			})
-			r.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponses, responses)
 

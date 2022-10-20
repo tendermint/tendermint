@@ -26,6 +26,7 @@ import (
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -166,13 +167,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
 					peer.Send(p2p.Envelope{
-						Message:   MustMsgToProto(&VoteMessage{prevote1}),
+						Message:   &tmcons.Vote{prevote1.ToProto()},
 						ChannelID: VoteChannel,
 					})
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
 					peer.Send(p2p.Envelope{
-						Message:   MustMsgToProto(&VoteMessage{prevote2}),
+						Message:   &tmcons.Vote{prevote2.ToProto()},
 						ChannelID: VoteChannel,
 					})
 				}
@@ -526,23 +527,25 @@ func sendProposalAndParts(
 	parts *types.PartSet,
 ) {
 	// proposal
-	msg := &ProposalMessage{Proposal: proposal}
 	peer.Send(p2p.Envelope{
 		ChannelID: DataChannel,
-		Message:   MustMsgToProto(msg),
+		Message:   &tmcons.Proposal{Proposal: *proposal.ToProto()},
 	})
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
 		part := parts.GetPart(i)
-		msg := &BlockPartMessage{
-			Height: height, // This tells peer that this part applies to us.
-			Round:  round,  // This tells peer that this part applies to us.
-			Part:   part,
+		pp, err := part.ToProto()
+		if err != nil {
+			panic(err) // TODO: wbanfield better error handling
 		}
 		peer.Send(p2p.Envelope{
 			ChannelID: DataChannel,
-			Message:   MustMsgToProto(msg),
+			Message: &tmcons.BlockPart{
+				Height: height, // This tells peer that this part applies to us.
+				Round:  round,  // This tells peer that this part applies to us.
+				Part:   *pp,
+			},
 		})
 	}
 
@@ -553,11 +556,11 @@ func sendProposalAndParts(
 	cs.mtx.Unlock()
 	peer.Send(p2p.Envelope{
 		ChannelID: VoteChannel,
-		Message:   MustMsgToProto(&VoteMessage{prevote}),
+		Message:   &tmcons.Vote{prevote.ToProto()},
 	})
 	peer.Send(p2p.Envelope{
 		ChannelID: VoteChannel,
-		Message:   MustMsgToProto(&VoteMessage{precommit}),
+		Message:   &tmcons.Vote{precommit.ToProto()},
 	})
 }
 

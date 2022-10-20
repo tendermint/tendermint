@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -157,26 +156,32 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
 func (memR *Reactor) Receive(e p2p.Envelope) {
-	msg, err := msgFromProto(e.Message)
-	if err != nil {
-		memR.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
-		memR.Switch.StopPeerForError(e.Src, err)
-		return
-	}
-	memR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID, "msg", msg)
-
-	txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(e.Src)}
-	if e.Src != nil {
-		txInfo.SenderP2PID = e.Src.ID()
-	}
-
-	for _, tx := range msg.Txs {
-		err = memR.mempool.CheckTx(tx, nil, txInfo)
-		if errors.Is(err, mempool.ErrTxInCache) {
-			memR.Logger.Debug("Tx already exists in cache", "tx", tx.String())
-		} else if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", tx.String(), "err", err)
+	memR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
+	switch msg := e.Message.(type) {
+	case *protomem.Txs:
+		protoTxs := msg.GetTxs()
+		if len(protoTxs) == 0 {
+			memR.Logger.Error("received tmpty txs from peer", "src", e.Src)
+			return
 		}
+		txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(e.Src)}
+		if e.Src != nil {
+			txInfo.SenderP2PID = e.Src.ID()
+		}
+
+		var err error
+		for _, tx := range protoTxs {
+			ntx := types.Tx(tx)
+			err = memR.mempool.CheckTx(ntx, nil, txInfo)
+			if errors.Is(err, mempool.ErrTxInCache) {
+				memR.Logger.Debug("Tx already exists in cache", "tx", ntx.String())
+			} else if err != nil {
+				memR.Logger.Info("Could not check tx", "tx", ntx.String(), "err", err)
+			}
+		}
+	default:
+		memR.Logger.Error("unknown message type", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
+		return
 	}
 
 	// broadcasting happens from go routines per peer
@@ -260,39 +265,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			return
 		}
 	}
-}
-
-func decodeMsg(bz []byte) (TxsMessage, error) {
-	msg := protomem.Message{}
-	err := msg.Unmarshal(bz)
-	if err != nil {
-		return TxsMessage{}, err
-	}
-
-	return msgFromProto(&msg)
-}
-
-func msgFromProto(m proto.Message) (TxsMessage, error) {
-	msg := m.(*protomem.Message)
-	var message TxsMessage
-	if i, ok := msg.Sum.(*protomem.Message_Txs); ok {
-		txs := i.Txs.GetTxs()
-
-		if len(txs) == 0 {
-			return message, errors.New("empty TxsMessage")
-		}
-
-		decoded := make([]types.Tx, len(txs))
-		for j, tx := range txs {
-			decoded[j] = types.Tx(tx)
-		}
-
-		message = TxsMessage{
-			Txs: decoded,
-		}
-		return message, nil
-	}
-	return message, fmt.Errorf("msg type: %T is not supported", msg)
 }
 
 // TxsMessage is a Message containing transactions.

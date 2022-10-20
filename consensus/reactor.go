@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
-
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -233,6 +231,16 @@ func (conR *Reactor) Receive(e p2p.Envelope) {
 		return
 	}
 
+	if w, ok := e.Message.(p2p.Wrapper); ok {
+		var err error
+		e.Message, err = w.Wrap()
+		if err != nil {
+			conR.Logger.Error("Error wrapping message", "src", e.Src, "chId", e.ChannelID, "err", err)
+			conR.Switch.StopPeerForError(e.Src, err)
+			return
+		}
+	}
+
 	msg, err := MsgFromProto(e.Message.(*tmcons.Message))
 	if err != nil {
 		conR.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
@@ -296,15 +304,18 @@ func (conR *Reactor) Receive(e p2p.Envelope) {
 			default:
 				panic("Bad VoteSetBitsMessage field Type. Forgot to add a check in ValidateBasic?")
 			}
+			eMsg := &tmcons.VoteSetBits{
+				Height:  msg.Height,
+				Round:   msg.Round,
+				Type:    msg.Type,
+				BlockID: msg.BlockID.ToProto(),
+			}
+			if votes := ourVotes.ToProto(); votes != nil {
+				eMsg.Votes = *votes
+			}
 			e.Src.TrySend(p2p.Envelope{
 				ChannelID: VoteSetBitsChannel,
-				Message: MustMsgToProto(&VoteSetBitsMessage{
-					Height:  msg.Height,
-					Round:   msg.Round,
-					Type:    msg.Type,
-					BlockID: msg.BlockID,
-					Votes:   ourVotes,
-				}),
+				Message:   eMsg,
 			})
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
@@ -439,27 +450,28 @@ func (conR *Reactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg := makeRoundStepMessage(rs)
 	conR.Switch.Broadcast(p2p.Envelope{
 		ChannelID: StateChannel,
-		Message:   MustMsgToProto(nrsMsg),
+		Message:   nrsMsg,
 	})
 }
 
 func (conR *Reactor) broadcastNewValidBlockMessage(rs *cstypes.RoundState) {
-	csMsg := &NewValidBlockMessage{
+	psh := rs.ProposalBlockParts.Header()
+	csMsg := &tmcons.NewValidBlock{
 		Height:             rs.Height,
 		Round:              rs.Round,
-		BlockPartSetHeader: rs.ProposalBlockParts.Header(),
-		BlockParts:         rs.ProposalBlockParts.BitArray(),
+		BlockPartSetHeader: psh.ToProto(),
+		BlockParts:         rs.ProposalBlockParts.BitArray().ToProto(),
 		IsCommit:           rs.Step == cstypes.RoundStepCommit,
 	}
 	conR.Switch.Broadcast(p2p.Envelope{
 		ChannelID: StateChannel,
-		Message:   MustMsgToProto(csMsg),
+		Message:   csMsg,
 	})
 }
 
 // Broadcasts HasVoteMessage to peers that care.
 func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
-	msg := &HasVoteMessage{
+	msg := &tmcons.HasVote{
 		Height: vote.Height,
 		Round:  vote.Round,
 		Type:   vote.Type,
@@ -467,7 +479,7 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 	}
 	conR.Switch.Broadcast(p2p.Envelope{
 		ChannelID: StateChannel,
-		Message:   MustMsgToProto(msg),
+		Message:   msg,
 	})
 	/*
 		// TODO: Make this broadcast more selective.
@@ -493,11 +505,11 @@ func (conR *Reactor) broadcastHasVoteMessage(vote *types.Vote) {
 	*/
 }
 
-func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage) {
-	nrsMsg = &NewRoundStepMessage{
+func makeRoundStepMessage(rs *cstypes.RoundState) (nrsMsg *tmcons.NewRoundStep) {
+	nrsMsg = &tmcons.NewRoundStep{
 		Height:                rs.Height,
 		Round:                 rs.Round,
-		Step:                  rs.Step,
+		Step:                  uint32(rs.Step),
 		SecondsSinceStartTime: int64(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.GetRound(),
 	}
@@ -509,7 +521,7 @@ func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 	nrsMsg := makeRoundStepMessage(rs)
 	peer.Send(p2p.Envelope{
 		ChannelID: StateChannel,
-		Message:   MustMsgToProto(nrsMsg),
+		Message:   nrsMsg,
 	})
 }
 
@@ -549,15 +561,18 @@ OUTER_LOOP:
 		if rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartSetHeader) {
 			if index, ok := rs.ProposalBlockParts.BitArray().Sub(prs.ProposalBlockParts.Copy()).PickRandom(); ok {
 				part := rs.ProposalBlockParts.GetPart(index)
-				msg := &BlockPartMessage{
-					Height: rs.Height, // This tells peer that this part applies to us.
-					Round:  rs.Round,  // This tells peer that this part applies to us.
-					Part:   part,
+				parts, err := part.ToProto()
+				if err != nil {
+					panic(err)
 				}
 				logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round)
 				if peer.Send(p2p.Envelope{
 					ChannelID: DataChannel,
-					Message:   MustMsgToProto(msg),
+					Message: &tmcons.BlockPart{
+						Height: rs.Height, // This tells peer that this part applies to us.
+						Round:  rs.Round,  // This tells peer that this part applies to us.
+						Part:   *parts,
+					},
 				}) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
@@ -604,11 +619,10 @@ OUTER_LOOP:
 		if rs.Proposal != nil && !prs.Proposal {
 			// Proposal: share the proposal metadata with peer.
 			{
-				msg := &ProposalMessage{Proposal: rs.Proposal}
 				logger.Debug("Sending proposal", "height", prs.Height, "round", prs.Round)
 				if peer.Send(p2p.Envelope{
 					ChannelID: DataChannel,
-					Message:   MustMsgToProto(msg),
+					Message:   &tmcons.Proposal{Proposal: *rs.Proposal.ToProto()},
 				}) {
 					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
@@ -619,15 +633,14 @@ OUTER_LOOP:
 			// rs.Proposal was validated, so rs.Proposal.POLRound <= rs.Round,
 			// so we definitely have rs.Votes.Prevotes(rs.Proposal.POLRound).
 			if 0 <= rs.Proposal.POLRound {
-				msg := &ProposalPOLMessage{
-					Height:           rs.Height,
-					ProposalPOLRound: rs.Proposal.POLRound,
-					ProposalPOL:      rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray(),
-				}
 				logger.Debug("Sending POL", "height", prs.Height, "round", prs.Round)
 				peer.Send(p2p.Envelope{
 					ChannelID: DataChannel,
-					Message:   MustMsgToProto(msg),
+					Message: &tmcons.ProposalPOL{
+						Height:           rs.Height,
+						ProposalPolRound: rs.Proposal.POLRound,
+						ProposalPol:      *rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray().ToProto(),
+					},
 				})
 			}
 			continue OUTER_LOOP
@@ -665,15 +678,19 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			return
 		}
 		// Send the part
-		msg := &BlockPartMessage{
-			Height: prs.Height, // Not our height, so it doesn't matter.
-			Round:  prs.Round,  // Not our height, so it doesn't matter.
-			Part:   part,
-		}
 		logger.Debug("Sending block part for catchup", "round", prs.Round, "index", index)
+		pp, err := part.ToProto()
+		if err != nil {
+			logger.Error("Could not convert part to proto", "index", index, "error", err)
+			return
+		}
 		if peer.Send(p2p.Envelope{
 			ChannelID: DataChannel,
-			Message:   MustMsgToProto(msg),
+			Message: &tmcons.BlockPart{
+				Height: prs.Height, // Not our height, so it doesn't matter.
+				Round:  prs.Round,  // Not our height, so it doesn't matter.
+				Part:   *pp,
+			},
 		}) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
@@ -836,12 +853,12 @@ OUTER_LOOP:
 
 					peer.TrySend(p2p.Envelope{
 						ChannelID: StateChannel,
-						Message: MustMsgToProto(&VoteSetMaj23Message{
+						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
 							Round:   prs.Round,
 							Type:    tmproto.PrevoteType,
-							BlockID: maj23,
-						}),
+							BlockID: maj23.ToProto(),
+						},
 					})
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
@@ -854,15 +871,14 @@ OUTER_LOOP:
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
 				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
-
 					peer.TrySend(p2p.Envelope{
 						ChannelID: StateChannel,
-						Message: MustMsgToProto(&VoteSetMaj23Message{
+						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
 							Round:   prs.Round,
 							Type:    tmproto.PrecommitType,
-							BlockID: maj23,
-						}),
+							BlockID: maj23.ToProto(),
+						},
 					})
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
@@ -878,12 +894,12 @@ OUTER_LOOP:
 
 					peer.TrySend(p2p.Envelope{
 						ChannelID: StateChannel,
-						Message: MustMsgToProto(&VoteSetMaj23Message{
+						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
 							Round:   prs.ProposalPOLRound,
 							Type:    tmproto.PrevoteType,
-							BlockID: maj23,
-						}),
+							BlockID: maj23.ToProto(),
+						},
 					})
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
@@ -901,12 +917,12 @@ OUTER_LOOP:
 				if commit := conR.conS.LoadCommit(prs.Height); commit != nil {
 					peer.TrySend(p2p.Envelope{
 						ChannelID: StateChannel,
-						Message: MustMsgToProto(&VoteSetMaj23Message{
+						Message: &tmcons.VoteSetMaj23{
 							Height:  prs.Height,
 							Round:   commit.Round,
 							Type:    tmproto.PrecommitType,
-							BlockID: commit.BlockID,
-						}),
+							BlockID: commit.BlockID.ToProto(),
+						},
 					})
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
@@ -1121,11 +1137,12 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 // Returns true if vote was sent.
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
-		msg := &VoteMessage{vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
 		if ps.peer.Send(p2p.Envelope{
 			ChannelID: VoteChannel,
-			Message:   MustMsgToProto(msg),
+			Message: &tmcons.Vote{
+				Vote: vote.ToProto(),
+			},
 		}) {
 			ps.SetHasVote(vote)
 			return true
@@ -1490,15 +1507,6 @@ func init() {
 	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
 	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
-}
-
-func decodeMsg(bz []byte) (msg Message, err error) {
-	pb := &tmcons.Message{}
-	if err = proto.Unmarshal(bz, pb); err != nil {
-		return msg, err
-	}
-
-	return MsgFromProto(pb)
 }
 
 //-------------------------------------

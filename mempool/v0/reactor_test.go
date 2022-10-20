@@ -22,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/mock"
 	memproto "github.com/tendermint/tendermint/proto/tendermint/mempool"
+	protomem "github.com/tendermint/tendermint/proto/tendermint/mempool"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -279,7 +280,12 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	for i := 0; i < mempool.MaxActiveIDs+1; i++ {
 		peer := mock.NewPeer(nil)
-		reactor.Receive(mempool.MempoolChannel, peer, []byte{0x1, 0x2, 0x3})
+		reactor.Receive(p2p.Envelope{
+			ChannelID: mempool.MempoolChannel,
+			Src:       peer,
+			Message: &protomem.Txs{
+				Txs: [][]byte{{0x01, 0x02, 0x03}},
+			}})
 		reactor.AddPeer(peer)
 	}
 }

@@ -128,7 +128,7 @@ func (s *syncer) AddPeer(peer p2p.Peer) {
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
 	e := p2p.Envelope{
 		ChannelID: SnapshotChannel,
-		Message:   mustWrapToProto(&ssproto.SnapshotsRequest{}),
+		Message:   &ssproto.SnapshotsRequest{},
 	}
 	peer.Send(e)
 }
@@ -473,11 +473,11 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
 	peer.Send(p2p.Envelope{
 		ChannelID: ChunkChannel,
-		Message: mustWrapToProto(&ssproto.ChunkRequest{
+		Message: &ssproto.ChunkRequest{
 			Height: snapshot.Height,
 			Format: snapshot.Format,
 			Index:  chunk,
-		}),
+		},
 	})
 }
 

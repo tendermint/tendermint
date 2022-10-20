@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cosmos/gogoproto/proto"
-
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -16,6 +14,8 @@ import (
 )
 
 // MsgToProto takes a consensus message type and returns the proto defined consensus message.
+//
+// TODO: This needs to be removed, but WALToProto depends on this.
 func MsgToProto(msg Message) (*tmcons.Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: message is nil")
@@ -143,14 +143,6 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 	return &pb, nil
 }
 
-func MustMsgToProto(msg Message) *tmcons.Message {
-	m, err := MsgToProto(msg)
-	if err != nil {
-		panic(err)
-	}
-	return m
-}
-
 // MsgFromProto takes a consensus proto message and returns the native go type
 func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	if msg == nil {
@@ -266,20 +258,6 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	}
 
 	return pb, nil
-}
-
-// MustEncode takes the reactors msg, makes it proto and marshals it
-// this mimics `MustMarshalBinaryBare` in that is panics on error
-func MustEncode(msg Message) []byte {
-	pb, err := MsgToProto(msg)
-	if err != nil {
-		panic(err)
-	}
-	enc, err := proto.Marshal(pb)
-	if err != nil {
-		panic(err)
-	}
-	return enc
 }
 
 // WALToProto takes a WAL message and return a proto walMessage and error

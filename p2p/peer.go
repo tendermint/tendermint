@@ -261,7 +261,15 @@ func (p *peer) Send(e Envelope) bool {
 	} else if !p.hasChannel(e.ChannelID) {
 		return false
 	}
-	msgBytes, err := proto.Marshal(e.Message)
+	msg := e.Message
+	if w, ok := msg.(Wrapper); ok {
+		var err error
+		msg, err = w.Wrap()
+		if err != nil {
+			panic(err)
+		}
+	}
+	msgBytes, err := proto.Marshal(msg)
 	if err != nil {
 		panic(err) // Q: should this panic or error?
 	}
@@ -284,7 +292,15 @@ func (p *peer) TrySend(e Envelope) bool {
 	} else if !p.hasChannel(e.ChannelID) {
 		return false
 	}
-	msgBytes, err := proto.Marshal(e.Message)
+	msg := e.Message
+	if w, ok := msg.(Wrapper); ok {
+		var err error
+		msg, err = w.Wrap()
+		if err != nil {
+			panic(err)
+		}
+	}
+	msgBytes, err := proto.Marshal(msg)
 	if err != nil {
 		panic(err)
 	}
@@ -419,6 +435,13 @@ func createMConnection(
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
+		}
+		if w, ok := msg.(Unwrapper); ok {
+			msg, err = w.Unwrap()
+			if err != nil {
+				// TODO(williambanfield) add error log line.
+				return
+			}
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageReceiveBytesTotal.With("message_type", "tmp").Add(float64(len(msgBytes)))
