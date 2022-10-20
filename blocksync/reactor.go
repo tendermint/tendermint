@@ -150,14 +150,10 @@ func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *Reactor) AddPeer(peer p2p.Peer) {
-	msg, err := toWrappedMessage(&bcproto.StatusResponse{
+	msg := MustWrapMessage(&bcproto.StatusResponse{
 		Base:   bcR.store.Base(),
 		Height: bcR.store.Height(),
 	})
-	if err != nil {
-		bcR.Logger.Error("could not convert msg to proto", "err", err)
-		return
-	}
 	e := p2p.Envelope{
 		ChannelID: BlocksyncChannel,
 		Message:   msg,
@@ -187,11 +183,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 			return false
 		}
 
-		wm, err := toWrappedMessage(&bcproto.BlockResponse{Block: bl})
-		if err != nil {
-			bcR.Logger.Error("could not marshal msg", "err", err)
-			return false
-		}
+		wm := MustWrapMessage(&bcproto.BlockResponse{Block: bl})
 		e := p2p.Envelope{
 			ChannelID: BlocksyncChannel,
 			Message:   wm,
@@ -202,11 +194,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	wm, err := toWrappedMessage(&bcproto.NoBlockResponse{Height: msg.Height})
-	if err != nil {
-		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
-		return false
-	}
+	wm := MustWrapMessage(&bcproto.NoBlockResponse{Height: msg.Height})
 	e := p2p.Envelope{
 		ChannelID: BlocksyncChannel,
 		Message:   wm,
@@ -244,14 +232,10 @@ func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		bcR.pool.AddBlock(src.ID(), bi, len(msgBytes))
 	case *bcproto.StatusRequest:
 		// Send peer our state.
-		wm, err := toWrappedMessage(&bcproto.StatusResponse{
+		wm := MustWrapMessage(&bcproto.StatusResponse{
 			Height: bcR.store.Height(),
 			Base:   bcR.store.Base(),
 		})
-		if err != nil {
-			bcR.Logger.Error("could not convert msg to wrapped protobuf", "err", err)
-			return
-		}
 		e := p2p.Envelope{
 			ChannelID: BlocksyncChannel,
 			Message:   wm,
@@ -302,11 +286,7 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 				if peer == nil {
 					continue
 				}
-				wm, err := toWrappedMessage(&bcproto.BlockRequest{Height: request.Height})
-				if err != nil {
-					bcR.Logger.Error("could not convert msg to wrapped proto", "err", err)
-					continue
-				}
+				wm := MustWrapMessage(&bcproto.BlockRequest{Height: request.Height})
 				e := p2p.Envelope{
 					ChannelID: BlocksyncChannel,
 					Message:   wm,
@@ -450,11 +430,7 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
 func (bcR *Reactor) BroadcastStatusRequest() error {
-	wm, err := toWrappedMessage(&bcproto.StatusRequest{})
-	if err != nil {
-		bcR.Logger.Error("could not convert msg to proto", "err", err)
-		return fmt.Errorf("could not convert msg to proto: %w", err)
-	}
+	wm := MustWrapMessage(&bcproto.StatusRequest{})
 	e := p2p.Envelope{
 		ChannelID: BlocksyncChannel,
 		Message:   wm,

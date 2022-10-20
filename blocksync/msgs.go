@@ -19,22 +19,7 @@ const (
 		BlockResponseMessageFieldKeySize
 )
 
-// EncodeMsg encodes a Protobuf message
-func EncodeMsg(pb proto.Message) ([]byte, error) {
-	msg, err := toWrappedMessage(pb)
-	if err != nil {
-		return nil, err
-	}
-
-	bz, err := proto.Marshal(msg)
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshal %T: %w", pb, err)
-	}
-
-	return bz, nil
-}
-
-func toWrappedMessage(pb proto.Message) (proto.Message, error) {
+func MustWrapMessage(pb proto.Message) proto.Message {
 	msg := bcproto.Message{}
 
 	switch pb := pb.(type) {
@@ -49,10 +34,10 @@ func toWrappedMessage(pb proto.Message) (proto.Message, error) {
 	case *bcproto.StatusResponse:
 		msg.Sum = &bcproto.Message_StatusResponse{StatusResponse: pb}
 	default:
-		return nil, fmt.Errorf("unknown message type %T", pb)
+		panic(fmt.Errorf("unknown message type %T", pb))
 	}
 
-	return &msg, nil
+	return &msg
 }
 
 // DecodeMsg decodes a Protobuf message.
