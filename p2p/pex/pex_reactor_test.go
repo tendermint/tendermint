@@ -133,11 +133,11 @@ func TestPEXReactorReceive(t *testing.T) {
 	size := book.Size()
 	msg := &tmp2p.PexAddrs{Addrs: []tmp2p.NetAddress{peer.SocketAddr().ToProto()}}
 	r.Receive(PexChannel, peer, mustEncode(msg))
-	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: toWrappedProto(msg)})
+	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: mustMsgToWrappedProto(msg)})
 	assert.Equal(t, size+1, book.Size())
 
 	r.Receive(PexChannel, peer, mustEncode(&tmp2p.PexRequest{})) // should not panic.
-	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: toWrappedProto(&tmp2p.PexRequest{})})
+	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: mustMsgToWrappedProto(&tmp2p.PexRequest{})})
 }
 
 func TestPEXReactorRequestMessageAbuse(t *testing.T) {
@@ -160,19 +160,19 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 
 	// first time creates the entry
 	r.Receive(PexChannel, peer, msg)
-	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: toWrappedProto(&tmp2p.PexRequest{})})
+	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: mustMsgToWrappedProto(&tmp2p.PexRequest{})})
 	assert.True(t, r.lastReceivedRequests.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	// next time sets the last time value
 	r.Receive(PexChannel, peer, msg)
-	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: toWrappedProto(&tmp2p.PexRequest{})})
+	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: mustMsgToWrappedProto(&tmp2p.PexRequest{})})
 	assert.True(t, r.lastReceivedRequests.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	// third time is too many too soon - peer is removed
 	r.Receive(PexChannel, peer, msg)
-	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: toWrappedProto(&tmp2p.PexRequest{})})
+	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: mustMsgToWrappedProto(&tmp2p.PexRequest{})})
 	assert.False(t, r.lastReceivedRequests.Has(id))
 	assert.False(t, sw.Peers().Has(peer.ID()))
 	assert.True(t, book.IsBanned(peerAddr))
@@ -200,13 +200,13 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, mustEncode(msg))
-	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: toWrappedProto(msg)})
+	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: mustMsgToWrappedProto(msg)})
 	assert.False(t, r.requestsSent.Has(id))
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	// receiving more unsolicited addrs causes a disconnect and ban
 	r.Receive(PexChannel, peer, mustEncode(msg))
-	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: toWrappedProto(msg)})
+	r.NewReceive(p2p.Envelope{ChannelID: PexChannel, Src: peer, Message: mustMsgToWrappedProto(msg)})
 	assert.False(t, sw.Peers().Has(peer.ID()))
 	assert.True(t, book.IsBanned(peer.SocketAddr()))
 }

@@ -263,7 +263,7 @@ func (p *peer) Send(e Envelope) bool {
 	}
 	msgBytes, err := proto.Marshal(e.Message)
 	if err != nil {
-		panic(err)
+		panic(err) // Q: should this panic or error?
 	}
 	res := p.mconn.Send(e.ChannelID, msgBytes)
 	if res {
