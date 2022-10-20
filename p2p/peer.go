@@ -409,15 +409,19 @@ func createMConnection(
 			// which does onPeerError.
 			panic(fmt.Sprintf("Unknown channel %X", chID))
 		}
+		mt := msgTypeByChID[chID]
+		msg := proto.Clone(mt)
+		err := proto.Unmarshal(msgBytes, msg)
+		if err != nil {
+			// TODO(williambanfield) add a log line
+			return
+		}
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageReceiveBytesTotal.With("message_type", "tmp").Add(float64(len(msgBytes)))
-		mt := msgTypeByChID[chID]
-		msg := proto.Clone(mt)
-		proto.Unmarshal(msgBytes, msg)
 		reactor.Receive(chID, p, msgBytes)
 		reactor.NewReceive(Envelope{
 			ChannelID: chID,
