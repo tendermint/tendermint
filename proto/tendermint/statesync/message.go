@@ -7,7 +7,7 @@ import (
 )
 
 // Wrap implements the p2p Wrapper interface and wraps a state sync proto message.
-func (m *Message) Wrap(pb proto.Message) error {
+func (m *Message) Wrap() (proto.Message, error) {
 	switch msg := pb.(type) {
 	case *ChunkRequest:
 		m.Sum = &Message_ChunkRequest{ChunkRequest: msg}

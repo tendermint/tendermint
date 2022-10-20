@@ -7,7 +7,7 @@ import (
 )
 
 // Wrap implements the p2p Wrapper interface and wraps a consensus proto message.
-func (m *Message) Wrap(pb proto.Message) error {
+func (m *Message) Wrap() (proto.Message, error) {
 	switch msg := pb.(type) {
 	case *NewRoundStep:
 		m.Sum = &Message_NewRoundStep{NewRoundStep: msg}

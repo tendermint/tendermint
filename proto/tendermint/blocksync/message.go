@@ -3,37 +3,49 @@ package blocksync
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
+	"github.com/tendermint/tendermint/p2p"
 )
+
+var _ p2p.Wrapper = &StatusRequest{}
+var _ p2p.Wrapper = &StatusResponse{}
+var _ p2p.Wrapper = &NoBlockResponse{}
+var _ p2p.Wrapper = &BlockResponse{}
+var _ p2p.Wrapper = &BlockRequest{}
 
 const (
 	BlockResponseMessagePrefixSize   = 4
 	BlockResponseMessageFieldKeySize = 1
 )
 
-// Wrap implements the p2p Wrapper interface and wraps a blockchain message.
-func (m *Message) Wrap(pb proto.Message) error {
-	switch msg := pb.(type) {
-	case *BlockRequest:
-		m.Sum = &Message_BlockRequest{BlockRequest: msg}
+func (m *BlockRequest) Wrap() (proto.Message, error) {
+	bm := &Message{}
+	bm.Sum = &Message_BlockRequest{BlockRequest: m}
+	return bm, nil
+}
 
-	case *BlockResponse:
-		m.Sum = &Message_BlockResponse{BlockResponse: msg}
+func (m *BlockResponse) Wrap() (proto.Message, error) {
+	bm := &Message{}
+	bm.Sum = &Message_BlockResponse{BlockResponse: m}
+	return bm, nil
+}
 
-	case *NoBlockResponse:
-		m.Sum = &Message_NoBlockResponse{NoBlockResponse: msg}
+func (m *NoBlockResponse) Wrap() (proto.Message, error) {
+	bm := &Message{}
+	bm.Sum = &Message_NoBlockResponse{NoBlockResponse: m}
+	return bm, nil
+}
 
-	case *StatusRequest:
-		m.Sum = &Message_StatusRequest{StatusRequest: msg}
+func (m *StatusRequest) Wrap() (proto.Message, error) {
+	bm := &Message{}
+	bm.Sum = &Message_StatusRequest{StatusRequest: m}
+	return bm, nil
+}
 
-	case *StatusResponse:
-		m.Sum = &Message_StatusResponse{StatusResponse: msg}
-
-	default:
-		return fmt.Errorf("unknown message: %T", msg)
-	}
-
-	return nil
+func (m *StatusResponse) Wrap() (proto.Message, error) {
+	bm := &Message{}
+	bm.Sum = &Message_StatusResponse{StatusResponse: m}
+	return bm, nil
 }
 
 // Unwrap implements the p2p Wrapper interface and unwraps a wrapped blockchain
