@@ -228,6 +228,7 @@ func (conR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // proposals, block parts, and votes are ordered by the receiveRoutine
 // NOTE: blocks on consensus state for proposals, block parts, and votes
 func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	return //disable and rely on the NewReceive
 	if !conR.IsRunning() {
 		conR.Logger.Debug("Receive", "src", src, "chId", chID, "bytes", msgBytes)
 		return
