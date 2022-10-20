@@ -3,44 +3,73 @@ package consensus
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
+	"github.com/tendermint/tendermint/p2p"
 )
 
-// Wrap implements the p2p Wrapper interface and wraps a consensus proto message.
-func (m *Message) Wrap() (proto.Message, error) {
-	switch msg := pb.(type) {
-	case *NewRoundStep:
-		m.Sum = &Message_NewRoundStep{NewRoundStep: msg}
+var _ p2p.Wrapper = &VoteSetBits{}
+var _ p2p.Wrapper = &VoteSetMaj23{}
+var _ p2p.Wrapper = &Vote{}
+var _ p2p.Wrapper = &ProposalPOL{}
+var _ p2p.Wrapper = &Proposal{}
+var _ p2p.Wrapper = &NewValidBlock{}
+var _ p2p.Wrapper = &NewRoundStep{}
+var _ p2p.Wrapper = &HasVote{}
+var _ p2p.Wrapper = &BlockPart{}
 
-	case *NewValidBlock:
-		m.Sum = &Message_NewValidBlock{NewValidBlock: msg}
+func (m *VoteSetBits) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_VoteSetBits{VoteSetBits: m}
+	return cm, nil
 
-	case *Proposal:
-		m.Sum = &Message_Proposal{Proposal: msg}
+}
 
-	case *ProposalPOL:
-		m.Sum = &Message_ProposalPol{ProposalPol: msg}
+func (m *VoteSetMaj23) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_VoteSetMaj23{VoteSetMaj23: m}
+	return cm, nil
+}
 
-	case *BlockPart:
-		m.Sum = &Message_BlockPart{BlockPart: msg}
+func (m *HasVote) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_HasVote{HasVote: m}
+	return cm, nil
+}
 
-	case *Vote:
-		m.Sum = &Message_Vote{Vote: msg}
+func (m *Vote) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_Vote{Vote: m}
+	return cm, nil
+}
 
-	case *HasVote:
-		m.Sum = &Message_HasVote{HasVote: msg}
+func (m *BlockPart) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_BlockPart{BlockPart: m}
+	return cm, nil
+}
 
-	case *VoteSetMaj23:
-		m.Sum = &Message_VoteSetMaj23{VoteSetMaj23: msg}
+func (m *ProposalPOL) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_ProposalPol{ProposalPol: m}
+	return cm, nil
+}
 
-	case *VoteSetBits:
-		m.Sum = &Message_VoteSetBits{VoteSetBits: msg}
+func (m *Proposal) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_Proposal{Proposal: m}
+	return cm, nil
+}
 
-	default:
-		return fmt.Errorf("unknown message: %T", msg)
-	}
+func (m *NewValidBlock) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_NewValidBlock{NewValidBlock: m}
+	return cm, nil
+}
 
-	return nil
+func (m *NewRoundStep) Wrap() (proto.Message, error) {
+	cm := &Message{}
+	cm.Sum = &Message_NewRoundStep{NewRoundStep: m}
+	return cm, nil
 }
 
 // Unwrap implements the p2p Wrapper interface and unwraps a wrapped consensus
