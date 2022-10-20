@@ -416,10 +416,15 @@ func createMConnection(
 			"chID", fmt.Sprintf("%#x", chID),
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+		p.metrics.MessageReceiveBytesTotal.With("message_type", "tmp").Add(float64(len(msgBytes)))
+		mt := msgTypeByChID[chID]
+		msg := proto.Clone(mt)
+		proto.Unmarshal(msgBytes, msg)
 		reactor.Receive(chID, p, msgBytes)
 		reactor.NewReceive(Envelope{
 			ChannelID: chID,
 			Src:       p,
+			Message:   msg,
 		})
 	}
 
