@@ -239,7 +239,7 @@ func (bcR *Reactor) Receive(e p2p.Envelope) {
 			bcR.Logger.Error("Block content is invalid", "err", err)
 			return
 		}
-		bcR.pool.AddBlock(e.Src.ID(), bi, 0) // TODO: fix block size calculation
+		bcR.pool.AddBlock(e.Src.ID(), bi, msg.Block.Size())
 	case *bcproto.StatusRequest:
 		// Send peer our state.
 		wm, err := wrapMsg(&bcproto.StatusResponse{
