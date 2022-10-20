@@ -471,15 +471,14 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
-	e := p2p.Envelope{
+	peer.Send(p2p.Envelope{
 		ChannelID: ChunkChannel,
 		Message: mustWrapToProto(&ssproto.ChunkRequest{
 			Height: snapshot.Height,
 			Format: snapshot.Format,
 			Index:  chunk,
 		}),
-	}
-	peer.Send(e)
+	})
 }
 
 // verifyApp verifies the sync, checking the app hash, last block height and app version

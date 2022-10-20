@@ -132,7 +132,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			for _, snapshot := range snapshots {
 				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
 					"format", snapshot.Format, "peer", src.ID())
-				e := p2p.Envelope{
+				src.Send(p2p.Envelope{
 					ChannelID: chID,
 					Message: mustWrapToProto(&ssproto.SnapshotsResponse{
 						Height:   snapshot.Height,
@@ -141,8 +141,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 						Hash:     snapshot.Hash,
 						Metadata: snapshot.Metadata,
 					}),
-				}
-				src.Send(e)
+				})
 			}
 
 		case *ssproto.SnapshotsResponse:
@@ -188,7 +187,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", src.ID())
-			e := p2p.Envelope{
+			src.Send(p2p.Envelope{
 				ChannelID: ChunkChannel,
 				Message: mustWrapToProto(&ssproto.ChunkResponse{
 					Height:  msg.Height,
@@ -197,8 +196,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 					Chunk:   resp.Chunk,
 					Missing: resp.Chunk == nil,
 				}),
-			}
-			src.Send(e)
+			})
 
 		case *ssproto.ChunkResponse:
 			r.mtx.RLock()
@@ -279,11 +277,11 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	hook := func() {
 		r.Logger.Debug("Requesting snapshots from known peers")
 		// Request snapshots from all currently connected peers
-		e := p2p.Envelope{
+
+		r.Switch.NewBroadcast(p2p.Envelope{
 			ChannelID: SnapshotChannel,
 			Message:   mustWrapToProto(&ssproto.SnapshotsRequest{}),
-		}
-		r.Switch.NewBroadcast(e)
+		})
 	}
 
 	hook()
