@@ -143,6 +143,7 @@ func (bcR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: MaxMsgSize,
+			MessageType:         &bcproto.Message{},
 		},
 	}
 }
