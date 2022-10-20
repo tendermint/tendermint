@@ -8,9 +8,9 @@ import (
 type ChannelDescriptor = conn.ChannelDescriptor
 type ConnectionStatus = conn.ConnectionStatus
 
+// Envelope contains a message with sender routing info.
 type Envelope struct {
-	// Src is set when the message was sent by a remote peer.
-	Src       Peer
+	Src       Peer          // sender (empty if outbound)
+	Message   proto.Message // message payload
 	ChannelID byte
-	Message   proto.Message
 }
