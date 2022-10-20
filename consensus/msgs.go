@@ -15,10 +15,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// MustConvertMsgToProto takes a consensus message type and returns the proto defined consensus message
-func MustConvertMsgToProto(msg Message) *tmcons.Message {
+// MsgToProto takes a consensus message type and returns the proto defined consensus message.
+func MsgToProto(msg Message) (*tmcons.Message, error) {
 	if msg == nil {
-		panic(errors.New("consensus: message is nil"))
+		return nil, errors.New("consensus: message is nil")
 	}
 	var pb tmcons.Message
 
@@ -72,7 +72,7 @@ func MustConvertMsgToProto(msg Message) *tmcons.Message {
 	case *BlockPartMessage:
 		parts, err := msg.Part.ToProto()
 		if err != nil {
-			panic(fmt.Errorf("msg to proto error: %w", err))
+			return nil, fmt.Errorf("msg to proto error: %w", err)
 		}
 		pb = tmcons.Message{
 			Sum: &tmcons.Message_BlockPart{
@@ -137,10 +137,18 @@ func MustConvertMsgToProto(msg Message) *tmcons.Message {
 		}
 
 	default:
-		panic(fmt.Errorf("consensus: message not recognized: %T", msg))
+		return nil, fmt.Errorf("consensus: message not recognized: %T", msg)
 	}
 
-	return &pb
+	return &pb, nil
+}
+
+func MustMsgToProto(msg Message) *tmcons.Message {
+	m, err := MsgToProto(msg)
+	if err != nil {
+		panic(err)
+	}
+	return m
 }
 
 // MsgFromProto takes a consensus proto message and returns the native go type
@@ -263,7 +271,10 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 // MustEncode takes the reactors msg, makes it proto and marshals it
 // this mimics `MustMarshalBinaryBare` in that is panics on error
 func MustEncode(msg Message) []byte {
-	pb := MustConvertMsgToProto(msg)
+	pb, err := MsgToProto(msg)
+	if err != nil {
+		panic(err)
+	}
 	enc, err := proto.Marshal(pb)
 	if err != nil {
 		panic(err)
@@ -287,7 +298,10 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 			},
 		}
 	case msgInfo:
-		consMsg := MustConvertMsgToProto(msg.Msg)
+		consMsg, err := MsgToProto(msg.Msg)
+		if err != nil {
+			return nil, err
+		}
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{
