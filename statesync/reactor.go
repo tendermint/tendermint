@@ -134,7 +134,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 					"format", snapshot.Format, "peer", src.ID())
 				e := p2p.Envelope{
 					ChannelID: chID,
-					Message: toWrappedProto(&ssproto.SnapshotsResponse{
+					Message: mustWrapToProto(&ssproto.SnapshotsResponse{
 						Height:   snapshot.Height,
 						Format:   snapshot.Format,
 						Chunks:   snapshot.Chunks,
@@ -190,7 +190,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				"chunk", msg.Index, "peer", src.ID())
 			e := p2p.Envelope{
 				ChannelID: ChunkChannel,
-				Message: toWrappedProto(&ssproto.ChunkResponse{
+				Message: mustWrapToProto(&ssproto.ChunkResponse{
 					Height:  msg.Height,
 					Format:  msg.Format,
 					Index:   msg.Index,
@@ -281,7 +281,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		// Request snapshots from all currently connected peers
 		e := p2p.Envelope{
 			ChannelID: SnapshotChannel,
-			Message:   toWrappedProto(&ssproto.SnapshotsRequest{}),
+			Message:   mustWrapToProto(&ssproto.SnapshotsRequest{}),
 		}
 		r.Switch.NewBroadcast(e)
 	}

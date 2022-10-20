@@ -18,27 +18,15 @@ const (
 
 // mustEncodeMsg encodes a Protobuf message, panicing on error.
 func mustEncodeMsg(pb proto.Message) []byte {
-	msg := ssproto.Message{}
-	switch pb := pb.(type) {
-	case *ssproto.ChunkRequest:
-		msg.Sum = &ssproto.Message_ChunkRequest{ChunkRequest: pb}
-	case *ssproto.ChunkResponse:
-		msg.Sum = &ssproto.Message_ChunkResponse{ChunkResponse: pb}
-	case *ssproto.SnapshotsRequest:
-		msg.Sum = &ssproto.Message_SnapshotsRequest{SnapshotsRequest: pb}
-	case *ssproto.SnapshotsResponse:
-		msg.Sum = &ssproto.Message_SnapshotsResponse{SnapshotsResponse: pb}
-	default:
-		panic(fmt.Errorf("unknown message type %T", pb))
-	}
-	bz, err := msg.Marshal()
+	msg := mustWrapToProto(pb)
+	bz, err := proto.Marshal(msg)
 	if err != nil {
 		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
 	}
 	return bz
 }
 
-func toWrappedProto(pb proto.Message) proto.Message {
+func mustWrapToProto(pb proto.Message) proto.Message {
 	msg := ssproto.Message{}
 	switch pb := pb.(type) {
 	case *ssproto.ChunkRequest:
