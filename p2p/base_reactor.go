@@ -45,6 +45,8 @@ type Reactor interface {
 	//
 	// CONTRACT: msgBytes are not nil.
 	Receive(chID byte, peer Peer, msgBytes []byte)
+
+	NewReceive(Envelope)
 }
 
 //--------------------------------------
