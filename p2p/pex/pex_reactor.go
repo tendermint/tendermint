@@ -238,6 +238,7 @@ func (r *Reactor) logErrAddrBook(err error) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
+	return
 	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
@@ -297,6 +298,76 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			r.Switch.StopPeerForError(src, err)
 			if err == ErrUnsolicitedList {
 				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+			}
+			return
+		}
+
+	default:
+		r.Logger.Error(fmt.Sprintf("Unknown message type %T", msg))
+	}
+}
+
+func (r *Reactor) NewReceive(e p2p.Envelope) {
+	//	return
+	msg, err := msgFromProto(e.Message)
+	if err != nil {
+		r.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
+		r.Switch.StopPeerForError(e.Src, err)
+		return
+	}
+	r.Logger.Debug("Received message", "src", e.Src, "chId", e.ChannelID, "msg", msg)
+
+	switch msg := msg.(type) {
+	case *tmp2p.PexRequest:
+
+		// NOTE: this is a prime candidate for amplification attacks,
+		// so it's important we
+		// 1) restrict how frequently peers can request
+		// 2) limit the output size
+
+		// If we're a seed and this is an inbound peer,
+		// respond once and disconnect.
+		if r.config.SeedMode && !e.Src.IsOutbound() {
+			id := string(e.Src.ID())
+			v := r.lastReceivedRequests.Get(id)
+			if v != nil {
+				// FlushStop/StopPeer are already
+				// running in a go-routine.
+				return
+			}
+			r.lastReceivedRequests.Set(id, time.Now())
+
+			// Send addrs and disconnect
+			r.SendAddrs(e.Src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
+			go func() {
+				// In a go-routine so it doesn't block .Receive.
+				e.Src.FlushStop()
+				r.Switch.StopPeerGracefully(e.Src)
+			}()
+
+		} else {
+			// Check we're not receiving requests too frequently.
+			if err := r.receiveRequest(e.Src); err != nil {
+				r.Switch.StopPeerForError(e.Src, err)
+				r.book.MarkBad(e.Src.SocketAddr(), defaultBanTime)
+				return
+			}
+			r.SendAddrs(e.Src, r.book.GetSelection())
+		}
+
+	case *tmp2p.PexAddrs:
+		// If we asked for addresses, add them to the book
+		addrs, err := p2p.NetAddressesFromProto(msg.Addrs)
+		if err != nil {
+			r.Switch.StopPeerForError(e.Src, err)
+			r.book.MarkBad(e.Src.SocketAddr(), defaultBanTime)
+			return
+		}
+		err = r.ReceiveAddrs(addrs, e.Src)
+		if err != nil {
+			r.Switch.StopPeerForError(e.Src, err)
+			if err == ErrUnsolicitedList {
+				r.book.MarkBad(e.Src.SocketAddr(), defaultBanTime)
 			}
 			return
 		}
@@ -806,7 +877,11 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	return msgFromProto(pb)
+}
 
+func msgFromProto(m proto.Message) (proto.Message, error) {
+	pb := m.(*tmp2p.Message)
 	switch msg := pb.Sum.(type) {
 	case *tmp2p.Message_PexRequest:
 		return msg.PexRequest, nil
