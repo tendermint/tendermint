@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -68,6 +69,7 @@ func (evR *Reactor) AddPeer(peer p2p.Peer) {
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
 func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	return
 	evis, err := decodeMsg(msgBytes)
 	if err != nil {
 		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
@@ -82,6 +84,32 @@ func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			evR.Logger.Error(err.Error())
 			// punish peer
 			evR.Switch.StopPeerForError(src, err)
+			return
+		case nil:
+		default:
+			// continue to the next piece of evidence
+			evR.Logger.Error("Evidence has not been added", "evidence", evis, "err", err)
+		}
+	}
+}
+
+// Receive implements Reactor.
+// It adds any received evidence to the evpool.
+func (evR *Reactor) NewReceive(e p2p.Envelope) {
+	evis, err := evidenceListFromProto(e.Message)
+	if err != nil {
+		evR.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
+		evR.Switch.StopPeerForError(e.Src, err)
+		return
+	}
+
+	for _, ev := range evis {
+		err := evR.evpool.AddEvidence(ev)
+		switch err.(type) {
+		case *types.ErrInvalidEvidence:
+			evR.Logger.Error(err.Error())
+			// punish peer
+			evR.Switch.StopPeerForError(e.Src, err)
 			return
 		case nil:
 		default:
@@ -257,6 +285,26 @@ func decodeMsg(bz []byte) (evis []types.Evidence, err error) {
 	}
 
 	evis = make([]types.Evidence, len(lm.Evidence))
+	for i := 0; i < len(lm.Evidence); i++ {
+		ev, err := types.EvidenceFromProto(&lm.Evidence[i])
+		if err != nil {
+			return nil, err
+		}
+		evis[i] = ev
+	}
+
+	for i, ev := range evis {
+		if err := ev.ValidateBasic(); err != nil {
+			return nil, fmt.Errorf("invalid evidence (#%d): %v", i, err)
+		}
+	}
+
+	return evis, nil
+}
+func evidenceListFromProto(m proto.Message) ([]types.Evidence, error) {
+	lm := m.(*tmproto.EvidenceList)
+
+	evis := make([]types.Evidence, len(lm.Evidence))
 	for i := 0; i < len(lm.Evidence); i++ {
 		ev, err := types.EvidenceFromProto(&lm.Evidence[i])
 		if err != nil {
