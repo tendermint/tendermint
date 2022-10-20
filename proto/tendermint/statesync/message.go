@@ -3,29 +3,37 @@ package statesync
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
+	"github.com/tendermint/tendermint/p2p"
 )
 
-// Wrap implements the p2p Wrapper interface and wraps a state sync proto message.
-func (m *Message) Wrap() (proto.Message, error) {
-	switch msg := pb.(type) {
-	case *ChunkRequest:
-		m.Sum = &Message_ChunkRequest{ChunkRequest: msg}
+var _ p2p.Wrapper = &ChunkRequest{}
+var _ p2p.Wrapper = &ChunkResponse{}
+var _ p2p.Wrapper = &SnapshotsRequest{}
+var _ p2p.Wrapper = &SnapshotsResponse{}
 
-	case *ChunkResponse:
-		m.Sum = &Message_ChunkResponse{ChunkResponse: msg}
+func (m *SnapshotsResponse) Wrap() (proto.Message, error) {
+	sm := &Message{}
+	sm.Sum = &Message_SnapshotsResponse{SnapshotsResponse: m}
+	return sm, nil
+}
 
-	case *SnapshotsRequest:
-		m.Sum = &Message_SnapshotsRequest{SnapshotsRequest: msg}
+func (m *SnapshotsRequest) Wrap() (proto.Message, error) {
+	sm := &Message{}
+	sm.Sum = &Message_SnapshotsRequest{SnapshotsRequest: m}
+	return sm, nil
+}
 
-	case *SnapshotsResponse:
-		m.Sum = &Message_SnapshotsResponse{SnapshotsResponse: msg}
+func (m *ChunkResponse) Wrap() (proto.Message, error) {
+	sm := &Message{}
+	sm.Sum = &Message_ChunkResponse{ChunkResponse: m}
+	return sm, nil
+}
 
-	default:
-		return fmt.Errorf("unknown message: %T", msg)
-	}
-
-	return nil
+func (m *ChunkRequest) Wrap() (proto.Message, error) {
+	sm := &Message{}
+	sm.Sum = &Message_ChunkRequest{ChunkRequest: m}
+	return sm, nil
 }
 
 // Unwrap implements the p2p Wrapper interface and unwraps a wrapped state sync
