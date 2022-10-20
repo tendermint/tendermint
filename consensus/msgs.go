@@ -15,10 +15,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// MsgToProto takes a consensus message type and returns the proto defined consensus message
-func MsgToProto(msg Message) (*tmcons.Message, error) {
+// MustConvertMsgToProto takes a consensus message type and returns the proto defined consensus message
+func MustConvertMsgToProto(msg Message) *tmcons.Message {
 	if msg == nil {
-		return nil, errors.New("consensus: message is nil")
+		panic(errors.New("consensus: message is nil"))
 	}
 	var pb tmcons.Message
 
@@ -72,7 +72,7 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 	case *BlockPartMessage:
 		parts, err := msg.Part.ToProto()
 		if err != nil {
-			return nil, fmt.Errorf("msg to proto error: %w", err)
+			panic(fmt.Errorf("msg to proto error: %w", err))
 		}
 		pb = tmcons.Message{
 			Sum: &tmcons.Message_BlockPart{
@@ -137,10 +137,10 @@ func MsgToProto(msg Message) (*tmcons.Message, error) {
 		}
 
 	default:
-		return nil, fmt.Errorf("consensus: message not recognized: %T", msg)
+		panic(fmt.Errorf("consensus: message not recognized: %T", msg))
 	}
 
-	return &pb, nil
+	return &pb
 }
 
 // MsgFromProto takes a consensus proto message and returns the native go type
@@ -263,10 +263,7 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 // MustEncode takes the reactors msg, makes it proto and marshals it
 // this mimics `MustMarshalBinaryBare` in that is panics on error
 func MustEncode(msg Message) []byte {
-	pb, err := MsgToProto(msg)
-	if err != nil {
-		panic(err)
-	}
+	pb := MustConvertMsgToProto(msg)
 	enc, err := proto.Marshal(pb)
 	if err != nil {
 		panic(err)
@@ -290,10 +287,7 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 			},
 		}
 	case msgInfo:
-		consMsg, err := MsgToProto(msg.Msg)
-		if err != nil {
-			return nil, err
-		}
+		consMsg := MustConvertMsgToProto(msg.Msg)
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{

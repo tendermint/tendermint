@@ -165,8 +165,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for i, peer := range peerList {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
-					p, err := MsgToProto(&VoteMessage{prevote1})
-					require.NoError(t, err)
+					p := MustConvertMsgToProto(&VoteMessage{prevote1})
 					e := p2p.Envelope{
 						Message:   p,
 						ChannelID: VoteChannel,
@@ -174,8 +173,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 					peer.Send(e)
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
-					p, err := MsgToProto(&VoteMessage{prevote2})
-					require.NoError(t, err)
+					p := MustConvertMsgToProto(&VoteMessage{prevote2})
 					e := p2p.Envelope{
 						Message:   p,
 						ChannelID: VoteChannel,
@@ -533,10 +531,7 @@ func sendProposalAndParts(
 ) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
-	p, err := MsgToProto(msg)
-	if err != nil {
-		panic(err)
-	}
+	p := MustConvertMsgToProto(msg)
 	e := p2p.Envelope{
 		ChannelID: DataChannel,
 		Message:   p,
@@ -551,10 +546,7 @@ func sendProposalAndParts(
 			Round:  round,  // This tells peer that this part applies to us.
 			Part:   part,
 		}
-		p, err := MsgToProto(msg)
-		if err != nil {
-			panic(err)
-		}
+		p := MustConvertMsgToProto(msg)
 		e := p2p.Envelope{
 			ChannelID: DataChannel,
 			Message:   p,
@@ -567,19 +559,13 @@ func sendProposalAndParts(
 	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
-	p, err = MsgToProto(&VoteMessage{prevote})
-	if err != nil {
-		panic(err)
-	}
+	p = MustConvertMsgToProto(&VoteMessage{prevote})
 	e = p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   p,
 	}
 	peer.Send(e)
-	p, err = MsgToProto(&VoteMessage{precommit})
-	if err != nil {
-		panic(err)
-	}
+	p = MustConvertMsgToProto(&VoteMessage{precommit})
 	e = p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   p,

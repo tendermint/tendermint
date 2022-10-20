@@ -189,11 +189,7 @@ func TestMsgToProto(t *testing.T) {
 	for _, tt := range testsCases {
 		tt := tt
 		t.Run(tt.testName, func(t *testing.T) {
-			pb, err := MsgToProto(tt.msg)
-			if tt.wantErr == true {
-				assert.Equal(t, err != nil, tt.wantErr)
-				return
-			}
+			pb := MustConvertMsgToProto(tt.msg)
 			assert.EqualValues(t, tt.want, pb, tt.testName)
 
 			msg, err := MsgFromProto(pb)

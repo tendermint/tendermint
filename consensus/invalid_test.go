@@ -3,7 +3,6 @@ package consensus
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -95,8 +94,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 		peers := sw.Peers().List()
 		for _, peer := range peers {
 			cs.Logger.Info("Sending bad vote", "block", blockHash, "peer", peer)
-			p, err := MsgToProto(&VoteMessage{precommit})
-			require.NoError(t, err)
+			p := MustConvertMsgToProto(&VoteMessage{precommit})
 			e := p2p.Envelope{
 				Message:   p,
 				ChannelID: VoteChannel,
