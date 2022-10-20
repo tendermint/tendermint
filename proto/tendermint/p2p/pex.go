@@ -7,12 +7,12 @@ import (
 )
 
 // Wrap implements the p2p Wrapper interface and wraps a PEX message.
-func (m *PexMessage) Wrap(pb proto.Message) error {
+func (m *Message) Wrap(pb proto.Message) error {
 	switch msg := pb.(type) {
 	case *PexRequest:
-		m.Sum = &PexMessage_PexRequest{PexRequest: msg}
-	case *PexResponse:
-		m.Sum = &PexMessage_PexResponse{PexResponse: msg}
+		m.Sum = &Message_PexRequest{PexRequest: msg}
+	case *PexAddrs:
+		m.Sum = &Message_PexAddrs{PexAddrs: msg}
 	default:
 		return fmt.Errorf("unknown pex message: %T", msg)
 	}
@@ -21,12 +21,12 @@ func (m *PexMessage) Wrap(pb proto.Message) error {
 
 // Unwrap implements the p2p Wrapper interface and unwraps a wrapped PEX
 // message.
-func (m *PexMessage) Unwrap() (proto.Message, error) {
+func (m *Message) Unwrap() (proto.Message, error) {
 	switch msg := m.Sum.(type) {
-	case *PexMessage_PexRequest:
+	case *Message_PexRequest:
 		return msg.PexRequest, nil
-	case *PexMessage_PexResponse:
-		return msg.PexResponse, nil
+	case *Message_PexAddrs:
+		return msg.PexAddrs, nil
 	default:
 		return nil, fmt.Errorf("unknown pex message: %T", msg)
 	}
