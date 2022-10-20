@@ -276,12 +276,10 @@ func (p *peer) Send(e Envelope) bool {
 	return res
 }
 
-// NewSend msg bytes to the channel identified by chID byte. Returns false if the
-// send queue is full after timeout, specified by MConnection.
+// TrySend msg bytes to the channel identified by chID byte. Immediately returns
+// false if the send queue is full.
 func (p *peer) TrySend(e Envelope) bool {
 	if !p.IsRunning() {
-		// see Switch#Broadcast, where we fetch the list of peers and loop over
-		// them - while we're looping, one peer may be removed and stopped.
 		return false
 	} else if !p.hasChannel(e.ChannelID) {
 		return false
