@@ -7,12 +7,12 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-var _ p2p.Wrapper = &Message_Txs{}
+var _ p2p.Wrapper = &Txs{}
 
 // Wrap implements the p2p Wrapper interface and wraps a mempool message.
-func (m *Message_Txs) Wrap() (proto.Message, error) {
+func (m *Txs) Wrap() (proto.Message, error) {
 	return &Message{
-		Sum: m,
+		Sum: &Message_Txs{Txs: m},
 	}, nil
 }
 
