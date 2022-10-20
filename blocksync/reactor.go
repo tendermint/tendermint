@@ -452,11 +452,10 @@ func (bcR *Reactor) BroadcastStatusRequest() error {
 		bcR.Logger.Error("could not convert msg to proto message", "err", err)
 		return fmt.Errorf("could not convert msg to proto message: %w", err)
 	}
-	e := p2p.Envelope{
+	bcR.Switch.NewBroadcast(p2p.Envelope{
 		ChannelID: BlocksyncChannel,
 		Message:   wm,
-	}
-	bcR.Switch.NewBroadcast(e)
+	})
 
 	return nil
 }
