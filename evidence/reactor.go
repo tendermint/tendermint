@@ -68,33 +68,6 @@ func (evR *Reactor) AddPeer(peer p2p.Peer) {
 
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
-func (evR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	return
-	evis, err := decodeMsg(msgBytes)
-	if err != nil {
-		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		evR.Switch.StopPeerForError(src, err)
-		return
-	}
-
-	for _, ev := range evis {
-		err := evR.evpool.AddEvidence(ev)
-		switch err.(type) {
-		case *types.ErrInvalidEvidence:
-			evR.Logger.Error(err.Error())
-			// punish peer
-			evR.Switch.StopPeerForError(src, err)
-			return
-		case nil:
-		default:
-			// continue to the next piece of evidence
-			evR.Logger.Error("Evidence has not been added", "evidence", evis, "err", err)
-		}
-	}
-}
-
-// Receive implements Reactor.
-// It adds any received evidence to the evpool.
 func (evR *Reactor) NewReceive(e p2p.Envelope) {
 	evis, err := evidenceListFromProto(e.Message)
 	if err != nil {

@@ -237,78 +237,7 @@ func (r *Reactor) logErrAddrBook(err error) {
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
-func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	return
-	msg, err := decodeMsg(msgBytes)
-	if err != nil {
-		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-	r.Logger.Debug("Received message", "src", src, "chId", chID, "msg", msg)
-
-	switch msg := msg.(type) {
-	case *tmp2p.PexRequest:
-
-		// NOTE: this is a prime candidate for amplification attacks,
-		// so it's important we
-		// 1) restrict how frequently peers can request
-		// 2) limit the output size
-
-		// If we're a seed and this is an inbound peer,
-		// respond once and disconnect.
-		if r.config.SeedMode && !src.IsOutbound() {
-			id := string(src.ID())
-			v := r.lastReceivedRequests.Get(id)
-			if v != nil {
-				// FlushStop/StopPeer are already
-				// running in a go-routine.
-				return
-			}
-			r.lastReceivedRequests.Set(id, time.Now())
-
-			// Send addrs and disconnect
-			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
-			go func() {
-				// In a go-routine so it doesn't block .Receive.
-				src.FlushStop()
-				r.Switch.StopPeerGracefully(src)
-			}()
-
-		} else {
-			// Check we're not receiving requests too frequently.
-			if err := r.receiveRequest(src); err != nil {
-				r.Switch.StopPeerForError(src, err)
-				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
-				return
-			}
-			r.SendAddrs(src, r.book.GetSelection())
-		}
-
-	case *tmp2p.PexAddrs:
-		// If we asked for addresses, add them to the book
-		addrs, err := p2p.NetAddressesFromProto(msg.Addrs)
-		if err != nil {
-			r.Switch.StopPeerForError(src, err)
-			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
-			return
-		}
-		err = r.ReceiveAddrs(addrs, src)
-		if err != nil {
-			r.Switch.StopPeerForError(src, err)
-			if err == ErrUnsolicitedList {
-				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
-			}
-			return
-		}
-
-	default:
-		r.Logger.Error(fmt.Sprintf("Unknown message type %T", msg))
-	}
-}
-
 func (r *Reactor) NewReceive(e p2p.Envelope) {
-	//	return
 	msg, err := msgFromProto(e.Message)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)

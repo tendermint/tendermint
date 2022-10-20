@@ -156,32 +156,6 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
-func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := decodeMsg(msgBytes)
-	if err != nil {
-		memR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		memR.Switch.StopPeerForError(src, err)
-		return
-	}
-	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
-
-	txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(src)}
-	if src != nil {
-		txInfo.SenderP2PID = src.ID()
-	}
-
-	for _, tx := range msg.Txs {
-		err = memR.mempool.CheckTx(tx, nil, txInfo)
-		if errors.Is(err, mempool.ErrTxInCache) {
-			memR.Logger.Debug("Tx already exists in cache", "tx", tx.String())
-		} else if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", tx.String(), "err", err)
-		}
-	}
-
-	// broadcasting happens from go routines per peer
-}
-
 func (memR *Reactor) NewReceive(e p2p.Envelope) {
 	msg, err := msgFromProto(e.Message)
 	if err != nil {
