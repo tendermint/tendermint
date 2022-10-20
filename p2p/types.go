@@ -3,6 +3,7 @@ package p2p
 import (
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/tendermint/tendermint/p2p/conn"
+	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
 type ChannelDescriptor = conn.ChannelDescriptor
@@ -32,3 +33,8 @@ type Wrapper interface {
 	// Wrap will take the underlying message and wrap it in its wrapper type.
 	Wrap() (proto.Message, error)
 }
+
+var (
+	_ Wrapper = &tmp2p.PexRequest{}
+	_ Wrapper = &tmp2p.PexAddrs{}
+)
