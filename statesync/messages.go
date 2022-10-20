@@ -50,6 +50,10 @@ func decodeMsg(bz []byte) (proto.Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	return msgFromProto(pb)
+}
+
+func msgFromProto(pb *ssproto.Message) (proto.Message, error) {
 	switch msg := pb.Sum.(type) {
 	case *ssproto.Message_ChunkRequest:
 		return msg.ChunkRequest, nil

@@ -103,6 +103,7 @@ func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // Receive implements p2p.Reactor.
 func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+	return
 	if !r.IsRunning() {
 		return
 	}
@@ -226,6 +227,134 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	default:
 		r.Logger.Error("Received message on invalid channel %x", chID)
+	}
+}
+
+// NewReceive implements p2p.Reactor.
+func (r *Reactor) NewReceive(e p2p.Envelope) {
+	if !r.IsRunning() {
+		return
+	}
+
+	msg, err := msgFromProto(e.Message.(*ssproto.Message))
+	if err != nil {
+		r.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
+		r.Switch.StopPeerForError(e.Src, err)
+		return
+	}
+	err = validateMsg(msg)
+	if err != nil {
+		r.Logger.Error("Invalid message", "peer", e.Src, "msg", msg, "err", err)
+		r.Switch.StopPeerForError(e.Src, err)
+		return
+	}
+
+	switch e.ChannelID {
+	case SnapshotChannel:
+		switch msg := msg.(type) {
+		case *ssproto.SnapshotsRequest:
+			snapshots, err := r.recentSnapshots(recentSnapshots)
+			if err != nil {
+				r.Logger.Error("Failed to fetch snapshots", "err", err)
+				return
+			}
+			for _, snapshot := range snapshots {
+				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
+					"format", snapshot.Format, "peer", e.Src.ID())
+				e.Src.Send(p2p.Envelope{
+					ChannelID: e.ChannelID,
+					Message: mustWrapToProto(&ssproto.SnapshotsResponse{
+						Height:   snapshot.Height,
+						Format:   snapshot.Format,
+						Chunks:   snapshot.Chunks,
+						Hash:     snapshot.Hash,
+						Metadata: snapshot.Metadata,
+					}),
+				})
+			}
+
+		case *ssproto.SnapshotsResponse:
+			r.mtx.RLock()
+			defer r.mtx.RUnlock()
+			if r.syncer == nil {
+				r.Logger.Debug("Received unexpected snapshot, no state sync in progress")
+				return
+			}
+			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", e.Src.ID())
+			_, err := r.syncer.AddSnapshot(e.Src, &snapshot{
+				Height:   msg.Height,
+				Format:   msg.Format,
+				Chunks:   msg.Chunks,
+				Hash:     msg.Hash,
+				Metadata: msg.Metadata,
+			})
+			// TODO: We may want to consider punishing the peer for certain errors
+			if err != nil {
+				r.Logger.Error("Failed to add snapshot", "height", msg.Height, "format", msg.Format,
+					"peer", e.Src.ID(), "err", err)
+				return
+			}
+
+		default:
+			r.Logger.Error("Received unknown message %T", msg)
+		}
+
+	case ChunkChannel:
+		switch msg := msg.(type) {
+		case *ssproto.ChunkRequest:
+			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
+				"chunk", msg.Index, "peer", e.Src.ID())
+			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
+				Height: msg.Height,
+				Format: msg.Format,
+				Chunk:  msg.Index,
+			})
+			if err != nil {
+				r.Logger.Error("Failed to load chunk", "height", msg.Height, "format", msg.Format,
+					"chunk", msg.Index, "err", err)
+				return
+			}
+			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
+				"chunk", msg.Index, "peer", e.Src.ID())
+			e.Src.Send(p2p.Envelope{
+				ChannelID: ChunkChannel,
+				Message: mustWrapToProto(&ssproto.ChunkResponse{
+					Height:  msg.Height,
+					Format:  msg.Format,
+					Index:   msg.Index,
+					Chunk:   resp.Chunk,
+					Missing: resp.Chunk == nil,
+				}),
+			})
+
+		case *ssproto.ChunkResponse:
+			r.mtx.RLock()
+			defer r.mtx.RUnlock()
+			if r.syncer == nil {
+				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", e.Src.ID())
+				return
+			}
+			r.Logger.Debug("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format,
+				"chunk", msg.Index, "peer", e.Src.ID())
+			_, err := r.syncer.AddChunk(&chunk{
+				Height: msg.Height,
+				Format: msg.Format,
+				Index:  msg.Index,
+				Chunk:  msg.Chunk,
+				Sender: e.Src.ID(),
+			})
+			if err != nil {
+				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format,
+					"chunk", msg.Index, "err", err)
+				return
+			}
+
+		default:
+			r.Logger.Error("Received unknown message %T", msg)
+		}
+
+	default:
+		r.Logger.Error("Received message on invalid channel %x", e.ChannelID)
 	}
 }
 

@@ -80,7 +80,11 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 				}
 			})
 
-			r.Receive(ChunkChannel, peer, mustEncodeMsg(tc.request))
+			r.NewReceive(p2p.Envelope{
+				ChannelID: ChunkChannel,
+				Src:       peer,
+				Message:   mustWrapToProto(tc.request),
+			})
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponse, response)
 
@@ -166,6 +170,11 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 				}
 			})
 
+			r.NewReceive(p2p.Envelope{
+				ChannelID: SnapshotChannel,
+				Src:       peer,
+				Message:   mustWrapToProto(&ssproto.SnapshotsRequest{}),
+			})
 			r.Receive(SnapshotChannel, peer, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
 			time.Sleep(100 * time.Millisecond)
 			assert.Equal(t, tc.expectResponses, responses)
