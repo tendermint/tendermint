@@ -420,7 +420,7 @@ func createMConnection(
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
 		}
-		if w, ok := msg.(Wrapper); ok {
+		if w, ok := msg.(Unwrapper); ok {
 			msg, err = w.Unwrap()
 			if err != nil {
 				// TODO(williambanfield) add error log line.
