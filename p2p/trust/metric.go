@@ -4,7 +4,9 @@
 package trust
 
 import (
+	"fmt"
 	"math"
+	"math/bits"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/service"
@@ -99,6 +101,9 @@ func NewMetricWithConfig(tmc MetricConfig) *Metric {
 	tm.intervalLen = config.IntervalLength
 	// The maximum number of time intervals is the tracking window / interval length
 	tm.maxIntervals = int(config.TrackingWindow / tm.intervalLen)
+	if tm.maxIntervals < 0 {
+		panic(fmt.Sprintf("tm.maxIntervals(%d) < 0", tm.maxIntervals))
+	}
 	// The history size will be determined by the maximum number of time intervals
 	tm.historyMaxSize = intervalToHistoryOffset(tm.maxIntervals) + 1
 	// This metric has a perfect history so far
@@ -374,6 +379,9 @@ func (tm *Metric) calcHistoryValue() float64 {
 // Retrieves the actual history data value that represents the requested time interval
 func (tm *Metric) fadedMemoryValue(interval int) float64 {
 	first := tm.historySize - 1
+	if first < 0 {
+		panic(fmt.Sprintf("first(%d) < 0", first))
+	}
 
 	if interval == 0 {
 		// Base case
@@ -381,7 +389,11 @@ func (tm *Metric) fadedMemoryValue(interval int) float64 {
 	}
 
 	offset := intervalToHistoryOffset(interval)
-	return tm.history[first-offset]
+	diff := first - offset
+	if diff < 0 {
+		panic(fmt.Sprintf("first-offset=%d < 0", diff))
+	}
+	return tm.history[diff]
 }
 
 // Performs the update for our Faded Memories process, which allows the
@@ -408,5 +420,5 @@ func intervalToHistoryOffset(interval int) int {
 	// The system maintains 2^m interval values in the form of m history
 	// data values. Therefore, we access the ith interval by obtaining
 	// the history data index = the floor of log2(i)
-	return int(math.Floor(math.Log2(float64(interval))))
+	return bits.Len(uint(interval))
 }
