@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"sync"
 	"time"
 
@@ -92,6 +93,7 @@ type Switch struct {
 	rng *rand.Rand // seed for randomizing dial times and orders
 
 	metrics *Metrics
+	mlc     *metricsLabelCache
 }
 
 // NetAddress returns the address the switch is listening on.
@@ -109,6 +111,10 @@ func NewSwitch(
 	transport Transport,
 	options ...SwitchOption,
 ) *Switch {
+	mlc := &metricsLabelCache{
+		mtx:               &sync.RWMutex{},
+		messageLabelNames: make(map[reflect.Type]string),
+	}
 	sw := &Switch{
 		config:               cfg,
 		reactors:             make(map[string]Reactor),
@@ -123,6 +129,7 @@ func NewSwitch(
 		filterTimeout:        defaultFilterTimeout,
 		persistentPeersAddrs: make([]*NetAddress, 0),
 		unconditionalPeerIDs: make(map[ID]struct{}),
+		mlc:                  mlc,
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
@@ -632,6 +639,7 @@ func (sw *Switch) acceptRoutine() {
 			reactorsByCh:  sw.reactorsByCh,
 			msgTypeByChID: sw.msgTypeByChID,
 			metrics:       sw.metrics,
+			mlc:           sw.mlc,
 			isPersistent:  sw.IsPeerPersistent,
 		})
 		if err != nil {
@@ -737,6 +745,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 		reactorsByCh:  sw.reactorsByCh,
 		msgTypeByChID: sw.msgTypeByChID,
 		metrics:       sw.metrics,
+		mlc:           sw.mlc,
 	})
 	if err != nil {
 		if e, ok := err.(ErrRejected); ok {

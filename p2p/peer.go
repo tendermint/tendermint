@@ -122,6 +122,7 @@ type peer struct {
 
 	metrics       *Metrics
 	metricsTicker *time.Ticker
+	mlc           *metricsLabelCache
 
 	// When removal of a peer fails, we set this flag
 	removalAttemptFailed bool
@@ -137,6 +138,7 @@ func newPeer(
 	msgTypeByChID map[byte]proto.Message,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
+	mlc *metricsLabelCache,
 	options ...PeerOption,
 ) *peer {
 	p := &peer{
@@ -146,6 +148,7 @@ func newPeer(
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
+		mlc:           mlc,
 	}
 
 	p.mconn = createMConnection(
@@ -262,6 +265,7 @@ func (p *peer) Send(e Envelope) bool {
 		return false
 	}
 	msg := e.Message
+	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
 	if w, ok := msg.(Wrapper); ok {
 		var err error
 		msg, err = w.Wrap()
@@ -280,6 +284,7 @@ func (p *peer) Send(e Envelope) bool {
 			"chID", fmt.Sprintf("%#x", e.ChannelID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -293,6 +298,7 @@ func (p *peer) TrySend(e Envelope) bool {
 		return false
 	}
 	msg := e.Message
+	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
 	if w, ok := msg.(Wrapper); ok {
 		var err error
 		msg, err = w.Wrap()
@@ -311,6 +317,7 @@ func (p *peer) TrySend(e Envelope) bool {
 			"chID", fmt.Sprintf("%#x", e.ChannelID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -444,7 +451,7 @@ func createMConnection(
 			}
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-		p.metrics.MessageReceiveBytesTotal.With("message_type", "tmp").Add(float64(len(msgBytes)))
+		p.metrics.MessageReceiveBytesTotal.With("message_type", p.mlc.ValueToMetricLabel(msg)).Add(float64(len(msgBytes)))
 		reactor.Receive(Envelope{
 			ChannelID: chID,
 			Src:       p,
