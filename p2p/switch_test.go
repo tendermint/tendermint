@@ -171,9 +171,9 @@ func TestSwitches(t *testing.T) {
 			},
 		},
 	}
-	s1.NewBroadcast(Envelope{ChannelID: byte(0x00), Message: ch0Msg})
-	s1.NewBroadcast(Envelope{ChannelID: byte(0x01), Message: ch1Msg})
-	s1.NewBroadcast(Envelope{ChannelID: byte(0x02), Message: ch2Msg})
+	s1.Broadcast(Envelope{ChannelID: byte(0x00), Message: ch0Msg})
+	s1.Broadcast(Envelope{ChannelID: byte(0x01), Message: ch1Msg})
+	s1.Broadcast(Envelope{ChannelID: byte(0x02), Message: ch2Msg})
 
 	msgBytes, err := proto.Marshal(ch0Msg)
 	require.NoError(t, err)
@@ -865,7 +865,7 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	// Send random message from foo channel to another
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
-		successChan := s1.NewBroadcast(Envelope{ChannelID: chID})
+		successChan := s1.Broadcast(Envelope{ChannelID: chID})
 		for s := range successChan {
 			if s {
 				numSuccess++
