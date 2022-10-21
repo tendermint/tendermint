@@ -262,16 +262,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 	}
 }
 
-func decodeMsg(bz []byte) (TxsMessage, error) {
-	msg := protomem.Message{}
-	err := msg.Unmarshal(bz)
-	if err != nil {
-		return TxsMessage{}, err
-	}
-
-	return msgFromProto(&msg)
-}
-
 func msgFromProto(m proto.Message) (TxsMessage, error) {
 	msg := m.(*protomem.Message)
 	var message TxsMessage
