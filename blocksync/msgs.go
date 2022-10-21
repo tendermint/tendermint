@@ -19,55 +19,6 @@ const (
 		BlockResponseMessageFieldKeySize
 )
 
-func wrapMsg(pb proto.Message) (proto.Message, error) {
-	msg := bcproto.Message{}
-
-	switch pb := pb.(type) {
-	case *bcproto.BlockRequest:
-		msg.Sum = &bcproto.Message_BlockRequest{BlockRequest: pb}
-	case *bcproto.BlockResponse:
-		msg.Sum = &bcproto.Message_BlockResponse{BlockResponse: pb}
-	case *bcproto.NoBlockResponse:
-		msg.Sum = &bcproto.Message_NoBlockResponse{NoBlockResponse: pb}
-	case *bcproto.StatusRequest:
-		msg.Sum = &bcproto.Message_StatusRequest{StatusRequest: pb}
-	case *bcproto.StatusResponse:
-		msg.Sum = &bcproto.Message_StatusResponse{StatusResponse: pb}
-	default:
-		return nil, fmt.Errorf("unknown message type %T", pb)
-	}
-
-	return &msg, nil
-}
-
-// DecodeMsg decodes a Protobuf message.
-func DecodeMsg(bz []byte) (proto.Message, error) {
-	pb := &bcproto.Message{}
-
-	err := proto.Unmarshal(bz, pb)
-	if err != nil {
-		return nil, err
-	}
-	return UnwrapMessage(pb)
-}
-
-func UnwrapMessage(pb *bcproto.Message) (proto.Message, error) {
-	switch msg := pb.Sum.(type) {
-	case *bcproto.Message_BlockRequest:
-		return msg.BlockRequest, nil
-	case *bcproto.Message_BlockResponse:
-		return msg.BlockResponse, nil
-	case *bcproto.Message_NoBlockResponse:
-		return msg.NoBlockResponse, nil
-	case *bcproto.Message_StatusRequest:
-		return msg.StatusRequest, nil
-	case *bcproto.Message_StatusResponse:
-		return msg.StatusResponse, nil
-	default:
-		return nil, fmt.Errorf("unknown message type %T", msg)
-	}
-}
-
 // ValidateMsg validates a message.
 func ValidateMsg(pb proto.Message) error {
 	if pb == nil {
