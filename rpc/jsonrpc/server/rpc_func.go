@@ -23,56 +23,60 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger lo
 	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, logger)))
 }
 
-// Function introspection
-const (
-	Cacheable = "cacheable"
-	Ws        = "ws"
-)
+type Option func(*RPCFunc)
+
+func Cacheable() Option {
+	return func(r *RPCFunc) {
+		r.cacheable = true
+	}
+}
+
+func Ws() Option {
+	return func(r *RPCFunc) {
+		r.ws = true
+	}
+}
 
 // RPCFunc contains the introspected type information for a function
 type RPCFunc struct {
-	f        reflect.Value          // underlying rpc function
-	args     []reflect.Type         // type of each function arg
-	returns  []reflect.Type         // type of each return arg
-	argNames []string               // name of each argument
-	opts     map[string]interface{} // options of RPCFunc
+	f         reflect.Value  // underlying rpc function
+	args      []reflect.Type // type of each function arg
+	returns   []reflect.Type // type of each return arg
+	argNames  []string       // name of each argument
+	cacheable bool           // enable cache control
+	ws        bool           // enable websocket communication
 }
 
 // NewRPCFunc wraps a function for introspection.
 // f is the function, args are comma separated argument names
-func NewRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
+func NewRPCFunc(f interface{}, args string, options ...Option) *RPCFunc {
 	return newRPCFunc(f, args, options...)
 }
 
 // NewWSRPCFunc wraps a function for introspection and use in the websockets.
-func NewWSRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
-	options = append(options, Ws)
+func NewWSRPCFunc(f interface{}, args string, options ...Option) *RPCFunc {
+	options = append(options, Ws())
 	return newRPCFunc(f, args, options...)
 }
 
-func newRPCFunc(f interface{}, args string, options ...string) *RPCFunc {
+func newRPCFunc(f interface{}, args string, options ...Option) *RPCFunc {
 	var argNames []string
 	if args != "" {
 		argNames = strings.Split(args, ",")
 	}
 
-	opts := make(map[string]interface{})
-	for _, opt := range options {
-		switch opt {
-		case Ws: // Ws indicates the rpc connection is using a websocket connection
-			opts[Ws] = true
-		case Cacheable: // Cacheable is a bool value to allow the client proxy server to cache the RPC results
-			opts[Cacheable] = true
-		}
-	}
-
-	return &RPCFunc{
+	r := &RPCFunc{
 		f:        reflect.ValueOf(f),
 		args:     funcArgTypes(f),
 		returns:  funcReturnTypes(f),
 		argNames: argNames,
-		opts:     opts,
 	}
+
+	for _, opt := range options {
+		opt(r)
+	}
+
+	return r
 }
 
 // return a function's argument types
