@@ -100,7 +100,10 @@ func TestSyncer_SyncAny(t *testing.T) {
 	peerA.On("ID").Return(p2p.ID("a"))
 	peerA.On("Send", mock.MatchedBy(func(i interface{}) bool {
 		e, ok := i.(p2p.Envelope)
-		req := e.Message.(*ssproto.Message).GetSnapshotsRequest()
+		if !ok {
+			return false
+		}
+		req, ok := e.Message.(*ssproto.SnapshotsRequest)
 		return ok && e.ChannelID == SnapshotChannel && req != nil
 	})).Return(true)
 	syncer.AddPeer(peerA)
@@ -110,7 +113,10 @@ func TestSyncer_SyncAny(t *testing.T) {
 	peerB.On("ID").Return(p2p.ID("b"))
 	peerB.On("Send", mock.MatchedBy(func(i interface{}) bool {
 		e, ok := i.(p2p.Envelope)
-		req := e.Message.(*ssproto.Message).GetSnapshotsRequest()
+		if !ok {
+			return false
+		}
+		req, ok := e.Message.(*ssproto.SnapshotsRequest)
 		return ok && e.ChannelID == SnapshotChannel && req != nil
 	})).Return(true)
 	syncer.AddPeer(peerB)
@@ -157,7 +163,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	onChunkRequest := func(args mock.Arguments) {
 		e, ok := args[0].(p2p.Envelope)
 		require.True(t, ok)
-		msg := e.Message.(*ssproto.Message).GetChunkRequest()
+		msg := e.Message.(*ssproto.ChunkRequest)
 		require.EqualValues(t, 1, msg.Height)
 		require.EqualValues(t, 1, msg.Format)
 		require.LessOrEqual(t, msg.Index, uint32(len(chunks)))

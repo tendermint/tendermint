@@ -284,7 +284,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 			ChannelID: mempool.MempoolChannel,
 			Src:       peer,
 			Message: &protomem.Txs{
-				Txs: [][]byte{[]byte{0x01, 0x02, 0x03}},
+				Txs: [][]byte{{0x01, 0x02, 0x03}},
 			}})
 		reactor.AddPeer(peer)
 	}

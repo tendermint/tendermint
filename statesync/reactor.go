@@ -107,22 +107,16 @@ func (r *Reactor) Receive(e p2p.Envelope) {
 		return
 	}
 
-	msg, err := msgFromProto(e.Message.(*ssproto.Message))
+	err := validateMsg(e.Message)
 	if err != nil {
-		r.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
-		r.Switch.StopPeerForError(e.Src, err)
-		return
-	}
-	err = validateMsg(msg)
-	if err != nil {
-		r.Logger.Error("Invalid message", "peer", e.Src, "msg", msg, "err", err)
+		r.Logger.Error("Invalid message", "peer", e.Src, "msg", e.Message, "err", err)
 		r.Switch.StopPeerForError(e.Src, err)
 		return
 	}
 
 	switch e.ChannelID {
 	case SnapshotChannel:
-		switch msg := msg.(type) {
+		switch msg := e.Message.(type) {
 		case *ssproto.SnapshotsRequest:
 			snapshots, err := r.recentSnapshots(recentSnapshots)
 			if err != nil {
@@ -134,13 +128,13 @@ func (r *Reactor) Receive(e p2p.Envelope) {
 					"format", snapshot.Format, "peer", e.Src.ID())
 				e.Src.Send(p2p.Envelope{
 					ChannelID: e.ChannelID,
-					Message: mustWrapToProto(&ssproto.SnapshotsResponse{
+					Message: &ssproto.SnapshotsResponse{
 						Height:   snapshot.Height,
 						Format:   snapshot.Format,
 						Chunks:   snapshot.Chunks,
 						Hash:     snapshot.Hash,
 						Metadata: snapshot.Metadata,
-					}),
+					},
 				})
 			}
 
@@ -171,7 +165,7 @@ func (r *Reactor) Receive(e p2p.Envelope) {
 		}
 
 	case ChunkChannel:
-		switch msg := msg.(type) {
+		switch msg := e.Message.(type) {
 		case *ssproto.ChunkRequest:
 			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", e.Src.ID())
@@ -189,13 +183,13 @@ func (r *Reactor) Receive(e p2p.Envelope) {
 				"chunk", msg.Index, "peer", e.Src.ID())
 			e.Src.Send(p2p.Envelope{
 				ChannelID: ChunkChannel,
-				Message: mustWrapToProto(&ssproto.ChunkResponse{
+				Message: &ssproto.ChunkResponse{
 					Height:  msg.Height,
 					Format:  msg.Format,
 					Index:   msg.Index,
 					Chunk:   resp.Chunk,
 					Missing: resp.Chunk == nil,
-				}),
+				},
 			})
 
 		case *ssproto.ChunkResponse:
@@ -280,7 +274,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 
 		r.Switch.NewBroadcast(p2p.Envelope{
 			ChannelID: SnapshotChannel,
-			Message:   mustWrapToProto(&ssproto.SnapshotsRequest{}),
+			Message:   &ssproto.SnapshotsRequest{},
 		})
 	}
 
