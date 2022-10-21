@@ -258,7 +258,6 @@ func TestRPCResponseCache(t *testing.T) {
 
 	_, err = io.ReadAll(res.Body)
 
-	//_, err = ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	require.Nil(t, err, "reading from the body should not give back an error")
 }
