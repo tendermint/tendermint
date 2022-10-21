@@ -238,15 +238,9 @@ func (r *Reactor) logErrAddrBook(err error) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *Reactor) Receive(e p2p.Envelope) {
-	msg, err := msgFromProto(e.Message)
-	if err != nil {
-		r.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
-		r.Switch.StopPeerForError(e.Src, err)
-		return
-	}
-	r.Logger.Debug("Received message", "src", e.Src, "chId", e.ChannelID, "msg", msg)
+	r.Logger.Debug("Received message", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
 
-	switch msg := msg.(type) {
+	switch msg := e.Message.(type) {
 	case *tmp2p.PexRequest:
 
 		// NOTE: this is a prime candidate for amplification attacks,
@@ -351,7 +345,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 	r.requestsSent.Set(id, struct{}{})
 	p.Send(p2p.Envelope{
 		ChannelID: PexChannel,
-		Message:   mustMsgToWrappedProto(&tmp2p.PexRequest{}),
+		Message:   &tmp2p.PexRequest{},
 	})
 }
 
@@ -412,7 +406,7 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
 	e := p2p.Envelope{
 		ChannelID: PexChannel,
-		Message:   mustMsgToWrappedProto(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}),
+		Message:   &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)},
 	}
 	p.Send(e)
 }
@@ -776,37 +770,6 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 // Messages
 
 // mustEncode proto encodes a tmp2p.Message
-func mustEncode(pb proto.Message) []byte {
-	msg := mustMsgToWrappedProto(pb)
-	bz, err := proto.Marshal(msg)
-	if err != nil {
-		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
-	}
-	return bz
-}
-
-func mustMsgToWrappedProto(pb proto.Message) proto.Message {
-	msg := tmp2p.Message{}
-	switch pb := pb.(type) {
-	case *tmp2p.PexRequest:
-		msg.Sum = &tmp2p.Message_PexRequest{PexRequest: pb}
-	case *tmp2p.PexAddrs:
-		msg.Sum = &tmp2p.Message_PexAddrs{PexAddrs: pb}
-	default:
-		panic(fmt.Sprintf("Unknown message type %T", pb))
-	}
-	return &msg
-}
-
-func decodeMsg(bz []byte) (proto.Message, error) {
-	pb := &tmp2p.Message{}
-
-	err := pb.Unmarshal(bz)
-	if err != nil {
-		return nil, err
-	}
-	return msgFromProto(pb)
-}
 
 func msgFromProto(m proto.Message) (proto.Message, error) {
 	pb := m.(*tmp2p.Message)
