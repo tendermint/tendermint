@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
-
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmevents "github.com/tendermint/tendermint/libs/events"
@@ -1509,15 +1507,6 @@ func init() {
 	tmjson.RegisterType(&HasVoteMessage{}, "tendermint/HasVote")
 	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
-}
-
-func decodeMsg(bz []byte) (msg Message, err error) {
-	pb := &tmcons.Message{}
-	if err = proto.Unmarshal(bz, pb); err != nil {
-		return msg, err
-	}
-
-	return MsgFromProto(pb)
 }
 
 //-------------------------------------
