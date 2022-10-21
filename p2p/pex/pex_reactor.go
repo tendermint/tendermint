@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
-
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -763,22 +761,5 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 		book.MarkBad(addr, defaultBanTime)
 	default:
 		book.MarkAttempt(addr)
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Messages
-
-// mustEncode proto encodes a tmp2p.Message
-
-func msgFromProto(m proto.Message) (proto.Message, error) {
-	pb := m.(*tmp2p.Message)
-	switch msg := pb.Sum.(type) {
-	case *tmp2p.Message_PexRequest:
-		return msg.PexRequest, nil
-	case *tmp2p.Message_PexAddrs:
-		return msg.PexAddrs, nil
-	default:
-		return nil, fmt.Errorf("unknown message: %T", msg)
 	}
 }
