@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
-
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -274,42 +272,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 
 //-----------------------------------------------------------------------------
 // Messages
-
-func decodeMsg(bz []byte) (TxsMessage, error) {
-	msg := protomem.Message{}
-	err := msg.Unmarshal(bz)
-	if err != nil {
-		return TxsMessage{}, err
-	}
-
-	return protoToMsg(&msg)
-}
-
-func protoToMsg(m proto.Message) (TxsMessage, error) {
-	msg := m.(*protomem.Message)
-	var message TxsMessage
-
-	if i, ok := msg.Sum.(*protomem.Message_Txs); ok {
-		txs := i.Txs.GetTxs()
-
-		if len(txs) == 0 {
-			return message, errors.New("empty TxsMessage")
-		}
-
-		decoded := make([]types.Tx, len(txs))
-		for j, tx := range txs {
-			decoded[j] = types.Tx(tx)
-		}
-
-		message = TxsMessage{
-			Txs: decoded,
-		}
-		return message, nil
-	}
-	return message, fmt.Errorf("msg type: %T is not supported", msg)
-}
-
-//-------------------------------------
 
 // TxsMessage is a Message containing transactions.
 type TxsMessage struct {
