@@ -5,7 +5,7 @@ package blocksync
 
 import (
 	fmt "fmt"
-	proto "github.com/cosmos/gogoproto/proto"
+	proto "github.com/gogo/protobuf/proto"
 	types "github.com/tendermint/tendermint/proto/tendermint/types"
 	io "io"
 	math "math"
