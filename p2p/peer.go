@@ -271,7 +271,8 @@ func (p *peer) Send(e Envelope) bool {
 	}
 	msgBytes, err := proto.Marshal(msg)
 	if err != nil {
-		panic(err) // Q: should this panic or error?
+		p.Logger.Error("marshaling message to send", "error", err)
+		return false
 	}
 	res := p.mconn.Send(e.ChannelID, msgBytes)
 	if res {
@@ -300,7 +301,8 @@ func (p *peer) TrySend(e Envelope) bool {
 	}
 	msgBytes, err := proto.Marshal(msg)
 	if err != nil {
-		panic(err)
+		p.Logger.Error("marshaling message to send", "error", err)
+		return false
 	}
 	res := p.mconn.TrySend(e.ChannelID, msgBytes)
 	if res {
@@ -437,8 +439,7 @@ func createMConnection(
 		if w, ok := msg.(Unwrapper); ok {
 			msg, err = w.Unwrap()
 			if err != nil {
-				// TODO(williambanfield) add error log line.
-				return
+				panic(fmt.Errorf("unwrapping message: %s", err))
 			}
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
