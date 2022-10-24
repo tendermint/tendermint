@@ -56,7 +56,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		}
 
 		// Set the default response cache to true unless
-		// 1. Any RPC request rrror.
+		// 1. Any RPC request error.
 		// 2. Any RPC request doesn't allow to be cached.
 		// 3. Any RPC request has the height argument and the value is 0 (the default).
 		var c = true
