@@ -21,11 +21,6 @@ import (
 const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
-	dockerIPv4CIDR        = "10.186.73.0/24"
-	dockerIPv6CIDR        = "fd80:b10c::/48"
-
-	globalIPv4CIDR = "0.0.0.0/0"
-	globalIPv6CIDR = "0:0::/0"
 )
 
 type (
@@ -105,37 +100,18 @@ type Node struct {
 // random seed to generate e.g. keys.
 func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Testnet, error) {
 	dir := strings.TrimSuffix(fname, filepath.Ext(fname))
-
-	// Set up resource generators. These must be deterministic.
-	var netAddress string
-	switch ifd.Provider {
-	case "docker":
-		netAddress = dockerIPv4CIDR
-		if manifest.IPv6 {
-			netAddress = dockerIPv6CIDR
-		}
-	default:
-		// TODO(williambanfield): add list of CIDR blocks to the infrastructure
-		// data struct to allow tighter validation of IP addresses.
-		netAddress = globalIPv4CIDR
-		if manifest.IPv6 {
-			netAddress = globalIPv6CIDR
-		}
-	}
-	_, ipNet, err := net.ParseCIDR(netAddress)
-	if err != nil {
-		return nil, fmt.Errorf("invalid IP network address %q: %w", netAddress, err)
-	}
-
-	ipGen := newIPGenerator(ipNet)
 	keyGen := newKeyGenerator(randomSeed)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
+	_, ipNet, err := net.ParseCIDR(ifd.Network)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IP network address %q: %w", ifd.Network, err)
+	}
 
 	testnet := &Testnet{
 		Name:                 filepath.Base(dir),
 		File:                 fname,
 		Dir:                  dir,
-		IP:                   ipGen.Network(),
+		IP:                   ipNet,
 		InitialHeight:        1,
 		InitialState:         manifest.InitialState,
 		Validators:           map[*Node]int64{},

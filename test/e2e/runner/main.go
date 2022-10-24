@@ -73,7 +73,7 @@ func NewCLI() *CLI {
 				}
 				ifd, err = e2e.InfrastructureDataFromFile(p)
 				if err != nil {
-					return err
+					return fmt.Errorf("parsing infrastructure data: %s", err)
 				}
 			default:
 				return fmt.Errorf("unknown infrastructure type '%s'", inft)
@@ -81,7 +81,7 @@ func NewCLI() *CLI {
 
 			testnet, err := e2e.LoadTestnet(m, file, ifd)
 			if err != nil {
-				return err
+				return fmt.Errorf("loading testnet: %s", err)
 			}
 
 			cli.testnet = testnet

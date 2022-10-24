@@ -7,6 +7,14 @@ import (
 	"os"
 )
 
+const (
+	dockerIPv4CIDR = "10.186.73.0/24"
+	dockerIPv6CIDR = "fd80:b10c::/48"
+
+	globalIPv4CIDR = "0.0.0.0/0"
+	globalIPv6CIDR = "0:0::/0"
+)
+
 // InfrastructureData contains the relevant information for a set of existing
 // infrastructure that is to be used for running a testnet.
 type InfrastructureData struct {
@@ -21,6 +29,10 @@ type InfrastructureData struct {
 	// The key of the map is the name of the instance, which each must correspond
 	// to the names of one of the testnet nodes defined in the testnet manifest.
 	Instances map[string]InstanceData `json:"instances"`
+
+	// Network is the CIDR notation range of IP addresses that all of the instances'
+	// IP addresses are expected to be within.
+	Network string `json:"network"`
 }
 
 // InstanceData contains the relevant information for a machine instance backing
@@ -42,6 +54,7 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 	ifd := InfrastructureData{
 		Provider:  "docker",
 		Instances: make(map[string]InstanceData),
+		Network:   netAddress,
 	}
 	for name := range m.Nodes {
 		ifd.Instances[name] = InstanceData{
@@ -57,6 +70,9 @@ func InfrastructureDataFromFile(p string) (InfrastructureData, error) {
 	err = json.Unmarshal(b, &ifd)
 	if err != nil {
 		return InfrastructureData{}, err
+	}
+	if ifd.Network == "" {
+		ifd.Network = globalIPv4CIDR
 	}
 	return ifd, nil
 }
