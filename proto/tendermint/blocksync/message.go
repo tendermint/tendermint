@@ -18,34 +18,34 @@ const (
 	BlockResponseMessageFieldKeySize = 1
 )
 
-func (m *BlockRequest) Wrap() (proto.Message, error) {
+func (m *BlockRequest) Wrap() proto.Message {
 	bm := &Message{}
 	bm.Sum = &Message_BlockRequest{BlockRequest: m}
-	return bm, nil
+	return bm
 }
 
-func (m *BlockResponse) Wrap() (proto.Message, error) {
+func (m *BlockResponse) Wrap() proto.Message {
 	bm := &Message{}
 	bm.Sum = &Message_BlockResponse{BlockResponse: m}
-	return bm, nil
+	return bm
 }
 
-func (m *NoBlockResponse) Wrap() (proto.Message, error) {
+func (m *NoBlockResponse) Wrap() proto.Message {
 	bm := &Message{}
 	bm.Sum = &Message_NoBlockResponse{NoBlockResponse: m}
-	return bm, nil
+	return bm
 }
 
-func (m *StatusRequest) Wrap() (proto.Message, error) {
+func (m *StatusRequest) Wrap() proto.Message {
 	bm := &Message{}
 	bm.Sum = &Message_StatusRequest{StatusRequest: m}
-	return bm, nil
+	return bm
 }
 
-func (m *StatusResponse) Wrap() (proto.Message, error) {
+func (m *StatusResponse) Wrap() proto.Message {
 	bm := &Message{}
 	bm.Sum = &Message_StatusResponse{StatusResponse: m}
-	return bm, nil
+	return bm
 }
 
 // Unwrap implements the p2p Wrapper interface and unwraps a wrapped blockchain

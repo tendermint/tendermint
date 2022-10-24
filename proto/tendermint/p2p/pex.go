@@ -6,16 +6,16 @@ import (
 	"github.com/cosmos/gogoproto/proto"
 )
 
-func (m *PexAddrs) Wrap() (proto.Message, error) {
+func (m *PexAddrs) Wrap() proto.Message {
 	pm := &Message{}
 	pm.Sum = &Message_PexAddrs{PexAddrs: m}
-	return pm, nil
+	return pm
 }
 
-func (m *PexRequest) Wrap() (proto.Message, error) {
+func (m *PexRequest) Wrap() proto.Message {
 	pm := &Message{}
 	pm.Sum = &Message_PexRequest{PexRequest: m}
-	return pm, nil
+	return pm
 }
 
 // Unwrap implements the p2p Wrapper interface and unwraps a wrapped PEX

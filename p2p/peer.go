@@ -267,11 +267,7 @@ func (p *peer) Send(e Envelope) bool {
 	msg := e.Message
 	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
 	if w, ok := msg.(Wrapper); ok {
-		var err error
-		msg, err = w.Wrap()
-		if err != nil {
-			panic(err)
-		}
+		msg = w.Wrap()
 	}
 	msgBytes, err := proto.Marshal(msg)
 	if err != nil {
@@ -300,11 +296,7 @@ func (p *peer) TrySend(e Envelope) bool {
 	msg := e.Message
 	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
 	if w, ok := msg.(Wrapper); ok {
-		var err error
-		msg, err = w.Wrap()
-		if err != nil {
-			panic(err)
-		}
+		msg = w.Wrap()
 	}
 	msgBytes, err := proto.Marshal(msg)
 	if err != nil {

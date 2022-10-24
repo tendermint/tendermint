@@ -31,7 +31,7 @@ type Wrapper interface {
 	proto.Message
 
 	// Wrap will take the underlying message and wrap it in its wrapper type.
-	Wrap() (proto.Message, error)
+	Wrap() proto.Message
 }
 
 var (
