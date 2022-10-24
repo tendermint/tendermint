@@ -55,7 +55,7 @@ the PEX reactor.
 After a PEX request is sent to a peer, the node expects to receive,
 as a response, a `PexAddrs` message from the peer.
 This message encodes a list of peer addresses that are
-[added to address book](./addressbook.md#new-addresses),
+[added to address book](./addressbook.md#adding-addresses),
 having the peer from which the PEX response was received as their source.
 
 Received PEX responses are handled by the `ReceiveAddrs` method of the PEX reactor.

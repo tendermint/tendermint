@@ -104,7 +104,7 @@ The exponentially increasing dialing interval is adjusted as well by a random
 jitter up to `dialRandomizerIntervalMilliseconds`.
 At most `reconnectBackOffAttempts`, hard-coded to 10, are made using this  approach.
 
-> FIXME: the first sleep interval, to which a random jitter is applied, is 1,
+> Note: the first sleep interval, to which a random jitter is applied, is 1,
 > not `reconnectBackOffBaseSeconds`, as the first exponent is `0`...
 
 ## Accepting peers

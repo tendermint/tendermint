@@ -76,7 +76,7 @@ The `AddPeer` method, from the `Reactor` interface,
 adds a new peer to the PEX protocol.
 
 If the new peer is an **inbound peer**, i.e., if the peer has dialed the node,
-the peer's address is [added to the address book](./addressbook.md#new-addresses).
+the peer's address is [added to the address book](./addressbook.md#adding-addresses).
 Since the peer was authenticated when establishing a secret connection with it,
 the source of the peer address is trusted, and its source is set by the peer itself.
 In the case of an outbound peer, the node should already have its address in
