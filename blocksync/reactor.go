@@ -409,10 +409,9 @@ FOR_LOOP:
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
-func (bcR *Reactor) BroadcastStatusRequest() error {
+func (bcR *Reactor) BroadcastStatusRequest() {
 	bcR.Switch.Broadcast(p2p.Envelope{
 		ChannelID: BlocksyncChannel,
 		Message:   &bcproto.StatusRequest{},
 	})
-	return nil
 }
