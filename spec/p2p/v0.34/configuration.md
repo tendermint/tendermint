@@ -27,7 +27,7 @@ This document contains configurable parameters a node operator can use to tune t
 |	[DialTimeout](switch.md#dialing-peers)                 |  3 * time.Second | Timeout for dialing a peer |
 
 
-These parameters can be set using the `$TMHOME/config/config.toml` file. A subset of them can also be changed via command line using the following commind line flags:
+These parameters can be set using the `$TMHOME/config/config.toml` file. A subset of them can also be changed via command line using the following command line flags:
 
 | Parameter | Flag| Example|
 | --- | --- | ---|

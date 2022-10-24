@@ -13,14 +13,14 @@ of this repository.
 
 ## Overview
 
-A Tendermint network is composed by multiple Tendermint instances, thereafter
+A Tendermint network is composed by multiple Tendermint instances, hereafter
 called **nodes**, that interact by exchanging messages.
 
 Tendermint assumes a partially-connected network model.
 This means that a node is not assumed to be directly connected to every other
 node in the network.
 Instead, each node is directly connected to a subset of other nodes in the
-network, thereafter called its **peers**.
+network, hereafter called its **peers**.
 
 The peer-to-peer (p2p) communication layer is responsible for establishing
 connections between nodes in a Tendermint network,

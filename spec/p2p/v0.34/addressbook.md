@@ -3,7 +3,7 @@
 The address book tracks information about other nodes in the network.
 
 The primary information about a node is its peer address,
-composed by a network address and an ID.
+composed of a network address and an ID.
 Addresses can be manually configured (e.g., as persistent peers),
 can be learned when a peer attempts to connect to the node,
 or can be retrieved via the [Peer Exchange protocol](./pex-protocol.md).
@@ -12,7 +12,7 @@ The [Peer Manager](./peer_manager.md) retrieves from the address book peer
 addresses to dial, so to establish outbound connections.
 It also records in the address book failed attempts to connect to a peer.
 
-The [Peer Exchange protocol](./pex-protocol.md) feds the address book with
+The [Peer Exchange protocol](./pex-protocol.md) feeds the address book with
 addresses received from peers, and retrieves from the address book random
 selection of addresses it provides to peers.
 
