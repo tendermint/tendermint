@@ -428,8 +428,7 @@ func createMConnection(
 		msg := proto.Clone(mt)
 		err := proto.Unmarshal(msgBytes, msg)
 		if err != nil {
-			// TODO(williambanfield) add a log line
-			return
+			panic(fmt.Errorf("unmarshaling message: %s", err))
 		}
 		labels := []string{
 			"peer_id", string(p.ID()),
