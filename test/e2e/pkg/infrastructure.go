@@ -57,7 +57,7 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 		Network:   netAddress,
 	}
 	for name := range m.Nodes {
-		ifd.Instances[name] = InstanceData{
+		ifd.Instances[name] = InstanceData{ //nolint: gosec
 			IPAddress: ipGen.Next(),
 		}
 	}
