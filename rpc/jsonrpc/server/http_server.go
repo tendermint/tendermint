@@ -131,7 +131,7 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, cache bool, res ...types.RPCRes
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if cache {
-		w.Header().Set("Cache-Control", "max-age=31536000") // expired after one year
+		w.Header().Set("Cache-Control", "public, max-age=86400") // expired after one day
 	}
 	w.WriteHeader(200)
 	_, err = w.Write(jsonBytes)
