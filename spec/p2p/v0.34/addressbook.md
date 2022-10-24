@@ -21,12 +21,12 @@ addresses to offer (send) to peers.
 
 In addition to addresses, the address book also stores some information about
 the quality of peers with which the node has interacted.
-This includes information about connection attempts, failed or succeeded, with
-peers, or with specific network address of a peer.
-And information about peers provided by the protocols (reactors), currently
-restricted to the definition of [good](#good-peers) or [bad](#bad-peers) peers.
+This includes information about connection attempts, failed or succeeded, and
+quality information provided by the several protocols running on the node.
+Currently, the quality of a peer is restricted to three states: new,
+[good](#good-peers), or [bad](#bad-peers).
 The quality metrics associated to peers influences the selection of peers to
-dial and offered via PEX protocol, in a way that they are not fully random.
+dial and offer via PEX protocol, in a way that they are not fully random.
 
 ## Adding addresses
 
@@ -44,6 +44,24 @@ Addresses are added to the address book in the following situations:
 1. When the switch is instructed to dial addresses via the `DialPeersAsync`
    method, in this case the node itself is set as the source
 
+Addresses are stored in [buckets](#buckets).
+There are buckets for new addresses and buckets for old addresses.
+If the added address belongs to a new peer, i.e., to a node ID that is not
+present in the address book, it is added to a bucket of new addresses.
+
+The rationale of this organization of addresses into buckets is detailed
+thorough this document, but it can summarized as follows.
+A new peer has its address stored in a bucket of new address, as the node does
+not has much information about it.
+When a peer is marked as a [good peer](#good-peers) by some reactor (protocol),
+its address is moved (upgraded) to a bucket of old addresses.
+Old addresses are therefore of peers about which the node has good information.
+When a bucket of old addresses becomes full, one of its addresses is moved
+(downgraded) to a bucket of new addresses.
+When a bucket of new address becomes full, one of its address is dropped.
+New addresses, therefore, are deemed less important than old addresses, being
+dropped easily by the address book.
+
 The address book can keep multiple network addresses for the same node ID, but
 this number should be limited.
 A new address with a node ID that is already present in the address book is
@@ -60,7 +78,6 @@ A new address with a node ID that is already present in the address book is
   probability decreases to 25%; and if it is present in three buckets, the
   probability is 12.5%.
 
-Addresses are stored in [buckets](#buckets).
 The bucket to which a new address is added is computed based on the address
 itself and its source address.
 An address is not added to a bucket if it is already present there.
@@ -80,6 +97,9 @@ addresses of a peer are stored.
 The `addrLookup` table is used by most of the address book methods (e.g.,
 `HasAddress`, `IsGood`, `MarkGood`, `MarkAttempt`), as it provides fast access
 to addresses.
+
+> TODO: reorganize this description having the goals of this organization
+> explained before their actual implementation.
 
 ### Errors
 
