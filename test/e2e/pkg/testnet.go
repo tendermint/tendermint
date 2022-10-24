@@ -103,12 +103,8 @@ type Node struct {
 // The testnet generation must be deterministic, since it is generated
 // separately by the runner and the test cases. For this reason, testnets use a
 // random seed to generate e.g. keys.
-func LoadTestnet(file string, ifd InfrastructureData) (*Testnet, error) {
-	manifest, err := LoadManifest(file)
-	if err != nil {
-		return nil, err
-	}
-	dir := strings.TrimSuffix(file, filepath.Ext(file))
+func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Testnet, error) {
+	dir := strings.TrimSuffix(fname, filepath.Ext(fname))
 
 	// Set up resource generators. These must be deterministic.
 	var netAddress string
@@ -137,7 +133,7 @@ func LoadTestnet(file string, ifd InfrastructureData) (*Testnet, error) {
 
 	testnet := &Testnet{
 		Name:                 filepath.Base(dir),
-		File:                 file,
+		File:                 fname,
 		Dir:                  dir,
 		IP:                   ipGen.Network(),
 		InitialHeight:        1,
