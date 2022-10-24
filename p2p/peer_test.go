@@ -4,6 +4,8 @@ import (
 	"fmt"
 	golog "log"
 	"net"
+	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -98,8 +100,12 @@ func createOutboundPeerAndPerformHandshake(
 	if err != nil {
 		return nil, err
 	}
+	mlc := &metricsLabelCache{
+		mtx:               &sync.RWMutex{},
+		messageLabelNames: make(map[reflect.Type]string),
+	}
 
-	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, msgTypeByChID, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, mConfig, peerNodeInfo, reactorsByCh, msgTypeByChID, chDescs, func(p Peer, r interface{}) {}, mlc)
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }
