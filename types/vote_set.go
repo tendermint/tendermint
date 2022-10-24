@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -213,8 +214,17 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
-		return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+	if voteSet.extensionsEnabled {
+		if err := vote.VerifyVoteAndExtension(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
+	} else {
+		if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+			return false, fmt.Errorf("failed to verify vote with ChainID %s and PubKey %s: %w", voteSet.chainID, val.PubKey, err)
+		}
+		if len(vote.ExtensionSignature) > 0 || len(vote.Extension) > 0 {
+			return false, errors.New("unexpected vote extension data present in vote")
+		}
 	}
 
 	// Add vote and get conflicting vote if any.

@@ -313,8 +313,12 @@ func (bs *BlockStore) PruneBlocks(height int64) (uint64, error) {
 		// tries to access missing blocks.
 		bs.mtx.Lock()
 		bs.base = base
+		bss := &tmstore.BlockStoreState{
+			Base:   bs.base,
+			Height: bs.height,
+		}
 		bs.mtx.Unlock()
-		bs.saveState()
+		SaveBlockStoreState(batch, bss)
 
 		err := batch.WriteSync()
 		if err != nil {
@@ -401,7 +405,7 @@ func (bs *BlockStore) SaveBlockWithExtendedCommit(block *types.Block, blockParts
 		panic("BlockStore can only save a non-nil block")
 	}
 	if err := seenExtendedCommit.EnsureExtensions(); err != nil {
-		panic(fmt.Errorf("saving block with extensions: %w", err))
+		panic(fmt.Errorf("saving block without extensions: %w", err))
 	}
 	batch := bs.db.NewBatch()
 	if err := bs.saveBlockToBatch(batch, block, blockParts, seenExtendedCommit.ToCommit()); err != nil {
@@ -479,6 +483,18 @@ func (bs *BlockStore) saveBlockToBatch(batch dbm.Batch, block *types.Block, bloc
 		return err
 	}
 
+	bs.mtx.Lock()
+	bs.height = height
+	if bs.base == 0 {
+		bs.base = height
+	}
+	bss := &tmstore.BlockStoreState{
+		Base:   bs.base,
+		Height: bs.height,
+	}
+	bs.mtx.Unlock()
+	SaveBlockStoreState(batch, bss)
+
 	return nil
 }
 
@@ -491,16 +507,6 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part, b
 	if err := batch.Set(calcBlockPartKey(height, index), partBytes); err != nil {
 		panic(err)
 	}
-}
-
-func (bs *BlockStore) saveState() {
-	bs.mtx.RLock()
-	bss := tmstore.BlockStoreState{
-		Base:   bs.base,
-		Height: bs.height,
-	}
-	bs.mtx.RUnlock()
-	SaveBlockStoreState(&bss, bs.db)
 }
 
 // SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
@@ -548,12 +554,12 @@ func calcExtCommitKey(height int64) []byte {
 var blockStoreKey = []byte("blockStore")
 
 // SaveBlockStoreState persists the blockStore state to the database.
-func SaveBlockStoreState(bsj *tmstore.BlockStoreState, db dbm.DB) {
-	bytes, err := proto.Marshal(bsj)
+func SaveBlockStoreState(batch dbm.Batch, bss *tmstore.BlockStoreState) {
+	bytes, err := proto.Marshal(bss)
 	if err != nil {
 		panic(fmt.Sprintf("Could not marshal state bytes: %v", err))
 	}
-	if err := db.SetSync(blockStoreKey, bytes); err != nil {
+	if err := batch.Set(blockStoreKey, bytes); err != nil {
 		panic(err)
 	}
 }

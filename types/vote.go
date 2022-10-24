@@ -381,8 +381,8 @@ func VotesToProto(votes []*Vote) []*tmproto.Vote {
 	return res
 }
 
-// FromProto converts a proto generetad type to a handwritten type
-// return type, nil if everything converts safely, otherwise nil, error
+// VoteFromProto attempts to convert the given serialization (Protobuf) type to
+// our Vote domain type. A basic validation check is also performed.
 func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
 	if pv == nil {
 		return nil, errors.New("nil vote")

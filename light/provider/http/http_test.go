@@ -63,7 +63,7 @@ func TestProvider(t *testing.T) {
 	assert.True(t, lb.Height < 1000)
 
 	// let's check this is valid somehow
-	assert.Nil(t, lb.ValidateBasic(chainID))
+	assert.NoError(t, lb.ValidateBasic(chainID))
 
 	// historical queries now work :)
 	lower := lb.Height - 3

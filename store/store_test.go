@@ -51,7 +51,7 @@ func makeTestExtCommit(height int64, timestamp time.Time) *types.ExtendedCommit 
 	}
 }
 
-func makeStateAndBlockStore(t *testing.T) (sm.State, *BlockStore) {
+func makeStateAndBlockStore(t *testing.T) (sm.State, dbm.DB, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	t.Cleanup(func() { os.RemoveAll(config.RootDir) })
 
@@ -64,7 +64,7 @@ func makeStateAndBlockStore(t *testing.T) (sm.State, *BlockStore) {
 	if err != nil {
 		panic(fmt.Errorf("error constructing state from genesis file: %w", err))
 	}
-	return state, NewBlockStore(blockDB)
+	return state, blockDB, NewBlockStore(blockDB)
 }
 
 func TestLoadBlockStoreState(t *testing.T) {
@@ -84,7 +84,10 @@ func TestLoadBlockStoreState(t *testing.T) {
 
 	for _, tc := range testCases {
 		db := dbm.NewMemDB()
-		SaveBlockStoreState(tc.bss, db)
+		batch := db.NewBatch()
+		SaveBlockStoreState(batch, tc.bss)
+		batch.WriteSync()
+		batch.Close()
 		retrBSJ := LoadBlockStoreState(db)
 		assert.Equal(t, tc.want, retrBSJ, "expected the retrieved DBs to match: %s", tc.testName)
 	}
@@ -127,19 +130,14 @@ func TestNewBlockStore(t *testing.T) {
 	assert.Equal(t, bs.Height(), int64(0), "expecting empty bytes to be unmarshaled alright")
 }
 
-func freshBlockStore() (*BlockStore, dbm.DB) {
-	db := dbm.NewMemDB()
-	return NewBlockStore(db), db
-}
-
-var (
-	state       sm.State
-	block       *types.Block
-	partSet     *types.PartSet
-	part1       *types.Part
-	part2       *types.Part
-	seenCommit1 *types.Commit
-)
+// var (
+// 	state       sm.State
+// 	block       *types.Block
+// 	partSet     *types.PartSet
+// 	part1       *types.Part
+// 	part2       *types.Part
+// 	seenCommit1 *types.Commit
+// )
 
 // func TestMain(m *testing.M) {
 // 	var cleanup cleanupFunc
@@ -162,7 +160,7 @@ var (
 // TODO: This test should be simplified ...
 
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
-	state, bs := makeStateAndBlockStore(t)
+	state, _, bs := makeStateAndBlockStore(t)
 	require.Equal(t, bs.Base(), int64(0), "initially the base should be zero")
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
@@ -178,13 +176,14 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	block := state.MakeBlock(bs.Height()+1, nil, new(types.Commit), nil, state.Validators.GetProposer().Address)
 	validPartSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
-	seenCommit := makeTestExtCommit(10, tmtime.Now())
-	bs.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
+	seenCommit := makeTestExtCommit(1, tmtime.Now())
+	bs.SaveBlockWithExtendedCommit(block, validPartSet, seenCommit)
 	require.EqualValues(t, 1, bs.Base(), "expecting the new height to be changed")
 	require.EqualValues(t, block.Header.Height, bs.Height(), "expecting the new height to be changed")
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
+	part2 := validPartSet.GetPart(1)
 	_, err = uncontiguousPartSet.AddPart(part2)
 	require.Error(t, err)
 
@@ -238,9 +237,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:     newBlock(header1, commitAtH10),
-			parts:     incompletePartSet,
-			wantPanic: "only save complete block", // incomplete parts
+			block:      newBlock(header1, commitAtH10),
+			parts:      incompletePartSet,
+			seenCommit: seenCommit,
+			wantPanic:  "only save complete block", // incomplete parts
 		},
 
 		{
@@ -297,7 +297,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	for i, tuple := range tuples {
 		tuple := tuple
-		bs, db := freshBlockStore()
+		_, db, bs := makeStateAndBlockStore(t)
 		// SaveBlock
 		res, err, panicErr := doFn(func() (interface{}, error) {
 			bs.SaveBlockWithExtendedCommit(tuple.block, tuple.parts, tuple.seenCommit)
@@ -392,7 +392,7 @@ func TestSaveBlockWithExtendedCommitPanicOnAbsentExtension(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			state, bs := makeStateAndBlockStore(t)
+			state, _, bs := makeStateAndBlockStore(t)
 			block := test.MakeBlock(state)
 			seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
 			ps, err := block.MakePartSet(2)
@@ -430,7 +430,7 @@ func TestLoadBlockExtendedCommit(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			state, bs := makeStateAndBlockStore(t)
+			state, _, bs := makeStateAndBlockStore(t)
 			block := test.MakeBlock(state)
 			seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
 			ps, err := block.MakePartSet(2)
@@ -477,12 +477,17 @@ func TestLoadBaseMeta(t *testing.T) {
 }
 
 func TestLoadBlockPart(t *testing.T) {
-	bs, db := freshBlockStore()
+	state, db, bs := makeStateAndBlockStore(t)
 	height, index := int64(10), 1
 	loadPart := func() (interface{}, error) {
 		part := bs.LoadBlockPart(height, index)
 		return part, nil
 	}
+
+	block := state.MakeBlock(state.LastBlockHeight+1, test.MakeNTxs(state.LastBlockHeight+1, 10), new(types.Commit), nil, state.Validators.GetProposer().Address)
+	partSet, err := block.MakePartSet(2)
+	require.NoError(t, err)
+	part1 := partSet.GetPart(0)
 
 	// Initially no contents.
 	// 1. Requesting for a non-existent block shouldn't fail
@@ -491,7 +496,7 @@ func TestLoadBlockPart(t *testing.T) {
 	require.Nil(t, res, "a non-existent block part should return nil")
 
 	// 2. Next save a corrupted block then try to load it
-	err := db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
+	err = db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
 	require.NoError(t, err)
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
@@ -601,7 +606,7 @@ func TestPruneBlocks(t *testing.T) {
 }
 
 func TestLoadBlockMeta(t *testing.T) {
-	bs, db := freshBlockStore()
+	_, db, bs := makeStateAndBlockStore(t)
 	height := int64(10)
 	loadMeta := func() (interface{}, error) {
 		meta := bs.LoadBlockMeta(height)
@@ -662,13 +667,13 @@ func TestLoadBlockMetaByHash(t *testing.T) {
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
-	state, bs := makeStateAndBlockStore(t)
+	state, _, bs := makeStateAndBlockStore(t)
 	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block := state.MakeBlock(bs.Height()+1, nil, new(types.Commit), nil, state.Validators.GetProposer().Address)
 
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
-	seenCommit := makeTestExtCommit(10, tmtime.Now())
+	seenCommit := makeTestExtCommit(block.Height, tmtime.Now())
 	bs.SaveBlockWithExtendedCommit(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 

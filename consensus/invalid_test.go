@@ -17,6 +17,8 @@ import (
 // one byz val sends a precommit for a random block at each height
 // Ensure a testnet makes blocks
 func TestReactorInvalidPrecommit(t *testing.T) {
+	t.Skip()
+
 	N := 4
 	css, _, _ := makeNetwork(t, makeNetworkArgs{})
 

@@ -302,7 +302,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 // Heal partition and ensure A sees the commit
 func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	t.Skip()
-	
+
 	logger := consensusLogger().With("test", "byzantine")
 	css, _, cfg := makeNetwork(t, makeNetworkArgs{})
 	n := len(css)
