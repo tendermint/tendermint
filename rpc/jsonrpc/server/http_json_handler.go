@@ -114,7 +114,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			}
 			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
 
-			if c && rpcFunc.cacheable {
+			if c && !rpcFunc.cacheable {
 				c = false
 			}
 		}
