@@ -1,44 +1,49 @@
 # Address Book
 
-The address book tracks information about other nodes in the network.
+The address book tracks information about peers, i.e., about other nodes in the network.
 
-The primary information about a node is its peer address,
-composed of a network address and an ID.
-Addresses can be manually configured (e.g., as persistent peers),
-can be learned when a peer attempts to connect to the node,
-or can be retrieved via the [Peer Exchange protocol](./pex-protocol.md).
+The primary information stored in the address book are peer addresses.
+A peer address is composed by a node ID and a network address; a network
+address is composed by an IP address or a DNS name plus a port number.
+The same node ID can be associated to multiple network addresses.
 
-The [Peer Manager](./peer_manager.md) retrieves from the address book peer
-addresses to dial, so to establish outbound connections.
-It also records in the address book failed attempts to connect to a peer.
+There are two sources for the addresses stored in the address book.
+The [Switch](./switch.md) registers the addresses of peers with which it has
+interacted: to which it has dialed or from which it has accepted a connection.
+And the [Peer Exchange protocol](./pex-protocol.md) stores in the address book
+the peer addresses it discovers, i.e., it learns from connected peers.
 
-The [Peer Exchange protocol](./pex-protocol.md) feeds the address book with
-addresses received from peers, and retrieves from the address book random
-selection of addresses it provides to peers.
+There are two entities that retrieve peer addresses from the address book.
+The [Peer Manager](./peer_manager.md) retrieves addresses to dial, so to
+establish outbound connections.
+And the [Peer Exchange protocol](./pex-protocol.md) retrieves random samples of
+addresses to offer (send) to peers.
 
-Once the node is connected to a peer, it uses the address book to record
-information about the quality of the peer.
-The quality of a peer is currently restricted to the definition of
-[good](#good-peers) or [bad](#bad-peers) peers.
-It influences, in particular, the selection of candidate peers to dial.
+In addition to addresses, the address book also stores some information about
+the quality of peers with which the node has interacted.
+This includes information about connection attempts, failed or succeeded, with
+peers, or with specific network address of a peer.
+And information about peers provided by the protocols (reactors), currently
+restricted to the definition of [good](#good-peers) or [bad](#bad-peers) peers.
+The quality metrics associated to peers influences the selection of peers to
+dial and offered via PEX protocol, in a way that they are not fully random.
 
-## New addresses
+## Adding addresses
 
-The `AddAddress` method adds a new address to the address book.
+The `AddAddress` method adds the address of a peer to the address book.
 
 The added address is associated to a *source* address, which identifies the
-node from which the address was learned.
+node from which the peer address was learned.
 
 Addresses are added to the address book in the following situations:
 
-1. When a peer address is received via PEX protocol, the source is the sender
-   of the PEX message
-1. When an inbound peer is added to the PEX reactor, in this case the peer
-   itself is set as the source of its address
+1. When a peer address is learned via PEX protocol, having the sender
+   of the PEX message as its source
+1. When an inbound peer is added, in this case the peer itself is set as the
+   source of its own address
 1. When the switch is instructed to dial addresses via the `DialPeersAsync`
    method, in this case the node itself is set as the source
 
-An address contains a node ID and a network address (IP and port).
 The address book can keep multiple network addresses for the same node ID, but
 this number should be limited.
 A new address with a node ID that is already present in the address book is
@@ -80,7 +85,7 @@ to addresses.
 
 - if the added address or the associated source address are nil
 - if the added address is invalid
-- if the added address is a node address
+- if the added address is the local node's address
 - if the added address ID is of a banned peer
 - if either the added address or the associated source address IDs are configured as private IDs
 - if `routabilityStrict` is set and the address is not routable
@@ -103,7 +108,7 @@ registered, counting all buckets for new and old addresses.
 The `PickAddress` method returns an address stored in the address book, chosen
 at random with a configurable bias toward new addresses.
 
-It is invoked by the PEX reactor to obtain a peer address to dial, as part of
+It is invoked by the Peer Manager to obtain a peer address to dial, as part of
 its `ensurePeers` routine.
 The bias starts from 10%, when the peer has no outbound peers, increasing by
 10% for each outbound peer the node has, up to 90%, when the node has at least
@@ -193,7 +198,7 @@ random order.
 
 The `MarkAttempt` method records a failed attempt to connect to an address. 
 
-It is invoked by the PEX reactor when it fails dialing a peer, but the failure
+It is invoked by the Peer Manager when it fails dialing a peer, but the failure
 is not in the authentication step (`ErrSwitchAuthenticationFailure` error).
 In case of authentication errors, the peer is instead marked as a [bad peer](#bad-peers).
 
@@ -220,7 +225,6 @@ new addresses when the bucket becomes full.
 > More precisely, failed connection attempts are recorded in the entry of  the
 > `addrLookup` table with reported peer ID, which contains the last address
 > added for that node ID, which is not necessarily the reported peer address.
-
 
 ## Good peers
 
