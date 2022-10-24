@@ -92,6 +92,9 @@ received from a peer that is locally configured as a seed node.
 > So, all addresses received from a seed node are dialed, regardless of the
 > current number of outbound peers, the number of dialing routines, or the
 > `MaxNumOutboundPeers` parameter.
+>
+> Issue [#9548](https://github.com/tendermint/tendermint/issues/9548) was
+> created to handle this situation.
 
 ### First round
 
