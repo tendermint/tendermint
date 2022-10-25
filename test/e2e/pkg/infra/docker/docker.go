@@ -24,7 +24,7 @@ func (p *Provider) Setup() error {
 	if err != nil {
 		return err
 	}
-	// nolint: gosec
+	//nolint: gosec
 	// G306: Expect WriteFile permissions to be 0600 or less
 	err = os.WriteFile(filepath.Join(p.Testnet.Dir, "docker-compose.yml"), compose, 0644)
 	if err != nil {

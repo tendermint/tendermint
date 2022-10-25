@@ -12,7 +12,6 @@ const (
 	dockerIPv6CIDR = "fd80:b10c::/48"
 
 	globalIPv4CIDR = "0.0.0.0/0"
-	globalIPv6CIDR = "0:0::/0"
 )
 
 // InfrastructureData contains the relevant information for a set of existing
@@ -56,11 +55,7 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 		Instances: make(map[string]InstanceData),
 		Network:   netAddress,
 	}
-	// gosec complains about the following line, stating that the second
-	// param in the range expression should be _- i.e. k, _ := range... -
-	// however, there is no second param in the range here so this seems
-	// like a false positive.
-	for name := range m.Nodes { //nolint: gosec
+	for name := range m.Nodes {
 		ifd.Instances[name] = InstanceData{
 			IPAddress: ipGen.Next(),
 		}
@@ -71,6 +66,9 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 func InfrastructureDataFromFile(p string) (InfrastructureData, error) {
 	ifd := InfrastructureData{}
 	b, err := os.ReadFile(p)
+	if err != nil {
+		return InfrastructureData{}, err
+	}
 	err = json.Unmarshal(b, &ifd)
 	if err != nil {
 		return InfrastructureData{}, err

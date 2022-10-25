@@ -15,6 +15,6 @@ type Provider interface {
 type NoopProvider struct {
 }
 
-func (_ NoopProvider) Setup() error { return nil }
+func (NoopProvider) Setup() error { return nil }
 
 var _ Provider = NoopProvider{}
