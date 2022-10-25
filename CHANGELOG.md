@@ -2,6 +2,36 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.22
+
+This release includes several bug fixes, [one of
+which](https://github.com/tendermint/tendermint/pull/9518) we discovered while
+building up a baseline for v0.34 against which to compare our upcoming v0.37
+release during our [QA process](./docs/qa/).
+
+Special thanks to external contributors on this release: @RiccardoM
+
+### FEATURES
+
+- [rpc] [\#9423](https://github.com/tendermint/tendermint/pull/9423) Support
+  HTTPS URLs from the WebSocket client (@RiccardoM, @cmwaters)
+
+### BUG FIXES
+
+- [config] [\#9483](https://github.com/tendermint/tendermint/issues/9483)
+  Calling `tendermint init` would incorrectly leave out the new `[storage]`
+  section delimiter in the generated configuration file - this has now been
+  fixed
+- [p2p] [\#9500](https://github.com/tendermint/tendermint/issues/9500) Prevent
+  peers who have errored being added to the peer set (@jmalicevic)
+- [indexer] [\#9473](https://github.com/tendermint/tendermint/issues/9473) Fix
+  bug that caused the psql indexer to index empty blocks whenever one of the
+  transactions returned a non zero code. The relevant deduplication logic has
+  been moved within the kv indexer only (@cmwaters)
+- [blocksync] [\#9518](https://github.com/tendermint/tendermint/issues/9518) A
+  block sync stall was observed during our QA process whereby the node was
+  unable to make progress. Retrying block requests after a timeout fixes this.
+
 ## v0.34.21
 
 Release highlights include:
