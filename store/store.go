@@ -455,6 +455,7 @@ func (bs *BlockStore) saveState() {
 
 // SaveSeenCommit saves a seen commit, used by e.g. the state sync reactor when bootstrapping node.
 func (bs *BlockStore) SaveSeenCommit(height int64, seenCommit *types.Commit) error {
+	fmt.Printf("store.BlockStore.SaveSeenCommit height %d\n", height)
 	pbc := seenCommit.ToProto()
 	seenCommitBytes, err := proto.Marshal(pbc)
 	if err != nil {

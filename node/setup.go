@@ -205,15 +205,31 @@ func createAndStartIndexerService(
 }
 
 func doHandshake(
+	config *cfg.StateSyncConfig,
 	stateStore sm.Store,
 	state sm.State,
 	blockStore sm.BlockStore,
 	genDoc *types.GenesisDoc,
 	eventBus types.BlockEventPublisher,
 	proxyApp proxy.AppConns,
-	consensusLogger log.Logger,
-) error {
-	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc)
+	consensusLogger log.Logger) error {
+
+	var err error
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	stateProvider, err := statesync.NewLightClientStateProvider(
+		ctx,
+		state.ChainID, state.Version, state.InitialHeight,
+		config.RPCServers, light.TrustOptions{
+			Period: config.TrustPeriod,
+			Height: config.TrustHeight,
+			Hash:   config.TrustHashBytes(),
+		}, consensusLogger)
+	if err != nil {
+		return fmt.Errorf("failed to set up light client state provider: %w", err)
+	}
+
+	handshaker := cs.NewHandshaker(stateStore, state, blockStore, genDoc, stateProvider)
 	handshaker.SetLogger(consensusLogger)
 	handshaker.SetEventBus(eventBus)
 	if err := handshaker.Handshake(proxyApp); err != nil {

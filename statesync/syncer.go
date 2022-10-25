@@ -322,6 +322,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 // LocalSync restores stateStore and blockStore state which is not included in the snapshot
 // This function assumes that the implicit trusted local snapshot chunks have already been applied
 // State restoration depends on heights after the restored snapshot so the RPC dependency remains
+/*
 func (s *syncer) LocalSync() (sm.State, *types.Commit, error) {
 	pctx, pcancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer pcancel()
@@ -349,6 +350,7 @@ func (s *syncer) LocalSync() (sm.State, *types.Commit, error) {
 
 	return state, commit, nil
 }
+*/
 
 // offerSnapshot offers a snapshot to the app. It returns various errors depending on the app's
 // response, or nil if the snapshot was accepted.

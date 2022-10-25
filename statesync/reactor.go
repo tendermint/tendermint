@@ -280,19 +280,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 
 	hook()
 
-	var state sm.State
-	var commit *types.Commit
-	var err error
-
-	if r.cfg.RestoreHeight > 0 {
-		// Restore Height for Local Snapshot Specified
-		// cosmos-sdk has already restored the chunks
-		// finish up restoring stateStore and blockStore
-		r.Logger.Debug("Local Statesync - Update state and commit")
-		state, commit, err = r.syncer.LocalSync()
-	} else {
-		state, commit, err = r.syncer.SyncAny(discoveryTime, hook)
-	}
+	state, commit, err := r.syncer.SyncAny(discoveryTime, hook)
 
 	r.mtx.Lock()
 	r.syncer = nil
