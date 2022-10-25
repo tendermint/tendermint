@@ -56,8 +56,12 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 		Instances: make(map[string]InstanceData),
 		Network:   netAddress,
 	}
-	for name := range m.Nodes {
-		ifd.Instances[name] = InstanceData{ //nolint: gosec
+	// gosec complains about the following line, stating that the second
+	// param in the range expression should be _- i.e. k, _ := range... -
+	// however, there is no second param in the range here so this seems
+	// like a false positive.
+	for name := range m.Nodes { //nolint: gosec
+		ifd.Instances[name] = InstanceData{
 			IPAddress: ipGen.Next(),
 		}
 	}
