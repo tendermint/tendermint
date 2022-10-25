@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"time"
 
 	"github.com/cosmos/gogoproto/proto"
@@ -430,7 +431,7 @@ func createMConnection(
 		msg := proto.Clone(mt)
 		err := proto.Unmarshal(msgBytes, msg)
 		if err != nil {
-			panic(fmt.Errorf("unmarshaling message: %s", err))
+			panic(fmt.Errorf("unmarshaling message: %s into type: %s", err, reflect.TypeOf(mt)))
 		}
 		labels := []string{
 			"peer_id", string(p.ID()),
