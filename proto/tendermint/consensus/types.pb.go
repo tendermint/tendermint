@@ -6,7 +6,7 @@ package consensus
 import (
 	fmt "fmt"
 	_ "github.com/cosmos/gogoproto/gogoproto"
-	proto "github.com/gogo/protobuf/proto"
+	proto "github.com/cosmos/gogoproto/proto"
 	bits "github.com/tendermint/tendermint/proto/tendermint/libs/bits"
 	types "github.com/tendermint/tendermint/proto/tendermint/types"
 	io "io"
