@@ -44,7 +44,7 @@ the 0.38.x line.
 
 1. Start on `main`
 
-2. Ensure that there is a [branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule) for the
+2. Ensure that there is a [branch protection rule][bpr] for the
    branch you are about to create (you will need admin access to the repository
    in order to do this).
 
@@ -368,3 +368,5 @@ of 150 validators is configured to only possess a cumulative stake of 67% of
 the total stake. The remaining 33% of the stake is configured to belong to
 a validator that is never actually run in the test network. The network is run
 for multiple days, ensuring that it is able to produce blocks without issue.
+
+[bpr]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule
