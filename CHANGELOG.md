@@ -2,6 +2,68 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.22
+
+This release includes several bug fixes, [one of
+which](https://github.com/tendermint/tendermint/pull/9518) we discovered while
+building up a baseline for v0.34 against which to compare our upcoming v0.37
+release during our [QA process](./docs/qa/).
+
+Special thanks to external contributors on this release: @RiccardoM
+
+### FEATURES
+
+- [rpc] [\#9423](https://github.com/tendermint/tendermint/pull/9423) Support
+  HTTPS URLs from the WebSocket client (@RiccardoM, @cmwaters)
+
+### BUG FIXES
+
+- [config] [\#9483](https://github.com/tendermint/tendermint/issues/9483)
+  Calling `tendermint init` would incorrectly leave out the new `[storage]`
+  section delimiter in the generated configuration file - this has now been
+  fixed
+- [p2p] [\#9500](https://github.com/tendermint/tendermint/issues/9500) Prevent
+  peers who have errored being added to the peer set (@jmalicevic)
+- [indexer] [\#9473](https://github.com/tendermint/tendermint/issues/9473) Fix
+  bug that caused the psql indexer to index empty blocks whenever one of the
+  transactions returned a non zero code. The relevant deduplication logic has
+  been moved within the kv indexer only (@cmwaters)
+- [blocksync] [\#9518](https://github.com/tendermint/tendermint/issues/9518) A
+  block sync stall was observed during our QA process whereby the node was
+  unable to make progress. Retrying block requests after a timeout fixes this.
+
+## v0.34.21
+
+Release highlights include:
+
+- A new `[storage]` configuration section and flag `discard_abci_responses`,
+  which, if enabled, discards all ABCI responses except the latest one in order
+  to reduce disk space usage in the state store. When enabled, the
+  `block_results` RPC endpoint can no longer function and will return an error.
+- A new CLI command, `reindex-event`, to re-index block and tx events to the
+  event sinks. You can run this command when the event store backend
+  dropped/disconnected or you want to replace the backend. When
+  `discard_abci_responses` is enabled, you will not be able to use this command.
+
+Special thanks to external contributors on this release: @rootwarp & @animart
+
+### FEATURES
+
+- [cli] [\#9083](https://github.com/tendermint/tendermint/issues/9083) Backport command to reindex missed events (@cmwaters)
+- [cli] [\#9107](https://github.com/tendermint/tendermint/issues/9107) Add the `p2p.external-address` argument to set the node P2P external address (@amimart)
+
+### IMPROVEMENTS
+
+- [config] [\#9054](https://github.com/tendermint/tendermint/issues/9054) `discard_abci_responses` flag added to discard all ABCI
+  responses except the last in order to save on storage space in the state
+  store (@samricotta)
+
+### BUG FIXES
+
+- [mempool] [\#9033](https://github.com/tendermint/tendermint/issues/9033) Rework lock discipline to mitigate callback deadlocks in the
+  priority mempool
+- [cli] [\#9103](https://github.com/tendermint/tendermint/issues/9103) fix unsafe-reset-all for working with home path (@rootwarp)
+
 ## v0.34.20
 
 Special thanks to external contributors on this release: @joeabbey @yihuang
@@ -831,7 +893,7 @@ and a validator address plus a timestamp. Note we may remove the validator
 address & timestamp fields in the future (see ADR-25).
 
 `lite2` package has been added to solve `lite` issues and introduce weak
-subjectivity interface. Refer to the [spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client.md) for complete details.
+subjectivity interface. Refer to the [spec](https://github.com/tendermint/tendermint/tree/main/spec/consensus/light-client) for complete details.
 `lite` package is now deprecated and will be removed in v0.34 release.
 
 ### BREAKING CHANGES:
@@ -1191,8 +1253,8 @@ Special thanks to external contributors on this release: @jon-certik, @gracenoah
 
 *August 28, 2019*
 
-@climber73 wrote the [Writing a Tendermint Core application in Java
-(gRPC)](https://github.com/tendermint/tendermint/blob/main/docs/guides/java.md)
+@climber73 wrote the [Writing a Tendermint Core application in Java 
+(gRPC)](https://docs.tendermint.com/v0.34/tutorials/java.html)
 guide.
 
 Special thanks to external contributors on this release:
@@ -2582,7 +2644,7 @@ are affected by a change.
 
 A few more breaking changes are in the works - each will come with a clear
 Architecture Decision Record (ADR) explaining the change. You can review ADRs
-[here](https://github.com/tendermint/tendermint/tree/develop/docs/architecture)
+[here](https://github.com/tendermint/tendermint/tree/main/docs/architecture)
 or in the [open Pull Requests](https://github.com/tendermint/tendermint/pulls).
 You can also check in on the [issues marked as
 breaking](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3Abreaking).
@@ -2861,7 +2923,7 @@ BREAKING CHANGES:
 FEATURES
 - [cmd] Added metrics (served under `/metrics` using a Prometheus client;
   disabled by default). See the new `instrumentation` section in the config and
-  [metrics](https://tendermint.readthedocs.io/projects/tools/en/develop/metrics.html)
+  [metrics](https://github.com/tendermint/tendermint/blob/main/docs/tendermint-core/metrics.md)
   guide.
 - [p2p] Add IPv6 support to peering.
 - [p2p] Add `external_address` to config to allow specifying the address for
@@ -2975,7 +3037,7 @@ BREAKING:
 
 FEATURES
 
-- [rpc] the RPC documentation is now published to https://tendermint.github.io/slate
+- [rpc] the RPC documentation is now published to https://github.com/tendermint/tendermint/tree/main/spec/rpc
 - [p2p] AllowDuplicateIP config option to refuse connections from same IP.
     - true by default for now, false by default in next breaking release
 - [docs] Add docs for query, tx indexing, events, pubsub
@@ -3454,7 +3516,7 @@ containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusCon
 
 - Logger
   - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`.
-See our new [logging library](https://github.com/tendermint/tmlibs/log) and [blog post](https://tendermint.com/blog/abstracting-the-logger-interface-in-go) for more details
+See our new [logging library](https://github.com/tendermint/tendermint/blob/main/libs/log/logger.go) and [blog post](https://blog.cosmos.network/abstracting-the-logger-interface-in-go-4cf96bf90bb7) for more details
   - Levels `warn` and `notice` are removed (you may need to change them in your `config.toml`!)
   - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) to accept a logger
 

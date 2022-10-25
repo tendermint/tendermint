@@ -70,8 +70,8 @@ See the [install instructions](./docs/introduction/install.md).
 ### Quick Start
 
 - [Single node](./docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](./docs/tools/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](./docs/tools/terraform-and-ansible.md)
+- [Local cluster using docker-compose](./docs/networks/docker-compose.md)
+- [Remote cluster using Terraform and Ansible](./docs/networks/terraform-and-ansible.md)
 
 ## Contributing
 
@@ -145,7 +145,7 @@ Upgrading instructions can be found in [UPGRADING.md](./UPGRADING.md).
 
 ## Join us!
 
-Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
+Tendermint Core is maintained by [Interchain GmbH](https://interchain.io).
 If you'd like to work full-time on Tendermint Core,
 [we're hiring](https://interchain-gmbh.breezy.hr/)!
 
@@ -157,7 +157,7 @@ for-profit entity that also maintains [tendermint.com](https://tendermint.com).
 [bft]: https://en.wikipedia.org/wiki/Byzantine_fault_tolerance
 [smr]: https://en.wikipedia.org/wiki/State_machine_replication
 [Blockchain]: https://en.wikipedia.org/wiki/Blockchain
-[version-badge]: https://img.shields.io/github/tag/tendermint/tendermint.svg
+[version-badge]: https://img.shields.io/github/v/release/tendermint/tendermint.svg
 [version-url]: https://github.com/tendermint/tendermint/releases/latest
 [api-badge]: https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 [api-url]: https://pkg.go.dev/github.com/tendermint/tendermint

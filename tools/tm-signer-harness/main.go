@@ -17,7 +17,6 @@ import (
 const (
 	defaultAcceptRetries    = 100
 	defaultBindAddr         = "tcp://127.0.0.1:0"
-	defaultTMHome           = "~/.tendermint"
 	defaultAcceptDeadline   = 1
 	defaultConnDeadline     = 3
 	defaultExtractKeyOutput = "./signing.key"
@@ -59,6 +58,7 @@ Use "tm-signer-harness help <command>" for more information about that command.`
 		fmt.Println("")
 	}
 
+	defaultTMHome := internal.ExpandPath("~/.tendermint")
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
 	runCmd.IntVar(&flagAcceptRetries,
 		"accept-retries",

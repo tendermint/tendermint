@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	tmjson "github.com/tendermint/tendermint/libs/json"

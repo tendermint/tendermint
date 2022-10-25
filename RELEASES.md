@@ -45,7 +45,7 @@ the 0.38.x line.
 1. Start on `main`
 
 2. Ensure that there is a [branch protection
-   rule](https://github.com/tendermint/tendermint/settings/branches) for the
+   rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule) for the
    branch you are about to create (you will need admin access to the repository
    in order to do this).
 
@@ -93,74 +93,79 @@ the 0.38.x line.
 
 After doing these steps, go back to `main` and do the following:
 
-1. Tag `main` as the dev branch for the _next_ minor version release and push
-   it up to GitHub.
-   For example:
-   ```sh
-   git tag -a v0.39.0-dev -m "Development base for Tendermint v0.39."
-   git push origin v0.39.0-dev
-   ```
-
-2. Create a new workflow to run e2e nightlies for the new backport branch. (See
+1. Create a new workflow to run e2e nightlies for the new backport branch. (See
    [e2e-nightly-main.yml][e2e] for an example.)
 
-3. Add a new section to the Mergify config (`.github/mergify.yml`) to enable the
+2. Add a new section to the Mergify config (`.github/mergify.yml`) to enable the
    backport bot to work on this branch, and add a corresponding `S:backport-to-v0.38.x`
    [label](https://github.com/tendermint/tendermint/labels) so the bot can be triggered.
 
-4. Add a new section to the Dependabot config (`.github/dependabot.yml`) to
+3. Add a new section to the Dependabot config (`.github/dependabot.yml`) to
    enable automatic update of Go dependencies on this branch. Copy and edit one
    of the existing branch configurations to set the correct `target-branch`.
 
 [e2e]: https://github.com/tendermint/tendermint/blob/main/.github/workflows/e2e-nightly-main.yml
 
-## Release candidates
+## Pre-releases
 
 Before creating an official release, especially a minor release, we may want to
-create a release candidate (RC) for our friends and partners to test out. We use
-git tags to create RCs, and we build them off of backport branches.
+create an alpha or beta version, or release candidate (RC) for our friends and
+partners to test out. We use git tags to create pre-releases, and we build them
+off of backport branches, for example:
 
-Tags for RCs should follow the "standard" release naming conventions, with
-`-rcX` at the end (for example, `v0.38.0-rc0`).
+- `v0.38.0-alpha.1` - The first alpha release of `v0.38.0`. Subsequent alpha
+  releases will be numbered `v0.38.0-alpha.2`, `v0.38.0-alpha.3`, etc.
+
+  Alpha releases are to be considered the _most_ unstable of pre-releases, and
+  are most likely not yet properly QA'd. These are made available to allow early
+  adopters to start integrating and testing new functionality before we're done
+  with QA.
+
+- `v0.38.0-beta.1` - The first beta release of `v0.38.0`. Subsequent beta
+  releases will be numbered `v0.38.0-beta.2`, `v0.38.0-beta.3`, etc.
+
+  Beta releases can be considered more stable than alpha releases in that we
+  will have QA'd them better than alpha releases, but there still may be
+  minor breaking API changes if users have strong demands for such changes.
+
+- `v0.38.0-rc1` - The first release candidate (RC) of `v0.38.0`. Subsequent RCs
+  will be numbered `v0.38.0-rc2`, `v0.38.0-rc3`, etc.
+
+  RCs are considered more stable than beta releases in that we will have
+  completed our QA on them. APIs will most likely be stable at this point. The
+  difference between an RC and a release is that there may still be small
+  changes (bug fixes, features) that may make their way into the series before
+  cutting a final release.
 
 (Note that branches and tags _cannot_ have the same names, so it's important
 that these branches have distinct names from the tags/release names.)
 
-If this is the first RC for a minor release, you'll have to make a new backport
-branch (see above). Otherwise:
+If this is the first pre-release for a minor release, you'll have to make a new
+backport branch (see above). Otherwise:
 
 1. Start from the backport branch (e.g. `v0.38.x`).
-2. Run the integration tests and the e2e nightlies
-   (which can be triggered from the Github UI;
-   e.g., https://github.com/tendermint/tendermint/actions/workflows/e2e-nightly-34x.yml).
-3. Prepare the changelog:
-   - Move the changes included in `CHANGELOG_PENDING.md` into `CHANGELOG.md`. Each RC should have
-     it's own changelog section. These will be squashed when the final candidate is released.
-   - Ensure that there is a "release highlights" or "release summary" paragraph
-     after the version heading describing what we feel are the most important
-     changes in this release from a user's perspective. This paragraph should
-     answer the question: "why should users upgrade to this version?", and with
-     specific reasons (not generic ones like "more bug fixes").
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
-     all PRs
+2. Run the integration tests and the E2E nightlies
+   (which can be triggered from the GitHub UI;
+   e.g., https://github.com/tendermint/tendermint/actions/workflows/e2e-nightly-37x.yml).
+3. Prepare the pre-release documentation:
+   - Ensure that all relevant changes are in the `CHANGELOG_PENDING.md` file.
+     This file's contents must only be included in the `CHANGELOG.md` when we
+     cut final releases.
    - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
+4. Prepare the versioning:
    - Bump TMVersionDefault version in  `version.go`
    - Bump P2P and block protocol versions in  `version.go`, if necessary.
      Check the changelog for breaking changes in these components.
    - Bump ABCI protocol version in `version.go`, if necessary
-4. Open a PR with these changes against the backport branch.
-5. Once these changes have landed on the backport branch, be sure to pull them back down locally.
-6. Once you have the changes locally, create the new tag, specifying a name and a tag "message":
-   `git tag -a v0.38.0-rc0 -m "Release Candidate v0.38.0-rc0`
-7. Push the tag back up to origin:
-   `git push origin v0.38.0-rc0`
+5. Open a PR with these changes against the backport branch.
+6. Once these changes have landed on the backport branch, be sure to pull them back down locally.
+7. Once you have the changes locally, create the new tag, specifying a name and a tag "message":
+   `git tag -a v0.38.0-rc1 -m "Release Candidate v0.38.0-rc1`
+8. Push the tag back up to origin:
+   `git push origin v0.38.0-rc1`
    Now the tag should be available on the repo's releases page.
-8. Future RCs will continue to be built off of this branch.
-
-Note that this process should only be used for "true" RCs -- release candidates
-that, if successful, will be the next release. For more experimental "RCs,"
-create a new, short-lived branch and tag that instead.
+9. Future pre-releases will continue to be built off of this branch.
 
 ## Minor release
 
@@ -174,10 +179,11 @@ Before performing these steps, be sure the
 1. Start on the backport branch (e.g. `v0.38.x`)
 2. Run integration tests (`make test_integrations`) and the e2e nightlies.
 3. Prepare the release:
-   - "Squash" changes from the changelog entries for the RCs into a single entry,
-      and add all changes included in `CHANGELOG_PENDING.md`.
-      (Squashing includes both combining all entries, as well as removing or simplifying
-      any intra-RC changes. It may also help to alphabetize the entries by package name.)
+   - "Squash" changes from the changelog entries for the pre-releases into a
+     single entry, and add all changes included in `CHANGELOG_PENDING.md`.
+     (Squashing includes both combining all entries, as well as removing or
+     simplifying any intra-pre-release changes. It may also help to alphabetize
+     the entries by package name.)
    - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
      all PRs
    - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
@@ -192,7 +198,7 @@ Before performing these steps, be sure the
    - `git push origin v0.38.0`
 6. Make sure that `main` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
 7. Add the release to the documentation site generator config (see
-   [DOCS_README.md](./docs/DOCS_README.md) for more details). In summary:
+   [DOCS\_README.md](./docs/DOCS_README.md) for more details). In summary:
    - Start on branch `main`.
    - Add a new line at the bottom of [`docs/versions`](./docs/versions) to
      ensure the newest release is the default for the landing page.

@@ -7,12 +7,12 @@ Tendermint Core.
 
 ### ABCI Changes
 
-* The `ABCIVersion` is now `0.18.0`.
+* The `ABCIVersion` is now `1.0.0`.
 
 * Added new ABCI methods `PrepareProposal` and `ProcessProposal`. For details,
   please see the [spec](spec/abci/README.md). Applications upgrading to
   v0.37.0 must implement these methods, at the very minimum, as described
-  [here](spec/abci/apps.md)
+  [here](./spec/abci/abci++_app_requirements.md)
 * Deduplicated `ConsensusParams` and `BlockParams`.
   In the v0.34 branch they are defined both in `abci/types.proto` and `types/params.proto`.
   The definitions in `abci/types.proto` have been removed.

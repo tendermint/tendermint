@@ -210,4 +210,4 @@ interesting to engage with. These could include dimensions, such as:
 References
 ----------
 
-- `ADR 66: End-to-End Testing <../architecture/adr-66-e2e-testing.md>`_
+- `ADR 66: End-to-End Testing <../architecture/adr-066-e2e-testing.md>`_

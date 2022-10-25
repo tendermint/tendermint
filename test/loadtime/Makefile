@@ -1,8 +1,9 @@
 GOMOD="github.com/tendermint/tendermint/test/loadtime"
-OUTPUT?=build/loadtime
+OUTPUT?=build/
 
 build:
-	go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o $(OUTPUT) .
+	go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o $(OUTPUT)load ./cmd/load/
+	go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o $(OUTPUT)report ./cmd/report/
 .PHONY: build
 
 check-proto-gen-deps:
