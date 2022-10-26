@@ -666,6 +666,7 @@ The following alternative approaches were considered:
 
 [rfc006]:        https://github.com/tendermint/tendermint/blob/main/docs/rfc/rfc-006-event-subscription.md
 [rpc-service]:   https://github.com/tendermint/tendermint/blob/main/rpc/openapi/openapi.yaml
+<!-- markdown-link-check-disable-next-line -->
 [query-grammar]: https://pkg.go.dev/github.com/tendermint/tendermint@master/internal/pubsub/query/syntax
 [ws]:            https://datatracker.ietf.org/doc/html/rfc6455
 [jsonrpc2]:      https://www.jsonrpc.org/specification
