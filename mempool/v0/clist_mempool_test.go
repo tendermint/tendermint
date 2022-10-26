@@ -21,6 +21,7 @@ import (
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
@@ -34,7 +35,7 @@ import (
 type cleanupFunc func()
 
 func newMempoolWithAppMock(cc proxy.ClientCreator, client abciclient.Client) (*CListMempool, cleanupFunc, error) {
-	conf := config.ResetTestRoot("mempool_test")
+	conf := test.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfigMock(cc, conf, client)
 	return mp, cu, nil
@@ -57,7 +58,7 @@ func newMempoolWithAppAndConfigMock(cc proxy.ClientCreator,
 }
 
 func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc) {
-	conf := config.ResetTestRoot("mempool_test")
+	conf := test.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfig(cc, conf)
 	return mp, cu
@@ -550,7 +551,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	app := kvstore.NewApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
-	cfg := config.ResetTestRoot("mempool_test")
+	cfg := test.ResetTestRoot("mempool_test")
 
 	cfg.Mempool.MaxTxsBytes = 10
 	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
@@ -652,7 +653,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 		}
 	})
 
-	cfg := config.ResetTestRoot("mempool_test")
+	cfg := test.ResetTestRoot("mempool_test")
 
 	mp, cleanup := newMempoolWithAppAndConfig(proxy.NewRemoteClientCreator(sockPath, "socket", true), cfg)
 	defer cleanup()

@@ -431,8 +431,8 @@ title: Methods
               there are other transactions with higher priority, then it should not include it in
               `ResponsePrepareProposal.txs`. However, this will not remove `tx` from the mempool.
             * If the Application wants to add a new transaction to the proposed block, then the
-              Application includes it in `ResponsePrepareProposal.txs`. In this case, Tendermint
-              will also add the transaction to the mempool.
+              Application includes it in `ResponsePrepareProposal.txs`. Tendermint will not add
+              the transaction to the mempool.
         * The Application should be aware that removing and adding transactions may compromise
           _traceability_.
           > Consider the following example: the Application transforms a client-submitted

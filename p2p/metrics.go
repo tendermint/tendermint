@@ -17,11 +17,11 @@ type Metrics struct {
 	// Number of peers.
 	Peers metrics.Gauge
 	// Number of bytes received from a given peer.
-	PeerReceiveBytesTotal metrics.Counter
+	PeerReceiveBytesTotal metrics.Counter `metrics_labels:"peer_id,chID"`
 	// Number of bytes sent to a given peer.
-	PeerSendBytesTotal metrics.Counter
+	PeerSendBytesTotal metrics.Counter `metrics_labels:"peer_id,chID"`
 	// Pending bytes to be sent to a given peer.
-	PeerPendingSendBytes metrics.Gauge
+	PeerPendingSendBytes metrics.Gauge `metrics_labels:"peer_id"`
 	// Number of transactions submitted by each peer.
-	NumTxs metrics.Gauge
+	NumTxs metrics.Gauge `metrics_labels:"peer_id"`
 }

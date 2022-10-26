@@ -11,9 +11,9 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/internal/test"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	sm "github.com/tendermint/tendermint/state"
@@ -50,7 +50,7 @@ func TestStoreLoadValidators(t *testing.T) {
 func BenchmarkLoadValidators(b *testing.B) {
 	const valSetSize = 100
 
-	config := cfg.ResetTestRoot("state_")
+	config := test.ResetTestRoot("state_")
 	defer os.RemoveAll(config.RootDir)
 	dbType := dbm.BackendType(config.DBBackend)
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
@@ -88,23 +88,25 @@ func BenchmarkLoadValidators(b *testing.B) {
 
 func TestPruneStates(t *testing.T) {
 	testcases := map[string]struct {
-		makeHeights  int64
-		pruneFrom    int64
-		pruneTo      int64
-		expectErr    bool
-		expectVals   []int64
-		expectParams []int64
-		expectABCI   []int64
+		makeHeights             int64
+		pruneFrom               int64
+		pruneTo                 int64
+		evidenceThresholdHeight int64
+		expectErr               bool
+		expectVals              []int64
+		expectParams            []int64
+		expectABCI              []int64
 	}{
-		"error on pruning from 0":      {100, 0, 5, true, nil, nil, nil},
-		"error when from > to":         {100, 3, 2, true, nil, nil, nil},
-		"error when from == to":        {100, 3, 3, true, nil, nil, nil},
-		"error when to does not exist": {100, 1, 101, true, nil, nil, nil},
-		"prune all":                    {100, 1, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
-		"prune some": {10, 2, 8, false, []int64{1, 3, 8, 9, 10},
+		"error on pruning from 0":      {100, 0, 5, 100, true, nil, nil, nil},
+		"error when from > to":         {100, 3, 2, 2, true, nil, nil, nil},
+		"error when from == to":        {100, 3, 3, 3, true, nil, nil, nil},
+		"error when to does not exist": {100, 1, 101, 101, true, nil, nil, nil},
+		"prune all":                    {100, 1, 100, 100, false, []int64{93, 100}, []int64{95, 100}, []int64{100}},
+		"prune some": {10, 2, 8, 8, false, []int64{1, 3, 8, 9, 10},
 			[]int64{1, 5, 8, 9, 10}, []int64{1, 8, 9, 10}},
-		"prune across checkpoint": {100001, 1, 100001, false, []int64{99993, 100000, 100001},
+		"prune across checkpoint": {100001, 1, 100001, 100001, false, []int64{99993, 100000, 100001},
 			[]int64{99995, 100001}, []int64{100001}},
+		"prune when evidence height < height": {20, 1, 18, 17, false, []int64{13, 17, 18, 19, 20}, []int64{15, 18, 19, 20}, []int64{18, 19, 20}},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -163,7 +165,7 @@ func TestPruneStates(t *testing.T) {
 			}
 
 			// Test assertions
-			err := stateStore.PruneStates(tc.pruneFrom, tc.pruneTo)
+			err := stateStore.PruneStates(tc.pruneFrom, tc.pruneTo, tc.evidenceThresholdHeight)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
