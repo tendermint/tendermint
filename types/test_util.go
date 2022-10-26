@@ -44,6 +44,9 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bo
 		return false, err
 	}
 	vote.Signature = v.Signature
+	if voteSet.extensionsEnabled {
+		vote.ExtensionSignature = v.ExtensionSignature
+	}
 	return voteSet.AddVote(vote)
 }
 

@@ -7,9 +7,10 @@ import (
 	context "context"
 	fmt "fmt"
 	_ "github.com/cosmos/gogoproto/gogoproto"
+	grpc1 "github.com/cosmos/gogoproto/grpc"
+	proto "github.com/cosmos/gogoproto/proto"
 	_ "github.com/cosmos/gogoproto/types"
-	proto "github.com/gogo/protobuf/proto"
-	github_com_cosmos_gogoproto_types "github.com/gogo/protobuf/types"
+	github_com_cosmos_gogoproto_types "github.com/cosmos/gogoproto/types"
 	crypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	grpc "google.golang.org/grpc"
@@ -1523,6 +1524,7 @@ func (m *RequestFinalizeBlock) GetProposerAddress() []byte {
 
 type Response struct {
 	// Types that are valid to be assigned to Value:
+	//
 	//	*Response_Exception
 	//	*Response_Echo
 	//	*Response_Flush
@@ -3863,10 +3865,10 @@ type ABCIClient interface {
 }
 
 type aBCIClient struct {
-	cc *grpc.ClientConn
+	cc grpc1.ClientConn
 }
 
-func NewABCIClient(cc *grpc.ClientConn) ABCIClient {
+func NewABCIClient(cc grpc1.ClientConn) ABCIClient {
 	return &aBCIClient{cc}
 }
 
@@ -4087,7 +4089,7 @@ func (*UnimplementedABCIServer) FinalizeBlock(ctx context.Context, req *RequestF
 	return nil, status.Errorf(codes.Unimplemented, "method FinalizeBlock not implemented")
 }
 
-func RegisterABCIServer(s *grpc.Server, srv ABCIServer) {
+func RegisterABCIServer(s grpc1.Server, srv ABCIServer) {
 	s.RegisterService(&_ABCI_serviceDesc, srv)
 }
 

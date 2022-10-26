@@ -233,6 +233,10 @@ func (vote *Vote) VerifyVoteAndExtension(chainID string, pubKey crypto.PubKey) e
 	}
 	// We only verify vote extension signatures for non-nil precommits.
 	if vote.Type == tmproto.PrecommitType && !IsProtoBlockIDNil(&v.BlockID) {
+		if len(vote.ExtensionSignature) == 0 {
+			return errors.New("expected vote extension signature")
+		}
+
 		extSignBytes := VoteExtensionSignBytes(chainID, v)
 		if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 			return ErrVoteInvalidSignature

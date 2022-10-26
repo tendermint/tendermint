@@ -6,9 +6,9 @@ package state
 import (
 	fmt "fmt"
 	_ "github.com/cosmos/gogoproto/gogoproto"
+	proto "github.com/cosmos/gogoproto/proto"
 	_ "github.com/cosmos/gogoproto/types"
-	proto "github.com/gogo/protobuf/proto"
-	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+	github_com_cosmos_gogoproto_types "github.com/cosmos/gogoproto/types"
 	types "github.com/tendermint/tendermint/abci/types"
 	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	version "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -1082,7 +1082,7 @@ func (m *State) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x32
 	}
-	n13, err13 := github_com_gogo_protobuf_types.StdTimeMarshalTo(m.LastBlockTime, dAtA[i-github_com_gogo_protobuf_types.SizeOfStdTime(m.LastBlockTime):])
+	n13, err13 := github_com_cosmos_gogoproto_types.StdTimeMarshalTo(m.LastBlockTime, dAtA[i-github_com_cosmos_gogoproto_types.SizeOfStdTime(m.LastBlockTime):])
 	if err13 != nil {
 		return 0, err13
 	}
@@ -1281,7 +1281,7 @@ func (m *State) Size() (n int) {
 	}
 	l = m.LastBlockID.Size()
 	n += 1 + l + sovTypes(uint64(l))
-	l = github_com_gogo_protobuf_types.SizeOfStdTime(m.LastBlockTime)
+	l = github_com_cosmos_gogoproto_types.SizeOfStdTime(m.LastBlockTime)
 	n += 1 + l + sovTypes(uint64(l))
 	if m.NextValidators != nil {
 		l = m.NextValidators.Size()
@@ -2355,7 +2355,7 @@ func (m *State) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := github_com_gogo_protobuf_types.StdTimeUnmarshal(&m.LastBlockTime, dAtA[iNdEx:postIndex]); err != nil {
+			if err := github_com_cosmos_gogoproto_types.StdTimeUnmarshal(&m.LastBlockTime, dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

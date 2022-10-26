@@ -38,5 +38,19 @@ func MakeVote(
 	}
 
 	v.Signature = vpb.Signature
+	if tmproto.SignedMsgType(step) == tmproto.PrecommitType {
+		v.ExtensionSignature = vpb.ExtensionSignature
+	}
 	return v, nil
+}
+
+func MakePrecommit(
+	val types.PrivValidator,
+	valIndex int32,
+	height int64,
+	round int32,
+	blockID types.BlockID,
+	time time.Time,
+) (*types.Vote, error) {
+	return MakeVote(val, DefaultTestChainID, valIndex, height, round, int(tmproto.PrecommitType), blockID, time)
 }

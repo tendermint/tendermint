@@ -606,6 +606,7 @@ func TestExtendedCommitToVoteSet(t *testing.T) {
 			h := int64(3)
 
 			voteSet, valSet, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
+			voteSet.extensionsEnabled = testCase.includeExtension
 			extCommit, err := makeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 			assert.NoError(t, err)
 

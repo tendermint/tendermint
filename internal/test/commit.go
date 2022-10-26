@@ -32,7 +32,9 @@ func MakeExtendedCommitFromVoteSet(blockID types.BlockID, voteSet *types.VoteSet
 			return nil, err
 		}
 		vote.Signature = v.Signature
-		vote.ExtensionSignature = v.ExtensionSignature
+		if voteSet.ExtensionsEnabled() && !blockID.IsNil() {
+			vote.ExtensionSignature = v.ExtensionSignature
+		}
 		if _, err := voteSet.AddVote(vote); err != nil {
 			return nil, err
 		}

@@ -526,14 +526,6 @@ func makeLunaticEvidence(
 	return ev, trusted, common
 }
 
-// func makeEquivocationEvidence() *types.LightClientAttackEvidence {
-
-// }
-
-// func makeAmnesiaEvidence() *types.LightClientAttackEvidence {
-
-// }
-
 func makeVote(
 	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
 	round int32, step int, blockID types.BlockID, time time.Time) *types.Vote {
