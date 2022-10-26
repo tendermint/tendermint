@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"math"
-	"reflect"
 	"sync"
 	"time"
 
@@ -111,10 +110,7 @@ func NewSwitch(
 	transport Transport,
 	options ...SwitchOption,
 ) *Switch {
-	mlc := &metricsLabelCache{
-		mtx:               &sync.RWMutex{},
-		messageLabelNames: make(map[reflect.Type]string),
-	}
+
 	sw := &Switch{
 		config:               cfg,
 		reactors:             make(map[string]Reactor),
@@ -129,7 +125,7 @@ func NewSwitch(
 		filterTimeout:        defaultFilterTimeout,
 		persistentPeersAddrs: make([]*NetAddress, 0),
 		unconditionalPeerIDs: make(map[ID]struct{}),
-		mlc:                  mlc,
+		mlc:                  newMetricsLabelCache(),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
