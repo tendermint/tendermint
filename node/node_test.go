@@ -150,7 +150,7 @@ func TestPprofServer(t *testing.T) {
 	assert.NoError(t, n.Start())
 	defer n.Stop()
 	assert.NotNil(t, n.pprofSrv)
-	
+
 	_, err = http.Get("http://" + config.RPC.PprofListenAddress)
 	assert.NoError(t, err)
 }
