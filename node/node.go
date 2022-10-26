@@ -76,7 +76,7 @@ type Node struct {
 	blockIndexer      indexer.BlockIndexer
 	indexerService    *txindex.IndexerService
 	prometheusSrv     *http.Server
-	pprofSrv *http.Server
+	pprofSrv          *http.Server
 }
 
 // Option sets a parameter for the node.
@@ -393,7 +393,6 @@ func (n *Node) OnStart() error {
 		n.rpcListeners = listeners
 	}
 
-
 	// Start the transport.
 	addr, err := p2p.NewNetAddressString(p2p.IDAddressString(n.nodeKey.ID(), n.config.P2P.ListenAddress))
 	if err != nil {
@@ -674,8 +673,8 @@ func (n *Node) startPrometheusServer() *http.Server {
 // starts a ppro
 func (n *Node) startPprofServer() *http.Server {
 	srv := &http.Server{
-		Addr: n.config.RPC.PprofListenAddress,
-		Handler: nil,
+		Addr:              n.config.RPC.PprofListenAddress,
+		Handler:           nil,
 		ReadHeaderTimeout: readHeaderTimeout,
 	}
 	go func() {
@@ -820,4 +819,3 @@ func makeNodeInfo(
 	err := nodeInfo.Validate()
 	return nodeInfo, err
 }
-

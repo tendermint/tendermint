@@ -44,7 +44,6 @@ import (
 	_ "github.com/lib/pq" // provide the psql db driver
 )
 
-
 // DBContext specifies config information for loading a new DB.
 type DBContext struct {
 	ID     string
@@ -122,7 +121,6 @@ type blockSyncReactor interface {
 }
 
 //------------------------------------------------------------------------------
-
 
 func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
@@ -591,7 +589,6 @@ func startStateSync(ssR *statesync.Reactor, bcR blockSyncReactor, conR *cs.React
 	}()
 	return nil
 }
-
 
 //------------------------------------------------------------------------------
 

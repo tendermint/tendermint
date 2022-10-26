@@ -507,7 +507,7 @@ func (cfg *RPCConfig) IsCorsEnabled() bool {
 	return len(cfg.CORSAllowedOrigins) != 0
 }
 
-func (cfg *RPCConfig) IsPprofEnabled() bool { 
+func (cfg *RPCConfig) IsPprofEnabled() bool {
 	return len(cfg.PprofListenAddress) != 0
 }
 
