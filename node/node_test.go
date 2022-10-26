@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"syscall"
 	"testing"
@@ -133,6 +134,25 @@ func TestNodeSetAppVersion(t *testing.T) {
 
 	// check version is set in node info
 	assert.Equal(t, n.nodeInfo.(p2p.DefaultNodeInfo).ProtocolVersion.App, appVersion)
+}
+
+func TestPprofServer(t *testing.T) {
+	config := test.ResetTestRoot("node_pprof_test")
+	defer os.RemoveAll(config.RootDir)
+	config.RPC.PprofListenAddress = testFreeAddr(t)
+
+	// should not work yet
+	_, err := http.Get("http://" + config.RPC.PprofListenAddress)
+	assert.Error(t, err)
+
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	assert.NoError(t, err)
+	assert.NoError(t, n.Start())
+	defer n.Stop()
+	assert.NotNil(t, n.pprofSrv)
+	
+	_, err = http.Get("http://" + config.RPC.PprofListenAddress)
+	assert.NoError(t, err)
 }
 
 func TestNodeSetPrivValTCP(t *testing.T) {
