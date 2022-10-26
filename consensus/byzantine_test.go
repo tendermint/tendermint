@@ -167,13 +167,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
 					peer.Send(p2p.Envelope{
-						Message:   &tmcons.Vote{prevote1.ToProto()},
+						Message:   &tmcons.Vote{Vote: prevote1.ToProto()},
 						ChannelID: VoteChannel,
 					})
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
 					peer.Send(p2p.Envelope{
-						Message:   &tmcons.Vote{prevote2.ToProto()},
+						Message:   &tmcons.Vote{Vote: prevote2.ToProto()},
 						ChannelID: VoteChannel,
 					})
 				}
@@ -556,11 +556,11 @@ func sendProposalAndParts(
 	cs.mtx.Unlock()
 	peer.Send(p2p.Envelope{
 		ChannelID: VoteChannel,
-		Message:   &tmcons.Vote{prevote.ToProto()},
+		Message:   &tmcons.Vote{Vote: prevote.ToProto()},
 	})
 	peer.Send(p2p.Envelope{
 		ChannelID: VoteChannel,
-		Message:   &tmcons.Vote{precommit.ToProto()},
+		Message:   &tmcons.Vote{Vote: precommit.ToProto()},
 	})
 }
 

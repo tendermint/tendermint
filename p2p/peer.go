@@ -258,44 +258,21 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 // Send msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
 func (p *peer) Send(e Envelope) bool {
-	if !p.IsRunning() {
-		// see Switch#Broadcast, where we fetch the list of peers and loop over
-		// them - while we're looping, one peer may be removed and stopped.
-		return false
-	} else if !p.hasChannel(e.ChannelID) {
-		return false
-	}
-	msg := e.Message
-	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
-	if w, ok := msg.(Wrapper); ok {
-		msg = w.Wrap()
-	}
-	msgBytes, err := proto.Marshal(msg)
-	if err != nil {
-		p.Logger.Error("marshaling message to send", "error", err)
-		return false
-	}
-	res := p.mconn.Send(e.ChannelID, msgBytes)
-	if res {
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", e.ChannelID),
-		}
-		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
-	}
-	return res
+	return p.send(e.ChannelID, e.Message, p.mconn.Send)
 }
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
 // false if the send queue is full.
 func (p *peer) TrySend(e Envelope) bool {
+	return p.send(e.ChannelID, e.Message, p.mconn.TrySend)
+}
+
+func (p *peer) send(chID byte, msg proto.Message, sendFunc func(byte, []byte) bool) bool {
 	if !p.IsRunning() {
 		return false
-	} else if !p.hasChannel(e.ChannelID) {
+	} else if !p.hasChannel(chID) {
 		return false
 	}
-	msg := e.Message
 	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
 	if w, ok := msg.(Wrapper); ok {
 		msg = w.Wrap()
@@ -305,11 +282,11 @@ func (p *peer) TrySend(e Envelope) bool {
 		p.Logger.Error("marshaling message to send", "error", err)
 		return false
 	}
-	res := p.mconn.TrySend(e.ChannelID, msgBytes)
+	res := sendFunc(chID, msgBytes)
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", e.ChannelID),
+			"chID", fmt.Sprintf("%#x", chID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))

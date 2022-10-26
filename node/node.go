@@ -894,6 +894,8 @@ func NewNode(config *cfg.Config,
 	if config.RPC.PprofListenAddress != "" {
 		go func() {
 			logger.Info("Starting pprof server", "laddr", config.RPC.PprofListenAddress)
+			// PR by cmwaters will clean this up.
+			//nolint: gosec
 			logger.Error("pprof server error", "err", http.ListenAndServe(config.RPC.PprofListenAddress, nil))
 		}()
 	}
