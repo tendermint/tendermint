@@ -680,7 +680,7 @@ func (n *Node) startPprofServer() *http.Server {
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			// Error starting or closing listener:
-			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+			n.Logger.Error("pprof HTTP server ListenAndServe", "err", err)
 		}
 	}()
 	return srv
