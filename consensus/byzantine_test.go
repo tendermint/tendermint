@@ -166,13 +166,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for i, peer := range peerList {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
-					peer.Send(p2p.Envelope{
+					peer.NewSend(p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote1.ToProto()},
 						ChannelID: VoteChannel,
 					})
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
-					peer.Send(p2p.Envelope{
+					peer.NewSend(p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote2.ToProto()},
 						ChannelID: VoteChannel,
 					})
@@ -519,7 +519,7 @@ func sendProposalAndParts(
 	parts *types.PartSet,
 ) {
 	// proposal
-	peer.Send(p2p.Envelope{
+	peer.NewSend(p2p.Envelope{
 		ChannelID: DataChannel,
 		Message:   &tmcons.Proposal{Proposal: *proposal.ToProto()},
 	})
@@ -531,7 +531,7 @@ func sendProposalAndParts(
 		if err != nil {
 			panic(err) // TODO: wbanfield better error handling
 		}
-		peer.Send(p2p.Envelope{
+		peer.NewSend(p2p.Envelope{
 			ChannelID: DataChannel,
 			Message: &tmcons.BlockPart{
 				Height: height, // This tells peer that this part applies to us.
@@ -546,11 +546,11 @@ func sendProposalAndParts(
 	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
-	peer.Send(p2p.Envelope{
+	peer.NewSend(p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: prevote.ToProto()},
 	})
-	peer.Send(p2p.Envelope{
+	peer.NewSend(p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: precommit.ToProto()},
 	})
@@ -591,7 +591,7 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	br.reactor.RemovePeer(peer, reason)
 }
-func (br *ByzantineReactor) Receive(e p2p.Envelope) {
-	br.reactor.Receive(e)
+func (br *ByzantineReactor) NewReceive(e p2p.Envelope) {
+	br.reactor.NewReceive(e)
 }
 func (br *ByzantineReactor) InitPeer(peer p2p.Peer) p2p.Peer { return peer }

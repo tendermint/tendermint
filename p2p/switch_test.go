@@ -71,7 +71,7 @@ func (tr *TestReactor) AddPeer(peer Peer) {}
 
 func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {}
 
-func (tr *TestReactor) Receive(e Envelope) {
+func (tr *TestReactor) NewReceive(e Envelope) {
 	if tr.logMessages {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
@@ -157,9 +157,9 @@ func TestSwitches(t *testing.T) {
 			},
 		},
 	}
-	s1.Broadcast(Envelope{ChannelID: byte(0x00), Message: ch0Msg})
-	s1.Broadcast(Envelope{ChannelID: byte(0x01), Message: ch1Msg})
-	s1.Broadcast(Envelope{ChannelID: byte(0x02), Message: ch2Msg})
+	s1.NewBroadcast(Envelope{ChannelID: byte(0x00), Message: ch0Msg})
+	s1.NewBroadcast(Envelope{ChannelID: byte(0x01), Message: ch1Msg})
+	s1.NewBroadcast(Envelope{ChannelID: byte(0x02), Message: ch2Msg})
 	assertMsgReceivedWithTimeout(t,
 		ch0Msg,
 		byte(0x00),
@@ -450,7 +450,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 
 	// send messages to the peer from sw1
 	p := sw1.Peers().List()[0]
-	p.Send(Envelope{
+	p.NewSend(Envelope{
 		ChannelID: 0x1,
 		Message:   &p2pproto.Message{},
 	})
@@ -848,7 +848,7 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	// Send random message from foo channel to another
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
-		successChan := s1.Broadcast(Envelope{ChannelID: chID})
+		successChan := s1.NewBroadcast(Envelope{ChannelID: chID})
 		for s := range successChan {
 			if s {
 				numSuccess++

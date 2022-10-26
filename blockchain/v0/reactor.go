@@ -150,8 +150,8 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 }
 
 // AddPeer implements Reactor by sending our state to peer.
-func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	peer.Send(p2p.Envelope{
+func (bcR *Reactor) AddPeer(peer p2p.Peer) {
+	peer.NewSend(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
@@ -181,21 +181,19 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 			return false
 		}
-		return src.TrySend(p2p.Envelope{
+		return src.NewTrySend(p2p.Envelope{
 			ChannelID: BlockchainChannel,
 			Message:   &bcproto.BlockResponse{Block: bl},
 		})
 	}
 
-	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
-	return src.TrySend(p2p.Envelope{
+	return src.NewTrySend(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
 	})
 }
 
-// Receive implements Reactor by handling 4 types of messages (look below).
-func (bcR *BlockchainReactor) Receive(e p2p.Envelope) {
+func (bcR *BlockchainReactor) NewReceive(e p2p.Envelope) {
 	if err := bc.ValidateMsg(e.Message); err != nil {
 		bcR.Logger.Error("Peer sent us invalid msg", "peer", e.Src, "msg", e.Message, "err", err)
 		bcR.Switch.StopPeerForError(e.Src, err)
@@ -216,7 +214,7 @@ func (bcR *BlockchainReactor) Receive(e p2p.Envelope) {
 		bcR.pool.AddBlock(e.Src.ID(), bi, msg.Block.Size())
 	case *bcproto.StatusRequest:
 		// Send peer our state.
-		e.Src.TrySend(p2p.Envelope{
+		e.Src.NewTrySend(p2p.Envelope{
 			ChannelID: BlockchainChannel,
 			Message: &bcproto.StatusResponse{
 				Height: bcR.store.Height(),
@@ -268,7 +266,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 				if peer == nil {
 					continue
 				}
-				queued := peer.TrySend(p2p.Envelope{
+				queued := peer.NewTrySend(p2p.Envelope{
 					ChannelID: BlockchainChannel,
 					Message:   &bcproto.BlockRequest{Height: request.Height},
 				})
@@ -404,7 +402,7 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() {
-	bcR.Switch.Broadcast(p2p.Envelope{
+	bcR.Switch.NewBroadcast(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.StatusRequest{},
 	})
