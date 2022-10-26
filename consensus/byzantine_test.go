@@ -594,4 +594,7 @@ func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (br *ByzantineReactor) NewReceive(e p2p.Envelope) {
 	br.reactor.NewReceive(e)
 }
+func (br *ByzantineReactor) Receive(chID byte, p p2p.Peer, m []byte) {
+	br.reactor.Receive(chID, p, m)
+}
 func (br *ByzantineReactor) InitPeer(peer p2p.Peer) p2p.Peer { return peer }
