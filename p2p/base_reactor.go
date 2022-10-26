@@ -38,7 +38,7 @@ type Reactor interface {
 	// or other reason).
 	RemovePeer(peer Peer, reason interface{})
 
-	// Receive is called by the switch when an envelope is received from any connected 
+	// Receive is called by the switch when an envelope is received from any connected
 	// peer on any of the channels registered by the reactor
 	Receive(Envelope)
 }
