@@ -45,6 +45,8 @@ func NewPeer(ip net.IP) *Peer {
 func (mp *Peer) FlushStop()                     { mp.Stop() } //nolint:errcheck //ignore error
 func (mp *Peer) NewTrySend(e p2p.Envelope) bool { return true }
 func (mp *Peer) NewSend(e p2p.Envelope) bool    { return true }
+func (mp *Peer) TrySend(_ byte, _ []byte) bool  { return true }
+func (mp *Peer) Send(_ byte, _ []byte) bool     { return true }
 func (mp *Peer) NodeInfo() p2p.NodeInfo {
 	return p2p.DefaultNodeInfo{
 		DefaultNodeID: mp.addr.ID,
