@@ -273,7 +273,7 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 				Height: 1,
 				Index:  0,
 				Tx:     mockTx,
-				Result: abci.ResponseDeliverTx{
+				Result: abci.ExecTxResult{
 					Code: abci.CodeTypeOK,
 				},
 			},
@@ -281,7 +281,7 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 				Height: 2,
 				Index:  0,
 				Tx:     mockTx,
-				Result: abci.ResponseDeliverTx{
+				Result: abci.ExecTxResult{
 					Code: abci.CodeTypeOK + 1,
 				},
 			},
@@ -293,7 +293,7 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 				Height: 1,
 				Index:  0,
 				Tx:     mockTx,
-				Result: abci.ResponseDeliverTx{
+				Result: abci.ExecTxResult{
 					Code: abci.CodeTypeOK + 1,
 				},
 			},
@@ -301,7 +301,7 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 				Height: 2,
 				Index:  0,
 				Tx:     mockTx,
-				Result: abci.ResponseDeliverTx{
+				Result: abci.ExecTxResult{
 					Code: abci.CodeTypeOK + 1,
 				},
 			},
@@ -313,7 +313,7 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 				Height: 1,
 				Index:  0,
 				Tx:     mockTx,
-				Result: abci.ResponseDeliverTx{
+				Result: abci.ExecTxResult{
 					Code: abci.CodeTypeOK,
 				},
 			},
@@ -321,7 +321,7 @@ func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
 				Height: 2,
 				Index:  0,
 				Tx:     mockTx,
-				Result: abci.ResponseDeliverTx{
+				Result: abci.ExecTxResult{
 					Code: abci.CodeTypeOK,
 				},
 			},

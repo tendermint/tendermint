@@ -121,7 +121,7 @@ func (blockExec *BlockExecutor) CreateProposalBlock(
 			MaxTxBytes:         maxDataBytes,
 			Txs:                block.Txs.ToSliceOfBytes(),
 			LocalLastCommit:    extendedCommitInfo(localLastCommit, votes),
-			Misbehavior:        block.Evidence.Evidence.ToABCI(),
+			Misbehaviors:       block.Evidence.Evidence.ToABCI(),
 			Height:             block.Height,
 			Time:               block.Time,
 			NextValidatorsHash: block.NextValidatorsHash,
@@ -158,7 +158,7 @@ func (blockExec *BlockExecutor) ProcessProposal(
 		Time:               block.Header.Time,
 		Txs:                block.Data.Txs.ToSliceOfBytes(),
 		ProposedLastCommit: buildLastCommitInfo(block, blockExec.store, state.InitialHeight),
-		Misbehavior:        block.Evidence.Evidence.ToABCI(),
+		Misbehaviors:       block.Evidence.Evidence.ToABCI(),
 		ProposerAddress:    block.ProposerAddress,
 		NextValidatorsHash: block.NextValidatorsHash,
 	})
@@ -344,7 +344,7 @@ func execBlockOnProxyApp(
 		ProposerAddress:    block.ProposerAddress,
 		Height:             block.Height,
 		DecidedLastCommit:  commitInfo,
-		Misbehavior:        block.Evidence.Evidence.ToABCI(),
+		Misbehaviors:       block.Evidence.Evidence.ToABCI(),
 		Txs:                block.Txs.ToSliceOfBytes(),
 	})
 	if err != nil {

@@ -317,11 +317,11 @@ func TestProcessProposal(t *testing.T) {
 	block1.Txs = txs
 
 	expectedRpp := &abci.RequestProcessProposal{
-		Txs:         block1.Txs.ToSliceOfBytes(),
-		Hash:        block1.Hash(),
-		Height:      block1.Header.Height,
-		Time:        block1.Header.Time,
-		Misbehavior: block1.Evidence.Evidence.ToABCI(),
+		Txs:          block1.Txs.ToSliceOfBytes(),
+		Hash:         block1.Hash(),
+		Height:       block1.Header.Height,
+		Time:         block1.Header.Time,
+		Misbehaviors: block1.Evidence.Evidence.ToABCI(),
 		ProposedLastCommit: abci.CommitInfo{
 			Round: 0,
 			Votes: voteInfos,

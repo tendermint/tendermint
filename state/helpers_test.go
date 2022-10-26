@@ -234,7 +234,7 @@ var _ abci.Application = (*testApp)(nil)
 
 func (app *testApp) FinalizeBlock(_ context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.CommitVotes = req.DecidedLastCommit.Votes
-	app.Misbehavior = req.Misbehavior
+	app.Misbehavior = req.Misbehaviors
 	txResults := make([]*abci.ExecTxResult, len(req.Txs))
 	for idx := range req.Txs {
 		txResults[idx] = &abci.ExecTxResult{

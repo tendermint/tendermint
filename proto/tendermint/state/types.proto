@@ -48,7 +48,7 @@ message ConsensusParamsInfo {
 }
 
 message ABCIResponsesInfo {
-  LegacyABCIResponses        legaycy_abci_responses  = 1;
+  LegacyABCIResponses        legacy_abci_responses   = 1;
   int64                      height                  = 2;
   abci.ResponseFinalizeBlock response_finalize_block = 3;
 }
