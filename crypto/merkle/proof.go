@@ -50,13 +50,13 @@ func ProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*Proof) {
 // Verify that the Proof proves the root hash.
 // Check sp.Index/sp.Total manually if needed
 func (sp *Proof) Verify(rootHash []byte, leaf []byte) error {
-	leafHash := leafHash(leaf)
 	if sp.Total < 0 {
 		return errors.New("proof total must be positive")
 	}
 	if sp.Index < 0 {
 		return errors.New("proof index cannot be negative")
 	}
+	leafHash := leafHash(leaf)
 	if !bytes.Equal(sp.LeafHash, leafHash) {
 		return fmt.Errorf("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
 	}

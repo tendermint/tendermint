@@ -117,7 +117,7 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 	}
 	if added {
 		s.logger.Info("Discovered new snapshot", "height", snapshot.Height, "format", snapshot.Format,
-			"hash", snapshot.Hash)
+			"hash", log.NewLazySprintf("%X", snapshot.Hash))
 	}
 	return added, nil
 }
@@ -144,7 +144,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 	}
 
 	if discoveryTime > 0 {
-		s.logger.Info("sync any", "msg", log.NewLazySprintf("Discovering snapshots for %v", discoveryTime))
+		s.logger.Info("Discovering snapshots", "discoverTime", discoveryTime)
 		time.Sleep(discoveryTime)
 	}
 
@@ -189,18 +189,18 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 		case errors.Is(err, errRetrySnapshot):
 			chunks.RetryAll()
 			s.logger.Info("Retrying snapshot", "height", snapshot.Height, "format", snapshot.Format,
-				"hash", snapshot.Hash)
+				"hash", log.NewLazySprintf("%X", snapshot.Hash))
 			continue
 
 		case errors.Is(err, errTimeout):
 			s.snapshots.Reject(snapshot)
 			s.logger.Error("Timed out waiting for snapshot chunks, rejected snapshot",
-				"height", snapshot.Height, "format", snapshot.Format, "hash", snapshot.Hash)
+				"height", snapshot.Height, "format", snapshot.Format, "hash", log.NewLazySprintf("%X", snapshot.Hash))
 
 		case errors.Is(err, errRejectSnapshot):
 			s.snapshots.Reject(snapshot)
 			s.logger.Info("Snapshot rejected", "height", snapshot.Height, "format", snapshot.Format,
-				"hash", snapshot.Hash)
+				"hash", log.NewLazySprintf("%X", snapshot.Hash))
 
 		case errors.Is(err, errRejectFormat):
 			s.snapshots.RejectFormat(snapshot.Format)
@@ -208,7 +208,7 @@ func (s *syncer) SyncAny(discoveryTime time.Duration, retryHook func()) (sm.Stat
 
 		case errors.Is(err, errRejectSender):
 			s.logger.Info("Snapshot senders rejected", "height", snapshot.Height, "format", snapshot.Format,
-				"hash", snapshot.Hash)
+				"hash", log.NewLazySprintf("%X", snapshot.Hash))
 			for _, peer := range s.snapshots.GetPeers(snapshot) {
 				s.snapshots.RejectPeer(peer.ID())
 				s.logger.Info("Snapshot sender rejected", "peer", peer.ID())
@@ -308,7 +308,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 
 	// Done! 🎉
 	s.logger.Info("Snapshot restored", "height", snapshot.Height, "format", snapshot.Format,
-		"hash", snapshot.Hash)
+		"hash", log.NewLazySprintf("%X", snapshot.Hash))
 
 	return state, commit, nil
 }
@@ -317,7 +317,7 @@ func (s *syncer) Sync(snapshot *snapshot, chunks *chunkQueue) (sm.State, *types.
 // response, or nil if the snapshot was accepted.
 func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	s.logger.Info("Offering snapshot to ABCI app", "height", snapshot.Height,
-		"format", snapshot.Format, "hash", snapshot.Hash)
+		"format", snapshot.Format, "hash", log.NewLazySprintf("%X", snapshot.Hash))
 	resp, err := s.conn.OfferSnapshot(context.TODO(), &abci.RequestOfferSnapshot{
 		Snapshot: &abci.Snapshot{
 			Height:   snapshot.Height,
@@ -334,7 +334,7 @@ func (s *syncer) offerSnapshot(snapshot *snapshot) error {
 	switch resp.Result {
 	case abci.ResponseOfferSnapshot_ACCEPT:
 		s.logger.Info("Snapshot accepted, restoring", "height", snapshot.Height,
-			"format", snapshot.Format, "hash", snapshot.Hash)
+			"format", snapshot.Format, "hash", log.NewLazySprintf("%X", snapshot.Hash))
 		return nil
 	case abci.ResponseOfferSnapshot_ABORT:
 		return errAbort
@@ -462,7 +462,7 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	peer := s.snapshots.GetPeer(snapshot)
 	if peer == nil {
 		s.logger.Error("No valid peers found for snapshot", "height", snapshot.Height,
-			"format", snapshot.Format, "hash", snapshot.Hash)
+			"format", snapshot.Format, "hash", log.NewLazySprintf("%X", snapshot.Hash))
 		return
 	}
 	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,

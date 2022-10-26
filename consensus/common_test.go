@@ -24,6 +24,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/internal/test"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -64,7 +65,7 @@ func ensureDir(dir string, mode os.FileMode) {
 }
 
 func ResetConfig(name string) *cfg.Config {
-	return cfg.ResetTestRoot(name)
+	return test.ResetTestRoot(name)
 }
 
 //-------------------------------------------------------------------------------
@@ -109,7 +110,7 @@ func (vs *validatorStub) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 	v := vote.ToProto()
-	if err := vs.PrivValidator.SignVote(config.ChainID(), v); err != nil {
+	if err := vs.PrivValidator.SignVote(test.DefaultTestChainID, v); err != nil {
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
@@ -370,7 +371,7 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 // consensus states
 
 func newState(state sm.State, pv types.PrivValidator, app abci.Application) *State {
-	config := cfg.ResetTestRoot("consensus_state_test")
+	config := test.ResetTestRoot("consensus_state_test")
 	return newStateWithConfig(config, state, pv, app)
 }
 
@@ -440,7 +441,7 @@ func newStateWithConfigAndBlockStore(
 		panic(err)
 	}
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
 	cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
@@ -874,7 +875,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	return &types.GenesisDoc{
 		GenesisTime:   tmtime.Now(),
 		InitialHeight: 1,
-		ChainID:       config.ChainID(),
+		ChainID:       test.DefaultTestChainID,
 		Validators:    validators,
 	}, privValidators
 }

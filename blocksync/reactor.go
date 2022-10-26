@@ -30,7 +30,7 @@ const (
 )
 
 type consensusReactor interface {
-	// for when we switch from blockchain reactor and block sync to
+	// for when we switch from blocksync reactor and block sync to
 	// the consensus machine
 	SwitchToConsensus(state sm.State, skipWAL bool)
 }
@@ -406,7 +406,7 @@ FOR_LOOP:
 
 			// TODO: same thing for app - but we would need a way to
 			// get the hash without persisting the state
-			state, _, err = bcR.blockExec.ApplyBlock(state, firstID, first)
+			state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 			if err != nil {
 				// TODO This is bad, are we zombie?
 				panic(fmt.Sprintf("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
