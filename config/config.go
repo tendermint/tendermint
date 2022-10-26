@@ -423,6 +423,7 @@ type RPCConfig struct {
 	TLSKeyFile string `mapstructure:"tls_key_file"`
 
 	// pprof listen address (https://golang.org/pkg/net/http/pprof)
+	// FIXME: This should be moved under the instrumentation section
 	PprofListenAddress string `mapstructure:"pprof_laddr"`
 }
 
@@ -504,6 +505,10 @@ func (cfg *RPCConfig) ValidateBasic() error {
 // IsCorsEnabled returns true if cross-origin resource sharing is enabled.
 func (cfg *RPCConfig) IsCorsEnabled() bool {
 	return len(cfg.CORSAllowedOrigins) != 0
+}
+
+func (cfg *RPCConfig) IsPprofEnabled() bool { 
+	return len(cfg.PprofListenAddress) != 0
 }
 
 func (cfg RPCConfig) KeyFile() string {
@@ -1199,6 +1204,10 @@ func (cfg *InstrumentationConfig) ValidateBasic() error {
 		return errors.New("max_open_connections can't be negative")
 	}
 	return nil
+}
+
+func (cfg *InstrumentationConfig) IsPrometheusEnabled() bool {
+	return cfg.Prometheus && cfg.PrometheusListenAddr != ""
 }
 
 //-----------------------------------------------------------------------------
