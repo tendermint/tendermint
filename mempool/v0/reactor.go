@@ -155,7 +155,7 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
-func (memR *Reactor) Receive(e p2p.Envelope) {
+func (memR *Reactor) NewReceive(e p2p.Envelope) {
 	memR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
 	switch msg := e.Message.(type) {
 	case *protomem.Txs:
@@ -241,7 +241,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// https://github.com/tendermint/tendermint/issues/5796
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			success := peer.Send(p2p.Envelope{
+			success := peer.NewSend(p2p.Envelope{
 				ChannelID: mempool.MempoolChannel,
 				Message: &protomem.Message{
 					Sum: &protomem.Message_Txs{

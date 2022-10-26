@@ -80,7 +80,7 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 				}
 			})
 
-			r.Receive(p2p.Envelope{
+			r.NewReceive(p2p.Envelope{
 				ChannelID: ChunkChannel,
 				Src:       peer,
 				Message:   tc.request,
@@ -170,7 +170,7 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 				}
 			})
 
-			r.Receive(p2p.Envelope{
+			r.NewReceive(p2p.Envelope{
 				ChannelID: SnapshotChannel,
 				Src:       peer,
 				Message:   &ssproto.SnapshotsRequest{},
