@@ -470,6 +470,7 @@ func createMConnection(
 			Src:       p,
 			Message:   msg,
 		})
+		reactor.Receive(chID, p, msgBytes)
 	}
 
 	onError := func(r interface{}) {
