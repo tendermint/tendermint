@@ -307,6 +307,9 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 		}
 	case *tmcons.WALMessage_MsgInfo:
 		um, err := msg.MsgInfo.Msg.Unwrap()
+		if err != nil {
+			return nil, fmt.Errorf("unwrap message: %w", err)
+		}
 		walMsg, err := MsgFromProto(um)
 		if err != nil {
 			return nil, fmt.Errorf("msgInfo from proto error: %w", err)

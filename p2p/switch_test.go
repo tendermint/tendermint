@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p/conn"
-	"github.com/tendermint/tendermint/proto/tendermint/p2p"
 	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -138,21 +137,21 @@ func TestSwitches(t *testing.T) {
 
 	// Lets send some messages
 	ch0Msg := &p2pproto.PexAddrs{
-		Addrs: []p2p.NetAddress{
+		Addrs: []p2pproto.NetAddress{
 			{
 				ID: "1",
 			},
 		},
 	}
 	ch1Msg := &p2pproto.PexAddrs{
-		Addrs: []p2p.NetAddress{
+		Addrs: []p2pproto.NetAddress{
 			{
 				ID: "1",
 			},
 		},
 	}
 	ch2Msg := &p2pproto.PexAddrs{
-		Addrs: []p2p.NetAddress{
+		Addrs: []p2pproto.NetAddress{
 			{
 				ID: "2",
 			},
@@ -453,7 +452,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 	p := sw1.Peers().List()[0]
 	p.Send(Envelope{
 		ChannelID: 0x1,
-		Message:   &p2p.Message{},
+		Message:   &p2pproto.Message{},
 	})
 
 	// stop sw2. this should cause the p to fail,
