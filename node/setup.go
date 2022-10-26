@@ -41,8 +41,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
 
-	_ "net/http/pprof" //nolint: gosec // securely exposed on separate, optional port
-
 	_ "github.com/lib/pq" // provide the psql db driver
 )
 
