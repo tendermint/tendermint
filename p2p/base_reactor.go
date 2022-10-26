@@ -40,7 +40,7 @@ type Reactor interface {
 
 	// Receive is called by the switch when an envelope is received from any connected
 	// peer on any of the channels registered by the reactor
-	Receive(Envelope)
+	NewReceive(Envelope)
 }
 
 //--------------------------------------
@@ -63,5 +63,5 @@ func (br *BaseReactor) SetSwitch(sw *Switch) {
 func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor   { return nil }
 func (*BaseReactor) AddPeer(peer Peer)                        {}
 func (*BaseReactor) RemovePeer(peer Peer, reason interface{}) {}
-func (*BaseReactor) Receive(e Envelope)                       {}
+func (*BaseReactor) NewReceive(e Envelope)                    {}
 func (*BaseReactor) InitPeer(peer Peer) Peer                  { return peer }

@@ -37,8 +37,8 @@ type Peer interface {
 	Status() tmconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
-	Send(Envelope) bool
-	TrySend(Envelope) bool
+	NewSend(Envelope) bool
+	NewTrySend(Envelope) bool
 
 	Set(string, interface{})
 	Get(string) interface{}
@@ -196,7 +196,7 @@ func (p *peer) OnStart() error {
 }
 
 // FlushStop mimics OnStop but additionally ensures that all successful
-// .Send() calls will get flushed before closing the connection.
+// NewSend() calls will get flushed before closing the connection.
 // NOTE: it is not safe to call this method more than once.
 func (p *peer) FlushStop() {
 	p.metricsTicker.Stop()
@@ -251,22 +251,15 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
-func (p *peer) Send(e Envelope) bool {
-	return p.send(e.ChannelID, e.Message, p.mconn.Send)
-}
-
-// TrySend msg bytes to the channel identified by chID byte. Immediately returns
-// false if the send queue is full.
-func (p *peer) TrySend(e Envelope) bool {
-	return p.send(e.ChannelID, e.Message, p.mconn.TrySend)
-}
-
-func (p *peer) send(chID byte, msg proto.Message, sendFunc func(byte, []byte) bool) bool {
+func (p *peer) NewSend(e Envelope) bool {
 	if !p.IsRunning() {
+		// see Switch#Broadcast, where we fetch the list of peers and loop over
+		// them - while we're looping, one peer may be removed and stopped.
 		return false
-	} else if !p.hasChannel(chID) {
+	} else if !p.hasChannel(e.ChannelID) {
 		return false
 	}
+	msg := e.Message
 	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
 	if w, ok := msg.(Wrapper); ok {
 		msg = w.Wrap()
@@ -276,11 +269,43 @@ func (p *peer) send(chID byte, msg proto.Message, sendFunc func(byte, []byte) bo
 		p.Logger.Error("marshaling message to send", "error", err)
 		return false
 	}
-	res := sendFunc(chID, msgBytes)
+	res := p.mconn.Send(e.ChannelID, msgBytes)
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
+			"chID", fmt.Sprintf("%#x", e.ChannelID),
+		}
+		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
+	}
+	return res
+}
+
+// NewTrySend msg bytes to the channel identified by chID byte. Immediately returns
+// false if the send queue is full.
+func (p *peer) NewTrySend(e Envelope) bool {
+	if !p.IsRunning() {
+		// see Switch#Broadcast, where we fetch the list of peers and loop over
+		// them - while we're looping, one peer may be removed and stopped.
+		return false
+	} else if !p.hasChannel(e.ChannelID) {
+		return false
+	}
+	msg := e.Message
+	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
+	if w, ok := msg.(Wrapper); ok {
+		msg = w.Wrap()
+	}
+	msgBytes, err := proto.Marshal(msg)
+	if err != nil {
+		p.Logger.Error("marshaling message to send", "error", err)
+		return false
+	}
+	res := p.mconn.TrySend(e.ChannelID, msgBytes)
+	if res {
+		labels := []string{
+			"peer_id", string(p.ID()),
+			"chID", fmt.Sprintf("%#x", e.ChannelID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
@@ -408,7 +433,7 @@ func createMConnection(
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageReceiveBytesTotal.With("message_type", p.mlc.ValueToMetricLabel(msg)).Add(float64(len(msgBytes)))
-		reactor.Receive(Envelope{
+		reactor.NewReceive(Envelope{
 			ChannelID: chID,
 			Src:       p,
 			Message:   msg,

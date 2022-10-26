@@ -72,7 +72,7 @@ func TestPeerSend(t *testing.T) {
 	})
 
 	assert.True(p.CanSend(testCh))
-	assert.True(p.Send(Envelope{ChannelID: testCh, Message: &p2p.Message{}}))
+	assert.True(p.NewSend(Envelope{ChannelID: testCh, Message: &p2p.Message{}}))
 }
 
 func createOutboundPeerAndPerformHandshake(

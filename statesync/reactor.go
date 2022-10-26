@@ -102,7 +102,7 @@ func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 }
 
 // Receive implements p2p.Reactor.
-func (r *Reactor) Receive(e p2p.Envelope) {
+func (r *Reactor) NewReceive(e p2p.Envelope) {
 	if !r.IsRunning() {
 		return
 	}
@@ -126,7 +126,7 @@ func (r *Reactor) Receive(e p2p.Envelope) {
 			for _, snapshot := range snapshots {
 				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
 					"format", snapshot.Format, "peer", e.Src.ID())
-				e.Src.Send(p2p.Envelope{
+				e.Src.NewSend(p2p.Envelope{
 					ChannelID: e.ChannelID,
 					Message: &ssproto.SnapshotsResponse{
 						Height:   snapshot.Height,
@@ -181,7 +181,7 @@ func (r *Reactor) Receive(e p2p.Envelope) {
 			}
 			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", e.Src.ID())
-			e.Src.Send(p2p.Envelope{
+			e.Src.NewSend(p2p.Envelope{
 				ChannelID: ChunkChannel,
 				Message: &ssproto.ChunkResponse{
 					Height:  msg.Height,
@@ -272,7 +272,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		r.Logger.Debug("Requesting snapshots from known peers")
 		// Request snapshots from all currently connected peers
 
-		r.Switch.Broadcast(p2p.Envelope{
+		r.Switch.NewBroadcast(p2p.Envelope{
 			ChannelID: SnapshotChannel,
 			Message:   &ssproto.SnapshotsRequest{},
 		})
