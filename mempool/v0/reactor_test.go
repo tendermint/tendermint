@@ -286,10 +286,9 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		reactor.Receive(p2p.Envelope{
 			ChannelID: mempool.MempoolChannel,
 			Src:       peer,
-			Message: &memproto.Txs{
-				Txs: [][]byte{{0x01, 0x02, 0x03}},
-			}})
-		peer.Stop() //nolint: errcheck
+			Message:   &memproto.Message{}, // This uses the wrong message type on purpose to stop the peer as in an error state in the reactor.
+		},
+		)
 		reactor.AddPeer(peer)
 	}
 }
