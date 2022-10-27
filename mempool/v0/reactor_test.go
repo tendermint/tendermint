@@ -279,13 +279,13 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	for i := 0; i < mempool.MaxActiveIDs+1; i++ {
 		peer := mock.NewPeer(nil)
-		defer peer.Stop() //nolint: errcheck
 		reactor.Receive(p2p.Envelope{
 			ChannelID: mempool.MempoolChannel,
 			Src:       peer,
 			Message: &memproto.Txs{
 				Txs: [][]byte{{0x01, 0x02, 0x03}},
 			}})
+		peer.Stop() //nolint: errcheck
 		reactor.AddPeer(peer)
 	}
 }
