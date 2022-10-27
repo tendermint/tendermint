@@ -3,7 +3,10 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"time"
+
+	"github.com/cosmos/gogoproto/proto"
 
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/log"
@@ -34,8 +37,8 @@ type Peer interface {
 	Status() tmconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
-	Send(byte, []byte) bool
-	TrySend(byte, []byte) bool
+	Send(Envelope) bool
+	TrySend(Envelope) bool
 
 	Set(string, interface{})
 	Get(string) interface{}
@@ -117,6 +120,13 @@ type peer struct {
 
 	metrics       *Metrics
 	metricsTicker *time.Ticker
+<<<<<<< HEAD
+=======
+	mlc           *metricsLabelCache
+
+	// When removal of a peer fails, we set this flag
+	removalAttemptFailed bool
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 }
 
 type PeerOption func(*peer)
@@ -126,8 +136,10 @@ func newPeer(
 	mConfig tmconn.MConnConfig,
 	nodeInfo NodeInfo,
 	reactorsByCh map[byte]Reactor,
+	msgTypeByChID map[byte]proto.Message,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
+	mlc *metricsLabelCache,
 	options ...PeerOption,
 ) *peer {
 	p := &peer{
@@ -137,12 +149,14 @@ func newPeer(
 		Data:          cmap.NewCMap(),
 		metricsTicker: time.NewTicker(metricsTickerDuration),
 		metrics:       NopMetrics(),
+		mlc:           mlc,
 	}
 
 	p.mconn = createMConnection(
 		pc.conn,
 		p,
 		reactorsByCh,
+		msgTypeByChID,
 		chDescs,
 		onPeerError,
 		mConfig,
@@ -243,40 +257,39 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
-func (p *peer) Send(chID byte, msgBytes []byte) bool {
-	if !p.IsRunning() {
-		// see Switch#Broadcast, where we fetch the list of peers and loop over
-		// them - while we're looping, one peer may be removed and stopped.
-		return false
-	} else if !p.hasChannel(chID) {
-		return false
-	}
-	res := p.mconn.Send(chID, msgBytes)
-	if res {
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
-		}
-		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-	}
-	return res
+func (p *peer) Send(e Envelope) bool {
+	return p.send(e.ChannelID, e.Message, p.mconn.Send)
 }
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
 // false if the send queue is full.
-func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
+func (p *peer) TrySend(e Envelope) bool {
+	return p.send(e.ChannelID, e.Message, p.mconn.TrySend)
+}
+
+func (p *peer) send(chID byte, msg proto.Message, sendFunc func(byte, []byte) bool) bool {
 	if !p.IsRunning() {
 		return false
 	} else if !p.hasChannel(chID) {
 		return false
 	}
-	res := p.mconn.TrySend(chID, msgBytes)
+	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
+	if w, ok := msg.(Wrapper); ok {
+		msg = w.Wrap()
+	}
+	msgBytes, err := proto.Marshal(msg)
+	if err != nil {
+		p.Logger.Error("marshaling message to send", "error", err)
+		return false
+	}
+	res := sendFunc(chID, msgBytes)
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -370,6 +383,7 @@ func createMConnection(
 	conn net.Conn,
 	p *peer,
 	reactorsByCh map[byte]Reactor,
+	msgTypeByChID map[byte]proto.Message,
 	chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}),
 	config tmconn.MConnConfig,
@@ -382,12 +396,29 @@ func createMConnection(
 			// which does onPeerError.
 			panic(fmt.Sprintf("Unknown channel %X", chID))
 		}
+		mt := msgTypeByChID[chID]
+		msg := proto.Clone(mt)
+		err := proto.Unmarshal(msgBytes, msg)
+		if err != nil {
+			panic(fmt.Errorf("unmarshaling message: %s into type: %s", err, reflect.TypeOf(mt)))
+		}
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
 		}
+		if w, ok := msg.(Unwrapper); ok {
+			msg, err = w.Unwrap()
+			if err != nil {
+				panic(fmt.Errorf("unwrapping message: %s", err))
+			}
+		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-		reactor.Receive(chID, p, msgBytes)
+		p.metrics.MessageReceiveBytesTotal.With("message_type", p.mlc.ValueToMetricLabel(msg)).Add(float64(len(msgBytes)))
+		reactor.Receive(Envelope{
+			ChannelID: chID,
+			Src:       p,
+			Message:   msg,
+		})
 	}
 
 	onError := func(r interface{}) {
