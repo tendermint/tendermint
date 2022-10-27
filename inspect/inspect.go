@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect/rpc"
@@ -13,11 +14,16 @@ import (
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	"github.com/tendermint/tendermint/state/indexer/sink"
+	"github.com/tendermint/tendermint/state/indexer/block"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 
 	"golang.org/x/sync/errgroup"
+)
+
+var (
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 )
 
 // Inspector manages an RPC service that exports methods to debug a failed node.
@@ -31,7 +37,7 @@ type Inspector struct {
 
 	config *config.RPCConfig
 
-	indexerService *indexer.Service
+	indexerService *txindex.IndexerService
 	eventBus       *types.EventBus
 	logger         log.Logger
 }
@@ -42,11 +48,11 @@ type Inspector struct {
 // The caller is responsible for starting and stopping the Inspector service.
 ///
 //nolint:lll
-func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, es []indexer.EventSink, logger log.Logger) *Inspector {
-	routes := rpc.Routes(*cfg, ss, bs, es, logger)
+func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, txidx txindex.TxIndexer, blkidx indexer.BlockIndexer, lg log.Logger) *Inspector {
+	routes := rpc.Routes(*cfg, ss, bs, txidx, blkidx, logger)
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
-	is := indexer.NewIndexerService(es, eb)
+	is := txindex.NewIndexerService(txidx, blkidx, eb, false)
 	is.SetLogger(logger.With("module", "txindex"))
 	return &Inspector{
 		routes:         routes,
@@ -72,13 +78,13 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	if err != nil {
 		return nil, err
 	}
-	sinks, err := sink.EventSinksFromConfig(cfg, config.DefaultDBProvider, genDoc.ChainID)
+	txidx, blkidx, err := block.IndexerFromConfig(cfg, config.DefaultDBProvider, genDoc.ChainID)
 	if err != nil {
 		return nil, err
 	}
-	logger := log.MustNewDefaultLogger(log.LogFormatPlain, log.LogLevelInfo, false)
-	ss := state.NewStore(sDB)
-	return New(cfg.RPC, bs, ss, sinks, logger), nil
+	lg := logger.With("module", "inspect")
+	ss := state.NewStore(sDB, state.StoreOptions{})
+	return New(cfg.RPC, bs, ss, txidx, blkidx, lg), nil
 }
 
 // Run starts the Inspector servers and blocks until the servers shut down. The passed

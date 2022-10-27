@@ -8,13 +8,13 @@ import (
 	"github.com/rs/cors"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/internal/consensus"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -29,10 +29,11 @@ type Server struct {
 // Routes returns the set of routes used by the Inspector server.
 //
 //nolint: lll
-func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, es []indexer.EventSink, logger log.Logger) core.RoutesMap {
+func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, txidx txindex.TxIndexer, blkidx indexer.BlockIndexer, logger log.Logger) core.RoutesMap {
 	env := &core.Environment{
 		Config:           cfg,
-		EventSinks:       es,
+		BlockIndexer:     blkidx,
+		TxIndexer:        txidx,
 		StateStore:       s,
 		BlockStore:       bs,
 		ConsensusReactor: waitSyncCheckerImpl{},
@@ -95,10 +96,6 @@ type waitSyncCheckerImpl struct{}
 
 func (waitSyncCheckerImpl) WaitSync() bool {
 	return false
-}
-
-func (waitSyncCheckerImpl) GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool) {
-	return nil, false
 }
 
 // ListenAndServe listens on the address specified in srv.Addr and handles any

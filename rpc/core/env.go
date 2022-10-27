@@ -6,7 +6,6 @@ import (
 	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -60,12 +59,6 @@ type peers interface {
 
 type consensusReactor interface {
 	WaitSync() bool
-	GetPeerState(peerID types.NodeID) (*consensus.PeerState, bool)
-}
-
-type peerManager interface {
-	Peers() []types.NodeID
-	Addresses(types.NodeID) []p2p.NodeAddress
 }
 
 //----------------------------------------------
@@ -77,21 +70,20 @@ type Environment struct {
 	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateStore     sm.Store
-	BlockStore     sm.BlockStore
-	EvidencePool   sm.EvidencePool
-	ConsensusState consensusState
-	P2PPeers       peers
-	P2PTransport   transport
+	StateStore       sm.Store
+	BlockStore       sm.BlockStore
+	EvidencePool     sm.EvidencePool
+	ConsensusReactor consensusReactor
+	P2PPeers         peers
+	P2PTransport     transport
 
 	// objects
-	PubKey         crypto.PubKey
-	GenDoc         *types.GenesisDoc // cache the genesis structure
-	TxIndexer      txindex.TxIndexer
-	BlockIndexer   indexer.BlockIndexer
-	ConsensusState consensusState
-	EventBus       *types.EventBus // thread safe
-	Mempool        mempl.Mempool
+	PubKey       crypto.PubKey
+	GenDoc       *types.GenesisDoc // cache the genesis structure
+	TxIndexer    txindex.TxIndexer
+	BlockIndexer indexer.BlockIndexer
+	EventBus     *types.EventBus // thread safe
+	Mempool      mempl.Mempool
 
 	Logger log.Logger
 
