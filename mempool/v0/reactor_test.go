@@ -264,6 +264,10 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	})
 }
 
+// TODO: This test tests that we don't panic and are able to generate new
+// PeerIDs for each peer we add. It seems as though we should be able to test
+// this in a much more direct way.
+// https://github.com/tendermint/tendermint/issues/9639
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 1
