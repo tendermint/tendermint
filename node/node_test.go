@@ -156,7 +156,7 @@ func TestPprofServer(t *testing.T) {
 	resp, err := http.Get("http://" + config.RPC.PprofListenAddress + "/debug/pprof")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	assert.Equal(t, "200 OK", resp.Status)
+	assert.Equal(t, 200, resp.StatusCode)
 }
 
 func TestNodeSetPrivValTCP(t *testing.T) {
