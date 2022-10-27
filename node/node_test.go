@@ -149,7 +149,9 @@ func TestPprofServer(t *testing.T) {
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	assert.NoError(t, err)
 	assert.NoError(t, n.Start())
-	defer n.Stop()
+	defer func() {
+		require.NoError(t, n.Stop())
+	}()
 	assert.NotNil(t, n.pprofSrv)
 
 	resp, err = http.Get("http://" + config.RPC.PprofListenAddress + "/debug/pprof")
