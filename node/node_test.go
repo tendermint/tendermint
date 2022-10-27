@@ -142,9 +142,8 @@ func TestPprofServer(t *testing.T) {
 	config.RPC.PprofListenAddress = testFreeAddr(t)
 
 	// should not work yet
-	resp, err := http.Get("http://" + config.RPC.PprofListenAddress)
+	_, err := http.Get("http://" + config.RPC.PprofListenAddress) //nolint: bodyclose
 	assert.Error(t, err)
-	defer resp.Body.Close()
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	assert.NoError(t, err)
@@ -154,7 +153,7 @@ func TestPprofServer(t *testing.T) {
 	}()
 	assert.NotNil(t, n.pprofSrv)
 
-	resp, err = http.Get("http://" + config.RPC.PprofListenAddress + "/debug/pprof")
+	resp, err := http.Get("http://" + config.RPC.PprofListenAddress + "/debug/pprof")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, "200 OK", resp.Status)
