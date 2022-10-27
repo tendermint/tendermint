@@ -161,7 +161,7 @@ func (memR *Reactor) Receive(e p2p.Envelope) {
 	case *protomem.Txs:
 		protoTxs := msg.GetTxs()
 		if len(protoTxs) == 0 {
-			memR.Logger.Error("received tmpty txs from peer", "src", e.Src)
+			memR.Logger.Error("received empty txs from peer", "src", e.Src)
 			return
 		}
 		txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(e.Src)}
@@ -243,11 +243,7 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		if _, ok := memTx.senders.Load(peerID); !ok {
 			success := peer.Send(p2p.Envelope{
 				ChannelID: mempool.MempoolChannel,
-				Message: &protomem.Message{
-					Sum: &protomem.Message_Txs{
-						Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
-					},
-				},
+				Message:   &protomem.Txs{Txs: [][]byte{memTx.tx}},
 			})
 			if !success {
 				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
