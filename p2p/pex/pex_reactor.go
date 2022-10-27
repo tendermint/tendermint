@@ -6,8 +6,11 @@ import (
 	"sync"
 	"time"
 
+<<<<<<< HEAD
 	"github.com/gogo/protobuf/proto"
 
+=======
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -184,6 +187,7 @@ func (r *Reactor) GetChannels() []*conn.ChannelDescriptor {
 			Priority:            1,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: maxMsgSize,
+			MessageType:         &tmp2p.Message{},
 		},
 	}
 }
@@ -236,16 +240,10 @@ func (r *Reactor) logErrAddrBook(err error) {
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
-func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	msg, err := decodeMsg(msgBytes)
-	if err != nil {
-		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-	r.Logger.Debug("Received message", "src", src, "chId", chID, "msg", msg)
+func (r *Reactor) Receive(e p2p.Envelope) {
+	r.Logger.Debug("Received message", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
 
-	switch msg := msg.(type) {
+	switch msg := e.Message.(type) {
 	case *tmp2p.PexRequest:
 
 		// NOTE: this is a prime candidate for amplification attacks,
@@ -255,8 +253,8 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 		// If we're a seed and this is an inbound peer,
 		// respond once and disconnect.
-		if r.config.SeedMode && !src.IsOutbound() {
-			id := string(src.ID())
+		if r.config.SeedMode && !e.Src.IsOutbound() {
+			id := string(e.Src.ID())
 			v := r.lastReceivedRequests.Get(id)
 			if v != nil {
 				// FlushStop/StopPeer are already
@@ -266,36 +264,36 @@ func (r *Reactor) Receive(chID byte, src Peer, msgBytes []byte) {
 			r.lastReceivedRequests.Set(id, time.Now())
 
 			// Send addrs and disconnect
-			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
+			r.SendAddrs(e.Src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
 			go func() {
 				// In a go-routine so it doesn't block .Receive.
-				src.FlushStop()
-				r.Switch.StopPeerGracefully(src)
+				e.Src.FlushStop()
+				r.Switch.StopPeerGracefully(e.Src)
 			}()
 
 		} else {
 			// Check we're not receiving requests too frequently.
-			if err := r.receiveRequest(src); err != nil {
-				r.Switch.StopPeerForError(src, err)
-				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+			if err := r.receiveRequest(e.Src); err != nil {
+				r.Switch.StopPeerForError(e.Src, err)
+				r.book.MarkBad(e.Src.SocketAddr(), defaultBanTime)
 				return
 			}
-			r.SendAddrs(src, r.book.GetSelection())
+			r.SendAddrs(e.Src, r.book.GetSelection())
 		}
 
 	case *tmp2p.PexAddrs:
 		// If we asked for addresses, add them to the book
 		addrs, err := p2p.NetAddressesFromProto(msg.Addrs)
 		if err != nil {
-			r.Switch.StopPeerForError(src, err)
-			r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+			r.Switch.StopPeerForError(e.Src, err)
+			r.book.MarkBad(e.Src.SocketAddr(), defaultBanTime)
 			return
 		}
-		err = r.ReceiveAddrs(addrs, src)
+		err = r.ReceiveAddrs(addrs, e.Src)
 		if err != nil {
-			r.Switch.StopPeerForError(src, err)
+			r.Switch.StopPeerForError(e.Src, err)
 			if err == ErrUnsolicitedList {
-				r.book.MarkBad(src.SocketAddr(), defaultBanTime)
+				r.book.MarkBad(e.Src.SocketAddr(), defaultBanTime)
 			}
 			return
 		}
@@ -348,7 +346,10 @@ func (r *Reactor) RequestAddrs(p Peer) {
 	}
 	r.Logger.Debug("Request addrs", "from", p)
 	r.requestsSent.Set(id, struct{}{})
-	p.Send(PexChannel, mustEncode(&tmp2p.PexRequest{}))
+	p.Send(p2p.Envelope{
+		ChannelID: PexChannel,
+		Message:   &tmp2p.PexRequest{},
+	})
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -406,7 +407,11 @@ func (r *Reactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, mustEncode(&tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)}))
+	e := p2p.Envelope{
+		ChannelID: PexChannel,
+		Message:   &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)},
+	}
+	p.Send(e)
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -761,45 +766,5 @@ func markAddrInBookBasedOnErr(addr *p2p.NetAddress, book AddrBook, err error) {
 		book.MarkBad(addr, defaultBanTime)
 	default:
 		book.MarkAttempt(addr)
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Messages
-
-// mustEncode proto encodes a tmp2p.Message
-func mustEncode(pb proto.Message) []byte {
-	msg := tmp2p.Message{}
-	switch pb := pb.(type) {
-	case *tmp2p.PexRequest:
-		msg.Sum = &tmp2p.Message_PexRequest{PexRequest: pb}
-	case *tmp2p.PexAddrs:
-		msg.Sum = &tmp2p.Message_PexAddrs{PexAddrs: pb}
-	default:
-		panic(fmt.Sprintf("Unknown message type %T", pb))
-	}
-
-	bz, err := msg.Marshal()
-	if err != nil {
-		panic(fmt.Errorf("unable to marshal %T: %w", pb, err))
-	}
-	return bz
-}
-
-func decodeMsg(bz []byte) (proto.Message, error) {
-	pb := &tmp2p.Message{}
-
-	err := pb.Unmarshal(bz)
-	if err != nil {
-		return nil, err
-	}
-
-	switch msg := pb.Sum.(type) {
-	case *tmp2p.Message_PexRequest:
-		return msg.PexRequest, nil
-	case *tmp2p.Message_PexAddrs:
-		return msg.PexAddrs, nil
-	default:
-		return nil, fmt.Errorf("unknown message: %T", msg)
 	}
 }

@@ -14,6 +14,15 @@ import (
 	"github.com/tendermint/tendermint/store"
 )
 
+<<<<<<< HEAD
+=======
+var removeBlock = false
+
+func init() {
+	RollbackStateCmd.Flags().BoolVar(&removeBlock, "hard", false, "remove last block as well as state")
+}
+
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 var RollbackStateCmd = &cobra.Command{
 	Use:   "rollback",
 	Short: "rollback tendermint state by one height",

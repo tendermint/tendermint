@@ -143,12 +143,18 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            5,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
+<<<<<<< HEAD:blockchain/v0/reactor.go
 			RecvMessageCapacity: bc.MaxMsgSize,
+=======
+			RecvMessageCapacity: MaxMsgSize,
+			MessageType:         &bcproto.Message{},
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622)):blocksync/reactor.go
 		},
 	}
 }
 
 // AddPeer implements Reactor by sending our state to peer.
+<<<<<<< HEAD:blockchain/v0/reactor.go
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{
 		Base:   bcR.store.Base(),
@@ -159,6 +165,16 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	}
 
 	peer.Send(BlockchainChannel, msgBytes)
+=======
+func (bcR *Reactor) AddPeer(peer p2p.Peer) {
+	peer.Send(p2p.Envelope{
+		ChannelID: BlocksyncChannel,
+		Message: &bcproto.StatusResponse{
+			Base:   bcR.store.Base(),
+			Height: bcR.store.Height(),
+		},
+	})
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622)):blocksync/reactor.go
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -183,6 +199,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
 			return false
 		}
 
+<<<<<<< HEAD:blockchain/v0/reactor.go
 		msgBytes, err := bc.EncodeMsg(&bcproto.BlockResponse{Block: bl})
 		if err != nil {
 			bcR.Logger.Error("could not marshal msg", "err", err)
@@ -217,21 +234,44 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.Switch.StopPeerForError(src, err)
 		return
 	}
+=======
+		return src.TrySend(p2p.Envelope{
+			ChannelID: BlocksyncChannel,
+			Message:   &bcproto.BlockResponse{Block: bl},
+		})
+	}
 
-	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
+	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
+	return src.TrySend(p2p.Envelope{
+		ChannelID: BlocksyncChannel,
+		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
+	})
+}
 
-	switch msg := msg.(type) {
+// Receive implements Reactor by handling 4 types of messages (look below).
+func (bcR *Reactor) Receive(e p2p.Envelope) {
+	if err := ValidateMsg(e.Message); err != nil {
+		bcR.Logger.Error("Peer sent us invalid msg", "peer", e.Src, "msg", e.Message, "err", err)
+		bcR.Switch.StopPeerForError(e.Src, err)
+		return
+	}
+
+	bcR.Logger.Debug("Receive", "e.Src", e.Src, "chID", e.ChannelID, "msg", e.Message)
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622)):blocksync/reactor.go
+
+	switch msg := e.Message.(type) {
 	case *bcproto.BlockRequest:
-		bcR.respondToPeer(msg, src)
+		bcR.respondToPeer(msg, e.Src)
 	case *bcproto.BlockResponse:
 		bi, err := types.BlockFromProto(msg.Block)
 		if err != nil {
 			bcR.Logger.Error("Block content is invalid", "err", err)
 			return
 		}
-		bcR.pool.AddBlock(src.ID(), bi, len(msgBytes))
+		bcR.pool.AddBlock(e.Src.ID(), bi, msg.Block.Size())
 	case *bcproto.StatusRequest:
 		// Send peer our state.
+<<<<<<< HEAD:blockchain/v0/reactor.go
 		msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{
 			Height: bcR.store.Height(),
 			Base:   bcR.store.Base(),
@@ -241,11 +281,20 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			return
 		}
 		src.TrySend(BlockchainChannel, msgBytes)
+=======
+		e.Src.TrySend(p2p.Envelope{
+			ChannelID: BlocksyncChannel,
+			Message: &bcproto.StatusResponse{
+				Height: bcR.store.Height(),
+				Base:   bcR.store.Base(),
+			},
+		})
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622)):blocksync/reactor.go
 	case *bcproto.StatusResponse:
 		// Got a peer status. Unverified.
-		bcR.pool.SetPeerRange(src.ID(), msg.Base, msg.Height)
+		bcR.pool.SetPeerRange(e.Src.ID(), msg.Base, msg.Height)
 	case *bcproto.NoBlockResponse:
-		bcR.Logger.Debug("Peer does not have requested block", "peer", src, "height", msg.Height)
+		bcR.Logger.Debug("Peer does not have requested block", "peer", e.Src, "height", msg.Height)
 	default:
 		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -286,6 +335,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 				if peer == nil {
 					continue
 				}
+<<<<<<< HEAD:blockchain/v0/reactor.go
 				msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: request.Height})
 				if err != nil {
 					bcR.Logger.Error("could not convert msg to proto", "err", err)
@@ -293,6 +343,12 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 				}
 
 				queued := peer.TrySend(BlockchainChannel, msgBytes)
+=======
+				queued := peer.TrySend(p2p.Envelope{
+					ChannelID: BlocksyncChannel,
+					Message:   &bcproto.BlockRequest{Height: request.Height},
+				})
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622)):blocksync/reactor.go
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}
@@ -304,7 +360,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 
 			case <-statusUpdateTicker.C:
 				// ask for status updates
-				go bcR.BroadcastStatusRequest() //nolint: errcheck
+				go bcR.BroadcastStatusRequest()
 
 			}
 		}
@@ -424,6 +480,7 @@ FOR_LOOP:
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
+<<<<<<< HEAD:blockchain/v0/reactor.go
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	bm, err := bc.EncodeMsg(&bcproto.StatusRequest{})
 	if err != nil {
@@ -434,4 +491,11 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	bcR.Switch.Broadcast(BlockchainChannel, bm)
 
 	return nil
+=======
+func (bcR *Reactor) BroadcastStatusRequest() {
+	bcR.Switch.Broadcast(p2p.Envelope{
+		ChannelID: BlocksyncChannel,
+		Message:   &bcproto.StatusRequest{},
+	})
+>>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622)):blocksync/reactor.go
 }
