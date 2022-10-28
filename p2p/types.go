@@ -14,6 +14,9 @@ type Envelope struct {
 	Src       Peer          // sender (empty if outbound)
 	Message   proto.Message // message payload
 	ChannelID byte
+
+	size    int
+	sizeSet bool
 }
 
 // Unwrapper is a Protobuf message that can contain a variety of inner messages

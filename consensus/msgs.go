@@ -4,12 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-<<<<<<< HEAD
-	"github.com/gogo/protobuf/proto"
-
-=======
 	"github.com/cosmos/gogoproto/proto"
->>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmmath "github.com/tendermint/tendermint/libs/math"

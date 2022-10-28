@@ -48,11 +48,7 @@ func (r *Rand) init() {
 }
 
 func (r *Rand) reset(seed int64) {
-<<<<<<< HEAD
 	r.rand = mrand.New(mrand.NewSource(seed)) //nolint:gosec // G404: Use of weak random number generator
-=======
-	r.rand = mrand.New(mrand.NewSource(seed))
->>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 }
 
 //----------------------------------------

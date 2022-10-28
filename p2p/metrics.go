@@ -18,8 +18,6 @@ const (
 	MetricsSubsystem = "p2p"
 )
 
-<<<<<<< HEAD
-=======
 var (
 	// valueToLabelRegexp is used to find the golang package name and type name
 	// so that the name can be turned into a prometheus label where the characters
@@ -29,7 +27,6 @@ var (
 
 //go:generate go run ../scripts/metricsgen -struct=Metrics
 
->>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Number of peers.
@@ -41,8 +38,11 @@ type Metrics struct {
 	// Pending bytes to be sent to a given peer.
 	PeerPendingSendBytes metrics.Gauge
 	// Number of transactions submitted by each peer.
-<<<<<<< HEAD
 	NumTxs metrics.Gauge
+	// Number of bytes of each message type received.
+	MessageReceiveBytesTotal metrics.Counter
+	// Number of bytes of each message type sent.
+	MessageSendBytesTotal metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -76,7 +76,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_pending_send_bytes",
-			Help:      "Number of pending bytes to be sent to a given peer.",
+			Help:      "Pending bytes to be sent to a given peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
 		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -84,23 +84,31 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "num_txs",
 			Help:      "Number of transactions submitted by each peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
+		MessageReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_receive_bytes_total",
+			Help:      "Number of bytes of each message type received.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
+		MessageSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_send_bytes_total",
+			Help:      "Number of bytes of each message type sent.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
 	}
 }
 
-// NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Peers:                 discard.NewGauge(),
-		PeerReceiveBytesTotal: discard.NewCounter(),
-		PeerSendBytesTotal:    discard.NewCounter(),
-		PeerPendingSendBytes:  discard.NewGauge(),
-		NumTxs:                discard.NewGauge(),
-=======
-	NumTxs metrics.Gauge `metrics_labels:"peer_id"`
-	// Number of bytes of each message type received.
-	MessageReceiveBytesTotal metrics.Counter `metrics_labels:"message_type"`
-	// Number of bytes of each message type sent.
-	MessageSendBytesTotal metrics.Counter `metrics_labels:"message_type"`
+		Peers:                    discard.NewGauge(),
+		PeerReceiveBytesTotal:    discard.NewCounter(),
+		PeerSendBytesTotal:       discard.NewCounter(),
+		PeerPendingSendBytes:     discard.NewGauge(),
+		NumTxs:                   discard.NewGauge(),
+		MessageReceiveBytesTotal: discard.NewCounter(),
+		MessageSendBytesTotal:    discard.NewCounter(),
+	}
 }
 
 type metricsLabelCache struct {
@@ -135,6 +143,5 @@ func newMetricsLabelCache() *metricsLabelCache {
 	return &metricsLabelCache{
 		mtx:               &sync.RWMutex{},
 		messageLabelNames: map[reflect.Type]string{},
->>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 	}
 }

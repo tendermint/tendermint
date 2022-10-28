@@ -6,11 +6,6 @@ import (
 	"sync"
 	"time"
 
-<<<<<<< HEAD
-	"github.com/gogo/protobuf/proto"
-
-=======
->>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
