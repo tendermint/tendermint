@@ -42,6 +42,8 @@ type BlockExecutor struct {
 	logger log.Logger
 
 	metrics *Metrics
+
+	prerunCtx *prerunContext
 }
 
 type BlockExecutorOption func(executor *BlockExecutor)
@@ -200,9 +202,18 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	}
 
 	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(
-		blockExec.logger, blockExec.proxyApp, block, blockExec.store, state.InitialHeight,
-	)
+	var abciResponses *tmstate.ABCIResponses
+	var err error
+	pc := blockExec.prerunCtx
+	if pc.prerunTx {
+		abciResponses, err = pc.getPrerunResult(block)
+	}
+	if abciResponses == nil {
+		abciResponses, err = execBlockOnProxyApp(
+			blockExec.logger, blockExec.proxyApp, block, blockExec.store, state.InitialHeight,
+		)
+	}
+
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {

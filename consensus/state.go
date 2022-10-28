@@ -140,6 +140,9 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
+
+	// enable the function of pre-run tx or not
+	prerunTx bool
 }
 
 // StateOption sets an optional parameter on the State.
@@ -183,6 +186,10 @@ func NewState(
 	}
 
 	cs.updateToState(state)
+
+	if cs.prerunTx {
+		cs.blockExec.InitPrerun()
+	}
 
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 
@@ -1922,6 +1929,10 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 		}
 
 		cs.ProposalBlock = block
+
+		if cs.prerunTx && cs.Height > cs.state.InitialHeight {
+			cs.blockExec.NotifyPrerun(cs.ProposalBlock)
+		}
 
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
