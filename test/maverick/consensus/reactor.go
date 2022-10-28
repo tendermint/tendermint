@@ -148,6 +148,7 @@ func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            6,
 			SendQueueCapacity:   100,
 			RecvMessageCapacity: maxMsgSize,
+			MessageType:         &tmcons.Message{},
 		},
 		{
 			ID: DataChannel, // maybe split between gossiping current block and catchup stuff
@@ -156,6 +157,7 @@ func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity:   100,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: maxMsgSize,
+			MessageType:         &tmcons.Message{},
 		},
 		{
 			ID:                  VoteChannel,
@@ -163,6 +165,7 @@ func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity:   100,
 			RecvBufferCapacity:  100 * 100,
 			RecvMessageCapacity: maxMsgSize,
+			MessageType:         &tmcons.Message{},
 		},
 		{
 			ID:                  VoteSetBitsChannel,
@@ -170,6 +173,7 @@ func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity:   2,
 			RecvBufferCapacity:  1024,
 			RecvMessageCapacity: maxMsgSize,
+			MessageType:         &tmcons.Message{},
 		},
 	}
 }
