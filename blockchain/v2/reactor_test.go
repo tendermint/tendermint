@@ -402,7 +402,7 @@ func TestReactorHelperMode(t *testing.T) {
 				switch ev := step.event.(type) {
 				case *bcproto.StatusRequest:
 					old := mockSwitch.numStatusResponse
-					reactor.Receive(p2p.Envelope{
+					reactor.NewReceive(p2p.Envelope{
 						ChannelID: channelID,
 						Src:       mockPeer{id: p2p.ID(step.peer)},
 						Message:   ev})
@@ -410,14 +410,14 @@ func TestReactorHelperMode(t *testing.T) {
 				case *bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						reactor.Receive(p2p.Envelope{
+						reactor.NewReceive(p2p.Envelope{
 							ChannelID: channelID,
 							Src:       mockPeer{id: p2p.ID(step.peer)},
 							Message:   ev})
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						reactor.Receive(p2p.Envelope{
+						reactor.NewReceive(p2p.Envelope{
 							ChannelID: channelID,
 							Src:       mockPeer{id: p2p.ID(step.peer)},
 							Message:   ev})
