@@ -2,10 +2,6 @@ linters:
   enable:
     - asciicheck
     - bodyclose
-<<<<<<< HEAD
-    # - deadcode
-=======
->>>>>>> 83b7f4ad5 (ci: Fix linter complaint (#9645))
     - depguard
     - dogsled
     - dupl
@@ -38,7 +34,6 @@ linters:
     - stylecheck
     # - typecheck
     - unconvert
-<<<<<<< HEAD
     # - unparam
     # - unused
     - varcheck
@@ -48,9 +43,6 @@ linters:
     - unused
     - deadcode
     - nolintlint
-=======
-    - unused
->>>>>>> 83b7f4ad5 (ci: Fix linter complaint (#9645))
 
 issues:
   exclude-rules:
