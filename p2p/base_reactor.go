@@ -38,14 +38,6 @@ type Reactor interface {
 	// or other reason).
 	RemovePeer(peer Peer, reason interface{})
 
-	// NewReceive is called by the switch when an envelope is received from any connected
-	// peer on any of the channels registered by the reactor
-	//
-	// The set of messages passed to Receive and NewReceive are identical. While both
-	// need to be implemented to satisfy the interface, only one message stream
-	// should be used per reactor.
-	NewReceive(Envelope)
-
 	// Receive is called by the switch when msgBytes is received from the peer.
 	//
 	// NOTE reactor can not keep msgBytes around after Receive completes without
@@ -53,10 +45,20 @@ type Reactor interface {
 	//
 	// CONTRACT: msgBytes are not nil.
 	//
-	// The messages passed to Receive and NewReceive are identical. While both
-	// need to be implemented to satisfy the interface, only one message stream
-	// should be used per reactor.
+	// Only one of Receive or NewReceive are called per message. If NewReceive
+	// is implemented, it will be used, otherwise the switch will fallback to
+	// using Receive. Receive will be replaced by NewReceive in a future version
 	Receive(chID byte, peer Peer, msgBytes []byte)
+}
+
+type NewReceiver interface {
+	// NewReceive is called by the switch when an envelope is received from any connected
+	// peer on any of the channels registered by the reactor.
+	//
+	// Only one of Receive or NewReceive are called per message. If NewReceive
+	// is implemented, it will be used, otherwise the switch will fallback to
+	// using Receive. Receive will be replaced by NewReceive in a future version
+	NewReceive(Envelope)
 }
 
 //--------------------------------------
