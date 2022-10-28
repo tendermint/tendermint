@@ -177,7 +177,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	peer.Send(p2p.Envelope{
+	peer.NewSend(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
@@ -203,7 +203,7 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("Could not send block message to peer", "err", err)
 			return false
 		}
-		return src.TrySend(p2p.Envelope{
+		return src.NewTrySend(p2p.Envelope{
 			ChannelID: BlockchainChannel,
 			Message:   &bcproto.BlockResponse{Block: pbbi},
 		})
@@ -211,14 +211,14 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 
 	bcR.Logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	return src.TrySend(p2p.Envelope{
+	return src.NewTrySend(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
 	})
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusRequest, src p2p.Peer) (queued bool) {
-	return src.TrySend(p2p.Envelope{
+	return src.NewTrySend(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
@@ -473,7 +473,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 // Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
-	bcR.Switch.Broadcast(p2p.Envelope{
+	bcR.Switch.NewBroadcast(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.StatusRequest{},
 	})
@@ -487,7 +487,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 		return errNilPeerForBlockRequest
 	}
 
-	queued := peer.TrySend(p2p.Envelope{
+	queued := peer.NewTrySend(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.BlockRequest{Height: height},
 	})

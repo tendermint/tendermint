@@ -99,12 +99,12 @@ func DoublePrevoteMisbehavior() Misbehavior {
 		// there has to be at least two other peers connected else this behavior works normally
 		for idx, peer := range peers {
 			if idx%2 == 0 { // sign the proposal block
-				peer.Send(p2p.Envelope{
+				peer.NewSend(p2p.Envelope{
 					ChannelID: VoteChannel,
 					Message:   prevote.ToProto(),
 				})
 			} else { // sign a nil block
-				peer.Send(p2p.Envelope{
+				peer.NewSend(p2p.Envelope{
 					ChannelID: VoteChannel,
 					Message:   nilPrevote.ToProto(),
 				})
