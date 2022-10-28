@@ -44,15 +44,29 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "num_txs",
 			Help:      "Number of transactions submitted by each peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
+		MessageReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_receive_bytes_total",
+			Help:      "Number of bytes of each message type received.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
+		MessageSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_send_bytes_total",
+			Help:      "Number of bytes of each message type sent.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
 	}
 }
 
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Peers:                 discard.NewGauge(),
-		PeerReceiveBytesTotal: discard.NewCounter(),
-		PeerSendBytesTotal:    discard.NewCounter(),
-		PeerPendingSendBytes:  discard.NewGauge(),
-		NumTxs:                discard.NewGauge(),
+		Peers:                    discard.NewGauge(),
+		PeerReceiveBytesTotal:    discard.NewCounter(),
+		PeerSendBytesTotal:       discard.NewCounter(),
+		PeerPendingSendBytes:     discard.NewGauge(),
+		NumTxs:                   discard.NewGauge(),
+		MessageReceiveBytesTotal: discard.NewCounter(),
+		MessageSendBytesTotal:    discard.NewCounter(),
 	}
 }
