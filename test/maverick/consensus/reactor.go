@@ -388,7 +388,10 @@ func (conR *Reactor) NewReceive(e p2p.Envelope) {
 }
 
 func (conR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	conR.NewReceive(p2p.Envelope{})
+	conR.NewReceive(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+	})
 }
 
 // SetEventBus sets event bus.

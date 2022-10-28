@@ -234,7 +234,10 @@ func (bcR *Reactor) NewReceive(e p2p.Envelope) {
 }
 
 func (bcR *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	bcR.NewReceive(p2p.Envelope{})
+	bcR.NewReceive(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+	})
 }
 
 // Handle messages from the poolReactor telling the reactor what to do.

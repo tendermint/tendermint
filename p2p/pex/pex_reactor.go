@@ -299,7 +299,10 @@ func (r *Reactor) NewReceive(e p2p.Envelope) {
 }
 
 func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	r.NewReceive(p2p.Envelope{})
+	r.NewReceive(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+	})
 }
 
 // enforces a minimum amount of time between requests
