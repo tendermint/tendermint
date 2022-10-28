@@ -187,7 +187,9 @@ func (memR *Reactor) NewReceive(e p2p.Envelope) {
 	// broadcasting happens from go routines per peer
 }
 
-func (memR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
+func (memR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	memR.NewReceive(p2p.Envelope{})
+}
 
 // PeerState describes the state of a peer.
 type PeerState interface {
