@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cosmos/gogoproto/proto"
+	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -80,6 +81,8 @@ func (tr *TestReactor) NewReceive(e Envelope) {
 		tr.msgsCounter++
 	}
 }
+
+func (tr *TestReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
 
 func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 	tr.mtx.Lock()

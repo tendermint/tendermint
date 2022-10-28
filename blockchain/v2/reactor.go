@@ -513,6 +513,8 @@ func (r *BlockchainReactor) NewReceive(e p2p.Envelope) {
 	}
 }
 
+func (r *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
+
 // AddPeer implements Reactor interface
 func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), peer.ID())

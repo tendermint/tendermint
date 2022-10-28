@@ -82,5 +82,7 @@ func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor        { return nil 
 func (*BaseReactor) AddPeer(peer Peer)                             {}
 func (*BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
 func (*BaseReactor) NewReceive(e Envelope)                         {}
+
+func (*BaseReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte)                         {}}
 func (*BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}
 func (*BaseReactor) InitPeer(peer Peer) Peer                       { return peer }

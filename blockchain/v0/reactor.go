@@ -231,6 +231,8 @@ func (bcR *BlockchainReactor) NewReceive(e p2p.Envelope) {
 	}
 }
 
+func (bcR *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
+
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
 func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
