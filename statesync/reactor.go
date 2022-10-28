@@ -231,10 +231,15 @@ func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 	if err != nil {
 		panic(err)
 	}
+	um, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+
 	r.NewReceive(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
-		Message:   msg,
+		Message:   um,
 	})
 }
 

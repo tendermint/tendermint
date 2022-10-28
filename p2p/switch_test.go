@@ -87,10 +87,15 @@ func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 	if err != nil {
 		panic(err)
 	}
+	um, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+
 	tr.NewReceive(Envelope{
 		ChannelID: chID,
 		Src:       peer,
-		Message:   msg,
+		Message:   um,
 	})
 }
 
