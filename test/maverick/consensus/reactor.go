@@ -388,9 +388,15 @@ func (conR *Reactor) NewReceive(e p2p.Envelope) {
 }
 
 func (conR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	var msg *tmcons.Message
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
 	conR.NewReceive(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
+		Message:   msg,
 	})
 }
 

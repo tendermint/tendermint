@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
+
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
@@ -514,9 +516,15 @@ func (r *BlockchainReactor) NewReceive(e p2p.Envelope) {
 }
 
 func (r *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	var msg *bcproto.Message
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
 	r.NewReceive(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
+		Message:   msg,
 	})
 }
 
