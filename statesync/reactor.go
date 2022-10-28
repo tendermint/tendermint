@@ -223,7 +223,9 @@ func (r *Reactor) NewReceive(e p2p.Envelope) {
 	}
 }
 
-func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
+func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	r.NewReceive(p2p.Envelope{})
+}
 
 // recentSnapshots fetches the n most recent snapshots from the app
 func (r *Reactor) recentSnapshots(n uint32) ([]*snapshot, error) {

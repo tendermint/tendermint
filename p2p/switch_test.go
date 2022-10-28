@@ -82,7 +82,9 @@ func (tr *TestReactor) NewReceive(e Envelope) {
 	}
 }
 
-func (tr *TestReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
+func (tr *TestReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	tr.NewReceive(p2p.Envelope{})
+}
 
 func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 	tr.mtx.Lock()

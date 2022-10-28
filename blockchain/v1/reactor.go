@@ -306,7 +306,9 @@ func (bcR *BlockchainReactor) NewReceive(e p2p.Envelope) {
 	}
 }
 
-func (bcR *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
+func (bcR *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	bcR.NewReceive(p2p.Envelope{})
+}
 
 // processBlocksRoutine processes blocks until signlaed to stop over the stopProcessing channel
 func (bcR *BlockchainReactor) processBlocksRoutine(stopProcessing chan struct{}) {

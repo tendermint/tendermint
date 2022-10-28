@@ -92,7 +92,9 @@ func (evR *Reactor) NewReceive(e p2p.Envelope) {
 	}
 }
 
-func (evR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {}
+func (evR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	evR.NewReceive(p2p.Envelope{})
+}
 
 // SetEventBus implements events.Eventable.
 func (evR *Reactor) SetEventBus(b *types.EventBus) {
