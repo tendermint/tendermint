@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -186,6 +188,23 @@ func (memR *Reactor) NewReceive(e p2p.Envelope) {
 	}
 
 	// broadcasting happens from go routines per peer
+}
+
+func (memR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	var msg *protomem.Message
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
+	uw, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+	memR.NewReceive(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+		Message:   uw,
+	})
 }
 
 // PeerState describes the state of a peer.
