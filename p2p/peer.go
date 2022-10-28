@@ -120,13 +120,7 @@ type peer struct {
 
 	metrics       *Metrics
 	metricsTicker *time.Ticker
-<<<<<<< HEAD
-=======
 	mlc           *metricsLabelCache
-
-	// When removal of a peer fails, we set this flag
-	removalAttemptFailed bool
->>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
 }
 
 type PeerOption func(*peer)

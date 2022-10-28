@@ -80,7 +80,7 @@ func (fp *fuzzPeer) CloseConn() error                  { return nil }
 func (fp *fuzzPeer) NodeInfo() p2p.NodeInfo            { return defaultNodeInfo }
 func (fp *fuzzPeer) Status() p2p.ConnectionStatus      { var cs p2p.ConnectionStatus; return cs }
 func (fp *fuzzPeer) SocketAddr() *p2p.NetAddress       { return p2p.NewNetAddress(fp.ID(), fp.RemoteAddr()) }
-func (fp *fuzzPeer) Send(byte, []byte) bool            { return true }
-func (fp *fuzzPeer) TrySend(byte, []byte) bool         { return true }
+func (fp *fuzzPeer) Send(e p2p.Envelope) bool          { return true }
+func (fp *fuzzPeer) TrySend(e p2p.Envelope) bool       { return true }
 func (fp *fuzzPeer) Set(key string, value interface{}) { fp.m[key] = value }
 func (fp *fuzzPeer) Get(key string) interface{}        { return fp.m[key] }
