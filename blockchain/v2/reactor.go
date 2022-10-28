@@ -514,7 +514,10 @@ func (r *BlockchainReactor) NewReceive(e p2p.Envelope) {
 }
 
 func (r *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	r.NewReceive(p2p.Envelope{})
+	r.NewReceive(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+	})
 }
 
 // AddPeer implements Reactor interface

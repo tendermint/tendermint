@@ -83,7 +83,10 @@ func (tr *TestReactor) NewReceive(e Envelope) {
 }
 
 func (tr *TestReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	tr.NewReceive(p2p.Envelope{})
+	tr.NewReceive(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+	})
 }
 
 func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
