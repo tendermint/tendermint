@@ -195,10 +195,14 @@ func (memR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 	if err != nil {
 		panic(err)
 	}
+	uw, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
 	memR.NewReceive(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
-		Message:   msg,
+		Message:   uw,
 	})
 }
 
