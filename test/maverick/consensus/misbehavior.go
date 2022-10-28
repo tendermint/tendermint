@@ -6,6 +6,7 @@ import (
 	tmcon "github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -98,9 +99,15 @@ func DoublePrevoteMisbehavior() Misbehavior {
 		// there has to be at least two other peers connected else this behavior works normally
 		for idx, peer := range peers {
 			if idx%2 == 0 { // sign the proposal block
-				peer.Send(VoteChannel, tmcon.MustEncode(&tmcon.VoteMessage{Vote: prevote}))
+				peer.Send(p2p.Envelope{
+					ChannelID: VoteChannel,
+					Message:   prevote.ToProto(),
+				})
 			} else { // sign a nil block
-				peer.Send(VoteChannel, tmcon.MustEncode(&tmcon.VoteMessage{Vote: nilPrevote}))
+				peer.Send(p2p.Envelope{
+					ChannelID: VoteChannel,
+					Message:   nilPrevote.ToProto(),
+				})
 			}
 		}
 	}
