@@ -262,6 +262,20 @@ func (_m *Peer) Reset() error {
 	return r0
 }
 
+// Send provides a mock function with given fields: _a0, _a1
+func (_m *Peer) Send(_a0 byte, _a1 []byte) bool {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(byte, []byte) bool); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // Set provides a mock function with given fields: _a0, _a1
 func (_m *Peer) Set(_a0 string, _a1 interface{}) {
 	_m.Called(_a0, _a1)
@@ -344,6 +358,20 @@ func (_m *Peer) String() string {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// TrySend provides a mock function with given fields: _a0, _a1
+func (_m *Peer) TrySend(_a0 byte, _a1 []byte) bool {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(byte, []byte) bool); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		r0 = ret.Get(0).(bool)
 	}
 
 	return r0
