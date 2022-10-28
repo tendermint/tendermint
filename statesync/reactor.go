@@ -5,6 +5,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/cosmos/gogoproto/proto"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -224,9 +226,15 @@ func (r *Reactor) NewReceive(e p2p.Envelope) {
 }
 
 func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	var msg *ssproto.Message
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
 	r.NewReceive(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
+		Message:   msg,
 	})
 }
 

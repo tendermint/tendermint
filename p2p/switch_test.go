@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/cosmos/gogoproto/proto"
-	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,10 +81,16 @@ func (tr *TestReactor) NewReceive(e Envelope) {
 	}
 }
 
-func (tr *TestReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	tr.NewReceive(p2p.Envelope{
+func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
+	var msg *p2pproto.Message
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
+	tr.NewReceive(Envelope{
 		ChannelID: chID,
 		Src:       peer,
+		Message:   msg,
 	})
 }
 
