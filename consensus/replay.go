@@ -210,14 +210,13 @@ type Handshaker struct {
 	genDoc        *types.GenesisDoc
 	logger        log.Logger
 	stateProvider statesync.StateProvider
-	// blockStore    *store.BlockStore
 
 	nBlocks int // number of blocks applied to the state
 }
 
 func NewHandshaker(stateStore sm.Store, state sm.State,
 	store sm.BlockStore, genDoc *types.GenesisDoc,
-	stateProvider statesync.StateProvider /*, blockStore *store.BlockStore*/) *Handshaker {
+	stateProvider statesync.StateProvider) *Handshaker {
 
 	return &Handshaker{
 		stateStore:    stateStore,
@@ -227,7 +226,7 @@ func NewHandshaker(stateStore sm.Store, state sm.State,
 		genDoc:        genDoc,
 		logger:        log.NewNopLogger(),
 		stateProvider: stateProvider,
-		//blockStore:    blockStore,
+
 		nBlocks: 0,
 	}
 }
@@ -306,7 +305,7 @@ func (h *Handshaker) localSync(appBlockHeight uint64) (sm.State, *types.Commit, 
 	// Optimistically build new state, so we don't discover any light client failures at the end.
 	state, err = h.stateProvider.State(pctx, appBlockHeight)
 	if err != nil {
-		h.logger.Info("failed to fetch and verify tendermint state", "err", err)
+		h.logger.Error("failed to fetch and verify tendermint state", "err", err)
 		if err == light.ErrNoWitnesses {
 			return sm.State{}, nil, err
 		}
@@ -315,7 +314,7 @@ func (h *Handshaker) localSync(appBlockHeight uint64) (sm.State, *types.Commit, 
 
 	commit, err = h.stateProvider.Commit(pctx, appBlockHeight)
 	if err != nil {
-		h.logger.Info("failed to fetch and verify commit", "err", err)
+		h.logger.Error("failed to fetch and verify commit", "err", err)
 		if err == light.ErrNoWitnesses {
 			return sm.State{}, nil, err
 		}
@@ -325,11 +324,6 @@ func (h *Handshaker) localSync(appBlockHeight uint64) (sm.State, *types.Commit, 
 	if err := h.stateStore.Save(state); err != nil {
 		return sm.State{}, nil, err
 	}
-	/*
-		if err := h.stateStore.Bootstrap(state); err != nil {
-			return  sm.State{}, nil, err
-		}
-	*/
 	if err := h.store.(*store.BlockStore).SaveSeenCommit(int64(appBlockHeight), commit); err != nil {
 		return sm.State{}, nil, err
 	}
@@ -361,19 +355,17 @@ func (h *Handshaker) ReplayBlocks(
 		"stateHeight",
 		stateBlockHeight)
 
-	fmt.Sprintf("HS: Pre switch")
 	// Check restorable conditions for localsync
 	if storeBlockHeight == 0 && appBlockHeight > 0 {
 		var syncErr error
 		if state, _, syncErr = h.localSync(uint64(appBlockHeight)); syncErr != nil {
-			panic("dead")
+			panic("Unable to use RPC to update state")
 		}
 		h.logger.Info("localSync resulting state.Version.Consensus.Block", "state", state.Version.Consensus.Block)
 
-		// Assume Heights Restored
+		// Assume Heights Restored, Update Heights for edge cases and constraints on the storeBlockHeight and storeBlockBase.
 		storeBlockHeight = appBlockHeight
 		stateBlockHeight = appBlockHeight
-
 	}
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
@@ -449,11 +441,7 @@ func (h *Handshaker) ReplayBlocks(
 	case storeBlockHeight < appBlockHeight:
 		// the app should never be ahead of the store (but this is under app's control)
 		return appHash, sm.ErrAppBlockHeightTooHigh{CoreHeight: storeBlockHeight, AppHeight: appBlockHeight}
-		/*
-			if err := h.localSync(uint64(appBlockHeight)); err != nil {
-				return appHash, sm.ErrAppBlockHeightTooHigh{CoreHeight: storeBlockHeight, AppHeight: appBlockHeight}
-			}
-		*/
+
 	case storeBlockHeight < stateBlockHeight:
 		// the state should never be ahead of the store (this is under tendermint's control)
 		panic(fmt.Sprintf("StateBlockHeight (%d) > StoreBlockHeight (%d)", stateBlockHeight, storeBlockHeight))

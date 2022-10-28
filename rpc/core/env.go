@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	abciclient "github.com/tendermint/tendermint/abci/client"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
@@ -77,7 +76,6 @@ type Environment struct {
 	// external, thread safe interfaces
 	ProxyAppQuery   proxy.AppConnQuery
 	ProxyAppMempool proxy.AppConnMempool
-	ProxyApp        abciclient.Client
 
 	// interfaces defined in types and above
 	StateStore     sm.Store

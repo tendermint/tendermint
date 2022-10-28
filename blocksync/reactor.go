@@ -64,9 +64,14 @@ type Reactor struct {
 func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
 	blockSync bool) *Reactor {
 
+	// Mismatch is okay if tendermint can get new store via RPC
 	if state.LastBlockHeight != store.Height() {
+		// TODO: use logger before SetLogger?
+		// TODO: Panic if statesync RPC/Trust* are not set?
 		fmt.Sprintf("WARN: state (%v) != store (%v) height mismatch\n", state.LastBlockHeight, store.Height())
 	}
+
+	// Tendermint can only find future heights to match app state.  Tendermint is not able to fetch lower heights.
 	if state.LastBlockHeight < store.Height() {
 		panic(fmt.Sprintf("Unable to recover via RPC when state (%v) < store (%v) height ", state.LastBlockHeight,
 			store.Height()))
