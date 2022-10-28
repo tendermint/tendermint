@@ -240,7 +240,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
-func (bcR *BlockchainReactor) Receive(e p2p.Envelope) {
+func (bcR *BlockchainReactor) NewReceive(e p2p.Envelope) {
 	if err := bc.ValidateMsg(e.Message); err != nil {
 		bcR.Logger.Error("peer sent us invalid msg", "peer", e.Src, "msg", e.Message, "err", err)
 		_ = bcR.swReporter.Report(behaviour.BadMessage(e.Src.ID(), err.Error()))

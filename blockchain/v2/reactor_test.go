@@ -56,6 +56,9 @@ func (mp mockPeer) SocketAddr() *p2p.NetAddress   { return &p2p.NetAddress{} }
 func (mp mockPeer) NewSend(e p2p.Envelope) bool    { return true }
 func (mp mockPeer) NewTrySend(e p2p.Envelope) bool { return true }
 
+func (mp mockPeer) Send(byte, []byte) bool    { return true }
+func (mp mockPeer) TrySend(byte, []byte) bool { return true }
+
 func (mp mockPeer) Set(string, interface{}) {}
 func (mp mockPeer) Get(string) interface{}  { return struct{}{} }
 
