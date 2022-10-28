@@ -20,12 +20,13 @@ type StateMachine struct {
 	db dbm.DB
 
 	// in-memory state
-	accounts    map[uint64]*Account
+	accounts map[uint64]*Account
 
 	// ephemeral state (not used for the app hash) but for
 	// convienience
-	pairs     map[string]struct{} // lookup pairs
-	commodity map[string]struct{} // lookup commodities
+	pairs       map[string]struct{} // lookup pairs
+	commodities map[string]struct{} // lookup commodities
+	publicKeys  map[string]struct{} // lookup existence of an account
 
 	// app-side mempool (also emphemeral)
 	markets map[string]*Market // i.e. ATOM/USDC
@@ -51,15 +52,14 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 	// validations for each msg below
 	switch m := msg.Sum.(type) {
 	case *Msg_MsgRegisterPair:
-		// mustnt already have the same pair (also the reverse pairing)
-		// inbound can also be outbound for pair
-
-	case *Msg_MsgCreateAccount:
-
-		if m.MsgCreateAccount.ValidateBasic(); err != nil {
+		if err := m.MsgRegisterPair.ValidateBasic(); err != nil {
 			return types.ResponseCheckTx{Code: 3}
 		}
-		//check there is no other account with the same public key
+
+	case *Msg_MsgCreateAccount:
+		if err := m.MsgCreateAccount.ValidateBasic(); err != nil {
+			return types.ResponseCheckTx{Code: 3}
+		}
 
 	case *Msg_MsgBid:
 
@@ -76,8 +76,6 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		if _, ok := sm.pairs[m.MsgBid.Pair.String()]; !ok {
 			return types.ResponseCheckTx{Code: 4}
 		}
-
-		// check that the account has enough funds to support the bid (quantity * max_price)
 
 	case *Msg_MsgAsk:
 
@@ -142,11 +140,8 @@ func (sm *StateMachine) BeginBlock(req types.RequestBeginBlock) types.ResponseBe
 func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	tradeSet := new(TradeSet)
 	if err := proto.Unmarshal(req.Tx, tradeSet); err != nil {
-		panic(fmt.Sprintf("unmarshalling tx: %w", err))
+		panic(fmt.Sprintf("unmarshalling tx: %v", err))
 	}
-
-
-
 
 	return types.ResponseDeliverTx{Code: 0}
 }
@@ -172,82 +167,177 @@ func (sm *StateMachine) ApplySnapshotChunk(req types.RequestApplySnapshotChunk) 
 }
 
 func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.ResponsePrepareProposal {
-
 	// declare transaction with the size of 0
 	txs := make([][]byte, 0)
 
 	// fetch and match all the bids and asks for each market
 	for _, market := range sm.markets {
-		TradeSet := market.Match(); 
+		tradeSet := market.Match()
 		// tradesets into bytes and bytes into a transaction
-		if TradeSet == nil {
+		if tradeSet == nil {
 			continue
 		}
-		bz, err := proto.Marshal(TradeSet) 
+
+		tradeSet = sm.validateTradeSetAgainstState(tradeSet)
+		if tradeSet == nil || len(tradeSet.MatchedOrders) == 0 {
+			continue
+		}
+
+		// wrap this as a message typ
+		msgTradeSet := &MsgTradeSet{TradeSet: tradeSet}
+		bz, err := proto.Marshal(msgTradeSet)
 		if err != nil {
-			return  err
+			panic(err)
+		}
+
+		// check to see that we don't over populate the block
+		if len(txs)+len(bz) > int(req.MaxTxBytes) {
+			return types.ResponsePrepareProposal{Txs: txs}
+		}
+		txs = append(txs, bz)
+	}
+
+	for _, tx := range req.Txs {
+		var msg = new(Msg)
+		err := proto.Unmarshal(tx, msg)
+		if err != nil {
+			panic(err)
+		}
+
+		switch m := msg.Sum.(type) {
+		case *Msg_MsgRegisterPair:
+			// run the validation checks to see if duplicates within the pairs
+			pair := m.MsgRegisterPair.Pair
+			if _, ok := sm.pairs[pair.String()]; ok {
+				// this pair already exists so we skip over the message
+				// garbage collection should pick it up
+				continue
+			}
+
+			reversePair := &Pair{BuyersDenomination: pair.SellersDenomination, SellersDenomination: pair.BuyersDenomination}
+			if _, ok := sm.pairs[reversePair.String()]; ok {
+				// the reverse pair already exists so we skip over it
+				continue
+			}
+
+			// check to see that we don't over populate the block
+			if len(txs)+len(tx) > int(req.MaxTxBytes) {
+				return types.ResponsePrepareProposal{Txs: txs}
+			}
+			txs = append(txs, tx)
+
+		case *Msg_MsgCreateAccount:
+			// check for duplicate accounts in sm
+			if _, ok := sm.publicKeys[string(m.MsgCreateAccount.PublicKey)]; ok {
+				continue
+			}
+
+			// check to see that we don't over populate the block
+			if len(txs)+len(tx) > int(req.MaxTxBytes) {
+				return types.ResponsePrepareProposal{Txs: txs}
+			}
+			txs = append(txs, tx)
+		case *Msg_MsgAsk, *Msg_MsgBid:
+			// Already have these in the market and are paring together so not necessary to include here
+		default:
+			panic(fmt.Sprintf("unknown msg type in prepare proposal %T", m))
 		}
 	}
-
-	// pull in for every single pair
-
-	// does the buyer and seller have sufficient funds
-	for _, matchedOrder := range tradeSet.MatchedOrders {
-		bidOwner := sm.accounts[matchedOrder.OrderBid.OwnerId]
-		askOwner := sm.accounts[matchedOrder.OrderAsk.OwnerId]
-
-		askCommodities := askOwner.Commodities[tradeSet.Pairs.SellersDenomination]
-		buyCommodities := askOwner.Commodities[tradeSet.Pairs.BuyersDenomination]
-
-		// if bidowner commodities quantity - askowner commodities quantity != 0 then continue
-		if bidOwner.Commodities[askCommodities.String()] 
-	}
-
-	// 		// validate the trade:
-	// 		
-
-	// 		// add it to the set of txs
-
-	// 	}
-
-	// 	
-	// }
-
-	// loop through the transactions provided by tendermint and look out for register pair and create account.
-	// those should still be added.
 
 	return types.ResponsePrepareProposal{Txs: req.Txs}
 }
 
-// Validate matched order
+// Process Proposal either rejects or accepts transactions
 func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.ResponseProcessProposal {
-	var msg = new(Msg)
+	for _, tx := range req.Txs {
+		var msg = new(Msg)
+		err := proto.Unmarshal(tx, msg)
+		if err != nil {
+			panic(err)
+		}
 
-	err := proto.Unmarshal(req.Txs[], msg)
-	if err != nil {
-		return types.ResponseCheckTx{Code: 1} // decoding error
+		switch m := msg.Sum.(type) {
+		case *Msg_MsgRegisterPair:
+			if err := m.MsgRegisterPair.ValidateBasic(); err != nil {
+				return rejectProposal()
+			}
+
+			pair := m.MsgRegisterPair.Pair
+			if _, ok := sm.pairs[pair.String()]; ok {
+				return rejectProposal()
+			}
+
+			reversePair := &Pair{BuyersDenomination: pair.SellersDenomination, SellersDenomination: pair.BuyersDenomination}
+			if _, ok := sm.pairs[reversePair.String()]; ok {
+				return rejectProposal()
+			}
+
+		case *Msg_MsgAsk, *Msg_MsgBid:
+			return rejectProposal()
+		case *Msg_MsgCreateAccount:
+			if err := m.MsgCreateAccount.ValidateBasic(); err != nil {
+				return rejectProposal()
+			}
+
+			// check for duplicate accounts in sm
+			if _, ok := sm.publicKeys[string(m.MsgCreateAccount.PublicKey)]; ok {
+				return rejectProposal()
+			}
+
+		case *Msg_MsgTradeSet:
+			if err := m.MsgTradeSet.TradeSet.ValidateBasic(); err != nil {
+				return rejectProposal()
+			}
+
+			// for each matched order 
+			// check the accounts exist, that the signatures are valid and that they have the available funds to make the swap
+
+		default:
+			return rejectProposal()
+
+		}
 	}
 
-	// check if there is more than one account
-	if ok := len(sm.accounts) >= 1; !ok {
-		return types.ResponseProcessProposal{Code: 4}
+	return acceptProposal()
+}
+
+func (sm *StateMachine) validateTradeSetAgainstState(tradeSet *TradeSet) *TradeSet {
+	output := &TradeSet{Pair: tradeSet.Pair}
+
+	for _, matchedOrder := range tradeSet.MatchedOrders {
+		bidOwner := sm.accounts[matchedOrder.OrderBid.OwnerId]
+		askOwner := sm.accounts[matchedOrder.OrderAsk.OwnerId]
+
+		askCommodities := askOwner.FindCommidity(tradeSet.Pair.SellersDenomination)
+		if askCommodities == nil {
+			continue
+		}
+		buyCommodities := bidOwner.FindCommidity(tradeSet.Pair.BuyersDenomination)
+		if buyCommodities == nil {
+			continue
+		}
+
+		// Seller has enough of the commodity
+		if askCommodities.Quantity-matchedOrder.OrderAsk.Quantity < 0 {
+			continue
+		}
+
+		// Buyer has enough of the buying commodity
+		if buyCommodities.Quantity-(matchedOrder.OrderAsk.AskPrice*matchedOrder.OrderAsk.Quantity) < 0 {
+			continue
+		}
+
+		// yayy! this matched order is still valid and can be executed
+		output.MatchedOrders = append(output.MatchedOrders, matchedOrder)
 	}
 
-	// check if there is more than one commodity
-	if ok := len(sm.commodities) >= 1; !ok {
-		return types.ResponseProcessProposal{Code: 4}
-	}
+	return output
+}
 
-	// check if there is more than one pair
-	if ok := len(sm.pairs) >= 1; !ok {
-		return types.ResponseProcessProposal{Code: 4}
-	}
+func rejectProposal() types.ResponseProcessProposal {
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}
+}
 
-	// check if there is a market
-	if ok := len(sm.markets) >= 1; !ok {
-		return types.ResponseProcessProposal{Code: 4}
-	}
-
-	return types.ResponseProcessProposal{
-		Status: types.ResponseProcessProposal_ACCEPT}
+func acceptProposal() types.ResponseProcessProposal {
+	return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_ACCEPT}
 }

@@ -32,7 +32,7 @@ message Commodity {
 
 message Account {
     uint64 index = 1;
-	repeated bytes public_key = 2;
+	bytes public_key = 2;
     // the set of commodities that the account has
     repeated Commodity commodities = 3;
 }

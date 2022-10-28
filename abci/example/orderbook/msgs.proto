@@ -16,12 +16,16 @@ message MsgAsk {
 }
 
 message MsgCreateAccount {
-    repeated bytes public_key = 1;
+    bytes public_key = 1;
     repeated Commodity commodities = 2;
 }
 
 message MsgRegisterPair {
     Pair pair = 1;
+}
+
+message MsgTradeSet {
+    TradeSet trade_set = 1;
 }
 
 message Msg {
@@ -31,5 +35,6 @@ message Msg {
         MsgAsk msg_ask = 2;
         MsgRegisterPair msg_register_pair = 3;
         MsgCreateAccount msg_create_account = 4;
+        MsgTradeSet msg_trade_set = 5;
     }
 }

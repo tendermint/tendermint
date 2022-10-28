@@ -98,8 +98,20 @@ func (o *OrderBid) ValidateBasic() error {
 	if o.MaxPrice <= 0 {
 		return errors.New("min price must be greater than 0")
 	}
-
+	
 	return nil
+}
+
+func (m *MatchedOrder) ValidateBasic() error {
+	if len(m.OrderAsk.Signature) != ed25519.SignatureSize {
+		return errors.New("invalid signature size")
+	}
+}
+
+func (t *TradeSet) ValidateBasic() error {
+	return t.Pair.ValidateBasic()
+	return t.MatchedOrders.ValidateBasic()
+
 }
 
 func (o *OrderAsk) ValidateBasic() error {
