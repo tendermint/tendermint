@@ -54,7 +54,7 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 			peer.On("ID").Return(p2p.ID("id"))
 			var response *ssproto.ChunkResponse
 			if tc.expectResponse != nil {
-				peer.On("Send", mock.MatchedBy(func(i interface{}) bool {
+				peer.On("NewSend", mock.MatchedBy(func(i interface{}) bool {
 					e, ok := i.(p2p.Envelope)
 					return ok && e.ChannelID == ChunkChannel
 				})).Run(func(args mock.Arguments) {
@@ -144,7 +144,7 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 			peer := &p2pmocks.Peer{}
 			if len(tc.expectResponses) > 0 {
 				peer.On("ID").Return(p2p.ID("id"))
-				peer.On("Send", mock.MatchedBy(func(i interface{}) bool {
+				peer.On("NewSend", mock.MatchedBy(func(i interface{}) bool {
 					e, ok := i.(p2p.Envelope)
 					return ok && e.ChannelID == SnapshotChannel
 				})).Run(func(args mock.Arguments) {

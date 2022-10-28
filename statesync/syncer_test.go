@@ -98,7 +98,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	// Adding a couple of peers should trigger snapshot discovery messages
 	peerA := &p2pmocks.Peer{}
 	peerA.On("ID").Return(p2p.ID("a"))
-	peerA.On("Send", mock.MatchedBy(func(i interface{}) bool {
+	peerA.On("NewSend", mock.MatchedBy(func(i interface{}) bool {
 		e, ok := i.(p2p.Envelope)
 		if !ok {
 			return false
@@ -111,7 +111,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 
 	peerB := &p2pmocks.Peer{}
 	peerB.On("ID").Return(p2p.ID("b"))
-	peerB.On("Send", mock.MatchedBy(func(i interface{}) bool {
+	peerB.On("NewSend", mock.MatchedBy(func(i interface{}) bool {
 		e, ok := i.(p2p.Envelope)
 		if !ok {
 			return false
@@ -176,11 +176,11 @@ func TestSyncer_SyncAny(t *testing.T) {
 		chunkRequests[msg.Index]++
 		chunkRequestsMtx.Unlock()
 	}
-	peerA.On("Send", mock.MatchedBy(func(i interface{}) bool {
+	peerA.On("NewSend", mock.MatchedBy(func(i interface{}) bool {
 		e, ok := i.(p2p.Envelope)
 		return ok && e.ChannelID == ChunkChannel
 	})).Maybe().Run(onChunkRequest).Return(true)
-	peerB.On("Send", mock.MatchedBy(func(i interface{}) bool {
+	peerB.On("NewSend", mock.MatchedBy(func(i interface{}) bool {
 		e, ok := i.(p2p.Envelope)
 		return ok && e.ChannelID == ChunkChannel
 	})).Maybe().Run(onChunkRequest).Return(true)
