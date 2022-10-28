@@ -562,6 +562,7 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: bc.MaxMsgSize,
+			MessageType:         &bcproto.Message{},
 		},
 	}
 }
