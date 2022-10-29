@@ -40,3 +40,7 @@ linters-settings:
     min-confidence: 0
   maligned:
     suggest-new: true
+
+run:
+  skip-files:
+    - libs/pubsub/query/query.peg.go
