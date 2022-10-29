@@ -3,7 +3,6 @@ package statesync
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -42,7 +41,7 @@ type chunkQueue struct {
 // newChunkQueue creates a new chunk queue for a snapshot, using a temp dir for storage.
 // Callers must call Close() when done.
 func newChunkQueue(snapshot *snapshot, tempDir string) (*chunkQueue, error) {
-	dir, err := ioutil.TempDir(tempDir, "tm-statesync")
+	dir, err := os.MkdirTemp(tempDir, "tm-statesync")
 	if err != nil {
 		return nil, fmt.Errorf("unable to create temp dir for state sync chunks: %w", err)
 	}
@@ -84,7 +83,7 @@ func (q *chunkQueue) Add(chunk *chunk) (bool, error) {
 	}
 
 	path := filepath.Join(q.dir, strconv.FormatUint(uint64(chunk.Index), 10))
-	err := ioutil.WriteFile(path, chunk.Chunk, 0600)
+	err := os.WriteFile(path, chunk.Chunk, 0o600)
 	if err != nil {
 		return false, fmt.Errorf("failed to save chunk %v to file %v: %w", chunk.Index, path, err)
 	}
@@ -209,7 +208,7 @@ func (q *chunkQueue) load(index uint32) (*chunk, error) {
 	if !ok {
 		return nil, nil
 	}
-	body, err := ioutil.ReadFile(path)
+	body, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load chunk %v: %w", index, err)
 	}
