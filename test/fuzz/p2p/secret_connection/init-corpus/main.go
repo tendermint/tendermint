@@ -1,4 +1,3 @@
-// nolint: gosec
 package main
 
 import (
@@ -38,6 +37,7 @@ func initCorpus(baseDir string) {
 	for i, datum := range data {
 		filename := filepath.Join(corpusDir, fmt.Sprintf("%d", i))
 
+		//nolint:gosec // G306: Expect WriteFile permissions to be 0600 or less
 		if err := os.WriteFile(filename, []byte(datum), 0o644); err != nil {
 			log.Fatalf("can't write %v to %q: %v", datum, filename, err)
 		}

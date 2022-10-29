@@ -1,4 +1,3 @@
-// nolint: gosec
 package app
 
 import (
@@ -83,6 +82,7 @@ func (s *State) save() error {
 	// We write the state to a separate file and move it to the destination, to
 	// make it atomic.
 	newFile := fmt.Sprintf("%v.new", s.currentFile)
+	//nolint:gosec // G306: Expect WriteFile permissions to be 0600 or less
 	err = os.WriteFile(newFile, bz, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to write state to %q: %w", s.currentFile, err)

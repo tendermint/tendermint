@@ -62,7 +62,7 @@ func makeHealthFunc(c *lrpc.Client) rpcHealthFunc {
 
 type rpcStatusFunc func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error)
 
-// nolint: interfacer
+//nolint:interfacer
 func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		return c.Status(ctx.Context())
@@ -259,8 +259,8 @@ type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string,
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
 	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes,
-		height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
-
+		height int64, prove bool,
+	) (*ctypes.ResultABCIQuery, error) {
 		return c.ABCIQueryWithOptions(ctx.Context(), path, data, rpcclient.ABCIQueryOptions{
 			Height: height,
 			Prove:  prove,
@@ -278,7 +278,7 @@ func makeABCIInfoFunc(c *lrpc.Client) rpcABCIInfoFunc {
 
 type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 
-// nolint: interfacer
+//nolint:interfacer
 func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
 	return func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 		return c.BroadcastEvidence(ctx.Context(), ev)

@@ -818,7 +818,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
 		// Previously, this code held the lock from the point at which the final block
-		// part was recieved until the block executed against the application.
+		// part was received until the block executed against the application.
 		// This prevented the reactor from being able to retrieve the most updated
 		// version of the RoundState. The reactor needs the updated RoundState to
 		// gossip the now completed block.

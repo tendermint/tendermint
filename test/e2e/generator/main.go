@@ -1,4 +1,3 @@
-// nolint: gosec
 package main
 
 import (
@@ -58,11 +57,12 @@ func NewCLI() *CLI {
 
 // generate generates manifests in a directory.
 func (cli *CLI) generate(dir string, groups int) error {
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
+	//nolint:gosec // G404: Use of weak random number generator (math/rand instead of crypto/rand)
 	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)))
 	if err != nil {
 		return err

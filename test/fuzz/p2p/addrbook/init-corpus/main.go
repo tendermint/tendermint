@@ -1,4 +1,3 @@
-// nolint: gosec
 package main
 
 import (
@@ -48,6 +47,7 @@ func initCorpus(baseDir string) {
 			log.Fatalf("can't marshal %v: %v", addr, err)
 		}
 
+		//nolint:gosec // G306: Expect WriteFile permissions to be 0600 or less
 		if err := os.WriteFile(filename, bz, 0o644); err != nil {
 			log.Fatalf("can't write %v to %q: %v", addr, filename, err)
 		}

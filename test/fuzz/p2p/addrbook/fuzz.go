@@ -1,4 +1,3 @@
-// nolint: gosec
 package addr
 
 import (
@@ -25,6 +24,7 @@ func Fuzz(data []byte) int {
 	}
 
 	// Also, make sure PickAddress always returns a non-nil address.
+	//nolint:gosec // G404: Use of weak random number generator (math/rand instead of crypto/rand)
 	bias := rand.Intn(100)
 	if p := addrBook.PickAddress(bias); p == nil {
 		panic(fmt.Sprintf("picked a nil address (bias: %d, addrBook size: %v)",

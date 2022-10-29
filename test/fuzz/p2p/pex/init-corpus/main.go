@@ -1,4 +1,3 @@
-// nolint: gosec
 package main
 
 import (
@@ -21,6 +20,7 @@ func main() {
 	initCorpus(*baseDir)
 }
 
+//nolint:gosec
 func initCorpus(rootDir string) {
 	log.SetFlags(0)
 
