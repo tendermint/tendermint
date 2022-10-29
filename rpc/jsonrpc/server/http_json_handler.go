@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"sort"
@@ -19,7 +19,7 @@ import (
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			res := types.RPCInvalidRequestError(nil,
 				fmt.Errorf("error reading request body: %w", err),
@@ -128,7 +128,6 @@ func mapParamsToArgs(
 	params map[string]json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
-
 	values := make([]reflect.Value, len(rpcFunc.argNames))
 	for i, argName := range rpcFunc.argNames {
 		argType := rpcFunc.args[i+argsOffset]
@@ -153,7 +152,6 @@ func arrayParamsToArgs(
 	params []json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
-
 	if len(rpcFunc.argNames) != len(params) {
 		return nil, fmt.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)

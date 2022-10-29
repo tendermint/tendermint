@@ -1,4 +1,3 @@
-//nolint: gosec
 package main
 
 import (
@@ -7,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -53,7 +51,8 @@ func Setup(testnet *e2e.Testnet) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0644)
+	//nolint:gosec // G306: Expect WriteFile permissions to be 0600 or less
+	err = os.WriteFile(filepath.Join(testnet.Dir, "docker-compose.yml"), compose, 0o644)
 	if err != nil {
 		return err
 	}
@@ -76,7 +75,7 @@ func Setup(testnet *e2e.Testnet) error {
 			if node.Mode == e2e.ModeLight && strings.Contains(dir, "app") {
 				continue
 			}
-			err := os.MkdirAll(dir, 0755)
+			err := os.MkdirAll(dir, 0o755)
 			if err != nil {
 				return err
 			}
@@ -92,7 +91,8 @@ func Setup(testnet *e2e.Testnet) error {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0644)
+		//nolint:gosec // G306: Expect WriteFile permissions to be 0600 or less
+		err = os.WriteFile(filepath.Join(nodeDir, "config", "app.toml"), appCfg, 0o644)
 		if err != nil {
 			return err
 		}
@@ -401,11 +401,12 @@ func UpdateConfigStateSync(node *e2e.Node, height int64, hash []byte) error {
 
 	// FIXME Apparently there's no function to simply load a config file without
 	// involving the entire Viper apparatus, so we'll just resort to regexps.
-	bz, err := ioutil.ReadFile(cfgPath)
+	bz, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return err
 	}
 	bz = regexp.MustCompile(`(?m)^trust_height =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_height = %v`, height)))
 	bz = regexp.MustCompile(`(?m)^trust_hash =.*`).ReplaceAll(bz, []byte(fmt.Sprintf(`trust_hash = "%X"`, hash)))
-	return ioutil.WriteFile(cfgPath, bz, 0644)
+	//nolint:gosec // G306: Expect WriteFile permissions to be 0600 or less
+	return os.WriteFile(cfgPath, bz, 0o644)
 }

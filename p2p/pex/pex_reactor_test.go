@@ -3,7 +3,6 @@ package pex
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,9 +19,7 @@ import (
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
-var (
-	cfg *config.P2PConfig
-)
+var cfg *config.P2PConfig
 
 func init() {
 	cfg = config.DefaultP2PConfig()
@@ -73,7 +70,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -208,7 +205,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 
 func TestCheckSeeds(t *testing.T) {
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -227,8 +224,10 @@ func TestCheckSeeds(t *testing.T) {
 
 	// 4. test create peer with all seeds having unresolvable DNS fails
 	badPeerConfig := &ReactorConfig{
-		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
-			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657"},
+		Seeds: []string{
+			"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
+			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657",
+		},
 	}
 	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
 	require.Error(t, peerSwitch.Start())
@@ -236,9 +235,11 @@ func TestCheckSeeds(t *testing.T) {
 
 	// 5. test create peer with one good seed address succeeds
 	badPeerConfig = &ReactorConfig{
-		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
+		Seeds: []string{
+			"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
 			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657",
-			seed.NetAddress().String()},
+			seed.NetAddress().String(),
+		},
 	}
 	peerSwitch = testCreatePeerWithConfig(dir, 2, badPeerConfig)
 	require.Nil(t, peerSwitch.Start())
@@ -247,7 +248,7 @@ func TestCheckSeeds(t *testing.T) {
 
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -267,7 +268,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 
 func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -296,7 +297,7 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 
 func TestPEXReactorSeedMode(t *testing.T) {
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -335,7 +336,7 @@ func TestPEXReactorSeedMode(t *testing.T) {
 
 func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -373,7 +374,7 @@ func TestPEXReactorDoesNotDisconnectFromPersistentPeerInSeedMode(t *testing.T) {
 
 func TestPEXReactorDialsPeerUpToMaxAttemptsInSeedMode(t *testing.T) {
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -409,7 +410,7 @@ func TestPEXReactorSeedModeFlushStop(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 
 	// directory to store address books
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir)
 
@@ -646,7 +647,7 @@ func testCreatePeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
 
 func createReactor(conf *ReactorConfig) (r *Reactor, book AddrBook) {
 	// directory to store address book
-	dir, err := ioutil.TempDir("", "pex_reactor")
+	dir, err := os.MkdirTemp("", "pex_reactor")
 	if err != nil {
 		panic(err)
 	}
@@ -677,7 +678,6 @@ func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
 }
 
 func TestPexVectors(t *testing.T) {
-
 	addr := tmp2p.NetAddress{
 		ID:   "1",
 		IP:   "127.0.0.1",

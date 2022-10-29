@@ -48,7 +48,7 @@ func (r *Rand) init() {
 }
 
 func (r *Rand) reset(seed int64) {
-	r.rand = mrand.New(mrand.NewSource(seed)) //nolint:gosec // G404: Use of weak random number generator
+	r.rand = mrand.New(mrand.NewSource(seed)) //nolint:gosec,nolintlint // G404: Use of weak random number generator
 }
 
 //----------------------------------------
