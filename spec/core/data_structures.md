@@ -202,12 +202,12 @@ Commit is a simple wrapper for a list of signatures, with one for each validator
 a particular `BlockID` or was absent. It's a part of the `Commit` and can be used
 to reconstruct the vote set given the validator set.
 
-| Name             | Type                        | Description                                                                                                                                                     | Validation                                                        |
-|------------------|-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
-| BlockIDFlag      | [BlockIDFlag](#blockidflag) | Represents the validators participation in consensus: Either voted for the block that received the majority, voted for another block, voted nil or did not vote | Must be one of the fields in the [BlockIDFlag](#blockidflag) enum |
-| ValidatorAddress | [Address](#address)         | Address of the validator                                                                                                                                        | Must be of length 20                                              |
-| Timestamp        | [Time](#time)               | This field will vary from `CommitSig` to `CommitSig`. It represents the timestamp of the validator.                                                             | [Time](#time)                                                     |
-| Signature        | [Signature](#signature)     | Signature corresponding to the validators participation in consensus.                                                                                           | The length of the signature must be > 0 and < than  64            |
+| Name             | Type                        | Description                                                                                                                                                      | Validation                                                        |
+|------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| BlockIDFlag      | [BlockIDFlag](#blockidflag) | Represents the validators participation in consensus: its vote was not received, voted for the block that received the majority, or voted for nil | Must be one of the fields in the [BlockIDFlag](#blockidflag) enum |
+| ValidatorAddress | [Address](#address)         | Address of the validator                                                                                                                                         | Must be of length 20                                              |
+| Timestamp        | [Time](#time)               | This field will vary from `CommitSig` to `CommitSig`. It represents the timestamp of the validator.                                                              | [Time](#time)                                                     |
+| Signature        | [Signature](#signature)     | Signature corresponding to the validators participation in consensus.                                                                                            | The length of the signature must be > 0 and < than  64            |
 
 NOTE: `ValidatorAddress` and `Timestamp` fields may be removed in the future
 (see [ADR-25](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-025-commit.md)).
@@ -218,10 +218,10 @@ BlockIDFlag represents which BlockID the [signature](#commitsig) is for.
 
 ```go
 enum BlockIDFlag {
-  BLOCK_ID_FLAG_UNKNOWN = 0;
-  BLOCK_ID_FLAG_ABSENT  = 1; // signatures for other blocks are also considered absent
-  BLOCK_ID_FLAG_COMMIT  = 2;
-  BLOCK_ID_FLAG_NIL     = 3;
+  BLOCK_ID_FLAG_UNKNOWN = 0; // indicates an error condition
+  BLOCK_ID_FLAG_ABSENT  = 1; // the vote was not received
+  BLOCK_ID_FLAG_COMMIT  = 2; // voted for the block that received the majority
+  BLOCK_ID_FLAG_NIL     = 3; // voted for nil
 }
 ```
 
