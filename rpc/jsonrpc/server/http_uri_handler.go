@@ -64,8 +64,13 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			return
 		}
 
-		cacheable := rpcFunc.cacheable
-		if err := WriteRPCResponseHTTP(w, cacheable, types.NewRPCSuccessResponse(dummyID, result)); err != nil {
+		resp := types.NewRPCSuccessResponse(dummyID, result)
+		if rpcFunc.cacheable {
+			err = WriteCacheableRPCResponseHTTP(w, resp)
+		} else {
+			err = WriteRPCResponseHTTP(w, resp)
+		}
+		if err != nil {
 			logger.Error("failed to write response", "res", result, "err", err)
 			return
 		}
