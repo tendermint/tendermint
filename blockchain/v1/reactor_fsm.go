@@ -92,8 +92,8 @@ func (msg *bcReactorMessage) String() string {
 	case statusResponseEv:
 		dataStr = fmt.Sprintf("peer=%v base=%v height=%v", msg.data.peerID, msg.data.base, msg.data.height)
 	case blockResponseEv:
-		dataStr = fmt.Sprintf("peer=%v block.height=%v",
-			msg.data.peerID, msg.data.block.Height)
+		dataStr = fmt.Sprintf("peer=%v block.height=%v block.size=%v",
+			msg.data.peerID, msg.data.block.Height, msg.data.block.Size())
 	case noBlockResponseEv:
 		dataStr = fmt.Sprintf("peer=%v requested height=%v",
 			msg.data.peerID, msg.data.height)
