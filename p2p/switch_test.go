@@ -73,7 +73,7 @@ func (tr *TestReactor) ReceiveEnvelope(e Envelope) {
 	if tr.logMessages {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
-		fmt.Printf("Received: %X, %X\n", e.ChannelID, e.Message)
+		// fmt.Printf("Received: %X, %X\n", e.ChannelID, e.Message)
 		tr.msgsReceived[e.ChannelID] = append(tr.msgsReceived[e.ChannelID], PeerMessage{Contents: e.Message, Counter: tr.msgsCounter})
 		tr.msgsCounter++
 	}
