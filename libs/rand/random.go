@@ -48,6 +48,7 @@ func (r *Rand) init() {
 }
 
 func (r *Rand) reset(seed int64) {
+	//nolint:gosec,nolintlint
 	r.rand = mrand.New(mrand.NewSource(seed))
 }
 
