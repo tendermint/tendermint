@@ -45,20 +45,20 @@ type Reactor interface {
 	//
 	// CONTRACT: msgBytes are not nil.
 	//
-	// Only one of Receive or NewReceive are called per message. If NewReceive
+	// Only one of Receive or ReceiveEnvelope are called per message. If ReceiveEnvelope
 	// is implemented, it will be used, otherwise the switch will fallback to
-	// using Receive. Receive will be replaced by NewReceive in a future version
+	// using Receive. Receive will be replaced by ReceiveEnvelope in a future version
 	Receive(chID byte, peer Peer, msgBytes []byte)
 }
 
-type NewReceiver interface {
-	// NewReceive is called by the switch when an envelope is received from any connected
+type ReceiveEnveloper interface {
+	// ReceiveEnvelope is called by the switch when an envelope is received from any connected
 	// peer on any of the channels registered by the reactor.
 	//
-	// Only one of Receive or NewReceive are called per message. If NewReceive
+	// Only one of Receive or ReceiveEnvelope are called per message. If ReceiveEnvelope
 	// is implemented, it will be used, otherwise the switch will fallback to
-	// using Receive. Receive will be replaced by NewReceive in a future version
-	NewReceive(Envelope)
+	// using Receive. Receive will be replaced by ReceiveEnvelope in a future version
+	ReceiveEnvelope(Envelope)
 }
 
 //--------------------------------------
@@ -81,6 +81,6 @@ func (br *BaseReactor) SetSwitch(sw *Switch) {
 func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor        { return nil }
 func (*BaseReactor) AddPeer(peer Peer)                             {}
 func (*BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
-func (*BaseReactor) NewReceive(e Envelope)                         {}
+func (*BaseReactor) ReceiveEnvelope(e Envelope)                         {}
 func (*BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}
 func (*BaseReactor) InitPeer(peer Peer) Peer                       { return peer }

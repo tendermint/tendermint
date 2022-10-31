@@ -53,8 +53,8 @@ func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 func (mp mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
 func (mp mockPeer) SocketAddr() *p2p.NetAddress   { return &p2p.NetAddress{} }
 
-func (mp mockPeer) NewSend(e p2p.Envelope) bool    { return true }
-func (mp mockPeer) NewTrySend(e p2p.Envelope) bool { return true }
+func (mp mockPeer) SendEnvelope(e p2p.Envelope) bool    { return true }
+func (mp mockPeer) TrySendEnvelope(e p2p.Envelope) bool { return true }
 
 func (mp mockPeer) Send(byte, []byte) bool    { return true }
 func (mp mockPeer) TrySend(byte, []byte) bool { return true }
@@ -386,7 +386,7 @@ func TestReactorHelperMode(t *testing.T) {
 				switch ev := step.event.(type) {
 				case *bcproto.StatusRequest:
 					old := mockSwitch.numStatusResponse
-					reactor.NewReceive(p2p.Envelope{
+					reactor.ReceiveEnvelope(p2p.Envelope{
 						ChannelID: channelID,
 						Src:       mockPeer{id: p2p.ID(step.peer)},
 						Message:   ev})
@@ -394,14 +394,14 @@ func TestReactorHelperMode(t *testing.T) {
 				case *bcproto.BlockRequest:
 					if ev.Height > params.startHeight {
 						old := mockSwitch.numNoBlockResponse
-						reactor.NewReceive(p2p.Envelope{
+						reactor.ReceiveEnvelope(p2p.Envelope{
 							ChannelID: channelID,
 							Src:       mockPeer{id: p2p.ID(step.peer)},
 							Message:   ev})
 						assert.Equal(t, old+1, mockSwitch.numNoBlockResponse)
 					} else {
 						old := mockSwitch.numBlockResponse
-						reactor.NewReceive(p2p.Envelope{
+						reactor.ReceiveEnvelope(p2p.Envelope{
 							ChannelID: channelID,
 							Src:       mockPeer{id: p2p.ID(step.peer)},
 							Message:   ev})

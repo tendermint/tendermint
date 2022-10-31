@@ -19,8 +19,8 @@ type mockPeer struct {
 }
 
 func (mp *mockPeer) FlushStop()                    { mp.Stop() } //nolint:errcheck // ignore error
-func (mp *mockPeer) NewTrySend(e Envelope) bool    { return true }
-func (mp *mockPeer) NewSend(e Envelope) bool       { return true }
+func (mp *mockPeer) TrySendEnvelope(e Envelope) bool    { return true }
+func (mp *mockPeer) SendEnvelope(e Envelope) bool       { return true }
 func (mp *mockPeer) TrySend(_ byte, _ []byte) bool { return true }
 func (mp *mockPeer) Send(_ byte, _ []byte) bool    { return true }
 func (mp *mockPeer) NodeInfo() NodeInfo            { return DefaultNodeInfo{} }

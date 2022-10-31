@@ -271,7 +271,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 
 	// simulate switch calling Receive before AddPeer
 	assert.NotPanics(t, func() {
-		reactor.NewReceive(p2p.Envelope{
+		reactor.ReceiveEnvelope(p2p.Envelope{
 			ChannelID: StateChannel,
 			Src:       peer,
 			Message: &tmcons.HasVote{Height: 1,
@@ -297,7 +297,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 
 	// simulate switch calling Receive before AddPeer
 	assert.Panics(t, func() {
-		reactor.NewReceive(p2p.Envelope{
+		reactor.ReceiveEnvelope(p2p.Envelope{
 			ChannelID: StateChannel,
 			Src:       peer,
 			Message: &tmcons.HasVote{Height: 1,

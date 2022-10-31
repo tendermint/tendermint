@@ -180,7 +180,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	peer.NewSend(p2p.Envelope{
+	peer.SendEnvelope(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
@@ -206,7 +206,7 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("Could not send block message to peer", "err", err)
 			return false
 		}
-		return src.NewTrySend(p2p.Envelope{
+		return src.TrySendEnvelope(p2p.Envelope{
 			ChannelID: BlockchainChannel,
 			Message:   &bcproto.BlockResponse{Block: pbbi},
 		})
@@ -214,14 +214,14 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 
 	bcR.Logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	return src.NewTrySend(p2p.Envelope{
+	return src.TrySendEnvelope(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
 	})
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusRequest, src p2p.Peer) (queued bool) {
-	return src.NewTrySend(p2p.Envelope{
+	return src.TrySendEnvelope(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
@@ -243,7 +243,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
-func (bcR *BlockchainReactor) NewReceive(e p2p.Envelope) {
+func (bcR *BlockchainReactor) ReceiveEnvelope(e p2p.Envelope) {
 	if err := bc.ValidateMsg(e.Message); err != nil {
 		bcR.Logger.Error("peer sent us invalid msg", "peer", e.Src, "msg", e.Message, "err", err)
 		_ = bcR.swReporter.Report(behaviour.BadMessage(e.Src.ID(), err.Error()))
@@ -321,7 +321,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte)
 	if err != nil {
 		panic(err)
 	}
-	bcR.NewReceive(p2p.Envelope{
+	bcR.ReceiveEnvelope(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
 		Message:   uw,
@@ -495,7 +495,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 // Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
-	bcR.Switch.NewBroadcast(p2p.Envelope{
+	bcR.Switch.BroadcastEnvelope(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.StatusRequest{},
 	})
@@ -509,7 +509,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 		return errNilPeerForBlockRequest
 	}
 
-	queued := peer.NewTrySend(p2p.Envelope{
+	queued := peer.TrySendEnvelope(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.BlockRequest{Height: height},
 	})

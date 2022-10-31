@@ -166,13 +166,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for i, peer := range peerList {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
-					peer.NewSend(p2p.Envelope{
+					peer.SendEnvelope(p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote1.ToProto()},
 						ChannelID: VoteChannel,
 					})
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
-					peer.NewSend(p2p.Envelope{
+					peer.SendEnvelope(p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote2.ToProto()},
 						ChannelID: VoteChannel,
 					})
@@ -519,7 +519,7 @@ func sendProposalAndParts(
 	parts *types.PartSet,
 ) {
 	// proposal
-	peer.NewSend(p2p.Envelope{
+	peer.SendEnvelope(p2p.Envelope{
 		ChannelID: DataChannel,
 		Message:   &tmcons.Proposal{Proposal: *proposal.ToProto()},
 	})
@@ -531,7 +531,7 @@ func sendProposalAndParts(
 		if err != nil {
 			panic(err) // TODO: wbanfield better error handling
 		}
-		peer.NewSend(p2p.Envelope{
+		peer.SendEnvelope(p2p.Envelope{
 			ChannelID: DataChannel,
 			Message: &tmcons.BlockPart{
 				Height: height, // This tells peer that this part applies to us.
@@ -546,11 +546,11 @@ func sendProposalAndParts(
 	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
-	peer.NewSend(p2p.Envelope{
+	peer.SendEnvelope(p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: prevote.ToProto()},
 	})
-	peer.NewSend(p2p.Envelope{
+	peer.SendEnvelope(p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: precommit.ToProto()},
 	})
@@ -591,8 +591,8 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	br.reactor.RemovePeer(peer, reason)
 }
-func (br *ByzantineReactor) NewReceive(e p2p.Envelope) {
-	br.reactor.NewReceive(e)
+func (br *ByzantineReactor) ReceiveEnvelope(e p2p.Envelope) {
+	br.reactor.ReceiveEnvelope(e)
 }
 func (br *ByzantineReactor) Receive(chID byte, p p2p.Peer, m []byte) {
 	br.reactor.Receive(chID, p, m)

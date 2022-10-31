@@ -455,7 +455,7 @@ func (r *BlockchainReactor) Stop() error {
 }
 
 // Receive implements Reactor by handling different message types.
-func (r *BlockchainReactor) NewReceive(e p2p.Envelope) {
+func (r *BlockchainReactor) ReceiveEnvelope(e p2p.Envelope) {
 	if err := bc.ValidateMsg(e.Message); err != nil {
 		r.logger.Error("peer sent us invalid msg", "peer", e.Src, "msg", e.Message, "err", err)
 		_ = r.reporter.Report(behaviour.BadMessage(e.Src.ID(), err.Error()))
@@ -527,7 +527,7 @@ func (r *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 	if err != nil {
 		panic(err)
 	}
-	r.NewReceive(p2p.Envelope{
+	r.ReceiveEnvelope(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
 		Message:   uw,
