@@ -40,7 +40,12 @@ type Peer interface {
 	SendEnvelope(Envelope) bool
 	TrySendEnvelope(Envelope) bool
 
+	// Deprecated: entities looking to act as peers should implement SendEnvelope instead.
+	// Send will be removed in v0.38.
 	Send(byte, []byte) bool
+
+	// Deprecated: entities looking to act as peers should implement TrySendEnvelope instead.
+	// TrySend will be removed in v0.38.
 	TrySend(byte, []byte) bool
 
 	Set(string, interface{})
