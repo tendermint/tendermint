@@ -1118,7 +1118,7 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
 		if ps.peer.NewTrySend(p2p.Envelope{
 			ChannelID: VoteChannel,
-			Message:   vote.ToProto(),
+			Message:   &tmcons.Vote{Vote: vote.ToProto()},
 		}) {
 			ps.SetHasVote(vote)
 			return true

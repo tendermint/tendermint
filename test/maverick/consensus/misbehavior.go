@@ -7,6 +7,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -101,12 +102,16 @@ func DoublePrevoteMisbehavior() Misbehavior {
 			if idx%2 == 0 { // sign the proposal block
 				peer.NewSend(p2p.Envelope{
 					ChannelID: VoteChannel,
-					Message:   prevote.ToProto(),
+					Message: &tmcons.Vote{
+						Vote: prevote.ToProto(),
+					},
 				})
 			} else { // sign a nil block
 				peer.NewSend(p2p.Envelope{
 					ChannelID: VoteChannel,
-					Message:   nilPrevote.ToProto(),
+					Message: &tmcons.Vote{
+						Vote: nilPrevote.ToProto(),
+					},
 				})
 			}
 		}
