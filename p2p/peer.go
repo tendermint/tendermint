@@ -266,6 +266,8 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 // SendEnvelope sends the message in the envelope on the channel specified by the
 // envelope. Returns false if the connection times out trying to place the message
 // onto its internal queue.
+// Using SendEnvelope allows for tracking the message bytes sent and received by message type
+// as a metric which Send cannot support.
 func (p *peer) SendEnvelope(e Envelope) bool {
 	if !p.IsRunning() {
 		return false
@@ -311,7 +313,8 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 
 // TrySendEnvelope attempts to sends the message in the envelope on the channel specified by the
 // envelope. Returns false immediately if the connection's internal queue is full
-// TrySendEnvelope replaces TrySend which will be deprecated in a future release.
+// Using TrySendEnvelope allows for tracking the message bytes sent and received by message type
+// as a metric which TrySend cannot support.
 func (p *peer) TrySendEnvelope(e Envelope) bool {
 	if !p.IsRunning() {
 		// see Switch#Broadcast, where we fetch the list of peers and loop over
@@ -339,6 +342,7 @@ func (p *peer) TrySendEnvelope(e Envelope) bool {
 
 // TrySend msg bytes to the channel identified by chID byte. Immediately returns
 // false if the send queue is full.
+// TrySendEnvelope replaces TrySend which will be deprecated in a future release.
 func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	if !p.IsRunning() {
 		return false
