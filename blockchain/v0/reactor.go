@@ -300,7 +300,7 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 
 			case <-statusUpdateTicker.C:
 				// ask for status updates
-				go bcR.BroadcastStatusRequest()
+				go bcR.BroadcastStatusRequest() //nolint: errcheck
 
 			}
 		}
@@ -420,9 +420,10 @@ FOR_LOOP:
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
-func (bcR *BlockchainReactor) BroadcastStatusRequest() {
+func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	bcR.Switch.BroadcastEnvelope(p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.StatusRequest{},
 	})
+	return nil
 }

@@ -71,7 +71,7 @@ func TestMsgToProto(t *testing.T) {
 	testsCases := []struct {
 		testName string
 		msg      Message
-		want     proto.Message
+		want     *tmcons.Message
 		wantErr  bool
 	}{
 		{"successful NewRoundStepMessage", &NewRoundStepMessage{
@@ -80,13 +80,13 @@ func TestMsgToProto(t *testing.T) {
 			Step:                  1,
 			SecondsSinceStartTime: 1,
 			LastCommitRound:       2,
-		}, &tmcons.NewRoundStep{
+		}, (&tmcons.NewRoundStep{
 			Height:                2,
 			Round:                 1,
 			Step:                  1,
 			SecondsSinceStartTime: 1,
 			LastCommitRound:       2,
-		},
+		}).Wrap().(*tmcons.Message),
 
 			false},
 
@@ -96,48 +96,48 @@ func TestMsgToProto(t *testing.T) {
 			BlockPartSetHeader: psh,
 			BlockParts:         bits,
 			IsCommit:           false,
-		}, &tmcons.NewValidBlock{
+		}, (&tmcons.NewValidBlock{
 			Height:             1,
 			Round:              1,
 			BlockPartSetHeader: pbPsh,
 			BlockParts:         pbBits,
 			IsCommit:           false,
-		},
+		}).Wrap().(*tmcons.Message),
 
 			false},
 		{"successful BlockPartMessage", &BlockPartMessage{
 			Height: 100,
 			Round:  1,
 			Part:   &parts,
-		}, &tmcons.BlockPart{
+		}, (&tmcons.BlockPart{
 			Height: 100,
 			Round:  1,
 			Part:   *pbParts,
-		},
+		}).Wrap().(*tmcons.Message),
 
 			false},
 		{"successful ProposalPOLMessage", &ProposalPOLMessage{
 			Height:           1,
 			ProposalPOLRound: 1,
 			ProposalPOL:      bits,
-		}, &tmcons.ProposalPOL{
+		}, (&tmcons.ProposalPOL{
 			Height:           1,
 			ProposalPolRound: 1,
 			ProposalPol:      *pbBits,
-		},
+		}).Wrap().(*tmcons.Message),
 			false},
 		{"successful ProposalMessage", &ProposalMessage{
 			Proposal: &proposal,
-		}, &tmcons.Proposal{
+		}, (&tmcons.Proposal{
 			Proposal: *pbProposal,
-		},
+		}).Wrap().(*tmcons.Message),
 
 			false},
 		{"successful VoteMessage", &VoteMessage{
 			Vote: vote,
-		}, &tmcons.Vote{
+		}, (&tmcons.Vote{
 			Vote: pbVote,
-		},
+		}).Wrap().(*tmcons.Message),
 
 			false},
 		{"successful VoteSetMaj23", &VoteSetMaj23Message{
@@ -145,12 +145,12 @@ func TestMsgToProto(t *testing.T) {
 			Round:   1,
 			Type:    1,
 			BlockID: bi,
-		}, &tmcons.VoteSetMaj23{
+		}, (&tmcons.VoteSetMaj23{
 			Height:  1,
 			Round:   1,
 			Type:    1,
 			BlockID: pbBi,
-		},
+		}).Wrap().(*tmcons.Message),
 
 			false},
 		{"successful VoteSetBits", &VoteSetBitsMessage{
@@ -159,13 +159,13 @@ func TestMsgToProto(t *testing.T) {
 			Type:    1,
 			BlockID: bi,
 			Votes:   bits,
-		}, &tmcons.VoteSetBits{
+		}, (&tmcons.VoteSetBits{
 			Height:  1,
 			Round:   1,
 			Type:    1,
 			BlockID: pbBi,
 			Votes:   *pbBits,
-		},
+		}).Wrap().(*tmcons.Message),
 
 			false},
 		{"failure", nil, &tmcons.Message{}, true},

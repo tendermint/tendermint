@@ -232,7 +232,11 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 		conR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID)
 		return
 	}
-	msg, err := tmcon.MsgFromProto(e.Message)
+	m := e.Message
+	if wm, ok := m.(p2p.Wrapper); ok {
+		m = wm.Wrap()
+	}
+	msg, err := tmcon.MsgFromProto(m.(*tmcons.Message))
 	if err != nil {
 		conR.Logger.Error("Error decoding message", "src", e.Src, "chId", e.ChannelID, "err", err)
 		conR.Switch.StopPeerForError(e.Src, err)

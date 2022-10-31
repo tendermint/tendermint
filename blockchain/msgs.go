@@ -6,6 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blockchain"
 	"github.com/tendermint/tendermint/types"
 )
@@ -55,4 +56,28 @@ func ValidateMsg(pb proto.Message) error {
 		return fmt.Errorf("unknown message type %T", msg)
 	}
 	return nil
+}
+
+// EncodeMsg encodes a Protobuf message
+func EncodeMsg(pb proto.Message) ([]byte, error) {
+	if um, ok := pb.(p2p.Wrapper); ok {
+		pb = um.Wrap()
+	}
+	bz, err := proto.Marshal(pb)
+	if err != nil {
+		return nil, fmt.Errorf("unable to marshal %T: %w", pb, err)
+	}
+
+	return bz, nil
+}
+
+// DecodeMsg decodes a Protobuf message.
+func DecodeMsg(bz []byte) (proto.Message, error) {
+	pb := &bcproto.Message{}
+
+	err := proto.Unmarshal(bz, pb)
+	if err != nil {
+		return nil, err
+	}
+	return pb.Unwrap()
 }
