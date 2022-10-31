@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/net/netutil"
 
-	"github.com/cosmos/gogoproto/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"

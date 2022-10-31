@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cosmos/gogoproto/proto"
+	"github.com/gogo/protobuf/proto"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmmath "github.com/tendermint/tendermint/libs/math"

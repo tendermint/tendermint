@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

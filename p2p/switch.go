@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cmap"
 	"github.com/tendermint/tendermint/libs/rand"
