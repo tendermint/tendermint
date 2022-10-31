@@ -262,12 +262,13 @@ func (sw *Switch) OnStop() {
 //---------------------------------------------------------------------
 // Peers
 
-// Broadcast runs a go routine for each attempted send, which will block trying
+// NewBroadcast runs a go routine for each attempted send, which will block trying
 // to send for defaultSendTimeoutSeconds. Returns a channel which receives
 // success values for each attempted send (false if times out). Channel will be
 // closed once msg bytes are sent to all peers (or time out).
+// NewBroadcasts sends to the peers using the NewSend method.
 //
-// NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
+// NOTE: NewBroadcast uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) NewBroadcast(e Envelope) chan bool {
 	sw.Logger.Debug("Broadcast", "channel", e.ChannelID)
 
@@ -280,6 +281,37 @@ func (sw *Switch) NewBroadcast(e Envelope) chan bool {
 		go func(p Peer) {
 			defer wg.Done()
 			success := p.NewSend(e)
+			successChan <- success
+		}(peer)
+	}
+
+	go func() {
+		wg.Wait()
+		close(successChan)
+	}()
+
+	return successChan
+}
+
+// Broadcast runs a go routine for each attempted send, which will block trying
+// to send for defaultSendTimeoutSeconds. Returns a channel which receives
+// success values for each attempted send (false if times out). Channel will be
+// closed once msg bytes are sent to all peers (or time out).
+// Broadcasts sends to the peers using the Send method.
+//
+// NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
+func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
+	sw.Logger.Debug("Broadcast", "channel", chID)
+
+	peers := sw.peers.List()
+	var wg sync.WaitGroup
+	wg.Add(len(peers))
+	successChan := make(chan bool, len(peers))
+
+	for _, peer := range peers {
+		go func(p Peer) {
+			defer wg.Done()
+			success := p.Send(chID, msgBytes)
 			successChan <- success
 		}(peer)
 	}
