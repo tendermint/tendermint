@@ -1390,6 +1390,7 @@ func TestScHandleBlockResponse(t *testing.T) {
 	block6FromP1 := bcBlockResponse{
 		time:   now.Add(time.Millisecond),
 		peerID: p2p.ID("P1"),
+		size:   100,
 		block:  makeScBlock(6),
 	}
 
@@ -2130,7 +2131,7 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // block response 1
-					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[4], block: makeScBlock(1)}},
+					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[4], size: 100, block: makeScBlock(1)}},
 					wantEvent: scBlockReceived{peerID: "P1", block: makeScBlock(1)},
 					wantSc: &scTestParams{
 						startTime:   now,
@@ -2143,7 +2144,7 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // block response 2
-					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[5], block: makeScBlock(2)}},
+					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[5], size: 100, block: makeScBlock(2)}},
 					wantEvent: scBlockReceived{peerID: "P1", block: makeScBlock(2)},
 					wantSc: &scTestParams{
 						startTime:   now,
@@ -2156,7 +2157,7 @@ func TestScHandle(t *testing.T) {
 					},
 				},
 				{ // block response 3
-					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[6], block: makeScBlock(3)}},
+					args:      args{event: bcBlockResponse{peerID: "P1", time: tick[6], size: 100, block: makeScBlock(3)}},
 					wantEvent: scBlockReceived{peerID: "P1", block: makeScBlock(3)},
 					wantSc: &scTestParams{
 						startTime: now,
