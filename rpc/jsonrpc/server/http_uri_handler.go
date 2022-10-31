@@ -65,7 +65,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 		}
 
 		resp := types.NewRPCSuccessResponse(dummyID, result)
-		if rpcFunc.cacheable {
+		if rpcFunc.cacheableWithArgs(args) {
 			err = WriteCacheableRPCResponseHTTP(w, resp)
 		} else {
 			err = WriteRPCResponseHTTP(w, resp)

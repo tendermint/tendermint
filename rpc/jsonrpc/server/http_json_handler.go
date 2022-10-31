@@ -101,7 +101,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				args = append(args, fnArgs...)
 			}
 
-			if hasDefaultHeight(request, args) {
+			if cache && !rpcFunc.cacheableWithArgs(args) {
 				cache = false
 			}
 
@@ -112,10 +112,6 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 				continue
 			}
 			responses = append(responses, types.NewRPCSuccessResponse(request.ID, result))
-
-			if cache && !rpcFunc.cacheable {
-				cache = false
-			}
 		}
 
 		if len(responses) > 0 {
@@ -259,13 +255,4 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
 	w.Write(buf.Bytes()) //nolint: errcheck
-}
-
-func hasDefaultHeight(r types.RPCRequest, h []reflect.Value) bool {
-	switch r.Method {
-	case "block", "block_results", "commit", "consensus_params", "validators":
-		return len(h) < 2 || h[1].IsZero()
-	default:
-		return false
-	}
 }
