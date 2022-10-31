@@ -15,6 +15,6 @@ jobs:
       - uses: actions/checkout@v3
         with:
           ref: ${{ matrix.branch }}
-      - uses: creachadair/github-action-markdown-link-check@master
+      - uses: informalsystems/github-action-markdown-link-check@main
         with:
           config-file: '.md-link-check.json'
