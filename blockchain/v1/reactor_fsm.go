@@ -62,6 +62,7 @@ type bReactorEventData struct {
 	height         int64        // for status response; for processed block event
 	block          *types.Block // for block response
 	stateName      string       // for state timeout events
+	length         int          // for block response event, length of received block, used to detect slow peers
 	maxNumRequests int          // for request needed event, maximum number of pending requests
 }
 
@@ -92,8 +93,8 @@ func (msg *bcReactorMessage) String() string {
 	case statusResponseEv:
 		dataStr = fmt.Sprintf("peer=%v base=%v height=%v", msg.data.peerID, msg.data.base, msg.data.height)
 	case blockResponseEv:
-		dataStr = fmt.Sprintf("peer=%v block.height=%v block.size=%v",
-			msg.data.peerID, msg.data.block.Height, msg.data.block.Size())
+		dataStr = fmt.Sprintf("peer=%v block.height=%v length=%v",
+			msg.data.peerID, msg.data.block.Height, msg.data.length)
 	case noBlockResponseEv:
 		dataStr = fmt.Sprintf("peer=%v requested height=%v",
 			msg.data.peerID, msg.data.height)
@@ -263,7 +264,7 @@ func init() {
 
 			case blockResponseEv:
 				fsm.logger.Debug("blockResponseEv", "H", data.block.Height)
-				err := fsm.pool.AddBlock(data.peerID, data.block, data.block.Size())
+				err := fsm.pool.AddBlock(data.peerID, data.block, data.length)
 				if err != nil {
 					// A block was received that was unsolicited, from unexpected peer, or that we already have it.
 					// Ignore block, remove peer and send error to switch.
