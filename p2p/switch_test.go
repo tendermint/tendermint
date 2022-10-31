@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -25,9 +25,7 @@ import (
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
-var (
-	cfg *config.P2PConfig
-)
+var cfg *config.P2PConfig
 
 func init() {
 	cfg = config.DefaultP2PConfig()
@@ -99,7 +97,8 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 func initSwitchFunc(i int, sw *Switch) *Switch {
 	sw.SetAddrBook(&AddrBookMock{
 		Addrs:    make(map[string]struct{}),
-		OurAddrs: make(map[string]struct{})})
+		OurAddrs: make(map[string]struct{}),
+	})
 
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
@@ -400,7 +399,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 		resp, err := http.Get(s.URL)
 		require.NoError(t, err)
 		defer resp.Body.Close()
-		buf, _ := ioutil.ReadAll(resp.Body)
+		buf, _ := io.ReadAll(resp.Body)
 		return string(buf)
 	}
 
@@ -681,9 +680,11 @@ func (et errorTransport) NetAddress() NetAddress {
 func (et errorTransport) Accept(c peerConfig) (Peer, error) {
 	return nil, et.acceptErr
 }
+
 func (errorTransport) Dial(NetAddress, peerConfig) (Peer, error) {
 	panic("not implemented")
 }
+
 func (errorTransport) Cleanup(Peer) {
 	panic("not implemented")
 }
@@ -838,7 +839,6 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 }
 
 func TestSwitchRemovalErr(t *testing.T) {
-
 	sw1, sw2 := MakeSwitchPair(t, func(i int, sw *Switch) *Switch {
 		return initSwitchFunc(i, sw)
 	})

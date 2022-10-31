@@ -1,4 +1,3 @@
-// nolint: gosec
 package e2e
 
 import (
@@ -24,9 +23,11 @@ const (
 	proxyPortFirst uint32 = 5701
 )
 
-type Mode string
-type Protocol string
-type Perturbation string
+type (
+	Mode         string
+	Protocol     string
+	Perturbation string
+)
 
 const (
 	ModeValidator Mode = "validator"
@@ -405,6 +406,7 @@ func (t Testnet) ArchiveNodes() []*Node {
 // RandomNode returns a random non-seed node.
 func (t Testnet) RandomNode() *Node {
 	for {
+		//nolint:gosec // G404: Use of weak random number generator (math/rand instead of crypto/rand)
 		node := t.Nodes[rand.Intn(len(t.Nodes))]
 		if node.Mode != ModeSeed {
 			return node
@@ -481,7 +483,7 @@ type keyGenerator struct {
 
 func newKeyGenerator(seed int64) *keyGenerator {
 	return &keyGenerator{
-		random: rand.New(rand.NewSource(seed)),
+		random: rand.New(rand.NewSource(seed)), //nolint:gosec
 	}
 }
 
