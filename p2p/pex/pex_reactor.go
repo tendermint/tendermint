@@ -237,7 +237,7 @@ func (r *Reactor) logErrAddrBook(err error) {
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
-func (r *Reactor) NewReceive(e p2p.Envelope) {
+func (r *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	r.Logger.Debug("Received message", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
 
 	switch msg := e.Message.(type) {
@@ -310,7 +310,7 @@ func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 	if err != nil {
 		panic(err)
 	}
-	r.NewReceive(p2p.Envelope{
+	r.ReceiveEnvelope(p2p.Envelope{
 		ChannelID: chID,
 		Src:       peer,
 		Message:   um,
@@ -360,7 +360,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 	}
 	r.Logger.Debug("Request addrs", "from", p)
 	r.requestsSent.Set(id, struct{}{})
-	p.NewSend(p2p.Envelope{
+	p.SendEnvelope(p2p.Envelope{
 		ChannelID: PexChannel,
 		Message:   &tmp2p.PexRequest{},
 	})
@@ -425,7 +425,7 @@ func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
 		ChannelID: PexChannel,
 		Message:   &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)},
 	}
-	p.NewSend(e)
+	p.SendEnvelope(e)
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.

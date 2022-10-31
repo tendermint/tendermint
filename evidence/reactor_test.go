@@ -208,7 +208,7 @@ func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
 	// i.e. broadcastEvidenceRoutine finishes when peer is stopped
 	defer leaktest.CheckTimeout(t, 10*time.Second)()
 
-	p.On("NewSend", mock.MatchedBy(func(i interface{}) bool {
+	p.On("SendEnvelope", mock.MatchedBy(func(i interface{}) bool {
 		e, ok := i.(p2p.Envelope)
 		return ok && e.ChannelID == evidence.EvidenceChannel
 	})).Return(false)

@@ -283,7 +283,7 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	for i := 0; i < mempool.MaxActiveIDs+1; i++ {
 		peer := mock.NewPeer(nil)
-		reactor.NewReceive(p2p.Envelope{
+		reactor.ReceiveEnvelope(p2p.Envelope{
 			ChannelID: mempool.MempoolChannel,
 			Src:       peer,
 			Message:   &memproto.Message{}, // This uses the wrong message type on purpose to stop the peer as in an error state in the reactor.

@@ -109,8 +109,8 @@ func (_m *Peer) IsRunning() bool {
 	return r0
 }
 
-// NewSend provides a mock function with given fields: _a0
-func (_m *Peer) NewSend(_a0 p2p.Envelope) bool {
+// SendEnvelope provides a mock function with given fields: _a0
+func (_m *Peer) SendEnvelope(_a0 p2p.Envelope) bool {
 	ret := _m.Called(_a0)
 
 	var r0 bool
@@ -123,8 +123,8 @@ func (_m *Peer) NewSend(_a0 p2p.Envelope) bool {
 	return r0
 }
 
-// NewTrySend provides a mock function with given fields: _a0
-func (_m *Peer) NewTrySend(_a0 p2p.Envelope) bool {
+// TrySendEnvelope provides a mock function with given fields: _a0
+func (_m *Peer) TrySendEnvelope(_a0 p2p.Envelope) bool {
 	ret := _m.Called(_a0)
 
 	var r0 bool

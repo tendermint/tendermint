@@ -262,14 +262,14 @@ func (sw *Switch) OnStop() {
 //---------------------------------------------------------------------
 // Peers
 
-// NewBroadcast runs a go routine for each attempted send, which will block trying
+// BroadcastEnvelope runs a go routine for each attempted send, which will block trying
 // to send for defaultSendTimeoutSeconds. Returns a channel which receives
 // success values for each attempted send (false if times out). Channel will be
 // closed once msg bytes are sent to all peers (or time out).
-// NewBroadcasts sends to the peers using the NewSend method.
+// BroadcastEnvelopes sends to the peers using the SendEnvelope method.
 //
-// NOTE: NewBroadcast uses goroutines, so order of broadcast may not be preserved.
-func (sw *Switch) NewBroadcast(e Envelope) chan bool {
+// NOTE: BroadcastEnvelope uses goroutines, so order of broadcast may not be preserved.
+func (sw *Switch) BroadcastEnvelope(e Envelope) chan bool {
 	sw.Logger.Debug("Broadcast", "channel", e.ChannelID)
 
 	peers := sw.peers.List()
@@ -280,7 +280,7 @@ func (sw *Switch) NewBroadcast(e Envelope) chan bool {
 	for _, peer := range peers {
 		go func(p Peer) {
 			defer wg.Done()
-			success := p.NewSend(e)
+			success := p.SendEnvelope(e)
 			successChan <- success
 		}(peer)
 	}
