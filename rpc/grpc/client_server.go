@@ -31,7 +31,7 @@ func StartGRPCClient(protoAddr string) BroadcastAPIClient {
 	if err != nil {
 		panic(err)
 	}
-	return BroadcastEnvelopeAPIClient(conn)
+	return NewBroadcastAPIClient(conn)
 }
 
 func dialerFunc(ctx context.Context, addr string) (net.Conn, error) {
