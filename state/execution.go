@@ -205,9 +205,7 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	var abciResponses *tmstate.ABCIResponses
 	var err error
 	pc := blockExec.prerunCtx
-	if pc.prerunTx {
-		abciResponses, err = pc.getPrerunResult(block)
-	}
+	abciResponses, err = pc.getPrerunResult(block)
 	if abciResponses == nil {
 		abciResponses, err = execBlockOnProxyApp(
 			blockExec.logger, blockExec.proxyApp, block, blockExec.store, state.InitialHeight,

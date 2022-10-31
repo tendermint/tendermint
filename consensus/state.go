@@ -140,9 +140,6 @@ type State struct {
 
 	// for reporting metrics
 	metrics *Metrics
-
-	// enable the function of pre-run tx or not
-	prerunTx bool
 }
 
 // StateOption sets an optional parameter on the State.
@@ -187,9 +184,8 @@ func NewState(
 
 	cs.updateToState(state)
 
-	if cs.prerunTx {
-		cs.blockExec.InitPrerun()
-	}
+	// init the function of preRun tx
+	cs.blockExec.InitPrerun()
 
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 
@@ -1930,7 +1926,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 
 		cs.ProposalBlock = block
 
-		if cs.prerunTx && cs.Height > cs.state.InitialHeight {
+		if cs.Height > cs.state.InitialHeight {
 			cs.blockExec.NotifyPrerun(cs.ProposalBlock)
 		}
 

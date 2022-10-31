@@ -9,7 +9,6 @@ import (
 )
 
 type prerunContext struct {
-	prerunTx       bool
 	taskChan       chan *executionTask
 	taskResultChan chan *executionTask
 	prerunTask     *executionTask
@@ -45,7 +44,6 @@ func (pc *prerunContext) flushPrerunResult() {
 }
 
 func (pc *prerunContext) prerunRoutine() {
-	pc.prerunTx = true
 	for task := range pc.taskChan {
 		task.run()
 	}
