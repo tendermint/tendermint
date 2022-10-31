@@ -25,8 +25,6 @@ var (
 	valueToLabelRegexp = regexp.MustCompile(`\*?(\w+)\.(.*)`)
 )
 
-//go:generate go run ../scripts/metricsgen -struct=Metrics
-
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
 	// Number of peers.
