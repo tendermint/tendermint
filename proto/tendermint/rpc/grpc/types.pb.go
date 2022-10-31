@@ -249,7 +249,7 @@ type broadcastAPIClient struct {
 	cc grpc1.ClientConn
 }
 
-func BroadcastEnvelopeAPIClient(cc grpc1.ClientConn) BroadcastAPIClient {
+func NewBroadcastAPIClient(cc grpc1.ClientConn) BroadcastAPIClient {
 	return &broadcastAPIClient{cc}
 }
 
