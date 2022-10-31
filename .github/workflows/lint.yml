@@ -25,15 +25,10 @@ jobs:
             go.sum
       - uses: golangci/golangci-lint-action@v3
         with:
-<<<<<<< HEAD
-          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.47.3
-=======
           # Required: the version of golangci-lint is required and
           # must be specified without patch version: we always use the
           # latest patch version.
           version: v1.50.1
->>>>>>> 09b870831 (p2p: add a per-message type send and receive metric (#9622))
           args: --timeout 10m
           github-token: ${{ secrets.github_token }}
         if: env.GIT_DIFF

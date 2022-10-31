@@ -1,10 +1,8 @@
-//nolint: gosec
 package main
 
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -21,7 +19,7 @@ func initCorpus(baseDir string) {
 	log.SetFlags(0)
 
 	corpusDir := filepath.Join(baseDir, "corpus")
-	if err := os.MkdirAll(corpusDir, 0755); err != nil {
+	if err := os.MkdirAll(corpusDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
 
@@ -39,7 +37,8 @@ func initCorpus(baseDir string) {
 	for i, datum := range data {
 		filename := filepath.Join(corpusDir, fmt.Sprintf("%d", i))
 
-		if err := ioutil.WriteFile(filename, []byte(datum), 0644); err != nil {
+		//nolint:gosec // G306: Expect WriteFile permissions to be 0600 or less
+		if err := os.WriteFile(filename, []byte(datum), 0o644); err != nil {
 			log.Fatalf("can't write %v to %q: %v", datum, filename, err)
 		}
 
