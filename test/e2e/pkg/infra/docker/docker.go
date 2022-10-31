@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
 	"text/template"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -37,7 +38,21 @@ func (p *Provider) Setup() error {
 // file as bytes to be written out to disk.
 func dockerComposeBytes(testnet *e2e.Testnet) ([]byte, error) {
 	// Must use version 2 Docker Compose format, to support IPv6.
-	tmpl, err := template.New("docker-compose").Parse(`version: '2.4'
+	tmpl, err := template.New("docker-compose").Funcs(template.FuncMap{
+		"misbehaviorsToString": func(misbehaviors map[int64]string) string {
+			str := ""
+			for height, misbehavior := range misbehaviors {
+				// after the first behavior set, a comma must be prepended
+				if str != "" {
+					str += ","
+				}
+				heightString := strconv.Itoa(int(height))
+				str += misbehavior + "," + heightString
+			}
+			return str
+		},
+	}).Parse(`version: '2.4'
+
 networks:
   {{ .Name }}:
     labels:
@@ -60,6 +75,9 @@ services:
     image: tendermint/e2e-node
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
+{{- else if .Misbehaviors }}
+    entrypoint: /usr/bin/entrypoint-maverick
+    command: ["node", "--misbehaviors", "{{ misbehaviorsToString .Misbehaviors }}"]
 {{- end }}
     init: true
     ports:
