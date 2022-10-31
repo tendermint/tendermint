@@ -217,12 +217,13 @@ type bcBlockResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.ID
+	size   int
 	block  *types.Block
 }
 
 func (resp bcBlockResponse) String() string {
-	return fmt.Sprintf("bcBlockResponse{%d#%X from %v at %v}",
-		resp.block.Height, resp.block.Hash(), resp.peerID, resp.time)
+	return fmt.Sprintf("bcBlockResponse{%d#%X (size: %d bytes) from %v at %v}",
+		resp.block.Height, resp.block.Hash(), resp.size, resp.peerID, resp.time)
 }
 
 // blockNoResponse message received from a peer
@@ -502,6 +503,7 @@ func (r *BlockchainReactor) NewReceive(e p2p.Envelope) {
 				peerID: e.Src.ID(),
 				block:  bi,
 				time:   time.Now(),
+				size:   msg.Size(),
 			}
 		}
 		r.mtx.RUnlock()
