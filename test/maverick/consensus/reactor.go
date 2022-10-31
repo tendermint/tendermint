@@ -1478,12 +1478,3 @@ func (ps *PeerState) StringIndented(indent string) string {
 // 	tmjson.RegisterType(&VoteSetMaj23Message{}, "tendermint/VoteSetMaj23")
 // 	tmjson.RegisterType(&VoteSetBitsMessage{}, "tendermint/VoteSetBits")
 // }
-
-func decodeMsg(bz []byte) (msg tmcon.Message, err error) {
-	pb := &tmcons.Message{}
-	if err = proto.Unmarshal(bz, pb); err != nil {
-		return msg, err
-	}
-
-	return tmcon.MsgFromProto(pb)
-}
