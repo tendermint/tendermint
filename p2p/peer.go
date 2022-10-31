@@ -285,7 +285,7 @@ func (p *peer) SendEnvelope(e Envelope) bool {
 
 // Send msg bytes to the channel identified by chID byte. Returns false if the
 // send queue is full after timeout, specified by MConnection.
-// SendEnvelope replaces TrySend which will be deprecated in a future release.
+// SendEnvelope replaces Send which will be deprecated in a future release.
 func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	if !p.IsRunning() {
 		return false
