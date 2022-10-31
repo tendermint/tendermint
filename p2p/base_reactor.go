@@ -47,7 +47,9 @@ type Reactor interface {
 	//
 	// Only one of Receive or ReceiveEnvelope are called per message. If ReceiveEnvelope
 	// is implemented, it will be used, otherwise the switch will fallback to
-	// using Receive. Receive will be replaced by ReceiveEnvelope in a future version
+	// using Receive.
+	// Deprecated: Reactors looking to receive data from a peer should implement ReceiveEnvelope.
+	// Receive will be deprecated in favor of ReceiveEnvelope in v0.38.
 	Receive(chID byte, peer Peer, msgBytes []byte)
 }
 
@@ -81,6 +83,6 @@ func (br *BaseReactor) SetSwitch(sw *Switch) {
 func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor        { return nil }
 func (*BaseReactor) AddPeer(peer Peer)                             {}
 func (*BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
-func (*BaseReactor) ReceiveEnvelope(e Envelope)                         {}
+func (*BaseReactor) ReceiveEnvelope(e Envelope)                    {}
 func (*BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}
 func (*BaseReactor) InitPeer(peer Peer) Peer                       { return peer }

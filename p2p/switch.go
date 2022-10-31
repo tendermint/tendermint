@@ -300,6 +300,9 @@ func (sw *Switch) BroadcastEnvelope(e Envelope) chan bool {
 // Broadcasts sends to the peers using the Send method.
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
+//
+// Deprecated: code looking to broadcast data to all peers should use BroadcastEnvelope.
+// Broadcast will be removed in 0.38.
 func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 	sw.Logger.Debug("Broadcast", "channel", chID)
 
