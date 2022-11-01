@@ -70,12 +70,13 @@ func TestPaginationPerPage(t *testing.T) {
 		{5, maxPerPage, maxPerPage},
 		{5, maxPerPage + 1, maxPerPage},
 	}
+	env := &Environment{}
 	for _, c := range cases {
-		p := validatePerPage(&c.perPage)
+		p := env.validatePerPage(&c.perPage)
 		assert.Equal(t, c.newPerPage, p, fmt.Sprintf("%v", c))
 	}
 
 	// nil case
-	p := validatePerPage(nil)
+	p := env.validatePerPage(nil)
 	assert.Equal(t, defaultPerPage, p)
 }

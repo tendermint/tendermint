@@ -498,6 +498,10 @@ func (n *Node) OnStop() {
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
 func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
+	pubKey, err := n.privValidator.GetPubKey()
+	if pubKey == nil || err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
+	}
 	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
@@ -508,6 +512,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		ConsensusState: n.consensusState,
 		P2PPeers:       n.sw,
 		P2PTransport:   n,
+		PubKey:         pubKey,
 
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,
@@ -520,20 +525,9 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 
 		Config: *n.config.RPC,
 	}
-	if err := rpccore.InitGenesisChunks(); err != nil {
-		return nil, err
-	}
-	if n.config.Mode == cfg.ModeValidator {
-		pubKey, err := n.privValidator.GetPubKey()
-		if pubKey == nil || err != nil {
-			return nil, fmt.Errorf("can't get pubkey: %w", err)
-		}
-		rpcCoreEnv.PubKey = pubKey
-	}
 	if err := rpcCoreEnv.InitGenesisChunks(); err != nil {
 		return nil, err
 	}
-
 	return &rpcCoreEnv, nil
 }
 
@@ -543,7 +537,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		return nil, err
 	}
 
-	listenAddrs := strings.SplitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
+	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
 	routes := env.GetRoutes()
 
 	if n.config.RPC.Unsafe {

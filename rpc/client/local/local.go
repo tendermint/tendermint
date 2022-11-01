@@ -168,11 +168,11 @@ func (c *Local) BlockResults(ctx context.Context, height *int64) (*ctypes.Result
 }
 
 func (c *Local) Header(ctx context.Context, height *int64) (*ctypes.ResultHeader, error) {
-	return core.Header(c.ctx, height)
+	return c.env.Header(c.ctx, height)
 }
 
 func (c *Local) HeaderByHash(ctx context.Context, hash bytes.HexBytes) (*ctypes.ResultHeader, error) {
-	return core.HeaderByHash(c.ctx, hash)
+	return c.env.HeaderByHash(c.ctx, hash)
 }
 
 func (c *Local) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
