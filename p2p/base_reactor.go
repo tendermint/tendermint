@@ -53,7 +53,7 @@ type Reactor interface {
 	Receive(chID byte, peer Peer, msgBytes []byte)
 }
 
-type ReceiveEnveloper interface {
+type EnvelopeReceiver interface {
 	// ReceiveEnvelope is called by the switch when an envelope is received from any connected
 	// peer on any of the channels registered by the reactor.
 	//
