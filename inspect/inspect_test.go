@@ -16,18 +16,19 @@ import (
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/proto/tendermint/state"
 	httpclient "github.com/tendermint/tendermint/rpc/client/http"
-	"github.com/tendermint/tendermint/state/indexer"
 	indexermocks "github.com/tendermint/tendermint/state/indexer/mocks"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
+	txindexmocks "github.com/tendermint/tendermint/state/txindex/mocks"
 	"github.com/tendermint/tendermint/types"
 )
 
 func TestInspectConstructor(t *testing.T) {
-	cfg := config.ResetTestRoot("test")
+	cfg := test.ResetTestRoot("test")
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
@@ -39,7 +40,7 @@ func TestInspectConstructor(t *testing.T) {
 }
 
 func TestInspectRun(t *testing.T) {
-	cfg := config.ResetTestRoot("test")
+	cfg := test.ResetTestRoot("test")
 	t.Cleanup(leaktest.Check(t))
 	defer func() { _ = os.RemoveAll(cfg.RootDir) }()
 	t.Run("from config", func(t *testing.T) {
@@ -70,12 +71,13 @@ func TestBlock(t *testing.T) {
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{})
 	blockStoreMock.On("LoadBlock", testHeight).Return(testBlock)
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
+
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -91,7 +93,7 @@ func TestBlock(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 	resultBlock, err := cli.Block(context.Background(), &testHeight)
 	require.NoError(t, err)
@@ -116,16 +118,17 @@ func TestTxSearch(t *testing.T) {
 
 	stateStoreMock := &statemocks.Store{}
 	blockStoreMock := &statemocks.BlockStore{}
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
-	eventSinkMock.On("Type").Return(indexer.KV)
-	eventSinkMock.On("SearchTxEvents", mock.Anything,
-		mock.MatchedBy(func(q *query.Query) bool { return testQuery == q.String() })).
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
+	txIndexerMock.On("Search", mock.Anything,
+		mock.MatchedBy(func(q *query.Query) bool {
+			return testQuery == strings.ReplaceAll(q.String(), " ", "")
+		})).
 		Return([]*abcitypes.TxResult{testTxResult}, nil)
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -141,7 +144,7 @@ func TestTxSearch(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 
 	var page = 1
@@ -153,7 +156,7 @@ func TestTxSearch(t *testing.T) {
 	cancel()
 	wg.Wait()
 
-	eventSinkMock.AssertExpectations(t)
+	txIndexerMock.AssertExpectations(t)
 	stateStoreMock.AssertExpectations(t)
 	blockStoreMock.AssertExpectations(t)
 }
@@ -163,16 +166,15 @@ func TestTx(t *testing.T) {
 
 	stateStoreMock := &statemocks.Store{}
 	blockStoreMock := &statemocks.BlockStore{}
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
-	eventSinkMock.On("Type").Return(indexer.KV)
-	eventSinkMock.On("GetTxByHash", testHash).Return(&abcitypes.TxResult{
+	blkIdxMock := &indexermocks.BlockIndexer{}
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	txIndexerMock.On("Get", testHash).Return(&abcitypes.TxResult{
 		Tx: testTx,
 	}, nil)
 
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -188,7 +190,7 @@ func TestTx(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 
 	res, err := cli.Tx(context.Background(), testHash, false)
@@ -198,7 +200,7 @@ func TestTx(t *testing.T) {
 	cancel()
 	wg.Wait()
 
-	eventSinkMock.AssertExpectations(t)
+	txIndexerMock.AssertExpectations(t)
 	stateStoreMock.AssertExpectations(t)
 	blockStoreMock.AssertExpectations(t)
 }
@@ -214,11 +216,11 @@ func TestConsensusParams(t *testing.T) {
 			MaxGas: testMaxGas,
 		},
 	}, nil)
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -235,7 +237,7 @@ func TestConsensusParams(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 	params, err := cli.ConsensusParams(context.Background(), &testHeight)
 	require.NoError(t, err)
@@ -265,11 +267,11 @@ func TestBlockResults(t *testing.T) {
 	blockStoreMock := &statemocks.BlockStore{}
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("Height").Return(testHeight)
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -286,11 +288,11 @@ func TestBlockResults(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 	res, err := cli.BlockResults(context.Background(), &testHeight)
 	require.NoError(t, err)
-	require.Equal(t, res.TotalGasUsed, testGasUsed)
+	require.Equal(t, res.TxsResults[0].GasUsed, testGasUsed)
 
 	cancel()
 	wg.Wait()
@@ -307,15 +309,15 @@ func TestCommit(t *testing.T) {
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{}, nil)
-	blockStoreMock.On("LoadSeenCommit").Return(&types.Commit{
+	blockStoreMock.On("LoadSeenCommit", testHeight).Return(&types.Commit{
 		Height: testHeight,
 		Round:  testRound,
 	}, nil)
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -332,7 +334,7 @@ func TestCommit(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 	res, err := cli.Commit(context.Background(), &testHeight)
 	require.NoError(t, err)
@@ -363,11 +365,11 @@ func TestBlockByHash(t *testing.T) {
 		},
 	}, nil)
 	blockStoreMock.On("LoadBlockByHash", testHash).Return(testBlock, nil)
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -384,7 +386,7 @@ func TestBlockByHash(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 	res, err := cli.BlockByHash(context.Background(), testHash)
 	require.NoError(t, err)
@@ -414,11 +416,11 @@ func TestBlockchain(t *testing.T) {
 			Hash: testBlockHash,
 		},
 	})
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -435,7 +437,7 @@ func TestBlockchain(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 	res, err := cli.BlockchainInfo(context.Background(), 0, 100)
 	require.NoError(t, err)
@@ -465,11 +467,11 @@ func TestValidators(t *testing.T) {
 	blockStoreMock := &statemocks.BlockStore{}
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("Base").Return(int64(0))
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -486,7 +488,7 @@ func TestValidators(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 
 	testPage := 1
@@ -510,9 +512,8 @@ func TestBlockSearch(t *testing.T) {
 	stateStoreMock := &statemocks.Store{}
 
 	blockStoreMock := &statemocks.BlockStore{}
-	eventSinkMock := &indexermocks.EventSink{}
-	eventSinkMock.On("Stop").Return(nil)
-	eventSinkMock.On("Type").Return(indexer.KV)
+	txIndexerMock := &txindexmocks.TxIndexer{}
+	blkIdxMock := &indexermocks.BlockIndexer{}
 	blockStoreMock.On("LoadBlock", testHeight).Return(&types.Block{
 		Header: types.Header{
 			Height: testHeight,
@@ -523,12 +524,12 @@ func TestBlockSearch(t *testing.T) {
 			Hash: testBlockHash,
 		},
 	})
-	eventSinkMock.On("SearchBlockEvents", mock.Anything,
+	blkIdxMock.On("Search", mock.Anything,
 		mock.MatchedBy(func(q *query.Query) bool { return testQuery == q.String() })).
 		Return([]int64{testHeight}, nil)
 	rpcConfig := config.TestRPCConfig()
 	l := log.TestingLogger()
-	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, []indexer.EventSink{eventSinkMock}, l)
+	d := inspect.New(rpcConfig, blockStoreMock, stateStoreMock, txIndexerMock, blkIdxMock, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wg := &sync.WaitGroup{}
@@ -545,7 +546,7 @@ func TestBlockSearch(t *testing.T) {
 	// Determine more deterministic method for prompting a context switch
 	startedWG.Wait()
 	requireConnect(t, rpcConfig.ListenAddress, 20)
-	cli, err := httpclient.New(rpcConfig.ListenAddress)
+	cli, err := httpclient.New(rpcConfig.ListenAddress, "/websocket")
 	require.NoError(t, err)
 
 	testPage := 1
