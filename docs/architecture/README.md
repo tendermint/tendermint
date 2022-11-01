@@ -81,7 +81,7 @@ Note the context/background should be written in the present tense.
 - [ADR-075: RPC Event Subscription Interface](./adr-075-rpc-subscription.md)
 - [ADR-079: Ed25519 Verification](./adr-079-ed25519-verification.md)
 - [ADR-081: Protocol Buffers Management](./adr-081-protobuf-mgmt.md)
-- [ADR-082: Out-of-band Sync](./adr-082-out-band-sync.md)
+- [ADR-083: Out-of-band Sync](./adr-083-out-band-sync.md)
 
 ### Deprecated
 

@@ -1,4 +1,4 @@
-# ADR 082: Supporting out of band state sync
+# ADR 083: Supporting out of band state sync
 
 ## Changelog
 
