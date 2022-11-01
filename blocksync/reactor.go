@@ -32,7 +32,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blocksync reactor and block sync to
 	// the consensus machine
-	SwitchToConsensus(state sm.State, skipWAL bool)
+	SwitchToConsensus(state sm.State, skipWAL bool) error
 }
 
 type peerError struct {
@@ -54,16 +54,15 @@ type Reactor struct {
 	blockExec *sm.BlockExecutor
 	store     *store.BlockStore
 	pool      *BlockPool
-	blockSync bool
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
+
+	metrics *Metrics
 }
 
 // NewReactor returns new reactor instance.
-func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
-	blockSync bool) *Reactor {
-
+func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore, metrics *Metrics) *Reactor {
 	if state.LastBlockHeight != store.Height() {
 		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
 			store.Height()))
@@ -85,9 +84,9 @@ func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockS
 		blockExec:    blockExec,
 		store:        store,
 		pool:         pool,
-		blockSync:    blockSync,
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
+		metrics:      metrics,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor("Reactor", bcR)
 	return bcR
@@ -101,22 +100,22 @@ func (bcR *Reactor) SetLogger(l log.Logger) {
 
 // OnStart implements service.Service.
 func (bcR *Reactor) OnStart() error {
-	if bcR.blockSync {
-		err := bcR.pool.Start()
-		if err != nil {
-			return err
-		}
-		go bcR.poolRoutine(false)
-	}
 	return nil
+}
+
+// IsSyncing returns whether the node is using blocksync to advance heights
+func (bcR *Reactor) IsSyncing() bool {
+	return bcR.pool.IsRunning()
 }
 
 // SwitchToBlockSync is called by the state sync reactor when switching to block sync.
 func (bcR *Reactor) SwitchToBlockSync(state sm.State) error {
-	bcR.blockSync = true
 	bcR.initialState = state
-
-	bcR.pool.height = state.LastBlockHeight + 1
+	if state.LastBlockHeight == 0 {
+		bcR.pool.height = state.InitialHeight
+	} else {
+		bcR.pool.height = state.LastBlockHeight + 1
+	}
 	err := bcR.pool.Start()
 	if err != nil {
 		return err
@@ -127,7 +126,7 @@ func (bcR *Reactor) SwitchToBlockSync(state sm.State) error {
 
 // OnStop implements service.Service.
 func (bcR *Reactor) OnStop() {
-	if bcR.blockSync {
+	if bcR.pool.IsRunning() {
 		if err := bcR.pool.Stop(); err != nil {
 			bcR.Logger.Error("Error stopping pool", "err", err)
 		}
@@ -253,6 +252,7 @@ func (bcR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
 func (bcR *Reactor) poolRoutine(stateSynced bool) {
+	bcR.metrics.Syncing.Set(1)
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	defer trySyncTicker.Stop()
@@ -313,18 +313,22 @@ FOR_LOOP:
 	for {
 		select {
 		case <-switchToConsensusTicker.C:
-			height, numPending, lenRequesters := bcR.pool.GetStatus()
+			height, peerHeight, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "total", lenRequesters,
-				"outbound", outbound, "inbound", inbound)
+				"outbound", outbound, "inbound", inbound, "peerHeight", peerHeight)
 			if bcR.pool.IsCaughtUp() {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				if err := bcR.pool.Stop(); err != nil {
 					bcR.Logger.Error("Error stopping pool", "err", err)
 				}
+
+				// TODO: node struct should be responsible for switching from block sync to
+				// consensus. It's messy to have to grab the consensus reactor from the switch
 				conR, ok := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
 				if ok {
-					conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+					err := conR.SwitchToConsensus(state, blocksSynced > 0 || stateSynced)
+					bcR.Logger.Error("failed to switch to consensus", "err", err)
 				}
 				// else {
 				// should only happen during testing
@@ -426,6 +430,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 	}
+	bcR.metrics.Syncing.Set(0)
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/protoio"
+	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/p2p/conn"
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
@@ -56,6 +57,8 @@ type peerConfig struct {
 // the transport. Each transport is also responsible to filter establishing
 // peers specific to its domain.
 type Transport interface {
+	service.Service
+
 	// Listening address.
 	NetAddress() NetAddress
 
@@ -67,13 +70,6 @@ type Transport interface {
 
 	// Cleanup any resources associated with Peer.
 	Cleanup(Peer)
-}
-
-// transportLifecycle bundles the methods for callers to control start and stop
-// behavior.
-type transportLifecycle interface {
-	Close() error
-	Listen(NetAddress) error
 }
 
 // ConnFilterFunc to be implemented by filter hooks after a new connection has
@@ -133,6 +129,8 @@ func MultiplexTransportMaxIncomingConnections(n int) MultiplexTransportOption {
 // MultiplexTransport accepts and dials tcp connections and upgrades them to
 // multiplexed peers.
 type MultiplexTransport struct {
+	service.BaseService
+
 	netAddr                NetAddress
 	listener               net.Listener
 	maxIncomingConnections int // see MaxIncomingConnections
@@ -159,15 +157,15 @@ type MultiplexTransport struct {
 
 // Test multiplexTransport for interface completeness.
 var _ Transport = (*MultiplexTransport)(nil)
-var _ transportLifecycle = (*MultiplexTransport)(nil)
 
 // NewMultiplexTransport returns a tcp connected multiplexed peer.
 func NewMultiplexTransport(
 	nodeInfo NodeInfo,
 	nodeKey NodeKey,
+	netAddr NetAddress,
 	mConfig conn.MConnConfig,
 ) *MultiplexTransport {
-	return &MultiplexTransport{
+	t := &MultiplexTransport{
 		acceptc:          make(chan accept),
 		closec:           make(chan struct{}),
 		dialTimeout:      defaultDialTimeout,
@@ -176,9 +174,12 @@ func NewMultiplexTransport(
 		mConfig:          mConfig,
 		nodeInfo:         nodeInfo,
 		nodeKey:          nodeKey,
+		netAddr:          netAddr,
 		conns:            NewConnSet(),
 		resolver:         net.DefaultResolver,
 	}
+	t.BaseService = *service.NewBaseService(nil, "P2P Transport", t)
+	return t
 }
 
 // NetAddress implements Transport.
@@ -231,20 +232,20 @@ func (mt *MultiplexTransport) Dial(
 	return p, nil
 }
 
-// Close implements transportLifecycle.
-func (mt *MultiplexTransport) Close() error {
+// OnStop implements Service.
+func (mt *MultiplexTransport) OnStop() {
 	close(mt.closec)
 
 	if mt.listener != nil {
-		return mt.listener.Close()
+		if err := mt.listener.Close(); err != nil {
+			mt.Logger.Error("closing listener", "err", err)
+		}
 	}
-
-	return nil
 }
 
-// Listen implements transportLifecycle.
-func (mt *MultiplexTransport) Listen(addr NetAddress) error {
-	ln, err := net.Listen("tcp", addr.DialString())
+// OnStart implements Service.
+func (mt *MultiplexTransport) OnStart() error {
+	ln, err := net.Listen("tcp", mt.netAddr.DialString())
 	if err != nil {
 		return err
 	}
@@ -253,7 +254,6 @@ func (mt *MultiplexTransport) Listen(addr NetAddress) error {
 		ln = netutil.LimitListener(ln, mt.maxIncomingConnections)
 	}
 
-	mt.netAddr = addr
 	mt.listener = ln
 
 	go mt.acceptPeers()

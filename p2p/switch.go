@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -105,7 +106,6 @@ type SwitchOption func(*Switch)
 // NewSwitch creates a new Switch with the given config.
 func NewSwitch(
 	cfg *config.P2PConfig,
-	transport Transport,
 	options ...SwitchOption,
 ) *Switch {
 	sw := &Switch{
@@ -117,7 +117,6 @@ func NewSwitch(
 		dialing:              cmap.NewCMap(),
 		reconnecting:         cmap.NewCMap(),
 		metrics:              NopMetrics(),
-		transport:            transport,
 		filterTimeout:        defaultFilterTimeout,
 		persistentPeersAddrs: make([]*NetAddress, 0),
 		unconditionalPeerIDs: make(map[ID]struct{}),
@@ -217,11 +216,30 @@ func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 	sw.nodeKey = nodeKey
 }
 
+func (sw *Switch) SetPeerFilters(filters ...PeerFilterFunc) {
+	sw.peerFilters = filters
+}
+
+func (sw *Switch) SetTransport(transport Transport) {
+	if sw.IsRunning() {
+		panic("cannot set transport while switch is running")
+	}
+	sw.transport = transport
+}
+
 //---------------------------------------------------------------------
 // Service start/stop
 
 // OnStart implements BaseService. It starts all the reactors and peers.
 func (sw *Switch) OnStart() error {
+	if sw.transport == nil {
+		return errors.New("transport not set")
+	}
+
+	if err := sw.transport.Start(); err != nil {
+		return err
+	}
+
 	// Start reactors
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
@@ -249,6 +267,10 @@ func (sw *Switch) OnStop() {
 		if err := reactor.Stop(); err != nil {
 			sw.Logger.Error("error while stopped reactor", "reactor", reactor, "error", err)
 		}
+	}
+
+	if err := sw.transport.Stop(); err != nil {
+		sw.Logger.Error("closing transport", "err", err)
 	}
 }
 

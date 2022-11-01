@@ -45,6 +45,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	appFunc := newKVStore
 
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	state, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 	css := make([]*State, nValidators)
 
 	for i := 0; i < nValidators; i++ {
@@ -53,7 +55,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 			DiscardABCIResponses: false,
 		})
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -101,7 +102,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+		cs := NewState(thisConfig.Consensus, blockExec, blockStore, mempool, evpool, WithState(state.Copy()))
 		cs.SetLogger(cs.Logger)
 		// set private validator
 		pv := privVals[i]
@@ -124,7 +125,8 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, nValidators)
 	for i := 0; i < nValidators; i++ {
-		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
+		// Note, we dont start the consensus states
+		reactors[i] = NewReactor(css[i])
 		reactors[i].SetLogger(css[i].Logger)
 
 		// eventBus is already started with the cs
@@ -247,8 +249,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	// start the consensus reactors
 	for i := 0; i < nValidators; i++ {
-		s := reactors[i].conS.GetState()
-		reactors[i].SwitchToConsensus(s, false)
+		reactors[i].SwitchToConsensus(state.Copy(), false)
 	}
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
@@ -307,7 +308,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
 	app := newKVStore
-	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), app)
+	css, cleanup := randConsensusNet(t, N, "consensus_byzantine_test", newMockTickerFunc(false), app)
 	defer cleanup()
 
 	// give the byzantine validator a normal ticker
@@ -356,7 +357,8 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 		blocksSubs[i], err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock)
 		require.NoError(t, err)
 
-		conR := NewReactor(css[i], true) // so we don't start the consensus states
+		// Note, we don't start the consensus states
+		conR := NewReactor(css[i])
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
@@ -572,7 +574,7 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 
 	// Send our state to peer.
 	// If we're syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
-	if !br.reactor.waitSync {
+	if br.reactor.conS.IsRunning() {
 		br.reactor.sendNewRoundStepMessage(peer)
 	}
 }

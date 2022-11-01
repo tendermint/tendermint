@@ -51,6 +51,16 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		votingPower = val.VotingPower
 	}
 
+	phase := "initializing"
+	switch {
+	case env.StatesyncReactor.IsSyncing():
+		phase = "statesync"
+	case env.BlocksyncReactor.IsSyncing():
+		phase = "blocksync"
+	case env.ConsensusReactor.IsConsensusRunning():
+		phase = "consensus"
+	}
+
 	result := &ctypes.ResultStatus{
 		NodeInfo: env.P2PTransport.NodeInfo().(p2p.DefaultNodeInfo),
 		SyncInfo: ctypes.SyncInfo{
@@ -62,7 +72,7 @@ func Status(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 			EarliestAppHash:     earliestAppHash,
 			EarliestBlockHeight: earliestBlockHeight,
 			EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			CatchingUp:          env.ConsensusReactor.WaitSync(),
+			Phase:               phase,
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     env.PubKey.Address(),

@@ -121,7 +121,7 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		return
 	}
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
-	if voteSet == nil {
+	if voteSet.IsEmpty() {
 		if rndz := hvs.peerCatchupRounds[peerID]; len(rndz) < 2 {
 			hvs.addRound(vote.Round)
 			voteSet = hvs.getVoteSet(vote.Round, vote.Type)
@@ -166,7 +166,7 @@ func (hvs *HeightVoteSet) POLInfo() (polRound int32, polBlockID types.BlockID) {
 func (hvs *HeightVoteSet) getVoteSet(round int32, voteType tmproto.SignedMsgType) *types.VoteSet {
 	rvs, ok := hvs.roundVoteSets[round]
 	if !ok {
-		return nil
+		return &types.VoteSet{}
 	}
 	switch voteType {
 	case tmproto.PrevoteType:

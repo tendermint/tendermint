@@ -54,9 +54,8 @@ func startConsensusNet(t *testing.T, css []*State, n int) (
 	blocksSubs := make([]types.Subscription, 0)
 	eventBuses := make([]*types.EventBus, n)
 	for i := 0; i < n; i++ {
-		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
-		if err != nil {	t.Fatal(err)}*/
-		reactors[i] = NewReactor(css[i], true) // so we dont start the consensus states
+		// Note, we dont start the consensus states
+		reactors[i] = NewReactor(css[i])
 		reactors[i].SetLogger(css[i].Logger)
 
 		// eventBus is already started with the cs
@@ -112,7 +111,7 @@ func stopConsensusNet(logger log.Logger, reactors []*Reactor, eventBuses []*type
 // Ensure a testnet makes blocks
 func TestReactorBasic(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
+	css, cleanup := randConsensusNet(t, N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
 	defer cleanup()
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
@@ -134,6 +133,8 @@ func TestReactorWithEvidence(t *testing.T) {
 	// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
 
 	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	state, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
@@ -141,7 +142,6 @@ func TestReactorWithEvidence(t *testing.T) {
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 			DiscardABCIResponses: false,
 		})
-		state, _ := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(thisConfig.RootDir)
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
@@ -202,7 +202,7 @@ func TestReactorWithEvidence(t *testing.T) {
 
 		// Make State
 		blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
-		cs := NewState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool2)
+		cs := NewState(thisConfig.Consensus, blockExec, blockStore, mempool, evpool2, WithState(state.Copy()))
 		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 		cs.SetPrivValidator(pv)
 
@@ -236,7 +236,7 @@ func TestReactorWithEvidence(t *testing.T) {
 // Ensure a testnet makes blocks when there are txs
 func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore,
+	css, cleanup := randConsensusNet(t, N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore,
 		func(c *cfg.Config) {
 			c.Consensus.CreateEmptyBlocks = false
 		})
@@ -257,7 +257,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 
 func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	N := 1
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
+	css, cleanup := randConsensusNet(t, N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
 	defer cleanup()
 	reactors, _, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
@@ -280,7 +280,7 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 
 func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	N := 1
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
+	css, cleanup := randConsensusNet(t, N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
 	defer cleanup()
 	reactors, _, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
@@ -303,7 +303,7 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 // Test we record stats about votes and block parts from other peers.
 func TestReactorRecordsVotesAndBlockParts(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
+	css, cleanup := randConsensusNet(t, N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
 	defer cleanup()
 	reactors, blocksSubs, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
@@ -329,6 +329,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	nVals := 4
 	logger := log.TestingLogger()
 	css, cleanup := randConsensusNet(
+		t,
 		nVals,
 		"consensus_voting_power_changes_test",
 		newMockTickerFunc(true),
@@ -524,7 +525,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 // Check we can make blocks with skip_timeout_commit=false
 func TestReactorWithTimeoutCommit(t *testing.T) {
 	N := 4
-	css, cleanup := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newKVStore)
+	css, cleanup := randConsensusNet(t, N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newKVStore)
 	defer cleanup()
 	// override default SkipTimeoutCommit == true for tests
 	for i := 0; i < N; i++ {

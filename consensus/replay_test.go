@@ -67,7 +67,8 @@ func TestMain(m *testing.M) {
 func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Config,
 	lastBlockHeight int64, blockDB dbm.DB, stateStore sm.Store) {
 	logger := log.TestingLogger()
-	state, _ := stateStore.LoadFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
+	state, err := stateStore.LoadFromDBOrGenesisFile(consensusReplayConfig.GenesisFile())
+	require.NoError(t, err)
 	privValidator := loadPrivValidator(consensusReplayConfig)
 	cs := newStateWithConfigAndBlockStore(
 		consensusReplayConfig,
@@ -81,7 +82,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	bytes, _ := os.ReadFile(cs.config.WalFile())
 	t.Logf("====== WAL: \n\r%X\n", bytes)
 
-	err := cs.Start()
+	err = cs.Start()
 	require.NoError(t, err)
 	defer func() {
 		if err := cs.Stop(); err != nil {
@@ -555,40 +556,40 @@ func TestSimulateValidatorsChange(t *testing.T) {
 // Sync from scratch
 func TestHandshakeReplayAll(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m, false)
+		testHandshakeReplay(t, 0, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 0, m, true)
+		testHandshakeReplay(t, 0, m, true)
 	}
 }
 
 // Sync many, not from scratch
 func TestHandshakeReplaySome(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 2, m, false)
+		testHandshakeReplay(t, 2, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, 2, m, true)
+		testHandshakeReplay(t, 2, m, true)
 	}
 }
 
 // Sync from lagging by one
 func TestHandshakeReplayOne(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks-1, m, false)
+		testHandshakeReplay(t, numBlocks-1, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks-1, m, true)
+		testHandshakeReplay(t, numBlocks-1, m, true)
 	}
 }
 
 // Sync from caught up
 func TestHandshakeReplayNone(t *testing.T) {
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks, m, false)
+		testHandshakeReplay(t, numBlocks, m, false)
 	}
 	for _, m := range modes {
-		testHandshakeReplay(t, config, numBlocks, m, true)
+		testHandshakeReplay(t, numBlocks, m, true)
 	}
 }
 
@@ -660,25 +661,27 @@ func tempWALWithData(data []byte) string {
 
 // Make some blocks. Start a fresh app and apply nBlocks blocks.
 // Then restart the app and sync it up with the remaining blocks
-func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uint, testValidatorsChange bool) {
-	var chain []*types.Block
-	var commits []*types.Commit
-	var store *mockBlockStore
-	var stateDB dbm.DB
-	var genesisState sm.State
+func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, testValidatorsChange bool) {
+	var (
+		chain []*types.Block
+		commits []*types.Commit
+		store *mockBlockStore
+		stateDB dbm.DB
+		genesisState sm.State
+		config *cfg.Config
+	)
 	if testValidatorsChange {
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
-		defer os.RemoveAll(testConfig.RootDir)
+		config = ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
+		defer os.RemoveAll(config.RootDir)
 		stateDB = dbm.NewMemDB()
 
 		genesisState = sim.GenesisState
-		config = sim.Config
 		chain = append([]*types.Block{}, sim.Chain...) // copy chain
 		commits = sim.Commits
 		store = newMockBlockStore(t, config, genesisState.ConsensusParams)
 	} else { // test single node
-		testConfig := ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
-		defer os.RemoveAll(testConfig.RootDir)
+		config = ResetConfig(fmt.Sprintf("%s_%v_s", t.Name(), mode))
+		defer os.RemoveAll(config.RootDir)
 		walBody, err := WALWithNBlocks(t, numBlocks)
 		require.NoError(t, err)
 		walFile := tempWALWithData(walBody)
@@ -811,14 +814,11 @@ func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm
 
 	state.Version.Consensus.App = kvstore.ProtocolVersion // simulate handshake, receive app version
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
+	_, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
-	}); err != nil {
-		panic(err)
-	}
-	if err := stateStore.Save(state); err != nil { // save height 1's validatorsInfo
-		panic(err)
-	}
+	}); 
+	require.NoError(t, err)
+	require.NoError(t, stateStore.Save(state))
 	switch mode {
 	case 0:
 		for i := 0; i < nBlocks; i++ {

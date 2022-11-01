@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/protoio"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -28,20 +29,26 @@ func emptyNodeInfo() NodeInfo {
 func newMultiplexTransport(
 	nodeInfo NodeInfo,
 	nodeKey NodeKey,
+	netAddr NetAddress,
 ) *MultiplexTransport {
 	return NewMultiplexTransport(
-		nodeInfo, nodeKey, conn.DefaultMConnConfig(),
+		nodeInfo, nodeKey, netAddr, conn.DefaultMConnConfig(),
 	)
 }
 
 func TestTransportMultiplexConnFilter(t *testing.T) {
+	nodeKey := NodeKey{
+		PrivKey: ed25519.GenPrivKey(),
+	}
+	id := nodeKey.ID()
+	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
+	require.NoError(t, err)
+
 	mt := newMultiplexTransport(
 		emptyNodeInfo(),
-		NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
-		},
+		nodeKey,
+		*addr,
 	)
-	id := mt.nodeKey.ID()
 
 	MultiplexTransportConnFilters(
 		func(_ ConnSet, _ net.Conn, _ []net.IP) error { return nil },
@@ -51,14 +58,8 @@ func TestTransportMultiplexConnFilter(t *testing.T) {
 		},
 	)(mt)
 
-	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := mt.Listen(*addr); err != nil {
-		t.Fatal(err)
-	}
+	err = mt.Start()
+	require.NoError(t, err)
 
 	errc := make(chan error)
 
@@ -89,13 +90,18 @@ func TestTransportMultiplexConnFilter(t *testing.T) {
 }
 
 func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
+	nodeKey := NodeKey{
+		PrivKey: ed25519.GenPrivKey(),
+	}
+	id := nodeKey.ID()
+	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
+	require.NoError(t, err)
+
 	mt := newMultiplexTransport(
 		emptyNodeInfo(),
-		NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
-		},
+		nodeKey,
+		*addr,
 	)
-	id := mt.nodeKey.ID()
 
 	MultiplexTransportFilterTimeout(5 * time.Millisecond)(mt)
 	MultiplexTransportConnFilters(
@@ -105,14 +111,9 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 		},
 	)(mt)
 
-	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := mt.Listen(*addr); err != nil {
-		t.Fatal(err)
-	}
+	err = mt.Start()
+	require.NoError(t, err)
+	defer mt.Stop()
 
 	errc := make(chan error)
 	go func() {
@@ -140,6 +141,10 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 	pv := ed25519.GenPrivKey()
 	id := PubKeyToID(pv.PubKey())
+	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	mt := newMultiplexTransport(
 		testNodeInfo(
 			id, "transport",
@@ -147,26 +152,22 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 		NodeKey{
 			PrivKey: pv,
 		},
+		*addr,
 	)
 
 	MultiplexTransportMaxIncomingConnections(0)(mt)
 
-	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	const maxIncomingConns = 2
 	MultiplexTransportMaxIncomingConnections(maxIncomingConns)(mt)
-	if err := mt.Listen(*addr); err != nil {
-		t.Fatal(err)
-	}
+	err = mt.Start()
+	require.NoError(t, err)
 
 	laddr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 	// Connect more peers than max
 	for i := 0; i <= maxIncomingConns; i++ {
 		errc := make(chan error)
-		go testDialer(*laddr, errc)
+		go testDialer(t, *laddr, errc)
 
 		err = <-errc
 		if i < maxIncomingConns {
@@ -198,7 +199,7 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 
 	// Setup dialers.
 	for i := 0; i < nDialers; i++ {
-		go testDialer(*laddr, errc)
+		go testDialer(t, *laddr, errc)
 	}
 
 	// Catch connection errors.
@@ -235,23 +236,26 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 		}
 	}
 
-	if err := mt.Close(); err != nil {
+	if err := mt.Stop(); err != nil {
 		t.Errorf("close errored: %v", err)
 	}
 }
 
-func testDialer(dialAddr NetAddress, errc chan error) {
-	var (
-		pv     = ed25519.GenPrivKey()
-		dialer = newMultiplexTransport(
-			testNodeInfo(PubKeyToID(pv.PubKey()), defaultNodeName),
-			NodeKey{
-				PrivKey: pv,
-			},
-		)
+func testDialer(t *testing.T, dialAddr NetAddress, errc chan error) {
+	pv := ed25519.GenPrivKey()
+	id := PubKeyToID(pv.PubKey())
+	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
+	require.NoError(t, err)
+
+	dialer := newMultiplexTransport(
+		testNodeInfo(PubKeyToID(pv.PubKey()), defaultNodeName),
+		NodeKey{
+			PrivKey: pv,
+		},
+		*addr,
 	)
 
-	_, err := dialer.Dial(dialAddr, peerConfig{})
+	_, err = dialer.Dial(dialAddr, peerConfig{})
 	if err != nil {
 		errc <- err
 		return
@@ -319,15 +323,14 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 	go func() {
 		<-slowc
 
-		var (
-			dialer = newMultiplexTransport(
-				fastNodeInfo,
-				NodeKey{
-					PrivKey: fastNodePV,
-				},
-			)
-		)
 		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
+		dialer := newMultiplexTransport(
+			fastNodeInfo,
+			NodeKey{
+				PrivKey: fastNodePV,
+			},
+			*addr,
+		)
 
 		_, err := dialer.Dial(*addr, peerConfig{})
 		if err != nil {
@@ -360,17 +363,16 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 	errc := make(chan error)
 
 	go func() {
-		var (
-			pv     = ed25519.GenPrivKey()
-			dialer = newMultiplexTransport(
-				testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
-				NodeKey{
-					PrivKey: pv,
-				},
-			)
-		)
 
+		pv := ed25519.GenPrivKey()
 		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
+		dialer := newMultiplexTransport(
+			testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
+			NodeKey{
+				PrivKey: pv,
+			},
+			*addr,
+		)
 
 		_, err := dialer.Dial(*addr, peerConfig{})
 		if err != nil {
@@ -401,6 +403,7 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	errc := make(chan error)
 
 	go func() {
+		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 		dialer := newMultiplexTransport(
 			testNodeInfo(
 				PubKeyToID(ed25519.GenPrivKey().PubKey()), "dialer",
@@ -408,8 +411,8 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 			NodeKey{
 				PrivKey: ed25519.GenPrivKey(),
 			},
+			*addr,
 		)
-		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 		_, err := dialer.Dial(*addr, peerConfig{})
 		if err != nil {
@@ -437,18 +440,16 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
 	mt := testSetupMultiplexTransport(t)
 
-	var (
-		pv     = ed25519.GenPrivKey()
-		dialer = newMultiplexTransport(
-			testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
-			NodeKey{
-				PrivKey: pv,
-			},
-		)
-	)
-
+	pv := ed25519.GenPrivKey()
 	wrongID := PubKeyToID(ed25519.GenPrivKey().PubKey())
 	addr := NewNetAddress(wrongID, mt.listener.Addr())
+	dialer := newMultiplexTransport(
+		testNodeInfo(PubKeyToID(pv.PubKey()), ""), // Should not be empty
+		NodeKey{
+			PrivKey: pv,
+		},
+		*addr,
+	)
 
 	_, err := dialer.Dial(*addr, peerConfig{})
 	if err != nil {
@@ -471,14 +472,15 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	go func() {
 		var (
 			pv     = ed25519.GenPrivKey()
+			addr   = NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 			dialer = newMultiplexTransport(
 				testNodeInfoWithNetwork(PubKeyToID(pv.PubKey()), "dialer", "incompatible-network"),
 				NodeKey{
 					PrivKey: pv,
 				},
+				*addr,
 			)
 		)
-		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 		_, err := dialer.Dial(*addr, peerConfig{})
 		if err != nil {
@@ -622,11 +624,16 @@ func TestTransportHandshake(t *testing.T) {
 }
 
 func TestTransportAddChannel(t *testing.T) {
+	pv := ed25519.GenPrivKey()
+	id := PubKeyToID(pv.PubKey())
+	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
+	require.NoError(t, err)
 	mt := newMultiplexTransport(
 		emptyNodeInfo(),
 		NodeKey{
-			PrivKey: ed25519.GenPrivKey(),
+			PrivKey: pv,
 		},
+		*addr,
 	)
 	testChannel := byte(0x01)
 
@@ -638,27 +645,27 @@ func TestTransportAddChannel(t *testing.T) {
 
 // create listener
 func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
-	var (
-		pv = ed25519.GenPrivKey()
-		id = PubKeyToID(pv.PubKey())
-		mt = newMultiplexTransport(
-			testNodeInfo(
-				id, "transport",
-			),
-			NodeKey{
-				PrivKey: pv,
-			},
-		)
-	)
-
+	pv := ed25519.GenPrivKey()
+	id := PubKeyToID(pv.PubKey())
 	addr, err := NewNetAddressString(IDAddressString(id, "127.0.0.1:0"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	mt := newMultiplexTransport(
+		testNodeInfo(
+			id, "transport",
+		),
+		NodeKey{
+			PrivKey: pv,
+		},
+		*addr,
+	)
 
-	if err := mt.Listen(*addr); err != nil {
-		t.Fatal(err)
-	}
+	err = mt.Start()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		mt.Stop()
+	})
 
 	// give the listener some time to get ready
 	time.Sleep(20 * time.Millisecond)

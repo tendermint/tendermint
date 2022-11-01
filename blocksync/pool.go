@@ -99,6 +99,9 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- p
 // OnStart implements service.Service by spawning requesters routine and recording
 // pool's start time.
 func (pool *BlockPool) OnStart() error {
+	if pool.height == 0 {
+		return errors.New("height not set")
+	}
 	go pool.makeRequestersRoutine()
 	pool.startTime = time.Now()
 	return nil
@@ -111,22 +114,19 @@ func (pool *BlockPool) makeRequestersRoutine() {
 			break
 		}
 
-		_, numPending, lenRequesters := pool.GetStatus()
-		switch {
-		case numPending >= maxPendingRequests:
+		height, maxPeerHeight, numPending, lenRequesters := pool.GetStatus()
+		if height >= maxPeerHeight ||
+			numPending >= maxPendingRequests ||
+			lenRequesters >= maxTotalRequesters {
 			// sleep for a bit.
 			time.Sleep(requestIntervalMS * time.Millisecond)
 			// check for timed out peers
 			pool.removeTimedoutPeers()
-		case lenRequesters >= maxTotalRequesters:
-			// sleep for a bit.
-			time.Sleep(requestIntervalMS * time.Millisecond)
-			// check for timed out peers
-			pool.removeTimedoutPeers()
-		default:
-			// request for more blocks.
-			pool.makeNextRequester()
+			continue
 		}
+
+		// request for more blocks.
+		pool.makeNextRequester()
 	}
 }
 
@@ -156,11 +156,11 @@ func (pool *BlockPool) removeTimedoutPeers() {
 
 // GetStatus returns pool's height, numPending requests and the number of
 // requesters.
-func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequesters int) {
+func (pool *BlockPool) GetStatus() (height, maxPeerHeight int64, numPending int32, lenRequesters int) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	return pool.height, atomic.LoadInt32(&pool.numPending), len(pool.requesters)
+	return pool.height, pool.maxPeerHeight, atomic.LoadInt32(&pool.numPending), len(pool.requesters)
 }
 
 // IsCaughtUp returns true if this node is caught up, false - otherwise.
@@ -302,6 +302,7 @@ func (pool *BlockPool) SetPeerRange(peerID p2p.ID, base int64, height int64) {
 	}
 
 	if height > pool.maxPeerHeight {
+		pool.Logger.Info("new max peer height", "height", height)
 		pool.maxPeerHeight = height
 	}
 }
@@ -388,7 +389,7 @@ func (pool *BlockPool) makeNextRequester() {
 
 	err := request.Start()
 	if err != nil {
-		request.Logger.Error("Error starting request", "err", err)
+		pool.Logger.Error("Error starting request", "err", err)
 	}
 }
 

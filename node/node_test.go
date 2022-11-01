@@ -122,6 +122,8 @@ func TestNodeSetAppVersion(t *testing.T) {
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
+	require.NoError(t, n.Start())
+	defer n.Stop()
 
 	// default config uses the kvstore app
 	var appVersion = kvstore.ProtocolVersion
@@ -427,7 +429,6 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 			RecvMessageCapacity: 100,
 		},
 	}
-	customBlocksyncReactor := p2pmock.NewReactor()
 
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	require.NoError(t, err)
@@ -440,7 +441,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		log.TestingLogger(),
-		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKSYNC": customBlocksyncReactor}),
+		CustomReactors(map[string]p2p.Reactor{"FOO": cr}),
 	)
 	require.NoError(t, err)
 
@@ -450,9 +451,6 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 
 	assert.True(t, cr.IsRunning())
 	assert.Equal(t, cr, n.Switch().Reactor("FOO"))
-
-	assert.True(t, customBlocksyncReactor.IsRunning())
-	assert.Equal(t, customBlocksyncReactor, n.Switch().Reactor("BLOCKSYNC"))
 
 	channels := n.NodeInfo().(p2p.DefaultNodeInfo).Channels
 	assert.Contains(t, channels, mempl.MempoolChannel)

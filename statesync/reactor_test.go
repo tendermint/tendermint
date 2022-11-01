@@ -62,7 +62,7 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 
 			// Start a reactor and send a ssproto.ChunkRequest, then wait for and check response
 			cfg := config.DefaultStateSyncConfig()
-			r := NewReactor(*cfg, conn, nil, "")
+			r := NewReactor(*cfg, conn, nil, "", NopMetrics())
 			err := r.Start()
 			require.NoError(t, err)
 			t.Cleanup(func() {
@@ -140,7 +140,7 @@ func TestReactor_Receive_SnapshotsRequest(t *testing.T) {
 
 			// Start a reactor and send a SnapshotsRequestMessage, then wait for and check responses
 			cfg := config.DefaultStateSyncConfig()
-			r := NewReactor(*cfg, conn, nil, "")
+			r := NewReactor(*cfg, conn, nil, "", NopMetrics())
 			err := r.Start()
 			require.NoError(t, err)
 			t.Cleanup(func() {

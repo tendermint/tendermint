@@ -148,7 +148,6 @@ type StateOption func(*State)
 // NewState returns a new State.
 func NewState(
 	config *cfg.ConsensusConfig,
-	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	txNotifier txNotifier,
@@ -177,13 +176,6 @@ func NewState(
 	cs.doPrevote = cs.defaultDoPrevote
 	cs.setProposal = cs.defaultSetProposal
 
-	// We have no votes, so reconstruct LastCommit from SeenCommit.
-	if state.LastBlockHeight > 0 {
-		cs.reconstructLastCommit(state)
-	}
-
-	cs.updateToState(state)
-
 	// NOTE: we do not call scheduleRound0 yet, we do that upon Start()
 
 	cs.BaseService = *service.NewBaseService(nil, "State", cs)
@@ -207,8 +199,17 @@ func (cs *State) SetEventBus(b *types.EventBus) {
 }
 
 // StateMetrics sets the metrics.
-func StateMetrics(metrics *Metrics) StateOption {
+func WithMetrics(metrics *Metrics) StateOption {
 	return func(cs *State) { cs.metrics = metrics }
+}
+
+func WithState(state sm.State) StateOption {
+	return func(cs *State) { 
+		if state.LastBlockHeight > 0 {
+			cs.reconstructLastCommit(state)
+		}
+		cs.updateToState(state) 
+	}
 }
 
 // String returns a string.
@@ -297,6 +298,10 @@ func (cs *State) LoadCommit(height int64) *types.Commit {
 // OnStart loads the latest state via the WAL, and starts the timeout and
 // receive routines.
 func (cs *State) OnStart() error {
+	if cs.state.IsEmpty() {
+		return errors.New("no state to commence consensus on")
+	}
+
 	// We may set the WAL in testing before calling Start, so only OpenWAL if its
 	// still the nilWAL.
 	if _, ok := cs.wal.(nilWAL); ok {
@@ -612,7 +617,7 @@ func (cs *State) updateToState(state sm.State) {
 		// signal the new round step, because other services (eg. txNotifier)
 		// depend on having an up-to-date peer state!
 		if state.LastBlockHeight <= cs.state.LastBlockHeight {
-			cs.Logger.Debug(
+			cs.Logger.Info(
 				"ignoring updateToState()",
 				"new_height", state.LastBlockHeight+1,
 				"old_height", cs.state.LastBlockHeight+1,
@@ -2275,11 +2280,10 @@ func (cs *State) signAddVote(msgType tmproto.SignedMsgType, hash []byte, header 
 		return nil
 	}
 
-	// TODO: pass pubKey to signVote
 	vote, err := cs.signVote(msgType, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
-		cs.Logger.Debug("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
+		cs.Logger.Info("signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote)
 		return vote
 	}
 

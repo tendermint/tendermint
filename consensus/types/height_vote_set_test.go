@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/internal/test"
@@ -30,30 +31,23 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 	vote999_0 := makeVoteHR(t, 1, 0, 999, privVals)
 	added, err := hvs.AddVote(vote999_0, "peer1")
-	if !added || err != nil {
-		t.Error("Expected to successfully add vote from peer", added, err)
-	}
+	require.NoError(t, err)
+	require.True(t, added)
 
 	vote1000_0 := makeVoteHR(t, 1, 0, 1000, privVals)
 	added, err = hvs.AddVote(vote1000_0, "peer1")
-	if !added || err != nil {
-		t.Error("Expected to successfully add vote from peer", added, err)
-	}
+	require.NoError(t, err)
+	require.True(t, added)
 
 	vote1001_0 := makeVoteHR(t, 1, 0, 1001, privVals)
 	added, err = hvs.AddVote(vote1001_0, "peer1")
-	if err != ErrGotVoteFromUnwantedRound {
-		t.Errorf("expected GotVoteFromUnwantedRoundError, but got %v", err)
-	}
-	if added {
-		t.Error("Expected to *not* add vote from peer, too many catchup rounds.")
-	}
+	require.Error(t, err)
+	require.Equal(t, ErrGotVoteFromUnwantedRound, err)
+	require.False(t, added)
 
 	added, err = hvs.AddVote(vote1001_0, "peer2")
-	if !added || err != nil {
-		t.Error("Expected to successfully add vote from another peer")
-	}
-
+	require.NoError(t, err)
+	require.True(t, added)
 }
 
 func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []types.PrivValidator) *types.Vote {

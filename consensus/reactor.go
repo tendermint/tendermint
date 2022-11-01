@@ -44,7 +44,6 @@ type Reactor struct {
 	conS *State
 
 	mtx      tmsync.RWMutex
-	waitSync bool
 	eventBus *types.EventBus
 	rs       *cstypes.RoundState
 
@@ -55,12 +54,11 @@ type ReactorOption func(*Reactor)
 
 // NewReactor returns a new Reactor with the given
 // consensusState.
-func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) *Reactor {
+func NewReactor(consensusState *State, options ...ReactorOption) *Reactor {
 	conR := &Reactor{
-		conS:     consensusState,
-		waitSync: waitSync,
-		rs:       consensusState.GetRoundState(),
-		Metrics:  NopMetrics(),
+		conS:    consensusState,
+		rs:      consensusState.GetRoundState(),
+		Metrics: NopMetrics(),
 	}
 	conR.BaseReactor = *p2p.NewBaseReactor("Consensus", conR)
 
@@ -74,20 +72,11 @@ func NewReactor(consensusState *State, waitSync bool, options ...ReactorOption) 
 // OnStart implements BaseService by subscribing to events, which later will be
 // broadcasted to other peers and starting state if we're not in block sync.
 func (conR *Reactor) OnStart() error {
-	conR.Logger.Info("Reactor ", "waitSync", conR.WaitSync())
-
 	// start routine that computes peer statistics for evaluating peer quality
 	go conR.peerStatsRoutine()
 
 	conR.subscribeToBroadcastEvents()
 	go conR.updateRoundStateRoutine()
-
-	if !conR.WaitSync() {
-		err := conR.conS.Start()
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
 }
@@ -96,47 +85,34 @@ func (conR *Reactor) OnStart() error {
 // state.
 func (conR *Reactor) OnStop() {
 	conR.unsubscribeFromBroadcastEvents()
-	if err := conR.conS.Stop(); err != nil {
-		conR.Logger.Error("Error stopping consensus state", "err", err)
-	}
-	if !conR.WaitSync() {
+	if conR.conS.IsRunning() {
+		if err := conR.conS.Stop(); err != nil {
+			conR.Logger.Error("Error stopping consensus state", "err", err)
+		}
 		conR.conS.Wait()
 	}
 }
 
+func (conR *Reactor) IsConsensusRunning() bool {
+	return conR.conS.IsRunning()
+}
+
 // SwitchToConsensus switches from block_sync mode to consensus mode.
 // It resets the state, turns off block_sync, and starts the consensus state-machine
-func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
+func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) error {
 	conR.Logger.Info("SwitchToConsensus")
 
 	// We have no votes, so reconstruct LastCommit from SeenCommit.
-	if state.LastBlockHeight > 0 {
+	if state.LastBlockHeight > state.InitialHeight {
 		conR.conS.reconstructLastCommit(state)
 	}
 
-	// NOTE: The line below causes broadcastNewRoundStepRoutine() to broadcast a
-	// NewRoundStepMessage.
 	conR.conS.updateToState(state)
-
-	conR.mtx.Lock()
-	conR.waitSync = false
-	conR.mtx.Unlock()
-	conR.Metrics.BlockSyncing.Set(0)
-	conR.Metrics.StateSyncing.Set(0)
 
 	if skipWAL {
 		conR.conS.doWALCatchup = false
 	}
-	err := conR.conS.Start()
-	if err != nil {
-		panic(fmt.Sprintf(`Failed to start consensus state: %v
-
-conS:
-%+v
-
-conR:
-%+v`, err, conR.conS, conR))
-	}
+	return conR.conS.Start()
 }
 
 // GetChannels implements Reactor
@@ -199,7 +175,7 @@ func (conR *Reactor) AddPeer(peer p2p.Peer) {
 
 	// Send our state to peer.
 	// If we're block_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
-	if !conR.WaitSync() {
+	if conR.conS.IsRunning() {
 		conR.sendNewRoundStepMessage(peer)
 	}
 }
@@ -304,7 +280,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case DataChannel:
-		if conR.WaitSync() {
+		if !conR.conS.IsRunning() {
 			conR.Logger.Info("Ignoring message received during sync", "msg", msg)
 			return
 		}
@@ -323,7 +299,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case VoteChannel:
-		if conR.WaitSync() {
+		if !conR.conS.IsRunning() {
 			conR.Logger.Info("Ignoring message received during sync", "msg", msg)
 			return
 		}
@@ -345,7 +321,7 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case VoteSetBitsChannel:
-		if conR.WaitSync() {
+		if !conR.conS.IsRunning() {
 			conR.Logger.Info("Ignoring message received during sync", "msg", msg)
 			return
 		}
@@ -384,13 +360,6 @@ func (conR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 func (conR *Reactor) SetEventBus(b *types.EventBus) {
 	conR.eventBus = b
 	conR.conS.SetEventBus(b)
-}
-
-// WaitSync returns whether the consensus reactor is waiting for state/block sync.
-func (conR *Reactor) WaitSync() bool {
-	conR.mtx.RLock()
-	defer conR.mtx.RUnlock()
-	return conR.waitSync
 }
 
 //--------------------------------------
@@ -519,6 +488,11 @@ OUTER_LOOP:
 		if !peer.IsRunning() || !conR.IsRunning() {
 			return
 		}
+		if !conR.IsConsensusRunning() {
+			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
+			continue OUTER_LOOP
+		}
+
 		rs := conR.getRoundState()
 		prs := ps.GetRoundState()
 
@@ -646,7 +620,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 		}
 		return
 	}
-	//  logger.Info("No parts to send in catch-up, sleeping")
+
 	time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 }
 
@@ -656,12 +630,16 @@ func (conR *Reactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {
 	// Simple hack to throttle logs upon sleep.
 	var sleeping = 0
 
-OUTER_LOOP:
 	for {
 		// Manage disconnects from self or peer.
 		if !peer.IsRunning() || !conR.IsRunning() {
 			return
 		}
+		if !conR.IsConsensusRunning() {
+			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
+			continue
+		}
+
 		rs := conR.getRoundState()
 		prs := ps.GetRoundState()
 
@@ -672,14 +650,11 @@ OUTER_LOOP:
 			sleeping = 0
 		}
 
-		// logger.Debug("gossipVotesRoutine", "rsHeight", rs.Height, "rsRound", rs.Round,
-		// "prsHeight", prs.Height, "prsRound", prs.Round, "prsStep", prs.Step)
-
 		// If height matches, then send LastCommit, Prevotes, Precommits.
 		if rs.Height == prs.Height {
 			heightLogger := logger.With("height", prs.Height)
 			if conR.gossipVotesForHeight(heightLogger, rs, prs, ps) {
-				continue OUTER_LOOP
+				continue
 			}
 		}
 
@@ -688,7 +663,7 @@ OUTER_LOOP:
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
 			if ps.PickSendVote(rs.LastCommit) {
 				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
-				continue OUTER_LOOP
+				continue
 			}
 		}
 
@@ -701,7 +676,7 @@ OUTER_LOOP:
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
 				if ps.PickSendVote(commit) {
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
-					continue OUTER_LOOP
+					continue
 				}
 			}
 		}
@@ -718,7 +693,7 @@ OUTER_LOOP:
 		}
 
 		time.Sleep(conR.conS.config.PeerGossipSleepDuration)
-		continue OUTER_LOOP
+		continue
 	}
 }
 
@@ -792,6 +767,11 @@ OUTER_LOOP:
 			return
 		}
 
+		if !conR.IsConsensusRunning() {
+			time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
+			continue OUTER_LOOP
+		}
+
 		// Maybe send Height/Round/Prevotes
 		{
 			rs := conR.getRoundState()
@@ -862,8 +842,6 @@ OUTER_LOOP:
 				}
 			}
 		}
-
-		time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 
 		continue OUTER_LOOP
 	}

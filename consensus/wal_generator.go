@@ -86,7 +86,7 @@ func WALGenerateNBlocks(t *testing.T, wr io.Writer, numBlocks int) (err error) {
 	mempool := emptyMempool{}
 	evpool := sm.EmptyEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool, blockStore)
-	consensusState := NewState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
+	consensusState := NewState(config.Consensus, blockExec, blockStore, mempool, evpool, WithState(state.Copy()))
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil {

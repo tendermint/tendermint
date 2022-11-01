@@ -101,7 +101,7 @@ func (voteSet *VoteSet) ChainID() string {
 
 // Implements VoteSetReader.
 func (voteSet *VoteSet) GetHeight() int64 {
-	if voteSet == nil {
+	if voteSet.IsEmpty() {
 		return 0
 	}
 	return voteSet.height
@@ -109,7 +109,7 @@ func (voteSet *VoteSet) GetHeight() int64 {
 
 // Implements VoteSetReader.
 func (voteSet *VoteSet) GetRound() int32 {
-	if voteSet == nil {
+	if voteSet.IsEmpty() {
 		return -1
 	}
 	return voteSet.round
@@ -117,7 +117,7 @@ func (voteSet *VoteSet) GetRound() int32 {
 
 // Implements VoteSetReader.
 func (voteSet *VoteSet) Type() byte {
-	if voteSet == nil {
+	if voteSet.IsEmpty() {
 		return 0x00
 	}
 	return byte(voteSet.signedMsgType)
@@ -125,10 +125,14 @@ func (voteSet *VoteSet) Type() byte {
 
 // Implements VoteSetReader.
 func (voteSet *VoteSet) Size() int {
-	if voteSet == nil {
+	if voteSet.IsEmpty() {
 		return 0
 	}
 	return voteSet.valSet.Size()
+}
+
+func (voteSet *VoteSet) IsEmpty() bool {
+	return voteSet == nil || voteSet.height == 0
 }
 
 // Returns added=true if vote is valid and new.

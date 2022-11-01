@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/blocksync"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
@@ -16,6 +17,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/state/txindex"
+	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -91,6 +93,8 @@ type Environment struct {
 	TxIndexer        txindex.TxIndexer
 	BlockIndexer     indexer.BlockIndexer
 	ConsensusReactor *consensus.Reactor
+	BlocksyncReactor *blocksync.Reactor
+	StatesyncReactor *statesync.Reactor
 	EventBus         *types.EventBus // thread safe
 	Mempool          mempl.Mempool
 
@@ -199,9 +203,5 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 }
 
 func latestUncommittedHeight() int64 {
-	nodeIsSyncing := env.ConsensusReactor.WaitSync()
-	if nodeIsSyncing {
-		return env.BlockStore.Height()
-	}
 	return env.BlockStore.Height() + 1
 }

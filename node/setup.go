@@ -12,7 +12,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	bc "github.com/tendermint/tendermint/blocksync"
+	"github.com/tendermint/tendermint/blocksync"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
@@ -99,20 +99,22 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
-type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics)
+type MetricsProvider func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics, *blocksync.Metrics, *statesync.Metrics)
 
 // DefaultMetricsProvider returns Metrics build using Prometheus client library
 // if Prometheus is enabled. Otherwise, it returns no-op Metrics.
 func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
-	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics) {
+	return func(chainID string) (*cs.Metrics, *p2p.Metrics, *mempl.Metrics, *sm.Metrics, *proxy.Metrics, *blocksync.Metrics, *statesync.Metrics) {
 		if config.Prometheus {
 			return cs.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				p2p.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				mempl.PrometheusMetrics(config.Namespace, "chain_id", chainID),
 				sm.PrometheusMetrics(config.Namespace, "chain_id", chainID),
-				proxy.PrometheusMetrics(config.Namespace, "chain_id", chainID)
+				proxy.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				blocksync.PrometheusMetrics(config.Namespace, "chain_id", chainID),
+				statesync.PrometheusMetrics(config.Namespace, "chain_id", chainID)
 		}
-		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics(), proxy.NopMetrics()
+		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics(), sm.NopMetrics(), proxy.NopMetrics(), blocksync.NopMetrics(), statesync.NopMetrics()
 	}
 }
 
@@ -138,7 +140,7 @@ func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.Block
 	return
 }
 
-func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.Logger, metrics *proxy.Metrics) (proxy.AppConns, error) {
+func createProxyAppConns(clientCreator proxy.ClientCreator, logger log.Logger, metrics *proxy.Metrics) (proxy.AppConns, error) {
 	proxyApp := proxy.NewAppConns(clientCreator, metrics)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -147,16 +149,13 @@ func createAndStartProxyAppConns(clientCreator proxy.ClientCreator, logger log.L
 	return proxyApp, nil
 }
 
-func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
+func createEventBus(logger log.Logger) *types.EventBus {
 	eventBus := types.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
-	if err := eventBus.Start(); err != nil {
-		return nil, err
-	}
-	return eventBus, nil
+	return eventBus
 }
 
-func createAndStartIndexerService(
+func createIndexerService(
 	config *cfg.Config,
 	chainID string,
 	dbProvider DBProvider,
@@ -197,10 +196,6 @@ func createAndStartIndexerService(
 	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus, false)
 	indexerService.SetLogger(logger.With("module", "txindex"))
 
-	if err := indexerService.Start(); err != nil {
-		return nil, nil, nil, err
-	}
-
 	return indexerService, txIndexer, blockIndexer, nil
 }
 
@@ -222,7 +217,7 @@ func doHandshake(
 	return nil
 }
 
-func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusLogger log.Logger) {
+func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger log.Logger) {
 	// Log the version info.
 	logger.Info("Version info",
 		"tendermint_version", version.TMCoreSemVer,
@@ -243,9 +238,9 @@ func logNodeStartupInfo(state sm.State, pubKey crypto.PubKey, logger, consensusL
 	addr := pubKey.Address()
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(addr) {
-		consensusLogger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
+		logger.Info("This node is a validator", "addr", addr, "pubKey", pubKey)
 	} else {
-		consensusLogger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
+		logger.Info("This node is not a validator", "addr", addr, "pubKey", pubKey)
 	}
 }
 
@@ -334,12 +329,12 @@ func createBlocksyncReactor(config *cfg.Config,
 	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore *store.BlockStore,
-	blockSync bool,
+	metrics *blocksync.Metrics,
 	logger log.Logger,
-) (bcReactor p2p.Reactor, err error) {
+) (bcReactor *blocksync.Reactor, err error) {
 	switch config.BlockSync.Version {
 	case "v0":
-		bcReactor = bc.NewReactor(state.Copy(), blockExec, blockStore, blockSync)
+		bcReactor = blocksync.NewReactor(state.Copy(), blockExec, blockStore, metrics)
 	case "v1", "v2":
 		return nil, fmt.Errorf("block sync version %s has been deprecated. Please use v0", config.BlockSync.Version)
 	default:
@@ -351,31 +346,28 @@ func createBlocksyncReactor(config *cfg.Config,
 }
 
 func createConsensusReactor(config *cfg.Config,
-	state sm.State,
 	blockExec *sm.BlockExecutor,
 	blockStore sm.BlockStore,
 	mempool mempl.Mempool,
 	evidencePool *evidence.Pool,
 	privValidator types.PrivValidator,
 	csMetrics *cs.Metrics,
-	waitSync bool,
 	eventBus *types.EventBus,
 	consensusLogger log.Logger,
 ) (*cs.Reactor, *cs.State) {
 	consensusState := cs.NewState(
 		config.Consensus,
-		state.Copy(),
 		blockExec,
 		blockStore,
 		mempool,
 		evidencePool,
-		cs.StateMetrics(csMetrics),
+		cs.WithMetrics(csMetrics),
 	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := cs.NewReactor(consensusState, waitSync, cs.ReactorMetrics(csMetrics))
+	consensusReactor := cs.NewReactor(consensusState, cs.ReactorMetrics(csMetrics))
 	consensusReactor.SetLogger(consensusLogger)
 	// services which will be publishing and/or subscribing for messages (events)
 	// consensusReactor will set it on consensusState and blockExecutor
@@ -387,6 +379,7 @@ func createTransport(
 	config *cfg.Config,
 	nodeInfo p2p.NodeInfo,
 	nodeKey *p2p.NodeKey,
+	netAddr *p2p.NetAddress,
 	proxyApp proxy.AppConns,
 ) (
 	*p2p.MultiplexTransport,
@@ -394,7 +387,7 @@ func createTransport(
 ) {
 	var (
 		mConnConfig = p2p.MConnConfig(config.P2P)
-		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, mConnConfig)
+		transport   = p2p.NewMultiplexTransport(nodeInfo, *nodeKey, *netAddr, mConnConfig)
 		connFilters = []p2p.ConnFilterFunc{}
 		peerFilters = []p2p.PeerFilterFunc{}
 	)
@@ -453,23 +446,17 @@ func createTransport(
 }
 
 func createSwitch(config *cfg.Config,
-	transport p2p.Transport,
 	p2pMetrics *p2p.Metrics,
-	peerFilters []p2p.PeerFilterFunc,
 	mempoolReactor p2p.Reactor,
 	bcReactor p2p.Reactor,
 	stateSyncReactor *statesync.Reactor,
 	consensusReactor *cs.Reactor,
 	evidenceReactor *evidence.Reactor,
-	nodeInfo p2p.NodeInfo,
-	nodeKey *p2p.NodeKey,
 	p2pLogger log.Logger,
 ) *p2p.Switch {
 	sw := p2p.NewSwitch(
 		config.P2P,
-		transport,
 		p2p.WithMetrics(p2pMetrics),
-		p2p.SwitchPeerFilters(peerFilters...),
 	)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
@@ -477,15 +464,10 @@ func createSwitch(config *cfg.Config,
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 	sw.AddReactor("STATESYNC", stateSyncReactor)
-
-	sw.SetNodeInfo(nodeInfo)
-	sw.SetNodeKey(nodeKey)
-
-	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
 	return sw
 }
 
-func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
+func createAddrBook(config *cfg.Config,
 	p2pLogger log.Logger, nodeKey *p2p.NodeKey,
 ) (pex.AddrBook, error) {
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
@@ -506,15 +488,10 @@ func createAddrBookAndSetOnSwitch(config *cfg.Config, sw *p2p.Switch,
 		}
 		addrBook.AddOurAddress(addr)
 	}
-
-	sw.SetAddrBook(addrBook)
-
 	return addrBook, nil
 }
 
-func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
-	sw *p2p.Switch, logger log.Logger,
-) *pex.Reactor {
+func createPEXReactor(addrBook pex.AddrBook, config *cfg.Config, logger log.Logger) *pex.Reactor {
 	// TODO persistent peers ? so we can have their DNS addrs saved
 	pexReactor := pex.NewReactor(addrBook,
 		&pex.ReactorConfig{
@@ -529,7 +506,6 @@ func createPEXReactorAndAddToSwitch(addrBook pex.AddrBook, config *cfg.Config,
 			PersistentPeersMaxDialPeriod: config.P2P.PersistentPeersMaxDialPeriod,
 		})
 	pexReactor.SetLogger(logger.With("module", "pex"))
-	sw.AddReactor("PEX", pexReactor)
 	return pexReactor
 }
 
@@ -575,16 +551,17 @@ func startStateSync(ssR *statesync.Reactor, bcR blockSyncReactor, conR *cs.React
 		}
 
 		if blockSync {
-			// FIXME Very ugly to have these metrics bleed through here.
-			conR.Metrics.StateSyncing.Set(0)
-			conR.Metrics.BlockSyncing.Set(1)
 			err = bcR.SwitchToBlockSync(state)
 			if err != nil {
 				ssR.Logger.Error("Failed to switch to block sync", "err", err)
 				return
 			}
 		} else {
-			conR.SwitchToConsensus(state, true)
+			err := conR.SwitchToConsensus(state, true)
+			if err != nil {
+				ssR.Logger.Error("Failed to switch to consensus", "err", err)
+				return
+			}
 		}
 	}()
 	return nil
@@ -659,7 +636,7 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
 	return nil
 }
 
-func createAndStartPrivValidatorSocketClient(
+func createPrivValidatorSocketClient(
 	listenAddr,
 	chainID string,
 	logger log.Logger,

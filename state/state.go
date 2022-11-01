@@ -81,6 +81,9 @@ type State struct {
 
 // Copy makes a copy of the State for mutating.
 func (state State) Copy() State {
+	if state.IsEmpty() {
+		return State{}
+	}
 
 	return State{
 		Version:       state.Version,

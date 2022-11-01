@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -671,7 +672,14 @@ func TestSwitchAcceptRoutine(t *testing.T) {
 }
 
 type errorTransport struct {
+	service.BaseService
 	acceptErr error
+}
+
+func newErrTransport(acceptErr error) *errorTransport {
+	t := &errorTransport{acceptErr: acceptErr}
+	t.BaseService = *service.NewBaseService(nil, "Error Transport", t)
+	return t
 }
 
 func (et errorTransport) NetAddress() NetAddress {
@@ -689,7 +697,9 @@ func (errorTransport) Cleanup(Peer) {
 }
 
 func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
-	sw := NewSwitch(cfg, errorTransport{ErrFilterTimeout{}})
+	sw := NewSwitch(cfg)
+	sw.SetTransport(newErrTransport(ErrFilterTimeout{}))
+
 	assert.NotPanics(t, func() {
 		err := sw.Start()
 		require.NoError(t, err)
@@ -697,7 +707,8 @@ func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	sw = NewSwitch(cfg, errorTransport{ErrRejected{conn: nil, err: errors.New("filtered"), isFiltered: true}})
+	sw = NewSwitch(cfg)
+	sw.SetTransport(newErrTransport(ErrRejected{conn: nil, err: errors.New("filtered"), isFiltered: true}))
 	assert.NotPanics(t, func() {
 		err := sw.Start()
 		require.NoError(t, err)
@@ -706,7 +717,8 @@ func TestSwitchAcceptRoutineErrorCases(t *testing.T) {
 	})
 	// TODO(melekes) check we remove our address from addrBook
 
-	sw = NewSwitch(cfg, errorTransport{ErrTransportClosed{}})
+	sw = NewSwitch(cfg)
+	sw.SetTransport(newErrTransport(ErrTransportClosed{}))
 	assert.NotPanics(t, func() {
 		err := sw.Start()
 		require.NoError(t, err)

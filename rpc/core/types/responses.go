@@ -86,7 +86,9 @@ type SyncInfo struct {
 	EarliestBlockHeight int64          `json:"earliest_block_height"`
 	EarliestBlockTime   time.Time      `json:"earliest_block_time"`
 
-	CatchingUp bool `json:"catching_up"`
+	// Phase inidicates which processes are advancing state:
+	// Either statesync, blocksync or consensus
+	Phase string `json:"phase"`
 }
 
 // Info about the node's validator

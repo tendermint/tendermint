@@ -192,14 +192,11 @@ func MakeSwitch(
 		panic(err)
 	}
 
-	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
-
-	if err := t.Listen(*addr); err != nil {
-		panic(err)
-	}
+	t := NewMultiplexTransport(nodeInfo, nodeKey, *addr, MConnConfig(cfg))
 
 	// TODO: let the config be passed in?
-	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
+	sw := initSwitch(i, NewSwitch(cfg, opts...))
+	sw.SetTransport(t)
 	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(&nodeKey)
 

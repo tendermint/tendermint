@@ -95,14 +95,6 @@ func newReactor(
 		mock.Anything,
 		mock.Anything).Return(nil)
 
-	// Make the Reactor itself.
-	// NOTE we have to create and commit the blocks first because
-	// pool.height is determined from the store.
-	fastSync := true
-	db := dbm.NewMemDB()
-	stateStore = sm.NewStore(db, sm.StoreOptions{
-		DiscardABCIResponses: false,
-	})
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mp, sm.EmptyEvidencePool{}, blockStore)
 	if err = stateStore.Save(state); err != nil {
@@ -145,7 +137,7 @@ func newReactor(
 		blockStore.SaveBlock(thisBlock, thisParts, lastCommit)
 	}
 
-	bcReactor := NewReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor := NewReactor(state.Copy(), blockExec, blockStore, NopMetrics())
 	bcReactor.SetLogger(logger.With("module", "blocksync"))
 
 	return ReactorPair{bcReactor, proxyApp}
@@ -155,6 +147,9 @@ func TestNoBlockResponse(t *testing.T) {
 	config = test.ResetTestRoot("blocksync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
+
+	state, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 
 	maxBlockHeight := int64(65)
 
@@ -168,6 +163,11 @@ func TestNoBlockResponse(t *testing.T) {
 		return s
 
 	}, p2p.Connect2Switches)
+
+	for _, reactor := range reactorPairs {
+		// turn on the syncing algorithm
+		reactor.reactor.SwitchToBlockSync(state)
+	}
 
 	defer func() {
 		for _, r := range reactorPairs {
@@ -218,6 +218,9 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
+	state, err := sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
+
 	maxBlockHeight := int64(148)
 
 	// Other chain needs a different validator set
@@ -243,6 +246,11 @@ func TestBadBlockStopsPeer(t *testing.T) {
 		return s
 
 	}, p2p.Connect2Switches)
+
+	for _, reactor := range reactorPairs {
+		// turn on the syncing algorithm
+		reactor.reactor.SwitchToBlockSync(state)
+	}
 
 	defer func() {
 		for _, r := range reactorPairs {
@@ -286,6 +294,9 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	for i := 0; i < len(reactorPairs)-1; i++ {
 		p2p.Connect2Switches(switches, i, len(reactorPairs)-1)
 	}
+
+	otherState, err := sm.MakeGenesisState(otherGenDoc)
+	lastReactorPair.reactor.SwitchToBlockSync(otherState)
 
 	for {
 		if lastReactorPair.reactor.pool.IsCaughtUp() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {
