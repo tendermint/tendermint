@@ -13,7 +13,7 @@ of this repository.
 
 ## Overview
 
-A Tendermint network is composed by multiple Tendermint instances, hereafter
+A Tendermint network is composed of multiple Tendermint instances, hereafter
 called **nodes**, that interact by exchanging messages.
 
 Tendermint assumes a partially-connected network model.

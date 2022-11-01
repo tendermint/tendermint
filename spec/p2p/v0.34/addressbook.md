@@ -25,7 +25,7 @@ This includes information about connection attempts, failed or succeeded, and
 quality information provided by the several protocols running on the node.
 Currently, the quality of a peer is restricted to three states: new,
 [good](#good-peers), or [bad](#bad-peers).
-The quality metrics associated to peers influences the selection of peers to
+The quality metrics associated to peers influence the selection of peers to
 dial and offer via PEX protocol, in a way that they are not fully random.
 
 ## Adding addresses
@@ -39,9 +39,9 @@ Addresses are added to the address book in the following situations:
 
 1. When a peer address is learned via PEX protocol, having the sender
    of the PEX message as its source
-1. When an inbound peer is added, in this case the peer itself is set as the
+2. When an inbound peer is added, in this case the peer itself is set as the
    source of its own address
-1. When the switch is instructed to dial addresses via the `DialPeersAsync`
+3. When the switch is instructed to dial addresses via the `DialPeersAsync`
    method, in this case the node itself is set as the source
 
 Addresses are stored in [buckets](#buckets).
@@ -50,15 +50,15 @@ If the added address belongs to a new peer, i.e., to a node ID that is not
 present in the address book, it is added to a bucket of new addresses.
 
 The rationale of this organization of addresses into buckets is detailed
-thorough this document, but it can summarized as follows.
+thorough this document, but it can be summarized as follows.
 A new peer has its address stored in a bucket of new address, as the node does
-not has much information about it.
+not have much information about it.
 When a peer is marked as a [good peer](#good-peers) by some reactor (protocol),
 its address is moved (upgraded) to a bucket of old addresses.
 Old addresses are therefore of peers about which the node has good information.
 When a bucket of old addresses becomes full, one of its addresses is moved
 (downgraded) to a bucket of new addresses.
-When a bucket of new address becomes full, one of its address is dropped.
+When a bucket of new addresses becomes full, one of its addresses is dropped.
 New addresses, therefore, are deemed less important than old addresses, being
 dropped easily by the address book.
 
@@ -126,7 +126,7 @@ registered, counting all buckets for new and old addresses.
 ## Pick address
 
 The `PickAddress` method returns an address stored in the address book, chosen
-at random with a configurable bias toward new addresses.
+at random with a configurable bias towards new addresses.
 
 It is invoked by the Peer Manager to obtain a peer address to dial, as part of
 its `ensurePeers` routine.
@@ -171,7 +171,7 @@ purposes:
   interaction of the `crawlPeersRoutine`
 
 The selection is a random subset of the peer addresses stored in the
-`addrLookup` table, which stores that last address added for each peer ID.
+`addrLookup` table, which stores the last address added for each peer ID.
 The target size of the selection is `23%` (`getSelectionPercent`) of the
 number of addresses stored in the address book, but it should not be lower than
 `32` (`minGetSelection`) --- if it is, all addresses in the book are returned
@@ -195,7 +195,7 @@ The bias used in this scenario is hard-coded to 30%, meaning that 70% of
 the returned addresses are expected to be old addresses.
 
 The number of addresses that compose the selection is computed in the same way
-as for then non-biased random selection.
+as for the non-biased random selection.
 The bias toward new addresses is implemented by requiring that the configured
 bias, interpreted as a percentage, of the select addresses come from buckets of
 new addresses, while the remaining come from buckets of old addresses.
@@ -230,7 +230,7 @@ time is registered in `LastAttempt`.
 The possible effect of recording multiple failed connect attempts to a peer is
 to turn its address into a *bad* address (do not confuse with banned addresses).
 A known address becomes bad if it is stored in buckets of new addresses, and
-when connections attempts:
+when connection attempts:
 
 - Have not been made over a week, i.e., `LastAttempt` is older than a week
 - Have failed 3 times and never succeeded, i.e., `LastSucess` field is unset
@@ -306,7 +306,7 @@ This action is taken before requesting additional addresses to peers,
 in the case that the node needs more peer addresses.
 
 The set of banned peer addresses is retrieved from the `badPeers` map.
-Addresses that are not any longer banned, i.e., which banned period has expired,
+Addresses that are not any longer banned, i.e., whose banned period has expired,
 are added back to the address book as new addresses, while the corresponding
 node IDs are removed from the `badPeers` map.
 
