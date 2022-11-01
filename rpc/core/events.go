@@ -76,7 +76,7 @@ func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*ctypes.
 						return
 					}
 				}
-			case <-sub.Cancelled():
+			case <-sub.Canceled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
 					var reason string
 					if sub.Err() == nil {

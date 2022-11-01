@@ -431,7 +431,7 @@ func benchmarkNClients(n int, b *testing.B) {
 				select {
 				case <-subscription.Out():
 					continue
-				case <-subscription.Cancelled():
+				case <-subscription.Canceled():
 					return
 				}
 			}
@@ -472,7 +472,7 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 				select {
 				case <-subscription.Out():
 					continue
-				case <-subscription.Cancelled():
+				case <-subscription.Canceled():
 					return
 				}
 			}
@@ -501,7 +501,7 @@ func assertReceive(t *testing.T, expected interface{}, ch <-chan pubsub.Message,
 }
 
 func assertCancelled(t *testing.T, subscription *pubsub.Subscription, err error) {
-	_, ok := <-subscription.Cancelled()
+	_, ok := <-subscription.Canceled()
 	assert.False(t, ok)
 	assert.Equal(t, err, subscription.Err())
 }

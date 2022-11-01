@@ -439,7 +439,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 			for {
 				select {
 				case <-sub.Out():
-				case <-sub.Cancelled():
+				case <-sub.Canceled():
 					return
 				}
 			}
