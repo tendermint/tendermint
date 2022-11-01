@@ -29,7 +29,7 @@
 >
 >     Superseded by [ADR 123](./adr-123.md)
 
-Accepted | Rejected | Deprecated | Superseded by
+Accepted
 
 ## Context
 
@@ -90,10 +90,13 @@ func Bootstrap(sp StateProvider, appHeight int64, appHash []byte, bs BlockStore,
 
 - This is a non-breaking change
 - Applications can now use their own state syncing protocols. This is especially useful when the saved snapshot is already from a trusted node.
+- Tendermint will still verify application state in the event that the out of band state does not match the hash of the respective block on chain 
 
 ### Negative
 
 ### Neutral
+
+- Users will need to have state sync correctly configured and enabled to take advantage of this functionality
 
 ## References
 
