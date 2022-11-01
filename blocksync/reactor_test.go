@@ -166,7 +166,8 @@ func TestNoBlockResponse(t *testing.T) {
 
 	for _, reactor := range reactorPairs {
 		// turn on the syncing algorithm
-		reactor.reactor.SwitchToBlockSync(state)
+		err := reactor.reactor.SwitchToBlockSync(state)
+		require.NoError(t, err)
 	}
 
 	defer func() {
@@ -249,7 +250,8 @@ func TestBadBlockStopsPeer(t *testing.T) {
 
 	for _, reactor := range reactorPairs {
 		// turn on the syncing algorithm
-		reactor.reactor.SwitchToBlockSync(state)
+		err := reactor.reactor.SwitchToBlockSync(state)
+		require.NoError(t, err)
 	}
 
 	defer func() {
@@ -296,7 +298,9 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	otherState, err := sm.MakeGenesisState(otherGenDoc)
-	lastReactorPair.reactor.SwitchToBlockSync(otherState)
+	require.NoError(t, err)
+	err = lastReactorPair.reactor.SwitchToBlockSync(otherState)
+	require.NoError(t, err)
 
 	for {
 		if lastReactorPair.reactor.pool.IsCaughtUp() || lastReactorPair.reactor.Switch.Peers().Size() == 0 {

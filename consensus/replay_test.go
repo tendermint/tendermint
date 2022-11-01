@@ -663,12 +663,12 @@ func tempWALWithData(data []byte) string {
 // Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(t *testing.T, nBlocks int, mode uint, testValidatorsChange bool) {
 	var (
-		chain []*types.Block
-		commits []*types.Commit
-		store *mockBlockStore
-		stateDB dbm.DB
+		chain        []*types.Block
+		commits      []*types.Commit
+		store        *mockBlockStore
+		stateDB      dbm.DB
 		genesisState sm.State
-		config *cfg.Config
+		config       *cfg.Config
 	)
 	if testValidatorsChange {
 		config = ResetConfig(fmt.Sprintf("%s_%v_m", t.Name(), mode))
@@ -816,7 +816,7 @@ func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm
 	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	_, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
-	}); 
+	})
 	require.NoError(t, err)
 	require.NoError(t, stateStore.Save(state))
 	switch mode {

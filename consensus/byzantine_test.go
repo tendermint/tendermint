@@ -256,7 +256,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 
 	// start the consensus reactors
 	for i := 0; i < nValidators; i++ {
-		reactors[i].SwitchToConsensus(state.Copy(), false)
+		require.NoError(t, reactors[i].SwitchToConsensus(state.Copy(), false))
 	}
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
@@ -409,13 +409,13 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// note these must be started before the byz
 	for i := 1; i < N; i++ {
 		cr := reactors[i].(*Reactor)
-		cr.SwitchToConsensus(cr.conS.GetState(), false)
+		require.NoError(t, cr.SwitchToConsensus(cr.conS.GetState(), false))
 	}
 
 	// start the byzantine state machine
 	byzR := reactors[0].(*ByzantineReactor)
 	s := byzR.reactor.conS.GetState()
-	byzR.reactor.SwitchToConsensus(s, false)
+	require.NoError(t, byzR.reactor.SwitchToConsensus(s, false))
 
 	// byz proposer sends one block to peers[0]
 	// and the other block to peers[1] and peers[2].

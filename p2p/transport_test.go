@@ -113,7 +113,7 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 
 	err = mt.Start()
 	require.NoError(t, err)
-	defer mt.Stop()
+	defer mt.Stop() //nolint:errcheck
 
 	errc := make(chan error)
 	go func() {
@@ -664,7 +664,7 @@ func testSetupMultiplexTransport(t *testing.T) *MultiplexTransport {
 	err = mt.Start()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		mt.Stop()
+		mt.Stop() //nolint:errcheck
 	})
 
 	// give the listener some time to get ready

@@ -124,7 +124,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
 	require.NoError(t, n.Start())
-	defer n.Stop()
+	defer n.Stop() //nolint:errcheck
 
 	// default config uses the kvstore app
 	var appVersion = kvstore.ProtocolVersion

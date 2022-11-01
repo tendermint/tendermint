@@ -204,11 +204,11 @@ func WithMetrics(metrics *Metrics) StateOption {
 }
 
 func WithState(state sm.State) StateOption {
-	return func(cs *State) { 
+	return func(cs *State) {
 		if state.LastBlockHeight > 0 {
 			cs.reconstructLastCommit(state)
 		}
-		cs.updateToState(state) 
+		cs.updateToState(state)
 	}
 }
 
