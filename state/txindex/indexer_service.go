@@ -60,7 +60,7 @@ func (is *IndexerService) OnStart() error {
 	go func() {
 		for {
 			select {
-			case <-blockHeadersSub.Canceled():
+			case <-blockHeadersSub.Cancelled():
 				return
 			case msg := <-blockHeadersSub.Out():
 
