@@ -38,14 +38,14 @@ which implements the following abstractions:
    connections from peers, for managing established connections, and for
    routing messages between the reactors and peers,
    that is, between local and remote instances of the Tendermint protocols;
-- [PEX Reactor](./pex.md): responsible for peer discovery, ranking, and
-   management, roles that are implemented by:
-   - [Address Book](./addressbook.md): tracks information about other nodes
-      in the network and allows ranking peers based on quality metrics;
+- [PEX Reactor](./pex.md): responsible for discovering peer addresses and
+   defining to which peers a node should dial:
+   - [Address Book](./addressbook.md): stores discovered peer addresses and
+     quality metrics associated to peer with which the node has interacted;
    - [Peer Exchange protocol](./pex-protocol.md): enables nodes to exchange
-      peer addresses, thus implementing a peer discovery mechanism;
-   - [Peer Manager](./peer_manager.md): responsible for establishing
-      connection with peers, defining when and which peers a node should dial;
+      peer addresses, thus implementing a peer discovery service;
+   - [Peer Manager](./peer_manager.md): defines when and to which peers a node
+     should dial, in order to establish outbound connections;
 - Finally, [Types](./types.md) and [Configuration](./configuration.md) provide
    a list of existing types and configuration parameters used by the p2p layer implementation.
 
