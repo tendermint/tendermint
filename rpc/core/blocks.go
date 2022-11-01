@@ -88,8 +88,8 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 // Header gets block header at a given height.
 // If no height is provided, it will fetch the latest header.
 // More: https://docs.tendermint.com/master/rpc/#/Info/header
-func Header(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultHeader, error) {
-	height, err := getHeight(env.BlockStore.Height(), heightPtr)
+func (env *Environment) Header(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultHeader, error) {
+	height, err := env.getHeight(env.BlockStore.Height(), heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func Header(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultHeader, erro
 
 // HeaderByHash gets header by hash.
 // More: https://docs.tendermint.com/master/rpc/#/Info/header_by_hash
-func HeaderByHash(ctx *rpctypes.Context, hash bytes.HexBytes) (*ctypes.ResultHeader, error) {
+func (env *Environment) HeaderByHash(ctx *rpctypes.Context, hash bytes.HexBytes) (*ctypes.ResultHeader, error) {
 	// N.B. The hash parameter is HexBytes so that the reflective parameter
 	// decoding logic in the HTTP service will correctly translate from JSON.
 	// See https://github.com/tendermint/tendermint/issues/6802 for context.
