@@ -95,7 +95,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 		peers := sw.Peers().List()
 		for _, peer := range peers {
 			cs.Logger.Info("Sending bad vote", "block", blockHash, "peer", peer)
-			p2p.SendEnvelopeShim(peer, p2p.Envelope{
+			p2p.SendEnvelopeShim(peer, p2p.Envelope{ //nolint: staticcheck
 				Message:   &tmcons.Vote{Vote: precommit.ToProto()},
 				ChannelID: VoteChannel,
 			}, cs.Logger)

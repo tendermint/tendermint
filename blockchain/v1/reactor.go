@@ -180,7 +180,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	p2p.SendEnvelopeShim(peer, p2p.Envelope{
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{ //nolint: staticcheck
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
@@ -206,7 +206,7 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("Could not send block message to peer", "err", err)
 			return false
 		}
-		return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
+		return p2p.TrySendEnvelopeShim(src, p2p.Envelope{ //nolint: staticcheck
 			ChannelID: BlockchainChannel,
 			Message:   &bcproto.BlockResponse{Block: pbbi},
 		}, bcR.Logger)
@@ -214,14 +214,14 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 
 	bcR.Logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
+	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{ //nolint: staticcheck
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
 	}, bcR.Logger)
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusRequest, src p2p.Peer) (queued bool) {
-	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
+	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{ //nolint: staticcheck
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
@@ -509,7 +509,7 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 		return errNilPeerForBlockRequest
 	}
 
-	queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
+	queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{ //nolint: staticcheck
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.BlockRequest{Height: height},
 	}, bcR.Logger)

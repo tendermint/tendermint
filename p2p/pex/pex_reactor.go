@@ -360,7 +360,7 @@ func (r *Reactor) RequestAddrs(p Peer) {
 	}
 	r.Logger.Debug("Request addrs", "from", p)
 	r.requestsSent.Set(id, struct{}{})
-	p2p.SendEnvelopeShim(p, p2p.Envelope{
+	p2p.SendEnvelopeShim(p, p2p.Envelope{ //nolint: staticcheck
 		ChannelID: PexChannel,
 		Message:   &tmp2p.PexRequest{},
 	}, r.Logger)
@@ -425,7 +425,7 @@ func (r *Reactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
 		ChannelID: PexChannel,
 		Message:   &tmp2p.PexAddrs{Addrs: p2p.NetAddressesToProto(netAddrs)},
 	}
-	p2p.SendEnvelopeShim(p, e, r.Logger)
+	p2p.SendEnvelopeShim(p, e, r.Logger) //nolint: staticcheck
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
