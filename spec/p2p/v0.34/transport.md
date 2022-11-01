@@ -80,9 +80,8 @@ Its main goal is avoid the transport to maintain duplicated connections with the
 It also runs a set of configured connection filters.
 
 The transports keeps a table `conns` of established connections.
-The table is indexed by the connection's remote address which,
-in the case of TCP connections adopted by the transport,
-is a string with the remote address (IP or DNS name) and port.
+The table maps the remote address returned by a generic connection to a list of
+IP addresses, to which the connection remote address is resolved.
 If the remote address of the new connection is already present in the table,
 the connection is rejected.
 Otherwise, the connection's remote address is resolved into a list of IPs,
