@@ -166,16 +166,16 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			for i, peer := range peerList {
 				if i < len(peerList)/2 {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote1, "peer", peer)
-					peer.SendEnvelope(p2p.Envelope{
+					p2p.SendEnvelopeShim(peer, p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote1.ToProto()},
 						ChannelID: VoteChannel,
-					})
+					}, peer.Logger)
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
-					peer.SendEnvelope(p2p.Envelope{
+					p2p.SendEnvelopeShim(peer, p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote2.ToProto()},
 						ChannelID: VoteChannel,
-					})
+					}, peer.Logger)
 				}
 			}
 		} else {
@@ -519,10 +519,10 @@ func sendProposalAndParts(
 	parts *types.PartSet,
 ) {
 	// proposal
-	peer.SendEnvelope(p2p.Envelope{
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: DataChannel,
 		Message:   &tmcons.Proposal{Proposal: *proposal.ToProto()},
-	})
+	}, peer.Logger)
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
@@ -531,14 +531,14 @@ func sendProposalAndParts(
 		if err != nil {
 			panic(err) // TODO: wbanfield better error handling
 		}
-		peer.SendEnvelope(p2p.Envelope{
+		p2p.SendEnvelopeShim(peer, p2p.Envelope{
 			ChannelID: DataChannel,
 			Message: &tmcons.BlockPart{
 				Height: height, // This tells peer that this part applies to us.
 				Round:  round,  // This tells peer that this part applies to us.
 				Part:   *pp,
 			},
-		})
+		}, peer.Logger)
 	}
 
 	// votes
@@ -546,14 +546,14 @@ func sendProposalAndParts(
 	prevote, _ := cs.signVote(tmproto.PrevoteType, blockHash, parts.Header())
 	precommit, _ := cs.signVote(tmproto.PrecommitType, blockHash, parts.Header())
 	cs.mtx.Unlock()
-	peer.SendEnvelope(p2p.Envelope{
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: prevote.ToProto()},
-	})
-	peer.SendEnvelope(p2p.Envelope{
+	}, peer.Logger)
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: precommit.ToProto()},
-	})
+	}, peer.Logger)
 }
 
 //----------------------------------------

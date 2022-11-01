@@ -153,13 +153,13 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	peer.SendEnvelope(p2p.Envelope{
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
 			Height: bcR.store.Height(),
 		},
-	})
+	}, bcR.Logger)
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -183,16 +183,16 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("could not convert msg to protobuf", "err", err)
 			return false
 		}
-		return src.TrySendEnvelope(p2p.Envelope{
+		return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
 			ChannelID: BlockchainChannel,
 			Message:   &bcproto.BlockResponse{Block: bl},
-		})
+		}, bcR.Logger)
 	}
 
-	return src.TrySendEnvelope(p2p.Envelope{
+	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
-	})
+	}, bcR.Logger)
 }
 
 func (bcR *BlockchainReactor) ReceiveEnvelope(e p2p.Envelope) {
@@ -216,13 +216,13 @@ func (bcR *BlockchainReactor) ReceiveEnvelope(e p2p.Envelope) {
 		bcR.pool.AddBlock(e.Src.ID(), bi, msg.Block.Size())
 	case *bcproto.StatusRequest:
 		// Send peer our state.
-		e.Src.TrySendEnvelope(p2p.Envelope{
+		p2p.TrySendEnvelopeShim(e.Src, p2p.Envelope{
 			ChannelID: BlockchainChannel,
 			Message: &bcproto.StatusResponse{
 				Height: bcR.store.Height(),
 				Base:   bcR.store.Base(),
 			},
-		})
+		}, bcR.Logger)
 	case *bcproto.StatusResponse:
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerRange(e.Src.ID(), msg.Base, msg.Height)
@@ -285,10 +285,10 @@ func (bcR *BlockchainReactor) poolRoutine(stateSynced bool) {
 				if peer == nil {
 					continue
 				}
-				queued := peer.TrySendEnvelope(p2p.Envelope{
+				queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
 					ChannelID: BlockchainChannel,
 					Message:   &bcproto.BlockRequest{Height: request.Height},
-				})
+				}, bcR.Logger)
 				if !queued {
 					bcR.Logger.Debug("Send queue is full, drop block request", "peer", peer.ID(), "height", request.Height)
 				}

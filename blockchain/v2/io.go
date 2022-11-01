@@ -46,10 +46,10 @@ func (sio *switchIO) sendBlockRequest(peerID p2p.ID, height int64) error {
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	if queued := peer.TrySendEnvelope(p2p.Envelope{
+	if queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.BlockRequest{Height: height},
-	}); !queued {
+	}, sio.sw.Logger); !queued {
 		return fmt.Errorf("send queue full")
 	}
 	return nil
@@ -61,10 +61,10 @@ func (sio *switchIO) sendStatusResponse(base int64, height int64, peerID p2p.ID)
 		return fmt.Errorf("peer not found")
 	}
 
-	if queued := peer.TrySendEnvelope(p2p.Envelope{
+	if queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.StatusRequest{},
-	}); !queued {
+	}, sio.sw.Logger); !queued {
 		return fmt.Errorf("peer queue full")
 	}
 
@@ -85,10 +85,10 @@ func (sio *switchIO) sendBlockToPeer(block *types.Block, peerID p2p.ID) error {
 		return err
 	}
 
-	if queued := peer.TrySendEnvelope(p2p.Envelope{
+	if queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.BlockResponse{Block: bpb},
-	}); !queued {
+	}, sio.sw.Logger); !queued {
 		return fmt.Errorf("peer queue full")
 	}
 
@@ -100,10 +100,10 @@ func (sio *switchIO) sendBlockNotFound(height int64, peerID p2p.ID) error {
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	if queued := peer.TrySendEnvelope(p2p.Envelope{
+	if queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.NoBlockResponse{Height: height},
-	}); !queued {
+	}, sio.sw.Logger); !queued {
 		return fmt.Errorf("peer queue full")
 	}
 

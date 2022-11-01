@@ -130,7 +130,7 @@ func (s *syncer) AddPeer(peer p2p.Peer) {
 		ChannelID: SnapshotChannel,
 		Message:   &ssproto.SnapshotsRequest{},
 	}
-	peer.SendEnvelope(e)
+	p2p.SendEnvelopeShim(peer, e, s.logger)
 }
 
 // RemovePeer removes a peer from the pool.
@@ -471,14 +471,14 @@ func (s *syncer) requestChunk(snapshot *snapshot, chunk uint32) {
 	}
 	s.logger.Debug("Requesting snapshot chunk", "height", snapshot.Height,
 		"format", snapshot.Format, "chunk", chunk, "peer", peer.ID())
-	peer.SendEnvelope(p2p.Envelope{
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: ChunkChannel,
 		Message: &ssproto.ChunkRequest{
 			Height: snapshot.Height,
 			Format: snapshot.Format,
 			Index:  chunk,
 		},
-	})
+	}, s.logger)
 }
 
 // verifyApp verifies the sync, checking the app hash, last block height and app version

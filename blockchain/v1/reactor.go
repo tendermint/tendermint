@@ -180,13 +180,13 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	peer.SendEnvelope(p2p.Envelope{
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
 			Height: bcR.store.Height(),
 		},
-	})
+	}, bcR.Logger)
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -206,28 +206,28 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("Could not send block message to peer", "err", err)
 			return false
 		}
-		return src.TrySendEnvelope(p2p.Envelope{
+		return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
 			ChannelID: BlockchainChannel,
 			Message:   &bcproto.BlockResponse{Block: pbbi},
-		})
+		}, bcR.Logger)
 	}
 
 	bcR.Logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	return src.TrySendEnvelope(p2p.Envelope{
+	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
-	})
+	}, bcR.Logger)
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusRequest, src p2p.Peer) (queued bool) {
-	return src.TrySendEnvelope(p2p.Envelope{
+	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message: &bcproto.StatusResponse{
 			Base:   bcR.store.Base(),
 			Height: bcR.store.Height(),
 		},
-	})
+	}, bcR.Logger)
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
@@ -509,10 +509,10 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 		return errNilPeerForBlockRequest
 	}
 
-	queued := peer.TrySendEnvelope(p2p.Envelope{
+	queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: BlockchainChannel,
 		Message:   &bcproto.BlockRequest{Height: height},
-	})
+	}, bcR.Logger)
 	if !queued {
 		return errSendQueueFull
 	}

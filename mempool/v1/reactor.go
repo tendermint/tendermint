@@ -262,10 +262,10 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// NOTE: Transaction batching was disabled due to
 		// https://github.com/tendermint/tendermint/issues/5796
 		if !memTx.HasPeer(peerID) {
-			success := peer.SendEnvelope(p2p.Envelope{
+			success := p2p.SendEnvelopeShim(peer, p2p.Envelope{
 				ChannelID: mempool.MempoolChannel,
 				Message:   &protomem.Txs{Txs: [][]byte{memTx.tx}},
-			})
+			}, memR.Logger)
 			if !success {
 				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue

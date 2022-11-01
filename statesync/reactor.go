@@ -128,7 +128,7 @@ func (r *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 			for _, snapshot := range snapshots {
 				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
 					"format", snapshot.Format, "peer", e.Src.ID())
-				e.Src.SendEnvelope(p2p.Envelope{
+				p2p.SendEnvelopeShim(e.Src, p2p.Envelope{
 					ChannelID: e.ChannelID,
 					Message: &ssproto.SnapshotsResponse{
 						Height:   snapshot.Height,
@@ -137,7 +137,7 @@ func (r *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 						Hash:     snapshot.Hash,
 						Metadata: snapshot.Metadata,
 					},
-				})
+				}, r.Logger)
 			}
 
 		case *ssproto.SnapshotsResponse:
@@ -183,7 +183,7 @@ func (r *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 			}
 			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
 				"chunk", msg.Index, "peer", e.Src.ID())
-			e.Src.SendEnvelope(p2p.Envelope{
+			p2p.SendEnvelopeShim(e.Src, p2p.Envelope{
 				ChannelID: ChunkChannel,
 				Message: &ssproto.ChunkResponse{
 					Height:  msg.Height,
@@ -192,7 +192,7 @@ func (r *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 					Chunk:   resp.Chunk,
 					Missing: resp.Chunk == nil,
 				},
-			})
+			}, r.Logger)
 
 		case *ssproto.ChunkResponse:
 			r.mtx.RLock()

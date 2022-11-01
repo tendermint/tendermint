@@ -280,7 +280,7 @@ func (sw *Switch) BroadcastEnvelope(e Envelope) chan bool {
 	for _, peer := range peers {
 		go func(p Peer) {
 			defer wg.Done()
-			success := p.SendEnvelope(e)
+			success := SendEnvelopeShim(p, e, sw.Logger)
 			successChan <- success
 		}(peer)
 	}
