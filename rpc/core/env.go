@@ -73,6 +73,7 @@ type Environment struct {
 	StateStore       sm.Store
 	BlockStore       sm.BlockStore
 	EvidencePool     sm.EvidencePool
+	ConsensusState   Consensus
 	ConsensusReactor consensusReactor
 	P2PPeers         peers
 	P2PTransport     transport

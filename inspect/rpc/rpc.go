@@ -40,16 +40,16 @@ func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, txidx txin
 		Logger:           logger,
 	}
 	return core.RoutesMap{
-		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", true),
-		"consensus_params": server.NewRPCFunc(env.ConsensusParams, "height", true),
-		"block":            server.NewRPCFunc(env.Block, "height", true),
-		"block_by_hash":    server.NewRPCFunc(env.BlockByHash, "hash", true),
-		"block_results":    server.NewRPCFunc(env.BlockResults, "height", true),
-		"commit":           server.NewRPCFunc(env.Commit, "height", true),
-		"validators":       server.NewRPCFunc(env.Validators, "height,page,per_page", true),
-		"tx":               server.NewRPCFunc(env.Tx, "hash,prove", true),
-		"tx_search":        server.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by", false),
-		"block_search":     server.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by", false),
+		"blockchain":       server.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight"),
+		"consensus_params": server.NewRPCFunc(env.ConsensusParams, "height"),
+		"block":            server.NewRPCFunc(env.Block, "height"),
+		"block_by_hash":    server.NewRPCFunc(env.BlockByHash, "hash"),
+		"block_results":    server.NewRPCFunc(env.BlockResults, "height"),
+		"commit":           server.NewRPCFunc(env.Commit, "height"),
+		"validators":       server.NewRPCFunc(env.Validators, "height,page,per_page"),
+		"tx":               server.NewRPCFunc(env.Tx, "hash,prove"),
+		"tx_search":        server.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by"),
+		"block_search":     server.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by"),
 	}
 }
 
