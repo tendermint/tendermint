@@ -11,7 +11,7 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/inspect"
 	"github.com/tendermint/tendermint/state"
-	"github.com/tendermint/tendermint/state/indexer/sink"
+	"github.com/tendermint/tendermint/state/indexer/block"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 )
@@ -71,13 +71,13 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	sinks, err := sink.EventSinksFromConfig(config, cfg.DefaultDBProvider, genDoc.ChainID)
+	txIndexer, blockIndexer, err := block.IndexerFromConfig(config, cfg.DefaultDBProvider, genDoc.ChainID)
 	if err != nil {
 		return err
 	}
-	stateStore := state.NewStore(stateDB)
+	stateStore := state.NewStore(stateDB, state.StoreOptions{DiscardABCIResponses: false})
 
-	ins := inspect.New(config.RPC, blockStore, stateStore, sinks, logger)
+	ins := inspect.New(config.RPC, blockStore, stateStore, txIndexer, blockIndexer, logger)
 
 	logger.Info("starting inspect server")
 	if err := ins.Run(ctx); err != nil {
