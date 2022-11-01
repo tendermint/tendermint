@@ -57,9 +57,36 @@ type EnvelopeSender interface {
 	TrySendEnvelope(Envelope) bool
 }
 
-type EnvelopeSenderPeer interface {
-	Peer
-	EnvelopeSender
+func EnvelopeSendShim(p Peer, e Envelope, lg log.Logger) bool {
+	if es, ok := p.(EnvelopeSender); ok {
+		return es.SendEnvelope(e)
+	}
+	msg := e.Message
+	if w, ok := msg.(Wrapper); ok {
+		msg = w.Wrap()
+	}
+	msgBytes, err := proto.Marshal(msg)
+	if err != nil {
+		lg.Error("marshaling message to send", "error", err)
+		return false
+	}
+	return p.Send(e.ChannelID, msgBytes)
+}
+
+func EnvelopeTrySendShim(p Peer, e Envelope, lg log.Logger) bool {
+	if es, ok := p.(EnvelopeSender); ok {
+		return es.SendEnvelope(e)
+	}
+	msg := e.Message
+	if w, ok := msg.(Wrapper); ok {
+		msg = w.Wrap()
+	}
+	msgBytes, err := proto.Marshal(msg)
+	if err != nil {
+		lg.Error("marshaling message to send", "error", err)
+		return false
+	}
+	return p.TrySend(e.ChannelID, msgBytes)
 }
 
 //----------------------------------------------------------
