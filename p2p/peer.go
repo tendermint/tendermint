@@ -57,7 +57,13 @@ type EnvelopeSender interface {
 	TrySendEnvelope(Envelope) bool
 }
 
-func EnvelopeSendShim(p Peer, e Envelope, lg log.Logger) bool {
+// EnvelopeSendShim implements a shim to allow the legacy peer type that
+// does not implement SendEnvelope to be used in places where envelopes are
+// being sent. If the peer implements the *Envelope methods, then they are used,
+// otherwise, the message is marshaled and dispatched to the legacy *Send.
+//
+// Deprecated: Will be removed in v0.38.
+func SendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 	if es, ok := p.(EnvelopeSender); ok {
 		return es.SendEnvelope(e)
 	}
@@ -73,7 +79,13 @@ func EnvelopeSendShim(p Peer, e Envelope, lg log.Logger) bool {
 	return p.Send(e.ChannelID, msgBytes)
 }
 
-func EnvelopeTrySendShim(p Peer, e Envelope, lg log.Logger) bool {
+// EnvelopeTrySendShim implements a shim to allow the legacy peer type that
+// does not implement TrySendEnvelope to be used in places where envelopes are
+// being sent. If the peer implements the *Envelope methods, then they are used,
+// otherwise, the message is marshaled and dispatched to the legacy *Send.
+//
+// Deprecated: Will be removed in v0.38.
+func TrySendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 	if es, ok := p.(EnvelopeSender); ok {
 		return es.SendEnvelope(e)
 	}
