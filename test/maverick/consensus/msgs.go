@@ -32,14 +32,10 @@ func WALToProto(msg tmcon.WALMessage) (*tmcons.WALMessage, error) {
 		if err != nil {
 			return nil, err
 		}
-		if w, ok := consMsg.(p2p.Wrapper); ok {
-			consMsg = w.Wrap()
-		}
-		cm := consMsg.(*tmcons.Message)
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{
-					Msg:    *cm,
+					Msg:    *consMsg,
 					PeerID: string(msg.PeerID),
 				},
 			},

@@ -310,10 +310,10 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 				m.Votes = *v
 			}
 
-			e.p2p.TrySendEnvelopeShim(Src, p2p.Envelope{
+			p2p.TrySendEnvelopeShim(e.Src, p2p.Envelope{
 				ChannelID: VoteSetBitsChannel,
 				Message:   m,
-			})
+			}, conR.Logger)
 		default:
 			conR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 		}
@@ -529,7 +529,7 @@ func (conR *Reactor) sendNewRoundStepMessage(peer p2p.Peer) {
 			SecondsSinceStartTime: int64(time.Since(rs.StartTime).Seconds()),
 			LastCommitRound:       rs.LastCommit.GetRound(),
 		},
-	})
+	}, conR.Logger)
 }
 
 func (conR *Reactor) gossipDataRoutine(peer p2p.Peer, ps *PeerState) {
@@ -561,7 +561,7 @@ OUTER_LOOP:
 						Round:  rs.Round,  // This tells peer that this part applies to us.
 						Part:   *p,
 					},
-				}) {
+				}, logger) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
 				continue OUTER_LOOP
@@ -609,7 +609,7 @@ OUTER_LOOP:
 				if p2p.SendEnvelopeShim(peer, p2p.Envelope{
 					ChannelID: DataChannel,
 					Message:   msg,
-				}, peer.Logger) {
+				}, logger) {
 					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
 				}
@@ -628,7 +628,7 @@ OUTER_LOOP:
 				p2p.SendEnvelopeShim(peer, p2p.Envelope{
 					ChannelID: DataChannel,
 					Message:   msg,
-				}, peer.Logger)
+				}, logger)
 			}
 			continue OUTER_LOOP
 		}
@@ -679,7 +679,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 				Round:  prs.Round,  // Not our height, so it doesn't matter.
 				Part:   *pp,
 			},
-		}, peer.Logger) {
+		}, logger) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
 			logger.Debug("Sending block part for catchup failed")
@@ -844,7 +844,7 @@ OUTER_LOOP:
 							Round:   prs.Round,
 							Type:    tmproto.PrevoteType,
 							BlockID: maj23.ToProto(),
-						}})
+						}}, logger)
 
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
@@ -864,7 +864,7 @@ OUTER_LOOP:
 							Round:   prs.Round,
 							Type:    tmproto.PrecommitType,
 							BlockID: maj23.ToProto(),
-						}})
+						}}, logger)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -883,7 +883,7 @@ OUTER_LOOP:
 							Round:   prs.ProposalPOLRound,
 							Type:    tmproto.PrevoteType,
 							BlockID: maj23.ToProto(),
-						}})
+						}}, logger)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -905,7 +905,7 @@ OUTER_LOOP:
 							Round:   commit.Round,
 							Type:    tmproto.PrecommitType,
 							BlockID: commit.BlockID.ToProto(),
-						}})
+						}}, logger)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -1120,10 +1120,10 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int32, index in
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
-		if ps.p2p.TrySendEnvelopeShim(peer, p2p.Envelope{
+		if p2p.TrySendEnvelopeShim(ps.peer, p2p.Envelope{
 			ChannelID: VoteChannel,
 			Message:   &tmcons.Vote{Vote: vote.ToProto()},
-		}) {
+		}, ps.logger) {
 			ps.SetHasVote(vote)
 			return true
 		}

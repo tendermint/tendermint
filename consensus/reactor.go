@@ -584,7 +584,7 @@ OUTER_LOOP:
 						Round:  rs.Round,  // This tells peer that this part applies to us.
 						Part:   *parts,
 					},
-				}, conR.Logger) {
+				}, logger) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
 				continue OUTER_LOOP
@@ -634,7 +634,7 @@ OUTER_LOOP:
 				if p2p.SendEnvelopeShim(peer, p2p.Envelope{
 					ChannelID: DataChannel,
 					Message:   &tmcons.Proposal{Proposal: *rs.Proposal.ToProto()},
-				}, conR.Logger) {
+				}, logger) {
 					// NOTE[ZM]: A peer might have received different proposal msg so this Proposal msg will be rejected!
 					ps.SetHasProposal(rs.Proposal)
 				}
@@ -652,7 +652,7 @@ OUTER_LOOP:
 						ProposalPolRound: rs.Proposal.POLRound,
 						ProposalPol:      *rs.Votes.Prevotes(rs.Proposal.POLRound).BitArray().ToProto(),
 					},
-				}, conR.Logger)
+				}, logger)
 			}
 			continue OUTER_LOOP
 		}
@@ -702,7 +702,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 				Round:  prs.Round,  // Not our height, so it doesn't matter.
 				Part:   *pp,
 			},
-		}, conR.Logger) {
+		}, logger) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
 			logger.Debug("Sending block part for catchup failed")
@@ -870,7 +870,7 @@ OUTER_LOOP:
 							Type:    tmproto.PrevoteType,
 							BlockID: maj23.ToProto(),
 						},
-					}, conR.Logger)
+					}, ps.logger)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -890,7 +890,7 @@ OUTER_LOOP:
 							Type:    tmproto.PrecommitType,
 							BlockID: maj23.ToProto(),
 						},
-					}, conR.Logger)
+					}, ps.logger)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -911,7 +911,7 @@ OUTER_LOOP:
 							Type:    tmproto.PrevoteType,
 							BlockID: maj23.ToProto(),
 						},
-					}, conR.Logger)
+					}, ps.logger)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}
@@ -934,7 +934,7 @@ OUTER_LOOP:
 							Type:    tmproto.PrecommitType,
 							BlockID: commit.BlockID.ToProto(),
 						},
-					}, conR.Logger)
+					}, ps.logger)
 					time.Sleep(conR.conS.config.PeerQueryMaj23SleepDuration)
 				}
 			}

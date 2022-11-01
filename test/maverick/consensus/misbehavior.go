@@ -105,14 +105,14 @@ func DoublePrevoteMisbehavior() Misbehavior {
 					Message: &tmcons.Vote{
 						Vote: prevote.ToProto(),
 					},
-				}, peer.Logger)
+				}, cs.Logger)
 			} else { // sign a nil block
 				p2p.SendEnvelopeShim(peer, p2p.Envelope{
 					ChannelID: VoteChannel,
 					Message: &tmcons.Vote{
 						Vote: nilPrevote.ToProto(),
 					},
-				}, peer.Logger)
+				}, cs.Logger)
 			}
 		}
 	}

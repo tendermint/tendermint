@@ -169,13 +169,13 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 					p2p.SendEnvelopeShim(peer, p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote1.ToProto()},
 						ChannelID: VoteChannel,
-					}, peer.Logger)
+					}, bcs.Logger)
 				} else {
 					bcs.Logger.Info("Signed and pushed vote", "vote", prevote2, "peer", peer)
 					p2p.SendEnvelopeShim(peer, p2p.Envelope{
 						Message:   &tmcons.Vote{Vote: prevote2.ToProto()},
 						ChannelID: VoteChannel,
-					}, peer.Logger)
+					}, bcs.Logger)
 				}
 			}
 		} else {
@@ -522,7 +522,7 @@ func sendProposalAndParts(
 	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: DataChannel,
 		Message:   &tmcons.Proposal{Proposal: *proposal.ToProto()},
-	}, peer.Logger)
+	}, cs.Logger)
 
 	// parts
 	for i := 0; i < int(parts.Total()); i++ {
@@ -538,7 +538,7 @@ func sendProposalAndParts(
 				Round:  round,  // This tells peer that this part applies to us.
 				Part:   *pp,
 			},
-		}, peer.Logger)
+		}, cs.Logger)
 	}
 
 	// votes
@@ -549,11 +549,11 @@ func sendProposalAndParts(
 	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: prevote.ToProto()},
-	}, peer.Logger)
+	}, cs.Logger)
 	p2p.SendEnvelopeShim(peer, p2p.Envelope{
 		ChannelID: VoteChannel,
 		Message:   &tmcons.Vote{Vote: precommit.ToProto()},
-	}, peer.Logger)
+	}, cs.Logger)
 }
 
 //----------------------------------------

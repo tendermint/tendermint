@@ -98,7 +98,7 @@ func invalidDoPrevoteFunc(t *testing.T, height int64, round int32, cs *State, sw
 			p2p.SendEnvelopeShim(peer, p2p.Envelope{
 				Message:   &tmcons.Vote{Vote: precommit.ToProto()},
 				ChannelID: VoteChannel,
-			}, peer.Logger)
+			}, cs.Logger)
 		}
 	}()
 }
