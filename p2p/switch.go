@@ -266,7 +266,7 @@ func (sw *Switch) OnStop() {
 // to send for defaultSendTimeoutSeconds. Returns a channel which receives
 // success values for each attempted send (false if times out). Channel will be
 // closed once msg bytes are sent to all peers (or time out).
-// BroadcastEnvelopes sends to the peers using the SendEnvelope method.
+// BroadcastEnvelope sends to the peers using the SendEnvelope method.
 //
 // NOTE: BroadcastEnvelope uses goroutines, so order of broadcast may not be preserved.
 func (sw *Switch) BroadcastEnvelope(e Envelope) chan bool {
@@ -297,7 +297,7 @@ func (sw *Switch) BroadcastEnvelope(e Envelope) chan bool {
 // to send for defaultSendTimeoutSeconds. Returns a channel which receives
 // success values for each attempted send (false if times out). Channel will be
 // closed once msg bytes are sent to all peers (or time out).
-// Broadcasts sends to the peers using the Send method.
+// Broadcast sends to the peers using the Send method.
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 //
