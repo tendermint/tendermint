@@ -461,7 +461,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
+		cfg.DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		log.TestingLogger(),
 		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKSYNC": customBlocksyncReactor}),

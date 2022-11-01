@@ -128,7 +128,7 @@ func startNode(cfg *Config) error {
 		nodeKey,
 		proxy.NewLocalClientCreator(app),
 		node.DefaultGenesisDocProviderFunc(tmcfg),
-		node.DefaultDBProvider,
+		config.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),
 		nodeLogger,
 	)
@@ -144,8 +144,8 @@ func startLightClient(cfg *Config) error {
 		return err
 	}
 
-	dbContext := &node.DBContext{ID: "light", Config: tmcfg}
-	lightDB, err := node.DefaultDBProvider(dbContext)
+	dbContext := &config.DBContext{ID: "light", Config: tmcfg}
+	lightDB, err := config.DefaultDBProvider(dbContext)
 	if err != nil {
 		return err
 	}
