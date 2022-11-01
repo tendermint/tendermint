@@ -38,11 +38,11 @@ type Peer interface {
 	SocketAddr() *NetAddress // actual address of the socket
 
 	// Deprecated: entities looking to act as peers should implement SendEnvelope instead.
-	// Send will be removed in v0.38.
+	// Send will be removed in v0.37.
 	Send(byte, []byte) bool
 
 	// Deprecated: entities looking to act as peers should implement TrySendEnvelope instead.
-	// TrySend will be removed in v0.38.
+	// TrySend will be removed in v0.37.
 	TrySend(byte, []byte) bool
 
 	Set(string, interface{})
@@ -62,7 +62,7 @@ type EnvelopeSender interface {
 // being sent. If the peer implements the *Envelope methods, then they are used,
 // otherwise, the message is marshaled and dispatched to the legacy *Send.
 //
-// Deprecated: Will be removed in v0.38.
+// Deprecated: Will be removed in v0.37.
 func SendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 	if es, ok := p.(EnvelopeSender); ok {
 		return es.SendEnvelope(e)
@@ -84,7 +84,7 @@ func SendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 // being sent. If the peer implements the *Envelope methods, then they are used,
 // otherwise, the message is marshaled and dispatched to the legacy *Send.
 //
-// Deprecated: Will be removed in v0.38.
+// Deprecated: Will be removed in v0.37.
 func TrySendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 	if es, ok := p.(EnvelopeSender); ok {
 		return es.SendEnvelope(e)

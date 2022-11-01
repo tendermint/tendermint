@@ -60,7 +60,7 @@ func ValidateMsg(pb proto.Message) error {
 
 // EncodeMsg encodes a Protobuf message
 //
-// Deprecated: Will be removed in v0.38.
+// Deprecated: Will be removed in v0.37.
 func EncodeMsg(pb proto.Message) ([]byte, error) {
 	if um, ok := pb.(p2p.Wrapper); ok {
 		pb = um.Wrap()
@@ -75,7 +75,7 @@ func EncodeMsg(pb proto.Message) ([]byte, error) {
 
 // DecodeMsg decodes a Protobuf message.
 //
-// Deprecated: Will be removed in v0.38.
+// Deprecated: Will be removed in v0.37.
 func DecodeMsg(bz []byte) (proto.Message, error) {
 	pb := &bcproto.Message{}
 

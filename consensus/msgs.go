@@ -244,7 +244,7 @@ func MsgFromProto(p *tmcons.Message) (Message, error) {
 // MustEncode takes the reactors msg, makes it proto and marshals it
 // this mimics `MustMarshalBinaryBare` in that is panics on error
 //
-// Deprecated: Will be removed in v0.38.
+// Deprecated: Will be removed in v0.37.
 func MustEncode(msg Message) []byte {
 	pb, err := MsgToProto(msg)
 	if err != nil {

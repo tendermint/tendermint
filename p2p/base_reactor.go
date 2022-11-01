@@ -49,7 +49,7 @@ type Reactor interface {
 	// is implemented, it will be used, otherwise the switch will fallback to
 	// using Receive.
 	// Deprecated: Reactors looking to receive data from a peer should implement ReceiveEnvelope.
-	// Receive will be deprecated in favor of ReceiveEnvelope in v0.38.
+	// Receive will be deprecated in favor of ReceiveEnvelope in v0.37.
 	Receive(chID byte, peer Peer, msgBytes []byte)
 }
 
