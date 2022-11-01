@@ -37,9 +37,6 @@ type Peer interface {
 	Status() tmconn.ConnectionStatus
 	SocketAddr() *NetAddress // actual address of the socket
 
-	SendEnvelope(Envelope) bool
-	TrySendEnvelope(Envelope) bool
-
 	// Deprecated: entities looking to act as peers should implement SendEnvelope instead.
 	// Send will be removed in v0.38.
 	Send(byte, []byte) bool
@@ -53,6 +50,16 @@ type Peer interface {
 
 	SetRemovalFailed()
 	GetRemovalFailed() bool
+}
+
+type EnvelopeSender interface {
+	SendEnvelope(Envelope) bool
+	TrySendEnvelope(Envelope) bool
+}
+
+type EnvelopeSenderPeer interface {
+	Peer
+	EnvelopeSender
 }
 
 //----------------------------------------------------------
