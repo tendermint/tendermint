@@ -349,24 +349,24 @@ dial_timeout = "{{ .P2P.DialTimeout }}"
 #   2) "v1" - prioritized mempool.
 version = "{{ .Mempool.Version }}"
 
-// Recheck (default: true) defines whether Tendermint should recheck the
-// validity for all remaining transaction in the mempool after a block.
-// Since a block affects the application state, some transactions in the
-// mempool may become invalid. If this does not apply to your application,
-// you can disable rechecking.
+# Recheck (default: true) defines whether Tendermint should recheck the
+# validity for all remaining transaction in the mempool after a block.
+# Since a block affects the application state, some transactions in the
+# mempool may become invalid. If this does not apply to your application,
+# you can disable rechecking.
 recheck = {{ .Mempool.Recheck }}
 
-// Broadcast (default: true) defines whether the mempool should relay
-// transactions to other peers. Setting this to false will stop the mempool
-// from relaying transactions to other peers until they are included in a
-// block. In other words, if Broadcast is disabled, only the peer you send
-// the tx to will see it until it is included in a block.
+# Broadcast (default: true) defines whether the mempool should relay
+# transactions to other peers. Setting this to false will stop the mempool
+# from relaying transactions to other peers until they are included in a
+# block. In other words, if Broadcast is disabled, only the peer you send
+# the tx to will see it until it is included in a block.
 broadcast = {{ .Mempool.Broadcast }}
 
-// WalPath (default: "") configures the location of the Write Ahead Log
-// (WAL) for the mempool. The WAL is disabled by default. To enable, set
-// WalPath to where you want the WAL to be written (e.g.
-// "data/mempool.wal").
+# WalPath (default: "") configures the location of the Write Ahead Log
+# (WAL) for the mempool. The WAL is disabled by default. To enable, set
+# WalPath to where you want the WAL to be written (e.g.
+# "data/mempool.wal").
 wal_dir = "{{ js .Mempool.WalPath }}"
 
 # Maximum number of transactions in the mempool
