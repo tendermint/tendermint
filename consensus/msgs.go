@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/cosmos/gogoproto/proto"
-
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/libs/bits"
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -15,173 +14,147 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// MsgToProto takes a consensus message type and returns the proto defined consensus message
-func MsgToProto(msg Message) (*tmcons.Message, error) {
+// MsgToProto takes a consensus message type and returns the proto defined consensus message.
+//
+// TODO: This needs to be removed, but WALToProto depends on this.
+func MsgToProto(msg Message) (proto.Message, error) {
 	if msg == nil {
 		return nil, errors.New("consensus: message is nil")
 	}
-	var pb tmcons.Message
+	var pb proto.Message
 
 	switch msg := msg.(type) {
 	case *NewRoundStepMessage:
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_NewRoundStep{
-				NewRoundStep: &tmcons.NewRoundStep{
-					Height:                msg.Height,
-					Round:                 msg.Round,
-					Step:                  uint32(msg.Step),
-					SecondsSinceStartTime: msg.SecondsSinceStartTime,
-					LastCommitRound:       msg.LastCommitRound,
-				},
-			},
+		pb = &tmcons.NewRoundStep{
+			Height:                msg.Height,
+			Round:                 msg.Round,
+			Step:                  uint32(msg.Step),
+			SecondsSinceStartTime: msg.SecondsSinceStartTime,
+			LastCommitRound:       msg.LastCommitRound,
 		}
+
 	case *NewValidBlockMessage:
 		pbPartSetHeader := msg.BlockPartSetHeader.ToProto()
 		pbBits := msg.BlockParts.ToProto()
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_NewValidBlock{
-				NewValidBlock: &tmcons.NewValidBlock{
-					Height:             msg.Height,
-					Round:              msg.Round,
-					BlockPartSetHeader: pbPartSetHeader,
-					BlockParts:         pbBits,
-					IsCommit:           msg.IsCommit,
-				},
-			},
+		pb = &tmcons.NewValidBlock{
+			Height:             msg.Height,
+			Round:              msg.Round,
+			BlockPartSetHeader: pbPartSetHeader,
+			BlockParts:         pbBits,
+			IsCommit:           msg.IsCommit,
 		}
+
 	case *ProposalMessage:
 		pbP := msg.Proposal.ToProto()
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_Proposal{
-				Proposal: &tmcons.Proposal{
-					Proposal: *pbP,
-				},
-			},
+		pb = &tmcons.Proposal{
+			Proposal: *pbP,
 		}
+
 	case *ProposalPOLMessage:
 		pbBits := msg.ProposalPOL.ToProto()
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_ProposalPol{
-				ProposalPol: &tmcons.ProposalPOL{
-					Height:           msg.Height,
-					ProposalPolRound: msg.ProposalPOLRound,
-					ProposalPol:      *pbBits,
-				},
-			},
+		pb = &tmcons.ProposalPOL{
+			Height:           msg.Height,
+			ProposalPolRound: msg.ProposalPOLRound,
+			ProposalPol:      *pbBits,
 		}
+
 	case *BlockPartMessage:
 		parts, err := msg.Part.ToProto()
 		if err != nil {
 			return nil, fmt.Errorf("msg to proto error: %w", err)
 		}
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_BlockPart{
-				BlockPart: &tmcons.BlockPart{
-					Height: msg.Height,
-					Round:  msg.Round,
-					Part:   *parts,
-				},
-			},
+		pb = &tmcons.BlockPart{
+			Height: msg.Height,
+			Round:  msg.Round,
+			Part:   *parts,
 		}
+
 	case *VoteMessage:
 		vote := msg.Vote.ToProto()
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_Vote{
-				Vote: &tmcons.Vote{
-					Vote: vote,
-				},
-			},
+		pb = &tmcons.Vote{
+			Vote: vote,
 		}
+
 	case *HasVoteMessage:
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_HasVote{
-				HasVote: &tmcons.HasVote{
-					Height: msg.Height,
-					Round:  msg.Round,
-					Type:   msg.Type,
-					Index:  msg.Index,
-				},
-			},
+		pb = &tmcons.HasVote{
+			Height: msg.Height,
+			Round:  msg.Round,
+			Type:   msg.Type,
+			Index:  msg.Index,
 		}
+
 	case *VoteSetMaj23Message:
 		bi := msg.BlockID.ToProto()
-		pb = tmcons.Message{
-			Sum: &tmcons.Message_VoteSetMaj23{
-				VoteSetMaj23: &tmcons.VoteSetMaj23{
-					Height:  msg.Height,
-					Round:   msg.Round,
-					Type:    msg.Type,
-					BlockID: bi,
-				},
-			},
+		pb = &tmcons.VoteSetMaj23{
+			Height:  msg.Height,
+			Round:   msg.Round,
+			Type:    msg.Type,
+			BlockID: bi,
 		}
+
 	case *VoteSetBitsMessage:
 		bi := msg.BlockID.ToProto()
 		bits := msg.Votes.ToProto()
 
-		vsb := &tmcons.Message_VoteSetBits{
-			VoteSetBits: &tmcons.VoteSetBits{
-				Height:  msg.Height,
-				Round:   msg.Round,
-				Type:    msg.Type,
-				BlockID: bi,
-			},
+		vsb := &tmcons.VoteSetBits{
+			Height:  msg.Height,
+			Round:   msg.Round,
+			Type:    msg.Type,
+			BlockID: bi,
 		}
 
 		if bits != nil {
-			vsb.VoteSetBits.Votes = *bits
+			vsb.Votes = *bits
 		}
 
-		pb = tmcons.Message{
-			Sum: vsb,
-		}
+		pb = vsb
 
 	default:
 		return nil, fmt.Errorf("consensus: message not recognized: %T", msg)
 	}
 
-	return &pb, nil
+	return pb, nil
 }
 
 // MsgFromProto takes a consensus proto message and returns the native go type
-func MsgFromProto(msg *tmcons.Message) (Message, error) {
-	if msg == nil {
+func MsgFromProto(p proto.Message) (Message, error) {
+	if p == nil {
 		return nil, errors.New("consensus: nil message")
 	}
 	var pb Message
 
-	switch msg := msg.Sum.(type) {
-	case *tmcons.Message_NewRoundStep:
-		rs, err := tmmath.SafeConvertUint8(int64(msg.NewRoundStep.Step))
+	switch msg := p.(type) {
+	case *tmcons.NewRoundStep:
+		rs, err := tmmath.SafeConvertUint8(int64(msg.Step))
 		// deny message based on possible overflow
 		if err != nil {
 			return nil, fmt.Errorf("denying message due to possible overflow: %w", err)
 		}
 		pb = &NewRoundStepMessage{
-			Height:                msg.NewRoundStep.Height,
-			Round:                 msg.NewRoundStep.Round,
+			Height:                msg.Height,
+			Round:                 msg.Round,
 			Step:                  cstypes.RoundStepType(rs),
-			SecondsSinceStartTime: msg.NewRoundStep.SecondsSinceStartTime,
-			LastCommitRound:       msg.NewRoundStep.LastCommitRound,
+			SecondsSinceStartTime: msg.SecondsSinceStartTime,
+			LastCommitRound:       msg.LastCommitRound,
 		}
-	case *tmcons.Message_NewValidBlock:
-		pbPartSetHeader, err := types.PartSetHeaderFromProto(&msg.NewValidBlock.BlockPartSetHeader)
+	case *tmcons.NewValidBlock:
+		pbPartSetHeader, err := types.PartSetHeaderFromProto(&msg.BlockPartSetHeader)
 		if err != nil {
 			return nil, fmt.Errorf("parts to proto error: %w", err)
 		}
 
 		pbBits := new(bits.BitArray)
-		pbBits.FromProto(msg.NewValidBlock.BlockParts)
+		pbBits.FromProto(msg.BlockParts)
 
 		pb = &NewValidBlockMessage{
-			Height:             msg.NewValidBlock.Height,
-			Round:              msg.NewValidBlock.Round,
+			Height:             msg.Height,
+			Round:              msg.Round,
 			BlockPartSetHeader: *pbPartSetHeader,
 			BlockParts:         pbBits,
-			IsCommit:           msg.NewValidBlock.IsCommit,
+			IsCommit:           msg.IsCommit,
 		}
-	case *tmcons.Message_Proposal:
-		pbP, err := types.ProposalFromProto(&msg.Proposal.Proposal)
+	case *tmcons.Proposal:
+		pbP, err := types.ProposalFromProto(&msg.Proposal)
 		if err != nil {
 			return nil, fmt.Errorf("proposal msg to proto error: %w", err)
 		}
@@ -189,26 +162,26 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 		pb = &ProposalMessage{
 			Proposal: pbP,
 		}
-	case *tmcons.Message_ProposalPol:
+	case *tmcons.ProposalPOL:
 		pbBits := new(bits.BitArray)
-		pbBits.FromProto(&msg.ProposalPol.ProposalPol)
+		pbBits.FromProto(&msg.ProposalPol)
 		pb = &ProposalPOLMessage{
-			Height:           msg.ProposalPol.Height,
-			ProposalPOLRound: msg.ProposalPol.ProposalPolRound,
+			Height:           msg.Height,
+			ProposalPOLRound: msg.ProposalPolRound,
 			ProposalPOL:      pbBits,
 		}
-	case *tmcons.Message_BlockPart:
-		parts, err := types.PartFromProto(&msg.BlockPart.Part)
+	case *tmcons.BlockPart:
+		parts, err := types.PartFromProto(&msg.Part)
 		if err != nil {
 			return nil, fmt.Errorf("blockpart msg to proto error: %w", err)
 		}
 		pb = &BlockPartMessage{
-			Height: msg.BlockPart.Height,
-			Round:  msg.BlockPart.Round,
+			Height: msg.Height,
+			Round:  msg.Round,
 			Part:   parts,
 		}
-	case *tmcons.Message_Vote:
-		vote, err := types.VoteFromProto(msg.Vote.Vote)
+	case *tmcons.Vote:
+		vote, err := types.VoteFromProto(msg.Vote)
 		if err != nil {
 			return nil, fmt.Errorf("vote msg to proto error: %w", err)
 		}
@@ -216,36 +189,36 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 		pb = &VoteMessage{
 			Vote: vote,
 		}
-	case *tmcons.Message_HasVote:
+	case *tmcons.HasVote:
 		pb = &HasVoteMessage{
-			Height: msg.HasVote.Height,
-			Round:  msg.HasVote.Round,
-			Type:   msg.HasVote.Type,
-			Index:  msg.HasVote.Index,
+			Height: msg.Height,
+			Round:  msg.Round,
+			Type:   msg.Type,
+			Index:  msg.Index,
 		}
-	case *tmcons.Message_VoteSetMaj23:
-		bi, err := types.BlockIDFromProto(&msg.VoteSetMaj23.BlockID)
+	case *tmcons.VoteSetMaj23:
+		bi, err := types.BlockIDFromProto(&msg.BlockID)
 		if err != nil {
 			return nil, fmt.Errorf("voteSetMaj23 msg to proto error: %w", err)
 		}
 		pb = &VoteSetMaj23Message{
-			Height:  msg.VoteSetMaj23.Height,
-			Round:   msg.VoteSetMaj23.Round,
-			Type:    msg.VoteSetMaj23.Type,
+			Height:  msg.Height,
+			Round:   msg.Round,
+			Type:    msg.Type,
 			BlockID: *bi,
 		}
-	case *tmcons.Message_VoteSetBits:
-		bi, err := types.BlockIDFromProto(&msg.VoteSetBits.BlockID)
+	case *tmcons.VoteSetBits:
+		bi, err := types.BlockIDFromProto(&msg.BlockID)
 		if err != nil {
 			return nil, fmt.Errorf("voteSetBits msg to proto error: %w", err)
 		}
 		bits := new(bits.BitArray)
-		bits.FromProto(&msg.VoteSetBits.Votes)
+		bits.FromProto(&msg.Votes)
 
 		pb = &VoteSetBitsMessage{
-			Height:  msg.VoteSetBits.Height,
-			Round:   msg.VoteSetBits.Round,
-			Type:    msg.VoteSetBits.Type,
+			Height:  msg.Height,
+			Round:   msg.Round,
+			Type:    msg.Type,
 			BlockID: *bi,
 			Votes:   bits,
 		}
@@ -258,20 +231,6 @@ func MsgFromProto(msg *tmcons.Message) (Message, error) {
 	}
 
 	return pb, nil
-}
-
-// MustEncode takes the reactors msg, makes it proto and marshals it
-// this mimics `MustMarshalBinaryBare` in that is panics on error
-func MustEncode(msg Message) []byte {
-	pb, err := MsgToProto(msg)
-	if err != nil {
-		panic(err)
-	}
-	enc, err := proto.Marshal(pb)
-	if err != nil {
-		panic(err)
-	}
-	return enc
 }
 
 // WALToProto takes a WAL message and return a proto walMessage and error
@@ -294,10 +253,14 @@ func WALToProto(msg WALMessage) (*tmcons.WALMessage, error) {
 		if err != nil {
 			return nil, err
 		}
+		if w, ok := consMsg.(p2p.Wrapper); ok {
+			consMsg = w.Wrap()
+		}
+		cm := consMsg.(*tmcons.Message)
 		pb = tmcons.WALMessage{
 			Sum: &tmcons.WALMessage_MsgInfo{
 				MsgInfo: &tmcons.MsgInfo{
-					Msg:    *consMsg,
+					Msg:    *cm,
 					PeerID: string(msg.PeerID),
 				},
 			},
@@ -343,7 +306,11 @@ func WALFromProto(msg *tmcons.WALMessage) (WALMessage, error) {
 			Step:   msg.EventDataRoundState.Step,
 		}
 	case *tmcons.WALMessage_MsgInfo:
-		walMsg, err := MsgFromProto(&msg.MsgInfo.Msg)
+		um, err := msg.MsgInfo.Msg.Unwrap()
+		if err != nil {
+			return nil, fmt.Errorf("unwrap message: %w", err)
+		}
+		walMsg, err := MsgFromProto(um)
 		if err != nil {
 			return nil, fmt.Errorf("msgInfo from proto error: %w", err)
 		}
