@@ -11,6 +11,7 @@
 - P2P Protocol
 
 - Go API
+  - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
 
 - Blockchain Protocol
 
