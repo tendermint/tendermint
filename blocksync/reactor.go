@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
-
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	bcproto "github.com/tendermint/tendermint/proto/tendermint/blocksync"
@@ -233,23 +231,6 @@ func (bcR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	default:
 		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
-}
-
-func (bcR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	var msg *bcproto.Message
-	err := proto.Unmarshal(msgBytes, msg)
-	if err != nil {
-		panic(err)
-	}
-	uw, err := msg.Unwrap()
-	if err != nil {
-		panic(err)
-	}
-	bcR.ReceiveEnvelope(p2p.Envelope{
-		ChannelID: chID,
-		Src:       peer,
-		Message:   uw,
-	})
 }
 
 // Handle messages from the poolReactor telling the reactor what to do.

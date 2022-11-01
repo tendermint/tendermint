@@ -92,19 +92,6 @@ func (evR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	}
 }
 
-func (evR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	var msg *tmproto.EvidenceList
-	err := proto.Unmarshal(msgBytes, msg)
-	if err != nil {
-		panic(err)
-	}
-	evR.ReceiveEnvelope(p2p.Envelope{
-		ChannelID: chID,
-		Src:       peer,
-		Message:   msg,
-	})
-}
-
 // SetEventBus implements events.Eventable.
 func (evR *Reactor) SetEventBus(b *types.EventBus) {
 	evR.eventBus = b

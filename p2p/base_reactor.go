@@ -38,28 +38,8 @@ type Reactor interface {
 	// or other reason).
 	RemovePeer(peer Peer, reason interface{})
 
-	// Receive is called by the switch when msgBytes is received from the peer.
-	//
-	// NOTE reactor can not keep msgBytes around after Receive completes without
-	// copying.
-	//
-	// CONTRACT: msgBytes are not nil.
-	//
-	// Only one of Receive or ReceiveEnvelope are called per message. If ReceiveEnvelope
-	// is implemented, it will be used, otherwise the switch will fallback to
-	// using Receive.
-	// Deprecated: Reactors looking to receive data from a peer should implement ReceiveEnvelope.
-	// Receive will be deprecated in favor of ReceiveEnvelope in v0.38.
-	Receive(chID byte, peer Peer, msgBytes []byte)
-}
-
-type ReceiveEnveloper interface {
 	// ReceiveEnvelope is called by the switch when an envelope is received from any connected
 	// peer on any of the channels registered by the reactor.
-	//
-	// Only one of Receive or ReceiveEnvelope are called per message. If ReceiveEnvelope
-	// is implemented, it will be used, otherwise the switch will fallback to
-	// using Receive. Receive will be replaced by ReceiveEnvelope in a future version
 	ReceiveEnvelope(Envelope)
 }
 
@@ -80,9 +60,8 @@ func NewBaseReactor(name string, impl Reactor) *BaseReactor {
 func (br *BaseReactor) SetSwitch(sw *Switch) {
 	br.Switch = sw
 }
-func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor        { return nil }
-func (*BaseReactor) AddPeer(peer Peer)                             {}
-func (*BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
-func (*BaseReactor) ReceiveEnvelope(e Envelope)                    {}
-func (*BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}
-func (*BaseReactor) InitPeer(peer Peer) Peer                       { return peer }
+func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor   { return nil }
+func (*BaseReactor) AddPeer(peer Peer)                        {}
+func (*BaseReactor) RemovePeer(peer Peer, reason interface{}) {}
+func (*BaseReactor) ReceiveEnvelope(e Envelope)               {}
+func (*BaseReactor) InitPeer(peer Peer) Peer                  { return peer }

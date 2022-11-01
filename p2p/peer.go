@@ -40,14 +40,6 @@ type Peer interface {
 	SendEnvelope(Envelope) bool
 	TrySendEnvelope(Envelope) bool
 
-	// Deprecated: entities looking to act as peers should implement SendEnvelope instead.
-	// Send will be removed in v0.38.
-	Send(byte, []byte) bool
-
-	// Deprecated: entities looking to act as peers should implement TrySendEnvelope instead.
-	// TrySend will be removed in v0.38.
-	TrySend(byte, []byte) bool
-
 	Set(string, interface{})
 	Get(string) interface{}
 }
@@ -260,64 +252,22 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 // SendEnvelope sends the message in the envelope on the channel specified by the
 // envelope. Returns false if the connection times out trying to place the message
 // onto its internal queue.
-// Using SendEnvelope allows for tracking the message bytes sent and received by message type
-// as a metric which Send cannot support.
 func (p *peer) SendEnvelope(e Envelope) bool {
-	if !p.IsRunning() {
-		return false
-	} else if !p.hasChannel(e.ChannelID) {
-		return false
-	}
-	msg := e.Message
-	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
-	if w, ok := msg.(Wrapper); ok {
-		msg = w.Wrap()
-	}
-	msgBytes, err := proto.Marshal(msg)
-	if err != nil {
-		p.Logger.Error("marshaling message to send", "error", err)
-		return false
-	}
-	res := p.Send(e.ChannelID, msgBytes)
-	if res {
-		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
-	}
-	return res
-}
-
-// Send msg bytes to the channel identified by chID byte. Returns false if the
-// send queue is full after timeout, specified by MConnection.
-// SendEnvelope replaces Send which will be deprecated in a future release.
-func (p *peer) Send(chID byte, msgBytes []byte) bool {
-	if !p.IsRunning() {
-		return false
-	} else if !p.hasChannel(chID) {
-		return false
-	}
-	res := p.mconn.Send(chID, msgBytes)
-	if res {
-		labels := []string{
-			"peer_id", string(p.ID()),
-			"chID", fmt.Sprintf("%#x", chID),
-		}
-		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
-	}
-	return res
+	return p.send(e.ChannelID, e.Message, p.mconn.Send)
 }
 
 // TrySendEnvelope attempts to sends the message in the envelope on the channel specified by the
 // envelope. Returns false immediately if the connection's internal queue is full
-// Using TrySendEnvelope allows for tracking the message bytes sent and received by message type
-// as a metric which TrySend cannot support.
 func (p *peer) TrySendEnvelope(e Envelope) bool {
+	return p.send(e.ChannelID, e.Message, p.mconn.TrySend)
+}
+
+func (p *peer) send(chID byte, msg proto.Message, sendFunc func(byte, []byte) bool) bool {
 	if !p.IsRunning() {
-		// see Switch#Broadcast, where we fetch the list of peers and loop over
-		// them - while we're looping, one peer may be removed and stopped.
 		return false
-	} else if !p.hasChannel(e.ChannelID) {
+	} else if !p.hasChannel(chID) {
 		return false
 	}
-	msg := e.Message
 	metricLabelValue := p.mlc.ValueToMetricLabel(msg)
 	if w, ok := msg.(Wrapper); ok {
 		msg = w.Wrap()
@@ -327,29 +277,14 @@ func (p *peer) TrySendEnvelope(e Envelope) bool {
 		p.Logger.Error("marshaling message to send", "error", err)
 		return false
 	}
-	res := p.TrySend(e.ChannelID, msgBytes)
-	if res {
-		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
-	}
-	return res
-}
-
-// TrySend msg bytes to the channel identified by chID byte. Immediately returns
-// false if the send queue is full.
-// TrySendEnvelope replaces TrySend which will be deprecated in a future release.
-func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
-	if !p.IsRunning() {
-		return false
-	} else if !p.hasChannel(chID) {
-		return false
-	}
-	res := p.mconn.TrySend(chID, msgBytes)
+	res := sendFunc(chID, msgBytes)
 	if res {
 		labels := []string{
 			"peer_id", string(p.ID()),
 			"chID", fmt.Sprintf("%#x", chID),
 		}
 		p.metrics.PeerSendBytesTotal.With(labels...).Add(float64(len(msgBytes)))
+		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
 	}
 	return res
 }
@@ -474,15 +409,11 @@ func createMConnection(
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageReceiveBytesTotal.With("message_type", p.mlc.ValueToMetricLabel(msg)).Add(float64(len(msgBytes)))
-		if nr, ok := reactor.(ReceiveEnveloper); ok {
-			nr.ReceiveEnvelope(Envelope{
-				ChannelID: chID,
-				Src:       p,
-				Message:   msg,
-			})
-		} else {
-			reactor.Receive(chID, p, msgBytes)
-		}
+		reactor.ReceiveEnvelope(Envelope{
+			ChannelID: chID,
+			Src:       p,
+			Message:   msg,
+		})
 	}
 
 	onError := func(r interface{}) {

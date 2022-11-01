@@ -81,24 +81,6 @@ func (tr *TestReactor) ReceiveEnvelope(e Envelope) {
 	}
 }
 
-func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
-	var msg *p2pproto.Message
-	err := proto.Unmarshal(msgBytes, msg)
-	if err != nil {
-		panic(err)
-	}
-	um, err := msg.Unwrap()
-	if err != nil {
-		panic(err)
-	}
-
-	tr.ReceiveEnvelope(Envelope{
-		ChannelID: chID,
-		Src:       peer,
-		Message:   um,
-	})
-}
-
 func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 	tr.mtx.Lock()
 	defer tr.mtx.Unlock()

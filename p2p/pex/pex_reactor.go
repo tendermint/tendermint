@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosmos/gogoproto/proto"
-
 	"github.com/tendermint/tendermint/libs/cmap"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -298,23 +296,6 @@ func (r *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	default:
 		r.Logger.Error(fmt.Sprintf("Unknown message type %T", msg))
 	}
-}
-
-func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	var msg *tmp2p.Message
-	err := proto.Unmarshal(msgBytes, msg)
-	if err != nil {
-		panic(err)
-	}
-	um, err := msg.Unwrap()
-	if err != nil {
-		panic(err)
-	}
-	r.ReceiveEnvelope(p2p.Envelope{
-		ChannelID: chID,
-		Src:       peer,
-		Message:   um,
-	})
 }
 
 // enforces a minimum amount of time between requests
