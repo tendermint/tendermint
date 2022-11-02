@@ -28,12 +28,12 @@ This selection is random, but has a configurable bias towards peers that have
 been marked as good peers.
 The [Peer Exchange protocol](./pex-protocol.md) retrieves random samples of
 addresses to offer (send) to peers.
-This selection is also random but it include, in particular for nodes that
+This selection is also random but it includse, in particular for nodes that
 operate in seed mode, some bias toward peers marked as good ones.
 
 ## Buckets
 
-Peer addresses are stored into buckets.
+Peer addresses are stored in buckets.
 There are buckets for new addresses and buckets for old addresses.
 The buckets for new addresses store addresses of peers about which the node
 does not have much information; the first address registered for a peer ID is
@@ -79,7 +79,7 @@ The second (external) hash is reduced to bucket indexes, in the interval from 0
 to the number of new (`newBucketCount = 256`) or old (`oldBucketCount = 64`) buckets.
 
 Notice that new addresses with sources from the same network group are more
-likely to end up in, therefore to compete for, the same bucket.
+likely to end up in the same bucket, therefore to competing for it.
 For old address, instead, two addresses are more likely to end up in the same
 bucket when they belong to the same network group.
 
