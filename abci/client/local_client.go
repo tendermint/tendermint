@@ -22,8 +22,6 @@ var _ Client = (*localClient)(nil)
 
 // NewLocalClient creates a local client, which will be directly calling the
 // methods of the given app.
-//
-// Both Async and Sync methods ignore the given context.Context parameter.
 func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(tmsync.Mutex)
