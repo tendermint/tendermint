@@ -28,7 +28,7 @@ This selection is random, but has a configurable bias towards peers that have
 been marked as good peers.
 The [Peer Exchange protocol](./pex-protocol.md) retrieves random samples of
 addresses to offer (send) to peers.
-This selection is also random but it includse, in particular for nodes that
+This selection is also random but it includes, in particular for nodes that
 operate in seed mode, some bias toward peers marked as good ones.
 
 ## Buckets
