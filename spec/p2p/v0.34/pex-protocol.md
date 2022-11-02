@@ -34,9 +34,9 @@ It is thus reasonable to assume that the common case is that a peer needs more
 peer addresses, so that PEX requests are sent whenever the above two situations happen.
 
 A PEX request is sent when a new *outbound* peer is added.
-The same does not happen with new inbound peers
-because outbound peers, that the node has dialed, are considered more trustworthy
-than inbound peers, that the node has accepted.
+The same does not happen with new inbound peers because the implementation
+considers outbound peers, that the node has chosen for dialing, more
+trustworthy than inbound peers, that the node has accepted.
 Moreover, when a node is short of peer addresses, it dials the configured seed nodes;
 since they are added as outbound peers, the node can immediately request peer addresses.
 
