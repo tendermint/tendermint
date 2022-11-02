@@ -264,6 +264,10 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 	})
 }
 
+// TODO: This test tests that we don't panic and are able to generate new
+// PeerIDs for each peer we add. It seems as though we should be able to test
+// this in a much more direct way.
+// https://github.com/tendermint/tendermint/issues/9639
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 1
@@ -279,7 +283,12 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 
 	for i := 0; i < mempool.MaxActiveIDs+1; i++ {
 		peer := mock.NewPeer(nil)
-		reactor.Receive(mempool.MempoolChannel, peer, []byte{0x1, 0x2, 0x3})
+		reactor.ReceiveEnvelope(p2p.Envelope{
+			ChannelID: mempool.MempoolChannel,
+			Src:       peer,
+			Message:   &memproto.Message{}, // This uses the wrong message type on purpose to stop the peer as in an error state in the reactor.
+		},
+		)
 		reactor.AddPeer(peer)
 	}
 }
