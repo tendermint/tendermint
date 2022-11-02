@@ -52,7 +52,7 @@ title: Methods
       that happens on startup or on recovery.
     * The returned `app_version` will be included in the Header of every block.
     * Tendermint expects `last_block_app_hash` and `last_block_height` to
-      be updated during and persisted during `Commit`.
+      be updated and persisted during `Commit`.
 
 > Note: Semantic version is a reference to [semantic versioning](https://semver.org/). Semantic versions in info will be displayed as X.X.x.
 
