@@ -44,7 +44,7 @@ title: Methods
     | version             | string | The application software semantic version           | 2            |
     | app_version         | uint64 | The application protocol version                    | 3            |
     | last_block_height   | int64  | Latest height for which the app persisted its state | 4            |
-    | last_block_app_hash | bytes  | Latest AppHash returned by `FinalizeBlock`          | 5            |
+    | last_block_app_hash | bytes  | Latest AppHash returned by `Commit`                 | 5            |
 
 * **Usage**:
     * Return information about the application state.
@@ -52,7 +52,7 @@ title: Methods
       that happens on startup or on recovery.
     * The returned `app_version` will be included in the Header of every block.
     * Tendermint expects `last_block_app_hash` and `last_block_height` to
-      be updated during `FinalizeBlock` and persisted during `Commit`.
+      be updated during and persisted during `Commit`.
 
 > Note: Semantic version is a reference to [semantic versioning](https://semver.org/). Semantic versions in info will be displayed as X.X.x.
 
