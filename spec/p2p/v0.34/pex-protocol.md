@@ -93,7 +93,7 @@ the PEX reactor.
 
 ### Misbehavior
 
-Requesting peer addresses to often is considered a misbehavior.
+Requesting peer addresses too often is considered a misbehavior.
 Since node are expected to send PEX requests every `ensurePeersPeriod`,
 the minimum accepted interval between requests from the same peer is set
 to `ensurePeersPeriod / 3`, 10 seconds by default.
@@ -120,7 +120,7 @@ Seed nodes crawl the network, connecting to random peers and sending PEX
 requests to them, in order to learn as many peer addresses as possible.
 More specifically, a node operating in seed mode sends PEX requests in two cases:
 
-1. When a outbound peer is added, and the seed node needs more peer addresses,
+1. When an outbound peer is added, and the seed node needs more peer addresses,
    it requests peer addresses to the new peer
 2. Periodically, the `crawlPeersRoutine` sends PEX requests to a random set of
    peers, whose addresses are registered in the Address Book
