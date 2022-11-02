@@ -270,7 +270,7 @@ bucket is moved (downgraded) to a bucket of new addresses.
 Moving the peer address to a bucket of old addresses has the effect of
 upgrading, or increasing the ranking of a peer in the address book.
 
-**Note** In v0.34 a peers is currently marked good only from the consensus reactor 
+**Note** In v0.34 a peer is currently marked good only from the consensus reactor 
 whenever it delivers a correct consensus message.
 
 ## Bad peers
@@ -282,7 +282,7 @@ It is invoked by the [PEX reactor](pex-protocol.md#misbehavior), with banning ti
 - When PEX requests are received too often from a peer
 - When an invalid PEX response is received from a peer
 - When an unsolicited PEX response is received from a peer
-- When the `maxAttemptsToDial` a limit (`16`) is reached for a peer
+- When the `maxAttemptsToDial` limit (`16`) is reached for a peer
 - If an `ErrSwitchAuthenticationFailure` error is returned when dialing a peer
 
 The effect of this action is that the address registered for the peer's ID in the
@@ -315,7 +315,7 @@ node IDs are removed from the `badPeers` map.
 The `RemoveAddress` method removes an address from the address book.
 
 It is invoked by the switch when it dials a peer or accepts a connection from a
-peer that end ups being the node itself (`IsSelf` error).
+peer that ends up being the node itself (`IsSelf` error).
 In both cases, the address dialed or accepted is also added to the address book
 as a local address, via the `AddOurAddress` method.
 

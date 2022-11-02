@@ -39,7 +39,7 @@ the `SeedMode` configuration parameter:
 - Regular nodes run the `ensurePeersRoutine` to check whether the node has
   enough outbound peers, dialing peers when necessary
 - Seed nodes run the `crawlPeersRoutine` to periodically start a new round
-  of [crawling](./pex-protocol.md#Crawling-peers) to discover as much peer
+  of [crawling](./pex-protocol.md#Crawling-peers) to discover as many peer
   addresses as possible
 
 ### Errors
@@ -53,7 +53,7 @@ are returned and cause the reactor startup to fail.
 An exception is made for DNS resolution `ErrNetAddressLookup` errors,
 which are not deemed fatal and are only logged as invalid addresses.
 
-If none of the configured seed node adresses is valid, and the loaded address
+If none of the configured seed node addresses is valid, and the loaded address
 book is empty, the reactor is not started and an error is returned.
 
 ## OnStop
