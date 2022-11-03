@@ -400,7 +400,7 @@ func createMConnection(
 	onReceive := func(chID byte, msgBytes []byte) {
 		before := time.Now()
 		defer func() {
-			p.metrics.MessageReceiveTime.Observe(float64(time.Since(before)))
+			p.metrics.MessageReceiveTime.Observe(time.Since(before).Seconds())
 		}()
 		reactor := reactorsByCh[chID]
 		if reactor == nil {
