@@ -23,6 +23,9 @@ var _ Client = (*unsyncLocalClient)(nil)
 //
 // Unlike NewLocalClient, it does not hold a mutex around the application, so
 // it is up to the application to manage its synchronization properly.
+//
+// The supplied mutex is intended exclusively to protect the callback, which
+// can be updated through SetResponseCallback.
 func NewUnsyncLocalClient(mtx *tmsync.RWMutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(tmsync.RWMutex)
