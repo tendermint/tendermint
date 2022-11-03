@@ -40,6 +40,29 @@ func (l *localClientCreator) NewABCIClient() (abcicli.Client, error) {
 }
 
 //---------------------------------------------------------------
+// unsynchronized local proxy on an in-proc app (no mutex)
+
+type unsyncLocalClientCreator struct {
+	app types.Application
+}
+
+// NewUnsyncLocalClientCreator returns a ClientCreator for the given app, which
+// will be running locally. Unlike NewLocalClientCreator, this leaves
+// synchronization up to the application.
+//
+// Clients created with this creator only implement the sync methods, so any
+// calls to async methods will result in a panic.
+func NewUnsyncLocalClientCreator(app types.Application) ClientCreator {
+	return &unsyncLocalClientCreator{
+		app: app,
+	}
+}
+
+func (l *unsyncLocalClientCreator) NewABCIClient() (abcicli.Client, error) {
+	return abcicli.NewUnsyncLocalClient(nil, l.app), nil
+}
+
+//---------------------------------------------------------------
 // remote proxy opens new connections to an external app process
 
 type remoteClientCreator struct {
@@ -83,6 +106,12 @@ func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 			panic(err)
 		}
 		return NewLocalClientCreator(app)
+	case "e2e_sync":
+		app, err := e2e.NewSyncApplication(e2e.DefaultConfig(dbDir))
+		if err != nil {
+			panic(err)
+		}
+		return NewUnsyncLocalClientCreator(app)
 	case "noop":
 		return NewLocalClientCreator(types.NewBaseApplication())
 	default:
