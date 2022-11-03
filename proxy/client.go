@@ -56,7 +56,7 @@ func NewUnsyncLocalClientCreator(app types.Application) ClientCreator {
 }
 
 func (l *unsyncLocalClientCreator) NewABCIClient() (abcicli.Client, error) {
-	return abcicli.NewUnsyncLocalClient(nil, l.app), nil
+	return abcicli.NewUnsyncLocalClient(l.app), nil
 }
 
 //---------------------------------------------------------------

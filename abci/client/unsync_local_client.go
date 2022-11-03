@@ -1,9 +1,10 @@
 package abcicli
 
 import (
+	"sync"
+
 	types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
 type unsyncLocalClient struct {
@@ -12,7 +13,7 @@ type unsyncLocalClient struct {
 	types.Application
 
 	// This mutex is exclusively used to protect the callback.
-	mtx *tmsync.RWMutex
+	mtx sync.RWMutex
 	Callback
 }
 
@@ -23,16 +24,9 @@ var _ Client = (*unsyncLocalClient)(nil)
 //
 // Unlike NewLocalClient, it does not hold a mutex around the application, so
 // it is up to the application to manage its synchronization properly.
-//
-// The supplied mutex is intended exclusively to protect the callback, which
-// can be updated through SetResponseCallback.
-func NewUnsyncLocalClient(mtx *tmsync.RWMutex, app types.Application) Client {
-	if mtx == nil {
-		mtx = new(tmsync.RWMutex)
-	}
+func NewUnsyncLocalClient(app types.Application) Client {
 	cli := &unsyncLocalClient{
 		Application: app,
-		mtx:         mtx,
 	}
 	cli.BaseService = *service.NewBaseService(nil, "unsyncLocalClient", cli)
 	return cli
