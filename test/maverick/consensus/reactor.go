@@ -396,7 +396,7 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 }
 
 func (conR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	var msg *tmcons.Message
+	msg := &tmcons.Message{}
 	err := proto.Unmarshal(msgBytes, msg)
 	if err != nil {
 		panic(err)

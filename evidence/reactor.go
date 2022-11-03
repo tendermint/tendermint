@@ -93,7 +93,7 @@ func (evR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 }
 
 func (evR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
-	var msg *tmproto.EvidenceList
+	msg := &tmproto.EvidenceList{}
 	err := proto.Unmarshal(msgBytes, msg)
 	if err != nil {
 		panic(err)
