@@ -49,9 +49,6 @@ type unsyncLocalClientCreator struct {
 // NewUnsyncLocalClientCreator returns a ClientCreator for the given app, which
 // will be running locally. Unlike NewLocalClientCreator, this leaves
 // synchronization up to the application.
-//
-// Clients created with this creator only implement the sync methods, so any
-// calls to async methods will result in a panic.
 func NewUnsyncLocalClientCreator(app types.Application) ClientCreator {
 	return &unsyncLocalClientCreator{
 		app: app,
