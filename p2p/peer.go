@@ -64,6 +64,12 @@ type EnvelopeSender interface {
 //
 // Deprecated: Will be removed in v0.37.
 func SendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
+	before := time.Now()
+	defer func() {
+		if pp, ok := p.(*peer); ok {
+			pp.metrics.MessageSendTime.Observe(float64(time.Since(before)))
+		}
+	}()
 	/*
 		if es, ok := p.(EnvelopeSender); ok {
 			return es.SendEnvelope(e)
@@ -88,9 +94,17 @@ func SendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 //
 // Deprecated: Will be removed in v0.37.
 func TrySendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
-	if es, ok := p.(EnvelopeSender); ok {
-		return es.SendEnvelope(e)
-	}
+	before := time.Now()
+	defer func() {
+		if pp, ok := p.(*peer); ok {
+			pp.metrics.MessageSendTime.Observe(float64(time.Since(before)))
+		}
+	}()
+	/*
+		if es, ok := p.(EnvelopeSender); ok {
+			return es.SendEnvelope(e)
+		}
+	*/
 	msg := e.Message
 	if w, ok := msg.(Wrapper); ok {
 		msg = w.Wrap()
@@ -512,6 +526,10 @@ func createMConnection(
 ) *tmconn.MConnection {
 
 	onReceive := func(chID byte, msgBytes []byte) {
+		before := time.Now()
+		defer func() {
+			p.metrics.MessageReceiveTime.Observe(float64(time.Since(before)))
+		}()
 		reactor := reactorsByCh[chID]
 		if reactor == nil {
 			// Note that its ok to panic here as it's caught in the conn._recover,

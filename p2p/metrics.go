@@ -39,8 +39,13 @@ type Metrics struct {
 	NumTxs metrics.Gauge
 	// Number of bytes of each message type received.
 	MessageReceiveBytesTotal metrics.Counter
+
 	// Number of bytes of each message type sent.
 	MessageSendBytesTotal metrics.Counter
+	// Histogram of message receive duration.
+	MessageReceiveTime metrics.Histogram
+	// Histogram of message send duration.
+	MessageSendTime metrics.Histogram
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -94,6 +99,22 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "message_send_bytes_total",
 			Help:      "Number of bytes of each message type sent.",
 		}, append(labels, "message_type")).With(labelsAndValues...),
+		MessageReceiveTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_receive_time",
+			Help:      "Histogram of message receive duration.",
+
+			Buckets: stdprometheus.ExponentialBucketsRange(0.05, 50, 8),
+		}, labels).With(labelsAndValues...),
+		MessageSendTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_send_time",
+			Help:      "Histogram of message send duration.",
+
+			Buckets: stdprometheus.ExponentialBucketsRange(0.05, 50, 8),
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -106,6 +127,8 @@ func NopMetrics() *Metrics {
 		NumTxs:                   discard.NewGauge(),
 		MessageReceiveBytesTotal: discard.NewCounter(),
 		MessageSendBytesTotal:    discard.NewCounter(),
+		MessageReceiveTime:       discard.NewHistogram(),
+		MessageSendTime:          discard.NewHistogram(),
 	}
 }
 
