@@ -25,6 +25,10 @@ type Metrics struct {
 	PeerPendingSendBytes metrics.Gauge
 	// Number of transactions submitted by each peer.
 	NumTxs metrics.Gauge
+	// Histogram of message receive duration.
+	MessageReceiveTime metrics.Histogram
+	// Histogram of message send duration.
+	MessageSendTime metrics.Histogram
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -66,6 +70,22 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "num_txs",
 			Help:      "Number of transactions submitted by each peer.",
 		}, append(labels, "peer_id")).With(labelsAndValues...),
+		MessageReceiveTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_receive_time",
+			Help:      "Histogram of message receive duration.",
+
+			Buckets: stdprometheus.ExponentialBucketsRange(0.05, 50, 8),
+		}, labels).With(labelsAndValues...),
+		MessageSendTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_send_time",
+			Help:      "Histogram of message send duration.",
+
+			Buckets: stdprometheus.ExponentialBucketsRange(0.05, 50, 8),
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -77,5 +97,7 @@ func NopMetrics() *Metrics {
 		PeerSendBytesTotal:    discard.NewCounter(),
 		PeerPendingSendBytes:  discard.NewGauge(),
 		NumTxs:                discard.NewGauge(),
+		MessageReceiveTime:    discard.NewHistogram(),
+		MessageSendTime:       discard.NewHistogram(),
 	}
 }

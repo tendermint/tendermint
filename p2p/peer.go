@@ -257,6 +257,10 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
+	before := time.Now()
+	defer func() {
+		p.metrics.MessageSendTime.Observe(float64(time.Since(before)))
+	}()
 	res := p.mconn.Send(chID, msgBytes)
 	if res {
 		labels := []string{
@@ -276,6 +280,10 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	} else if !p.hasChannel(chID) {
 		return false
 	}
+	before := time.Now()
+	defer func() {
+		p.metrics.MessageSendTime.Observe(float64(time.Since(before)))
+	}()
 	res := p.mconn.TrySend(chID, msgBytes)
 	if res {
 		labels := []string{
@@ -390,6 +398,10 @@ func createMConnection(
 ) *tmconn.MConnection {
 
 	onReceive := func(chID byte, msgBytes []byte) {
+		before := time.Now()
+		defer func() {
+			p.metrics.MessageReceiveTime.Observe(float64(time.Since(before)))
+		}()
 		reactor := reactorsByCh[chID]
 		if reactor == nil {
 			// Note that its ok to panic here as it's caught in the conn._recover,
