@@ -28,6 +28,7 @@
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
+- [rpc] \#9650 Enable caching of RPC responses (@JayT106)
 
 ### BUG FIXES
 
