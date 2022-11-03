@@ -70,11 +70,9 @@ func SendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 			pp.metrics.MessageSendTime.Observe(time.Since(before).Seconds())
 		}
 	}()
-	/*
-		if es, ok := p.(EnvelopeSender); ok {
-			return es.SendEnvelope(e)
-		}
-	*/
+	if es, ok := p.(EnvelopeSender); ok {
+		return es.SendEnvelope(e)
+	}
 	msg := e.Message
 	if w, ok := msg.(Wrapper); ok {
 		msg = w.Wrap()
@@ -100,11 +98,9 @@ func TrySendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 			pp.metrics.MessageSendTime.Observe(time.Since(before).Seconds())
 		}
 	}()
-	/*
-		if es, ok := p.(EnvelopeSender); ok {
-			return es.SendEnvelope(e)
-		}
-	*/
+	if es, ok := p.(EnvelopeSender); ok {
+		return es.SendEnvelope(e)
+	}
 	msg := e.Message
 	if w, ok := msg.(Wrapper); ok {
 		msg = w.Wrap()
@@ -554,17 +550,15 @@ func createMConnection(
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageReceiveBytesTotal.With("message_type", p.mlc.ValueToMetricLabel(msg)).Add(float64(len(msgBytes)))
-		/*
-			if nr, ok := reactor.(EnvelopeReceiver); ok {
-				nr.ReceiveEnvelope(Envelope{
-					ChannelID: chID,
-					Src:       p,
-					Message:   msg,
-				})
-			} else {
-		*/
-		reactor.Receive(chID, p, msgBytes)
-		//		}
+		if nr, ok := reactor.(EnvelopeReceiver); ok {
+			nr.ReceiveEnvelope(Envelope{
+				ChannelID: chID,
+				Src:       p,
+				Message:   msg,
+			})
+		} else {
+			reactor.Receive(chID, p, msgBytes)
+		}
 	}
 
 	onError := func(r interface{}) {
