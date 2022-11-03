@@ -259,7 +259,7 @@ func (p *peer) Send(chID byte, msgBytes []byte) bool {
 	}
 	before := time.Now()
 	defer func() {
-		p.metrics.MessageSendTime.Observe(float64(time.Since(before)))
+		p.metrics.MessageSendTime.Observe(time.Since(before).Seconds())
 	}()
 	res := p.mconn.Send(chID, msgBytes)
 	if res {
@@ -282,7 +282,7 @@ func (p *peer) TrySend(chID byte, msgBytes []byte) bool {
 	}
 	before := time.Now()
 	defer func() {
-		p.metrics.MessageSendTime.Observe(float64(time.Since(before)))
+		p.metrics.MessageSendTime.Observe(time.Since(before).Seconds())
 	}()
 	res := p.mconn.TrySend(chID, msgBytes)
 	if res {
