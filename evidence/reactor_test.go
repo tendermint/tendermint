@@ -384,6 +384,8 @@ func TestLegacyReactorReceiveBasic(t *testing.T) {
 		reactor = reactors[0]
 		peer    = &p2pmocks.Peer{}
 	)
+	quitChan := make(<-chan struct{})
+	peer.On("Quit").Return(quitChan)
 
 	reactor.InitPeer(peer)
 	reactor.AddPeer(peer)
