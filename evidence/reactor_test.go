@@ -9,6 +9,7 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/log/term"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -368,6 +369,31 @@ func exampleVote(t byte) *types.Vote {
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
 	}
+}
+func TestLegacyReactorReceiveBasic(t *testing.T) {
+	config := cfg.TestConfig()
+	N := 1
+
+	stateDBs := make([]sm.Store, N)
+	val := types.NewMockPV()
+	stateDBs[0] = initializeValidatorState(val, 1)
+
+	reactors, _ := makeAndConnectReactorsAndPools(config, stateDBs)
+
+	var (
+		reactor = reactors[0]
+		peer    = &p2pmocks.Peer{}
+	)
+
+	reactor.InitPeer(peer)
+	reactor.AddPeer(peer)
+	e := &tmproto.EvidenceList{}
+	msg, err := proto.Marshal(e)
+	assert.NoError(t, err)
+
+	assert.NotPanics(t, func() {
+		reactor.Receive(evidence.EvidenceChannel, peer, msg)
+	})
 }
 
 //nolint:lll //ignore line length for tests
