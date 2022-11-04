@@ -415,6 +415,34 @@ func TestReactorHelperMode(t *testing.T) {
 	}
 }
 
+func TestLegacyReactorReceiveBasic(t *testing.T) {
+	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(config.ChainID(), 1, false, 30)
+	params := testReactorParams{
+		logger:      log.TestingLogger(),
+		genDoc:      genDoc,
+		privVals:    privVals,
+		startHeight: 20,
+		mockA:       true,
+	}
+	reactor := newTestReactor(params)
+	mockSwitch := &mockSwitchIo{switchedToConsensus: false}
+	reactor.io = mockSwitch
+	peer := p2p.CreateRandomPeer(false)
+
+	reactor.InitPeer(peer)
+	reactor.AddPeer(peer)
+	m := &bcproto.StatusRequest{}
+	wm := m.Wrap()
+	msg, err := proto.Marshal(wm)
+	assert.NoError(t, err)
+
+	assert.NotPanics(t, func() {
+		reactor.Receive(BlockchainChannel, peer, msg)
+	})
+}
+
 func TestReactorSetSwitchNil(t *testing.T) {
 	config := cfg.ResetTestRoot("blockchain_reactor_v2_test")
 	defer os.RemoveAll(config.RootDir)

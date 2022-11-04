@@ -498,6 +498,22 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	assert.Equal(t, size, book.Size())
 }
 
+func TestLegacyReactorReceiveBasic(t *testing.T) {
+	pexR, _ := createReactor(&ReactorConfig{})
+	peer := p2p.CreateRandomPeer(false)
+
+	pexR.InitPeer(peer)
+	pexR.AddPeer(peer)
+	m := &tmp2p.PexAddrs{}
+	wm := m.Wrap()
+	msg, err := proto.Marshal(wm)
+	assert.NoError(t, err)
+
+	assert.NotPanics(t, func() {
+		pexR.Receive(PexChannel, peer, msg)
+	})
+}
+
 func TestPEXReactorDialPeer(t *testing.T) {
 	pexR, book := createReactor(&ReactorConfig{})
 	defer teardownReactor(book)

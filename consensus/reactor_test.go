@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -255,7 +256,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}, css)
 }
 
-func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
+func TestLegacyReactorReceiveBasicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	N := 1
 	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	defer cleanup()
@@ -277,6 +278,35 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 			Message: &tmcons.HasVote{Height: 1,
 				Round: 1, Index: 1, Type: tmproto.PrevoteType},
 		})
+		reactor.AddPeer(peer)
+	})
+}
+
+func TestLegacyReactorReceiveBasic(t *testing.T) {
+	N := 1
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, _, eventBuses := startConsensusNet(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	var (
+		reactor = reactors[0]
+		peer    = p2pmock.NewPeer(nil)
+	)
+
+	reactor.InitPeer(peer)
+	v := &tmcons.HasVote{
+		Height: 1,
+		Round:  1,
+		Index:  1,
+		Type:   tmproto.PrevoteType,
+	}
+	w := v.Wrap()
+	msg, err := proto.Marshal(w)
+	assert.NoError(t, err)
+
+	assert.NotPanics(t, func() {
+		reactor.Receive(StateChannel, peer, msg)
 		reactor.AddPeer(peer)
 	})
 }

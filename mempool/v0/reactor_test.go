@@ -10,6 +10,7 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/log/term"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -291,6 +292,31 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		)
 		reactor.AddPeer(peer)
 	}
+}
+
+func TestLegacyReactorReceiveBasic(t *testing.T) {
+	config := cfg.TestConfig()
+	const N = 1
+	reactors := makeAndConnectReactors(config, N)
+	var (
+		reactor = reactors[0]
+		peer    = mock.NewPeer(nil)
+	)
+	defer func() {
+		err := reactor.Stop()
+		assert.NoError(t, err)
+	}()
+
+	reactor.InitPeer(peer)
+	reactor.AddPeer(peer)
+	m := &memproto.Txs{}
+	wm := m.Wrap()
+	msg, err := proto.Marshal(wm)
+	assert.NoError(t, err)
+
+	assert.NotPanics(t, func() {
+		reactor.Receive(mempool.MempoolChannel, peer, msg)
+	})
 }
 
 // mempoolLogger is a TestingLogger which uses a different
