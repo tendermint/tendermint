@@ -645,73 +645,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-<<<<<<< HEAD
-=======
-  /header:
-    get:
-      summary: Get header at a specified height
-      operationId: header
-      parameters:
-        - in: query
-          name: height
-          schema:
-            type: integer
-            default: 0
-            example: 1
-          description: height to return. If no height is provided, it will fetch the latest header.
-      tags:
-        - Info
-      description: |
-        Get Header.
-
-        If the `height` field is set to a non-default value, upon success, the
-        `Cache-Control` header will be set with the default maximum age.
-      responses:
-        "200":
-          description: Header informations.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BlockHeader"
-        "500":
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-  /header_by_hash:
-    get:
-      summary: Get header by hash
-      operationId: header_by_hash
-      parameters:
-        - in: query
-          name: hash
-          description: header hash
-          required: true
-          schema:
-            type: string
-            example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
-      tags:
-        - Info
-      description: |
-        Get Header By Hash.
-
-        Upon success, the `Cache-Control` header will be set with the default
-        maximum age.
-      responses:
-        "200":
-          description: Header informations.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BlockHeader"
-        "500":
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
->>>>>>> 816c6bac0 (rpc: Add caching support (#9650))
   /block:
     get:
       summary: Get block at a specified height
@@ -791,15 +724,11 @@ paths:
       tags:
         - Info
       description: |
-<<<<<<< HEAD
         Get block_results. When the `discard_abci_responses` storage flag is
         enabled, this endpoint will return an error.
-=======
-        Get block_results.
 
         If the `height` field is set to a non-default value, upon success, the
         `Cache-Control` header will be set with the default maximum age.
->>>>>>> 816c6bac0 (rpc: Add caching support (#9650))
       responses:
         "200":
           description: Block results.
@@ -879,15 +808,10 @@ paths:
       tags:
         - Info
       description: |
-<<<<<<< HEAD
         Get Validators. Validators are sorted by voting power.
-=======
-        Get Validators. Validators are sorted first by voting power
-        (descending), then by address (ascending).
 
         If the `height` field is set to a non-default value, upon success, the
         `Cache-Control` header will be set with the default maximum age.
->>>>>>> 816c6bac0 (rpc: Add caching support (#9650))
       responses:
         "200":
           description: Commit results.
