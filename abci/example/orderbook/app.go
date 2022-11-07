@@ -33,6 +33,7 @@ type StateMachine struct {
 }
 
 func New() *StateMachine {
+	StateMachine := StateMachine {}
 	return &StateMachine{}
 }
 
@@ -285,12 +286,11 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 			}
 
 		case *Msg_MsgTradeSet:
+			// for each matched order
+			// check the accounts exist, that the signatures are valid and that they have the available funds to make the swap
 			if err := m.MsgTradeSet.TradeSet.ValidateBasic(); err != nil {
 				return rejectProposal()
 			}
-
-			// for each matched order 
-			// check the accounts exist, that the signatures are valid and that they have the available funds to make the swap
 
 		default:
 			return rejectProposal()

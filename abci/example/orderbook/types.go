@@ -39,7 +39,6 @@ func (msg *MsgAsk) ValidateBasic() error {
 		return errors.New("invalid signature size")
 	}
 
-
 	//quantity to be more than 0
 	// price to not be 0
 
@@ -92,26 +91,44 @@ func (p *Pair) ValidateBasic() error {
 
 func (o *OrderBid) ValidateBasic() error {
 	if o.MaxQuantity == 0 {
-		return errors.New("quantity outbound must be non zero")
+		return errors.New("max quantity must be non zero")
 	}
 
 	if o.MaxPrice <= 0 {
 		return errors.New("min price must be greater than 0")
 	}
-	
+
 	return nil
 }
+// check signatures are valid
 
 func (m *MatchedOrder) ValidateBasic() error {
 	if len(m.OrderAsk.Signature) != ed25519.SignatureSize {
 		return errors.New("invalid signature size")
 	}
+
+	if len(m.OrderBid.Signature) != ed25519.SignatureSize {
+		return errors.New("invalid signature size")
+	}
+	return nil
 }
 
 func (t *TradeSet) ValidateBasic() error {
-	return t.Pair.ValidateBasic()
-	return t.MatchedOrders.ValidateBasic()
+	for _, matchedOrder := range t.MatchedOrders {
+		if err := matchedOrder.ValidateBasic(); err != nil {
+			return err
+		}
+		// checking if there is an account
+		if matchedOrder.OrderAsk.OwnerId == 0 {
+			return errors.New("must have an owner id more than zero")
+		}
+	}
+	// validate the pairs are valid
+	if err := t.Pair.ValidateBasic(); err != nil {
+		return err
+	}
 
+	return nil
 }
 
 func (o *OrderAsk) ValidateBasic() error {
