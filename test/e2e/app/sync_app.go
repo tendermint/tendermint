@@ -11,7 +11,7 @@ import (
 // implemented in a thread-safe way.
 type SyncApplication struct {
 	mtx sync.RWMutex
-	app abci.Application
+	app *Application
 }
 
 var _ abci.Application = (*SyncApplication)(nil)
@@ -22,7 +22,7 @@ func NewSyncApplication(cfg *Config) (abci.Application, error) {
 		return nil, err
 	}
 	return &SyncApplication{
-		app: app,
+		app: app.(*Application),
 	}, nil
 }
 
