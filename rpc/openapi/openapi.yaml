@@ -216,6 +216,9 @@ paths:
         Please refer to
         https://docs.tendermint.com/v0.34/tendermint-core/using-tendermint.html#formatting
         for formatting/encoding rules.
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
       parameters:
         - in: query
           name: tx
@@ -623,9 +626,12 @@ paths:
       tags:
         - Info
       description: |
-        Get block headers for minHeight <= height maxHeight.
+        Get block headers for minHeight <= height <= maxHeight.
 
         At most 20 items will be returned.
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
       responses:
         "200":
           description: Block headers, returned in descending order (highest first).
@@ -655,6 +661,9 @@ paths:
         - Info
       description: |
         Get Block.
+
+        If the `height` field is set to a non-default value, upon success, the
+        `Cache-Control` header will be set with the default maximum age.
       responses:
         "200":
           description: Block informations.
@@ -684,6 +693,9 @@ paths:
         - Info
       description: |
         Get Block By Hash.
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
       responses:
         "200":
           description: Block informations.
@@ -704,7 +716,7 @@ paths:
       parameters:
         - in: query
           name: height
-          description: height to return. If no height is provided, it will fetch informations regarding the latest block.
+          description: height to return. If no height is provided, it will fetch information regarding the latest block.
           schema:
             type: integer
             default: 0
@@ -714,6 +726,9 @@ paths:
       description: |
         Get block_results. When the `discard_abci_responses` storage flag is
         enabled, this endpoint will return an error.
+
+        If the `height` field is set to a non-default value, upon success, the
+        `Cache-Control` header will be set with the default maximum age.
       responses:
         "200":
           description: Block results.
@@ -743,6 +758,9 @@ paths:
         - Info
       description: |
         Get Commit.
+
+        If the `height` field is set to a non-default value, upon success, the
+        `Cache-Control` header will be set with the default maximum age.
       responses:
         "200":
           description: |
@@ -791,6 +809,9 @@ paths:
         - Info
       description: |
         Get Validators. Validators are sorted by voting power.
+
+        If the `height` field is set to a non-default value, upon success, the
+        `Cache-Control` header will be set with the default maximum age.
       responses:
         "200":
           description: Commit results.
@@ -812,6 +833,9 @@ paths:
         - Info
       description: |
         Get genesis.
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
       responses:
         "200":
           description: Genesis results.
@@ -890,6 +914,9 @@ paths:
         - Info
       description: |
         Get consensus parameters.
+
+        If the `height` field is set to a non-default value, upon success, the
+        `Cache-Control` header will be set with the default maximum age.
       responses:
         "200":
           description: consensus parameters results.
@@ -1080,14 +1107,14 @@ paths:
       parameters:
         - in: query
           name: hash
-          description: transaction Hash to retrive
+          description: hash of transaction to retrieve
           required: true
           schema:
             type: string
             example: "0xD70952032620CC4E2737EB8AC379806359D8E0B17B0488F627997A0B043ABDED"
         - in: query
           name: prove
-          description: Include proofs of the transactions inclusion in the block
+          description: Include proofs of the transaction's inclusion in the block
           required: false
           schema:
             type: boolean
@@ -1096,7 +1123,10 @@ paths:
       tags:
         - Info
       description: |
-        Get a trasasction
+        Get a transaction
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
       responses:
         "200":
           description: Get a transaction`
@@ -1112,12 +1142,15 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
   /abci_info:
     get:
-      summary: Get some info about the application.
+      summary: Get info about the application.
       operationId: abci_info
       tags:
         - ABCI
       description: |
-        Get some info about the application.
+        Get info about the application.
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
       responses:
         "200":
           description: Get some info about the application.
