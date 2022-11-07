@@ -7,15 +7,17 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/tendermint/tendermint/test/e2e/app"
+	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
 // Config is the application configuration.
 type Config struct {
-	ChainID          string `toml:"chain_id"`
-	Listen           string
-	Protocol         string
-	Dir              string
+	ChainID          string                      `toml:"chain_id"`
+	Listen           string                      `toml:"listen"`
+	Protocol         string                      `toml:"protocol"`
+	Dir              string                      `toml:"dir"`
 	Mode             string                      `toml:"mode"`
+	SyncApp          bool                        `toml:"sync_app"`
 	PersistInterval  uint64                      `toml:"persist_interval"`
 	SnapshotInterval uint64                      `toml:"snapshot_interval"`
 	RetainBlocks     uint64                      `toml:"retain_blocks"`
@@ -62,6 +64,10 @@ func (cfg Config) Validate() error {
 		return errors.New("chain_id parameter is required")
 	case cfg.Listen == "" && cfg.Protocol != "builtin":
 		return errors.New("listen parameter is required")
+	case cfg.SyncApp && cfg.Protocol != string(e2e.ProtocolBuiltin):
+		return errors.New("sync_app parameter is only relevant for builtin applications")
+	case cfg.SyncApp && cfg.Mode != string(e2e.ModeFull) && cfg.Mode != string(e2e.ModeValidator):
+		return errors.New("sync_app parameter is only relevant to full nodes and validators")
 	default:
 		return nil
 	}
