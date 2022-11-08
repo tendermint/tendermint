@@ -356,7 +356,10 @@ The previous code snippets do not incroporate these in peer banning. If we adopt
 - Handling of transactions failing `CheckTx`: Keeping track of how often transactions from a particular peer have failed
   and banning them if the conditions for a ban are met.
 
+### Impact on ABCI 
 
+- Introduction of new response codes for CheckTx
+- Altering the specification to reflect this change
 
 ### References
 
