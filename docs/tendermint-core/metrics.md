@@ -35,10 +35,10 @@ The following metrics are available:
 | `consensus_rounds`                       | Gauge     |                   | Number of rounds                                                                                                                           |
 | `consensus_num_txs`                      | Gauge     |                   | Number of transactions                                                                                                                     |
 | `consensus_total_txs`                    | Gauge     |                   | Total number of transactions committed                                                                                                     |
-| `consensus_block_parts`                  | Counter   | `peer_id`         | number of blockparts transmitted by peer                                                                                                   |
+| `consensus_block_parts`                  | Counter   | `peer_id`         | Number of blockparts transmitted by peer                                                                                                   |
 | `consensus_latest_block_height`          | Gauge     |                   | /status sync\_info number                                                                                                                  |
-| `consensus_block_syncing`                | Gauge     |                   | either 0 (not block syncing) or 1 (syncing)                                                                                                |
-| `consensus_state_syncing`                | Gauge     |                   | either 0 (not state syncing) or 1 (syncing)                                                                                                |
+| `consensus_block_syncing`                | Gauge     |                   | Either 0 (not block syncing) or 1 (syncing)                                                                                                |
+| `consensus_state_syncing`                | Gauge     |                   | Either 0 (not state syncing) or 1 (syncing)                                                                                                |
 | `consensus_block_size_bytes`             | Gauge     |                   | Block size in bytes                                                                                                                        |
 | `consensus_step_duration`                | Histogram | `step`            | Histogram of durations for each step in the consensus protocol                                                                             |
 | `consensus_round_duration`               | Histogram |                   | Histogram of durations for all the rounds that have occurred since the process started                                                     |
@@ -50,18 +50,18 @@ The following metrics are available:
 | `consensus_round_voting_power_percent`   | Gauge     | `vote_type`       | A value between 0 and 1.0 representing the percentage of the total voting power per vote type received within a round                      |
 | `consensus_late_votes`                   | Counter   | `vote_type`       | Number of votes received by the node since process start that correspond to earlier heights and rounds than this node is currently in.     |
 | `p2p_peers`                              | Gauge     |                   | Number of peers node's connected to                                                                                                        |
-| `p2p_peer_receive_bytes_total`           | Counter   | `peer_id`, `chID` | number of bytes per channel received from a given peer                                                                                     |
-| `p2p_peer_send_bytes_total`              | Counter   | `peer_id`, `chID` | number of bytes per channel sent to a given peer                                                                                           |
-| `p2p_peer_pending_send_bytes`            | Gauge     | `peer_id`         | number of pending bytes to be sent to a given peer                                                                                         |
-| `p2p_num_txs`                            | Gauge     | `peer_id`         | number of transactions submitted by each peer\_id                                                                                          |
-| `p2p_pending_send_bytes`                 | Gauge     | `peer_id`         | amount of data pending to be sent to peer                                                                                                  |
+| `p2p_peer_receive_bytes_total`           | Counter   | `peer_id`, `chID` | Number of bytes per channel received from a given peer                                                                                     |
+| `p2p_peer_send_bytes_total`              | Counter   | `peer_id`, `chID` | Number of bytes per channel sent to a given peer                                                                                           |
+| `p2p_peer_pending_send_bytes`            | Gauge     | `peer_id`         | Number of pending bytes to be sent to a given peer                                                                                         |
+| `p2p_num_txs`                            | Gauge     | `peer_id`         | Number of transactions submitted by each peer\_id                                                                                          |
+| `p2p_pending_send_bytes`                 | Gauge     | `peer_id`         | Amount of data pending to be sent to peer                                                                                                  |
 | `mempool_size`                           | Gauge     |                   | Number of uncommitted transactions                                                                                                         |
-| `mempool_tx_size_bytes`                  | Histogram |                   | transaction sizes in bytes                                                                                                                 |
-| `mempool_failed_txs`                     | Counter   |                   | number of failed transactions                                                                                                              |
-| `mempool_recheck_times`                  | Counter   |                   | number of transactions rechecked in the mempool                                                                                            |
-| `state_block_processing_time`            | Histogram |                   | time between BeginBlock and EndBlock in ms                                                                                                 |
-| `state_consensus_param_updates`          | Counter   |                   | number of consensus parameter updates returned by the application since process start                                                      |
-| `state_validator_set_updates`            | Counter   |                   | number of validator set updates returned by the application since process start                                                            |
+| `mempool_tx_size_bytes`                  | Histogram |                   | Transaction sizes in bytes                                                                                                                 |
+| `mempool_failed_txs`                     | Counter   |                   | Number of failed transactions                                                                                                              |
+| `mempool_recheck_times`                  | Counter   |                   | Number of transactions rechecked in the mempool                                                                                            |
+| `state_block_processing_time`            | Histogram |                   | Time between BeginBlock and EndBlock in ms                                                                                                 |
+| `state_consensus_param_updates`          | Counter   |                   | Number of consensus parameter updates returned by the application since process start                                                      |
+| `state_validator_set_updates`            | Counter   |                   | Number of validator set updates returned by the application since process start                                                            |
 
 ## Useful queries
 
