@@ -93,9 +93,7 @@ Any further mentions of `banning` will be agnostic to the actual way banning is 
 
 ### 1. What does banning a peer mean 
 
-Tendermint recognizes that peers can accept transactions into their mempool as valid but then when the state changes, they can become invalid.
-But, if a transaction could never have been valid, how can it pass a `CheckTx` at any node? What are the valid
-(non malicious reasons for such failures). 
+Tendermint recognizes that peers can accept transactions into their mempool as valid but then when the state changes, they can become invalid. There are also transactions that are received that could never have been valid (for examle due to misconfiguration on one node). 
 We thus differentiate two scenarios - a) where `CheckTx` fails due to reasons already 
 known and b) where `CheckTx` deems a transactions could never have been valid.
 
@@ -104,19 +102,19 @@ signaled with `ResponseCheckTx.code = 1` and the failures described in b), failu
 
 For a), a peer sends transactions that **repeatedly** fail CheckTx with `ResponseCheckTx.code = 1`, and is banned or disconnected from to avoid this. In this case we need to define what repeatedly means. 
 
-For b) we need to understand what is the potential reason a transaction could never have been valid on one node, but passes `CheckTx` on another node. 
+For b) we need to understand what is the potential reason a transaction could never have been valid on one node, but passes `CheckTx` on another node.  
 We need to understand all the possible scenarios in which this can happen:
 
 1. What happens if a node is misconfigured and allows, for example, very large transactions into the mempool. 
 This node would then gossip these transactions and they would always fail on other nodes. 
 Is this a scenario where we want nodes to disconnect from this peer and ban it without this peer being neccessarily malicious?
-2. Are all other reasons for this to happen sign of malicious behaviour where a node explicitly lies? 
-In such cases, peers should not only be banned, but punished as well (if they are validators). Note that 
-we cannot know whether a node is a validator. A proposal to gossip this behaviour to other peers pro-actively
-also entails a different set of problems with it - how do we know we can trust peers who tell us to ban other peers. 
+2. Are all other reasons for this to happen sign of malicious behaviour where a node explicitly lies? How can `CheckTx` pass on a valid node, but fail on another valid node with a `ResponseCheckTx.code > 1`?
+If such behaviour is only possible when a peer is malicious, should this peer be punished or banned forever? Note that 
+we cannot know whether a node is a validator in order for it to be punished. Gossiping this behaviour to other peers pro-actively
+also entails a different set of problems with it - how do we know we can trust peers who tell us to ban other peers. For these reasons, understanding the actual reason for these failures can be left for future work. 
 
-The later is most likely a potential future optimizations, where for now, we will disconnect and ban the peer regardless of the exact reason such a transaction 
-is never valid. 
+For now, we will disconnect and ban the peer regardless of the exact reason a transaction 
+is considered to never be valid. 
 
 #### **Banning in case of ResponseCheckTx.code = 1**
 
@@ -126,8 +124,7 @@ of times (`numFailures`) within a time interval (`lastFailure`). This time inter
 
 For each peer, we should have a separate `numFailures` and `lastFailure` variable. There is no need to  have one per transaction. Whenever a transaction fails, if the `now - lastFailure <= failureResetInterval`, then we increment the `numFailures` for this particular peer and set the `lastFailure` to `now`. Otherwise, we set `lastFailure` to `now` but do not increment the `numFailures`  variable. Once the value for `numFailures` for a peer reaches `maxAllowedFailures`, the peer is disconnected from and banned. 
 
-The reason for this logic is as follows: We deem it acceptable if every now and then a peer sends us an invalid transaction. But if this happens very frequently, then this behaviour can be considered as spamming and we want to disconnect from the peer.
-
+The reason for this logic is as follows: We deem it acceptable if every now and then a peer sends us an invalid transaction. But if this happens very frequently, then this behaviour can be considered as spamming and we want to disconnect from the peer. The actual values of these parameter are yet to be defined and should be based on the time it usually takes for a transacation to travel between two nodes, the time for a block to be agreed on and committed. [ToDo] What other factors can impact their value?
 
 *Banning a peer in case of duplicate transactions*
 
@@ -147,11 +144,11 @@ If a transaction fails since it could never have been valid, `CheckTx` returns a
 value greater than 1. In this case, the peer should be disconnected from and banned immediately without keeping count on how often 
 this has happened. 
 
-The question is whether this transaction should be kept track of in the mempool? We can still store it in 
-the cache so that we don't run `CheckTx` on it again. 
-However, there might not be the need to store all the peers that have sent us this transaction. 
+The question is whether this transaction should be kept track of in the cache? We can still store it in 
+the cache so that we don't run `CheckTx` on it again, but if this peer is immediately banned, maybe there is no need
+to store its information.
 
-Now, if we want to differentiate further reasons of why this transaction is sent to a node (whether it is a sign of malice or not), 
+Now, if we want to differentiate further reasons of why this transaction is sent to a node (whether it is a sign of malice or not),
 we might need more information on the actual reason for rejection. This could be done by an additional set of response codes provided by the application. 
 
 ### 2. Choosing the peer to ban
@@ -175,12 +172,10 @@ While an attack by simply banning peers on faling `CheckTx` is hard to imagine, 
 
 Should we keep transactions that could never have been valid in the cache? Assuming that receiving such transactions is rare, and the peer that sent them is banned, do we need to occupy space in the mempool cache with these transactions?
 
-An open question is, if a transaction comes from a banned peer, and is invalid, should the other - good peers, be banned for having sent it. Our current proposal is no, as this would potentially open an attack vector for malicious nodes to disconnect a node form good peers by sending bad transactions. 
-
 
 ## Implementation considerations
 
-When a transaction failes `CheckTx`,it is not stored in the mempool but **can** be stored in the cache. If it is in the cache, it cannot be resubmitted again (as it will be discovered in the cache and not checekd again). These two scenarios require different implementation of banning in case `CheckTx` failed. 
+When a transaction failes `CheckTx`,it is not stored in the mempool but **can** be stored in the cache. If it is in the cache, it cannot be resubmitted again (as it will be discovered in the cache and not checked again). These two scenarios require a different implementation of banning in case `CheckTx` failed. 
 
 In both cases we need to keep track of the peers that sent invalid transactions. If invalid transactions are  cached, we also need to keep track of the `CheckTx` response code for each transaction. Currently the `ResponseCheckTx` code is checked in `resCbFirstTime` of the mempool. If  invalid transactions are kept in the cache, the check is ran only when a transaction is 
 seen for the first time. Afterwards, the  transaction is cached, to avoid running `CheckTx` on transactions already checked. 
@@ -188,7 +183,7 @@ Thus when a transaction is received from a peer, if it is in the cache,
 `CheckTx` is not ran again, but the peers' ID is addded to the list of peers who sent this particular transaction.
 These transactions are rechecked once a block is committed to verify that they are still valid. 
 
-If invalid transactions are not kept in the cache, they can be resubmitted multiple times, and `CheckTx` will be executed on them upon submission therefor we do not need to remember the previous response codes for these transactions.
+If invalid transactions are not kept in the cache, they can be resubmitted multiple times, and `CheckTx` will be executed on them upon submission therefore we do not need to remember the previous response codes for these transactions.
 
 Currently there are two ways to implement peer banning based on the result of `CheckTx`:
 
@@ -241,8 +236,8 @@ if !mem.config.KeepInvalidTxsInCache || r.CheckTx.Code == abci.NeverValid {
 
 As said, this code will [never be executed](https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/mempool/v0/clist_mempool.go#L239) for transactions whose signature is found
 in the cache. 
-Instead of remembering the cached transactions, we could have had a valid/invalit bit per transaction within the cache. Currently, transactions themselves do not
-store such information. As we expect this scenario to be unlikely, instead of increasing the footprint of all transactions in the cache,
+Instead of remembering the cached transactions, we could have had a valid/invalit bit per transaction within the cache. As transactions themselves do not
+store such information and we expect this scenario to be unlikely, instead of increasing the footprint of all transactions in the cache,
 we opted to keep a map of transaction signature if the transaction is in the cache, but is invalid. Alternatively, the cache could keep two lists, one for valid, and one for invalid transactions. 
 This modifies the following pieces of code as follows (this is just a prototype and does not include 
 some obvious sanity checks):
@@ -300,7 +295,7 @@ if !mem.cache.Push(tx) { // if the transaction already exists in the cache
          // Check whether this peer has sent us transactions that fail
         if val, ok := mem.peerFailureMap[peerID]; ok {
          lastFailureT := val.lastFailure
-         numFails := val.numFails
+         numFails = val.numFails
         // if the failure was recent enough, update the number of failures and 
         // ban peer if applicable
         if time.Since(lastFailureT) <= failureResetInterval {
@@ -314,10 +309,11 @@ if !mem.cache.Push(tx) { // if the transaction already exists in the cache
     }
 ```
 If transactions with `ResponseCheckTx.code > 1` are not deleted from the cache and we want to ban them on the first offence,
-we can skip the second `if` in the code above but call `banPeer` immediately at the end of the function. The function `banPeer` should simply forward the `peerID` to the p2p layer. 
+we can skip the second `if` in the code above but call `banPeer` immediately at the end of the function. The function `banPeer` should simply forward the `peerID` to the p2p layer. In fact, we do not need to store any information on this peer as the node will remove it from its peer set.
 
 **Signaling the ban to p2p**
-As it is the mempool **reactor** that has access to the p2p layer, not the actualy mempool implementation, the peer banning function will most likely have to send the peer ID to a channel to inform the reactor of the fact that this peer should be banned. This would require adding a channel for communication into the `CListMempool` on construction, and adding a routine in the mempool ractor that waits on a response via this channel. However, the actual implementation of this is yet to be defined.
+
+As it is the mempool **reactor** that has access to the p2p layer, not the actual mempool implementation, the peer banning function will most likely have to send the peer ID to a channel to inform the reactor of the fact that this peer should be banned. This would require adding a channel for communication into the `CListMempool` on construction, and adding a routine in the mempool ractor that waits on a response via this channel. However, the actual implementation of this is yet to be defined.
 
 **Implementing peer banning on recheck**
 
@@ -332,7 +328,7 @@ us transactions the entire time between two blocks.
 frequently enough, this approach makes it hard to keep track of when exactly was a transaction submitted. 
 
 On the plus side this would avoid adding new logic to the mempool caching mechanism and keeping additional information about
-transaction validity.
+transaction validity. But we would still have to keep the information on peers and the frequency at which they send us bad transactions.
 
 Transactions that became invalid on recheck should not be cause for peer banning as they have not been gossiped as invalid transactions. 
 
