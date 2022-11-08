@@ -1,4 +1,4 @@
-# RFC 26: Mark peers as bad based on ResponseCheckTx
+# RFC 26: Banning peers based on ResponseCheckTx
 
 ## Changelog
 - Nov 4, 2022: Initial draft (jmalicevic)
