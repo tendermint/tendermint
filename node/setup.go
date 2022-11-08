@@ -8,7 +8,7 @@ import (
 	"net"
 	"strings"
 
-	_ "net/http/pprof" // nolint: gosec // securely exposed on separate, optional port
+	_ "net/http/pprof" //nolint: gosec // securely exposed on separate, optional port
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -106,13 +106,13 @@ type blockSyncReactor interface {
 
 func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&cfg.DBContext{"blockstore", config})
+	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: "blockstore", Config: config})
 	if err != nil {
 		return
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
-	stateDB, err = dbProvider(&cfg.DBContext{"state", config})
+	stateDB, err = dbProvider(&cfg.DBContext{ID: "state", Config: config})
 	if err != nil {
 		return
 	}
@@ -276,7 +276,7 @@ func createMempoolAndMempoolReactor(
 func createEvidenceReactor(config *cfg.Config, dbProvider cfg.DBProvider,
 	stateStore sm.Store, blockStore *store.BlockStore, logger log.Logger,
 ) (*evidence.Reactor, *evidence.Pool, error) {
-	evidenceDB, err := dbProvider(&cfg.DBContext{"evidence", config})
+	evidenceDB, err := dbProvider(&cfg.DBContext{ID: "evidence", Config: config})
 	if err != nil {
 		return nil, nil, err
 	}

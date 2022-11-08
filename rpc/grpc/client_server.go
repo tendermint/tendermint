@@ -27,7 +27,7 @@ func StartGRPCServer(env *core.Environment, ln net.Listener) error {
 // StartGRPCClient dials the gRPC server using protoAddr and returns a new
 // BroadcastAPIClient.
 func StartGRPCClient(protoAddr string) BroadcastAPIClient {
-	//nolint:staticcheck // SA1019 Existing use of deprecated but supported dial option.
+	//nolint: staticcheck // SA1019 Existing use of deprecated but supported dial option.
 	conn, err := grpc.Dial(protoAddr, grpc.WithInsecure(), grpc.WithContextDialer(dialerFunc))
 	if err != nil {
 		panic(err)

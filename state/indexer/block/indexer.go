@@ -23,7 +23,7 @@ import (
 func IndexerFromConfig(cfg *config.Config, dbProvider config.DBProvider, chainID string) (txindex.TxIndexer, indexer.BlockIndexer, error) {
 	switch cfg.TxIndex.Indexer {
 	case "kv":
-		store, err := dbProvider(&config.DBContext{"tx_index", cfg})
+		store, err := dbProvider(&config.DBContext{ID: "tx_index", Config: cfg})
 		if err != nil {
 			return nil, nil, err
 		}
