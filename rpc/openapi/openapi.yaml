@@ -911,6 +911,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /genesis_chunked:
+     get:
+      summary: Get Genesis Chunked
+      operationId: genesis_chunked
+      tags:
+        - Info
+      description: |
+        Get genesis chunked.
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
+      responses:
+        "200":
+          description: Genesis chunked results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenesisChunkedResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dump_consensus_state:
     get:
       summary: Get consensus state
