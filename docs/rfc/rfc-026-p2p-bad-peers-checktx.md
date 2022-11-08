@@ -326,6 +326,7 @@ However, this approach has several downsides:
 us transactions the entire time between two blocks. 
 - If we want to keep track of when peers sent us a traansaction and punish them only if the misbehaviour happens 
 frequently enough, this approach makes it hard to keep track of when exactly was a transaction submitted. 
+- Rechecking if optional and node operators can disable it. 
 
 On the plus side this would avoid adding new logic to the mempool caching mechanism and keeping additional information about
 transaction validity. But we would still have to keep the information on peers and the frequency at which they send us bad transactions.
