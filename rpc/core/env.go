@@ -61,7 +61,7 @@ type consensusReactor interface {
 	WaitSync() bool
 }
 
-//----------------------------------------------
+// ----------------------------------------------
 // Environment contains objects and interfaces used by the RPC. It is expected
 // to be setup once during startup.
 type Environment struct {

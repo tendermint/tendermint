@@ -45,7 +45,6 @@ func (s *Subscription) Out() <-chan Message {
 
 // Canceled returns a channel that's closed when the subscription is
 // terminated and supposed to be used in a select statement.
-//
 func (s *Subscription) Canceled() <-chan struct{} {
 	return s.canceled
 }
