@@ -76,7 +76,7 @@ Tendermint.
 
 ```bash
 go mod init kvstore
-go get github.com/tendermint/tendermint/@latest
+go get github.com/tendermint/tendermint@latest
 ```
 
 After running the above commands you will see two generated files, `go.mod` and `go.sum`. 
@@ -96,7 +96,7 @@ As you write the kvstore application, you can rebuild the binary by
 pulling any new dependencies and recompiling it.
 
 ```sh
-got get
+go get
 go build
 ```
 
@@ -109,7 +109,7 @@ defined in the ABCI [protobuf
 file](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/abci/types.proto).
 
 We begin by creating the basic scaffolding for an ABCI application by 
-creating a in a new type, `KVStoreApplication`, which implements the
+creating a new type, `KVStoreApplication`, which implements the
 methods defined by the `abcitypes.Application` interface.
 
 Create a file called `app.go` with the following contents:
@@ -121,7 +121,7 @@ import (
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 )
 
-type KVStoreApplication struct {}
+type KVStoreApplication struct{}
 
 var _ abcitypes.Application = (*KVStoreApplication)(nil)
 
@@ -129,73 +129,86 @@ func NewKVStoreApplication() *KVStoreApplication {
 	return &KVStoreApplication{}
 }
 
-func (KVStoreApplication) Info(req abcitypes.RequestInfo) abcitypes.ResponseInfo {
+func (app *KVStoreApplication) Info(info abcitypes.RequestInfo) abcitypes.ResponseInfo {
 	return abcitypes.ResponseInfo{}
 }
 
-func (KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
-	return abcitypes.ResponseDeliverTx{Code: 0}
+func (app *KVStoreApplication) Query(query abcitypes.RequestQuery) abcitypes.ResponseQuery {
+	return abcitypes.ResponseQuery{}
 }
 
-func (KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
-	return abcitypes.ResponseCheckTx{Code: 0}
+func (app *KVStoreApplication) CheckTx(tx abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
+	return abcitypes.ResponseCheckTx{}
 }
 
-func (KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	return abcitypes.ResponseCommit{}
-}
-
-func (KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
-	return abcitypes.ResponseQuery{Code: 0}
-}
-
-func (KVStoreApplication) InitChain(req abcitypes.RequestInitChain) abcitypes.ResponseInitChain {
+func (app *KVStoreApplication) InitChain(chain abcitypes.RequestInitChain) abcitypes.ResponseInitChain {
 	return abcitypes.ResponseInitChain{}
 }
 
-func (KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	return abcitypes.ResponseBeginBlock{}
-}
-
-func (KVStoreApplication) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndBlock {
-	return abcitypes.ResponseEndBlock{}
-}
-
-func (KVStoreApplication) ListSnapshots(abcitypes.RequestListSnapshots) abcitypes.ResponseListSnapshots {
-	return abcitypes.ResponseListSnapshots{}
-}
-
-func (KVStoreApplication) OfferSnapshot(abcitypes.RequestOfferSnapshot) abcitypes.ResponseOfferSnapshot {
-	return abcitypes.ResponseOfferSnapshot{}
-}
-
-func (KVStoreApplication) LoadSnapshotChunk(abcitypes.RequestLoadSnapshotChunk) abcitypes.ResponseLoadSnapshotChunk {
-	return abcitypes.ResponseLoadSnapshotChunk{}
-}
-
-func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk) abcitypes.ResponseApplySnapshotChunk {
-	return abcitypes.ResponseApplySnapshotChunk{}
-}
-
-func (app KVStoreApplication) PrepareProposal(proposal abcitypes.RequestPrepareProposal) abcitypes.ResponsePrepareProposal {
+func (app *KVStoreApplication) PrepareProposal(proposal abcitypes.RequestPrepareProposal) abcitypes.ResponsePrepareProposal {
 	return abcitypes.ResponsePrepareProposal{}
 }
 
-func (app KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcessProposal) abcitypes.ResponseProcessProposal {
+func (app *KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcessProposal) abcitypes.ResponseProcessProposal {
 	return abcitypes.ResponseProcessProposal{}
 }
 
+func (app *KVStoreApplication) BeginBlock(block abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
+	return abcitypes.ResponseBeginBlock{}
+}
+
+func (app *KVStoreApplication) DeliverTx(tx abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
+	return abcitypes.ResponseDeliverTx{}
+}
+
+func (app *KVStoreApplication) EndBlock(block abcitypes.RequestEndBlock) abcitypes.ResponseEndBlock {
+	return abcitypes.ResponseEndBlock{}
+}
+
+func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
+	return abcitypes.ResponseCommit{}
+}
+
+func (app *KVStoreApplication) ListSnapshots(snapshots abcitypes.RequestListSnapshots) abcitypes.ResponseListSnapshots {
+	return abcitypes.ResponseListSnapshots{}
+}
+
+func (app *KVStoreApplication) OfferSnapshot(snapshot abcitypes.RequestOfferSnapshot) abcitypes.ResponseOfferSnapshot {
+	return abcitypes.ResponseOfferSnapshot{}
+}
+
+func (app *KVStoreApplication) LoadSnapshotChunk(chunk abcitypes.RequestLoadSnapshotChunk) abcitypes.ResponseLoadSnapshotChunk {
+	return abcitypes.ResponseLoadSnapshotChunk{}
+}
+
+func (app *KVStoreApplication) ApplySnapshotChunk(chunk abcitypes.RequestApplySnapshotChunk) abcitypes.ResponseApplySnapshotChunk {
+	return abcitypes.ResponseApplySnapshotChunk{}
+}
 ```
 
 The types used here are defined in the Tendermint library and were added as a dependency
-to the project when you ran `go get`.
+to the project when you ran `go get`. If your IDE is not recognizing the types, go ahead and run the command again.
 
 ```bash
 go get github.com/tendermint/tendermint@latest
 ```
 
-You can recompile the application now, but it isn't very useful.
-So let's revisit the code adding the logic needed to implement our minimal key/value store.
+Now go back to the `main.go` and modify the `main` function so it matches the following, 
+where an instance of the `KVStoreApplication` type is created.
+
+```go
+func main() {
+    fmt.Println("Hello, Tendermint Core")
+
+    _ = NewKVStoreApplication()
+}
+```
+
+You can recompile and run the application now by running `go get` and `go build`, but it does
+not do anything.
+So let's revisit the code adding the logic needed to implement our minimal key/value store
+and to start it along with the Tendermint Service.
+
 
 
 ### 1.3.1 Add a persistent data store
@@ -214,7 +227,7 @@ Next, let's update the application and its constructor to receive a handle to th
 ```go
 type KVStoreApplication struct {
 	db           *badger.DB
-	pendingBlock *badger.Txn
+	onGoingBlock *badger.Txn
 }
 
 var _ abcitypes.Application = (*KVStoreApplication)(nil)
@@ -224,10 +237,10 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 }
 ```
 
-The pendingBlock keeps track of the transactions that will update the application's state when a block 
+The `onGoingBlock` keeps track of the transaction that will update the application's state when a block 
 is completed. Don't worry about it for now, we'll get to that later.
 
-Finally, update the import stanza at the top to include the Badger library:
+Next, update the `import` stanza at the top to include the Badger library:
 
 ```go
 import(
@@ -236,10 +249,15 @@ import(
 )
 ```
 
+Finally, update the `main.go` file to invoke the updated constructor:
+
+```go
+	_ = NewKVStoreApplication(nil)
+```
+
 ### 1.3.2 CheckTx
-
-
-When Tendermint Core receives a new transaction, Tendermint asks the application if the transaction is acceptable. 
+When Tendermint Core receives a new transaction from a client, Tendermint asks the application if 
+the transaction is acceptable, using the `CheckTx` method.
 
 In our application, a transaction is a string with the form `key=value`, indicating a key and value to write to the store.
 
@@ -302,28 +320,28 @@ application over three ABCI method calls: `BeginBlock`, `DeliverTx`, and `EndBlo
 
 - `BeginBlock` is called once to indicate to the application that it is about to
 receive a block.
-- `DeliverTx` is called repeatedly, once for each application transaction, `Tx` that was included in the block.
+- `DeliverTx` is called repeatedly, once for each application transaction that was included in the block.
 - `EndBlock` is called once to indicate to the application that no more transactions
-will be delivered to the application.
+will be delivered to the application in within this block.
 
-:Note: To implement these calls in our application we're going to make use of Badger's 
+Note that, to implement these calls in our application we're going to make use of Badger's 
 transaction mechanism. We will always refer to these as Badger transactions, not to
 confuse them with the transactions included in the blocks delieverd by Tendermint,
-the _blockchain transactions_.
+the _application transactions_.
 
-First, let's create a new Badger transaction during `BeginBlock` and return informing Tendermint
-that the application is ready to receive application transactions:
-
+First, let's create a new Badger transaction during `BeginBlock`. All application transactions in the
+current block will be executed within this Badger transaction.
+Then, return informing Tendermint that the application is ready to receive application transactions:
 
 ```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	app.pendingBlock = app.db.NewTransaction(true)
+	app.onGoingBlock = app.db.NewTransaction(true)
 	return abcitypes.ResponseBeginBlock{}
 }
 ```
 
 Next, let's modify `DeliverTx` to add the `key` and `value` to the database transaction every time our application
-receives a new transaction through `RequestDeliverTx`.
+receives a new application transaction through `RequestDeliverTx`.
 
 ```go
 func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
@@ -334,7 +352,7 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 	parts := bytes.SplitN(req.Tx, []byte("="), 2)
 	key, value := parts[0], parts[1]
 
-	if err := app.pendingBlock.Set(key, value); err != nil {
+	if err := app.onGoingBlock.Set(key, value); err != nil {
 		log.Panicf("Error reading database, unable to verify tx: %v", err)
 	}
 
@@ -352,7 +370,7 @@ no longer valid.
 
 Also note that we **cannot** commit the Badger transaction we are building during `DeliverTx`.
 Other methods, such as `Query`, rely on a consistent view of the application's state.
-The application should only update it state by committing the Badger transactions 
+The application should only update its state by committing the Badger transactions 
 when the full block has been delivered, in the `Commit` method.
 
 The `Commit` method tells the application that the full block has been delivered. 
@@ -361,7 +379,7 @@ persist the resulting state:
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	if err := app.pendingBlock.Commit(); err != nil {
+	if err := app.onGoingBlock.Commit(); err != nil {
 		log.Panicf("Error writing to database, unable to commit block: %v", err)
 	}
 	return abcitypes.ResponseCommit{Data: []byte{}}
@@ -381,14 +399,13 @@ import (
 ```
 
 You may have noticed that the application we are writing will crash if it receives
-an unexpected error from the database during the `DeliverTx` or `Commit` methods. This
-is not an accident. If the application received an error from the database, there 
+an unexpected error from the Badger database during the `DeliverTx` or `Commit` methods.
+This is not an accident. If the application received an error from the database, there 
 is no deterministic way for it to make progress so the only safe option is to terminate.
 
 ### 1.3.4 Query
-
-We'll want to read key/value pairs written to `kvstore` application.
-To do this, let's rewrite the Query method in `app.go`:
+When a client tries to read some information from the `kvstore`, the request will be
+handled in the `Query` method. To do this, let's rewrite the `Query` method in `app.go`:
 
 ```go
 func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
@@ -417,19 +434,21 @@ func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.Respo
 }
 ```
 
-### 1.3.5 PrepareProposal and ProcessProposal
-Finally, before we can run the application, we need to implement `PrepareProposal` and `ProcessProposal`.
-These two two methods were introduced in Tendermint 3.7.0 to give the application more control over
-the construction and processing of transaction blocks.
+Since it reads only committed data from the store, transactions that are part of a block
+that is still processed are not reflected in the query result.
 
-When Tendermint Core sees that valid transactions (validated throuch `CheckTx`) are available to be
+### 1.3.5 PrepareProposal and ProcessProposal
+`PrepareProposal` and `ProcessProposal` are methods introduced in Tendermint 3.7.0 
+to give the application more control over the construction and processing of transaction blocks.
+
+When Tendermint Core sees that valid transactions (validated through `CheckTx`) are available to be
 included in blocks, it groups some of these transactions and then gives the application a chance 
 to modify the group by invoking `PrepareProposal`.
 
 The application is free to modify the group before returning from the call.
 For example, the application may reorder or even remove transactions from the group to improve the
 execution of the block once accepted.
-In the following code, the application simply returns the unmodified group of transactions.
+In the following code, the application simply returns the unmodified group of transactions:
 
 ```go
 func (app *KVStoreApplication) PrepareProposal(proposal abcitypes.RequestPrepareProposal) abcitypes.ResponsePrepareProposal {
@@ -441,11 +460,8 @@ Once a proposed block is received by a node, the proposal is passed to the appli
 its blessing before voting to accept the proposal.
 
 This mechanism may be used for different reasons, for example to deal with blocks manipulated 
-by malicious nodes, in which case the block should not be considered valid, or for
-performing some pre-processing of the transactions in the block to improve performance 
-when they are later delivered in `DeliverTx`.
-
-The following code keeps things simple and simply accepts all proposals.
+by malicious nodes, in which case the block should not be considered valid.
+The following code simply accepts all proposals:
 
 ```go
 func (app *KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcessProposal) abcitypes.ResponseProcessProposal {
@@ -457,7 +473,7 @@ func (app *KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcess
 
 Now that we have the basic functionality of our application in place, let's put it all together inside of our main.go file.
 
-Add the following code to your `main.go` file:
+Change the contents of your`main.go` file to the following.
 
 
 ```go
@@ -566,7 +582,7 @@ func main() {
 
 This is a huge blob of code, so let's break it down into pieces.
 
-First, we use [viper](https://github.com/spf13/viper) to load the Tendermint Core configuration files, which we will generate later using the tendermint init command:
+First, we use [viper](https://github.com/spf13/viper) to load the Tendermint Core configuration files, which we will generate later:
 
 
 ```go
@@ -643,7 +659,7 @@ The additional logic at the end of the file allows the program to catch SIGTERM.
 	<-c
 ```
 
-## 1.5 Getting Up and Running
+## 1.5 Initializing and Running
 
 Our application is almost ready to run, but first we'll need to populate the Tendermint Core configuration files.
 The following command will create a `tendermint-home` directory in your project and add a basic set of configuration files in `tendermint-home/config/`.
@@ -652,7 +668,7 @@ For more information on what these files contain see [the configuration document
 From the root of your project, run:
 
 ```bash
-go run github.com/tendermint/tendermint/cmd/tendermint@v0.37.0-rc1 init --home /tmp/tendermint-home
+go run github.com/tendermint/tendermint/cmd/tendermint@v0.37.0 init --home /tmp/tendermint-home
 ```
 
 You should see an output similar to the following:
