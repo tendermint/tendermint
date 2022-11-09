@@ -12,6 +12,7 @@
 
 - Go API
   - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
+  - [light] \#9420 Default trust level has been modified to a more secure value of 2/3 (@cmwaters)
 
 - Blockchain Protocol
 
