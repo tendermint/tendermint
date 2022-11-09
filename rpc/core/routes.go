@@ -24,7 +24,13 @@ var Routes = map[string]*rpc.RPCFunc{
 	"block_by_hash":        rpc.NewRPCFunc(BlockByHash, "hash", rpc.Cacheable()),
 	"block_results":        rpc.NewRPCFunc(BlockResults, "height", rpc.Cacheable("height")),
 	"commit":               rpc.NewRPCFunc(Commit, "height", rpc.Cacheable("height")),
+<<<<<<< HEAD
 	"check_tx":             rpc.NewRPCFunc(CheckTx, "tx", rpc.Cacheable()),
+=======
+	"header":               rpc.NewRPCFunc(Header, "height", rpc.Cacheable("height")),
+	"header_by_hash":       rpc.NewRPCFunc(HeaderByHash, "hash", rpc.Cacheable()),
+	"check_tx":             rpc.NewRPCFunc(CheckTx, "tx"),
+>>>>>>> ffae184b6 (fix check_tx cache problem (#9690))
 	"tx":                   rpc.NewRPCFunc(Tx, "hash,prove", rpc.Cacheable()),
 	"tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page,order_by"),
 	"block_search":         rpc.NewRPCFunc(BlockSearch, "query,page,per_page,order_by"),
