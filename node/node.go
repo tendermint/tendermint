@@ -155,16 +155,6 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// If an address is provided, listen on the socket for a connection from an
-	// external signing process.
-	if config.PrivValidatorListenAddr != "" {
-		// FIXME: we should start services inside OnStart
-		privValidator, err = createPrivValidatorSocketClient(config.PrivValidatorListenAddr, genDoc.ChainID, logger)
-		if err != nil {
-			return nil, fmt.Errorf("error with private validator socket client: %w", err)
-		}
-	}
-
 	// Make MempoolReactor
 	mempool, mempoolReactor := createMempoolAndMempoolReactor(config, proxyApp, state, memplMetrics, logger)
 
@@ -305,6 +295,16 @@ func (n *Node) OnStart() error {
 	if genTime.After(now) {
 		n.Logger.Info("Genesis time is in the future. Sleeping until then...", "genTime", genTime)
 		time.Sleep(genTime.Sub(now))
+	}
+
+	// If an address is provided, listen on the socket for a connection from an
+	// external signing process. This will overwrite the privvalidator provided in the constructor
+	if n.config.PrivValidatorListenAddr != "" {
+		var err error
+		n.privValidator, err = createPrivValidatorSocketClient(n.config.PrivValidatorListenAddr, n.genesisDoc.ChainID, n.Logger)
+		if err != nil {
+			return fmt.Errorf("error with private validator socket client: %w", err)
+		}
 	}
 
 	pubKey, err := n.privValidator.GetPubKey()

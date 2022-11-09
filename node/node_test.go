@@ -191,6 +191,8 @@ func TestNodeSetPrivValTCP(t *testing.T) {
 
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	require.NoError(t, err)
+	require.NoError(t, n.Start())
+	defer n.Stop() //nolint:errcheck
 	assert.IsType(t, &privval.RetrySignerClient{}, n.PrivValidator())
 }
 
@@ -203,7 +205,7 @@ func TestPrivValidatorListenAddrNoProtocol(t *testing.T) {
 	config.BaseConfig.PrivValidatorListenAddr = addrNoPrefix
 
 	_, err := DefaultNewNode(config, log.TestingLogger())
-	assert.Error(t, err)
+	require.NoError(t, err)
 }
 
 func TestNodeSetPrivValIPC(t *testing.T) {
