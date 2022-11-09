@@ -18,8 +18,7 @@ process as the application.
 
 By following along this tutorial you will create a Tendermint Core application called kvstore, 
 a (very) simple distributed BFT key-value store.
-
-The application will be written in Go and use Tendermint as a library and  
+The application will be written in Go and  
 some understanding of the Go programming language is expected.
 If you have never written Go, you may want to go through [Learn X in Y minutes
 Where X=Go](https://learnxinyminutes.com/docs/go/) first, to familiarize
@@ -27,6 +26,20 @@ yourself with the syntax.
 
 Note: Please use the latest released version of this guide and of Tendermint.
 We strongly advise against using unreleased commits for your development.
+
+
+### Built-in app vs external app
+
+On the one hand, to get maximum performance you can run your application in 
+the same process as the Tendermint Core, as long as your application is written in Go. 
+[Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written
+this way. 
+This is the approach followed in this tutorial.
+
+On the other hand, having a separate application might give you better security 
+guarantees as two processes would be communicating via established binary protocol. 
+Tendermint Core will not have access to application's state. 
+If that is the way you with to proceed, use the [Writing a built-in Tendermint Core application in Go](./go.md) guide instead of this one.
 
 
 ## 1.1 Installing Go
@@ -37,8 +50,6 @@ Verify that you have the latest version of Go installed (refer to the [official 
 $ go version
 go version go1.19.2 darwin/amd64
 ```
-
-
 
 ## 1.2 Creating a new Go project
 
@@ -99,7 +110,6 @@ pulling any new dependencies and recompiling it.
 go get
 go build
 ```
-
 
 ## 1.3 Writing a Tendermint Core application
 
@@ -208,7 +218,6 @@ You can recompile and run the application now by running `go get` and `go build`
 not do anything.
 So let's revisit the code adding the logic needed to implement our minimal key/value store
 and to start it along with the Tendermint Service.
-
 
 
 ### 1.3.1 Add a persistent data store
@@ -326,7 +335,7 @@ will be delivered to the application in within this block.
 
 Note that, to implement these calls in our application we're going to make use of Badger's 
 transaction mechanism. We will always refer to these as Badger transactions, not to
-confuse them with the transactions included in the blocks delieverd by Tendermint,
+confuse them with the transactions included in the blocks delivered by Tendermint,
 the _application transactions_.
 
 First, let's create a new Badger transaction during `BeginBlock`. All application transactions in the
@@ -362,18 +371,24 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 
 Note that we check the validity of the transaction _again_ during `DeliverTx`.
 Transactions are not guaranteed to be valid when they are delivered to an
-application, even if they were valid when they were propoposed. 
+application, even if they were valid when they were proposed. 
 This can happen if the application state is used to determine transaction
 validity. Application state may have changed between the initial execution of `CheckTx`
 and the transaction delivery in `DeliverTx` in a way that rendered the transaction
 no longer valid.
 
-Also note that we **cannot** commit the Badger transaction we are building during `DeliverTx`.
-Other methods, such as `Query`, rely on a consistent view of the application's state.
-The application should only update its state by committing the Badger transactions 
-when the full block has been delivered, in the `Commit` method.
+`EndBlock` is called to inform the application that the full block has been delivered
+and give the application a chance to perform any other computation needed, before the 
+effects of the transactions become permanent.
 
-The `Commit` method tells the application that the full block has been delivered. 
+Note that `EndBlock` **cannot** yet commit the Badger transaction we were building 
+in during `DeliverTx`.
+Since other methods, such as `Query`, rely on a consistent view of the application's
+state, the application should only update its state by committing the Badger transactions 
+when the full block has been delivered and the `Commit` method is invoked.
+
+The `Commit` method tells the application to make permanent the effects of 
+the application transactions.
 Let's update the method to terminate the pending Badger transaction and
 persist the resulting state: 
 
@@ -602,6 +617,22 @@ First, we use [viper](https://github.com/spf13/viper) to load the Tendermint Cor
 	}
 ```
 
+Next, we initialize the Badger database and create an app instance.
+
+```go
+	dbPath := filepath.Join(homeDir, "badger")
+	db, err := badger.Open(badger.DefaultOptions(dbPath))
+	if err != nil {
+		log.Fatalf("Opening database: %v", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Fatalf("Closing database: %v", err)
+		}
+	}()
+
+	app := NewKVStoreApplication(db)
+```
 
 We use `FilePV`, which is a private validator (i.e. thing which signs consensus
 messages). Normally, you would use `SignerRemote` to connect to an external
@@ -691,7 +722,7 @@ Everything is now in place to run your application. Run:
 ./kvstore -tm-home /tmp/tendermint-home
 ```
 
-The application will start with and you should see a continuous output starting with:
+The application will start and you should see a continuous output starting with:
 
 ```bash
 badger 2022/11/09 09:08:50 INFO: All 0 tables opened in 0s
