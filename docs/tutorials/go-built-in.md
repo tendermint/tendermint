@@ -10,45 +10,35 @@ This guide is designed for beginners who want to get started with a Tendermint
 Core application from scratch. It does not assume that you have any prior
 experience with Tendermint Core.
 
-Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state
-transition machine - written in any programming language - and securely
-replicates it on many machines.
+Tendermint Core is a service that provides a Byzantine Fault Tolerant consensus engine
+for state-machine replication. The replicated state-machine, or "application", can be written
+in any language that can send and receive protocol buffer messages in a client-server model.
+Applications written in Go can also use Tendermint as a library and run the service in the same 
+process as the application. 
 
-Although Tendermint Core is written in the Golang programming language, prior
-knowledge of it is not required for this guide. You can learn it as we go due
-to it's simplicity. However, you may want to go through [Learn X in Y minutes
+By following along this tutorial you will create a Tendermint Core application called kvstore, 
+a (very) simple distributed BFT key-value store.
+
+The application will be written in Go and use Tendermint as a library. Hence,  
+some understanding of the Go programming language is expected.
+If you have never written Go, you may want to go through [Learn X in Y minutes
 Where X=Go](https://learnxinyminutes.com/docs/go/) first to familiarize
 yourself with the syntax.
 
-By following along with this guide, you'll create a Tendermint Core project
-called kvstore, a (very) simple distributed BFT key-value store.
+Note: Please use the latest released version of this guide and of Tendermint.
+We strongly advise against using unreleased commits for your development.
 
-## Built-in app vs external app
-
-Running your application inside the same process as Tendermint Core will give
-you the best possible performance.
-
-For other languages, your application have to communicate with Tendermint Core
-through a TCP, Unix domain socket or gRPC.
 
 ## 1.1 Installing Go
 
-Please refer to [the official guide for installing
-Go](https://golang.org/doc/install).
-
-Verify that you have the latest version of Go installed:
+Verify that you have the latest version of Go installed (refer to the [official guide for installing Go](https://golang.org/doc/install)):
 
 ```bash
 $ go version
-go version go1.13.1 darwin/amd64
+go version go1.19.2 darwin/amd64
 ```
 
-Make sure you have `$GOPATH` environment variable set:
 
-```bash
-$ echo $GOPATH
-/Users/melekes/go
-```
 
 ## 1.2 Creating a new Go project
 
@@ -57,19 +47,20 @@ We'll start by creating a new Go project.
 ```bash
 mkdir kvstore
 cd kvstore
+go mod init kvstore
 ```
 
-Inside the example directory create a `main.go` file with the following content:
+Inside the example directory, create a `main.go` file with the following content:
 
 ```go
 package main
 
 import (
-	"fmt"
+    "fmt"
 )
 
 func main() {
-	fmt.Println("Hello, Tendermint Core")
+    fmt.Println("Hello, Tendermint Core")
 }
 ```
 
@@ -83,12 +74,15 @@ Hello, Tendermint Core
 ## 1.3 Writing a Tendermint Core application
 
 Tendermint Core communicates with the application through the Application
-BlockChain Interface (ABCI). All message types are defined in the [protobuf
+BlockChain Interface (ABCI). The messages exchanged through the interface are 
+defined in the ABCI [protobuf
 file](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/abci/types.proto).
-This allows Tendermint Core to run applications written in any programming
-language.
 
-Create a file called `app.go` with the following content:
+We begin by creating the basic scaffolding for an ABCI application by 
+creating a in a new type, `KVStoreApplication`, with methods that implement 
+the ABCI `Application` interface.
+
+Create a file called `app.go` with the following contents:
 
 ```go
 package main
@@ -154,236 +148,348 @@ func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk
 }
 ```
 
-Now I will go through each method explaining when it's called and adding
-required business logic.
+These are the structure and methods that built-in Tendermint Core application must implement.
+They are defined in the Tendermint library and are imported using 'go get'.
 
-### 1.3.1 CheckTx
+```bash
+go get github.com/tendermint/tendermint@latest
+```
 
-When a new transaction is added to the Tendermint Core, it will ask the
-application to check it (validate the format, signatures, etc.).
+You can compile the application now, but it isn't very useful.
+So let's revisit the code adding the logic needed to implement our minimal key/value store.
+
+
+### 1.3.1 Add a persistent data store
+Our application will need to write its state out to persistent storage so that it
+can stop and start without losing all of its data.
+
+For this tutorial, we will use [BadgerDB](https://github.com/dgraph-io/badger), a
+a fast embedded key-value store. 
+
+First, add Badger as a dependency of your go module using the `go get` command:
+
+`go get github.com/dgraph-io/badger/v3`
+
+Next, let's update the application and its constructor to receive a handle to the database, as follows: 
 
 ```go
-import "bytes"
+type KVStoreApplication struct {
+	db           *badger.DB
+	pendingBlock *badger.Txn
+}
+```
 
-func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
+And change the constructor to set the appropriate field when creating the application:
+
+```go
+func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
+	return &KVStoreApplication{db: db}
+}
+```
+
+The pendingBlock keeps track of the transactions that will update the application's state when a block is completed. Don't worry about it for now, we'll get to that later.
+
+Finally, update the import stanza at the top to include the Badger library:
+
+```go
+import(
+	"github.com/dgraph-io/badger/v3"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
+)
+```
+
+### 1.3.2 CheckTx
+
+
+When Tendermint Core receives a new transaction, Tendermint asks the application if the transaction is acceptable. 
+
+In our application, a transaction is a string with the form `key=value`, indicating a key and value to write to the store.
+
+The most basic validation check we can perform is to check if the transaction conforms to the `key=value` pattern.
+For that, let's add the following helper method to app.go:
+
+```go
+func (app *KVStoreApplication) isValid(tx []byte) uint32 {
 	// check format
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) != 2 {
 		return 1
 	}
 
-	key, value := parts[0], parts[1]
-
-	// check if the same key=value already exists
-	err := app.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil && err != badger.ErrKeyNotFound {
-			return err
-		}
-		if err == nil {
-			return item.Value(func(val []byte) error {
-				if bytes.Equal(val, value) {
-					code = 2
-				}
-				return nil
-			})
-		}
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	return code
-}
-
-func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
-	code := app.isValid(req.Tx)
-	return abcitypes.ResponseCheckTx{Code: code, GasWanted: 1}
+	return 0
 }
 ```
 
-Don't worry if this does not compile yet.
-
-If the transaction does not have a form of `{bytes}={bytes}`, we return `1`
-code. When the same key=value already exist (same key and value), we return `2`
-code. For others, we return a zero code indicating that they are valid.
-
-Note that anything with non-zero code will be considered invalid (`-1`, `100`,
-etc.) by Tendermint Core.
-
-Valid transactions will eventually be committed given they are not too big and
-have enough gas. To learn more about gas, check out ["the
-specification"](https://github.com/tendermint/tendermint/blob/main/spec/abci/abci++_app_requirements.md#gas).
-
-For the underlying key-value store we'll use
-[badger](https://github.com/dgraph-io/badger), which is an embeddable,
-persistent and fast key-value (KV) database.
+Now you can rewrite the `CheckTx` method to use the helper function:
 
 ```go
-import "github.com/dgraph-io/badger"
-
-type KVStoreApplication struct {
-	db           *badger.DB
-	currentBatch *badger.Txn
-}
-
-func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
-	return &KVStoreApplication{
-		db: db,
-	}
+func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
+	code := app.isValid(req.Tx)
+	return abcitypes.ResponseCheckTx{Code: code}
 }
 ```
+
+While this CheckTx is simple and only validates that the transaction is well-formed, 
+it is very common for `CheckTx` to make more complex use of the state of an application.
+For example, you may refuse to overwrite an existing value, or you can associate 
+versions to the key/value pairs and allow the caller to specify a version to
+perform a conditional update.
+
+Depending on the checks and on the conditions violated, the function may return
+different values, but any response with a non-zero code will be considered invalid 
+by Tendermint. Our CheckTx logic returns 0 to Tendermint when a transaction passes 
+its validation checks. The specific value of the code is meaningless to Tendermint. 
+Non-zero codes are logged by Tendermint so applications can provide more specific 
+information on why the transaction was rejected.
+
+Note that CheckTx does not execute the transaction, it only verifies that that the transaction could be executed. We do not know yet if the rest of the network has agreed to accept this transaction into a block.
+
+
+Finally, make sure to add the bytes package to the your import stanza at the top of app.go:
+
+```go
+import(
+	"bytes"
+
+	"github.com/dgraph-io/badger/v3"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
+)
+```
+
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transfered to the
-application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
-responses are expected to come in order.
+When the Tendermint consensus engine has decided on the block, the block is transferred to the
+application over three ABCI method calls: `BeginBlock`, `DeliverTx`, and `EndBlock`.
+
+- `BeginBlock` is called once to indicate to the application that it is about to
+receive a block.
+- `DeliverTx` is called repeatedly, once for each `Tx` that was included in the block.
+- `EndBlock` is called once to indicate to the application that no more transactions
+will be delivered to the application.
+
+To implement these calls in our application we're going to make use of Badger's 
+transaction mechanism. Bagder uses the term _transaction_ in the context of databases,
+be careful not to confuse it with _blockchain transactions_.
+
+First, let's create a new Badger `Txn` during `BeginBlock`:
+
 
 ```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	app.currentBatch = app.db.NewTransaction(true)
+	app.pendingBlock = app.db.NewTransaction(true)
 	return abcitypes.ResponseBeginBlock{}
 }
-
 ```
 
-Here we create a batch, which will store block's transactions.
+Next, let's modify `DeliverTx` to add the `key` and `value` to the database `Txn` every time our application
+receives a new `RequestDeliverTx`.
+
 
 ```go
 func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
-	code := app.isValid(req.Tx)
-	if code != 0 {
+	if code := app.isValid(req.Tx); code != 0 {
 		return abcitypes.ResponseDeliverTx{Code: code}
 	}
 
-	parts := bytes.Split(req.Tx, []byte("="))
+	parts := bytes.SplitN(req.Tx, []byte("="), 2)
 	key, value := parts[0], parts[1]
 
-	err := app.currentBatch.Set(key, value)
-	if err != nil {
-		panic(err)
+	if err := app.pendingBlock.Set(key, value); err != nil {
+		log.Panicf("Error reading database, unable to verify tx: %v", err)
 	}
 
 	return abcitypes.ResponseDeliverTx{Code: 0}
 }
 ```
 
-If the transaction is badly formatted or the same key=value already exist, we
-again return the non-zero code. Otherwise, we add it to the current batch.
+Note that we check the validity of the transaction _again_ during `DeliverTx`.
+Transactions are not guaranteed to be valid when they are delivered to an
+application, even if they were valid when they were propoposed. 
+This can happen if the application state is used to determine transaction
+validity. Application state may have changed between when the `CheckTx` was initially
+called and when the transaction was delivered in `DeliverTx` in a way that rendered
+the transaction no longer valid.
 
-In the current design, a block can include incorrect transactions (those who
-passed CheckTx, but failed DeliverTx or transactions included by the proposer
-directly). This is done for performance reasons.
+Also note that we **cannot** commit the Badger `Txn` we are building during `DeliverTx`.
+Other methods, such as `Query`, rely on a consistent view of the application's state.
+The application should only update its state when the full block has been delivered.
 
-Note we can't commit transactions inside the `DeliverTx` because in such case
-`Query`, which may be called in parallel, will return inconsistent data (i.e.
-it will report that some value already exist even when the actual block was not
-yet committed).
+The Commit method indicates that the full block has been delivered. During Commit,
+the application should persist the pending Txn.
 
-`Commit` instructs the application to persist the new state.
+Let's modify our Commit method to persist the new state to the database:
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	app.currentBatch.Commit()
+	if err := app.pendingBlock.Commit(); err != nil {
+		log.Panicf("Error writing to database, unable to commit block: %v", err)
+	}
 	return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
 
-### 1.3.3 Query
-
-Now, when the client wants to know whenever a particular key/value exist, it
-will call Tendermint Core RPC `/abci_query` endpoint, which in turn will call
-the application's `Query` method.
-
-Applications are free to provide their own APIs. But by using Tendermint Core
-as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
-the unified API across different applications. Plus they won't have to call the
-otherwise separate Tendermint Core API for additional proofs.
-
-Note we don't include a proof here.
+Finally, make sure to add the log library to the import stanza as well:
 
 ```go
-func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {
-	resQuery.Key = reqQuery.Data
-	err := app.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(reqQuery.Data)
-		if err != nil && err != badger.ErrKeyNotFound {
-			return err
+import (
+	"bytes"
+	"log"
+
+	"github.com/dgraph-io/badger/v3"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
+)
+```
+
+You may have noticed that the application we are writing will crash if it receives
+an unexpected error from the database during the DeliverTx or Commit methods. This
+is not an accident. If the application received an error from the database, there 
+is no deterministic way for it to make progress so the only safe option is to terminate.
+
+### 1.3.4 Query
+
+
+We'll want to be able to determine if a transaction was committed to the state-machine. 
+To do this, let's implement the Query method in app.go:
+
+```go
+func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
+	resp := abcitypes.ResponseQuery{Key: req.Data}
+
+	dbErr := app.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(req.Data)
+		if err != nil {
+			if err != badger.ErrKeyNotFound {
+				return err
+			}
+			resp.Log = "key does not exist"
+			return nil
 		}
-		if err == badger.ErrKeyNotFound {
-			resQuery.Log = "does not exist"
-		} else {
-			return item.Value(func(val []byte) error {
-				resQuery.Log = "exists"
-				resQuery.Value = val
-				return nil
-			})
-		}
-		return nil
+
+		return item.Value(func(val []byte) error {
+			resp.Log = "exists"
+			resp.Value = val
+			return nil
+		})
 	})
-	if err != nil {
-		panic(err)
+	if dbErr != nil {
+		log.Panicf("Error reading database, unable to verify tx: %v", dbErr)
 	}
-	return
+	return resp
 }
 ```
 
-The complete specification can be found
-[here](https://github.com/tendermint/tendermint/tree/main/spec/abci/).
+
+### 1.3.5 Additional Methods
+
+You'll notice that we left several methods unchanged. Specifically, we have yet to 
+implement the `Info` and `InitChain` methods and we did not implement any of the
+`*Snapthot` methods. These methods are all important for running Tendermint 
+applications in production but are not required for getting a very simple 
+application up and running. To better understand these methods and why they are 
+useful, check out the Tendermint specification on 
+[ABCI](https://github.com/tendermint/tendermint/tree/main/spec/abci/).
+
+
+
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
-Put the following code into the "main.go" file:
+Now that we have the basic functionality of our application in place, let's put it all together inside of our main.go file.
+
+Add the following code to your main.go file:
+
 
 ```go
 package main
 
 import (
- "flag"
- "fmt"
- "os"
- "os/signal"
- "path/filepath"
- "syscall"
+	"flag"
+	"fmt"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/privval"
+	"github.com/tendermint/tendermint/proxy"
+	"log"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
- "github.com/dgraph-io/badger"
- "github.com/spf13/viper"
-
- abci "github.com/tendermint/tendermint/abci/types"
- cfg "github.com/tendermint/tendermint/config"
- tmflags "github.com/tendermint/tendermint/libs/cli/flags"
- "github.com/tendermint/tendermint/libs/log"
- nm "github.com/tendermint/tendermint/node"
- "github.com/tendermint/tendermint/p2p"
- "github.com/tendermint/tendermint/privval"
- "github.com/tendermint/tendermint/proxy"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/spf13/viper"
+	cfg "github.com/tendermint/tendermint/config"
+	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
+	tmlog "github.com/tendermint/tendermint/libs/log"
+	nm "github.com/tendermint/tendermint/node"
 )
 
-var configFile string
+var homeDir string
 
 func init() {
-	flag.StringVar(&configFile, "config", "$HOME/.tendermint/config/config.toml", "Path to config.toml")
+	flag.StringVar(&homeDir, "tm-home", "", "Path to the tendermint config directory (if empty, uses $HOME/.tendermint)")
 }
 
 func main() {
-	db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
-		os.Exit(1)
+	flag.Parse()
+	if homeDir == "" {
+		homeDir = os.ExpandEnv("$HOME/.tendermint")
 	}
-	defer db.Close()
+	config := cfg.DefaultConfig()
+
+	config.SetRoot(homeDir)
+
+	viper.SetConfigFile(fmt.Sprintf("%s/%s", homeDir, "config/config.toml"))
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Reading config: %v", err)
+	}
+	if err := viper.Unmarshal(config); err != nil {
+		log.Fatalf("Decoding config: %v", err)
+	}
+	if err := config.ValidateBasic(); err != nil {
+		log.Fatalf("Invalid configuration data: %v", err)
+	}
+
+	dbPath := filepath.Join(homeDir, "badger")
+	db, err := badger.Open(badger.DefaultOptions(dbPath))
+	if err != nil {
+		log.Fatalf("Opening database: %v", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Fatalf("Closing database: %v", err)
+		}
+	}()
+
 	app := NewKVStoreApplication(db)
 
-	flag.Parse()
+	pv := privval.LoadFilePV(
+		config.PrivValidatorKeyFile(),
+		config.PrivValidatorStateFile(),
+	)
 
-	node, err := newTendermint(app, configFile)
+	// read node key
+	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v", err)
-		os.Exit(2)
+		log.Fatalf("failed to load node's key: %v", err)
+	}
+
+	logger := tmlog.NewTMLogger(tmlog.NewSyncWriter(os.Stdout))
+	logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
+	if err != nil {
+		log.Fatalf("failed to parse log level: %v", err)
+	}
+	node, err := nm.NewNode(
+		config,
+		pv,
+		nodeKey,
+		proxy.NewLocalClientCreator(app),
+		nm.DefaultGenesisDocProviderFunc(config),
+		nm.DefaultDBProvider,
+		nm.DefaultMetricsProvider(config.Instrumentation),
+		logger)
+
+	if err != nil {
+		log.Fatalf("Creating node: %v", err)
 	}
 
 	node.Start()
@@ -395,184 +501,52 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
-	os.Exit(0)
-}
-
-func newTendermint(app abci.Application, configFile string) (*nm.Node, error) {
- // read config
- config := cfg.DefaultConfig()
- config.RootDir = filepath.Dir(filepath.Dir(configFile))
- viper.SetConfigFile(configFile)
- if err := viper.ReadInConfig(); err != nil {
-  return nil, fmt.Errorf("viper failed to read config file: %w", err)
- }
- if err := viper.Unmarshal(config); err != nil {
-  return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
- }
- if err := config.ValidateBasic(); err != nil {
-  return nil, fmt.Errorf("config is invalid: %w", err)
- }
-
- // create logger
- logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
- var err error
- logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel)
- if err != nil {
-  return nil, fmt.Errorf("failed to parse log level: %w", err)
- }
-
- // read private validator
- pv := privval.LoadFilePV(
-  config.PrivValidatorKeyFile(),
-  config.PrivValidatorStateFile(),
- )
-
- // read node key
- nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
- if err != nil {
-  return nil, fmt.Errorf("failed to load node's key: %w", err)
- }
-
- // create node
- node, err := nm.NewNode(
-  config,
-  pv,
-  nodeKey,
-  proxy.NewLocalClientCreator(app),
-  nm.DefaultGenesisDocProviderFunc(config),
-  nm.DefaultDBProvider,
-  nm.DefaultMetricsProvider(config.Instrumentation),
-  logger)
- if err != nil {
-  return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
- }
-
- return node, nil
 }
 ```
 
 This is a huge blob of code, so let's break it down into pieces.
 
-First, we initialize the Badger database and create an app instance:
+First, we use [viper](https://github.com/spf13/viper) to load the Tendermint Core configuration files, which we will generate later using the tendermint init command:
+
 
 ```go
-db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
-if err != nil {
-	fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
-	os.Exit(1)
-}
-defer db.Close()
-app := NewKVStoreApplication(db)
+	config := cfg.DefaultValidatorConfig()
+
+	config.SetRoot(homeDir)
+
+	viper.SetConfigFile(fmt.Sprintf("%s/%s", homeDir, "config/config.toml"))
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Reading config: %v", err)
+	}
+	if err := viper.Unmarshal(config); err != nil {
+		log.Fatalf("Decoding config: %v", err)
+	}
+	if err := config.ValidateBasic(); err != nil {
+		log.Fatalf("Invalid configuration data: %v", err)
+	}
 ```
 
-For **Windows** users, restarting this app will make badger throw an error as it requires value log to be truncated. For more information on this, visit [here](https://github.com/dgraph-io/badger/issues/744).
-This can be avoided by setting the truncate option to true, like this:
-
-```go
-db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
-```
-
-Then we use it to create a Tendermint Core `Node` instance:
-
-```go
-flag.Parse()
-
-node, err := newTendermint(app, configFile)
-if err != nil {
-	fmt.Fprintf(os.Stderr, "%v", err)
-	os.Exit(2)
-}
-
-...
-
-// create node
-node, err := nm.NewNode(
-	config,
-	pv,
-	nodeKey,
-	proxy.NewLocalClientCreator(app),
-	nm.DefaultGenesisDocProviderFunc(config),
-	nm.DefaultDBProvider,
-	nm.DefaultMetricsProvider(config.Instrumentation),
-	logger)
-if err != nil {
-	return nil, fmt.Errorf("failed to create new Tendermint node: %w", err)
-}
-```
-
-`NewNode` requires a few things including a configuration file, a private
-validator, a node key and a few others in order to construct the full node.
-
-Note we use `proxy.NewLocalClientCreator` here to create a local client instead
-of one communicating through a socket or gRPC.
-
-[viper](https://github.com/spf13/viper) is being used for reading the config,
-which we will generate later using the `tendermint init` command.
-
-```go
-config := cfg.DefaultConfig()
-config.RootDir = filepath.Dir(filepath.Dir(configFile))
-viper.SetConfigFile(configFile)
-if err := viper.ReadInConfig(); err != nil {
-	return nil, fmt.Errorf("viper failed to read config file: %w", err)
-}
-if err := viper.Unmarshal(config); err != nil {
-	return nil, fmt.Errorf("viper failed to unmarshal config: %w", err)
-}
-if err := config.ValidateBasic(); err != nil {
-	return nil, fmt.Errorf("config is invalid: %w", err)
-}
-```
 
 We use `FilePV`, which is a private validator (i.e. thing which signs consensus
 messages). Normally, you would use `SignerRemote` to connect to an external
 [HSM](https://kb.certus.one/hsm.html).
 
 ```go
-pv := privval.LoadFilePV(
-	config.PrivValidatorKeyFile(),
-	config.PrivValidatorStateFile(),
-)
-
+	pv := privval.LoadFilePV(
+		config.PrivValidatorKeyFile(),
+		config.PrivValidatorStateFile(),
+	)
 ```
 
 `nodeKey` is needed to identify the node in a p2p network.
 
 ```go
-nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
-if err != nil {
-	return nil, fmt.Errorf("failed to load node's key: %w", err)
-}
+	nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load node's key: %w", err)
+	}
 ```
 
-As for the logger, we use the build-in library, which provides a nice
-abstraction over [go-kit's
-logger](https://github.com/go-kit/kit/tree/master/log).
-
-```go
-logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-var err error
-logger, err = tmflags.ParseLogLevel(config.LogLevel, logger, cfg.DefaultLogLevel())
-if err != nil {
-	return nil, fmt.Errorf("failed to parse log level: %w", err)
-}
-```
-
-Finally, we start the node and add some signal handling to gracefully stop it
-upon receiving SIGTERM or Ctrl-C.
-
-```go
-node.Start()
-defer func() {
-	node.Stop()
-	node.Wait()
-}()
-
-c := make(chan os.Signal, 1)
-signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-<-c
-os.Exit(0)
-```
 
 ## 1.5 Getting Up and Running
 
