@@ -35,6 +35,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
+
+	_ "net/http/pprof" //nolint: gosec
 )
 
 // Node is the highest level interface to a full Tendermint node.

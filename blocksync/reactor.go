@@ -236,6 +236,7 @@ func (bcR *Reactor) Receive(e p2p.Envelope) {
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
 func (bcR *Reactor) poolRoutine(stateSynced bool) {
 	bcR.metrics.Syncing.Set(1)
+	defer bcR.metrics.Syncing.Set(0)
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	defer trySyncTicker.Stop()
@@ -314,7 +315,7 @@ FOR_LOOP:
 				// should only happen during testing
 				// }
 
-				break FOR_LOOP
+				return
 			}
 
 		case <-trySyncTicker.C: // chan time
@@ -410,7 +411,6 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 	}
-	bcR.metrics.Syncing.Set(0)
 }
 
 // BroadcastStatusRequest broadcasts `BlockStore` base and height.
