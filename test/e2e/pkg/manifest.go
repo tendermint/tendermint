@@ -69,8 +69,9 @@ type Manifest struct {
 	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
 	// TODO: add vote extension and finalize block delay (@cmwaters)
 
-	LoadTxSizeBytes int           `toml:"load_tx_size_bytes"`
-	LoadTxPeriod    time.Duration `toml:"load_tx_period"`
+	LoadTxSizeBytes      int `toml:"load_tx_size_bytes"`
+	LoadTxBatchSizeBytes int `toml:"load_tx_batch_size"`
+	LoadTxConnections    int `toml:"load_tx_connections"`
 }
 
 // ManifestNode represents a node in a testnet manifest.

@@ -64,7 +64,8 @@ type Testnet struct {
 	KeyType              string
 	Evidence             int
 	LoadTxSize           int
-	LoadTxPeriod         time.Duration
+	LoadTxBatchSize      int
+	LoadTxConnections    int
 	ABCIProtocol         string
 	PrepareProposalDelay time.Duration
 	ProcessProposalDelay time.Duration
@@ -122,7 +123,8 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		Nodes:                []*Node{},
 		Evidence:             manifest.Evidence,
 		LoadTxSize:           manifest.LoadTxSizeBytes,
-		LoadTxPeriod:         manifest.LoadTxPeriod,
+		LoadTxBatchSize:      manifest.LoadTxBatchSizeBytes,
+		LoadTxConnections:    manifest.LoadTxConnections,
 		ABCIProtocol:         manifest.ABCIProtocol,
 		PrepareProposalDelay: manifest.PrepareProposalDelay,
 		ProcessProposalDelay: manifest.ProcessProposalDelay,

@@ -2,22 +2,22 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"math"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/tendermint/tendermint/libs/log"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/loadtime/payload"
 	"github.com/tendermint/tendermint/types"
 )
 
 // Load generates transactions against the network until the given context is
-// canceled. A multiplier of greater than one can be supplied if load needs to
-// be generated beyond a minimum amount.
-func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
+// canceled.
+func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	// Since transactions are executed across all nodes in the network, we need
 	// to reduce transaction load for larger networks to avoid using too much
 	// CPU. This gives high-throughput small networks and low-throughput large ones.
@@ -39,7 +39,8 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	logger.Info("load", "msg", log.NewLazySprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
-	go loadGenerate(ctx, chTx, multiplier)
+	u := [16]byte(uuid.New()) // generate run ID on startup
+	go loadGenerate(ctx, chTx, testnet, u[:])
 
 	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
@@ -67,22 +68,23 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 }
 
 // loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx, multiplier int) {
+func loadGenerate(ctx context.Context, chTx chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
-		id := i % 1000
-
-		bz := make([]byte, 1024) // 1kb hex-encoded
-		_, err := rand.Read(bz)
+		tx, err := payload.NewBytes(&payload.Payload{
+			Id:          id,
+			Size:        uint64(testnet.LoadTxSize),
+			Rate:        uint64(testnet.LoadTxBatchSize),
+			Connections: uint64(testnet.LoadTxConnections),
+		})
 		if err != nil {
-			panic(fmt.Sprintf("Failed to read random bytes: %v", err))
+			panic(fmt.Sprintf("Failed to generate tx: %v", err))
 		}
-		tx := types.Tx(fmt.Sprintf("load-%X=%x", id, bz))
 
 		select {
 		case chTx <- tx:
-			time.Sleep(time.Second / time.Duration(multiplier))
+			time.Sleep(time.Second)
 
 		case <-ctx.Done():
 			close(chTx)
