@@ -18,32 +18,23 @@ import (
 // Load generates transactions against the network until the given context is
 // canceled.
 func Load(ctx context.Context, testnet *e2e.Testnet) error {
-	// Since transactions are executed across all nodes in the network, we need
-	// to reduce transaction load for larger networks to avoid using too much
-	// CPU. This gives high-throughput small networks and low-throughput large ones.
-	// This also limits the number of TCP connections, since each worker has
-	// a connection to all nodes.
-	concurrency := 64 / len(testnet.Nodes)
-	if concurrency == 0 {
-		concurrency = 1
-	}
 	initialTimeout := 1 * time.Minute
 	stallTimeout := 30 * time.Second
 
-	chTx := make(chan types.Tx)
 	chSuccess := make(chan types.Tx)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	// Spawn job generator and processors.
-	logger.Info("load", "msg", log.NewLazySprintf("Starting transaction load (%v workers)...", concurrency))
 	started := time.Now()
 
 	u := [16]byte(uuid.New()) // generate run ID on startup
-	go loadGenerate(ctx, chTx, testnet, u[:])
+	cli, err := testnet.RandomNode().Client()
+	if err != nil {
+		return err
+	}
 
-	for w := 0; w < concurrency; w++ {
-		go loadProcess(ctx, testnet, chTx, chSuccess)
+	for w := 0; w < testnet.LoadTxConnections; w++ {
+		go loadProcess(ctx, testnet, chSuccess, cli, u[:])
 	}
 
 	// Monitor successful transactions, and abort on stalls.
@@ -94,30 +85,11 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, testnet *e2e.Testne
 }
 
 // loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx, chSuccess chan<- types.Tx) {
-	// Each worker gets its own client to each node, which allows for some
-	// concurrency while still bounding it.
-	clients := map[string]*rpchttp.HTTP{}
-
+func loadProcess(ctx context.Context, testnet *e2e.Testnet, chSuccess chan<- types.Tx, client *rpchttp.HTTP, id []byte) {
 	var err error
+	chTx := make(chan types.Tx)
+	go loadGenerate(ctx, chTx, testnet, id)
 	for tx := range chTx {
-		node := testnet.RandomNode()
-		client, ok := clients[node.Name]
-		if !ok {
-			client, err = node.Client()
-			if err != nil {
-				continue
-			}
-
-			// check that the node is up
-			_, err = client.Health(ctx)
-			if err != nil {
-				continue
-			}
-
-			clients[node.Name] = client
-		}
-
 		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
 			continue
 		}
