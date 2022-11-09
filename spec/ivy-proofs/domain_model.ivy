@@ -131,13 +131,14 @@ object nset = { # the type of node sets
 object classic_bft = {
     relation quorum_intersection
     private {
-        definition [quorum_intersection_def] quorum_intersection = forall Q1,Q2. exists N. well_behaved(N) & nset.member(N, Q1) & nset.member(N, Q2) # every two quorums have a well-behaved node in common
+        definition [quorum_intersection_def] quorum_intersection = forall Q1,Q2. nset.is_quorum(Q1) & nset.is_quorum(Q2)
+                -> exists N. well_behaved(N) & nset.member(N, Q1) & nset.member(N, Q2) # every two quorums have a well-behaved node in common
     }
 }
 
 trusted isolate accountable_bft = {
     # this is our baseline assumption about quorums:
     private {
-        property [max_2f_byzantine] exists N . well_behaved(N) & nset.member(N,Q) # every quorum has a well-behaved member
+        property [max_2f_byzantine] nset.is_quorum(Q) -> exists N . well_behaved(N) & nset.member(N,Q) # every quorum has a well-behaved member
     }
 }

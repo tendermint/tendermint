@@ -79,7 +79,7 @@ func NewApplication() *Application {
 func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{
 		Data:             fmt.Sprintf("{\"size\":%v}", app.state.Size),
-		Version:          version.ABCIVersion,
+		Version:          version.ABCISemVer,
 		AppVersion:       ProtocolVersion,
 		LastBlockHeight:  app.state.Height,
 		LastBlockAppHash: app.state.AppHash,
