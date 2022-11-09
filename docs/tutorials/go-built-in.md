@@ -177,8 +177,12 @@ func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk
 	return abcitypes.ResponseApplySnapshotChunk{}
 }
 
+func (app KVStoreApplication) PrepareProposal(proposal abcitypes.RequestPrepareProposal) abcitypes.ResponsePrepareProposal {
+	return abcitypes.ResponsePrepareProposal{}
+}
+
 func (app KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcessProposal) abcitypes.ResponseProcessProposal {
-	return abcitypes.ResponseProcessProposal{Status: 1}
+	return abcitypes.ResponseProcessProposal{}
 }
 
 ```
@@ -413,6 +417,41 @@ func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.Respo
 }
 ```
 
+### 1.3.5 PrepareProposal and ProcessProposal
+Finally, before we can run the application, we need to implement `PrepareProposal` and `ProcessProposal`.
+These two two methods were introduced in Tendermint 3.7.0 to give the application more control over
+the construction and processing of transaction blocks.
+
+When Tendermint Core sees that valid transactions (validated throuch `CheckTx`) are available to be
+included in blocks, it groups some of these transactions and then gives the application a chance 
+to modify the group by invoking `PrepareProposal`.
+
+The application is free to modify the group before returning from the call.
+For example, the application may reorder or even remove transactions from the group to improve the
+execution of the block once accepted.
+In the following code, the application simply returns the unmodified group of transactions.
+
+```go
+func (app *KVStoreApplication) PrepareProposal(proposal abcitypes.RequestPrepareProposal) abcitypes.ResponsePrepareProposal {
+	return abcitypes.ResponsePrepareProposal{Txs: proposal.Txs}
+}
+```
+
+Once a proposed block is received by a node, the proposal is passed to the application to give
+its blessing before voting to accept the proposal.
+
+This mechanism may be used for different reasons, for example to deal with blocks manipulated 
+by malicious nodes, in which case the block should not be considered valid, or for
+performing some pre-processing of the transactions in the block to improve performance 
+when they are later delivered in `DeliverTx`.
+
+The following code keeps things simple and simply accepts all proposals.
+
+```go
+func (app *KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcessProposal) abcitypes.ResponseProcessProposal {
+	return abcitypes.ResponseProcessProposal{Status: abcitypes.ResponseProcessProposal_ACCEPT}
+}
+```
 
 ## 1.4 Starting an application and a Tendermint Core instance in the same process
 
@@ -685,8 +724,8 @@ The request returns a `json` object with a `key` and `value` field set.
 
 ```json
 ...
-       "key": "dGVuZGVybWludA==",
-	   "value": "cm9ja3M=",
+	"key": "dGVuZGVybWludA==",
+	"value": "cm9ja3M=",
 ...
 ```
 
