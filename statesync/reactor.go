@@ -33,6 +33,7 @@ type Reactor struct {
 	conn      proxy.AppConnSnapshot
 	connQuery proxy.AppConnQuery
 	tempDir   string
+	metrics   *Metrics
 
 	// This will only be set when a state sync is in progress. It is used to feed received
 	// snapshots and chunks into the sync.
@@ -46,12 +47,14 @@ func NewReactor(
 	conn proxy.AppConnSnapshot,
 	connQuery proxy.AppConnQuery,
 	tempDir string,
+	metrics *Metrics,
 ) *Reactor {
 
 	r := &Reactor{
 		cfg:       cfg,
 		conn:      conn,
 		connQuery: connQuery,
+		metrics:   metrics,
 	}
 	r.BaseReactor = *p2p.NewBaseReactor("StateSync", r)
 
@@ -265,6 +268,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 		r.mtx.Unlock()
 		return sm.State{}, nil, errors.New("a state sync is already in progress")
 	}
+	r.metrics.Syncing.Add(1)
 	r.syncer = newSyncer(r.cfg, r.Logger, r.conn, r.connQuery, stateProvider, r.tempDir)
 	r.mtx.Unlock()
 
@@ -284,6 +288,7 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 
 	r.mtx.Lock()
 	r.syncer = nil
+	r.metrics.Syncing.Add(0)
 	r.mtx.Unlock()
 	return state, commit, err
 }
