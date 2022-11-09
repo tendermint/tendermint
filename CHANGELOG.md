@@ -2,6 +2,46 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.23
+
+*Nov 9, 2022*
+
+This release introduces some new Prometheus metrics to help in determining what
+kinds of messages are consuming the most P2P bandwidth. This builds towards our
+broader goal of optimizing Tendermint bandwidth consumption, and will give us
+meaningful insights once we can establish these metrics for a number of chains.
+
+We now also return `Cache-Control` headers for select RPC endpoints to help
+facilitate caching.
+
+Special thanks to external contributors on this release: @JayT106
+
+### IMPROVEMENTS
+- `[p2p]` [\#9641](https://github.com/tendermint/tendermint/issues/9641) Add new
+  Envelope type and associated methods for sending and receiving Envelopes
+  instead of raw bytes. This also adds new metrics,
+  `tendermint_p2p_message_send_bytes_total` and
+  `tendermint_p2p_message_receive_bytes_total`, that expose how many bytes of
+  each message type have been sent.
+- `[rpc]` [\#9666](https://github.com/tendermint/tendermint/issues/9666) Enable
+  caching of RPC responses (@JayT106)
+
+  The following RPC endpoints will return `Cache-Control` headers with a maximum
+  age of 1 day:
+
+  - `/abci_info`
+  - `/block`, if `height` is supplied
+  - `/block_by_hash`
+  - `/block_results`, if `height` is supplied
+  - `/blockchain`
+  - `/check_tx`
+  - `/commit`, if `height` is supplied
+  - `/consensus_params`, if `height` is supplied
+  - `/genesis`
+  - `/genesis_chunked`
+  - `/tx`
+  - `/validators`, if `height` is supplied
+
 ## v0.34.22
 
 This release includes several bug fixes, [one of
