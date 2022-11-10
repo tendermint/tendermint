@@ -912,38 +912,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
   /genesis_chunked:
-      get:
-        summary: Get Genesis in multiple chunks
-        operationId: genesis_chunked
-        tags:
-          - Info
-        description: |
-          Get genesis document in multiple chunks to make it
-          easier to iterate through larger gensis structures.
+    get:
+      summary: Get Genesis in multiple chunks
+      operationId: genesis_chunked
+      tags:
+        - Info
+      description: |
+        Get genesis document in multiple chunks to make it
+        easier to iterate through larger gensis structures.
 
-          Upon success, the `Cache-Control` header will be set with the default
-          maximum age.
-        parameters:
-          - in: query
-            name: chunkID
-            description: Sequence number of the chunk to download.
-            schema:
-              type: integer
-              default: 0
-              example: 1
-        responses:
-          "200":
-            description: Genesis results.
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/GenesisChunkedResponse"
-          "500":
-            description: Error
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/ErrorResponse"
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
+      parameters:
+        - in: query
+          name: chunkID
+          description: Sequence number of the chunk to download.
+          schema:
+            type: integer
+            default: 0
+            example: 1
+      responses:
+        "200":
+          description: Genesis results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenesisChunkedResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dump_consensus_state:
     get:
       summary: Get consensus state
