@@ -1,12 +1,14 @@
-name: "Release"
+name: "Pre-release"
 
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"  # Push events to matching v*, i.e. v1.0, v20.15.10
+      - "v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+"  # e.g. v0.37.0-alpha.1, v0.38.0-alpha.10
+      - "v[0-9]+.[0-9]+.[0-9]+-beta.[0-9]+"   # e.g. v0.37.0-beta.1, v0.38.0-beta.10
+      - "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"      # e.g. v0.37.0-rc1, v0.38.0-rc10
 
 jobs:
-  release:
+  prerelease:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,7 +27,8 @@ jobs:
           version: latest
           args: build --skip-validate   # skip validate skips initial sanity checks in order to be able to fully run
 
-      - run: echo https://github.com/tendermint/tendermint/blob/${GITHUB_REF#refs/tags/}/CHANGELOG.md#${GITHUB_REF#refs/tags/} > ../release_notes.md
+      # Link to CHANGELOG_PENDING.md as release notes.
+      - run: echo https://github.com/tendermint/tendermint/blob/${GITHUB_REF#refs/tags/}/CHANGELOG_PENDING.md > ../release_notes.md
 
       - name: Release
         uses: goreleaser/goreleaser-action@v3
@@ -36,12 +39,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  release-success:
-    needs: release
+  prerelease-success:
+    needs: prerelease
     if: ${{ success() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Slack upon release
+      - name: Notify Slack upon pre-release
         uses: slackapi/slack-github-action@v1.23.0
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -55,7 +58,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":rocket: New Tendermint release: <${{ env.RELEASE_URL }}|${{ github.ref_name }}>"
+                    "text": ":sparkles: New Tendermint pre-release: <${{ env.RELEASE_URL }}|${{ github.ref_name }}>"
                   }
                 }
               ]
