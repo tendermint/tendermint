@@ -541,7 +541,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	routes := env.GetRoutes()
 
 	if n.config.RPC.Unsafe {
-		env.AddUnsafe(routes)
+		env.AddUnsafeRoutes(routes)
 	}
 
 	config := rpcserver.DefaultConfig()
