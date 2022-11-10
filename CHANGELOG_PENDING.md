@@ -19,3 +19,6 @@
 ### IMPROVEMENTS
 
 ### BUG FIXES
+
+- `[rpc]` \#9692 Remove `Cache-Control` header response from `/check_tx`
+  endpoint (@JayT106)
