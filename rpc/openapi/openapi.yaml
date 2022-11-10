@@ -2026,14 +2026,14 @@ components:
             - "chunk"
             - "total"
             - "data"
-          properties: 
+          properties:
             chunk:
               type: integer
               example: 0
             total:
               type: integer
               example: 1
-            data: 
+            data:
               type: string
               example: "Z2VuZXNpcwo="
 
