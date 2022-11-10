@@ -7,7 +7,6 @@ This document contains configurable parameters a node operator can use to tune t
 |   ListenAddress               |   "tcp://0.0.0.0:26656" |   Address to listen for incoming connections (0.0.0.0:0 means any interface, any port)  |
 |   ExternalAddress             |  ""                 |  Address to advertise to peers for them to dial |
 |   [Seeds](pex-protocol.md#seed-nodes) | empty               | Comma separated list of seed nodes to connect to (ID@host:port )| 
-|   BootstrapPeers | empty | Comma separated list of nodes to add to the address book on startup (ID@host:port) |
 |   [Persistent peers](peer_manager.md#persistent-peers)            | empty               | Comma separated list of nodes to keep persistent connections to (ID@host:port )  |
 |	UPNP                        | false               | UPNP port forwarding enabled |
 |	[AddrBook](addressbook.md)                    | defaultAddrBookPath | Path do address book |
@@ -34,7 +33,6 @@ These parameters can be set using the `$TMHOME/config/config.toml` file. A subse
 | --- | --- | ---|
 | Listen address|  `p2p.laddr` |  "tcp://0.0.0.0:26656" |
 | Seed nodes | `p2p.seeds` | `--p2p.seeds “id100000000000000000000000000000000@1.2.3.4:26656,id200000000000000000000000000000000@2.3.4.5:4444”` |
-| Bootstrap peers | `p2p.bootstrap_peers` | `--p2p.bootstrap_peers “id100000000000000000000000000000000@1.2.3.4:26656,id200000000000000000000000000000000@2.3.4.5:26656”` |
 | Persistent peers | `p2p.persistent_peers` | `--p2p.persistent_peers “id100000000000000000000000000000000@1.2.3.4:26656,id200000000000000000000000000000000@2.3.4.5:26656”` | 
 | Unconditional peers | `p2p.unconditional_peer_ids` | `--p2p.unconditional_peer_ids “id100000000000000000000000000000000,id200000000000000000000000000000000”` |
  | UPNP  | `p2p.upnp` | `--p2p.upnp` | 
