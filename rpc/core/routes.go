@@ -24,7 +24,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"block_by_hash":        rpc.NewRPCFunc(BlockByHash, "hash", rpc.Cacheable()),
 	"block_results":        rpc.NewRPCFunc(BlockResults, "height", rpc.Cacheable("height")),
 	"commit":               rpc.NewRPCFunc(Commit, "height", rpc.Cacheable("height")),
-	"check_tx":             rpc.NewRPCFunc(CheckTx, "tx", rpc.Cacheable()),
+	"check_tx":             rpc.NewRPCFunc(CheckTx, "tx"),
 	"tx":                   rpc.NewRPCFunc(Tx, "hash,prove", rpc.Cacheable()),
 	"tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page,order_by"),
 	"block_search":         rpc.NewRPCFunc(BlockSearch, "query,page,per_page,order_by"),
