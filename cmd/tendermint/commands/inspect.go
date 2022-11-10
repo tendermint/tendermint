@@ -25,7 +25,7 @@ var InspectCmd = &cobra.Command{
 	issues with Tendermint.
 
 	When the Tendermint consensus engine detects inconsistent state, it will crash the
-	tendermint process. Tendermint will not start up while in this inconsistent state. 
+	Tendermint process. Tendermint will not start up while in this inconsistent state. 
 	The inspect command can be used to query the block and state store using Tendermint
 	RPC calls to debug issues of inconsistent state.
 	`,
