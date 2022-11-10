@@ -32,9 +32,16 @@ type StateMachine struct {
 	markets map[string]*Market // i.e. ATOM/USDC
 }
 
-func New() *StateMachine {
-	StateMachine := StateMachine {}
-	return &StateMachine{}
+func New(db dbm.DB) *StateMachine {
+	// execute a database call that fetches the data for accounts
+	StateMachine := StateMachine {
+		accounts: map[uint64]*Account{},
+		pairs: map[string]struct{},
+		commodities: map[string]struct{},
+		publicKeys: map[string]struct{},
+		markets: map[string]*Market{},
+	}
+	return &StateMachine
 }
 
 func (sm *StateMachine) Info(req types.RequestInfo) types.ResponseInfo {

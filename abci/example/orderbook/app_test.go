@@ -9,6 +9,8 @@ import (
 
 func TestNew(t *testing.T) {
 	StateMachine := New()
+
+	
 	// initialise market
 	market := orderbook.NewMarket(testPair)
 	// create transaction
@@ -17,4 +19,19 @@ func TestNew(t *testing.T) {
 	// check to see if the market collected all of the pairs
 	// test to see if the tradeset is valid
 	// require.EqualValues(t, )
+}
+
+func TestNew(t *testing.T) {
+	var b map[string]string
+	var a StateMachine
+
+
+
+}
+
+
+type B struct {
+	Field string
+	anotherField []int
+	anotherField2 [10]int
 }
