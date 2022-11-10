@@ -32,7 +32,7 @@ On the one hand, to get maximum performance you can run your application in
 the same process as the Tendermint Core, as long as your application is written in Go. 
 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written
 this way. 
-If that is the way you with to proceed, use the [Writing a built-in Tendermint Core application in Go](./go-built-in.md) guide instead of this one.
+If that is the way you wish to proceed, use the [Creating a built-in application in Go](./go-built-in.md) guide instead of this one.
 
 On the other hand, having a separate application might give you better security 
 guarantees as two processes would be communicating via established binary protocol. 
@@ -79,7 +79,7 @@ Hello, Tendermint Core
 ```
 
 We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
-dependency management, so let's start by including a dependency on the latest
+dependency management, so let's start by including a dependency on the latest version of
 Tendermint.
 
 ```bash

@@ -39,7 +39,7 @@ This is the approach followed in this tutorial.
 On the other hand, having a separate application might give you better security 
 guarantees as two processes would be communicating via established binary protocol. 
 Tendermint Core will not have access to application's state. 
-If that is the way you with to proceed, use the [Writing a built-in Tendermint Core application in Go](./go.md) guide instead of this one.
+If that is the way you wish to proceed, use the [Creating an application in Go](./go.md) guide instead of this one.
 
 
 ## 1.1 Installing Go
@@ -82,7 +82,7 @@ Hello, Tendermint Core
 ```
 
 We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
-dependency management, so let's start by including a dependency on the latest
+dependency management, so let's start by including a dependency on the latest version of
 Tendermint.
 
 ```bash
