@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -9,18 +10,18 @@ import (
 
 // Wait waits for a number of blocks to be produced, and for all nodes to catch
 // up with it.
-func Wait(testnet *e2e.Testnet, blocks int64) error {
-	block, _, err := waitForHeight(testnet, 0)
+func Wait(ctx context.Context, testnet *e2e.Testnet, blocks int64) error {
+	block, _, err := waitForHeight(ctx, testnet, 0)
 	if err != nil {
 		return err
 	}
-	return WaitUntil(testnet, block.Height+blocks)
+	return WaitUntil(ctx, testnet, block.Height+blocks)
 }
 
 // WaitUntil waits until a given height has been reached.
-func WaitUntil(testnet *e2e.Testnet, height int64) error {
+func WaitUntil(ctx context.Context, testnet *e2e.Testnet, height int64) error {
 	logger.Info("wait until", "msg", log.NewLazySprintf("Waiting for all nodes to reach height %v...", height))
-	_, err := waitForAllNodes(testnet, height, waitingTime(len(testnet.Nodes)))
+	_, err := waitForAllNodes(ctx, testnet, height, waitingTime(len(testnet.Nodes)))
 	if err != nil {
 		return err
 	}

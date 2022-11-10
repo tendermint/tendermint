@@ -124,8 +124,8 @@ type ManifestNode struct {
 	SnapshotInterval uint64 `toml:"snapshot_interval"`
 
 	// RetainBlocks specifies the number of recent blocks to retain. Defaults to
-	// 0, which retains all blocks. Must be greater that PersistInterval and
-	// SnapshotInterval.
+	// 0, which retains all blocks. Must be greater that PersistInterval,
+	// SnapshotInterval and EvidenceAgeHeight.
 	RetainBlocks uint64 `toml:"retain_blocks"`
 
 	// Perturb lists perturbations to apply to the node after it has been
