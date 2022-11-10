@@ -70,6 +70,22 @@ and state store.
 `inspect` does not run the consensus engine at all and can therefore be used to debug
 processes that have crashed due to inconsistent state. 
 
+### Running inspect
+
+Start up the `inspect` tool on the machine where Tendermint crashed using: 
+```bash
+tendermint inspect --home=</path/to/app.d>
+```
+
+`inspect` will use the data directory specified in your Tendermint configuration file.
+`inspect` will also run the RPC server at the address specified in your Tendermint configuration file.
+
+### Using inspect
+
+With the `inspect` server running, you can access RPC endpoints that are critically important
+for debugging.
+Calling the `/status`, `/consensus_state` and `/dump_consensus_state` RPC endpoint 
+will return useful information about the Tendermint consensus state.
 
 To start the `inspect` process, run
 ```bash
@@ -77,6 +93,7 @@ tendermint inspect
 ```
 
 ### RPC endpoints
+
 The list of available RPC endpoints can be found by making a request to the RPC port.
 For an `inspect` process running on `127.0.0.1:26657`, navigate your browser to 
 `http://127.0.0.1:26657/` to retrieve the list of enabled RPC endpoints.
