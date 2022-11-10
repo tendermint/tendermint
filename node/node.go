@@ -303,6 +303,17 @@ func NewNode(config *cfg.Config,
 		return nil, fmt.Errorf("could not create addrbook: %w", err)
 	}
 
+	for _, addr := range splitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+		netAddrs, err := p2p.NewNetAddressString(addr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid bootstrap peer address: %w", err)
+		}
+		err = addrBook.AddAddress(netAddrs, netAddrs)
+		if err != nil {
+			return nil, fmt.Errorf("adding bootstrap address to addressbook: %w", err)
+		}
+	}
+
 	// Optionally, start the pex reactor
 	//
 	// TODO:
