@@ -23,6 +23,9 @@
 
 ### FEATURES
 
+- [config] \#9680 Introduce `BootstrapPeers` to the config to allow nodes to list peers to be added to
+  the addressbook upon start up (@cmwaters)
+
 ### IMPROVEMENTS
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
