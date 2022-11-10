@@ -92,7 +92,7 @@ func (e Executor) Execute() error {
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			fmt.Fprintf(os.Stderr, "ERROR: %v\n%s\n", err, buf)
+			Stderr.Fprintf(os.Stderr, "ERROR: %v\n%s\n", err, buf)
 		} else {
 			fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 		}
