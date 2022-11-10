@@ -70,11 +70,14 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer bsDB.Close()
 	bs := store.NewBlockStore(bsDB)
+	defer bs.Close()
 	sDB, err := config.DefaultDBProvider(&config.DBContext{ID: "state", Config: cfg})
 	if err != nil {
 		return nil, err
 	}
+	defer sDB.Close()
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
 		return nil, err
@@ -85,6 +88,7 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	}
 	lg := logger.With("module", "inspect")
 	ss := state.NewStore(sDB, state.StoreOptions{})
+	defer ss.Close()
 	return New(cfg.RPC, bs, ss, txidx, blkidx, lg), nil
 }
 
