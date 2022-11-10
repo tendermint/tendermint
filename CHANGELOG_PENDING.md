@@ -20,6 +20,8 @@
   
 - Tooling
   - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
+    labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
 
 ### FEATURES
 
