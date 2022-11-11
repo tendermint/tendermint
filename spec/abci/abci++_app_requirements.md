@@ -45,7 +45,7 @@ transaction list returned by the application will never cause the resulting bloc
 limit.
 
 * Requirement 3 [`PrepareProposal`, `ProcessProposal`, coherence]: For any two correct processes *p* and *q*,
-  if *q*'s Tendermint calls `RequestProcessProposal` on *u<sub>p</sub>*,
+  if *q*'s Tendermint calls `ProcessProposal` on *u<sub>p</sub>*,
   *q*'s Application returns Accept in `ResponseProcessProposal`.
 
 Requirement 3 makes sure that blocks proposed by correct processes *always* pass the correct receiving process's
@@ -59,12 +59,12 @@ target for extensive testing and automated verification.
 
 * Requirement 4 [`ProcessProposal`, determinism-1]: `ProcessProposal` is a (deterministic) function of the current
   state and the block that is about to be applied. In other words, for any correct process *p*, and any arbitrary block *u*,
-  if *p*'s Tendermint calls `RequestProcessProposal` on *u* at height *h*,
+  if *p*'s Tendermint calls `ProcessProposal` on *u* at height *h*,
   then *p*'s Application's acceptance or rejection **exclusively** depends on *u* and *s<sub>p,h-1</sub>*.
 
 * Requirement 5 [`ProcessProposal`, determinism-2]: For any two correct processes *p* and *q*, and any arbitrary
   block *u*,
-  if *p*'s (resp. *q*'s) Tendermint calls `RequestProcessProposal` on *u* at height *h*,
+  if *p*'s (resp. *q*'s) Tendermint calls `ProcessProposal` on *u* at height *h*,
   then *p*'s Application accepts *u* if and only if *q*'s Application accepts *u*.
   Note that this requirement follows from Requirement 4 and the Agreement property of consensus.
 
@@ -127,8 +127,8 @@ Extra care should be put in the implementation of `ExtendVote` and `VerifyVoteEx
 As a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension.
 
 -->
-* Requirement 9 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
-  `RequestProcessProposal`, 
+* Requirement 9 [*all*, no-side-effects]: *p*'s calls to `PrepareProposal`,
+  `ProcessProposal`, 
   <!--
   `RequestExtendVote`, and `RequestVerifyVoteExtension` 
   --> 
@@ -345,7 +345,7 @@ replay protection mechanism with strong guarantees as part of the logic in `Chec
 #### Info/Query Connection
 
 The Info (or Query) Connection should maintain a `QueryState`. This connection has two
-purposes: 1) having the application answer the queries Tenderissued receives from users
+purposes: 1) having the application answer the queries Tendermint receives from users
 (see section [Query](#query)),
 and 2) synchronizing Tendermint and the Application at start up time (see
 [Crash Recovery](#crash-recovery))
@@ -359,7 +359,7 @@ after the full block has been processed and the state committed to disk.
 
 The Snapshot Connection is used to serve state sync snapshots for other nodes
 and/or restore state sync snapshots to a local node being bootstrapped.
-Snapshop management is optional: an Application may choose not to implement it.
+Snapshot management is optional: an Application may choose not to implement it.
 
 For more information, see Section [State Sync](#state-sync).
 
