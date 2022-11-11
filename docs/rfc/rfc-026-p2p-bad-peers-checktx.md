@@ -33,7 +33,7 @@ discussion in [#2185](https://github.com/tendermint/tendermint/issues/2185). Add
 there was a [proposal](https://github.com/tendermint/tendermint/issues/6523) 
 to disconnect from peers after they send us transactions that constantly fail `CheckTx`.  While 
 the actual implementation of an additional response code for `CheckTx` is straight forward there 
-are certain things to consider. The questions to answer, along with identified risks will be outlined in 
+are certain correctness aspects to consider. The questions to answer, along with identified risks will be outlined in 
 the discussion. 
 
 ### Existing issues and concerns
@@ -130,7 +130,7 @@ The reason for this logic is as follows: We deem it acceptable if every now and 
 
 Currently, a peer can send the same valid (or invalid) transaction [multiple times](https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/mempool/v0/clist_mempool.go#L247). Peers do not 
 gossip transactions to peers that have sent them that same transaction. But there is no check on whether 
-a node has alrady sent the same transaction to this peer before. There is also no check whether the transaction
+a node has already sent the same transaction to this peer before. There is also no check whether the transaction
 that is being gossiped was valid or not (assumint that invalid transactions could become valid).
 The transaction broadcast logic simply loops through the mempool and tries to send the transactions currently in the pool. 
 
@@ -159,7 +159,7 @@ run `CheckTx` on this transaction before adding it to its own mempool, we can as
 can be held accountable for the validity of transactions it gossips. Invalid transactions are kept only in the mempool
 cache and thus not gossiped. 
 
-*Transactions received by users*
+*Transactions received from users*
 
 For transactions submitted via `boradcastTxCommit`, the `SenderID` field is empty. 
 
@@ -168,14 +168,14 @@ failing transactions (can this be a form of attack)?
 
 ### 3. Attack scenarios
 
-While an attack by simply banning peers on faling `CheckTx` is hard to imagine, as the incentive for doing so is not clear, there are considerations with regards to the current mempool gossip implementation.
+While an attack by simply banning peers on failing `CheckTx` is hard to imagine, as the incentive for doing so is not clear, there are considerations with regards to the current mempool gossip implementation.
 
 Should we keep transactions that could never have been valid in the cache? Assuming that receiving such transactions is rare, and the peer that sent them is banned, do we need to occupy space in the mempool cache with these transactions?
 
 
 ## Implementation considerations
 
-When a transaction failes `CheckTx`,it is not stored in the mempool but **can** be stored in the cache. If it is in the cache, it cannot be resubmitted again (as it will be discovered in the cache and not checked again). These two scenarios require a different implementation of banning in case `CheckTx` failed. 
+When a transaction fails `CheckTx`, it is not stored in the mempool but **can** be stored in the cache. If it is in the cache, it cannot be resubmitted again (as it will be discovered in the cache and not checked again). These two scenarios require a different implementation of banning in case `CheckTx` failed. 
 
 In both cases we need to keep track of the peers that sent invalid transactions. If invalid transactions are  cached, we also need to keep track of the `CheckTx` response code for each transaction. Currently the `ResponseCheckTx` code is checked in `resCbFirstTime` of the mempool. If  invalid transactions are kept in the cache, the check is ran only when a transaction is 
 seen for the first time. Afterwards, the  transaction is cached, to avoid running `CheckTx` on transactions already checked. 
@@ -313,7 +313,7 @@ we can skip the second `if` in the code above but call `banPeer` immediately at 
 
 **Signaling the ban to p2p**
 
-As it is the mempool **reactor** that has access to the p2p layer, not the actual mempool implementation, the peer banning function will most likely have to send the peer ID to a channel to inform the reactor of the fact that this peer should be banned. This would require adding a channel for communication into the `CListMempool` on construction, and adding a routine in the mempool ractor that waits on a response via this channel. However, the actual implementation of this is yet to be defined.
+As it is the mempool **reactor** that has access to the p2p layer, not the actual mempool implementation, the peer banning function will most likely have to send the peer ID to a channel to inform the reactor of the fact that this peer should be banned. This would require adding a channel for communication into the `CListMempool` on construction, and adding a routine in the mempool reactor that waits on a response via this channel. However, the actual implementation of this is yet to be defined.
 
 **Implementing peer banning on recheck**
 
