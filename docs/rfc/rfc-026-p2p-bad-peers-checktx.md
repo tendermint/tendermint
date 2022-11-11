@@ -24,7 +24,7 @@ who gossip such transactions. Additionally, users expressed a need for banning p
 repeatedly send transactions failing `CheckTx`. 
 
 The main goal of this document is to analyse the cases where peers could be banned when they send 
-transacations failing `CheckTx`, and provide the exact conditions that a peer and transaction have
+transactions failing `CheckTx`, and provide the exact conditions that a peer and transaction have
 to satisfy in order to mark the peer as bad.
 
 This document will also include a proposal for implementing these changes within the mempool, including
