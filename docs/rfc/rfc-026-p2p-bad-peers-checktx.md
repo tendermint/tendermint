@@ -16,7 +16,7 @@ However, Tendermint users observed that
 there are transactions that can never have been or will never be valid. They thus propose
 to introduce a special response code for `CheckTx` to indicate this behaviour, and ban the peers
 who gossip such transactions. Additionally, users expressed a need for banning peers who
-repeadetly send transactions failing `CheckTx`. 
+repeatedly send transactions failing `CheckTx`. 
 
 The main goal of this document is to analyse the cases where peers could be banned when they send 
 transacations failing `CheckTx`, and provide the exact conditions that a peer and transaction have
