@@ -297,7 +297,7 @@ func (vote *Vote) ValidateBasic() error {
 	// We should only ever see vote extensions in non-nil precommits, otherwise
 	// this is a violation of the specification.
 	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsNil()) {
+	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) == 0) {
 		if len(vote.Extension) > 0 {
 			return errors.New("unexpected vote extension")
 		}
@@ -318,7 +318,7 @@ func (vote *Vote) ValidateWithExtension() error {
 	}
 
 	// We should always see vote extension signatures in non-nil precommits
-	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsNil() {
+	if vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 {
 		if len(vote.ExtensionSignature) == 0 {
 			return errors.New("vote extension signature is missing")
 		}
