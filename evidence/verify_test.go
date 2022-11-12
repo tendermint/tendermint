@@ -14,6 +14,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/evidence/mocks"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -207,7 +208,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 	// except the last validator vote twice
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
-	extCommit, err := types.MakeExtendedCommit(blockID, 10, 1, voteSet, conflictingPrivVals[:4], defaultEvidenceTime)
+	extCommit, err := test.MakeExtendedCommitFromVoteSet(blockID, voteSet, conflictingPrivVals[:4], defaultEvidenceTime)
 	require.NoError(t, err)
 	commit := extCommit.StripExtensions()
 	ev := &types.LightClientAttackEvidence{
@@ -226,7 +227,7 @@ func TestVerifyLightClientAttack_Equivocation(t *testing.T) {
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
-	trustedExtCommit, err := types.MakeExtendedCommit(trustedBlockID, 10, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	trustedExtCommit, err := test.MakeExtendedCommitFromVoteSet(trustedBlockID, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	trustedCommit := trustedExtCommit.StripExtensions()
 	trustedSignedHeader := &types.SignedHeader{
@@ -293,7 +294,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 	// except the last validator vote twice. However this time the commits are of different rounds.
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(evidenceChainID, 10, 0, tmproto.SignedMsgType(2), conflictingVals)
-	extCommit, err := types.MakeExtendedCommit(blockID, 10, 0, voteSet, conflictingPrivVals, defaultEvidenceTime)
+	extCommit, err := test.MakeExtendedCommitFromVoteSet(blockID, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	commit := extCommit.StripExtensions()
 	ev := &types.LightClientAttackEvidence{
@@ -312,7 +313,7 @@ func TestVerifyLightClientAttack_Amnesia(t *testing.T) {
 
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, 10, 1, tmproto.SignedMsgType(2), conflictingVals)
-	trustedExtCommit, err := types.MakeExtendedCommit(trustedBlockID, 10, 1, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
+	trustedExtCommit, err := test.MakeExtendedCommitFromVoteSet(trustedBlockID, trustedVoteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	trustedCommit := trustedExtCommit.StripExtensions()
 	trustedSignedHeader := &types.SignedHeader{
@@ -487,7 +488,7 @@ func makeLunaticEvidence(
 
 	blockID := makeBlockID(conflictingHeader.Hash(), 1000, []byte("partshash"))
 	voteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), conflictingVals)
-	extCommit, err := types.MakeExtendedCommit(blockID, height, 1, voteSet, conflictingPrivVals, defaultEvidenceTime)
+	extCommit, err := test.MakeExtendedCommitFromVoteSet(blockID, voteSet, conflictingPrivVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	commit := extCommit.StripExtensions()
 	ev = &types.LightClientAttackEvidence{
@@ -515,7 +516,7 @@ func makeLunaticEvidence(
 	trustedBlockID := makeBlockID(trustedHeader.Hash(), 1000, []byte("partshash"))
 	trustedVals, privVals := types.RandValidatorSet(totalVals, defaultVotingPower)
 	trustedVoteSet := types.NewVoteSet(evidenceChainID, height, 1, tmproto.SignedMsgType(2), trustedVals)
-	trustedExtCommit, err := types.MakeExtendedCommit(trustedBlockID, height, 1, trustedVoteSet, privVals, defaultEvidenceTime)
+	trustedExtCommit, err := test.MakeExtendedCommitFromVoteSet(trustedBlockID, trustedVoteSet, privVals, defaultEvidenceTime)
 	require.NoError(t, err)
 	trustedCommit := trustedExtCommit.StripExtensions()
 	trusted = &types.LightBlock{

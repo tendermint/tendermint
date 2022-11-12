@@ -16,7 +16,6 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
@@ -405,7 +404,7 @@ func TestLoadBlockPart(t *testing.T) {
 	require.Contains(t, panicErr.Error(), "unmarshal to tmproto.Part failed")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
-	block := factory.MakeBlock(state, height, new(types.Commit))
+	block := state.MakeBlock(height, nil, new(types.Commit), nil, state.Validators.GetProposer().Address)
 	partSet, err := block.MakePartSet(2)
 	require.NoError(t, err)
 	part1 := partSet.GetPart(0)
@@ -574,7 +573,7 @@ func TestLoadBlockMetaByHash(t *testing.T) {
 	b1 := state.MakeBlock(state.LastBlockHeight+1, test.MakeNTxs(state.LastBlockHeight+1, 10), new(types.Commit), nil, state.Validators.GetProposer().Address)
 	partSet, err := b1.MakePartSet(2)
 	require.NoError(t, err)
-	seenCommit := makeTestCommit(1, tmtime.Now())
+	seenCommit := makeTestExtCommit(1, tmtime.Now())
 	bs.SaveBlock(b1, partSet, seenCommit)
 
 	baseBlock := bs.LoadBlockMetaByHash(b1.Hash())
