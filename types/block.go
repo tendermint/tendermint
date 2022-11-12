@@ -1121,7 +1121,7 @@ func (ec *ExtendedCommit) ValidateBasic() error {
 	}
 
 	if ec.Height >= 1 {
-		if ec.BlockID.IsNil() {
+		if len(ec.BlockID.Hash) == 0 {
 			return errors.New("commit cannot be for nil block")
 		}
 

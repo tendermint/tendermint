@@ -1691,7 +1691,7 @@ func (m *VoteMessage) ValidateBasic() error {
 	// here.
 	return m.Vote.ValidateWithExtension()
 }
-g
+
 // String returns a string representation.
 func (m *VoteMessage) String() string {
 	return fmt.Sprintf("[Vote %v]", m.Vote)
