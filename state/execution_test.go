@@ -932,7 +932,7 @@ func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.Bloc
 		psH = make([]byte, tmhash.Size)
 	)
 	copy(h, hash)
-	copy(psH, partSetHash)q
+	copy(psH, partSetHash)
 	return types.BlockID{
 		Hash: h,
 		PartSetHeader: types.PartSetHeader{
