@@ -49,11 +49,11 @@ this behaviour and explaining their needs.
 - Celestia: [blacklisting peers that repeatedly send bad tx](https://github.com/celestiaorg/celestia-core/issues/867)
   and investigating how [Tendermint treats large Txs](https://github.com/celestiaorg/celestia-core/issues/243)
 - BigChainDb: [Handling proposers who propose bad blocks](https://github.com/bigchaindb/BEPs/issues/84)
-- IBC-go: Simulate transactions in the mempool and detect whether they could ever have been valid to 
-  [avoid overloading the p2p/mempool system](https://github.com/cosmos/ibc-go/issues/853#issuecomment-1032211020)
- (ToDo check with Adi what is this about, what are valid reasons this can happen and when should we disconnect)
-  (relevant code [here](https://github.com/cosmos/ibc-go/blob/a0e59b8e7a2e1305b7b168962e20516ca8c98fad/modules/core/ante/ante.go#L23)) 
 - IBC relayers: Nodes allow transactions with a wrong `minGas` transaction and gossip them, and other nodes keep rejecting them. (Problem seen with relayers)
+
+**Acceptable duplicate transactions**
+
+Banning peers was also mentioned within [IBC-go](https://github.com/cosmos/ibc-go/issues/853#issuecomment-1032211020). However,the crux of the issue is preventing transactions with duplicate payload. While this is indeed undesired behaviour, this is not considered behaviour that should lead to banning a peer or even disconnecting from him. Duplicate transactions are in this case prevented using an application-specific solution. 
 
 ### Current state of mempool/p2p interaction
 
