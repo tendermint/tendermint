@@ -21,8 +21,6 @@ import (
 const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
-	networkIPv4           = "10.186.73.0/24"
-	networkIPv6           = "fd80:b10c::/48"
 )
 
 type (
@@ -76,6 +74,7 @@ type Node struct {
 	Name             string
 	Testnet          *Testnet
 	Mode             Mode
+	SyncApp          bool // Should we use a synchronized app with an unsynchronized local client?
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
 	IP               net.IP
@@ -100,37 +99,30 @@ type Node struct {
 // The testnet generation must be deterministic, since it is generated
 // separately by the runner and the test cases. For this reason, testnets use a
 // random seed to generate e.g. keys.
-func LoadTestnet(file string) (*Testnet, error) {
+func LoadTestnet(file string, ifd InfrastructureData) (*Testnet, error) {
 	manifest, err := LoadManifest(file)
 	if err != nil {
 		return nil, err
 	}
-	return NewTestnetFromManifest(manifest, file)
+	return NewTestnetFromManifest(manifest, file, ifd)
 }
 
 // NewTestnetFromManifest creates and validates a testnet from a manifest
-func NewTestnetFromManifest(manifest Manifest, file string) (*Testnet, error) {
+func NewTestnetFromManifest(manifest Manifest, file string, ifd InfrastructureData) (*Testnet, error) {
 	dir := strings.TrimSuffix(file, filepath.Ext(file))
 
-	// Set up resource generators. These must be deterministic.
-	netAddress := networkIPv4
-	if manifest.IPv6 {
-		netAddress = networkIPv6
-	}
-	_, ipNet, err := net.ParseCIDR(netAddress)
-	if err != nil {
-		return nil, fmt.Errorf("invalid IP network address %q: %w", netAddress, err)
-	}
-
-	ipGen := newIPGenerator(ipNet)
 	keyGen := newKeyGenerator(randomSeed)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
+	_, ipNet, err := net.ParseCIDR(ifd.Network)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IP network address %q: %w", ifd.Network, err)
+	}
 
 	testnet := &Testnet{
 		Name:                 filepath.Base(dir),
 		File:                 file,
 		Dir:                  dir,
-		IP:                   ipGen.Network(),
+		IP:                   ipNet,
 		InitialHeight:        1,
 		InitialState:         manifest.InitialState,
 		Validators:           map[*Node]int64{},
@@ -161,14 +153,19 @@ func NewTestnetFromManifest(manifest Manifest, file string) (*Testnet, error) {
 
 	for _, name := range nodeNames {
 		nodeManifest := manifest.Nodes[name]
+		ind, ok := ifd.Instances[name]
+		if !ok {
+			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
+		}
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
-			IP:               ipGen.Next(),
+			IP:               ind.IPAddress,
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
+			SyncApp:          nodeManifest.SyncApp,
 			Database:         "goleveldb",
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
