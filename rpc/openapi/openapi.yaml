@@ -925,7 +925,7 @@ paths:
         maximum age.
       parameters:
         - in: query
-          name: chunkID
+          name: chunk
           description: Sequence number of the chunk to download.
           schema:
             type: integer
