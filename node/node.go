@@ -160,7 +160,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics, abciMetrics := metricsProvider(genDoc.ChainID)
+	csMetrics, p2pMetrics, memplMetrics, smMetrics, abciMetrics, bsMetrics, ssMetrics := metricsProvider(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, abciMetrics)
@@ -249,18 +249,12 @@ func NewNode(config *cfg.Config,
 	)
 
 	// Make BlocksyncReactor. Don't start block sync if we're doing a state sync first.
-	bcReactor, err := createBlocksyncReactor(config, state, blockExec, blockStore, blockSync && !stateSync, logger)
+	bcReactor, err := createBlocksyncReactor(config, state, blockExec, blockStore, blockSync && !stateSync, logger, bsMetrics)
 	if err != nil {
 		return nil, fmt.Errorf("could not create blocksync reactor: %w", err)
 	}
 
-	// Make ConsensusReactor. Don't enable fully if doing a state sync and/or block sync first.
-	// FIXME We need to update metrics here, since other reactors don't have access to them.
-	if stateSync {
-		csMetrics.StateSyncing.Set(1)
-	} else if blockSync {
-		csMetrics.BlockSyncing.Set(1)
-	}
+	// Make ConsensusReactor
 	consensusReactor, consensusState := createConsensusReactor(
 		config, state, blockExec, blockStore, mempool, evidencePool,
 		privValidator, csMetrics, stateSync || blockSync, eventBus, consensusLogger,
@@ -275,6 +269,7 @@ func NewNode(config *cfg.Config,
 		proxyApp.Snapshot(),
 		proxyApp.Query(),
 		config.StateSync.TempDir,
+		ssMetrics,
 	)
 	stateSyncReactor.SetLogger(logger.With("module", "statesync"))
 
@@ -306,6 +301,17 @@ func NewNode(config *cfg.Config,
 	addrBook, err := createAddrBookAndSetOnSwitch(config, sw, p2pLogger, nodeKey)
 	if err != nil {
 		return nil, fmt.Errorf("could not create addrbook: %w", err)
+	}
+
+	for _, addr := range splitAndTrimEmpty(config.P2P.BootstrapPeers, ",", " ") {
+		netAddrs, err := p2p.NewNetAddressString(addr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid bootstrap peer address: %w", err)
+		}
+		err = addrBook.AddAddress(netAddrs, netAddrs)
+		if err != nil {
+			return nil, fmt.Errorf("adding bootstrap address to addressbook: %w", err)
+		}
 	}
 
 	// Optionally, start the pex reactor

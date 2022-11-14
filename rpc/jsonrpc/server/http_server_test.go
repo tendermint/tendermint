@@ -111,7 +111,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 	// one argument
 	w := httptest.NewRecorder()
-	err := WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
+	err := WriteCacheableRPCResponseHTTP(w, types.NewRPCSuccessResponse(id, &sampleResult{"hello"}))
 	require.NoError(t, err)
 	resp := w.Result()
 	body, err := io.ReadAll(resp.Body)
@@ -119,6 +119,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "public, max-age=86400", resp.Header.Get("Cache-control"))
 	assert.Equal(t, `{
   "jsonrpc": "2.0",
   "id": -1,

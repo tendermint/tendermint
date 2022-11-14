@@ -113,9 +113,22 @@ func startApp(cfg *Config) error {
 //
 // FIXME There is no way to simply load the configuration from a file, so we need to pull in Viper.
 func startNode(cfg *Config) error {
-	app, err := app.NewApplication(cfg.App())
-	if err != nil {
-		return err
+	var cc proxy.ClientCreator
+
+	if cfg.SyncApp {
+		app, err := app.NewSyncApplication(cfg.App())
+		if err != nil {
+			return err
+		}
+		cc = proxy.NewUnsyncLocalClientCreator(app)
+		logger.Info("Using synchronized app with unsynchronized local client")
+	} else {
+		app, err := app.NewApplication(cfg.App())
+		if err != nil {
+			return err
+		}
+		cc = proxy.NewLocalClientCreator(app)
+		logger.Info("Using regular app with synchronized (regular) local client")
 	}
 
 	tmcfg, nodeLogger, nodeKey, err := setupNode()
@@ -126,7 +139,7 @@ func startNode(cfg *Config) error {
 	n, err := node.NewNode(tmcfg,
 		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
-		proxy.NewLocalClientCreator(app),
+		cc,
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		config.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),

@@ -16,25 +16,27 @@ func (env *Environment) GetRoutes() RoutesMap {
 		"unsubscribe":     rpc.NewWSRPCFunc(env.Unsubscribe, "query"),
 		"unsubscribe_all": rpc.NewWSRPCFunc(env.UnsubscribeAll, ""),
 
-		// info API
+		// info AP
 		"health":               rpc.NewRPCFunc(env.Health, ""),
 		"status":               rpc.NewRPCFunc(env.Status, ""),
 		"net_info":             rpc.NewRPCFunc(env.NetInfo, ""),
-		"blockchain":           rpc.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight"),
-		"genesis":              rpc.NewRPCFunc(env.Genesis, ""),
-		"genesis_chunked":      rpc.NewRPCFunc(env.GenesisChunked, "chunk"),
-		"block":                rpc.NewRPCFunc(env.Block, "height"),
-		"block_by_hash":        rpc.NewRPCFunc(env.BlockByHash, "hash"),
-		"block_results":        rpc.NewRPCFunc(env.BlockResults, "height"),
-		"commit":               rpc.NewRPCFunc(env.Commit, "height"),
+		"blockchain":           rpc.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", rpc.Cacheable()),
+		"genesis":              rpc.NewRPCFunc(env.Genesis, "", rpc.Cacheable()),
+		"genesis_chunked":      rpc.NewRPCFunc(env.GenesisChunked, "chunk", rpc.Cacheable()),
+		"block":                rpc.NewRPCFunc(env.Block, "height", rpc.Cacheable("height")),
+		"block_by_hash":        rpc.NewRPCFunc(env.BlockByHash, "hash", rpc.Cacheable()),
+		"block_results":        rpc.NewRPCFunc(env.BlockResults, "height", rpc.Cacheable("height")),
+		"commit":               rpc.NewRPCFunc(env.Commit, "height", rpc.Cacheable("height")),
+		"header":               rpc.NewRPCFunc(env.Header, "height", rpc.Cacheable("height")),
+		"header_by_hash":       rpc.NewRPCFunc(env.HeaderByHash, "hash", rpc.Cacheable()),
 		"check_tx":             rpc.NewRPCFunc(env.CheckTx, "tx"),
-		"tx":                   rpc.NewRPCFunc(env.Tx, "hash,prove"),
+		"tx":                   rpc.NewRPCFunc(env.Tx, "hash,prove", rpc.Cacheable()),
 		"tx_search":            rpc.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by"),
 		"block_search":         rpc.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by"),
-		"validators":           rpc.NewRPCFunc(env.Validators, "height,page,per_page"),
+		"validators":           rpc.NewRPCFunc(env.Validators, "height,page,per_page", rpc.Cacheable("height")),
 		"dump_consensus_state": rpc.NewRPCFunc(env.DumpConsensusState, ""),
 		"consensus_state":      rpc.NewRPCFunc(env.GetConsensusState, ""),
-		"consensus_params":     rpc.NewRPCFunc(env.ConsensusParams, "height"),
+		"consensus_params":     rpc.NewRPCFunc(env.ConsensusParams, "height", rpc.Cacheable("height")),
 		"unconfirmed_txs":      rpc.NewRPCFunc(env.UnconfirmedTxs, "limit"),
 		"num_unconfirmed_txs":  rpc.NewRPCFunc(env.NumUnconfirmedTxs, ""),
 
@@ -45,7 +47,7 @@ func (env *Environment) GetRoutes() RoutesMap {
 
 		// abci API
 		"abci_query": rpc.NewRPCFunc(env.ABCIQuery, "path,data,height,prove"),
-		"abci_info":  rpc.NewRPCFunc(env.ABCIInfo, ""),
+		"abci_info":  rpc.NewRPCFunc(env.ABCIInfo, "", rpc.Cacheable()),
 
 		// evidence API
 		"broadcast_evidence": rpc.NewRPCFunc(env.BroadcastEvidence, "evidence"),

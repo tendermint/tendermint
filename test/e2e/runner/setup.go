@@ -258,6 +258,7 @@ func MakeAppConfig(node *e2e.Node) ([]byte, error) {
 		"dir":                    "data/app",
 		"listen":                 AppAddressUNIX,
 		"mode":                   node.Mode,
+		"sync_app":               node.SyncApp,
 		"proxy_port":             node.ProxyPort,
 		"protocol":               "socket",
 		"persist_interval":       node.PersistInterval,
