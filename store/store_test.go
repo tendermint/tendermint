@@ -377,8 +377,7 @@ func TestLoadBaseMeta(t *testing.T) {
 }
 
 func TestLoadBlockPart(t *testing.T) {
-	cfg, err := config.ResetTestRoot(t.TempDir(), "blockchain_reactor_test")
-	require.NoError(t, err)
+	cfg := config.ResetTestRoot("blockchain_reactor_test")
 
 	bs, db := newInMemoryBlockStore()
 	const height, index = 10, 1
