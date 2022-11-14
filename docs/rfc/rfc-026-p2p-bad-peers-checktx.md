@@ -4,6 +4,7 @@
 - Nov 4,  2022: Initial draft (jmalicevic)
 - Nov 8,  2022: Updated draft (jmalicevic)
 - Nov 11, 2022: Updated based on PR comments (jmalicevic)
+- Nov 14, 2022: Updated current peer banning mechanisms (jmalicevic)
 
 ## Abstract
 
@@ -69,9 +70,11 @@ from the node.
 
 ### Current support for peer banning
 
-The p2p layer implements only banning peers for an indefinite amount of time, by marking them
-as bad (calling the `MarkBad` routine implemented by the `Switch`). The peers are reinstated to the list 
-of good peers only if the node requires more peers. They can also not be marked as bad forever (blacklisted). 
+The p2p layer implements banning peers by marking them
+as bad and removing them from the list of peers to connect to for *at least* a predefined amount of time. This is done by calling the `MarkBad` routine implemented by the `Switch`. If the node does not set the amount of time to be banned, a default value is used. 
+Note that the timing parameter sets the lower bound for when a peer will be unbanned. 
+But the p2p layer will only try to connect to banned peers if the node is not sufficiently connected. Thus the node has no
+explicit control on when a reconnect attempt will be triggered.
 
 The application can blacklist peers via ABCI if the 
 [`filterPeers`](../../spec/abci/abci%2B%2B_app_requirements.md#peer-filtering) 
@@ -158,6 +161,7 @@ The transaction broadcast logic simply loops through the mempool and tries to se
 If we want to ban peers based on duplicate transactions, we should either add additional checks for the cases above, or 
 not ban peers for this behaviour at the moment. It would be useful to gather metrics on how often a peer gossips the same 
 transaction and whether this is cause of significant traffic. 
+
 
 #### **Banning for sending *never-valid* transactions**
 
