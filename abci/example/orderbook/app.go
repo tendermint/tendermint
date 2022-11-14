@@ -7,6 +7,7 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 var _ types.Application = (*StateMachine)(nil)
@@ -21,6 +22,7 @@ const (
 	ErrValidateBasic
 	ErrNoAccount
 	ErrNoPair
+	ErrInvalidSignature
 )
 
 type StateMachine struct {
@@ -83,13 +85,19 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		if _, ok := sm.accounts[m.MsgBid.BidOrder.OwnerId]; !ok {
+		account, ok := sm.accounts[m.MsgBid.BidOrder.OwnerId]
+		if !ok {
 			return types.ResponseCheckTx{Code: ErrNoAccount}
 		}
 
 		// check the pair exists
 		if _, ok := sm.pairs[m.MsgBid.Pair.String()]; !ok {
 			return types.ResponseCheckTx{Code: ErrNoPair}
+		}
+
+		// verify signature
+		if !m.MsgBid.BidOrder.ValidateSignature(ed25519.PubKey(account.PublicKey), m.MsgBid.Pair) {
+			return types.ResponseCheckTx{Code: ErrInvalidSignature}
 		}
 
 	case *Msg_MsgAsk:
@@ -99,7 +107,7 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		}
 
 		// check if account exists
-		_, ok := sm.accounts[m.MsgAsk.AskOrder.OwnerId]
+		account, ok := sm.accounts[m.MsgAsk.AskOrder.OwnerId]
 		if !ok {
 			return types.ResponseCheckTx{Code: ErrNoAccount}
 		}
@@ -107,6 +115,11 @@ func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx 
 		// check the pair exists
 		if _, ok := sm.pairs[m.MsgAsk.Pair.String()]; !ok {
 			return types.ResponseCheckTx{Code: ErrNoPair}
+		}
+
+		// verify signature
+		if !m.MsgAsk.AskOrder.ValidateSignature(ed25519.PubKey(account.PublicKey), m.MsgAsk.Pair) {
+			return types.ResponseCheckTx{Code: ErrInvalidSignature}
 		}
 
 	default:
@@ -267,8 +280,6 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 				return rejectProposal()
 			}
 
-			// TODO: verify the signature
-
 		case *Msg_MsgAsk, *Msg_MsgBid: // MsgAsk and MsgBid are not allowed individually - they need to be matched as a TradeSet
 			return rejectProposal()
 
@@ -281,8 +292,6 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 			if _, ok := sm.publicKeys[string(m.MsgCreateAccount.PublicKey)]; ok {
 				return rejectProposal()
 			}
-
-			// TODO: verify the signature
 
 		case *Msg_MsgTradeSet:
 			// for each matched order
@@ -297,14 +306,20 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 			}
 
 			for _, order := range m.MsgTradeSet.TradeSet.MatchedOrders {
+				// validate matched order i.e. users have funds
 				if !sm.isMatchedOrderValid(order, m.MsgTradeSet.TradeSet.Pair) {
 					return rejectProposal()
 				}
 
-				// bidOwner := sm.accounts[order.OrderBid.OwnerId]
-				// askOwner := sm.accounts[order.OrderAsk.OwnerId]
-
-				// ed25519.Verify(bidOwner.PublicKey, )
+				// verify signatures
+				bidOwner := sm.accounts[order.OrderBid.OwnerId]
+				askOwner := sm.accounts[order.OrderAsk.OwnerId]
+				if !order.OrderAsk.ValidateSignature(ed25519.PubKey(askOwner.PublicKey), m.MsgTradeSet.TradeSet.Pair) {
+					return rejectProposal()
+				}
+				if !order.OrderBid.ValidateSignature(ed25519.PubKey(bidOwner.PublicKey), m.MsgTradeSet.TradeSet.Pair) {
+					return rejectProposal()
+				}
 			}
 
 		default:
