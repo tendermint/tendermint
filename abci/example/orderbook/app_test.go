@@ -56,7 +56,8 @@ func TestCheckTx(t *testing.T) {
 				Pair: testPair,
 			}},
 			responseCode: orderbook.StatusOK,
-		}
+		},
+	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

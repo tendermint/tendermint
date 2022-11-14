@@ -1,11 +1,35 @@
 package orderbook
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
+
+func NewMsgBid(pair *Pair, maxPrice, maxQuantity float64, ownerId uint64) *MsgBid {
+	return &MsgBid{
+		Pair: pair,
+		BidOrder: &OrderBid{
+			MaxPrice:    maxPrice,
+			MaxQuantity: maxQuantity,
+			OwnerId:     ownerId,
+		},
+	}
+}
+
+func (msg *MsgBid) Sign(pk crypto.PrivKey) error {
+	sig, err := pk.Sign(msg.BidOrder.DeterministicSignatureBytes(msg.Pair))
+	if err != nil {
+		return err
+	}
+	msg.BidOrder.Signature = sig
+	return nil
+}
 
 func (msg *MsgBid) ValidateBasic() error {
 	if err := msg.BidOrder.ValidateBasic(); err != nil {
@@ -20,9 +44,26 @@ func (msg *MsgBid) ValidateBasic() error {
 		return errors.New("invalid signature size")
 	}
 
-	//quantity to be more than 0
-	// price to not be 0
+	return nil
+}
 
+func NewMsgAsk(pair *Pair, askPrice, quantity float64, ownerId uint64) *MsgAsk {
+	return &MsgAsk{
+		Pair: pair,
+		AskOrder: &OrderAsk{
+			AskPrice: askPrice,
+			Quantity: quantity,
+			OwnerId:  ownerId,
+		},
+	}
+}
+
+func (msg *MsgAsk) Sign(pk crypto.PrivKey) error {
+	sig, err := pk.Sign(msg.AskOrder.DeterministicSignatureBytes(msg.Pair))
+	if err != nil {
+		return err
+	}
+	msg.AskOrder.Signature = sig
 	return nil
 }
 
@@ -35,14 +76,15 @@ func (msg *MsgAsk) ValidateBasic() error {
 		return err
 	}
 
-	if len(msg.AskOrder.Signature) != ed25519.SignatureSize {
-		return errors.New("invalid signature size")
-	}
-
-	//quantity to be more than 0
-	// price to not be 0
-
 	return nil
+}
+
+func NewMsgCreateAccount(commodities ...*Commodity) (*MsgCreateAccount, crypto.PrivKey) {
+	pk := ed25519.GenPrivKey()
+	return &MsgCreateAccount{
+		PublicKey:   pk.PubKey().Bytes(),
+		Commodities: commodities,
+	}, pk
 }
 
 func (msg *MsgCreateAccount) ValidateBasic() error {
@@ -63,6 +105,10 @@ func (msg *MsgCreateAccount) ValidateBasic() error {
 	}
 
 	return nil
+}
+
+func NewMsgRegisterPair(pair *Pair) *MsgRegisterPair {
+	return &MsgRegisterPair{Pair: pair}
 }
 
 func (msg *MsgRegisterPair) ValidateBasic() error {
@@ -98,19 +144,36 @@ func (o *OrderBid) ValidateBasic() error {
 		return errors.New("min price must be greater than 0")
 	}
 
+	if len(o.Signature) != ed25519.SignatureSize {
+		return errors.New("invalid signature size")
+	}
+
 	return nil
 }
 
-// check signatures are valid
+func (o *OrderBid) ValidateSignature(pk crypto.PubKey, pair *Pair) bool {
+	return pk.VerifySignature(o.DeterministicSignatureBytes(pair), o.Signature)
+}
+
+func (o *OrderBid) DeterministicSignatureBytes(pair *Pair) []byte {
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString(pair.SellersDenomination)
+	buf.WriteString(pair.BuyersDenomination)
+	bz := buf.Bytes()
+	binary.BigEndian.PutUint64(bz, math.Float64bits(o.MaxQuantity))
+	binary.BigEndian.PutUint64(bz, math.Float64bits(o.MaxPrice))
+	return bz
+}
 
 func (m *MatchedOrder) ValidateBasic() error {
-	if len(m.OrderAsk.Signature) != ed25519.SignatureSize {
-		return errors.New("invalid signature size")
+	if err := m.OrderAsk.ValidateBasic(); err != nil {
+		return err
 	}
 
-	if len(m.OrderBid.Signature) != ed25519.SignatureSize {
-		return errors.New("invalid signature size")
+	if err := m.OrderBid.ValidateBasic(); err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -140,12 +203,26 @@ func (o *OrderAsk) ValidateBasic() error {
 	if o.AskPrice <= 0 {
 		return errors.New("min price must be greater than 0")
 	}
+
+	if len(o.Signature) != ed25519.SignatureSize {
+		return errors.New("invalid signature size")
+	}
+
 	return nil
 }
 
+func (o *OrderAsk) ValidateSignature(pk crypto.PubKey, pair *Pair) bool {
+	return pk.VerifySignature(o.DeterministicSignatureBytes(pair), o.Signature)
+}
+
 func (o *OrderAsk) DeterministicSignatureBytes(pair *Pair) []byte {
-	// buf := bytes.NewBuffer()
-	return nil
+	buf := bytes.NewBuffer(nil)
+	buf.WriteString(pair.BuyersDenomination)
+	buf.WriteString(pair.SellersDenomination)
+	bz := buf.Bytes()
+	binary.BigEndian.PutUint64(bz, math.Float64bits(o.Quantity))
+	binary.BigEndian.PutUint64(bz, math.Float64bits(o.AskPrice))
+	return bz
 }
 
 func (a *Account) FindCommidity(denom string) *Commodity {

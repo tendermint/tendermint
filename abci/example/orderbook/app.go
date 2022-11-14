@@ -1,7 +1,6 @@
 package orderbook
 
 import (
-	"crypto/ed25519"
 	"fmt"
 
 	"github.com/cosmos/gogoproto/proto"
@@ -307,8 +306,6 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 
 				// ed25519.Verify(bidOwner.PublicKey, )
 			}
-
-			
 
 		default:
 			return rejectProposal()
