@@ -184,7 +184,7 @@ cannot lie about who the sender of the transaction is.
 
 *Transactions received from users*
 
-For transactions submitted via `boradcastTxCommit`, the `SenderID` field is empty. 
+For transactions submitted via `broadcastTxCommit`, the `SenderID` field is empty. 
 
 **Note**  Do we have mechanisms in place to handle cases when `broadcastTxCommit` submits
 failing transactions (can this be a form of attack)?
@@ -290,7 +290,7 @@ The question is which one is more costly, doing `CheckTx` more then once, or kee
 
 As said, this code will [never be executed](https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/mempool/v0/clist_mempool.go#L239) for transactions whose signature is found
 in the cache. 
-Instead of remembering the cached transactions, we could have had a valid/invalit bit per transaction within the cache. As transactions themselves do not
+Instead of remembering the cached transactions, we could have had a valid/invalid bit per transaction within the cache. As transactions themselves do not
 store such information and we expect this scenario to be unlikely, instead of increasing the footprint of all transactions in the cache,
 we opted to keep a map of transaction signature if the transaction is in the cache, but is invalid. Alternatively, the cache could keep two lists, one for valid, and one for invalid transactions. 
 This modifies the following pieces of code as follows (this is just a prototype and does not include 
