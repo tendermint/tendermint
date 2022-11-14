@@ -41,6 +41,8 @@ type Inspector struct {
 	eventBus       *types.EventBus
 	logger         log.Logger
 
+	// References to the state store and block store are maintained to enable
+	// the Inspector to safely close them on shutdown.
 	ss state.Store
 	bs state.BlockStore
 }
@@ -49,7 +51,7 @@ type Inspector struct {
 // The Inspector type does not modify the state or block stores.
 // The sinks are used to enable block and transaction querying via the RPC server.
 // The caller is responsible for starting and stopping the Inspector service.
-// /
+//
 //
 //nolint:lll
 func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, txidx txindex.TxIndexer, blkidx indexer.BlockIndexer, lg log.Logger) *Inspector {
@@ -118,6 +120,7 @@ func (ins *Inspector) Run(ctx context.Context) error {
 	}()
 	defer ins.bs.Close()
 	defer ins.ss.Close()
+
 	return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
 }
 
