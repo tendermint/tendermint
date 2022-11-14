@@ -40,6 +40,9 @@ type Inspector struct {
 	indexerService *txindex.IndexerService
 	eventBus       *types.EventBus
 	logger         log.Logger
+
+	ss state.Store
+	bs state.BlockStore
 }
 
 // New returns an Inspector that serves RPC on the specified BlockStore and StateStore.
@@ -61,6 +64,8 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, txidx txind
 		logger:         logger,
 		eventBus:       eb,
 		indexerService: is,
+		ss:             ss,
+		bs:             bs,
 	}
 }
 
@@ -70,14 +75,11 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer bsDB.Close()
 	bs := store.NewBlockStore(bsDB)
-	defer bs.Close()
 	sDB, err := config.DefaultDBProvider(&config.DBContext{ID: "state", Config: cfg})
 	if err != nil {
 		return nil, err
 	}
-	defer sDB.Close()
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
 	if err != nil {
 		return nil, err
@@ -88,7 +90,6 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 	}
 	lg := logger.With("module", "inspect")
 	ss := state.NewStore(sDB, state.StoreOptions{})
-	defer ss.Close()
 	return New(cfg.RPC, bs, ss, txidx, blkidx, lg), nil
 }
 
@@ -115,6 +116,8 @@ func (ins *Inspector) Run(ctx context.Context) error {
 			ins.logger.Error("indexer service stopped with error", "err", err)
 		}
 	}()
+	defer ins.bs.Close()
+	defer ins.ss.Close()
 	return startRPCServers(ctx, ins.config, ins.logger, ins.routes)
 }
 
