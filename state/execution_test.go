@@ -175,16 +175,19 @@ func TestFinalizeBlockValidators(t *testing.T) {
 
 	var (
 		now        = tmtime.Now()
-		commitSig0 = types.NewCommitSigForBlock(
-			[]byte("Signature1"),
-			state.Validators.Validators[0].Address,
-			now,
-		)
-		commitSig1 = types.NewCommitSigForBlock(
-			[]byte("Signature2"),
-			state.Validators.Validators[1].Address,
-			now,
-		)
+		commitSig0 = types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: state.Validators.Validators[0].Address,
+			Timestamp:        now,
+			Signature:        []byte("Signature1"),
+		}
+
+		commitSig1 = types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: state.Validators.Validators[1].Address,
+			Timestamp:        now,
+			Signature:        []byte("Signature2"),
+		}
 		absentSig = types.NewCommitSigAbsent()
 	)
 
