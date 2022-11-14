@@ -20,8 +20,13 @@
   
 - Tooling
   - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
+    labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
 
 ### FEATURES
+
+- [config] \#9680 Introduce `BootstrapPeers` to the config to allow nodes to list peers to be added to
+  the addressbook upon start up (@cmwaters)
 
 ### IMPROVEMENTS
 
