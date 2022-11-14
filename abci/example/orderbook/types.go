@@ -100,6 +100,7 @@ func (o *OrderBid) ValidateBasic() error {
 
 	return nil
 }
+
 // check signatures are valid
 
 func (m *MatchedOrder) ValidateBasic() error {
@@ -139,7 +140,11 @@ func (o *OrderAsk) ValidateBasic() error {
 	if o.AskPrice <= 0 {
 		return errors.New("min price must be greater than 0")
 	}
+	return nil
+}
 
+func (o *OrderAsk) DeterministicSignatureBytes(pair *Pair) []byte {
+	// buf := bytes.NewBuffer()
 	return nil
 }
 
@@ -149,5 +154,7 @@ func (a *Account) FindCommidity(denom string) *Commodity {
 			return c
 		}
 	}
+
 	return nil
+
 }

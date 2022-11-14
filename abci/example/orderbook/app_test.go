@@ -3,35 +3,79 @@ package orderbook_test
 import (
 	"testing"
 
+	"github.com/cosmos/gogoproto/proto"
+	"github.com/stretchr/testify/require"
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/abci/example/orderbook"
 	"github.com/tendermint/tendermint/abci/types"
 )
 
-func TestNew(t *testing.T) {
-	StateMachine := New()
+func TestCheckTx(t *testing.T) {
+	app := orderbook.New(dbm.NewMemDB())
 
-	
-	// initialise market
-	market := orderbook.NewMarket(testPair)
-	// create transaction
-	response := S.PrepareProposal(types.RequestPrepareProposal{})
+	testCases := []struct {
+		name         string
+		msg          *orderbook.Msg
+		responseCode int
+	}{
+		{
+			name:         "test empty tx",
+			msg:          &orderbook.Msg{},
+			responseCode: orderbook.ErrUnknownMessage,
+		},
+		{
+			name: "test msg ask",
+			msg: &orderbook.Msg{Sum: &orderbook.Msg_MsgAsk{MsgAsk: &orderbook.MsgAsk{
+				Pair: testPair,
+				AskOrder: &orderbook.OrderAsk{
+					Quantity:  10,
+					AskPrice:  1,
+					OwnerId:   1,
+					Signature: []byte("signature"),
+				},
+			}}},
+			responseCode: orderbook.StatusOK,
+		},
+		{
+			name: "test msg bid",
+			msg: &orderbook.Msg{Sum: &orderbook.Msg_MsgBid{MsgBid: &orderbook.MsgBid{
+				Pair: testPair, 
+				OrderBid: &orderbook.OrderBid{
+					MaxQuantity: 15,
+					MaxPrice:    5,
+					OwnerId:     1,
+					Signature:   []byte("signature"),
+				},
+			}},
+			responseCode: orderbook.StatusOK,
+		},
+		{
+			name: "test msg register pair",
+			msg: &orderbook.Msg{Sum: &orderbook.Msg_MsgRegisterPair{MsgRegisterPair: &orderbook.MsgRegisterPair{
+				Pair: testPair,
+			}},
+			responseCode: orderbook.StatusOK,
+		}
 
-	// check to see if the market collected all of the pairs
-	// test to see if the tradeset is valid
-	// require.EqualValues(t, )
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			bz, err := proto.Marshal(tc.msg)
+			require.NoError(t, err)
+			resp := app.CheckTx(types.RequestCheckTx{Tx: bz})
+			require.Equal(t, tc.responseCode, resp.Code)
+		})
+	}
 }
 
-func TestNew(t *testing.T) {
-	var b map[string]string
-	var a StateMachine
+// func TestPrepareProposal(t *testing.T) {
+// 	app := orderbook.New(dbm.NewMemDB())
+// }
 
+// func TestProcessProposal(t *testing.T) {
+// 	app := orderbook.New(dbm.NewMemDB())
+// }
 
-
-}
-
-
-type B struct {
-	Field string
-	anotherField []int
-	anotherField2 [10]int
-}
+// func TestFinalizeBlock(t *testing.T) {
+// 	app := orderbook.New(dbm.NewMemDB())
+// }
