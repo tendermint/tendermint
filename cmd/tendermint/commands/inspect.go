@@ -61,14 +61,14 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	}
 	blockStore := store.NewBlockStore(blockStoreDB)
 	defer blockStore.Close()
+
 	stateDB, err := cfg.DefaultDBProvider(&cfg.DBContext{ID: "state", Config: config})
 	if err != nil {
-		if err := blockStoreDB.Close(); err != nil {
-			logger.Error("error closing block store db", "error", err)
-		}
 		return err
 	}
-	defer stateDB.Close()
+	stateStore := state.NewStore(stateDB, state.StoreOptions{DiscardABCIResponses: false})
+	defer stateStore.Close()
+
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
 		return err
@@ -77,9 +77,6 @@ func runInspect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	stateStore := state.NewStore(stateDB, state.StoreOptions{DiscardABCIResponses: false})
-	defer stateStore.Close()
-
 	ins := inspect.New(config.RPC, blockStore, stateStore, txIndexer, blockIndexer, logger)
 
 	logger.Info("starting inspect server")
