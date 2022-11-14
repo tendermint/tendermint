@@ -65,12 +65,14 @@ func TestBlock(t *testing.T) {
 	testBlock.Header.Height = testHeight
 	testBlock.Header.LastCommitHash = []byte("test hash")
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 
 	blockStoreMock := &statemocks.BlockStore{}
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{})
 	blockStoreMock.On("LoadBlock", testHeight).Return(testBlock)
+	blockStoreMock.On("Close").Return(nil)
 
 	txIndexerMock := &txindexmocks.TxIndexer{}
 	blkIdxMock := &indexermocks.BlockIndexer{}
@@ -117,7 +119,9 @@ func TestTxSearch(t *testing.T) {
 	}
 
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	txIndexerMock := &txindexmocks.TxIndexer{}
 	blkIdxMock := &indexermocks.BlockIndexer{}
 	txIndexerMock.On("Search", mock.Anything,
@@ -165,7 +169,9 @@ func TestTx(t *testing.T) {
 	testTx := []byte("tx")
 
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	blkIdxMock := &indexermocks.BlockIndexer{}
 	txIndexerMock := &txindexmocks.TxIndexer{}
 	txIndexerMock.On("Get", testHash).Return(&abcitypes.TxResult{
@@ -208,7 +214,9 @@ func TestConsensusParams(t *testing.T) {
 	testHeight := int64(1)
 	testMaxGas := int64(55)
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("Base").Return(int64(0))
 	stateStoreMock.On("LoadConsensusParams", testHeight).Return(types.ConsensusParams{
@@ -254,6 +262,7 @@ func TestBlockResults(t *testing.T) {
 	testHeight := int64(1)
 	testGasUsed := int64(100)
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 	//	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	stateStoreMock.On("LoadABCIResponses", testHeight).Return(&state.ABCIResponses{
 		DeliverTxs: []*abcitypes.ResponseDeliverTx{
@@ -265,6 +274,7 @@ func TestBlockResults(t *testing.T) {
 		BeginBlock: &abcitypes.ResponseBeginBlock{},
 	}, nil)
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("Height").Return(testHeight)
 	txIndexerMock := &txindexmocks.TxIndexer{}
@@ -305,7 +315,9 @@ func TestCommit(t *testing.T) {
 	testHeight := int64(1)
 	testRound := int32(101)
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{}, nil)
@@ -355,7 +367,9 @@ func TestBlockByHash(t *testing.T) {
 	testBlock.Header.Height = testHeight
 	testBlock.Header.LastCommitHash = testHash
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{
 		BlockID: types.BlockID{
 			Hash: testHash,
@@ -407,8 +421,10 @@ func TestBlockchain(t *testing.T) {
 	testBlock.Header.Height = testHeight
 	testBlock.Header.LastCommitHash = testBlockHash
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("Base").Return(int64(0))
 	blockStoreMock.On("LoadBlockMeta", testHeight).Return(&types.BlockMeta{
@@ -462,9 +478,11 @@ func TestValidators(t *testing.T) {
 		},
 	}
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 	stateStoreMock.On("LoadValidators", testHeight).Return(&testValidators, nil)
 
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
 	blockStoreMock.On("Height").Return(testHeight)
 	blockStoreMock.On("Base").Return(int64(0))
 	txIndexerMock := &txindexmocks.TxIndexer{}
@@ -510,8 +528,11 @@ func TestBlockSearch(t *testing.T) {
 	testBlockHash := []byte("test hash")
 	testQuery := "block.height = 1"
 	stateStoreMock := &statemocks.Store{}
+	stateStoreMock.On("Close").Return(nil)
 
 	blockStoreMock := &statemocks.BlockStore{}
+	blockStoreMock.On("Close").Return(nil)
+
 	txIndexerMock := &txindexmocks.TxIndexer{}
 	blkIdxMock := &indexermocks.BlockIndexer{}
 	blockStoreMock.On("LoadBlock", testHeight).Return(&types.Block{
