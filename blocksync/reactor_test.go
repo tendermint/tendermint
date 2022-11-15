@@ -148,7 +148,7 @@ func newReactor(
 			panic(fmt.Errorf("error apply block: %w", err))
 		}
 
-		blockStore.SaveBlock(thisBlock, thisParts, seenExtCommit)
+		blockStore.SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
 	}
 
 	bcReactor := NewReactor(state.Copy(), blockExec, blockStore, fastSync, NopMetrics())
