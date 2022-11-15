@@ -370,10 +370,11 @@ func TestSaveBlockWithExtendedCommitPanicOnAbsentExtension(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
-			require.NoError(t, err)
+			state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 			defer cleanup()
-			block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+			h := bs.Height() + 1
+			block := state.MakeBlock(h, test.MakeNTxs(h, 10), new(types.Commit), nil, state.Validators.GetProposer().Address)
+
 			seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
 			ps, err := block.MakePartSet(2)
 			require.NoError(t, err)
@@ -410,10 +411,10 @@ func TestLoadBlockExtendedCommit(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			state, bs, cleanup, err := makeStateAndBlockStore(t.TempDir())
-			require.NoError(t, err)
+			state, bs, cleanup := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 			defer cleanup()
-			block := factory.MakeBlock(state, bs.Height()+1, new(types.Commit))
+			h := bs.Height() + 1
+			block := state.MakeBlock(h, test.MakeNTxs(h, 10), new(types.Commit), nil, state.Validators.GetProposer().Address)
 			seenCommit := makeTestExtCommit(block.Header.Height, tmtime.Now())
 			ps, err := block.MakePartSet(2)
 			require.NoError(t, err)
@@ -658,7 +659,7 @@ func TestLoadBlockMetaByHash(t *testing.T) {
 	partSet, err := b1.MakePartSet(2)
 	require.NoError(t, err)
 	seenCommit := makeTestExtCommit(1, tmtime.Now())
-	bs.SaveBlock(b1, partSet, seenCommit)
+	bs.SaveBlock(b1, partSet, seenCommit.ToCommit())
 
 	baseBlock := bs.LoadBlockMetaByHash(b1.Hash())
 	assert.EqualValues(t, b1.Header.Height, baseBlock.Header.Height)

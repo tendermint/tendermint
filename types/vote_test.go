@@ -1,7 +1,6 @@
 package types
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -426,8 +425,6 @@ func TestInvalidPrecommitExtensions(t *testing.T) {
 }
 
 func TestEnsureVoteExtension(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	privVal := NewMockPV()
 
 	testCases := []struct {
@@ -444,8 +441,8 @@ func TestEnsureVoteExtension(t *testing.T) {
 		}, false},
 	}
 	for _, tc := range testCases {
-		precommit := examplePrecommit(t)
-		signVote(ctx, t, privVal, "test_chain_id", precommit)
+		precommit := examplePrecommit()
+		signVote(t, privVal, "test_chain_id", precommit)
 		tc.malleateVote(precommit)
 		if tc.expectError {
 			require.Error(t, precommit.EnsureExtension(), "EnsureExtension for %s", tc.name)
