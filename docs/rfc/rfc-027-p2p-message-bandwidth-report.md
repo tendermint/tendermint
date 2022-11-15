@@ -3,6 +3,7 @@
 ## Changelog
 
 - Nov 7, 2022: initial draft (@williambanfield)
+- Nov 15, 2022: draft completed (@williambanfield)
 
 ## Abstract
 
@@ -13,8 +14,15 @@ bandwidth consumption for nodes.
 
 ## Background
 
-* Osmosis Bandwidth Usage Complaint. How much is this?
-* This has high cost for node operators. Find gcloud bandwidth costs. https://cloud.google.com/vpc/network-pricing, hetzner: https://docs.hetzner.com/robot/general/traffic/, find AWS.
+Multiple teams running validators in production report that the validator consumes a lot of bandwidth.
+They report that a operators running on a network with hundreds of validators consumes multiple terabytes
+of bandwidth per day. Prometheus data collected from a validator node running on the Osmosis chain shows that Tendermint
+sends and receives large amounts of data to peers. In the nearly three hours of observation, Tendermint sent nearly 42 gigabytes
+and received about 26 gigabytes, for an estimated 366 gigabytes sent daily and 208 gigabytes received daily. While this is shy
+of the reported terabytes number, operators running multiple nodes for a 'sentry' pattern could easily send and receive a terabyte of data.
+
+Sending and receiving large amounts of data has a cost for node operators. Most cloud platforms charge for network traffic egress.
+Google Cloud charges between [$.05 to $.12 per gigabyte of egress traffic][gcloud-pricing], and ingress is free. Hetzner [charges 1€ per TB used over the 10-20TB base bandwidth per month][hetzner-pricing], which will be easily hit if multiple terabytes are sent and received per day. Using the values collected from the validator on Osmosis, a single node on Google cloud may cost $18 to $44 a day running on Google cloud. On Hetzner, the estimated 18TB a month of both sending and receiving may cost between 0 and 10 Euro a month per node.
 
 ## Discussion
 
@@ -27,9 +35,11 @@ The data reveal that three message types account for 98% of the total bandwidth 
 2. [mempool.Txs][mempool-txs-message]
 3. [consensus.Vote][vote-message]
 
+
 The image below of p2p data collected from the Blockpane validator illustrates the bandwidth consumption of these three message types in both data sending and receiving.
-[][] IMAGE HERE
-[][] IMAGE HERE
+
+![](./images/total-message-send-rate.png)
+![](./images/total-message-receive-rate.png)
 
 ### Investigation of Message Usage
 
@@ -60,6 +70,7 @@ The set of `BlockParts` that Tendermint considers its peer as having is only upd
 Each node receives block parts from all of its peers. The particular block part to send at any given time is randomly selected from the set of parts that the peer node is not yet known to have. Given that these are the only times that Tendermint learns of its peers' block parts, it's very likely that a node has an incomplete understanding of its peers' block parts and is transmitting block parts to a peer that the peer has received from some other node.
 
 Multiple potential mechanisms exist to reduce the number of duplicate block parts a node receives. One set of mechanisms relies on more frequently communicating the set of block parts a node needs to its peers. Another potential mechanism requires a larger overhaul to the way blocks are gossiped in the network.
+
 
 #### Mempool Tx Transmission
 
@@ -120,5 +131,7 @@ This new proposed method for gossiping block data would require a slight update 
 [apply-vote-set-bits]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/consensus/reactor.go#L1445
 [publish-event-vote]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/consensus/state.go#L2083
 [vote-set-bits-send]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/consensus/reactor.go#L306
-[must-wrap-packet]: https://github.com/tendermint/tendermint/blob/0dd484c34665960935eb0ba507dbb6bc5b7d077b/p2p/conn/connection.go#L889-L918
-[message-send]: https://github.com/tendermint/tendermint/blob/0dd484c34665960935eb0ba507dbb6bc5b7d077b/p2p/peer.go#L285
+[must-wrap-packet]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/p2p/conn/connection.go#L889-L918
+[message-send]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/p2p/peer.go#L285
+[gcloud-pricing]: https://cloud.google.com/vpc/network-pricing#vpc-pricing
+[hetzner-pricing]: https://docs.hetzner.com/robot/general/traffic
