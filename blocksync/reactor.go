@@ -185,7 +185,7 @@ func (bcR *Reactor) respondToPeer(msg *bcproto.BlockRequest,
 		})
 	}
 
-	state, err := bcR.stateStore.Load()
+	state, err := bcR.blockExec.Store().Load()
 	if err != nil {
 		bcR.Logger.Error("loading state", "err", err)
 		return false
