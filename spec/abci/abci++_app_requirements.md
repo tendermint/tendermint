@@ -844,31 +844,31 @@ In other words, as Tendermint runs, the following sequence of events happen, for
                 storeBlockHeight                           stateBlockHeight         appBlockHeight
                /                                             /                           /
 ...---(1)----|/----------|-------------...---(3)-----------|/----------(2)-------------|/-----(1)--...
-       Decision        StartBlock DeliverTx EndBlock                       Commit        
+             |           |  StartBlock DeliverTx EndBlock  |                           |
+          Decision                                                                   Commit        
 ```
 
 Given this timeline `storeBlockHeight >= stateBlockHeight` and `storeBlockHeight >= appBlockHeight`.
 Note also Tendermint never calls Commit on an ABCI app twice for the same height.
 
-The recovery procedure depends on when the application restarted, if at points (1), (2) or (3):
+Points (1), (2) or (3) denote some particular conditions:
 
-- (1) If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`, we're done.\
-This happens if we crashed at an opportune spot. 
+- (1) If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`,
+we crashed at an opportune spot. 
 
-- (2) If `storeBlockHeight == stateBlockHeight && storeBlockHeight > appBlockHeight`,\
-   replay all blocks in full from `appBlockHeight` to `storeBlockHeight`.\
-This happens if we completed processing the block, but the app forgot its height.
+- (2) If `storeBlockHeight == stateBlockHeight && storeBlockHeight > appBlockHeight`,
+we completed processing the block, but the app forgot its height.
 
-- (3) If `storeBlockHeight == stateBlockHeight+1`\
-This happens if we started processing the block but didn't finish.
+- (3) If `storeBlockHeight == stateBlockHeight+1`, 
+we started processing the block but didn't finish.
 
-
-The recovery procedure start by checking simple conditions:
+The recovery procedure depends on the condition found. 
+It starts by checking for the initial state:
 
 If `appBlockHeight == 0`, then call InitChain.\
 If `storeBlockHeight == 0`, we're done.
 
-If not completed, it performs some sanity checks:
+If not completed, the procedure performs some sanity checks:
 
 If `storeBlockHeight < appBlockHeight`, error.\
 If `storeBlockHeight < stateBlockHeight`, panic.\
@@ -876,17 +876,17 @@ If `storeBlockHeight > stateBlockHeight+1`, panic.
 
 Then it proceeds based on the values of the three heights:
 
-If `stateBlockHeight > appBlockHeight` (2)\
-    replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
-    and replay the block at `storeBlockHeight` using the WAL.\
+If `stateBlockHeight > appBlockHeight` (2) then\
+    replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,\
+    **and** replay the block at `storeBlockHeight` using the WAL.\
 This happens if the app forgot the last block it committed.
 
-If `stateBlockHeight == appBlockHeight`,\
+If `stateBlockHeight == appBlockHeight`, then
     replay the last block (storeBlockHeight) in full.\
 This happens if we crashed before the app finished Commit
 
-If `storeBlockHeight == appBlockHeight`
-    update the state using the saved ABCI responses but dont run the block against the real app.
+If `storeBlockHeight == appBlockHeight`\
+    update the state using the saved ABCI responses but dont run the block against the real app.\
 This happens if we crashed after the app finished Commit but before Tendermint saved the state.
 
 ### State Sync
