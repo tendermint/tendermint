@@ -26,12 +26,8 @@ var _ Client = (*localClient)(nil)
 // methods of the given app.
 //
 // Both Async and Sync methods ignore the given context.Context parameter.
-func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
-	if mtx == nil {
-		mtx = new(tmsync.Mutex)
-	}
+func NewLocalClient(app types.Application) Client {
 	cli := &localClient{
-		mtx:         mtx,
 		Application: app,
 	}
 	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)

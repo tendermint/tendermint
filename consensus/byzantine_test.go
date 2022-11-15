@@ -19,7 +19,6 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
-	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -65,10 +64,9 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
 
-		mtx := new(tmsync.Mutex)
 		// one for mempool, one for consensus
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnCon := abcicli.NewLocalClient(app)
+		proxyAppConnConMem := abcicli.NewLocalClient(app)
 
 		// Make Mempool
 		var mempool mempl.Mempool
