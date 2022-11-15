@@ -28,7 +28,7 @@ Google Cloud charges between [$.05 to $.12 per gigabyte of egress traffic][gclou
 
 ### Overview of Major Bandwidth Usage
 
-To determine which components of Tendermint were consuming the most bandwidth, I gathered prometheus metrics from the [Blockpane][blockpane-validator] validator running on the Osmosis network for several hours.
+To determine which components of Tendermint were consuming the most bandwidth, I gathered prometheus metrics from the [Blockpane][blockpane] validator running on the Osmosis network for several hours.
 The data reveal that three message types account for 98% of the total bandwidth consumed. These message types are as follows:
 
 1. [consensus.BlockPart][block-part-message]
