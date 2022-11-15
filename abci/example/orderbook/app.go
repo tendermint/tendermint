@@ -1,12 +1,13 @@
 package orderbook
 
 import (
-	"fmt"
+	"encoding/binary"
 
 	"github.com/cosmos/gogoproto/proto"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
@@ -17,12 +18,15 @@ const Version = 1
 const (
 	// In tendermint a zero code is okay and all non zero codes are errors
 	StatusOK = iota
-	ErrDecoding
-	ErrUnknownMessage
-	ErrValidateBasic
-	ErrNoAccount
-	ErrNoPair
-	ErrInvalidSignature
+	StatusErrDecoding
+	StatusErrUnknownMessage
+	StatusErrValidateBasic
+	StatusErrNoAccount
+	StatusErrAccountExists
+	StatusErrNoPair
+	StatusErrPairExists
+	StatusErrInvalidOrder
+	StatusErrUnacceptableMessage
 )
 
 type StateMachine struct {
@@ -35,6 +39,9 @@ type StateMachine struct {
 	pairs       map[string]struct{} // lookup pairs
 	commodities map[string]struct{} // lookup commodities
 	publicKeys  map[string]struct{} // lookup existence of an account
+	// a list of transactions that have been modified by the most recent block
+	// and will need to result in an update to the db
+	touchedAccounts map[uint64]struct{} 
 
 	// app-side mempool (also emphemeral)
 	markets map[string]*Market // i.e. ATOM/USDC
@@ -57,80 +64,102 @@ func (sm *StateMachine) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{}
 }
 
-// CheckTx to be stateless
 func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	var msg = new(Msg)
 
 	err := proto.Unmarshal(req.Tx, msg)
 	if err != nil {
-		return types.ResponseCheckTx{Code: ErrDecoding, Log: err.Error()} // decoding error
+		return types.ResponseCheckTx{Code: StatusErrDecoding, Log: err.Error()} // decoding error
 	}
 
-	// validations for each msg below
+	if err := msg.ValidateBasic(); err != nil {
+		return types.ResponseCheckTx{Code: StatusErrValidateBasic, Log: err.Error()}
+	}
+
+	// add either bids or asks to the market which will match them in PrepareProposal
 	switch m := msg.Sum.(type) {
-	case *Msg_MsgRegisterPair:
-		if err := m.MsgRegisterPair.ValidateBasic(); err != nil {
-			return types.ResponseCheckTx{Code: ErrValidateBasic, Log: err.Error()}
-		}
-
-	case *Msg_MsgCreateAccount:
-		if err := m.MsgCreateAccount.ValidateBasic(); err != nil {
-			return types.ResponseCheckTx{Code: ErrValidateBasic, Log: err.Error()}
-		}
-
-	case *Msg_MsgBid:
-
-		if err := m.MsgBid.ValidateBasic(); err != nil {
-			return types.ResponseCheckTx{Code: ErrValidateBasic, Log: err.Error()}
-		}
-
-		// check if account exists
-		account, ok := sm.accounts[m.MsgBid.BidOrder.OwnerId]
-		if !ok {
-			return types.ResponseCheckTx{Code: ErrNoAccount}
-		}
-
-		// check the pair exists
-		if _, ok := sm.pairs[m.MsgBid.Pair.String()]; !ok {
-			return types.ResponseCheckTx{Code: ErrNoPair}
-		}
-
-		// verify signature
-		if !m.MsgBid.BidOrder.ValidateSignature(ed25519.PubKey(account.PublicKey), m.MsgBid.Pair) {
-			return types.ResponseCheckTx{Code: ErrInvalidSignature}
-		}
-
 	case *Msg_MsgAsk:
-
-		if err := m.MsgAsk.ValidateBasic(); err != nil {
-			return types.ResponseCheckTx{Code: ErrValidateBasic, Log: err.Error()}
-		}
-
-		// check if account exists
-		account, ok := sm.accounts[m.MsgAsk.AskOrder.OwnerId]
+		market, ok := sm.markets[m.MsgAsk.Pair.String()]
 		if !ok {
-			return types.ResponseCheckTx{Code: ErrNoAccount}
+			return types.ResponseCheckTx{Code: StatusErrNoPair}
 		}
-
-		// check the pair exists
-		if _, ok := sm.pairs[m.MsgAsk.Pair.String()]; !ok {
-			return types.ResponseCheckTx{Code: ErrNoPair}
+		market.AddAsk(m.MsgAsk.AskOrder)
+	case *Msg_MsgBid:
+		market, ok := sm.markets[m.MsgBid.Pair.String()]
+		if !ok {
+			return types.ResponseCheckTx{Code: StatusErrNoPair}
 		}
-
-		// verify signature
-		if !m.MsgAsk.AskOrder.ValidateSignature(ed25519.PubKey(account.PublicKey), m.MsgAsk.Pair) {
-			return types.ResponseCheckTx{Code: ErrInvalidSignature}
-		}
-
-	default:
-		return types.ResponseCheckTx{Code: ErrUnknownMessage} // unknown message type
+		market.AddBid(m.MsgBid.BidOrder)
 	}
 
 	return types.ResponseCheckTx{Code: StatusOK}
 }
 
+func (sm *StateMachine) ValidateTx(msg *Msg) uint32 {
+	if err := msg.ValidateBasic(); err != nil {
+		return StatusErrValidateBasic
+	}
+
+	switch m := msg.Sum.(type) {
+	case *Msg_MsgRegisterPair:
+		pair := m.MsgRegisterPair.Pair
+		if _, ok := sm.pairs[pair.String()]; ok {
+			return StatusErrPairExists
+		}
+
+		reversePair := &Pair{BuyersDenomination: pair.SellersDenomination, SellersDenomination: pair.BuyersDenomination}
+		if _, ok := sm.pairs[reversePair.String()]; ok {
+			return StatusErrPairExists
+		}
+
+	case *Msg_MsgAsk, *Msg_MsgBid: // MsgAsk and MsgBid are not allowed individually - they need to be matched as a TradeSet
+		return StatusErrUnacceptableMessage
+
+	case *Msg_MsgCreateAccount:
+		// check for duplicate accounts in state machine
+		if _, ok := sm.publicKeys[string(m.MsgCreateAccount.PublicKey)]; ok {
+			return StatusErrAccountExists
+		}
+
+	case *Msg_MsgTradeSet:
+		// check the pair exists
+		if _, ok := sm.pairs[m.MsgTradeSet.TradeSet.Pair.String()]; !ok {
+			return StatusErrNoPair
+		}
+
+		for _, order := range m.MsgTradeSet.TradeSet.MatchedOrders {
+			// validate matched order i.e. users have funds and signatures are valid
+			if !sm.isMatchedOrderValid(order, m.MsgTradeSet.TradeSet.Pair) {
+				return StatusErrInvalidOrder
+			}
+		}
+
+	default:
+		return StatusErrUnknownMessage
+	}
+
+	return StatusOK
+}
+
 func (sm *StateMachine) Commit() types.ResponseCommit {
-	return types.ResponseCommit{}
+	batch := sm.db.NewBatch()
+	for accountID := range sm.touchedAccounts {
+		value, err := proto.Marshal(sm.accounts[accountID])
+		if err != nil {
+			panic(err)
+		}
+		var key []byte
+		binary.BigEndian.PutUint64(key, accountID)
+
+		batch.Set(key, value)
+	}
+	batch.WriteSync()
+
+	return types.ResponseCommit{Data: sm.hash()}
+}
+
+func (sm *StateMachine) hash() []byte {
+	return tmhash.Sum([]byte("hash"))
 }
 
 func (sm *StateMachine) Query(req types.RequestQuery) types.ResponseQuery {
@@ -146,9 +175,54 @@ func (sm *StateMachine) BeginBlock(req types.RequestBeginBlock) types.ResponseBe
 }
 
 func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
-	tradeSet := new(TradeSet)
-	if err := proto.Unmarshal(req.Tx, tradeSet); err != nil {
-		panic(fmt.Sprintf("unmarshalling tx: %v", err))
+	var msg = new(Msg)
+
+	err := proto.Unmarshal(req.Tx, msg)
+	if err != nil {
+		return types.ResponseDeliverTx{Code: StatusErrDecoding, Log: err.Error()} // decoding error
+	}
+
+	if status := sm.ValidateTx(msg); status != StatusOK {
+		return types.ResponseDeliverTx{Code: status}
+	}
+
+	switch m := msg.Sum.(type) {
+	case *Msg_MsgRegisterPair:
+		sm.markets[m.MsgRegisterPair.Pair.String()] = NewMarket(m.MsgRegisterPair.Pair)
+		sm.pairs[m.MsgRegisterPair.Pair.String()] = struct{}{}
+
+	case *Msg_MsgCreateAccount:
+		nextAccountID := uint64(len(sm.accounts))
+		sm.accounts[nextAccountID] = &Account{
+			Index: nextAccountID,
+			PublicKey: m.MsgCreateAccount.PublicKey,
+			Commodities: m.MsgCreateAccount.Commodities,
+		}
+		sm.touchedAccounts[nextAccountID] = struct{}{}
+
+	case *Msg_MsgTradeSet:
+		pair := m.MsgTradeSet.TradeSet.Pair
+		for _, order := range m.MsgTradeSet.TradeSet.MatchedOrders {
+			buyer := sm.accounts[order.OrderBid.OwnerId]
+			seller := sm.accounts[order.OrderAsk.OwnerId]
+
+			// the buyer gets quantity of the asset that the seller was selling
+			buyer.AddCommodity(NewCommodity(pair.SellersDenomination, order.OrderAsk.Quantity))
+			// the buyer gives up quantity * ask price of the buyers denomination
+			buyer.SubtractCommodity(NewCommodity(pair.BuyersDenomination, order.OrderAsk.Quantity * order.OrderAsk.AskPrice))
+
+			// the seller gets quantity * ask price of the asset that the buyer was paying with
+			seller.AddCommodity(NewCommodity(pair.BuyersDenomination, order.OrderAsk.Quantity * order.OrderAsk.AskPrice))
+			// the seller gives up quantity of the commodity they were selling
+			seller.SubtractCommodity(NewCommodity(pair.SellersDenomination, order.OrderAsk.Quantity))
+
+			// mark that these account have been touched
+			sm.touchedAccounts[order.OrderBid.OwnerId] = struct{}{}
+			sm.touchedAccounts[order.OrderAsk.OwnerId] = struct{}{}
+		}
+
+	default:
+		return types.ResponseDeliverTx{Code: StatusErrUnknownMessage}
 	}
 
 	return types.ResponseDeliverTx{Code: 0}
@@ -178,7 +252,34 @@ func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.
 	// declare transaction with the size of 0
 	txs := make([][]byte, 0)
 
-	// fetch and match all the bids and asks for each market
+	// go through the transactions passed up via Tendermint first
+	for _, tx := range req.Txs {
+		var msg = new(Msg)
+		err := proto.Unmarshal(tx, msg)
+		if err != nil {
+			panic(err)
+		}
+
+		// skip over the bids and asks that are proposed. We already have them
+		if _, ok := msg.Sum.(*Msg_MsgBid); ok {
+			continue
+		}
+		if _, ok := msg.Sum.(*Msg_MsgAsk); ok {
+			continue
+		}
+
+		// make sure we're proposing valid transactions
+		if status := sm.ValidateTx(msg); status != StatusOK {
+			continue
+		}	
+
+		if len(txs)+len(tx) > int(req.MaxTxBytes) {
+			return types.ResponsePrepareProposal{Txs: txs}
+		}
+		txs = append(txs, tx)
+	}
+
+	// fetch and match all the bids and asks for each market and add these
 	for _, market := range sm.markets {
 		tradeSet := market.Match()
 		// tradesets into bytes and bytes into a transaction
@@ -205,53 +306,6 @@ func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.
 		txs = append(txs, bz)
 	}
 
-	for _, tx := range req.Txs {
-		var msg = new(Msg)
-		err := proto.Unmarshal(tx, msg)
-		if err != nil {
-			panic(err)
-		}
-
-		switch m := msg.Sum.(type) {
-		case *Msg_MsgRegisterPair:
-			// run the validation checks to see if duplicates within the pairs
-			pair := m.MsgRegisterPair.Pair
-			if _, ok := sm.pairs[pair.String()]; ok {
-				// this pair already exists so we skip over the message
-				// garbage collection should pick it up
-				continue
-			}
-
-			reversePair := &Pair{BuyersDenomination: pair.SellersDenomination, SellersDenomination: pair.BuyersDenomination}
-			if _, ok := sm.pairs[reversePair.String()]; ok {
-				// the reverse pair already exists so we skip over it
-				continue
-			}
-
-			// check to see that we don't over populate the block
-			if len(txs)+len(tx) > int(req.MaxTxBytes) {
-				return types.ResponsePrepareProposal{Txs: txs}
-			}
-			txs = append(txs, tx)
-
-		case *Msg_MsgCreateAccount:
-			// check for duplicate accounts in sm
-			if _, ok := sm.publicKeys[string(m.MsgCreateAccount.PublicKey)]; ok {
-				continue
-			}
-
-			// check to see that we don't over populate the block
-			if len(txs)+len(tx) > int(req.MaxTxBytes) {
-				return types.ResponsePrepareProposal{Txs: txs}
-			}
-			txs = append(txs, tx)
-		case *Msg_MsgAsk, *Msg_MsgBid:
-			// Already have these in the market and are paring together so not necessary to include here
-		default:
-			panic(fmt.Sprintf("unknown msg type in prepare proposal %T", m))
-		}
-	}
-
 	return types.ResponsePrepareProposal{Txs: req.Txs}
 }
 
@@ -261,70 +315,11 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 		var msg = new(Msg)
 		err := proto.Unmarshal(tx, msg)
 		if err != nil {
-			panic(err)
+			return rejectProposal()
 		}
 
-		switch m := msg.Sum.(type) {
-		case *Msg_MsgRegisterPair:
-			if err := m.MsgRegisterPair.ValidateBasic(); err != nil {
-				return rejectProposal()
-			}
-
-			pair := m.MsgRegisterPair.Pair
-			if _, ok := sm.pairs[pair.String()]; ok {
-				return rejectProposal()
-			}
-
-			reversePair := &Pair{BuyersDenomination: pair.SellersDenomination, SellersDenomination: pair.BuyersDenomination}
-			if _, ok := sm.pairs[reversePair.String()]; ok {
-				return rejectProposal()
-			}
-
-		case *Msg_MsgAsk, *Msg_MsgBid: // MsgAsk and MsgBid are not allowed individually - they need to be matched as a TradeSet
+		if status := sm.ValidateTx(msg); status != StatusOK {
 			return rejectProposal()
-
-		case *Msg_MsgCreateAccount:
-			if err := m.MsgCreateAccount.ValidateBasic(); err != nil {
-				return rejectProposal()
-			}
-
-			// check for duplicate accounts in sm
-			if _, ok := sm.publicKeys[string(m.MsgCreateAccount.PublicKey)]; ok {
-				return rejectProposal()
-			}
-
-		case *Msg_MsgTradeSet:
-			// for each matched order
-			// check the accounts exist, that the signatures are valid and that they have the available funds to make the swap
-			if err := m.MsgTradeSet.TradeSet.ValidateBasic(); err != nil {
-				return rejectProposal()
-			}
-
-			// check the pair exists
-			if _, ok := sm.pairs[m.MsgTradeSet.TradeSet.Pair.String()]; !ok {
-				return rejectProposal()
-			}
-
-			for _, order := range m.MsgTradeSet.TradeSet.MatchedOrders {
-				// validate matched order i.e. users have funds
-				if !sm.isMatchedOrderValid(order, m.MsgTradeSet.TradeSet.Pair) {
-					return rejectProposal()
-				}
-
-				// verify signatures
-				bidOwner := sm.accounts[order.OrderBid.OwnerId]
-				askOwner := sm.accounts[order.OrderAsk.OwnerId]
-				if !order.OrderAsk.ValidateSignature(ed25519.PubKey(askOwner.PublicKey), m.MsgTradeSet.TradeSet.Pair) {
-					return rejectProposal()
-				}
-				if !order.OrderBid.ValidateSignature(ed25519.PubKey(bidOwner.PublicKey), m.MsgTradeSet.TradeSet.Pair) {
-					return rejectProposal()
-				}
-			}
-
-		default:
-			return rejectProposal()
-
 		}
 	}
 
@@ -372,6 +367,13 @@ func (sm *StateMachine) isMatchedOrderValid(order *MatchedOrder, pair *Pair) boo
 
 	// Buyer has enough of the buying commodity
 	if buyCommodities.Quantity-(order.OrderAsk.AskPrice*order.OrderAsk.Quantity) < 0 {
+		return false
+	}
+
+	if !order.OrderAsk.ValidateSignature(ed25519.PubKey(askOwner.PublicKey), pair) {
+		return false
+	}
+	if !order.OrderBid.ValidateSignature(ed25519.PubKey(bidOwner.PublicKey), pair) {
 		return false
 	}
 

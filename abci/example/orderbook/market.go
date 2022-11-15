@@ -5,14 +5,14 @@ import (
 )
 
 type Market struct {
-	pair       Pair       // i.e. EUR/USD (a market is bidirectional)
+	pair       *Pair       // i.e. EUR/USD (a market is bidirectional)
 	askOrders  *AskOrders // i.e. buying EUR for USD
 	lowestAsk  float64
 	bidOrders  *BidOrders // i.e. selling EUR for USD or  buying USD for EUR
 	highestBid float64
 }
 
-func NewMarket(p Pair) *Market {
+func NewMarket(p *Pair) *Market {
 	askOrders := make(AskOrders, 0)
 	bidOrders := make(BidOrders, 0)
 	return &Market{pair: p, askOrders: &askOrders, bidOrders: &bidOrders}
@@ -47,7 +47,7 @@ func (m *Market) Match() *TradeSet {
 		return nil
 	}
 
-	t := &TradeSet{Pair: &m.pair}
+	t := &TradeSet{Pair: m.pair}
 	bids := make([]*OrderBid, 0)
 	asks := make([]*OrderAsk, 0)
 

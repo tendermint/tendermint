@@ -22,12 +22,12 @@ func TestCheckTx(t *testing.T) {
 		{
 			name:         "test empty tx",
 			msg:          &orderbook.Msg{},
-			responseCode: orderbook.ErrUnknownMessage,
+			responseCode: orderbook.StatusErrUnknownMessage,
 		},
 		{
 			name: "test msg ask",
 			msg: &orderbook.Msg{Sum: &orderbook.Msg_MsgAsk{MsgAsk: &orderbook.MsgAsk{
-				Pair: &testPair,
+				Pair: testPair,
 				AskOrder: &orderbook.OrderAsk{
 					Quantity:  10,
 					AskPrice:  1,
@@ -40,7 +40,7 @@ func TestCheckTx(t *testing.T) {
 		{
 			name: "test msg bid",
 			msg: &orderbook.Msg{Sum: &orderbook.Msg_MsgBid{MsgBid: &orderbook.MsgBid{
-				Pair: &testPair,
+				Pair: testPair,
 				BidOrder: &orderbook.OrderBid{
 					MaxQuantity: 15,
 					MaxPrice:    5,
@@ -53,7 +53,7 @@ func TestCheckTx(t *testing.T) {
 		{
 			name: "test msg register pair",
 			msg: &orderbook.Msg{Sum: &orderbook.Msg_MsgRegisterPair{MsgRegisterPair: &orderbook.MsgRegisterPair{
-				Pair: &testPair,
+				Pair: testPair,
 			}}},
 			responseCode: orderbook.StatusOK,
 		},

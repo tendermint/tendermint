@@ -115,6 +115,13 @@ func (msg *MsgRegisterPair) ValidateBasic() error {
 	return msg.Pair.ValidateBasic()
 }
 
+func NewCommodity(denom string, quantity float64) *Commodity {
+	return &Commodity{
+		Denom: denom,
+		Quantity: quantity,
+	}
+}
+
 func (c *Commodity) ValidateBasic() error {
 	if c.Quantity <= 0 {
 		return errors.New("quantity must be greater than zero")
@@ -234,4 +241,55 @@ func (a *Account) FindCommidity(denom string) *Commodity {
 
 	return nil
 
+}
+
+func (a *Account) AddCommodity(c *Commodity) {
+	curr := a.FindCommidity(c.Denom)
+	if curr == nil {
+		a.Commodities = append(a.Commodities, c)
+	} else {
+		curr.Quantity += c.Quantity
+	}
+}
+
+func (a *Account) SubtractCommodity(c *Commodity) {
+	curr := a.FindCommidity(c.Denom)
+	if curr == nil {
+		panic("trying to remove a commodity the account does not have")
+	}
+	curr.Quantity -= c.Quantity
+}
+
+func (msg *Msg) ValidateBasic() error { 
+	switch m := msg.Sum.(type) {
+	case *Msg_MsgRegisterPair:
+		if err := m.MsgRegisterPair.ValidateBasic(); err != nil {
+			return err
+		}
+
+	case *Msg_MsgCreateAccount:
+		if err := m.MsgCreateAccount.ValidateBasic(); err != nil {
+			return err
+		}
+
+	case *Msg_MsgBid:
+		if err := m.MsgBid.ValidateBasic(); err != nil {
+			return err
+		}
+
+	case *Msg_MsgAsk:
+		if err := m.MsgAsk.ValidateBasic(); err != nil {
+			return err
+		}
+
+	case *Msg_MsgTradeSet:
+		if err := m.MsgTradeSet.TradeSet.ValidateBasic(); err != nil {
+			return err
+		}
+	
+	default:
+		return errors.New("unknown tx")
+	}
+
+	return nil
 }

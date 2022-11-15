@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/orderbook"
 )
 
-var testPair = orderbook.Pair{BuyersDenomination: "ATOM", SellersDenomination: "USD"}
+var testPair = &orderbook.Pair{BuyersDenomination: "ATOM", SellersDenomination: "USD"}
 
 func testBid(price, quantity float64) *orderbook.OrderBid {
 	return &orderbook.OrderBid{
