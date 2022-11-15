@@ -38,8 +38,8 @@ The data reveal that three message types account for 98% of the total bandwidth 
 
 The image below of p2p data collected from the Blockpane validator illustrates the bandwidth consumption of these three message types in both data sending and receiving.
 
-![](./images/total-message-send-rate.png)
-![](./images/total-message-receive-rate.png)
+![](images/total-message-send-rate.png)
+![](images/total-message-recv-rate.png)
 
 ### Investigation of Message Usage
 
