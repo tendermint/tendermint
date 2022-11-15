@@ -140,3 +140,68 @@ func TestBlockIndexer(t *testing.T) {
 		})
 	}
 }
+
+func TestBlockIndexerMulti(t *testing.T) {
+	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
+	indexer := blockidxkv.New(store)
+
+	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
+		Header: types.Header{Height: 1},
+		ResultBeginBlock: abci.ResponseBeginBlock{
+			Events: []abci.Event{},
+		},
+		ResultEndBlock: abci.ResponseEndBlock{
+			Events: []abci.Event{
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("100"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("200"),
+							Index: true,
+						},
+					},
+				},
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("300"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("400"),
+							Index: true,
+						},
+					},
+				},
+			},
+		},
+	}))
+
+	testCases := map[string]struct {
+		q       *query.Query
+		results []int64
+	}{
+		"query matches fields from multiple events": {
+			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400"),
+			results: []int64{},
+		},
+	}
+
+	for name, tc := range testCases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			results, err := indexer.Search(context.Background(), tc.q)
+			require.NoError(t, err)
+			require.Equal(t, tc.results, results)
+		})
+	}
+}
