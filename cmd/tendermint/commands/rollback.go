@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/store"
 )
 
-var removeBlock bool = false
+var removeBlock = false
 
 func init() {
 	RollbackStateCmd.Flags().BoolVar(&removeBlock, "hard", false, "remove last block as well as state")

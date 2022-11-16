@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,10 +11,10 @@ import (
 )
 
 // Perturbs a running testnet.
-func Perturb(testnet *e2e.Testnet) error {
+func Perturb(ctx context.Context, testnet *e2e.Testnet) error {
 	for _, node := range testnet.Nodes {
 		for _, perturbation := range node.Perturbations {
-			_, err := PerturbNode(node, perturbation)
+			_, err := PerturbNode(ctx, node, perturbation)
 			if err != nil {
 				return err
 			}
@@ -25,7 +26,7 @@ func Perturb(testnet *e2e.Testnet) error {
 
 // PerturbNode perturbs a node with a given perturbation, returning its status
 // after recovering.
-func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.ResultStatus, error) {
+func PerturbNode(ctx context.Context, node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.ResultStatus, error) {
 	testnet := node.Testnet
 	switch perturbation {
 	case e2e.PerturbationDisconnect:
@@ -67,7 +68,7 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 		return nil, fmt.Errorf("unexpected perturbation %q", perturbation)
 	}
 
-	status, err := waitForNode(node, 0, 20*time.Second)
+	status, err := waitForNode(ctx, node, 0, 20*time.Second)
 	if err != nil {
 		return nil, err
 	}

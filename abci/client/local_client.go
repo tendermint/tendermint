@@ -8,6 +8,10 @@ import (
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
+// NOTE: use defer to unlock mutex because Application might panic (e.g., in
+// case of malicious tx or query). It only makes sense for publicly exposed
+// methods like CheckTx (/broadcast_tx_* RPC endpoint) or Query (/abci_query
+// RPC endpoint), but defers are used everywhere for the sake of consistency.
 type localClient struct {
 	service.BaseService
 

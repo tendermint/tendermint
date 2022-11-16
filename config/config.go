@@ -423,6 +423,7 @@ type RPCConfig struct {
 	TLSKeyFile string `mapstructure:"tls_key_file"`
 
 	// pprof listen address (https://golang.org/pkg/net/http/pprof)
+	// FIXME: This should be moved under the instrumentation section
 	PprofListenAddress string `mapstructure:"pprof_laddr"`
 }
 
@@ -506,6 +507,10 @@ func (cfg *RPCConfig) IsCorsEnabled() bool {
 	return len(cfg.CORSAllowedOrigins) != 0
 }
 
+func (cfg *RPCConfig) IsPprofEnabled() bool {
+	return len(cfg.PprofListenAddress) != 0
+}
+
 func (cfg RPCConfig) KeyFile() string {
 	path := cfg.TLSKeyFile
 	if filepath.IsAbs(path) {
@@ -542,6 +547,11 @@ type P2PConfig struct { //nolint: maligned
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
+
+	// Comma separated list of peers to be added to the peer store
+	// on startup. Either BootstrapPeers or PersistentPeers are
+	// needed for peer discovery
+	BootstrapPeers string `mapstructure:"bootstrap_peers"`
 
 	// Comma separated list of nodes to keep persistent connections to
 	PersistentPeers string `mapstructure:"persistent_peers"`
@@ -703,14 +713,28 @@ type MempoolConfig struct {
 	// Mempool version to use:
 	//  1) "v0" - (default) FIFO mempool.
 	//  2) "v1" - prioritized mempool.
-	// WARNING: There's a known memory leak with the prioritized mempool
-	// that the team are working on. Read more here:
-	// https://github.com/tendermint/tendermint/issues/8775
-	Version   string `mapstructure:"version"`
-	RootDir   string `mapstructure:"home"`
-	Recheck   bool   `mapstructure:"recheck"`
-	Broadcast bool   `mapstructure:"broadcast"`
-	WalPath   string `mapstructure:"wal_dir"`
+	Version string `mapstructure:"version"`
+	// RootDir is the root directory for all data. This should be configured via
+	// the $TMHOME env variable or --home cmd flag rather than overriding this
+	// struct field.
+	RootDir string `mapstructure:"home"`
+	// Recheck (default: true) defines whether Tendermint should recheck the
+	// validity for all remaining transaction in the mempool after a block.
+	// Since a block affects the application state, some transactions in the
+	// mempool may become invalid. If this does not apply to your application,
+	// you can disable rechecking.
+	Recheck bool `mapstructure:"recheck"`
+	// Broadcast (default: true) defines whether the mempool should relay
+	// transactions to other peers. Setting this to false will stop the mempool
+	// from relaying transactions to other peers until they are included in a
+	// block. In other words, if Broadcast is disabled, only the peer you send
+	// the tx to will see it until it is included in a block.
+	Broadcast bool `mapstructure:"broadcast"`
+	// WalPath (default: "") configures the location of the Write Ahead Log
+	// (WAL) for the mempool. The WAL is disabled by default. To enable, set
+	// WalPath to where you want the WAL to be written (e.g.
+	// "data/mempool.wal").
+	WalPath string `mapstructure:"wal_dir"`
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
 	// Limit the total size of all txs in the mempool.
@@ -1202,6 +1226,10 @@ func (cfg *InstrumentationConfig) ValidateBasic() error {
 		return errors.New("max_open_connections can't be negative")
 	}
 	return nil
+}
+
+func (cfg *InstrumentationConfig) IsPrometheusEnabled() bool {
+	return cfg.Prometheus && cfg.PrometheusListenAddr != ""
 }
 
 //-----------------------------------------------------------------------------

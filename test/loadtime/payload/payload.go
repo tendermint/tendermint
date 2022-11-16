@@ -3,7 +3,7 @@ package payload
 import (
 	"bytes"
 	"crypto/rand"
-	"errors"
+	"encoding/hex"
 	"fmt"
 	"math"
 
@@ -12,6 +12,7 @@ import (
 )
 
 const keyPrefix = "a="
+const maxPayloadSize = 4 * 1024 * 1024
 
 // NewBytes generates a new payload and returns the encoded representation of
 // the payload as a slice of bytes. NewBytes uses the fields on the Options
@@ -25,10 +26,16 @@ func NewBytes(p *Payload) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.Size < uint64(us) {
-		return nil, fmt.Errorf("configured size %d not large enough to fit unpadded transaction of size %d", p.Size, us)
+	if p.Size > maxPayloadSize {
+		return nil, fmt.Errorf("configured size %d is too large (>%d)", p.Size, maxPayloadSize)
 	}
-	p.Padding = make([]byte, p.Size-uint64(us))
+	pSize := int(p.Size) // #nosec -- The "if" above makes this cast safe
+	if pSize < us {
+		return nil, fmt.Errorf("configured size %d not large enough to fit unpadded transaction of size %d", pSize, us)
+	}
+
+	// We halve the padding size because we transform the TX to hex
+	p.Padding = make([]byte, (pSize-us)/2)
 	_, err = rand.Read(p.Padding)
 	if err != nil {
 		return nil, err
@@ -37,22 +44,28 @@ func NewBytes(p *Payload) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	h := []byte(hex.EncodeToString(b))
 
 	// prepend a single key so that the kv store only ever stores a single
 	// transaction instead of storing all tx and ballooning in size.
-	return append([]byte(keyPrefix), b...), nil
+	return append([]byte(keyPrefix), h...), nil
 }
 
 // FromBytes extracts a paylod from the byte representation of the payload.
 // FromBytes leaves the padding untouched, returning it to the caller to handle
 // or discard per their preference.
 func FromBytes(b []byte) (*Payload, error) {
-	p := &Payload{}
-	tr := bytes.TrimPrefix(b, []byte(keyPrefix))
-	if bytes.Equal(b, tr) {
-		return nil, errors.New("payload bytes missing key prefix")
+	trH := bytes.TrimPrefix(b, []byte(keyPrefix))
+	if bytes.Equal(b, trH) {
+		return nil, fmt.Errorf("payload bytes missing key prefix '%s'", keyPrefix)
 	}
-	err := proto.Unmarshal(tr, p)
+	trB, err := hex.DecodeString(string(trH))
+	if err != nil {
+		return nil, err
+	}
+
+	p := &Payload{}
+	err = proto.Unmarshal(trB, p)
 	if err != nil {
 		return nil, err
 	}
@@ -83,5 +96,6 @@ func CalculateUnpaddedSize(p *Payload) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return len(b) + len(keyPrefix), nil
+	h := []byte(hex.EncodeToString(b))
+	return len(h) + len(keyPrefix), nil
 }

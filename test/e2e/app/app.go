@@ -22,7 +22,6 @@ const appVersion = 1
 // Application is an ABCI application for use by end-to-end tests. It is a
 // simple key/value store for strings, storing data in memory and persisting
 // to disk as JSON, taking state sync snapshots if requested.
-
 type Application struct {
 	abci.BaseApplication
 	logger          log.Logger
@@ -91,7 +90,7 @@ func DefaultConfig(dir string) *Config {
 }
 
 // NewApplication creates the application.
-func NewApplication(cfg *Config) (*Application, error) {
+func NewApplication(cfg *Config) (abci.Application, error) {
 	state, err := NewState(cfg.Dir, cfg.PersistInterval)
 	if err != nil {
 		return nil, err
