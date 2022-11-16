@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-Whenever Tendermint begins, it initiates a handshake with the application via `Info` to gauge version compatibility and recieve the last height and app hash of the application. Tendermint then begins a replay protocol which aims to sync the heights of Tendermint's state and block store and the application's current height. 
+Whenever Tendermint begins, it initiates a handshake with the application via `Info` to gauge version compatibility and receive the last height and app hash of the application. Tendermint then begins a replay protocol which aims to sync the heights of Tendermint's state and block store and the application's current height. 
 
 When initially designed, one invariant was that the applications current height should never exceed
 Tendermint's height. The protocol would error and the node would shut down if this were to happen. It seemed
@@ -33,7 +33,7 @@ Tendermint will perform a protocol to bootstrap to the height of the application
 
 The bootstrap protocol will be run directly after the handshake. It (currently) does not require the p2p layer and will work by updating the `StateStore` and `BlockStore`. It should be performed instead of statesync, moving to either blocksync or consensus once completed.
 
-The protocol mainly wraps around the `StateProvider` which is derived from the `StateSyncConfig` and currently uses the RPC layer and light client to produce a `State` and `Commit` (to be pased to consensus for the next height)
+The protocol mainly wraps around the `StateProvider` which is derived from the `StateSyncConfig` and currently uses the RPC layer and light client to produce a `State` and `Commit` (to be passed to consensus for the next height)
 
 The pseudocode is as follows:
 ```go
