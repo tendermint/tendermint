@@ -40,4 +40,3 @@ func (app *unsyncLocalClient) Flush(_ context.Context) error {
 func (app *unsyncLocalClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	return &types.ResponseEcho{Message: msg}, nil
 }
-

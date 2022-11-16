@@ -83,7 +83,7 @@ func TestFinalizeBlockValidators(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
 
 	state, stateDB, _ := makeState(2, 2)
@@ -142,13 +142,13 @@ func TestFinalizeBlockValidators(t *testing.T) {
 	}
 }
 
-// TestFinalizeBlockByzantineValidators ensures we send byzantine validators list.
-func TestFinalizeBlockByzantineValidators(t *testing.T) {
+// TestFinalizeBlockMisbehavior ensures we send misbehavior list.
+func TestFinalizeBlockMisbehavior(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
@@ -247,8 +247,8 @@ func TestFinalizeBlockByzantineValidators(t *testing.T) {
 
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
-	state, err = blockExec.ApplyBlock(state, blockID, block)
-	require.Nil(t, err)
+	_, err = blockExec.ApplyBlock(state, blockID, block)
+	require.NoError(t, err)
 
 	// TODO check state and mempool
 	assert.Equal(t, abciMb, app.Misbehavior)
@@ -317,11 +317,11 @@ func TestProcessProposal(t *testing.T) {
 	block1.Txs = txs
 
 	expectedRpp := &abci.RequestProcessProposal{
-		Txs:          block1.Txs.ToSliceOfBytes(),
-		Hash:         block1.Hash(),
-		Height:       block1.Header.Height,
-		Time:         block1.Header.Time,
-		Misbehaviors: block1.Evidence.Evidence.ToABCI(),
+		Txs:         block1.Txs.ToSliceOfBytes(),
+		Hash:        block1.Hash(),
+		Height:      block1.Header.Height,
+		Time:        block1.Header.Time,
+		Misbehavior: block1.Evidence.Evidence.ToABCI(),
 		ProposedLastCommit: abci.CommitInfo{
 			Round: 0,
 			Votes: voteInfos,
@@ -467,13 +467,13 @@ func TestUpdateValidators(t *testing.T) {
 	}
 }
 
-// TestEndBlockValidatorUpdates ensures we update validator set and send an event.
-func TestEndBlockValidatorUpdates(t *testing.T) {
+// TestFinalizeBlockValidatorUpdates ensures we update validator set and send an event.
+func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
@@ -530,7 +530,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	state, err = blockExec.ApplyBlock(state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
 		idx, _ := state.NextValidators.GetByAddress(pubkey.Address())
@@ -555,14 +555,14 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 }
 
-// TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
+// TestFinalizeBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
 // would result in empty set causes no panic, an error is raised and NextValidators is not updated
-func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
@@ -592,7 +592,7 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	}
 
 	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }
 
