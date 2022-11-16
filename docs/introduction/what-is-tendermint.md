@@ -56,7 +56,7 @@ algorithm called Zookeeper Atomic Broadcast, while etcd and consul use
 the Raft log replication algorithm. A
 typical cluster contains 3-5 machines, and can tolerate crash failures
 in less than 1/2 of the machines (e.g., 1 out of 3 or 2 out of 5), 
-but even a single Byzantine fault can destroy the system.
+but even a single Byzantine fault can jeopardize the whole system.
 
 Each offering provides a slightly different implementation of a
 featureful key-value store, but all are generally focused around

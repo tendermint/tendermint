@@ -246,7 +246,7 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 }
 ```
 
-The `onGoingBlock` keeps track of the transaction that will update the application's state when a block 
+The `onGoingBlock` keeps track of the Badger transaction that will update the application's state when a block 
 is completed. Don't worry about it for now, we'll get to that later.
 
 Next, update the `import` stanza at the top to include the Badger library:
@@ -265,8 +265,9 @@ Finally, update the `main.go` file to invoke the updated constructor:
 ```
 
 ### 1.3.2 CheckTx
-When Tendermint Core receives a new transaction from a client, Tendermint asks the application if 
+When Tendermint Core receives a new transaction from a client, or from another full node, Tendermint asks the application if 
 the transaction is acceptable, using the `CheckTx` method.
+Invalid transactions will not be shared with other nodes and will not become part of any blocks and, therefore, will not be executed by the application.
 
 In our application, a transaction is a string with the form `key=value`, indicating a key and value to write to the store.
 
@@ -310,7 +311,7 @@ information on why the transaction was rejected.
 Note that `CheckTx` does not execute the transaction, it only verifies that that the transaction could be executed. We do not know yet if the rest of the network has agreed to accept this transaction into a block.
 
 
-Finally, make sure to add the bytes package to the your `import` stanza at the top of `app.go`:
+Finally, make sure to add the bytes package to the `import` stanza at the top of `app.go`:
 
 ```go
 import(
@@ -362,7 +363,7 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 	key, value := parts[0], parts[1]
 
 	if err := app.onGoingBlock.Set(key, value); err != nil {
-		log.Panicf("Error reading database, unable to verify tx: %v", err)
+		log.Panicf("Error reading database, unable to execute tx: %v", err)
 	}
 
 	return abcitypes.ResponseDeliverTx{Code: 0}
@@ -450,10 +451,10 @@ func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.Respo
 ```
 
 Since it reads only committed data from the store, transactions that are part of a block
-that is still processed are not reflected in the query result.
+that is being processed are not reflected in the query result.
 
 ### 1.3.5 PrepareProposal and ProcessProposal
-`PrepareProposal` and `ProcessProposal` are methods introduced in Tendermint 3.7.0 
+`PrepareProposal` and `ProcessProposal` are methods introduced in Tendermint v0.37.0
 to give the application more control over the construction and processing of transaction blocks.
 
 When Tendermint Core sees that valid transactions (validated through `CheckTx`) are available to be
@@ -461,7 +462,7 @@ included in blocks, it groups some of these transactions and then gives the appl
 to modify the group by invoking `PrepareProposal`.
 
 The application is free to modify the group before returning from the call.
-For example, the application may reorder or even remove transactions from the group to improve the
+For example, the application may reorder, add, or even remove transactions from the group to improve the
 execution of the block once accepted.
 In the following code, the application simply returns the unmodified group of transactions:
 
@@ -488,7 +489,7 @@ func (app *KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcess
 
 Now that we have the basic functionality of our application in place, let's put it all together inside of our main.go file.
 
-Change the contents of your`main.go` file to the following.
+Change the contents of your `main.go` file to the following.
 
 
 ```go
@@ -653,7 +654,7 @@ messages). Normally, you would use `SignerRemote` to connect to an external
 		return nil, fmt.Errorf("failed to load node's key: %w", err)
 	}
 ```
-Now we have everything setup to run the Tendermint node. We construct
+Now we have everything set up to run the Tendermint node. We construct
 a node by passing it the configuration, the logger, a handle to our application and
 the genesis information:
 
@@ -682,7 +683,7 @@ Finally, we start the node, i.e., the Tendermint Core service inside our applica
 		node.Wait()
 	}()
 ```
-The additional logic at the end of the file allows the program to catch SIGTERM. This means that the node can shutdown gracefully when an operator tries to kill the program:
+The additional logic at the end of the file allows the program to catch SIGTERM. This means that the node can shut down gracefully when an operator tries to kill the program:
 
 ```go
 	c := make(chan os.Signal, 1)
@@ -757,7 +758,7 @@ Open another terminal window and run the following curl command:
 curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 ```
 If everything went well, you should see a response indicating which height the 
-+transaction was included in the blockchain.
+transaction was included in the blockchain.
 
 Finally, let's make sure that transaction really was persisted by the application.
 Run the following command:
@@ -779,7 +780,7 @@ The request returns a `json` object with a `key` and `value` field set.
 Those values don't look like the `key` and `value` we sent to Tendermint.
 What's going on here? 
 
-The response contain a `base64` encoded representation of the data we submitted.
+The response contains a `base64` encoded representation of the data we submitted.
 To get the original value out of this data, we can use the `base64` command line utility:
 
 ```bash
