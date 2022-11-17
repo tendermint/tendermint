@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 
@@ -212,6 +213,7 @@ func TestIndexing(t *testing.T) {
 		})
 
 		service := txindex.NewIndexerService(indexer.TxIndexer(), indexer.BlockIndexer(), eventBus, true)
+		service.SetLogger(tmlog.TestingLogger())
 		err = service.Start()
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -221,8 +223,9 @@ func TestIndexing(t *testing.T) {
 		})
 
 		// publish block with txs
-		err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-			Header: types.Header{Height: 1},
+		err = eventBus.PublishEventNewBlockEvents(types.EventDataNewBlockEvents{
+			Height: 1,
+			NumTxs: 2,
 		})
 		require.NoError(t, err)
 		txResult1 := &abci.TxResult{
