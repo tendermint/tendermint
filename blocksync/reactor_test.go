@@ -82,7 +82,7 @@ func newReactor(
 	// pool.height is determined from the store.
 	fastSync := true
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
-		mp, sm.EmptyEvidencePool{})
+		mp, sm.EmptyEvidencePool{}, blockStore)
 	if err = stateStore.Save(state); err != nil {
 		panic(err)
 	}
@@ -117,7 +117,7 @@ func newReactor(
 		}
 
 		blockStore.SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
-		state, _, err = blockExec.ApplyBlock(state, blockID, thisBlock)
+		state, err = blockExec.ApplyBlock(state, blockID, thisBlock)
 		if err != nil {
 			panic(fmt.Errorf("error apply block: %w", err))
 		}
@@ -127,14 +127,14 @@ func newReactor(
 		}
 	}
 
-	bcReactor := NewReactor(state.Copy(), blockExec, blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	bcReactor := NewReactor(state.Copy(), blockExec, blockStore, fastSync, NopMetrics())
+	bcReactor.SetLogger(logger.With("module", "blocksync"))
 
 	return ReactorPair{bcReactor, proxyApp}
 }
 
 func TestNoBlockResponse(t *testing.T) {
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	config = test.ResetTestRoot("blocksync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(t)
 
@@ -146,7 +146,7 @@ func TestNoBlockResponse(t *testing.T) {
 	reactorPairs[1] = newReactor(t, log.TestingLogger(), genDoc, privVals[0], 0)
 
 	p2p.MakeConnectedSwitches(config.P2P, 2, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		s.AddReactor("BLOCKSYNC", reactorPairs[i].reactor)
 		return s
 
 	}, p2p.Connect2Switches)
@@ -196,7 +196,7 @@ func TestNoBlockResponse(t *testing.T) {
 // Alternatively we could actually dial a TCP conn but
 // that seems extreme.
 func TestBadBlockStopsPeer(t *testing.T) {
-	config = cfg.ResetTestRoot("blockchain_reactor_test")
+	config = test.ResetTestRoot("blocksync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(t)
 
@@ -221,7 +221,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	reactorPairs[3] = newReactor(t, log.TestingLogger(), genDoc, privVals[0], 0)
 
 	switches := p2p.MakeConnectedSwitches(config.P2P, 4, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[i].reactor)
+		s.AddReactor("BLOCKSYNC", reactorPairs[i].reactor)
 		return s
 
 	}, p2p.Connect2Switches)
@@ -260,7 +260,7 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	reactorPairs = append(reactorPairs, lastReactorPair)
 
 	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKCHAIN", reactorPairs[len(reactorPairs)-1].reactor)
+		s.AddReactor("BLOCKSYNC", reactorPairs[len(reactorPairs)-1].reactor)
 		return s
 
 	}, p2p.Connect2Switches)...)

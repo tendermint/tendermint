@@ -30,10 +30,7 @@ func ExampleClient_Update() {
 	}
 	defer os.RemoveAll(dbDir)
 
-	var (
-		config  = rpctest.GetConfig()
-		chainID = config.ChainID()
-	)
+	var config = rpctest.GetConfig()
 
 	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {
@@ -98,10 +95,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	}
 	defer os.RemoveAll(dbDir)
 
-	var (
-		config  = rpctest.GetConfig()
-		chainID = config.ChainID()
-	)
+	var config = rpctest.GetConfig()
 
 	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {

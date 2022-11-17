@@ -36,7 +36,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 
 	// PublishEventTx adds 3 composite keys, so the query below should work
 	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND testType.baz=1", tx.Hash())
-	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	txsSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -84,7 +84,7 @@ func TestEventBusPublishEventNewBlock(t *testing.T) {
 
 	// PublishEventNewBlock adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlock' AND testType.baz=1"
-	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	blocksSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -185,7 +185,7 @@ func TestEventBusPublishEventTxDuplicateKeys(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		sub, err := eventBus.Subscribe(context.Background(), fmt.Sprintf("client-%d", i), tmquery.MustParse(tc.query))
+		sub, err := eventBus.Subscribe(context.Background(), fmt.Sprintf("client-%d", i), tmquery.MustCompile(tc.query))
 		require.NoError(t, err)
 
 		done := make(chan struct{})
@@ -238,7 +238,7 @@ func TestEventBusPublishEventNewBlockHeader(t *testing.T) {
 	block := MakeBlock(0, []Tx{}, nil, []Evidence{})
 	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlockHeader'"
-	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -273,7 +273,7 @@ func TestEventBusPublishEventNewBlockEvents(t *testing.T) {
 
 	// PublishEventNewBlockHeader adds the tm.event compositeKey, so the query below should work
 	query := "tm.event='NewBlockEvents'"
-	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	headersSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -317,7 +317,7 @@ func TestEventBusPublishEventNewEvidence(t *testing.T) {
 	require.NoError(t, err)
 
 	query := "tm.event='NewEvidence'"
-	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query))
+	evSub, err := eventBus.Subscribe(context.Background(), "test", tmquery.MustCompile(query))
 	require.NoError(t, err)
 
 	done := make(chan struct{})
@@ -354,7 +354,7 @@ func TestEventBusPublish(t *testing.T) {
 
 	const numEventsExpected = 15
 
-	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, numEventsExpected)
+	sub, err := eventBus.Subscribe(context.Background(), "test", tmquery.All, numEventsExpected)
 	require.NoError(t, err)
 
 	done := make(chan struct{})

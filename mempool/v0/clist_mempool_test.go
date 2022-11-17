@@ -21,6 +21,7 @@ import (
 	abciserver "github.com/tendermint/tendermint/abci/server"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/libs/service"
@@ -34,7 +35,7 @@ import (
 type cleanupFunc func()
 
 func newMempoolWithAppMock(cc proxy.ClientCreator, client abciclient.Client) (*CListMempool, cleanupFunc, error) {
-	conf := config.ResetTestRoot("mempool_test")
+	conf := test.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfigMock(cc, conf, client)
 	return mp, cu, nil
@@ -57,7 +58,7 @@ func newMempoolWithAppAndConfigMock(cc proxy.ClientCreator,
 }
 
 func newMempoolWithApp(cc proxy.ClientCreator) (*CListMempool, cleanupFunc) {
-	conf := config.ResetTestRoot("mempool_test")
+	conf := test.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfig(cc, conf)
 	return mp, cu
@@ -242,12 +243,14 @@ func TestMempoolUpdate(t *testing.T) {
 }
 
 func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
+	var callback abciclient.Callback
 	mockClient := new(abciclimocks.Client)
 	mockClient.On("Start").Return(nil)
 	mockClient.On("SetLogger", mock.Anything)
 
 	mockClient.On("Error").Return(nil).Times(4)
 	mockClient.On("Flush", mock.Anything).Return(nil)
+	mockClient.On("SetResponseCallback", mock.MatchedBy(func(cb abciclient.Callback) bool { callback = cb; return true }))
 
 	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
@@ -257,20 +260,36 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 
 	// Add 4 transactions to the mempool by calling the mempool's `CheckTx` on each of them.
 	txs := []types.Tx{[]byte{0x01}, []byte{0x02}, []byte{0x03}, []byte{0x04}}
-	for idx, tx := range txs {
-		mockClient.On("CheckTx", mock.Anything, &abci.RequestCheckTx{Tx: tx}).Return(&abci.ResponseCheckTx{Code: abci.CodeTypeOK}, nil)
-		if idx != 0 {
-			// for all other txs we expect them to be rechecked
-			mockClient.On("CheckTx", mock.Anything, &abci.RequestCheckTx{Tx: tx, Type: 1}).Return(&abci.ResponseCheckTx{Code: abci.CodeTypeOK}, nil)
-		}
+	for _, tx := range txs {
+		reqRes := abciclient.NewReqRes(abci.ToRequestCheckTx(&abci.RequestCheckTx{Tx: tx}))
+		reqRes.Response = abci.ToResponseCheckTx(&abci.ResponseCheckTx{Code: abci.CodeTypeOK})
+
+		mockClient.On("CheckTxAsync", mock.Anything, mock.Anything).Return(reqRes, nil)
 		err := mp.CheckTx(tx, nil, mempool.TxInfo{})
 		require.NoError(t, err)
+
+		// ensure that the callback that the mempool sets on the ReqRes is run.
+		reqRes.InvokeCallback()
 	}
 
 	// Calling update to remove the first transaction from the mempool.
 	// This call also triggers the mempool to recheck its remaining transactions.
 	err = mp.Update(0, []types.Tx{txs[0]}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	require.Nil(t, err)
+
+	// The mempool has now sent its requests off to the client to be rechecked
+	// and is waiting for the corresponding callbacks to be called.
+	// We now call the mempool-supplied callback on the first and third transaction.
+	// This simulates the client dropping the second request.
+	// Previous versions of this code panicked when the ABCI application missed
+	// a recheck-tx request.
+	resp := &abci.ResponseCheckTx{Code: abci.CodeTypeOK}
+	req := &abci.RequestCheckTx{Tx: txs[1]}
+	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
+
+	req = &abci.RequestCheckTx{Tx: txs[3]}
+	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
+	mockClient.AssertExpectations(t)
 
 	mockClient.AssertExpectations(t)
 }
@@ -532,7 +551,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
-	cfg := config.ResetTestRoot("mempool_test")
+	cfg := test.ResetTestRoot("mempool_test")
 
 	cfg.Mempool.MaxTxsBytes = 100
 	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
@@ -633,7 +652,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 		}
 	})
 
-	cfg := config.ResetTestRoot("mempool_test")
+	cfg := test.ResetTestRoot("mempool_test")
 
 	mp, cleanup := newMempoolWithAppAndConfig(proxy.NewRemoteClientCreator(sockPath, "socket", true), cfg)
 	defer cleanup()

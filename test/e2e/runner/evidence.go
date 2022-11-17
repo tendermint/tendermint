@@ -82,7 +82,7 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	_, err = waitForNode(targetNode, waitHeight, time.Minute)
+	_, err = waitForNode(ctx, targetNode, waitHeight, time.Minute)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func InjectEvidence(ctx context.Context, r *rand.Rand, testnet *e2e.Testnet, amo
 
 	// wait for the node to reach the height above the forged height so that
 	// it is able to validate the evidence
-	_, err = waitForNode(targetNode, blockRes.Block.Height+2, 30*time.Second)
+	_, err = waitForNode(ctx, targetNode, blockRes.Block.Height+2, 30*time.Second)
 	if err != nil {
 		return err
 	}

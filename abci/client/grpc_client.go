@@ -23,18 +23,27 @@ type grpcClient struct {
 	service.BaseService
 	mustConnect bool
 
-	client types.ABCIClient
-	conn   *grpc.ClientConn
+	client   types.ABCIClient
+	conn     *grpc.ClientConn
+	chReqRes chan *ReqRes // dispatches "async" responses to callbacks *in order*, needed by mempool
 
-	mtx  sync.Mutex
-	addr string
-	err  error
+	mtx   sync.Mutex
+	addr  string
+	err   error
+	resCb func(*types.Request, *types.Response) // listens to all callbacks
 }
 
 func NewGRPCClient(addr string, mustConnect bool) Client {
 	cli := &grpcClient{
 		addr:        addr,
 		mustConnect: mustConnect,
+		// Buffering the channel is needed to make calls appear asynchronous,
+		// which is required when the caller makes multiple async calls before
+		// processing callbacks (e.g. due to holding locks). 64 means that a
+		// caller can make up to 64 async calls before a callback must be
+		// processed (otherwise it deadlocks). It also means that we can make 64
+		// gRPC calls while processing a slow callback at the channel head.
+		chReqRes: make(chan *ReqRes, 64),
 	}
 	cli.BaseService = *service.NewBaseService(nil, "grpcClient", cli)
 	return cli
@@ -48,6 +57,33 @@ func (cli *grpcClient) OnStart() error {
 	if err := cli.BaseService.OnStart(); err != nil {
 		return err
 	}
+
+	// This processes asynchronous request/response messages and dispatches
+	// them to callbacks.
+	go func() {
+		// Use a separate function to use defer for mutex unlocks (this handles panics)
+		callCb := func(reqres *ReqRes) {
+			cli.mtx.Lock()
+			defer cli.mtx.Unlock()
+
+			reqres.Done()
+
+			// Notify client listener if set
+			if cli.resCb != nil {
+				cli.resCb(reqres.Request, reqres.Response)
+			}
+
+			// Notify reqRes listener if set
+			reqres.InvokeCallback()
+		}
+		for reqres := range cli.chReqRes {
+			if reqres != nil {
+				callCb(reqres)
+			} else {
+				cli.Logger.Error("Received nil reqres")
+			}
+		}
+	}()
 
 RETRY_LOOP:
 	for {
@@ -115,6 +151,34 @@ func (cli *grpcClient) Error() error {
 	return cli.err
 }
 
+// Set listener for all responses
+// NOTE: callback may get internally generated flush responses.
+func (cli *grpcClient) SetResponseCallback(resCb Callback) {
+	cli.mtx.Lock()
+	cli.resCb = resCb
+	cli.mtx.Unlock()
+}
+
+//----------------------------------------
+
+func (cli *grpcClient) CheckTxAsync(ctx context.Context, req *types.RequestCheckTx) (*ReqRes, error) {
+	res, err := cli.client.CheckTx(ctx, req, grpc.WaitForReady(true))
+	if err != nil {
+		cli.StopForError(err)
+		return nil, err
+	}
+	return cli.finishAsyncCall(types.ToRequestCheckTx(req), &types.Response{Value: &types.Response_CheckTx{CheckTx: res}}), nil
+}
+
+// finishAsyncCall creates a ReqRes for an async call, and immediately populates it
+// with the response. We don't complete it until it's been ordered via the channel.
+func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
+	reqres := NewReqRes(req)
+	reqres.Response = res
+	cli.chReqRes <- reqres // use channel for async responses, since they must be ordered
+	return reqres
+}
+
 //----------------------------------------
 
 func (cli *grpcClient) Flush(ctx context.Context) error { return nil }
@@ -124,11 +188,11 @@ func (cli *grpcClient) Echo(ctx context.Context, msg string) (*types.ResponseEch
 }
 
 func (cli *grpcClient) Info(ctx context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
-	return cli.client.Info(ctx, types.ToRequestInfo(req).GetInfo(), grpc.WaitForReady(true))
+	return cli.client.Info(ctx, req, grpc.WaitForReady(true))
 }
 
 func (cli *grpcClient) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
-	return cli.client.CheckTx(ctx, types.ToRequestCheckTx(req).GetCheckTx(), grpc.WaitForReady(true))
+	return cli.client.CheckTx(ctx, req, grpc.WaitForReady(true))
 }
 
 func (cli *grpcClient) Query(ctx context.Context, req *types.RequestQuery) (*types.ResponseQuery, error) {

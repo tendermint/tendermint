@@ -3,7 +3,7 @@
 TENDERMINT_VERSION?=latest
 BUILD_TAGS?='tendermint'
 VERSION := $(shell git describe --always)
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
+BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)"
 
 .DEFAULT_GOAL := build
 

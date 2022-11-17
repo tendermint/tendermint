@@ -1,5 +1,44 @@
 # Unreleased Changes
 
+## v0.38.0
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+  - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
+
+- Blockchain Protocol
+
+- Data Storage
+  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
+  
+- Tooling
+  - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
+    labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
+
+### FEATURES
+
+- [config] \#9680 Introduce `BootstrapPeers` to the config to allow nodes to list peers to be added to
+  the addressbook upon start up (@cmwaters)
+
+### IMPROVEMENTS
+
+- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
+- [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
+- [rpc] \#9650 Enable caching of RPC responses (@JayT106)
+
+### BUG FIXES
+
+- [docker] \#9462 ensure Docker image uses consistent version of Go
+
 ## v0.37.0
 
 Special thanks to external contributors on this release:
@@ -33,6 +72,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - Go API
     - [all] \#9144 Change spelling from British English to American (@cmwaters)
         - Rename "Subscription.Cancelled()" to "Subscription.Canceled()" in libs/pubsub
+    - [crypto/sr25519] \#6526 Do not re-execute the Ed25519-style key derivation step when doing signing and verification.  The derivation is now done once and only once.  This breaks `sr25519.GenPrivKeyFromSecret` output compatibility. (@Yawning)
 
 - Blockchain Protocol
 
@@ -43,11 +83,24 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### IMPROVEMENTS
 - [crypto] \#9250 Update to use btcec v2 and the latest btcutil. (@wcsiu)
 
+- [cli] \#9171 add `--hard` flag to rollback command (and a boolean to the `RollbackState` method). This will rollback
+  state and remove the last block. This command can be triggered multiple times. The application must also rollback
+  state to the same height. (@tsutsu, @cmwaters)
 - [proto] \#9356 Migrate from `gogo/protobuf` to `cosmos/gogoproto` (@julienrbrt)
 - [rpc] \#9276 Added `header` and `header_by_hash` queries to the RPC client (@samricotta)
 - [abci] \#5706 Added `AbciVersion` to `RequestInfo` allowing applications to check ABCI version when connecting to Tendermint. (@marbar3778)
+- [node] \#6059 Validate and complete genesis doc before saving to state store (@silasdavis)
+
+- [crypto/ed25519] \#5632 Adopt zip215 `ed25519` verification. (@marbar3778)
+- [crypto/ed25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `ed25519` signing and verification. (@Yawning)
+- [crypto/sr25519] \#6526 Use [curve25519-voi](https://github.com/oasisprotocol/curve25519-voi) for `sr25519` signing and verification. (@Yawning)
+- [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778 & @Yawning)
+- [types] \#6120 use batch verification for verifying commits signatures. (@marbar3778 & @cmwaters & @Yawning)
+    - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature.
+- [state] \#9505 Added logic so when pruning, the evidence period is taken into consideration and only deletes unecessary data (@samricotta)
 
 ### BUG FIXES
 
 - [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)
 - [docker] \#9073 enable cross platform build using docker buildx
+- [blocksync] \#9518 handle the case when the sending queue is full: retry block request after a timeout

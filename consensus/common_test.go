@@ -54,7 +54,7 @@ func ensureDir(dir string, mode os.FileMode) {
 }
 
 func ResetConfig(name string) *config.Config {
-	return config.ResetTestRoot(name)
+	return test.ResetTestRoot(name)
 }
 
 //-------------------------------------------------------------------------------
@@ -488,7 +488,7 @@ func newState(
 	err := stateStore.Save(state) // for save height 1's validators info
 	require.NoError(t, err)
 
-	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyAppConnCon, mempool, evpool, blockStore)
 	cs := NewState(cfg.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)

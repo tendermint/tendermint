@@ -3,6 +3,7 @@ package abcicli_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -69,4 +70,80 @@ func setupClientServer(t *testing.T, app types.Application) (
 	})
 
 	return s, c
+}
+
+// TestCallbackInvokedWhenSetLaet ensures that the callback is invoked when
+// set after the client completes the call into the app. Currently this
+// test relies on the callback being allowed to be invoked twice if set multiple
+// times, once when set early and once when set late.
+func TestCallbackInvokedWhenSetLate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	app := blockedABCIApplication{
+		wg: wg,
+	}
+	_, c := setupClientServer(t, app)
+	reqRes, err := c.CheckTxAsync(ctx, &types.RequestCheckTx{})
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	cb := func(_ *types.Response) {
+		close(done)
+	}
+	reqRes.SetCallback(cb)
+	app.wg.Done()
+	<-done
+
+	var called bool
+	cb = func(_ *types.Response) {
+		called = true
+	}
+	reqRes.SetCallback(cb)
+	require.True(t, called)
+}
+
+type blockedABCIApplication struct {
+	wg *sync.WaitGroup
+	types.BaseApplication
+}
+
+func (b blockedABCIApplication) CheckTxAsync(ctx context.Context, r *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	b.wg.Wait()
+	return b.BaseApplication.CheckTx(ctx, r)
+}
+
+// TestCallbackInvokedWhenSetEarly ensures that the callback is invoked when
+// set before the client completes the call into the app.
+func TestCallbackInvokedWhenSetEarly(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	app := blockedABCIApplication{
+		wg: wg,
+	}
+	_, c := setupClientServer(t, app)
+	reqRes, err := c.CheckTxAsync(ctx, &types.RequestCheckTx{})
+	require.NoError(t, err)
+
+	done := make(chan struct{})
+	cb := func(_ *types.Response) {
+		close(done)
+	}
+	reqRes.SetCallback(cb)
+	app.wg.Done()
+
+	called := func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}
+	require.Eventually(t, called, time.Second, time.Millisecond*25)
 }
