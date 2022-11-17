@@ -113,10 +113,15 @@ For more information on upgrading, see [UPGRADING.md](./UPGRADING.md).
 
 ### Supported Versions
 
-Because we are a small core team, we only ship patch updates, including security
-updates, to the most recent minor release and the second-most recent minor
-release. Consequently, we strongly recommend keeping Tendermint up-to-date.
-Upgrading instructions can be found in [UPGRADING.md](./UPGRADING.md).
+Because we are a small core team, we have limited capacity to ship patch
+updates, including security updates. Consequently, we strongly recommend keeping
+Tendermint up-to-date. Upgrading instructions can be found in
+[UPGRADING.md](./UPGRADING.md).
+
+Currently supported versions include:
+
+- v0.34.x
+- v0.37.x (release candidate)
 
 ## Resources
 
@@ -157,7 +162,7 @@ for-profit entity that also maintains [tendermint.com](https://tendermint.com).
 [bft]: https://en.wikipedia.org/wiki/Byzantine_fault_tolerance
 [smr]: https://en.wikipedia.org/wiki/State_machine_replication
 [Blockchain]: https://en.wikipedia.org/wiki/Blockchain
-[version-badge]: https://img.shields.io/github/tag/tendermint/tendermint.svg
+[version-badge]: https://img.shields.io/github/v/release/tendermint/tendermint.svg
 [version-url]: https://github.com/tendermint/tendermint/releases/latest
 [api-badge]: https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 [api-url]: https://pkg.go.dev/github.com/tendermint/tendermint

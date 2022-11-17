@@ -2,8 +2,6 @@ package config
 
 import (
 	"bytes"
-	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -34,10 +32,10 @@ func EnsureRoot(rootDir string) {
 	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, DefaultConfigDir), DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, DefaultDataDir), DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
 
@@ -75,6 +73,10 @@ const defaultConfigTemplate = `# This is a TOML config file.
 # relative to the home directory (e.g. "data"). The home directory is
 # "$HOME/.tendermint" by default, but could be changed via $TMHOME env variable
 # or --home cmd flag.
+
+# The version of the Tendermint binary that created or
+# last modified the config file. Do not modify this.
+version = "{{ .BaseConfig.Version }}"
 
 #######################################################################
 ###                   Main Base Config Options                      ###
@@ -281,6 +283,11 @@ external_address = "{{ .P2P.ExternalAddress }}"
 # Comma separated list of seed nodes to connect to
 seeds = "{{ .P2P.Seeds }}"
 
+# Comma separated list of peers to be added to the peer store
+# on startup. Either BootstrapPeers or PersistentPeers are
+# needed for peer discovery
+bootstrap_peers = "{{ .P2P.BootstrapPeers }}"
+
 # Comma separated list of nodes to keep persistent connections to
 persistent_peers = "{{ .P2P.PersistentPeers }}"
 
@@ -347,8 +354,24 @@ dial_timeout = "{{ .P2P.DialTimeout }}"
 #   2) "v1" - prioritized mempool.
 version = "{{ .Mempool.Version }}"
 
+# Recheck (default: true) defines whether Tendermint should recheck the
+# validity for all remaining transaction in the mempool after a block.
+# Since a block affects the application state, some transactions in the
+# mempool may become invalid. If this does not apply to your application,
+# you can disable rechecking.
 recheck = {{ .Mempool.Recheck }}
+
+# Broadcast (default: true) defines whether the mempool should relay
+# transactions to other peers. Setting this to false will stop the mempool
+# from relaying transactions to other peers until they are included in a
+# block. In other words, if Broadcast is disabled, only the peer you send
+# the tx to will see it until it is included in a block.
 broadcast = {{ .Mempool.Broadcast }}
+
+# WalPath (default: "") configures the location of the Write Ahead Log
+# (WAL) for the mempool. The WAL is disabled by default. To enable, set
+# WalPath to where you want the WAL to be written (e.g.
+# "data/mempool.wal").
 wal_dir = "{{ js .Mempool.WalPath }}"
 
 # Maximum number of transactions in the mempool
@@ -434,7 +457,7 @@ chunk_fetchers = "{{ .StateSync.ChunkFetchers }}"
 [blocksync]
 
 # Block Sync version to use:
-# 
+#
 # In v0.37, v1 and v2 of the block sync protocols were deprecated.
 # Please use v0 instead.
 #
@@ -485,6 +508,7 @@ peer_query_maj23_sleep_duration = "{{ .Consensus.PeerQueryMaj23SleepDuration }}"
 #######################################################
 ###         Storage Configuration Options           ###
 #######################################################
+[storage]
 
 # Set to true to discard ABCI responses from the state store, which can save a
 # considerable amount of disk space. Set to false to ensure ABCI responses are
@@ -536,101 +560,3 @@ max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 # Instrumentation namespace
 namespace = "{{ .Instrumentation.Namespace }}"
 `
-
-/****** these are for test settings ***********/
-
-func ResetTestRoot(testName string) *Config {
-	return ResetTestRootWithChainID(testName, "")
-}
-
-func ResetTestRootWithChainID(testName string, chainID string) *Config {
-	// create a unique, concurrency-safe test directory under os.TempDir()
-	rootDir, err := os.MkdirTemp("", fmt.Sprintf("%s-%s_", chainID, testName))
-	if err != nil {
-		panic(err)
-	}
-	// ensure config and data subdirs are created
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultConfigDir), DefaultDirPerm); err != nil {
-		panic(err)
-	}
-	if err := tmos.EnsureDir(filepath.Join(rootDir, defaultDataDir), DefaultDirPerm); err != nil {
-		panic(err)
-	}
-
-	baseConfig := DefaultBaseConfig()
-	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
-	genesisFilePath := filepath.Join(rootDir, baseConfig.Genesis)
-	privKeyFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorKey)
-	privStateFilePath := filepath.Join(rootDir, baseConfig.PrivValidatorState)
-
-	// Write default config file if missing.
-	if !tmos.FileExists(configFilePath) {
-		writeDefaultConfigFile(configFilePath)
-	}
-	if !tmos.FileExists(genesisFilePath) {
-		if chainID == "" {
-			chainID = "tendermint_test"
-		}
-		testGenesis := fmt.Sprintf(testGenesisFmt, chainID)
-		tmos.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
-	}
-	// we always overwrite the priv val
-	tmos.MustWriteFile(privKeyFilePath, []byte(testPrivValidatorKey), 0644)
-	tmos.MustWriteFile(privStateFilePath, []byte(testPrivValidatorState), 0644)
-
-	config := TestConfig().SetRoot(rootDir)
-	return config
-}
-
-var testGenesisFmt = `{
-  "genesis_time": "2018-10-10T08:20:13.695936996Z",
-  "chain_id": "%s",
-  "initial_height": "1",
-	"consensus_params": {
-		"block": {
-			"max_bytes": "22020096",
-			"max_gas": "-1",
-			"time_iota_ms": "10"
-		},
-		"evidence": {
-			"max_age_num_blocks": "100000",
-			"max_age_duration": "172800000000000",
-			"max_bytes": "1048576"
-		},
-		"validator": {
-			"pub_key_types": [
-				"ed25519"
-			]
-		},
-		"version": {}
-	},
-  "validators": [
-    {
-      "pub_key": {
-        "type": "tendermint/PubKeyEd25519",
-        "value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
-      },
-      "power": "10",
-      "name": ""
-    }
-  ],
-  "app_hash": ""
-}`
-
-var testPrivValidatorKey = `{
-  "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
-  "pub_key": {
-    "type": "tendermint/PubKeyEd25519",
-    "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
-  },
-  "priv_key": {
-    "type": "tendermint/PrivKeyEd25519",
-    "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
-  }
-}`
-
-var testPrivValidatorState = `{
-  "height": "0",
-  "round": 0,
-  "step": 0
-}`

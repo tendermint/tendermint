@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
@@ -45,7 +44,7 @@ func makeTestCommit(height int64, timestamp time.Time) *types.Commit {
 }
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFunc) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := test.ResetTestRoot("blockchain_reactor_test")
 	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
 	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
 	blockDB := dbm.NewMemDB()
@@ -365,7 +364,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func TestLoadBaseMeta(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := test.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
 		DiscardFinalizeBlockResponses: false,
@@ -382,12 +381,15 @@ func TestLoadBaseMeta(t *testing.T) {
 		bs.SaveBlock(block, partSet, seenCommit)
 	}
 
-	_, err = bs.PruneBlocks(4)
+	_, _, err = bs.PruneBlocks(4, state)
 	require.NoError(t, err)
 
 	baseBlock := bs.LoadBaseMeta()
 	assert.EqualValues(t, 4, baseBlock.Header.Height)
 	assert.EqualValues(t, 4, bs.Base())
+
+	require.NoError(t, bs.DeleteLatestBlock())
+	require.EqualValues(t, 9, bs.Height())
 }
 
 func TestLoadBlockPart(t *testing.T) {
@@ -424,7 +426,7 @@ func TestLoadBlockPart(t *testing.T) {
 }
 
 func TestPruneBlocks(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := test.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
 		DiscardFinalizeBlockResponses: false,
@@ -438,10 +440,10 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 0, bs.Size())
 
 	// pruning an empty store should error, even when pruning to 0
-	_, err = bs.PruneBlocks(1)
+	_, _, err = bs.PruneBlocks(1, state)
 	require.Error(t, err)
 
-	_, err = bs.PruneBlocks(0)
+	_, _, err = bs.PruneBlocks(0, state)
 	require.Error(t, err)
 
 	// make more than 1000 blocks, to test batch deletions
@@ -457,27 +459,30 @@ func TestPruneBlocks(t *testing.T) {
 	assert.EqualValues(t, 1500, bs.Height())
 	assert.EqualValues(t, 1500, bs.Size())
 
-	prunedBlock := bs.LoadBlock(1199)
+	state.LastBlockTime = time.Date(2020, 1, 1, 1, 0, 0, 0, time.UTC)
+	state.LastBlockHeight = 1500
+
+	state.ConsensusParams.Evidence.MaxAgeNumBlocks = 400
+	state.ConsensusParams.Evidence.MaxAgeDuration = 1 * time.Second
 
 	// Check that basic pruning works
-	pruned, err := bs.PruneBlocks(1200)
+	pruned, evidenceRetainHeight, err := bs.PruneBlocks(1200, state)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1199, pruned)
 	assert.EqualValues(t, 1200, bs.Base())
 	assert.EqualValues(t, 1500, bs.Height())
 	assert.EqualValues(t, 301, bs.Size())
-	assert.EqualValues(t, tmstore.BlockStoreState{
-		Base:   1200,
-		Height: 1500,
-	}, LoadBlockStoreState(db))
+	assert.EqualValues(t, 1100, evidenceRetainHeight)
 
 	require.NotNil(t, bs.LoadBlock(1200))
 	require.Nil(t, bs.LoadBlock(1199))
-	require.Nil(t, bs.LoadBlockByHash(prunedBlock.Hash()))
-	require.Nil(t, bs.LoadBlockCommit(1199))
-	require.Nil(t, bs.LoadBlockMeta(1199))
-	require.Nil(t, bs.LoadBlockMetaByHash(prunedBlock.Hash()))
-	require.Nil(t, bs.LoadBlockPart(1199, 1))
+
+	// The header and commit for heights 1100 onwards
+	// need to remain to verify evidence
+	require.NotNil(t, bs.LoadBlockMeta(1100))
+	require.Nil(t, bs.LoadBlockMeta(1099))
+	require.NotNil(t, bs.LoadBlockCommit(1100))
+	require.Nil(t, bs.LoadBlockCommit(1099))
 
 	for i := int64(1); i < 1200; i++ {
 		require.Nil(t, bs.LoadBlock(i))
@@ -487,26 +492,33 @@ func TestPruneBlocks(t *testing.T) {
 	}
 
 	// Pruning below the current base should error
-	_, err = bs.PruneBlocks(1199)
+	_, _, err = bs.PruneBlocks(1199, state)
 	require.Error(t, err)
 
 	// Pruning to the current base should work
-	pruned, err = bs.PruneBlocks(1200)
+	pruned, _, err = bs.PruneBlocks(1200, state)
 	require.NoError(t, err)
 	assert.EqualValues(t, 0, pruned)
 
 	// Pruning again should work
-	pruned, err = bs.PruneBlocks(1300)
+	pruned, _, err = bs.PruneBlocks(1300, state)
 	require.NoError(t, err)
 	assert.EqualValues(t, 100, pruned)
 	assert.EqualValues(t, 1300, bs.Base())
 
+	// we should still have the header and the commit
+	// as they're needed for evidence
+	require.NotNil(t, bs.LoadBlockMeta(1100))
+	require.Nil(t, bs.LoadBlockMeta(1099))
+	require.NotNil(t, bs.LoadBlockCommit(1100))
+	require.Nil(t, bs.LoadBlockCommit(1099))
+
 	// Pruning beyond the current height should error
-	_, err = bs.PruneBlocks(1501)
+	_, _, err = bs.PruneBlocks(1501, state)
 	require.Error(t, err)
 
 	// Pruning to the current height should work
-	pruned, err = bs.PruneBlocks(1500)
+	pruned, _, err = bs.PruneBlocks(1500, state)
 	require.NoError(t, err)
 	assert.EqualValues(t, 200, pruned)
 	assert.Nil(t, bs.LoadBlock(1499))
@@ -554,7 +566,7 @@ func TestLoadBlockMeta(t *testing.T) {
 }
 
 func TestLoadBlockMetaByHash(t *testing.T) {
-	config := cfg.ResetTestRoot("blockchain_reactor_test")
+	config := test.ResetTestRoot("blockchain_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
 		DiscardFinalizeBlockResponses: false,

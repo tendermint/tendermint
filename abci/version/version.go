@@ -6,4 +6,4 @@ import (
 
 // TODO: eliminate this after some version refactor
 
-const Version = version.ABCIVersion
+const Version = version.ABCISemVer

@@ -118,6 +118,10 @@ func (app *Application) InitChain(_ context.Context, req *types.RequestInitChain
 // CheckTx handles inbound transactions or in the case of recheckTx assesses old transaction validity after a state transition.
 // As this is called frequently, it's preferably to keep the check as stateless and as quick as possible.
 // Here we check that the transaction has the correctly key=value format.
+// For the KVStore we check that each transaction has the valid tx format:
+// - Contains one and only one `=`
+// - `=` is not the first or last byte.
+// - if key is `val` that the validator update transaction is also valid
 func (app *Application) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	// If it is a validator update transaction, check that it is correctly formatted
 	if isValidatorTx(req.Tx) {
@@ -152,12 +156,11 @@ func isValidTx(tx []byte) bool {
 // quite a trivial example of transaction modification.
 // NOTE: we assume that Tendermint will never provide more transactions than can fit in a block.
 func (app *Application) PrepareProposal(_ context.Context, req *types.RequestPrepareProposal) (*types.ResponsePrepareProposal, error) {
-	return &types.ResponsePrepareProposal{Txs: app.substPrepareTx(req.Txs)}, nil
+	return &types.ResponsePrepareProposal{Txs: formatTxs(req.Txs)}, nil
 }
 
-// substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
-// proposal for transactions with the prefix stripped.
-func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
+// formatTxs substitutes all the transactions with x:y to x=y
+func formatTxs(blockData [][]byte) [][]byte {
 	txs := make([][]byte, len(blockData))
 	for idx, tx := range blockData {
 		txs[idx] = bytes.Replace(tx, []byte(":"), []byte("="), 1)
@@ -166,20 +169,11 @@ func (app *Application) substPrepareTx(blockData [][]byte) [][]byte {
 }
 
 // ProcessProposal is called whenever a node receives a complete proposal. It allows the application to validate the proposal.
-// For the KVStore we check that each transaction has the valid tx format:
-// - Contains one and only one `=`
-// - `=` is not the first or last byte.
-// - if key is `val` that the validator update transaction is also valid
-func (app *Application) ProcessProposal(_ context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
+// Only validators who can vote will have this method called. For the KVstore we reuse CheckTx.
+func (app *Application) ProcessProposal(ctx context.Context, req *types.RequestProcessProposal) (*types.ResponseProcessProposal, error) {
 	for _, tx := range req.Txs {
-		if isValidatorTx(tx) {
-			if _, _, err := parseValidatorTx(tx); err != nil {
-				return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
-			}
-		} else if len(tx) < 3 ||
-			bytes.Count(tx, []byte("=")) != 1 ||
-			bytes.HasPrefix(tx, []byte("=")) ||
-			bytes.HasSuffix(tx, []byte("=")) {
+		// As CheckTx is a full validity check we can simply reuse this
+		if resp, err := app.CheckTx(ctx, &types.RequestCheckTx{Tx: tx}); resp.Code != CodeTypeOK || err != nil {
 			return &types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}, nil
 		}
 	}
@@ -200,7 +194,7 @@ func (app *Application) FinalizeBlock(_ context.Context, req *types.RequestFinal
 		if ev.Type == types.MisbehaviorType_DUPLICATE_VOTE {
 			addr := string(ev.Validator.Address)
 			if pubKey, ok := app.valAddrToPubKeyMap[addr]; ok {
-				app.updateValidator(types.ValidatorUpdate{
+				app.valUpdates = append(app.valUpdates, types.ValidatorUpdate{
 					PubKey: pubKey,
 					Power:  ev.Validator.Power - 1,
 				})
@@ -383,7 +377,7 @@ func (app *Application) updateValidator(v types.ValidatorUpdate) {
 		}
 		if !hasKey {
 			pubStr := base64.StdEncoding.EncodeToString(pubkey.Bytes())
-			panic(fmt.Sprintf("Cannot remove non-existent validator %s", pubStr))
+			app.logger.Info("tried to remove non existent validator. Skipping...", "pubKey", pubStr)
 		}
 		if err = app.state.db.Delete(key); err != nil {
 			panic(err)
@@ -465,6 +459,7 @@ func saveState(state State) {
 // as the size or number of transactions processed within the state. Note that this isn't
 // a strong guarantee of state machine replication because states could
 // have different kv values but still have the same size.
+// This function is used as the "AgreedAppData"
 func (s State) Hash() []byte {
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, s.Size)

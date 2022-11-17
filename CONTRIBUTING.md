@@ -12,7 +12,7 @@ landing changes in `main`.
 All work on the code base should be motivated by a [Github
 Issue](https://github.com/tendermint/tendermint/issues).
 [Search](https://github.com/tendermint/tendermint/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22)
-is a good place start when looking for places to contribute. If you
+is a good place to start when looking for places to contribute. If you
 would like to work on an issue which already exists, please indicate so
 by leaving a comment.
 
@@ -213,7 +213,7 @@ Changes with multiple classifications should be doubly included (eg. a bug fix
 that is also a breaking change should be recorded under both).
 
 Breaking changes are further subdivided according to the APIs/users they impact.
-Any change that effects multiple APIs/users should be recorded multiply - for
+Any change that affects multiple APIs/users should be recorded multiply - for
 instance, a change to the `Blockchain Protocol` that removes a field from the
 header should also be recorded under `CLI/RPC/Config` since the field will be
 removed from the header in RPC responses as well.
@@ -247,7 +247,7 @@ To begin contributing, create a development branch either on `github.com/tenderm
 Make changes, and before submitting a pull request, update the `CHANGELOG_PENDING.md` to record your change. Also, run either `git rebase` or `git merge` on top of the latest `main`. (Since pull requests are squash-merged, either is fine!)
 
 Update the `UPGRADING.md` if the change you've made is breaking and the
-instructions should be in place for a user on how he/she can upgrade it's
+instructions should be in place for a user on how he/she can upgrade its
 software (ABCI application, Tendermint-based blockchain, light client, wallet).
 
 Once you have submitted a pull request label the pull request with either `R:minor`, if the change should be included in the next minor release, or `R:major`, if the change is meant for a major release.

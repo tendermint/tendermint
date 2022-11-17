@@ -53,9 +53,11 @@ updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: weekly
+      interval: daily
     target-branch: "v0.37.x"
-    open-pull-requests-limit: 10
+    # Only allow automated security-related dependency updates on release
+    # branches.
+    open-pull-requests-limit: 0
     labels:
       - T:dependencies
       - S:automerge
@@ -63,9 +65,11 @@ updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: weekly
+      interval: daily
     target-branch: "v0.34.x"
-    open-pull-requests-limit: 10
+    # Only allow automated security-related dependency updates on release
+    # branches.
+    open-pull-requests-limit: 0
     labels:
       - T:dependencies
       - S:automerge

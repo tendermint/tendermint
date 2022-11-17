@@ -19,6 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmlog "github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 
 	// Register the Postgres database driver.
@@ -195,6 +197,56 @@ func TestIndexing(t *testing.T) {
 		// try to insert the duplicate tx events.
 		err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
 		require.NoError(t, err)
+	})
+
+	t.Run("IndexerService", func(t *testing.T) {
+		indexer := &EventSink{store: testDB(), chainID: chainID}
+
+		// event bus
+		eventBus := types.NewEventBus()
+		err := eventBus.Start()
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			if err := eventBus.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
+
+		service := txindex.NewIndexerService(indexer.TxIndexer(), indexer.BlockIndexer(), eventBus, true)
+		service.SetLogger(tmlog.TestingLogger())
+		err = service.Start()
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			if err := service.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
+
+		// publish block with txs
+		err = eventBus.PublishEventNewBlockEvents(types.EventDataNewBlockEvents{
+			Height: 1,
+			NumTxs: 2,
+		})
+		require.NoError(t, err)
+		txResult1 := &abci.TxResult{
+			Height: 1,
+			Index:  uint32(0),
+			Tx:     types.Tx("foo"),
+			Result: abci.ExecTxResult{Code: 0},
+		}
+		err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
+		require.NoError(t, err)
+		txResult2 := &abci.TxResult{
+			Height: 1,
+			Index:  uint32(1),
+			Tx:     types.Tx("bar"),
+			Result: abci.ExecTxResult{Code: 1},
+		}
+		err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
+		require.NoError(t, err)
+
+		time.Sleep(100 * time.Millisecond)
+		require.True(t, service.IsRunning())
 	})
 }
 
