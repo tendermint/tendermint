@@ -173,7 +173,7 @@ Try running these commands:
 -> data: hello
 -> data.hex: 0x68656C6C6F
 
-> info
+> info 
 -> code: OK
 -> data: {"size":0}
 -> data.hex: 0x7B2273697A65223A307D
@@ -186,19 +186,19 @@ Try running these commands:
 -> code: OK
 -> status: ACCEPT
 
+> commit 
+-> code: OK
+-> data.hex: 0x0000000000000000
+
 > deliver_tx "abc"
 -> code: OK
 
-> commit
--> code: OK
--> data.hex: 0x0200000000000000
-
-> info
+> info 
 -> code: OK
 -> data: {"size":1}
 -> data.hex: 0x7B2273697A65223A317D
 
-> commit
+> commit 
 -> code: OK
 -> data.hex: 0x0200000000000000
 
@@ -214,7 +214,7 @@ Try running these commands:
 > deliver_tx "def=xyz"
 -> code: OK
 
-> commit
+> commit 
 -> code: OK
 -> data.hex: 0x0400000000000000
 
@@ -231,7 +231,7 @@ Try running these commands:
 -> code: OK
 -> log: Succeeded. Tx: replacedef
 
-> process_proposal "def"
+> process_proposal "replacedef"
 -> code: OK
 -> status: ACCEPT
 
@@ -239,13 +239,13 @@ Try running these commands:
 -> code: OK
 -> status: REJECT
 
-> prepare_proposal
+> prepare_proposal 
 
-> process_proposal
+> process_proposal 
 -> code: OK
 -> status: ACCEPT
 
-> commit
+> commit 
 -> code: OK
 -> data.hex: 0x0400000000000000
 ```
