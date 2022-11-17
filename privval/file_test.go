@@ -31,7 +31,7 @@ func TestGenLoadValidator(t *testing.T) {
 
 	height := int64(100)
 	privVal.LastSignState.Height = height
-	privVal.Save()
+	require.NoError(t, privVal.Save())
 	addr := privVal.GetAddress()
 
 	privVal = LoadFilePV(tempKeyFile.Name(), tempStateFile.Name())

@@ -459,6 +459,15 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	// }
 }
 
+func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
+	for i, s := range switches {
+		if peer.NodeInfo().ID() == s.NodeInfo().ID() {
+			return i
+		}
+	}
+	panic("didnt find peer in switches")
+}
+
 //-------------------------------
 // byzantine consensus functions
 

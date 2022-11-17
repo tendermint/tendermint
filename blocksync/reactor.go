@@ -218,7 +218,9 @@ func (bcR *Reactor) Receive(e p2p.Envelope) {
 
 	switch msg := e.Message.(type) {
 	case *bcproto.BlockRequest:
-		bcR.respondToPeer(msg, e.Src)
+		if err := bcR.respondToPeer(msg, e.Src); err != nil {
+			bcR.Logger.Error("responding to block request", "err", err)
+		}
 	case *bcproto.BlockResponse:
 		block, err := types.BlockFromProto(msg.Block)
 		if err != nil {

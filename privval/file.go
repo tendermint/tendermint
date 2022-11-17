@@ -135,7 +135,7 @@ func (lss *FilePVLastSignState) CheckHRS(height int64, round int32, step int8) (
 func (lss *FilePVLastSignState) Save() error {
 	outFile := lss.filePath
 	if outFile == "" {
-		panic("cannot save FilePVLastSignState: filePath not set")
+		return errors.New("cannot save FilePVLastSignState: filePath not set")
 	}
 	jsonBytes, err := tmjson.MarshalIndent(lss, "", "  ")
 	if err != nil {
@@ -237,7 +237,9 @@ func LoadOrGenFilePV(keyFilePath, stateFilePath string) *FilePV {
 		pv = LoadFilePV(keyFilePath, stateFilePath)
 	} else {
 		pv = GenFilePV(keyFilePath, stateFilePath)
-		pv.Save()
+		if err := pv.Save(); err != nil {
+			panic(err)
+		}
 	}
 	return pv
 }
@@ -273,16 +275,19 @@ func (pv *FilePV) SignProposal(chainID string, proposal *tmproto.Proposal) error
 }
 
 // Save persists the FilePV to disk.
-func (pv *FilePV) Save() {
+func (pv *FilePV) Save() error {
 	pv.Key.Save()
-	pv.LastSignState.Save()
+	return pv.LastSignState.Save()
 }
 
 // Reset resets all fields in the FilePV.
 // NOTE: Unsafe!
 func (pv *FilePV) Reset() {
 	pv.LastSignState.reset()
-	pv.Save()
+	err := pv.Save()
+	if err != nil {
+		panic(err)
+	}
 }
 
 // String returns a string representation of the FilePV.
@@ -411,7 +416,9 @@ func (pv *FilePV) signProposal(chainID string, proposal *tmproto.Proposal) error
 	if err != nil {
 		return err
 	}
-	pv.saveSigned(height, round, step, signBytes, sig)
+	if err := pv.saveSigned(height, round, step, signBytes, sig); err != nil {
+		return err
+	}
 	proposal.Signature = sig
 	return nil
 }

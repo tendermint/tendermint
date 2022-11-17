@@ -30,7 +30,6 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
 	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
-	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -582,15 +581,6 @@ func makeNetwork(t *testing.T, args makeNetworkArgs) ([]*State, []types.PrivVali
 	return css, privVals, args.config
 }
 
-func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
-	for i, s := range switches {
-		if peer.NodeInfo().ID() == s.NodeInfo().ID() {
-			return i
-		}
-	}
-	panic("didnt find peer in switches")
-}
-
 //-------------------------------------------------------------------------------
 // genesis
 
@@ -922,20 +912,8 @@ func (m *mockTicker) Chan() <-chan timeoutInfo {
 
 func (*mockTicker) SetLogger(log.Logger) {}
 
-func newPersistentKVStore() abci.Application {
-	dir, err := os.MkdirTemp("", "persistent-kvstore")
-	if err != nil {
-		panic(err)
-	}
-	return kvstore.NewPersistentApplication(dir)
-}
-
 func newKVStore() abci.Application {
 	return kvstore.NewInMemoryApplication()
-}
-
-func newPersistentKVStoreWithPath(dbDir string) abci.Application {
-	return kvstore.NewPersistentApplication(dbDir)
 }
 
 func signDataIsEqual(v1 *types.Vote, v2 *tmproto.Vote) bool {

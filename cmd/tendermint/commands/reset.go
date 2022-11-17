@@ -168,7 +168,7 @@ func resetFilePV(privValKeyFile, privValStateFile string, logger log.Logger) {
 		)
 	} else {
 		pv := privval.GenFilePV(privValKeyFile, privValStateFile)
-		pv.Save()
+		_ = pv.Save()
 		logger.Info(
 			"Generated private validator file",
 			"keyFile", privValKeyFile,

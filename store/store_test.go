@@ -24,10 +24,6 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// A cleanupFunc cleans up any config / test files created for a particular
-// test.
-type cleanupFunc func()
-
 // make an extended commit with a single vote containing just the height and a
 // timestamp
 func makeTestExtCommit(height int64, timestamp time.Time) *types.ExtendedCommit {
@@ -85,7 +81,7 @@ func TestLoadBlockStoreState(t *testing.T) {
 		db := dbm.NewMemDB()
 		batch := db.NewBatch()
 		SaveBlockStoreState(batch, tc.bss)
-		batch.WriteSync()
+		require.NoError(t, batch.WriteSync())
 		batch.Close()
 		retrBSJ := LoadBlockStoreState(db)
 		assert.Equal(t, tc.want, retrBSJ, "expected the retrieved DBs to match: %s", tc.testName)
