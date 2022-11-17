@@ -548,7 +548,7 @@ func main() {
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
-			log.Fatalf("Closing database: %v", err)
+			log.Printf("Closing database: %v", err)
 		}
 	}()
 
