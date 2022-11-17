@@ -4,7 +4,23 @@
 
 > Rough outline of what the component is doing and why. 2-3 paragraphs 
 
-Tendermint
+The Tendermint consists of multiple protocols, namely,
+- Consensus
+- Mempool
+- Evidence
+- Blocksync
+- Statesync
+
+that each plays a role in making sure that validators can produce blocks. These protocols are implemented in so-called reactors (one for each protocol) that encode two functionalities:
+
+- Protocol logic (maintaining the local state of the protocols and deciding what messages to send to others, e.g., the rules we find in the arXiv paper) 
+- Message exchange with other nodes (Gossip)
+
+As all-to-all communication is not scaling to the system sizes of typical Cosmos blockchains (e.g., 200 validator nodes + seed nodes + sentry nodes + other full nodes), the communication is restricted to an overlay network. This overlay network is established by the peer-to-peer system (p2p), which is composed of the p2p layers of the participating nodes that locally decide with which peers a node keeps connections.
+
+
+
+PEX 
 
 # Outline
 
