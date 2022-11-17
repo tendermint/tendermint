@@ -5,8 +5,11 @@ package mocks
 import (
 	context "context"
 
-	mock "github.com/stretchr/testify/mock"
+	abcicli "github.com/tendermint/tendermint/abci/client"
+
 	log "github.com/tendermint/tendermint/libs/log"
+
+	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/tendermint/tendermint/abci/types"
 )
@@ -49,6 +52,29 @@ func (_m *Client) CheckTx(_a0 context.Context, _a1 *types.RequestCheckTx) (*type
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.ResponseCheckTx)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *types.RequestCheckTx) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CheckTxAsync provides a mock function with given fields: _a0, _a1
+func (_m *Client) CheckTxAsync(_a0 context.Context, _a1 *types.RequestCheckTx) (*abcicli.ReqRes, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *abcicli.ReqRes
+	if rf, ok := ret.Get(0).(func(context.Context, *types.RequestCheckTx) *abcicli.ReqRes); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*abcicli.ReqRes)
 		}
 	}
 
@@ -422,6 +448,11 @@ func (_m *Client) Reset() error {
 
 // SetLogger provides a mock function with given fields: _a0
 func (_m *Client) SetLogger(_a0 log.Logger) {
+	_m.Called(_a0)
+}
+
+// SetResponseCallback provides a mock function with given fields: _a0
+func (_m *Client) SetResponseCallback(_a0 abcicli.Callback) {
 	_m.Called(_a0)
 }
 

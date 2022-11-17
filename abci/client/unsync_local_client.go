@@ -2,6 +2,7 @@ package abcicli
 
 import (
 	"context"
+	"sync"
 
 	types "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/service"
@@ -11,6 +12,10 @@ type unsyncLocalClient struct {
 	service.BaseService
 
 	types.Application
+
+	// This mutex is exclusively used to protect the callback.
+	mtx sync.RWMutex
+	Callback
 }
 
 var _ Client = (*unsyncLocalClient)(nil)
@@ -39,4 +44,32 @@ func (app *unsyncLocalClient) Flush(_ context.Context) error {
 
 func (app *unsyncLocalClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	return &types.ResponseEcho{Message: msg}, nil
+}
+
+//-------------------------------------------------------
+
+func (app *unsyncLocalClient) SetResponseCallback(cb Callback) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	app.Callback = cb
+}
+
+func (app *unsyncLocalClient) CheckTxAsync(ctx context.Context, req *types.RequestCheckTx) (*ReqRes, error) {
+	res, err := app.Application.CheckTx(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return app.callback(
+		types.ToRequestCheckTx(req),
+		types.ToResponseCheckTx(res),
+	), nil
+}
+
+func (app *unsyncLocalClient) callback(req *types.Request, res *types.Response) *ReqRes {
+	app.mtx.RLock()
+	defer app.mtx.RUnlock()
+	app.Callback(req, res)
+	rr := newLocalReqRes(req, res)
+	rr.callbackInvoked = true
+	return rr
 }

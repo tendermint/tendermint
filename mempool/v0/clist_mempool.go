@@ -93,6 +93,8 @@ func NewCListMempool(
 		mp.cache = mempool.NopTxCache{}
 	}
 
+	proxyAppConn.SetResponseCallback(mp.globalCb)
+
 	for _, option := range options {
 		option(mp)
 	}
@@ -250,16 +252,34 @@ func (mem *CListMempool) CheckTx(
 		return mempool.ErrTxInCache
 	}
 
-	resp, err := mem.proxyAppConn.CheckTx(context.TODO(), &abci.RequestCheckTx{Tx: tx})
+	reqRes, err := mem.proxyAppConn.CheckTxAsync(context.TODO(), &abci.RequestCheckTx{Tx: tx})
 	if err != nil {
-		mem.cache.Remove(tx)
-		mem.logger.Error("error from check tx", "err", err)
 		return err
 	}
-
-	mem.addNewTransaction(tx, txInfo.SenderID, txInfo.SenderP2PID, cb, resp)
+	reqRes.SetCallback(mem.reqResCb(tx, txInfo.SenderID, txInfo.SenderP2PID, cb))
 
 	return nil
+}
+
+// Global callback that will be called after every ABCI response.
+// Having a single global callback avoids needing to set a callback for each request.
+// However, processing the checkTx response requires the peerID (so we can track which txs we heard from who),
+// and peerID is not included in the ABCI request, so we have to set request-specific callbacks that
+// include this information. If we're not in the midst of a recheck, this function will just return,
+// so the request specific callback can do the work.
+//
+// When rechecking, we don't need the peerID, so the recheck callback happens
+// here.
+func (mem *CListMempool) globalCb(req *abci.Request, res *abci.Response) {
+	if mem.recheckCursor == nil {
+		return
+	}
+
+	mem.metrics.RecheckTimes.Add(1)
+	mem.resCbRecheck(req, res)
+
+	// update metrics
+	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
 // Request specific callback that should be set on individual reqRes objects
@@ -271,70 +291,27 @@ func (mem *CListMempool) CheckTx(
 // when all other response processing is complete.
 //
 // Used in CheckTx to record PeerID who sent us the tx.
-func (mem *CListMempool) addNewTransaction(
+func (mem *CListMempool) reqResCb(
 	tx []byte,
 	peerID uint16,
 	peerP2PID p2p.ID,
 	externalCb func(*abci.ResponseCheckTx),
-	resp *abci.ResponseCheckTx,
-) {
-	if mem.recheckCursor != nil {
-		// this should never happen
-		panic("recheck cursor is not nil in reqResCb")
-	}
-
-	var postCheckErr error
-	if mem.postCheck != nil {
-		postCheckErr = mem.postCheck(tx, resp)
-	}
-	if (resp.Code == abci.CodeTypeOK) && postCheckErr == nil {
-		// Check mempool isn't full again to reduce the chance of exceeding the
-		// limits.
-		if err := mem.isFull(len(tx)); err != nil {
-			// remove from cache (mempool might have a space later)
-			mem.cache.Remove(tx)
-			mem.logger.Error(err.Error())
-			return
+) func(res *abci.Response) {
+	return func(res *abci.Response) {
+		if mem.recheckCursor != nil {
+			// this should never happen
+			panic("recheck cursor is not nil in reqResCb")
 		}
 
-		memTx := &mempoolTx{
-			height:    mem.height,
-			gasWanted: resp.GasWanted,
-			tx:        tx,
+		mem.resCbFirstTime(tx, peerID, peerP2PID, res)
+
+		// update metrics
+		mem.metrics.Size.Set(float64(mem.Size()))
+
+		// passed in by the caller of CheckTx, eg. the RPC
+		if externalCb != nil {
+			externalCb(res.GetCheckTx())
 		}
-		memTx.senders.Store(peerID, true)
-		mem.addTx(memTx)
-		mem.logger.Debug(
-			"added good transaction",
-			"tx", types.Tx(tx).Hash(),
-			"resp", resp,
-			"height", memTx.height,
-			"total", mem.Size(),
-		)
-		mem.notifyTxsAvailable()
-	} else {
-		// ignore bad transaction
-		mem.logger.Debug(
-			"rejected bad transaction",
-			"tx", types.Tx(tx).Hash(),
-			"peerID", peerP2PID,
-			"resp", resp,
-			"err", postCheckErr,
-		)
-		mem.metrics.FailedTxs.Add(1)
-
-		if !mem.config.KeepInvalidTxsInCache {
-			// remove from cache (it might be good later)
-			mem.cache.Remove(tx)
-		}
-	}
-
-	// update metrics
-	mem.metrics.Size.Set(float64(mem.Size()))
-
-	// passed in by the caller of CheckTx, eg. the RPC
-	if externalCb != nil {
-		externalCb(resp)
 	}
 }
 
@@ -392,68 +369,136 @@ func (mem *CListMempool) isFull(txSize int) error {
 	return nil
 }
 
+// callback, which is called after the app checked the tx for the first time.
+//
+// The case where the app checks the tx for the second and subsequent times is
+// handled by the resCbRecheck callback.
+func (mem *CListMempool) resCbFirstTime(
+	tx []byte,
+	peerID uint16,
+	peerP2PID p2p.ID,
+	res *abci.Response,
+) {
+	switch r := res.Value.(type) {
+	case *abci.Response_CheckTx:
+		var postCheckErr error
+		if mem.postCheck != nil {
+			postCheckErr = mem.postCheck(tx, r.CheckTx)
+		}
+		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
+			// Check mempool isn't full again to reduce the chance of exceeding the
+			// limits.
+			if err := mem.isFull(len(tx)); err != nil {
+				// remove from cache (mempool might have a space later)
+				mem.cache.Remove(tx)
+				mem.logger.Error(err.Error())
+				return
+			}
+
+			memTx := &mempoolTx{
+				height:    mem.height,
+				gasWanted: r.CheckTx.GasWanted,
+				tx:        tx,
+			}
+			memTx.senders.Store(peerID, true)
+			mem.addTx(memTx)
+			mem.logger.Debug(
+				"added good transaction",
+				"tx", types.Tx(tx).Hash(),
+				"res", r,
+				"height", memTx.height,
+				"total", mem.Size(),
+			)
+			mem.notifyTxsAvailable()
+		} else {
+			// ignore bad transaction
+			mem.logger.Debug(
+				"rejected bad transaction",
+				"tx", types.Tx(tx).Hash(),
+				"peerID", peerP2PID,
+				"res", r,
+				"err", postCheckErr,
+			)
+			mem.metrics.FailedTxs.Add(1)
+
+			if !mem.config.KeepInvalidTxsInCache {
+				// remove from cache (it might be good later)
+				mem.cache.Remove(tx)
+			}
+		}
+
+	default:
+		// ignore other messages
+	}
+}
+
 // callback, which is called after the app rechecked the tx.
 //
 // The case where the app checks the tx for the first time is handled by the
 // resCbFirstTime callback.
-func (mem *CListMempool) resCbRecheck(req *abci.RequestCheckTx, res *abci.ResponseCheckTx) {
-	tx := req.Tx
-	memTx := mem.recheckCursor.Value.(*mempoolTx)
+func (mem *CListMempool) resCbRecheck(req *abci.Request, res *abci.Response) {
+	switch r := res.Value.(type) {
+	case *abci.Response_CheckTx:
+		tx := req.GetCheckTx().Tx
+		memTx := mem.recheckCursor.Value.(*mempoolTx)
 
-	// Search through the remaining list of tx to recheck for a transaction that matches
-	// the one we received from the ABCI application.
-	for {
-		if bytes.Equal(tx, memTx.tx) {
-			// We've found a tx in the recheck list that matches the tx that we
-			// received from the ABCI application.
-			// Break, and use this transaction for further checks.
-			break
+		// Search through the remaining list of tx to recheck for a transaction that matches
+		// the one we received from the ABCI application.
+		for {
+			if bytes.Equal(tx, memTx.tx) {
+				// We've found a tx in the recheck list that matches the tx that we
+				// received from the ABCI application.
+				// Break, and use this transaction for further checks.
+				break
+			}
+
+			mem.logger.Error(
+				"re-CheckTx transaction mismatch",
+				"got", types.Tx(tx),
+				"expected", memTx.tx,
+			)
+
+			if mem.recheckCursor == mem.recheckEnd {
+				// we reached the end of the recheckTx list without finding a tx
+				// matching the one we received from the ABCI application.
+				// Return without processing any tx.
+				mem.recheckCursor = nil
+				return
+			}
+
+			mem.recheckCursor = mem.recheckCursor.Next()
+			memTx = mem.recheckCursor.Value.(*mempoolTx)
 		}
 
-		mem.logger.Error(
-			"re-CheckTx transaction mismatch",
-			"got", types.Tx(tx),
-			"expected", memTx.tx,
-		)
+		var postCheckErr error
+		if mem.postCheck != nil {
+			postCheckErr = mem.postCheck(tx, r.CheckTx)
+		}
 
+		if (r.CheckTx.Code == abci.CodeTypeOK) && postCheckErr == nil {
+			// Good, nothing to do.
+		} else {
+			// Tx became invalidated due to newly committed block.
+			mem.logger.Debug("tx is no longer valid", "tx", types.Tx(tx).Hash(), "res", r, "err", postCheckErr)
+			// NOTE: we remove tx from the cache because it might be good later
+			mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
+		}
 		if mem.recheckCursor == mem.recheckEnd {
-			// we reached the end of the recheckTx list without finding a tx
-			// matching the one we received from the ABCI application.
-			// Return without processing any tx.
 			mem.recheckCursor = nil
-			return
+		} else {
+			mem.recheckCursor = mem.recheckCursor.Next()
 		}
+		if mem.recheckCursor == nil {
+			// Done!
+			mem.logger.Debug("done rechecking txs")
 
-		mem.recheckCursor = mem.recheckCursor.Next()
-		memTx = mem.recheckCursor.Value.(*mempoolTx)
-	}
-
-	var postCheckErr error
-	if mem.postCheck != nil {
-		postCheckErr = mem.postCheck(tx, res)
-	}
-
-	if (res.Code == abci.CodeTypeOK) && postCheckErr == nil {
-		// Good, nothing to do.
-	} else {
-		// Tx became invalidated due to newly committed block.
-		mem.logger.Debug("tx is no longer valid", "tx", types.Tx(tx).Hash(), "res", res, "err", postCheckErr)
-		// NOTE: we remove tx from the cache because it might be good later
-		mem.removeTx(tx, mem.recheckCursor, !mem.config.KeepInvalidTxsInCache)
-	}
-	if mem.recheckCursor == mem.recheckEnd {
-		mem.recheckCursor = nil
-	} else {
-		mem.recheckCursor = mem.recheckCursor.Next()
-	}
-	if mem.recheckCursor == nil {
-		// Done!
-		mem.logger.Debug("done rechecking txs")
-
-		// incase the recheck removed all txs
-		if mem.Size() > 0 {
-			mem.notifyTxsAvailable()
+			// incase the recheck removed all txs
+			if mem.Size() > 0 {
+				mem.notifyTxsAvailable()
+			}
 		}
+	default:
+		// ignore other messages
 	}
 }
 
@@ -609,20 +654,15 @@ func (mem *CListMempool) recheckTxs() {
 	// NOTE: globalCb may be called concurrently.
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		req := &abci.RequestCheckTx{
+		_, err := mem.proxyAppConn.CheckTxAsync(context.TODO(), &abci.RequestCheckTx{
 			Tx:   memTx.tx,
 			Type: abci.CheckTxType_Recheck,
-		}
-		res, err := mem.proxyAppConn.CheckTx(context.TODO(), req)
+		})
 		if err != nil {
-			mem.logger.Error("recheckTx app error", "err", err)
+			mem.logger.Error("recheckTx", err, "err")
+			return
 		}
-
-		mem.resCbRecheck(req, res)
 	}
-
-	mem.metrics.RecheckTimes.Add(1)
-	mem.metrics.Size.Set(float64(mem.Size()))
 
 	if err := mem.proxyAppConn.Flush(context.TODO()); err != nil {
 		mem.logger.Error("recheckTx flush", err, "err")

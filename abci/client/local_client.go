@@ -17,6 +17,7 @@ type localClient struct {
 
 	mtx *tmsync.Mutex
 	types.Application
+	Callback
 }
 
 var _ Client = (*localClient)(nil)
@@ -36,6 +37,41 @@ func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
 	cli.BaseService = *service.NewBaseService(nil, "localClient", cli)
 	return cli
 }
+
+func (app *localClient) SetResponseCallback(cb Callback) {
+	app.mtx.Lock()
+	app.Callback = cb
+	app.mtx.Unlock()
+}
+
+func (app *localClient) CheckTxAsync(ctx context.Context, req *types.RequestCheckTx) (*ReqRes, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+
+	res, err := app.Application.CheckTx(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return app.callback(
+		types.ToRequestCheckTx(req),
+		types.ToResponseCheckTx(res),
+	), nil
+}
+
+func (app *localClient) callback(req *types.Request, res *types.Response) *ReqRes {
+	app.Callback(req, res)
+	rr := newLocalReqRes(req, res)
+	rr.callbackInvoked = true
+	return rr
+}
+
+func newLocalReqRes(req *types.Request, res *types.Response) *ReqRes {
+	reqRes := NewReqRes(req)
+	reqRes.Response = res
+	return reqRes
+}
+
+//-------------------------------------------------------
 
 func (app *localClient) Error() error {
 	return nil

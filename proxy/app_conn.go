@@ -25,9 +25,11 @@ type AppConnConsensus interface {
 }
 
 type AppConnMempool interface {
+	SetResponseCallback(abcicli.Callback)
 	Error() error
 
 	CheckTx(context.Context, *types.RequestCheckTx) (*types.ResponseCheckTx, error)
+	CheckTxAsync(context.Context, *types.RequestCheckTx) (*abcicli.ReqRes, error)
 	Flush(context.Context) error
 }
 
@@ -110,6 +112,10 @@ func NewAppConnMempool(appConn abcicli.Client, metrics *Metrics) AppConnMempool 
 	}
 }
 
+func (app *appConnMempool) SetResponseCallback(cb abcicli.Callback) {
+	app.appConn.SetResponseCallback(cb)
+}
+
 func (app *appConnMempool) Error() error {
 	return app.appConn.Error()
 }
@@ -122,6 +128,11 @@ func (app *appConnMempool) Flush(ctx context.Context) error {
 func (app *appConnMempool) CheckTx(ctx context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "check_tx", "type", "sync"))()
 	return app.appConn.CheckTx(ctx, req)
+}
+
+func (app *appConnMempool) CheckTxAsync(ctx context.Context, req *types.RequestCheckTx) (*abcicli.ReqRes, error) {
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "check_tx", "type", "async"))()
+	return app.appConn.CheckTxAsync(ctx, req)
 }
 
 //------------------------------------------------
