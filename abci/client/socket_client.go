@@ -377,19 +377,21 @@ func (cli *socketClient) ProcessProposal(ctx context.Context, req *types.Request
 }
 
 func (cli *socketClient) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestExtendVote(req))
+	reqRes, err := cli.queueRequest(ctx, types.ToRequestExtendVote(req))
 	if err != nil {
 		return nil, err
 	}
-	return res.GetExtendVote(), nil
+	reqRes.Wait()
+	return reqRes.Response.GetExtendVote(), nil
 }
 
 func (cli *socketClient) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	res, err := cli.doRequest(ctx, types.ToRequestVerifyVoteExtension(req))
+	reqRes, err := cli.queueRequest(ctx, types.ToRequestVerifyVoteExtension(req))
 	if err != nil {
 		return nil, err
 	}
-	return res.GetVerifyVoteExtension(), nil
+	reqRes.Wait()
+	return reqRes.Response.GetVerifyVoteExtension(), nil
 }
 
 func (cli *socketClient) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
