@@ -27,10 +27,18 @@ const (
 	StatusErrPairExists
 	StatusErrInvalidOrder
 	StatusErrUnacceptableMessage
+	StatusErrNoCommodity
+)
+
+var (
+	accountKey = []byte("account")
+	pairKey = []byte("pair")
 )
 
 type StateMachine struct {
-	// persisted state
+	// persisted state which is a key value store containing:
+	//   accountID -> account
+	//   pairID -> pair
 	db dbm.DB
 
 	// ephemeral state (not used for the app hash) but for
@@ -42,8 +50,18 @@ type StateMachine struct {
 	// a list of transactions that have been modified by the most recent block
 	// and will need to result in an update to the db
 	touchedAccounts map[uint64]struct{} 
+	// new pairs added in this block which will needed to be added to the
+	// db on "Commit"
+	newPairs []*Pair
 
 	// app-side mempool (also emphemeral)
+	// this takes ask and bid transactions from `CheckTx`
+	// and matches them as a "MatchedOrder" which is
+	// then proposed in a block
+	// 
+	// it's important to note that there is no garbage collection
+	// here. Bids and asks, potentially even invalid, will
+	// continue to stay here until matched
 	markets map[string]*Market // i.e. ATOM/USDC
 }
 
@@ -64,6 +82,7 @@ func (sm *StateMachine) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{}
 }
 
+// CheckTx indicates which transactions
 func (sm *StateMachine) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	var msg = new(Msg)
 
@@ -113,12 +132,19 @@ func (sm *StateMachine) ValidateTx(msg *Msg) uint32 {
 		}
 
 	case *Msg_MsgAsk, *Msg_MsgBid: // MsgAsk and MsgBid are not allowed individually - they need to be matched as a TradeSet
-		return StatusErrUnacceptableMessage
+		return StatusErrUnacceptableMessage //Todo add logic around msg ask and bid to allow
 
 	case *Msg_MsgCreateAccount:
 		// check for duplicate accounts in state machine
 		if _, ok := sm.publicKeys[string(m.MsgCreateAccount.PublicKey)]; ok {
 			return StatusErrAccountExists
+		}
+
+		// check that each of the commodities is present in at least one trading pair
+		for _, commodity := range m.MsgCreateAccount.Commodities {
+			if _, exists := sm.commodities[commodity.Denom]; !exists {
+				return StatusErrNoCommodity
+			} 
 		}
 
 	case *Msg_MsgTradeSet:
@@ -143,16 +169,33 @@ func (sm *StateMachine) ValidateTx(msg *Msg) uint32 {
 
 func (sm *StateMachine) Commit() types.ResponseCommit {
 	batch := sm.db.NewBatch()
+
+	// write to accounts that were modified by the last block
 	for accountID := range sm.touchedAccounts {
 		value, err := proto.Marshal(sm.accounts[accountID])
 		if err != nil {
 			panic(err)
 		}
 		var key []byte
+		copy(key, accountKey)
 		binary.BigEndian.PutUint64(key, accountID)
 
 		batch.Set(key, value)
 	}
+
+	// write the new pairs that were added by the last block
+	pairID := len(sm.pairs) - len(sm.newPairs)
+	for id, pair := range sm.newPairs {
+		value, err := proto.Marshal(pair)
+		if err != nil {
+			panic(err)
+		}
+		var key []byte
+		copy(key, pairKey)
+		binary.BigEndian.PutUint64(key, uint64(pairID + id))
+		batch.Set(key, value)
+	}
+
 	batch.WriteSync()
 
 	return types.ResponseCommit{Data: sm.hash()}
@@ -171,6 +214,8 @@ func (sm *StateMachine) InitChain(req types.RequestInitChain) types.ResponseInit
 }
 
 func (sm *StateMachine) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+	// reset the new pairs
+	sm.newPairs = make([]*Pair, 0)
 	return types.ResponseBeginBlock{}
 }
 
@@ -190,6 +235,9 @@ func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 	case *Msg_MsgRegisterPair:
 		sm.markets[m.MsgRegisterPair.Pair.String()] = NewMarket(m.MsgRegisterPair.Pair)
 		sm.pairs[m.MsgRegisterPair.Pair.String()] = struct{}{}
+		sm.commodities[m.MsgRegisterPair.Pair.BuyersDenomination] = struct{}{}
+		sm.commodities[m.MsgRegisterPair.Pair.SellersDenomination] = struct{}{}
+		sm.newPairs = append(sm.newPairs, m.MsgRegisterPair.Pair)
 
 	case *Msg_MsgCreateAccount:
 		nextAccountID := uint64(len(sm.accounts))
@@ -199,6 +247,7 @@ func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 			Commodities: m.MsgCreateAccount.Commodities,
 		}
 		sm.touchedAccounts[nextAccountID] = struct{}{}
+		sm.publicKeys[string(m.MsgCreateAccount.PublicKey)] = struct{}{}
 
 	case *Msg_MsgTradeSet:
 		pair := m.MsgTradeSet.TradeSet.Pair
@@ -228,6 +277,8 @@ func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 	return types.ResponseDeliverTx{Code: 0}
 }
 
+// EndBlock is used to update consensus params and the validator set. For the orderbook,
+// we keep both the same for thw 
 func (sm *StateMachine) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	return types.ResponseEndBlock{}
 }
