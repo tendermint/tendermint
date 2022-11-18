@@ -181,7 +181,9 @@ func OnDisconnect(onDisconnect func(remoteAddr string)) func(*wsConnection) {
 // It should only be used in the constructor - not Goroutine-safe.
 func WriteWait(writeWait time.Duration) func(*wsConnection) {
 	return func(wsc *wsConnection) {
-		wsc.writeWait = writeWait
+		if writeWait.Nanoseconds() > 0 {
+			wsc.writeWait = writeWait
+		}
 	}
 }
 

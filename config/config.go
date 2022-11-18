@@ -383,6 +383,10 @@ type RPCConfig struct {
 	// connections may be dropped unnecessarily.
 	WebSocketWriteBufferSize int `mapstructure:"experimental_websocket_write_buffer_size"`
 
+	// Configurable write timeout for subscription websocket. Useful to increase in case
+	// of large transactions in websocket chokes under high load.
+	WebSocketWriteTimeout time.Duration `mapstructure:"experimental_websocket_write_timeout"`
+
 	// If a WebSocket client cannot read fast enough, at present we may
 	// silently drop events instead of generating an error or disconnecting the
 	// client.
