@@ -41,7 +41,7 @@ make install_abci
 
 Now you should have the `abci-cli` installed; run `abci-cli` to see the list of commands:
 
-```sh
+```
 Usage:
   abci-cli [command]
 
