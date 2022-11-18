@@ -194,14 +194,17 @@ func (params ConsensusParams) ValidateBasic() error {
 	return nil
 }
 
-func (params ConsensusParams) ValidateUpdate(updated *ConsensusParams, h int64) error {
-	if params.ABCI.VoteExtensionsEnableHeight == updated.ABCI.VoteExtensionsEnableHeight {
+func (params ConsensusParams) ValidateUpdate(updated *tmproto.ConsensusParams, h int64) error {
+	if updated.Abci == nil {
 		return nil
 	}
-	if params.ABCI.VoteExtensionsEnableHeight != 0 && updated.ABCI.VoteExtensionsEnableHeight == 0 {
+	if params.ABCI.VoteExtensionsEnableHeight == updated.Abci.VoteExtensionsEnableHeight {
+		return nil
+	}
+	if params.ABCI.VoteExtensionsEnableHeight != 0 && updated.Abci.VoteExtensionsEnableHeight == 0 {
 		return errors.New("vote extensions cannot be disabled once enabled")
 	}
-	if updated.ABCI.VoteExtensionsEnableHeight <= h {
+	if updated.Abci.VoteExtensionsEnableHeight <= h {
 		return fmt.Errorf("VoteExtensionsEnableHeight cannot be updated to a past height, "+
 			"initial height: %d, current height %d",
 			params.ABCI.VoteExtensionsEnableHeight, h)
