@@ -117,7 +117,7 @@ func (msg *MsgRegisterPair) ValidateBasic() error {
 
 func NewCommodity(denom string, quantity float64) *Commodity {
 	return &Commodity{
-		Denom: denom,
+		Denom:    denom,
 		Quantity: quantity,
 	}
 }
@@ -260,7 +260,7 @@ func (a *Account) SubtractCommodity(c *Commodity) {
 	curr.Quantity -= c.Quantity
 }
 
-func (msg *Msg) ValidateBasic() error { 
+func (msg *Msg) ValidateBasic() error {
 	switch m := msg.Sum.(type) {
 	case *Msg_MsgRegisterPair:
 		if err := m.MsgRegisterPair.ValidateBasic(); err != nil {
@@ -286,7 +286,7 @@ func (msg *Msg) ValidateBasic() error {
 		if err := m.MsgTradeSet.TradeSet.ValidateBasic(); err != nil {
 			return err
 		}
-	
+
 	default:
 		return errors.New("unknown tx")
 	}

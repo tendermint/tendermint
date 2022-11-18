@@ -5,7 +5,7 @@ import (
 )
 
 type Market struct {
-	pair       *Pair       // i.e. EUR/USD (a market is bidirectional)
+	pair       *Pair      // i.e. EUR/USD (a market is bidirectional)
 	askOrders  *AskOrders // i.e. buying EUR for USD
 	lowestAsk  float64
 	bidOrders  *BidOrders // i.e. selling EUR for USD or  buying USD for EUR

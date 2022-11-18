@@ -12,7 +12,8 @@ import (
 )
 
 func TestCheckTx(t *testing.T) {
-	app := orderbook.New(dbm.NewMemDB())
+	app, err := orderbook.New(dbm.NewMemDB())
+	require.NoError(t, err)
 
 	testCases := []struct {
 		name         string

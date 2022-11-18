@@ -30,6 +30,7 @@ message Commodity {
     double quantity = 2;    
 }
 
+// Accounts is the atomic piece of information that is persisted to disk.
 message Account {
     uint64 index = 1;
 	bytes public_key = 2;
