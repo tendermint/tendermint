@@ -82,7 +82,8 @@ call sequences of these methods.
   been locked at Tendermint level. Tendermint gathers outstanding transactions from the
   mempool, generates a block header, and uses them to create a block to propose. Then, it calls
   `RequestPrepareProposal` with the newly created proposal, called *raw proposal*. The Application
-  can make changes to the raw proposal, such as modifying transactions, and returns the
+  can make changes to the raw proposal, such as modifying the set of transactions or the order 
+  in which they appear, and returns the
   (potentially) modified proposal, called *prepared proposal* in the `ResponsePrepareProposal`
   call. The logic modifying the raw proposal can be non-deterministic.
 
@@ -109,9 +110,9 @@ call sequences of these methods.
   returned by `DeliverTx` are included in the header of the next block.
 
 - [**EndBlock**](./abci++_methods.md#endblock) It is executed once all transactions have been processed via
- `DeliverTx` to inform the application that the block can now be committed and inform it of potential changes such
- as a new validator set to be proposed in the next round.  As with `DeliverTx`, cryptographic commitments of the responses returned
- are included in the header of the next block.
+ `DeliverTx` to inform the application that no other transactions will be delivered as part of the current
+ block and to ask for changes of the validator set and consensus parameters to be used in the following block.
+ As with `DeliverTx`, cryptographic commitments of the responses returned are included in the header of the next block.
 <!-- 
 
 - [**ExtendVote:**](./abci++_methods.md#extendvote) It allows applications to force their
