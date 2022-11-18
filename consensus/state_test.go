@@ -1540,7 +1540,7 @@ func TestExtendVoteCalledWhenEnabled(t *testing.T) {
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
 			cs1, vss := makeState(t, makeStateArgs{application: m})
 			if !testCase.enabled {
-				cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = 0
+				cs1, vss = makeState(t, makeStateArgs{application: m, params: types.DefaultConsensusParams()})
 			}
 			height, round := cs1.Height, cs1.Round
 
@@ -1823,7 +1823,9 @@ func TestVoteExtensionEnableHeight(t *testing.T) {
 			r := &abci.ResponseFinalizeBlock{AgreedAppData: []byte("hashyHash")}
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
 			m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
-			cs1, vss := makeState(t, makeStateArgs{application: m})
+			c := test.ConsensusParams()
+			c.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
+			cs1, vss := makeState(t, makeStateArgs{application: m, params: c})
 			cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
 			height, round := cs1.Height, cs1.Round
 

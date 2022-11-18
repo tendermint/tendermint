@@ -562,23 +562,51 @@ func (cs *State) sendInternalMessage(mi msgInfo) {
 	}
 }
 
-// Reconstruct LastCommit from SeenCommit, which we saved along with the block,
-// (which happens even before saving the state)
+// Reconstruct the LastCommit from either SeenCommit or the ExtendedCommit. SeenCommit
+// and ExtendedCommit are saved along with the block. If VoteExtensions are required
+// the method will panic on an absent ExtendedCommit or an ExtendedCommit without
+// extension data.
 func (cs *State) reconstructLastCommit(state sm.State) {
-	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	if seenCommit == nil {
-		panic(fmt.Sprintf(
-			"failed to reconstruct last commit; seen commit for height %v not found",
-			state.LastBlockHeight,
-		))
+	extensionsEnabled := cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight)
+	if !extensionsEnabled {
+		votes, err := cs.votesFromSeenCommit(state)
+		if err != nil {
+			panic(fmt.Sprintf("failed to reconstruct last commit; %s", err))
+		}
+		cs.LastCommit = votes
+		return
 	}
 
-	lastPrecommits := types.CommitToVoteSet(state.ChainID, seenCommit, state.LastValidators)
-	if !lastPrecommits.HasTwoThirdsMajority() {
-		panic("failed to reconstruct last commit; does not have +2/3 maj")
+	votes, err := cs.votesFromExtendedCommit(state)
+	if err != nil {
+		panic(fmt.Sprintf("failed to reconstruct last extended commit; %s", err))
+	}
+	cs.LastCommit = votes
+}
+
+func (cs *State) votesFromExtendedCommit(state sm.State) (*types.VoteSet, error) {
+	ec := cs.blockStore.LoadBlockExtendedCommit(state.LastBlockHeight)
+	if ec == nil {
+		return nil, fmt.Errorf("extended commit for height %v not found", state.LastBlockHeight)
+	}
+	vs := ec.ToExtendedVoteSet(state.ChainID, state.LastValidators)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("extended commit does not have +2/3 majority")
+	}
+	return vs, nil
+}
+
+func (cs *State) votesFromSeenCommit(state sm.State) (*types.VoteSet, error) {
+	commit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
+	if commit == nil {
+		return nil, fmt.Errorf("commit for height %v not found", state.LastBlockHeight)
 	}
 
-	cs.LastCommit = lastPrecommits
+	vs := commit.ToVoteSet(state.ChainID, state.LastValidators)
+	if !vs.HasTwoThirdsMajority() {
+		return nil, errors.New("commit does not have +2/3 majority")
+	}
+	return vs, nil
 }
 
 // Updates State and increments height to match that of state.
@@ -679,7 +707,11 @@ func (cs *State) updateToState(state sm.State) {
 	cs.ValidRound = -1
 	cs.ValidBlock = nil
 	cs.ValidBlockParts = nil
-	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	if state.ConsensusParams.ABCI.VoteExtensionsEnabled(height) {
+		cs.Votes = cstypes.NewExtendedHeightVoteSet(state.ChainID, height, validators)
+	} else {
+		cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
+	}
 	cs.CommitRound = -1
 	cs.LastValidators = state.LastValidators
 	cs.TriggeredTimeoutPrecommit = false
@@ -1212,6 +1244,7 @@ func (cs *State) createProposalBlock() (*types.Block, error) {
 		return nil, errors.New("entered createProposalBlock with privValidator being nil")
 	}
 
+	// TODO(sergio): wouldn't it be easier if CreateProposalBlock accepted cs.LastCommit directly?
 	var lastExtCommit *types.ExtendedCommit
 	switch {
 	case cs.Height == cs.state.InitialHeight:
@@ -2290,7 +2323,7 @@ func (cs *State) signVote(
 	v := vote.ToProto()
 	err := cs.privValidator.SignVote(cs.state.ChainID, v)
 	vote.Signature = v.Signature
-	// append the extension signature if expect it
+	// append the extension signature if it is expected
 	if msgType == tmproto.PrecommitType && !vote.BlockID.IsNil() &&
 		cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
 		// defensively check that the signer correctly signed the vote extension

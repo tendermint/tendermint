@@ -385,10 +385,10 @@ func subscribeToVoter(cs *State, addr []byte) <-chan tmpubsub.Message {
 // consensus states
 
 type makeStateArgs struct {
-	config          *config.Config
-	consensusParams *types.ConsensusParams
-	validators      int
-	application     abci.Application
+	config      *config.Config
+	params      *types.ConsensusParams
+	validators  int
+	application abci.Application
 }
 
 func makeState(t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
@@ -409,8 +409,8 @@ func makeState(t *testing.T, args makeStateArgs) (*State, []*validatorStub) {
 	args.config.SetRoot(t.TempDir())
 
 	cp := test.ConsensusParams()
-	if args.consensusParams != nil {
-		cp = args.consensusParams
+	if args.params != nil {
+		cp = args.params
 	}
 
 	state, privVals := makeGenesisState(t, genesisStateArgs{
