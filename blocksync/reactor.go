@@ -58,11 +58,13 @@ type Reactor struct {
 
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
+
+	metrics *Metrics
 }
 
 // NewReactor returns new reactor instance.
 func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockStore,
-	blockSync bool) *Reactor {
+	blockSync bool, metrics *Metrics) *Reactor {
 
 	if state.LastBlockHeight != store.Height() {
 		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
@@ -88,6 +90,7 @@ func NewReactor(state sm.State, blockExec *sm.BlockExecutor, store *store.BlockS
 		blockSync:    blockSync,
 		requestsCh:   requestsCh,
 		errorsCh:     errorsCh,
+		metrics:      metrics,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor("Reactor", bcR)
 	return bcR
@@ -236,6 +239,8 @@ func (bcR *Reactor) Receive(e p2p.Envelope) {
 // Handle messages from the poolReactor telling the reactor what to do.
 // NOTE: Don't sleep in the FOR_LOOP or otherwise slow it down!
 func (bcR *Reactor) poolRoutine(stateSynced bool) {
+	bcR.metrics.Syncing.Set(1)
+	defer bcR.metrics.Syncing.Set(0)
 
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	defer trySyncTicker.Stop()

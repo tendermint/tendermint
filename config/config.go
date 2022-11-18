@@ -548,6 +548,11 @@ type P2PConfig struct { //nolint: maligned
 	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
 
+	// Comma separated list of peers to be added to the peer store
+	// on startup. Either BootstrapPeers or PersistentPeers are
+	// needed for peer discovery
+	BootstrapPeers string `mapstructure:"bootstrap_peers"`
+
 	// Comma separated list of nodes to keep persistent connections to
 	PersistentPeers string `mapstructure:"persistent_peers"`
 
