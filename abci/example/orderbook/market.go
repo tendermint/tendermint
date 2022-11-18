@@ -2,10 +2,14 @@ package orderbook
 
 import (
 	"container/heap"
+	sync "sync"
 )
 
 type Market struct {
-	pair       *Pair      // i.e. EUR/USD (a market is bidirectional)
+	// immutable
+	pair *Pair // i.e. EUR/USD (a market is bidirectional)
+
+	mtx        sync.RWMutex
 	askOrders  *AskOrders // i.e. buying EUR for USD
 	lowestAsk  float64
 	bidOrders  *BidOrders // i.e. selling EUR for USD or  buying USD for EUR
@@ -19,6 +23,8 @@ func NewMarket(p *Pair) *Market {
 }
 
 func (m *Market) AddBid(b *OrderBid) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	heap.Push(m.bidOrders, b)
 	if b.MaxPrice > m.highestBid {
 		m.highestBid = b.MaxPrice
@@ -26,6 +32,8 @@ func (m *Market) AddBid(b *OrderBid) {
 }
 
 func (m *Market) AddAsk(a *OrderAsk) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	heap.Push(m.askOrders, a)
 	if a.AskPrice < m.lowestAsk || m.lowestAsk == 0 {
 		m.lowestAsk = a.AskPrice
@@ -36,6 +44,8 @@ func (m *Market) AddAsk(a *OrderAsk) {
 // A bid matches an ask when the MaxPrice is greater than the AskPrice
 // and the MaxQuantity is greater than the quantity.
 func (m *Market) Match() *TradeSet {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	// if one side doesn't have any orders than there is nothing to match
 	// and we return early
 	if m.askOrders.Len() == 0 || m.bidOrders.Len() == 0 {
@@ -147,11 +157,35 @@ OUTER_LOOP:
 }
 
 func (m Market) LowestAsk() float64 {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
 	return m.lowestAsk
 }
 
 func (m Market) HighestBid() float64 {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
 	return m.highestBid
+}
+
+func (m Market) GetBids() []OrderBid {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	orders := make([]OrderBid, m.bidOrders.Len())
+	for idx, order := range *m.bidOrders {
+		orders[idx] = *order
+	}
+	return orders
+}
+
+func (m Market) GetAsks() []OrderAsk {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	orders := make([]OrderAsk, m.askOrders.Len())
+	for idx, order := range *m.askOrders {
+		orders[idx] = *order
+	}
+	return orders
 }
 
 // Heap ordered by lowest price
