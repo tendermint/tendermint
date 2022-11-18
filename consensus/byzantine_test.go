@@ -445,20 +445,24 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 
 	wg.Wait()
 
-	// done := make(chan struct{})
-	// go func() {
-	// 	wg.Wait()
-	// 	close(done)
-	// }()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
 
-	// tick := time.NewTicker(time.Second * 50)
-	// select {
-	// case <-done:
-	// case <-tick.C:
-	// 	t.Fatalf("Timed out waiting for all validators to commit first block")
-	// }
+	tick := time.NewTicker(time.Second * 50)
+	select {
+	case <-done:
+	case <-tick.C:
+		t.Fatalf("Timed out waiting for all validators to commit first block")
+	}
 }
 
+// I have no idea why the linter complains. This function is used in
+// the test above
+//
+//nolint:unused
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 	for i, s := range switches {
 		if peer.NodeInfo().ID() == s.NodeInfo().ID() {
