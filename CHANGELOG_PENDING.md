@@ -17,7 +17,7 @@
 
 - Data Storage
   - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
-  
+
 - Tooling
   - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
   - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
@@ -34,6 +34,7 @@
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
 - [rpc] \#9650 Enable caching of RPC responses (@JayT106)
+- [rpc] \#9720 Remove useless whitespace in RPC output (@adizere, @thanethomson)
 
 ### BUG FIXES
 
