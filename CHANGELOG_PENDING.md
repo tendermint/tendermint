@@ -34,7 +34,6 @@
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
 - [rpc] \#9650 Enable caching of RPC responses (@JayT106)
-- [rpc] \#9720 Remove useless whitespace in RPC output (@adizere, @thanethomson)
 
 ### BUG FIXES
 
