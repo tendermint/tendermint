@@ -3,6 +3,14 @@
 This guide provides instructions for upgrading to specific versions of
 Tendermint Core.
 
+## v0.34.24
+
+Note that in [\#9724](https://github.com/tendermint/tendermint/pull/9724) we
+un-prettified the JSON output (i.e. removed all indentation) of the HTTP and
+WebSocket RPC for performance and subscription stability reasons. We recommend
+using a tool such as [jq](https://github.com/stedolan/jq) to obtain prettified
+output if you rely on that prettified output in some way.
+
 ## v0.34.20
 
 ### Feature: Priority Mempool

@@ -18,6 +18,9 @@
 
 ### IMPROVEMENTS
 
+- `[rpc]` \#9724 Remove useless whitespace in RPC output (@adizere,
+  @thanethomson)
+
 ### BUG FIXES
 
 - `[rpc]` \#9692 Remove `Cache-Control` header response from `/check_tx`
