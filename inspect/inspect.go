@@ -3,7 +3,6 @@ package inspect
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 
@@ -37,9 +36,8 @@ type Inspector struct {
 
 	config *config.RPCConfig
 
-	indexerService *txindex.IndexerService
-	eventBus       *types.EventBus
-	logger         log.Logger
+	eventBus *types.EventBus
+	logger   log.Logger
 
 	// References to the state store and block store are maintained to enable
 	// the Inspector to safely close them on shutdown.
@@ -57,16 +55,13 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, txidx txind
 	routes := rpc.Routes(*cfg, ss, bs, txidx, blkidx, logger)
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
-	is := txindex.NewIndexerService(txidx, blkidx, eb, false)
-	is.SetLogger(logger.With("module", "txindex"))
 	return &Inspector{
-		routes:         routes,
-		config:         cfg,
-		logger:         logger,
-		eventBus:       eb,
-		indexerService: is,
-		ss:             ss,
-		bs:             bs,
+		routes:   routes,
+		config:   cfg,
+		logger:   logger,
+		eventBus: eb,
+		ss:       ss,
+		bs:       bs,
 	}
 }
 
@@ -97,26 +92,6 @@ func NewFromConfig(cfg *config.Config) (*Inspector, error) {
 // Run starts the Inspector servers and blocks until the servers shut down. The passed
 // in context is used to control the lifecycle of the servers.
 func (ins *Inspector) Run(ctx context.Context) error {
-	err := ins.eventBus.Start()
-	if err != nil {
-		return fmt.Errorf("error starting event bus: %s", err)
-	}
-	defer func() {
-		err := ins.eventBus.Stop()
-		if err != nil {
-			ins.logger.Error("event bus stopped with error", "err", err)
-		}
-	}()
-	err = ins.indexerService.Start()
-	if err != nil {
-		return fmt.Errorf("error starting indexer service: %s", err)
-	}
-	defer func() {
-		err := ins.indexerService.Stop()
-		if err != nil {
-			ins.logger.Error("indexer service stopped with error", "err", err)
-		}
-	}()
 	defer ins.bs.Close()
 	defer ins.ss.Close()
 

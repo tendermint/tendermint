@@ -9,13 +9,11 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/rpc/core"
 	"github.com/tendermint/tendermint/rpc/jsonrpc/server"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
 	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Server defines parameters for running an Inspector rpc server.
@@ -61,17 +59,7 @@ func Routes(cfg config.RPCConfig, s state.Store, bs state.BlockStore, txidx txin
 func Handler(rpcConfig *config.RPCConfig, routes core.RoutesMap, logger log.Logger) http.Handler {
 	mux := http.NewServeMux()
 	wmLogger := logger.With("protocol", "websocket")
-
-	var eventBus types.EventBusSubscriber
-
-	websocketDisconnectFn := func(remoteAddr string) {
-		err := eventBus.UnsubscribeAll(context.Background(), remoteAddr)
-		if err != nil && err != pubsub.ErrSubscriptionNotFound {
-			wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
-		}
-	}
 	wm := server.NewWebsocketManager(routes,
-		server.OnDisconnect(websocketDisconnectFn),
 		server.ReadLimit(rpcConfig.MaxBodyBytes))
 	wm.SetLogger(wmLogger)
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
