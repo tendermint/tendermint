@@ -14,10 +14,12 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 	tmnet "github.com/tendermint/tendermint/libs/net"
 	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/libs/timer"
 )
 
 const (
-	reqQueueSize = 256 // TODO make configurable
+	reqQueueSize    = 256 // TODO make configurable
+	flushThrottleMS = 20  // Don't wait longer than...
 )
 
 // socketClient is the client side implementation of the Tendermint
@@ -26,8 +28,6 @@ const (
 //
 // This is goroutine-safe. All calls are serialized to the server through an unbuffered queue. The socketClient
 // tracks responses and expects them to respect the order of the requests sent.
-//
-// The buffer is flushed after every message sent.
 type socketClient struct {
 	service.BaseService
 
@@ -35,7 +35,8 @@ type socketClient struct {
 	mustConnect bool
 	conn        net.Conn
 
-	reqQueue chan *ReqRes
+	reqQueue   chan *ReqRes
+	flushTimer *timer.ThrottleTimer
 
 	mtx     sync.Mutex
 	err     error
@@ -51,10 +52,12 @@ var _ Client = (*socketClient)(nil)
 func NewSocketClient(addr string, mustConnect bool) Client {
 	cli := &socketClient{
 		reqQueue:    make(chan *ReqRes, reqQueueSize),
+		flushTimer:  timer.NewThrottleTimer("socketClient", flushThrottleMS),
 		mustConnect: mustConnect,
-		addr:        addr,
-		reqSent:     list.New(),
-		resCb:       nil,
+
+		addr:    addr,
+		reqSent: list.New(),
+		resCb:   nil,
 	}
 	cli.BaseService = *service.NewBaseService(nil, "socketClient", cli)
 	return cli
@@ -95,6 +98,7 @@ func (cli *socketClient) OnStop() {
 	}
 
 	cli.flushQueue()
+	cli.flushTimer.Stop()
 }
 
 // Error returns an error if the client was stopped abruptly.
@@ -123,26 +127,37 @@ func (cli *socketClient) CheckTxAsync(ctx context.Context, req *types.RequestChe
 //----------------------------------------
 
 func (cli *socketClient) sendRequestsRoutine(conn io.Writer) {
-	bw := bufio.NewWriter(conn)
+	w := bufio.NewWriter(conn)
 	for {
 		select {
-		case <-cli.Quit():
-			return
 		case reqres := <-cli.reqQueue:
 			// N.B. We must enqueue before sending out the request, otherwise the
 			// server may reply before we do it, and the receiver will fail for an
 			// unsolicited reply.
 			cli.trackRequest(reqres)
 
-			if err := types.WriteMessage(reqres.Request, bw); err != nil {
+			err := types.WriteMessage(reqres.Request, w)
+			if err != nil {
 				cli.stopForError(fmt.Errorf("write to buffer: %w", err))
 				return
 			}
 
-			if err := bw.Flush(); err != nil {
-				cli.stopForError(fmt.Errorf("flush buffer: %w", err))
-				return
+			// If it's a flush request, flush the current buffer.
+			if _, ok := reqres.Request.Value.(*types.Request_Flush); ok {
+				err = w.Flush()
+				if err != nil {
+					cli.stopForError(fmt.Errorf("flush buffer: %w", err))
+					return
+				}
 			}
+		case <-cli.flushTimer.Ch: // flush queue
+			select {
+			case cli.reqQueue <- NewReqRes(types.ToRequestFlush()):
+			default:
+				// Probably will fill the buffer, or retry later.
+			}
+		case <-cli.Quit():
+			return
 		}
 	}
 }
@@ -155,8 +170,8 @@ func (cli *socketClient) recvResponseRoutine(conn io.Reader) {
 		}
 
 		var res = &types.Response{}
-
-		if err := types.ReadMessage(r, res); err != nil {
+		err := types.ReadMessage(r, res)
+		if err != nil {
 			cli.stopForError(fmt.Errorf("read message: %w", err))
 			return
 		}
@@ -219,43 +234,6 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 	reqres.InvokeCallback()
 
 	return nil
-}
-
-func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request) (*ReqRes, error) {
-	reqres := NewReqRes(req)
-
-	// TODO: set cli.err if reqQueue times out
-	select {
-	case cli.reqQueue <- reqres:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-
-	return reqres, nil
-}
-
-// flushQueue marks as complete and discards all remaining pending requests
-// from the queue.
-func (cli *socketClient) flushQueue() {
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-
-	// mark all in-flight messages as resolved (they will get cli.Error())
-	for req := cli.reqSent.Front(); req != nil; req = req.Next() {
-		reqres := req.Value.(*ReqRes)
-		reqres.Done()
-	}
-
-	// mark all queued messages as resolved
-LOOP:
-	for {
-		select {
-		case reqres := <-cli.reqQueue:
-			reqres.Done()
-		default:
-			break LOOP
-		}
-	}
 }
 
 //----------------------------------------
@@ -383,6 +361,51 @@ func (cli *socketClient) FinalizeBlock(ctx context.Context, req *types.RequestFi
 	}
 	reqRes.Wait()
 	return reqRes.Response.GetFinalizeBlock(), cli.Error()
+}
+
+func (cli *socketClient) queueRequest(ctx context.Context, req *types.Request) (*ReqRes, error) {
+	reqres := NewReqRes(req)
+
+	// TODO: set cli.err if reqQueue times out
+	select {
+	case cli.reqQueue <- reqres:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	// Maybe auto-flush, or unset auto-flush
+	switch req.Value.(type) {
+	case *types.Request_Flush:
+		cli.flushTimer.Unset()
+	default:
+		cli.flushTimer.Set()
+	}
+
+	return reqres, nil
+}
+
+// flushQueue marks as complete and discards all remaining pending requests
+// from the queue.
+func (cli *socketClient) flushQueue() {
+	cli.mtx.Lock()
+	defer cli.mtx.Unlock()
+
+	// mark all in-flight messages as resolved (they will get cli.Error())
+	for req := cli.reqSent.Front(); req != nil; req = req.Next() {
+		reqres := req.Value.(*ReqRes)
+		reqres.Done()
+	}
+
+	// mark all queued messages as resolved
+LOOP:
+	for {
+		select {
+		case reqres := <-cli.reqQueue:
+			reqres.Done()
+		default:
+			break LOOP
+		}
+	}
 }
 
 //----------------------------------------

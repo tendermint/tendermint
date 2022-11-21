@@ -125,6 +125,7 @@ func (cli *grpcClient) OnStop() {
 	if cli.conn != nil {
 		cli.conn.Close()
 	}
+	close(cli.chReqRes)
 }
 
 func (cli *grpcClient) StopForError(err error) {
@@ -147,7 +148,6 @@ func (cli *grpcClient) StopForError(err error) {
 func (cli *grpcClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
-
 	return cli.err
 }
 
@@ -181,7 +181,10 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 
 //----------------------------------------
 
-func (cli *grpcClient) Flush(ctx context.Context) error { return nil }
+func (cli *grpcClient) Flush(ctx context.Context) error {
+	_, err := cli.client.Flush(ctx, types.ToRequestFlush().GetFlush(), grpc.WaitForReady(true))
+	return err
+}
 
 func (cli *grpcClient) Echo(ctx context.Context, msg string) (*types.ResponseEcho, error) {
 	return cli.client.Echo(ctx, types.ToRequestEcho(msg).GetEcho(), grpc.WaitForReady(true))

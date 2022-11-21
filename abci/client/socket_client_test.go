@@ -33,11 +33,43 @@ func TestCalls(t *testing.T) {
 	}()
 
 	select {
-	case <-time.After(1 * time.Second):
+	case <-time.After(time.Second):
 		require.Fail(t, "No response arrived")
 	case err, ok := <-resp:
 		require.True(t, ok, "Must not close channel")
 		assert.NoError(t, err, "This should return success")
+	}
+}
+
+func TestHangingAsyncCalls(t *testing.T) {
+	app := slowApp{}
+
+	s, c := setupClientServer(t, app)
+
+	resp := make(chan error, 1)
+	go func() {
+		// Start BeginBlock and flush it
+		reqres, err := c.CheckTxAsync(context.Background(), &types.RequestCheckTx{})
+		require.NoError(t, err)
+		// wait 20 ms for all events to travel socket, but
+		// no response yet from server
+		time.Sleep(50 * time.Millisecond)
+		// kill the server, so the connections break
+		err = s.Stop()
+		require.NoError(t, err)
+
+		// wait for the response from BeginBlock
+		reqres.Wait()
+		fmt.Print(reqres)
+		resp <- c.Error()
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		require.Fail(t, "No response arrived")
+	case err, ok := <-resp:
+		require.True(t, ok, "Must not close channel")
+		assert.Error(t, err, "We should get EOF error")
 	}
 }
 
@@ -55,7 +87,7 @@ func setupClientServer(t *testing.T, app types.Application) (
 
 	t.Cleanup(func() {
 		if err := s.Stop(); err != nil {
-			t.Error(err)
+			t.Log(err)
 		}
 	})
 
@@ -65,11 +97,20 @@ func setupClientServer(t *testing.T, app types.Application) (
 
 	t.Cleanup(func() {
 		if err := c.Stop(); err != nil {
-			t.Error(err)
+			t.Log(err)
 		}
 	})
 
 	return s, c
+}
+
+type slowApp struct {
+	types.BaseApplication
+}
+
+func (slowApp) CheckTxAsync(_ context.Context, req types.RequestCheckTx) types.ResponseCheckTx {
+	time.Sleep(200 * time.Millisecond)
+	return types.ResponseCheckTx{}
 }
 
 // TestCallbackInvokedWhenSetLaet ensures that the callback is invoked when
