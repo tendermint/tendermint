@@ -38,6 +38,7 @@
 ### BUG FIXES
 
 - [docker] \#9462 ensure Docker image uses consistent version of Go
+- [abci-cli] \#9717 fix broken abci-cli help command
 
 ## v0.37.0
 
