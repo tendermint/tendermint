@@ -88,7 +88,7 @@ The Tendermint consensus reactor starts a new [gossipVotesRoutine][gossip-votes-
 
 1. Tendermint sent the peer the vote.
 2. Tendermint received the vote from the peer.
-3. The peer [sent a `HasVote` message][apply-has-vote]. This message is broadcast to all peers [each time validator receives a vote][publish-event-vote].
+3. The peer [sent a `HasVote` message][apply-has-vote]. This message is broadcast to all peers [each time validator receives a vote it hasn't seen before corresponding to its current height and round][publish-event-vote].
 4. The peer [sent a `VoteSetBits` message][apply-vote-set-bits]. This message is [sent as a response to a peer that sends a `VoteSetMaj23`][vote-set-bits-send].
 
 Given that Tendermint informs all peers of _each_ vote message it receives, all nodes should be well informed of which votes their peers have. Given that the vote messages were the third largest consumer of bandwidth in the observation on Osmosis, it's possible that this system is not currently working correctly. Further analysis should examine where votes may be being retransmitted.
