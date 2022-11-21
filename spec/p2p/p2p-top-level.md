@@ -13,7 +13,8 @@ The Tendermint consists of multiple protocols, namely,
 
 that each plays a role in making sure that validators can produce blocks. These protocols are implemented in so-called reactors (one for each protocol) that encode two functionalities:
 
-- Protocol logic (controlling the local state of the protocols and deciding what messages to send to others, e.g., the rules we find in the arXiv paper) 
+- Protocol logic (controlling the local state of the protocols and deciding what messages to send to others, e.g., the rules we find in the arXiv paper)
+ 
 - Communication. Message exchange with other nodes (Gossip)
 
 Tendermint (as many classic BFT algorithms) have an all-to-all communication pattern (e.g., every validator sends a `precommit` to every other validator). Naive implementations, e.g., maintaining a channel between each of the *N* validators is not scaling to the system sizes of typical Cosmos blockchains (e.g., N = 200 validator nodes + seed nodes + sentry nodes + other full nodes). There is the fundamental necessity to restrict the communication.
@@ -30,6 +31,7 @@ The p2p layer, specified here, manages the connections. It continuously provides
 > Assuming 1. and 2. holds, this means, there must always be nodes that are willing to add connections to new peers.
 
 The p2p layer does so
+
     - running the peer exchange protocol PEX
     - using input from the operator (addresses)
     - responding to other peers wishing to connect
@@ -100,7 +102,6 @@ these tags we frequently use the following short forms:
 
 - TMBC: Tendermint blockchain
 - SEQ: for sequential specifications
-- LCV: Lightclient Verification
 - LIVE: liveness
 - SAFE: safety
 - FUNC: function
