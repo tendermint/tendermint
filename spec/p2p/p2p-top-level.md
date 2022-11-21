@@ -2,7 +2,8 @@
 
 # << Tendermint P2P >>
 
-> Rough outline of what the component is doing and why. 2-3 paragraphs 
+<!--- > Rough outline of what the component is doing and why. 2-3 paragraphs 
+--->
 
 The Tendermint consists of multiple protocols, namely,
 - Consensus
@@ -14,38 +15,17 @@ The Tendermint consists of multiple protocols, namely,
 that each plays a role in making sure that validators can produce blocks. These protocols are implemented in so-called reactors (one for each protocol) that encode two functionalities:
 
 - Protocol logic (controlling the local state of the protocols and deciding what messages to send to others, e.g., the rules we find in the arXiv paper)
- 
+
 - Communication. Message exchange with other nodes (Gossip)
 
 Tendermint (as many classic BFT algorithms) have an all-to-all communication pattern (e.g., every validator sends a `precommit` to every other validator). Naive implementations, e.g., maintaining a channel between each of the *N* validators is not scaling to the system sizes of typical Cosmos blockchains (e.g., N = 200 validator nodes + seed nodes + sentry nodes + other full nodes). There is the fundamental necessity to restrict the communication.
 
 The design decision is to use an overlay network. Instead of having *N* connections, each node only maintains a relatively small number (bounded by constants, say 10 to 50). In principle, this allows to implement more efficient communication (e.g., gossiping), provided that with this small number of connections per node, the system as a whole stays connected. This overlay network 
-is established by the peer-to-peer system (p2p), which is composed of the p2p layers of the participating nodes that locally decide with which peers a node keeps connections.
+is established by the **peer-to-peer system (p2p)**, which is composed of the p2p layers of the participating nodes that locally decide with which peers a node keeps connections.
 
-The p2p layer, specified here, manages the connections. It continuously provides a list of peers ensuring
-1. Connectivity. The overlay network induced by the local neighborhoods (defined by the lists of peers) is sufficiently connected so that the reactors can implement communication on top of it that is sufficient for their needs
-> There is the design decision that the same overlay is used by all reactors. It seems that consensus has the strongest requirements regarding connectivity and this defines the required properties
-2. Stability. Typically, connections between correct peers should be stable
-> Even if at every time *t* we satisfy Point 1, if the overlays at times *t* and *t+1* are totally different, it might be hard to implement decent communication on top of it. E.g., Consensus gossip requires a neighbor to know its neighbors *k* state so that it can send the message to *k* that help *k* to advance. If *k* is connected only one second per hour, this is not feasible.
-3. Openness. It is always the case that new nodes can be added to the system
-> Assuming 1. and 2. holds, this means, there must always be nodes that are willing to add connections to new peers.
-
-The p2p layer does so
-
-    - running the peer exchange protocol PEX
-    - using input from the operator (addresses)
-    - responding to other peers wishing to connect
-> the latter might just be the result of the first two points on the other peer
-
-
-**TODO: The following two points seem to be implementation details**
-- communicate to the reactors the peers to which we have connections.
-- I/O
-   - dispatch messages incoming from the network to the reactors
-   - send messages incoming from the reactors to the network (the peers the messages should go to) 
 
  
-
+<!---
 # Outline
 
 > Table of content with rough outline for the parts
@@ -108,12 +88,13 @@ these tags we frequently use the following short forms:
 - INV: invariant
 - A: assumption
 
+--->
 
+# Part I - A Tendermint node 
 
-# Part I - Tendermint Blockchain
-
-> necessary parts of the blockchain spec. Might be replaced by a link
-> to the spec once we have a published version of it.
+TODO:
+- Reactor API
+- Network?
 
 ## Context of this document
 
@@ -130,14 +111,22 @@ will be used.
 
 ##  Informal Problem statement
 
-> for the general audience, that is, engineers who want to get an overview over what the component is doing
-from a bird's eye view. 
+
+The p2p layer, specified here, manages the connections of a Tendermint node with other Tendermint nodes. It continuously provides a list of peers ensuring
+1. Connectivity. The overlay network induced by the local neighborhoods (defined by the lists of peers) is sufficiently connected so that the reactors can implement communication on top of it that is sufficient for their needs
+    > There is the design decision that the same overlay is used by all reactors. It seems that consensus has the strongest requirements regarding connectivity and this defines the required properties
+2. Stability. Typically, connections between correct peers should be stable
+    > Even if at every time *t* we satisfy Point 1, if the overlays at times *t* and *t+1* are totally different, it might be hard to implement decent communication on top of it. E.g., Consensus gossip requires a neighbor to know its neighbors *k* state so that it can send the message to *k* that help *k* to advance. If *k* is connected only one second per hour, this is not feasible.
+3. Openness. It is always the case that new nodes can be added to the system
+    > Assuming 1. and 2. holds, this means, there must always be nodes that are willing to add connections to new peers.
+
 
 
 ## Sequential Problem statement
 
 > should be English and precise. will be accompanied with a TLA spec.
 
+TODO: This seems to be a research question. Perhaps we can find some simple properties by looking at the peer-to-peer systems academic literature from several years ago?
 
 # Part III - Distributed System
 
@@ -151,21 +140,46 @@ correctly
 
 ## Incentives
 
+TODO: 
+- who will follow the protocol who won't
+- validators hiding behind sentries (they have an incentive to not run it)
+- what can be incentives/strategies of bad nodes 
+     - DNS
+     - filling up all your connections and then disconnecting you
+     - feeding your reactors with garbage
+
+general question (is it likely? do we care)
 
 ## Computational Model
 
+TODO: partially synchronous systems?
+
 ## Distributed Problem Statement
 
-### Two Kinds of Termination
 
 ### Design choices
 
 > input/output variables used to define the temporal properties. Most likely they come from an ADR
 
+The p2p layer is
+    - running the peer exchange protocol PEX (in a reactor)
+    - using input from the operator (addresses)
+    - responding to other peers wishing to connect
+> the latter might just be the result of the first two points on the other peer
+
+
+TODO: The following two points seem to be implementation details/legacy design decisions
+- communicate to the reactors over the reactor API
+- I/O
+   - dispatch messages incoming from the network to the reactors
+   - send messages incoming from the reactors to the network (the peers the messages should go to) 
+
 
 ### Temporal Properties
 
 > safety specifications / invariants in English 
+
+TODO: In a good period, *p* should stay connected with *q*.
 
 > liveness specifications in English. Possibly with timing/fairness requirements:
 e.g., if the component is connected to a correct full node and communication is
