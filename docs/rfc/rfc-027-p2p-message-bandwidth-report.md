@@ -82,7 +82,7 @@ Beyond ensuring that transactions are rebroadcast to peers less frequently, ther
 
 #### Vote Transmission
 
-Tendermint votes, both prevotes and precommits, are central to Tendermint consensus and are gossiped by all nodes to all peers during each consensus round. Data collected from the Blockpane node running on Osmosis indicates that the validator sounds about 9 gigabytes of `Vote` messages were sent during the nearly 3 hour period of observation. Examination of the [Vote message][vote-msg] indicates that it contains 152 bytes of data, with the proto encoding adding a few additional bytes when transmitting.
+Tendermint votes, both prevotes and precommits, are central to Tendermint consensus and are gossiped by all nodes to all peers during each consensus round. Data collected from the Blockpane node running on Osmosis indicates that about 9 gigabytes of `Vote` messages were sent during the nearly 3 hour period of observation. Examination of the [Vote message][vote-msg] indicates that it contains 152 bytes of data, with the proto encoding adding a few additional bytes when transmitting.
 
 The Tendermint consensus reactor starts a new [gossipVotesRoutine][gossip-votes-routine] for each peer that it connects to. The reactor sends all votes to all peers unless it knows that the peer already has the vote or the reactor learns that the peer is in a different round and that thus the vote no longer applies. Tendermint learns that a peer has a vote in one of 4 ways:
 
