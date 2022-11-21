@@ -121,13 +121,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
 	assert.Equal(t, "public, max-age=86400", resp.Header.Get("Cache-control"))
-	assert.Equal(t, `{
-  "jsonrpc": "2.0",
-  "id": -1,
-  "result": {
-    "value": "hello"
-  }
-}`, string(body))
+	assert.Equal(t, `{"jsonrpc":"2.0","id":-1,"result":{"value":"hello"}}`, string(body))
 
 	// multiple arguments
 	w = httptest.NewRecorder()
@@ -142,22 +136,7 @@ func TestWriteRPCResponseHTTP(t *testing.T) {
 
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
-	assert.Equal(t, `[
-  {
-    "jsonrpc": "2.0",
-    "id": -1,
-    "result": {
-      "value": "hello"
-    }
-  },
-  {
-    "jsonrpc": "2.0",
-    "id": -1,
-    "result": {
-      "value": "world"
-    }
-  }
-]`, string(body))
+	assert.Equal(t, `[{"jsonrpc":"2.0","id":-1,"result":{"value":"hello"}},{"jsonrpc":"2.0","id":-1,"result":{"value":"world"}}]`, string(body))
 }
 
 func TestWriteRPCResponseHTTPError(t *testing.T) {
@@ -173,13 +152,5 @@ func TestWriteRPCResponseHTTPError(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
-	assert.Equal(t, `{
-  "jsonrpc": "2.0",
-  "id": -1,
-  "error": {
-    "code": -32603,
-    "message": "Internal error",
-    "data": "foo"
-  }
-}`, string(body))
+	assert.Equal(t, `{"jsonrpc":"2.0","id":-1,"error":{"code":-32603,"message":"Internal error","data":"foo"}}`, string(body))
 }
