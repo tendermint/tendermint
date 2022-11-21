@@ -205,3 +205,125 @@ func TestBlockIndexerMulti(t *testing.T) {
 		})
 	}
 }
+func sendEvent(t *testing.T, height int64, events abci.ResponseEndBlock, indexer *blockidxkv.BlockerIndexer, waitChan chan struct{}) {
+	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
+		Header: types.Header{Height: height},
+		ResultBeginBlock: abci.ResponseBeginBlock{
+			Events: []abci.Event{},
+		},
+		ResultEndBlock: events,
+	}))
+
+	waitChan <- struct{}{}
+
+}
+func TestBlockIndexerParallel(t *testing.T) {
+	store := db.NewPrefixDB(db.NewMemDB(), []byte("block_events"))
+	indexer := blockidxkv.New(store)
+	waitChan := make(chan struct{})
+	numRoutines := 0
+	for height := 1; height < 3; height++ {
+
+		events1 := abci.ResponseEndBlock{
+			Events: []abci.Event{
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("100"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("200"),
+							Index: true,
+						},
+					},
+				},
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("300"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("500"),
+							Index: true,
+						},
+					},
+				},
+			},
+		}
+
+		events2 := abci.ResponseEndBlock{
+			Events: []abci.Event{
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("350"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("400"),
+							Index: true,
+						},
+					},
+				},
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("100"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("500"),
+							Index: true,
+						},
+					},
+				},
+			},
+		}
+		numRoutines = numRoutines + 1
+		go sendEvent(t, int64(height), events1, indexer, waitChan)
+		if height%2 == 0 {
+			numRoutines = numRoutines + 1
+			go sendEvent(t, int64(height), events2, indexer, waitChan)
+		}
+
+	}
+	for i := 0; i < numRoutines; i++ {
+		<-waitChan
+	}
+	testCases := map[string]struct {
+		q       *query.Query
+		results []int64
+	}{
+		"query matches fields from multiple events": {
+			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400"),
+			results: []int64{},
+		},
+		"query matches same event in multiple heights": {
+			q:       query.MustParse("end_event.foo = 300 AND end_event.bar = 200"),
+			results: []int64{},
+		},
+	}
+
+	for name, tc := range testCases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			results, err := indexer.Search(context.Background(), tc.q)
+			require.NoError(t, err)
+			require.Equal(t, tc.results, results)
+		})
+	}
+}

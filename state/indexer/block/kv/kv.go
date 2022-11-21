@@ -1,12 +1,14 @@
 package kv
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
@@ -349,7 +351,9 @@ func (idx *BlockerIndexer) match(
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
-			tmpHeights[string(it.Value())] = it.Value()
+			eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
+			retVal := it.Value()
+			tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
 
 			if err := ctx.Err(); err != nil {
 				break
@@ -437,8 +441,9 @@ func (idx *BlockerIndexer) match(
 
 	// Remove/reduce matches in filteredHeights that were not found in this
 	// match (tmpHeights).
-	for k := range filteredHeights {
-		if tmpHeights[k] == nil {
+	for k, v := range filteredHeights {
+		tmpHeight := tmpHeights[k]
+		if (tmpHeight != nil && !bytes.Equal(tmpHeights[k], v)) || tmpHeight == nil {
 			delete(filteredHeights, k)
 
 			select {
@@ -457,6 +462,9 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 	heightBz := int64ToBytes(height)
 
 	for _, event := range events {
+		// Add unique event identifier to use when querying
+		// Matching will be done both on height AND eventSeq
+		numEvent := time.Now().UnixNano()
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
 			continue
@@ -474,7 +482,7 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 			}
 
 			if attr.GetIndex() {
-				key, err := eventKey(compositeKey, typ, string(attr.Value), height)
+				key, err := eventKey(compositeKey, typ, string(attr.Value), height, numEvent)
 				if err != nil {
 					return fmt.Errorf("failed to create block index key: %w", err)
 				}
