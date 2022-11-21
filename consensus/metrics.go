@@ -7,7 +7,6 @@ import (
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/discard"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/types"
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
@@ -288,14 +287,6 @@ func NopMetrics() *Metrics {
 		QuorumPrevoteMessageDelay: discard.NewGauge(),
 		FullPrevoteMessageDelay:   discard.NewGauge(),
 	}
-}
-
-// RecordConsMetrics uses for recording the block related metrics during fast-sync.
-func (m *Metrics) RecordConsMetrics(block *types.Block) {
-	m.NumTxs.Set(float64(len(block.Data.Txs)))
-	m.TotalTxs.Add(float64(len(block.Data.Txs)))
-	m.BlockSizeBytes.Set(float64(block.Size()))
-	m.CommittedHeight.Set(float64(block.Height))
 }
 
 func (m *Metrics) MarkRound(r int32, st time.Time) {
