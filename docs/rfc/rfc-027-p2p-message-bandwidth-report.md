@@ -115,6 +115,10 @@ Therefore, block gossip can be updated to transmit a representation of the data 
 
 This new proposed method for gossiping block data would require a slight update to the mempool transaction gossip and consensus vote gossip. Since all of the contents of each block will not be gossiped together, it's possible that some nodes are missing a proposed transaction or the vote of a validator indicated in the new block gossip format. The mempool and consensus reactors would need to be updated to provide a `NeedTxs` and `NeedVotes` message. Each of these messages would allow a node to request a set of data from their peers. When a node receives one of these, it will then transmit the Tx/Votes indicate in the associated message regardless of whether it believes it has transmitted them to the peer before.
 
+The same logic may applied for evidence transmission as well, since all nodes should receive evidence and therefore do not need to re-transmit it in a block part.
+
+A similar idea has been proposed in the past as [Compact Block Propagation][compact-block-propagation].
+
 ## References
 
 [blockpane]: https://www.mintscan.io/osmosis/validators/osmovaloper1z0sh4s80u99l6y9d3vfy582p8jejeeu6tcucs2
@@ -139,3 +143,4 @@ This new proposed method for gossiping block data would require a slight update 
 [hetzner-pricing]: https://docs.hetzner.com/robot/general/traffic
 [vote-msg]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/proto/tendermint/types/types.pb.go#L468
 [i627]: https://github.com/tendermint/tendermint/issues/627
+[compact-block-propagation]: https://github.com/tendermint/tendermint/issues/7932
