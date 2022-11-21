@@ -36,8 +36,7 @@ type Inspector struct {
 
 	config *config.RPCConfig
 
-	eventBus *types.EventBus
-	logger   log.Logger
+	logger log.Logger
 
 	// References to the state store and block store are maintained to enable
 	// the Inspector to safely close them on shutdown.
@@ -56,12 +55,11 @@ func New(cfg *config.RPCConfig, bs state.BlockStore, ss state.Store, txidx txind
 	eb := types.NewEventBus()
 	eb.SetLogger(logger.With("module", "events"))
 	return &Inspector{
-		routes:   routes,
-		config:   cfg,
-		logger:   logger,
-		eventBus: eb,
-		ss:       ss,
-		bs:       bs,
+		routes: routes,
+		config: cfg,
+		logger: logger,
+		ss:     ss,
+		bs:     bs,
 	}
 }
 
