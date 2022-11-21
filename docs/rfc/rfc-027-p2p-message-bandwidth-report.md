@@ -62,10 +62,10 @@ The consensus reactor starts a new `gossipDataRoutine` for each peer it connects
 This routine repeatedly picks a part of the block that Tendermint believes the peer does not know about yet and gossips it to the peer.
 The set of `BlockParts` that Tendermint considers its peer as having is only updated in one of four ways:
 
-1. [We receive a block part from the peer][block-part-receive].
-2. [We send][block-part-send-1] [the peer a block part][block-part-send-2].
-3. Our peer tells us about the parts they have block [via `NewValidBlock` messages][new-valid-block-message-send]. This message is only sent when the validator has a quorum of prevotes or precommits for a block.
-4. Our peer tells us they have entered a new round [via a `NewRoundStep` message][new-round-step-message-send].
+1. Our peer tells us they have entered a new round [via a `NewRoundStep` message][new-round-step-message-send]. This message is only sent when a node moves to a new round or height and only resets the data we collect about a peer's blockpart state.
+2. [We receive a block part from the peer][block-part-receive].
+3. [We send][block-part-send-1] [the peer a block part][block-part-send-2].
+4. Our peer tells us about the parts they have block [via `NewValidBlock` messages][new-valid-block-message-send]. This message is only sent when the validator has a quorum of prevotes or precommits for a block.
 
 Each node receives block parts from all of its peers. The particular block part to send at any given time is randomly selected from the set of parts that the peer node is not yet known to have. Given that these are the only times that Tendermint learns of its peers' block parts, it's very likely that a node has an incomplete understanding of its peers' block parts and is transmitting block parts to a peer that the peer has received from some other node.
 
@@ -113,7 +113,7 @@ Block, vote, and mempool gossiping transmit much of same data. The mempool react
 
 Therefore, block gossip can be updated to transmit a representation of the data contained in the block that assumes the peers will already have most of this data. Namely, the block gossip can be updated to only send 1) a list of transaction hashes and 2) a bit array of votes selected for the block along with the header and other required block metadata.
 
-This new proposed method for gossiping block data would require a slight update to the mempool transaction gossip and consensus vote gossip. Since all of the contents of each block will not be gossiped together, it's possible that some nodes are missing a proposed transaction or the vote of a validator indicated in the new block gossip format. The mempool and consensus reactors would need to be updated to provide a `NeedTxs` and `NeedVotes` message. Each of these messages would allow a node to request a set of data from their peers. When a node receives one of these, it will then transmit the Tx/Votes indicate in the associated message regardless of whether it believes it has transmitted them to the peer before.
+This new proposed method for gossiping block data could accompany a slight update to the mempool transaction gossip and consensus vote gossip. Since all of the contents of each block will not be gossiped together, it's possible that some nodes are missing a proposed transaction or the vote of a validator indicated in the new block gossip format during block gossip. The mempool and consensus reactors may therefore be updated to provide a `NeedTxs` and `NeedVotes` message. Each of these messages would allow a node to request a set of data from their peers. When a node receives one of these, it will then transmit the Tx/Votes indicate in the associated message regardless of whether it believes it has transmitted them to the peer before. The gossip layer will ensure that each peer eventually receives all of the data in the block. However, if a transaction is needed immediately by a peer so that it can verify and execute a block during consensus, a mechanism such as the `NeedTxs` and `NeedVotes` messages should be added to ensure it receives the messages quickly.
 
 The same logic may applied for evidence transmission as well, since all nodes should receive evidence and therefore do not need to re-transmit it in a block part.
 
