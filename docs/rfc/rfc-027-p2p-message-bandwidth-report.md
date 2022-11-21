@@ -15,7 +15,7 @@ bandwidth consumption for nodes.
 ## Background
 
 Multiple teams running validators in production report that the validator consumes a lot of bandwidth.
-They report that a operators running on a network with hundreds of validators consumes multiple terabytes
+They report that operators running on a network with hundreds of validators consumes multiple terabytes
 of bandwidth per day. Prometheus data collected from a validator node running on the Osmosis chain shows that Tendermint
 sends and receives large amounts of data to peers. In the nearly three hours of observation, Tendermint sent nearly 42 gigabytes
 and received about 26 gigabytes, for an estimated 366 gigabytes sent daily and 208 gigabytes received daily. While this is shy
