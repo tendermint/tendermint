@@ -82,7 +82,7 @@ Beyond ensuring that transactions are rebroadcast to peers less frequently, ther
 
 #### Vote Transmission
 
-Tendermint votes, both prevotes and precommits, are central to Tendermint consensus and are gossiped by all nodes to all peers during each consensus round. Data collected from the Blockpane node running on Osmosis indicates that the validator sounds about 9 gigabytes of `Vote` messages were sent during the nearly 3 hour period of observation.
+Tendermint votes, both prevotes and precommits, are central to Tendermint consensus and are gossiped by all nodes to all peers during each consensus round. Data collected from the Blockpane node running on Osmosis indicates that the validator sounds about 9 gigabytes of `Vote` messages were sent during the nearly 3 hour period of observation. Examination of the [Vote message][vote-msg] indicates that it contains 152 bytes of data, with the proto encoding adding a few additional bytes when transmitting.
 
 The Tendermint consensus reactor starts a new [gossipVotesRoutine][gossip-votes-routine] for each peer that it connects to. The reactor sends all votes to all peers unless it knows that the peer already has the vote or the reactor learns that the peer is in a different round and that thus the vote no longer applies. Tendermint learns that a peer has a vote in one of 4 ways:
 
@@ -99,7 +99,9 @@ Given that Tendermint informs all peers of _each_ vote message it receives, all 
 
 The `BlockPart` messages, by far, account for the majority of the data sent to each peer. At the moment, peers do not inform the node of which block parts they already have. This means that each block part is _very likely_ to be transmitted many times to each node. This frivolous consumption is even worse in networks large blocks. 
 
-The very simple solution to this issue is to copy the technique used in consensus for informing peers when the node receives a vote. The consensus reactor can be augmented with a `HasBlockPart` message that is broadcast to each peer every time the node receives a block part. By informing each peer every time the node receives a block part, we can drastically reduce the amount of duplicate data sent to each node. There would be no algorithmic way of enforcing that a peer accurately reports its block parts, so providing this message would be a somewhat altruistic action on the part of the node.
+The very simple solution to this issue is to copy the technique used in consensus for informing peers when the node receives a vote. The consensus reactor can be augmented with a `HasBlockPart` message that is broadcast to each peer every time the node receives a block part. By informing each peer every time the node receives a block part, we can drastically reduce the amount of duplicate data sent to each node. There would be no algorithmic way of enforcing that a peer accurately reports its block parts, so providing this message would be a somewhat altruistic action on the part of the node. Such a system [has been proposed in the past][i627] as well, so this is certainly not totally new ground.
+
+Measuring the size of duplicately received blockparts before and after this change would help validate this approach.
 
 #### Compress Transmitted Data
 
@@ -135,3 +137,5 @@ This new proposed method for gossiping block data would require a slight update 
 [message-send]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/p2p/peer.go#L285
 [gcloud-pricing]: https://cloud.google.com/vpc/network-pricing#vpc-pricing
 [hetzner-pricing]: https://docs.hetzner.com/robot/general/traffic
+[vote-msg]: https://github.com/tendermint/tendermint/blob/ff0f98892f24aac11e46aeff2b6d2c0ad816701a/proto/tendermint/types/types.pb.go#L468
+[i627]: https://github.com/tendermint/tendermint/issues/627
