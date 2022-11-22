@@ -45,7 +45,7 @@ require (
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.1
-	github.com/btcsuite/btcd/btcutil v1.1.2
+	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/cosmos/gogoproto v1.4.3
 	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/google/uuid v1.3.0
