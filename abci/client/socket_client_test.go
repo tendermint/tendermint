@@ -3,6 +3,8 @@ package abcicli_test
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -72,6 +74,54 @@ func TestHangingAsyncCalls(t *testing.T) {
 		assert.Error(t, err, "We should get EOF error")
 	}
 }
+
+func TestBulk(t *testing.T) {
+	const numTxs = 700000
+	// use a socket instead of a port
+	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
+	defer os.Remove(socketFile)
+	socket := fmt.Sprintf("unix://%v", socketFile)
+	app := types.NewBaseApplication()
+	// Start the listener
+	server := server.NewSocketServer(socket, app)
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+	err := server.Start()
+	require.NoError(t, err)
+
+	// Connect to the socket
+	client := abcicli.NewSocketClient(socket, false)
+	
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+
+	err = client.Start()
+	require.NoError(t, err)
+
+	// Construct request
+	rfb := &types.RequestFinalizeBlock{Txs: make([][]byte, numTxs)}
+	for counter := 0; counter < numTxs; counter++ {
+		rfb.Txs[counter] = []byte("test")
+	}
+	// Send bulk request
+	res, err := client.FinalizeBlock(context.Background(), rfb)
+	require.NoError(t, err)
+	require.Equal(t, numTxs, len(res.TxResults), "Number of txs doesn't match")
+	for _, tx := range res.TxResults {
+		require.Equal(t, uint32(0), tx.Code, "Tx failed")
+	}
+
+	// Send final flush message
+	err = client.Flush(context.Background())
+	require.NoError(t, err)
+}
+
 
 func setupClientServer(t *testing.T, app types.Application) (
 	service.Service, abcicli.Client) {
