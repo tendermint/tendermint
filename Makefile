@@ -265,13 +265,13 @@ clean_certs:
 ###############################################################################
 
 format:
-	find . -name '*.go' -type f -not -path "*.git*" -not -name '*.pb.go' -not -name '*pb_test.go' | xargs gofmt -w -s
-	find . -name '*.go' -type f -not -path "*.git*"  -not -name '*.pb.go' -not -name '*pb_test.go' | xargs goimports -w -local github.com/tendermint/tendermint
+	@echo "--> Formatting Code"
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run ./... --fix
 .PHONY: format
 
 lint:
 	@echo "--> Running linter"
-	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run ./...
 .PHONY: lint
 
 DESTINATION = ./index.html.md
