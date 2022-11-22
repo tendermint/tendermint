@@ -92,9 +92,11 @@ these tags we frequently use the following short forms:
 
 # Part I - A Tendermint node 
 
-TODO:
-- Reactor API
-- Network?
+TODO: 
+- perhaps we should survey here what we think are the expectations of the reactors from p2p? 
+    - consensus might need for liveness that neighborhood is stable
+    - mempool might just need that a transaction can reach each validator within a reasonable amount of time (this might be achievable if at no point in time the current graph is connected, but, e.g., something along the lines that the union of the graphs over some period in time is connected.)
+- What does p2p expect from the reactors? (don't falsely report bad nodes; this puts requirements on the reactors and perhaps/likely also on the application running on top of ABCI)
 
 ## Context of this document
 
@@ -103,6 +105,15 @@ spec. Possible interactions, possible use cases, etc.
 
 > should give the reader the understanding in what environment this component
 will be used. 
+
+TODO:
+- Reactor API
+- Network? How do we communicate with other nodes
+- Discuss that validators run special set-up, and manage their own neighborhood (hide behind sentry nodes).
+   - As a result: the distributed system is composed of
+       - (correct) nodes that follow the protocol described here
+       - (potentially) adversarial nodes whose behavior deviates to harm the system
+       - (correct) nodes that don't follow the protocol to shield themselves but behave in a "nice way"
 
 
 
