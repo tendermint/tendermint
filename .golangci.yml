@@ -31,6 +31,9 @@ issues:
     - path: _test\.go
       linters:
         - gosec
+    - text: "leading space"
+      linters:
+        - nolintlint
   max-same-issues: 50
 
 linters-settings:
