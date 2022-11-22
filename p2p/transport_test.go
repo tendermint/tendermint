@@ -586,7 +586,6 @@ func TestTransportHandshake(t *testing.T) {
 			}
 		}(c)
 		go func(c net.Conn) {
-
 			// ni   DefaultNodeInfo
 			var pbni tmp2p.DefaultNodeInfo
 
