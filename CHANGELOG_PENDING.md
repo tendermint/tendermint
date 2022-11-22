@@ -17,6 +17,7 @@
 
 - Data Storage
   - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
+  - [db] \#9742 Deprecate tm-db and implement PHILOSOPHY.md by eliminating databsases other than goleveldb (@faddat)
 
 - Tooling
   - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
