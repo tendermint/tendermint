@@ -448,6 +448,25 @@ func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.Response
 		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
 	}
 
+	// It is possible if this is called directly after an upgrade that
+	// ResponseFinalizeBlock is nil. In which case we use the legacy
+	// ABCI responses
+	if info.ResponseFinalizeBlock == nil {
+		// sanity check
+		if info.LegacyAbciResponses == nil {
+			panic("state store contains last abci response but it is empty")
+		}
+		legacyResp := info.LegacyAbciResponses
+		return &abci.ResponseFinalizeBlock{
+			TxResults:             legacyResp.DeliverTxs,
+			ValidatorUpdates:      legacyResp.EndBlock.ValidatorUpdates,
+			ConsensusParamUpdates: legacyResp.EndBlock.ConsensusParamUpdates,
+			Events:                append(legacyResp.BeginBlock.Events, legacyResp.EndBlock.Events...),
+			// NOTE: AgreedAppData is missing in the response but will
+			// be caught and filled in consensus/replay.go
+		}, nil
+	}
+
 	return info.ResponseFinalizeBlock, nil
 }
 

@@ -423,6 +423,13 @@ func (h *Handshaker) ReplayBlocks(
 			if err != nil {
 				return nil, err
 			}
+			// NOTE: There is a rare edge case where a node has upgraded from
+			// v0.37 with endblock to v0.38 with finalize block and thus
+			// does not have the app hash saved from the previous height
+			// here we take the appHash provided from the Info handshake
+			if len(finalizeBlockResponse.AgreedAppData) == 0 {
+				finalizeBlockResponse.AgreedAppData = appHash
+			}
 			mockApp := newMockProxyApp(finalizeBlockResponse)
 			h.logger.Info("Replay last block using mock app")
 			state, err = h.replayBlock(state, storeBlockHeight, mockApp)
