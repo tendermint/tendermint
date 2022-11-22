@@ -239,10 +239,11 @@ func (cli *socketClient) didRecvResponse(res *types.Response) error {
 //----------------------------------------
 
 func (cli *socketClient) Flush(ctx context.Context) error {
-	_, err := cli.queueRequest(ctx, types.ToRequestFlush())
+	reqRes, err := cli.queueRequest(ctx, types.ToRequestFlush())
 	if err != nil {
 		return err
 	}
+	reqRes.Wait()
 	return nil
 }
 
@@ -251,7 +252,9 @@ func (cli *socketClient) Echo(ctx context.Context, msg string) (*types.ResponseE
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetEcho(), cli.Error()
 }
 
@@ -260,7 +263,9 @@ func (cli *socketClient) Info(ctx context.Context, req *types.RequestInfo) (*typ
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetInfo(), cli.Error()
 }
 
@@ -269,7 +274,9 @@ func (cli *socketClient) CheckTx(ctx context.Context, req *types.RequestCheckTx)
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetCheckTx(), cli.Error()
 }
 
@@ -278,7 +285,9 @@ func (cli *socketClient) Query(ctx context.Context, req *types.RequestQuery) (*t
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetQuery(), cli.Error()
 }
 
@@ -287,7 +296,9 @@ func (cli *socketClient) Commit(ctx context.Context, req *types.RequestCommit) (
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetCommit(), cli.Error()
 }
 
@@ -296,7 +307,9 @@ func (cli *socketClient) InitChain(ctx context.Context, req *types.RequestInitCh
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetInitChain(), cli.Error()
 }
 
@@ -305,7 +318,9 @@ func (cli *socketClient) ListSnapshots(ctx context.Context, req *types.RequestLi
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetListSnapshots(), cli.Error()
 }
 
@@ -314,7 +329,9 @@ func (cli *socketClient) OfferSnapshot(ctx context.Context, req *types.RequestOf
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetOfferSnapshot(), cli.Error()
 }
 
@@ -323,7 +340,9 @@ func (cli *socketClient) LoadSnapshotChunk(ctx context.Context, req *types.Reque
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetLoadSnapshotChunk(), cli.Error()
 }
 
@@ -332,7 +351,9 @@ func (cli *socketClient) ApplySnapshotChunk(ctx context.Context, req *types.Requ
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetApplySnapshotChunk(), cli.Error()
 }
 
@@ -341,7 +362,9 @@ func (cli *socketClient) PrepareProposal(ctx context.Context, req *types.Request
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetPrepareProposal(), cli.Error()
 }
 
@@ -350,7 +373,9 @@ func (cli *socketClient) ProcessProposal(ctx context.Context, req *types.Request
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetProcessProposal(), cli.Error()
 }
 
@@ -359,7 +384,9 @@ func (cli *socketClient) FinalizeBlock(ctx context.Context, req *types.RequestFi
 	if err != nil {
 		return nil, err
 	}
-	reqRes.Wait()
+	if err := cli.Flush(ctx); err != nil {
+		return nil, err
+	}
 	return reqRes.Response.GetFinalizeBlock(), cli.Error()
 }
 
