@@ -620,7 +620,7 @@ func LoadStateFromDBOrGenesisDocProvider(
 		}
 	}
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	state, err := stateStore.LoadFromDBOrGenesisDoc(genDoc)
 	if err != nil {

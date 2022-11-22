@@ -152,7 +152,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: config.Storage.DiscardFinalizeBlockResponses,
+		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
 	})
 
 	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)

@@ -22,7 +22,7 @@ import (
 func TestStoreLoadValidators(t *testing.T) {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
@@ -55,7 +55,7 @@ func BenchmarkLoadValidators(b *testing.B) {
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())
 	require.NoError(b, err)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	state, err := stateStore.LoadFromDBOrGenesisFile(config.GenesisFile())
 	if err != nil {
@@ -112,7 +112,7 @@ func TestPruneStates(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			db := dbm.NewMemDB()
 			stateStore := sm.NewStore(db, sm.StoreOptions{
-				DiscardFinalizeBlockResponses: false,
+				DiscardABCIResponses: false,
 			})
 			pk := ed25519.GenPrivKey().PubKey()
 
@@ -238,7 +238,7 @@ func TestLastFinalizeBlockResponses(t *testing.T) {
 	t.Run("Not persisting responses", func(t *testing.T) {
 		stateDB := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-			DiscardFinalizeBlockResponses: false,
+			DiscardABCIResponses: false,
 		})
 		responses, err := stateStore.LoadFinalizeBlockResponse(1)
 		require.Error(t, err)
@@ -251,7 +251,7 @@ func TestLastFinalizeBlockResponses(t *testing.T) {
 		}
 		// create new db and state store and set discard abciresponses to false.
 		stateDB = dbm.NewMemDB()
-		stateStore = sm.NewStore(stateDB, sm.StoreOptions{DiscardFinalizeBlockResponses: false})
+		stateStore = sm.NewStore(stateDB, sm.StoreOptions{DiscardABCIResponses: false})
 		height := int64(10)
 		// save the last abci response.
 		err = stateStore.SaveFinalizeBlockResponse(height, response1)
@@ -281,7 +281,7 @@ func TestLastFinalizeBlockResponses(t *testing.T) {
 		}
 		// create a new statestore with the responses on.
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-			DiscardFinalizeBlockResponses: true,
+			DiscardABCIResponses: true,
 		})
 		// save an additional response.
 		err := stateStore.SaveFinalizeBlockResponse(height+1, response2)

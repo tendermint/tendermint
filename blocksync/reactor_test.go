@@ -74,7 +74,7 @@ func newReactor(
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	blockStore := store.NewBlockStore(blockDB)
 
@@ -101,7 +101,7 @@ func newReactor(
 	fastSync := true
 	db := dbm.NewMemDB()
 	stateStore = sm.NewStore(db, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	blockExec := sm.NewBlockExecutor(stateStore, log.TestingLogger(), proxyApp.Consensus(),
 		mp, sm.EmptyEvidencePool{}, blockStore)

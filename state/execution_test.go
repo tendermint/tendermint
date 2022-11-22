@@ -47,7 +47,7 @@ func TestApplyBlock(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 
@@ -88,7 +88,7 @@ func TestFinalizeBlockValidators(t *testing.T) {
 
 	state, stateDB, _ := makeState(2, 2)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 
 	prevHash := state.LastBlockID.Hash
@@ -153,7 +153,7 @@ func TestFinalizeBlockMisbehavior(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 
 	defaultEvidenceTime := time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -270,7 +270,7 @@ func TestProcessProposal(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	eventBus := types.NewEventBus()
@@ -478,7 +478,7 @@ func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
@@ -567,7 +567,7 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 
 	state, stateDB, _ := makeState(1, 1)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	blockExec := sm.NewBlockExecutor(
@@ -608,7 +608,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	mp := &mpmocks.Mempool{}
 	mp.On("Lock").Return()
@@ -646,7 +646,7 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}
@@ -695,7 +695,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}
@@ -750,7 +750,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	// limit max block size
 	state.ConsensusParams.Block.MaxBytes = 60 * 1024
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}
@@ -801,7 +801,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 
 	evpool := &mocks.EvidencePool{}

@@ -84,11 +84,11 @@ type dbStore struct {
 }
 
 type StoreOptions struct {
-	// DiscardFinalizeBlockResponses determines whether or not the store
-	// retains all ABCIResponses. If DiscardFinalizeBlockResponses is enabled,
+	// DiscardABCIResponses determines whether or not the store
+	// retains all ABCIResponses. If DiscardABCIResponses is enabled,
 	// the store will maintain only the response object from the latest
 	// height.
-	DiscardFinalizeBlockResponses bool
+	DiscardABCIResponses bool
 }
 
 var _ Store = (*dbStore)(nil)
@@ -375,11 +375,11 @@ func TxResultsHash(txResults []*abci.ExecTxResult) []byte {
 	return types.NewResults(txResults).Hash()
 }
 
-// LoadFinalizeBlockResponse loads the DiscardFinalizeBlockResponses for the given height from the
+// LoadFinalizeBlockResponse loads the DiscardABCIResponses for the given height from the
 // database. If the node has D set to true, ErrABCIResponsesNotPersisted
 // is persisted. If not found, ErrNoABCIResponsesForHeight is returned.
 func (store dbStore) LoadFinalizeBlockResponse(height int64) (*abci.ResponseFinalizeBlock, error) {
-	if store.DiscardFinalizeBlockResponses {
+	if store.DiscardABCIResponses {
 		return nil, ErrFinalizeBlockResponsesNotPersisted
 	}
 
@@ -469,7 +469,7 @@ func (store dbStore) SaveFinalizeBlockResponse(height int64, resp *abci.Response
 
 	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
 	// query or to reindex an event using the command line.
-	if !store.DiscardFinalizeBlockResponses {
+	if !store.DiscardABCIResponses {
 		bz, err := resp.Marshal()
 		if err != nil {
 			return err

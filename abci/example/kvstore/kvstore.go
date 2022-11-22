@@ -61,7 +61,7 @@ func NewPersistentApplication(dbDir string) *Application {
 	name := "kvstore"
 	db, err := dbm.NewGoLevelDB(name, dbDir)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create persistent app at %s: %w", dbDir, err))
 	}
 	return NewApplication(db)
 }
