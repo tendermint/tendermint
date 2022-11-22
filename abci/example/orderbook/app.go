@@ -3,6 +3,7 @@ package orderbook
 import (
 	"bytes"
 	"encoding/binary"
+	fmt "fmt"
 
 	"github.com/cosmos/gogoproto/proto"
 	dbm "github.com/tendermint/tm-db"
@@ -89,28 +90,29 @@ func New(db dbm.DB) (*StateMachine, error) {
 		publicKeys  = make(map[string]struct{})
 		commodities = make(map[string]struct{})
 		pairs       = make(map[string]*Pair)
+		markets = make(map[string]*Market)
 		lastHeight  uint64
 		lastHash    []byte
 	)
 
 	for ; iter.Valid(); iter.Next() {
 		if bytes.HasPrefix(iter.Key(), pairKey) {
-			var pair *Pair
-			if err := proto.Unmarshal(iter.Value(), pair); err != nil {
+			var pair Pair
+			if err := proto.Unmarshal(iter.Value(), &pair); err != nil {
 				return nil, err
 			}
-			pairs[pair.String()] = pair
+			pairs[pair.String()] = &pair
 			commodities[pair.BuyersDenomination] = struct{}{}
-
+			markets[pair.String()] = NewMarket(&pair)
 		}
 
 		if bytes.HasPrefix(iter.Key(), accountKey) {
-			var acc *Account
-			if err := proto.Unmarshal(iter.Value(), acc); err != nil {
+			var acc Account
+			if err := proto.Unmarshal(iter.Value(), &acc); err != nil {
 				return nil, err
 			}
 
-			accounts = append(accounts, acc)
+			accounts = append(accounts, &acc)
 			publicKeys[string(acc.PublicKey)] = struct{}{}
 		}
 
@@ -119,13 +121,6 @@ func New(db dbm.DB) (*StateMachine, error) {
 			lastHeight = binary.BigEndian.Uint64(state[:4])
 			lastHash = state[4:]
 		}
-
-		var acc *Account
-		if err := proto.Unmarshal(iter.Value(), acc); err != nil {
-			return nil, err
-		}
-
-		accounts = append(accounts, acc)
 	}
 
 	return &StateMachine{
@@ -133,7 +128,7 @@ func New(db dbm.DB) (*StateMachine, error) {
 		pairs:       pairs,
 		commodities: commodities,
 		publicKeys:  publicKeys,
-		markets:     make(map[string]*Market),
+		markets:     markets,
 		lastHeight:  int64(lastHeight),
 		lastHash:    lastHash,
 		db:          db,
@@ -408,10 +403,7 @@ func (sm *StateMachine) Commit() types.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		var key []byte
-		copy(key, accountKey)
-		binary.BigEndian.PutUint64(key, accountID)
-
+		key := binary.BigEndian.AppendUint64(accountKey, accountID)
 		if err := batch.Set(key, value); err != nil {
 			panic(err)
 		}
@@ -424,9 +416,7 @@ func (sm *StateMachine) Commit() types.ResponseCommit {
 		if err != nil {
 			panic(err)
 		}
-		var key []byte
-		copy(key, pairKey)
-		binary.BigEndian.PutUint64(key, uint64(pairID+id))
+		key := binary.BigEndian.AppendUint64(pairKey, uint64(pairID+id))
 		if err := batch.Set(key, value); err != nil {
 			panic(err)
 		}
@@ -534,6 +524,37 @@ func (sm *StateMachine) isMatchedOrderValid(order *MatchedOrder, pair *Pair) boo
 	}
 
 	return true
+}
+
+// InitDB takes an empty DB instance and populates it with the
+// provided pairs and accounts. Note that the order here is important
+func InitDB(db dbm.DB, pairs []*Pair, accounts []*Account) error {
+	batch := db.NewBatch()
+
+	for id, account := range accounts {
+		value, err := proto.Marshal(account)
+		if err != nil {
+			return err
+		}
+		key := binary.BigEndian.AppendUint64(accountKey, uint64(id))
+		if err := batch.Set(key, value); err != nil {
+			return err
+		}
+	}
+
+	for id, pair := range pairs {
+		value, err := proto.Marshal(pair)
+		if err != nil {
+			return err
+		}
+		key := binary.BigEndian.AppendUint64(pairKey, uint64(id))
+		fmt.Println(key)
+		if err := batch.Set(key, value); err != nil {
+			return err
+		}
+	}
+
+	return batch.WriteSync()
 }
 
 func rejectProposal() types.ResponseProcessProposal {

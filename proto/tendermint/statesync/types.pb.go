@@ -24,6 +24,7 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type Message struct {
 	// Types that are valid to be assigned to Sum:
+	//
 	//	*Message_SnapshotsRequest
 	//	*Message_SnapshotsResponse
 	//	*Message_ChunkRequest

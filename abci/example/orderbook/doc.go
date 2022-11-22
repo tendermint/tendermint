@@ -1,5 +1,5 @@
-//go:generate go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-//go:generate protoc -I. -I../.. --go_out=. --go_opt=paths=source_relative wire.proto msgs.proto
+//go:generate go install github.com/bufbuild/buf/cmd/buf
+//go:generate buf generate
 
 // The orderbook presents a more advanced example of a Tendermint application than the simple kvstore
 //
