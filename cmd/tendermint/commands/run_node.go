@@ -14,9 +14,7 @@ import (
 	nm "github.com/tendermint/tendermint/node"
 )
 
-var (
-	genesisHash []byte
-)
+var genesisHash []byte
 
 // AddNodeFlags exposes some common configuration options on the command-line
 // These are exposed for convenience of commands embedding a tendermint node
@@ -84,11 +82,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 		config.Consensus.CreateEmptyBlocksInterval.String(),
 		"the possible interval between empty blocks")
 
-	// db flags
-	cmd.Flags().String(
-		"db_backend",
-		config.DBBackend,
-		"database backend: goleveldb | cleveldb | boltdb | rocksdb | badgerdb")
 	cmd.Flags().String(
 		"db_dir",
 		config.DBPath,
