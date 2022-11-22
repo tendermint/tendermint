@@ -312,6 +312,11 @@ func (n Node) Validate(testnet Testnet) error {
 	default:
 		return fmt.Errorf("invalid mempool version %q", n.Mempool)
 	}
+	switch n.Database {
+	case "goleveldb", "cleveldb", "boltdb", "rocksdb", "badgerdb":
+	default:
+		return fmt.Errorf("invalid database setting %q", n.Database)
+	}
 	switch n.ABCIProtocol {
 	case ProtocolBuiltin, ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
 	default:

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"path/filepath"
 	"sync"
 
@@ -24,6 +25,10 @@ the planned refactor to the storage engine.
 Currently, only GoLevelDB is supported.
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if config.DBBackend != "goleveldb" {
+			return errors.New("compaction is currently only supported with goleveldb")
+		}
+
 		compactGoLevelDBs(config.RootDir, logger)
 		return nil
 	},

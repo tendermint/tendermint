@@ -40,6 +40,7 @@ func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console
 
 // Replay msgs in file or start the console
 func (cs *State) ReplayFile(file string, console bool) error {
+
 	if cs.IsRunning() {
 		return errors.New("cs is already running, cannot replay")
 	}
@@ -63,7 +64,7 @@ func (cs *State) ReplayFile(file string, console bool) error {
 	}()
 
 	// just open the file for reading, no need to use wal
-	fp, err := os.OpenFile(file, os.O_RDONLY, 0o600)
+	fp, err := os.OpenFile(file, os.O_RDONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -136,7 +137,7 @@ func (pb *playback) replayReset(count int, newStepSub types.Subscription) error 
 	if err := pb.fp.Close(); err != nil {
 		return err
 	}
-	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0o600)
+	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -283,6 +284,7 @@ func (pb *playback) replayConsoleLoop() int {
 
 // convenience for replay mode
 func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *State {
+	dbType := dbm.BackendType(config.DBBackend)
 	// Get BlockStore
 	blockStoreDB, err := dbm.NewDB("blockstore", dbType, config.DBDir())
 	if err != nil {
