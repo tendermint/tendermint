@@ -1,7 +1,4 @@
-# We need to build in a Linux environment to support C libraries, e.g. RocksDB.
-# We use Debian instead of Alpine, so that we can use binary database packages
-# instead of spending time compiling them.
-FROM golang:1.18-alpine
+FROM golang:1.18
 
 # Set up build directory /src/tendermint
 WORKDIR /src/tendermint
