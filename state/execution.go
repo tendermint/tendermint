@@ -52,6 +52,18 @@ func BlockExecutorWithMetrics(metrics *Metrics) BlockExecutorOption {
 	}
 }
 
+// BlockCommitExecParams provides context for executing the block commit.
+type BlockCommitExecParams struct {
+	AppConnConsensus proxy.AppConnConsensus
+	Block            *types.Block
+	Logger           log.Logger
+	Store            Store
+	EventBus         types.BlockEventPublisher
+	InitialHeight    int64
+	FinalReplayBlock bool
+	Validator        types.ValidatorParams
+}
+
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(
@@ -218,17 +230,14 @@ func (blockExec *BlockExecutor) ApplyBlock(
 
 	fail.Fail() // XXX
 
-	// validate the validator updates and convert to tendermint types
-	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
-	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
-	if err != nil {
-		return state, fmt.Errorf("error in validator updates: %v", err)
-	}
-
-	validatorUpdates, err := types.PB2TM.ValidatorUpdates(abciValUpdates)
+	validatorUpdates, err := validateAndConvertValidatorUpdates(
+		abciResponses.EndBlock.ValidatorUpdates,
+		state.ConsensusParams.Validator,
+	)
 	if err != nil {
 		return state, err
 	}
+
 	if len(validatorUpdates) > 0 {
 		blockExec.logger.Debug("updates to validators", "updates", types.ValidatorListString(validatorUpdates))
 		blockExec.metrics.ValidatorSetUpdates.Add(1)
@@ -618,24 +627,35 @@ func fireEvents(
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
-func ExecCommitBlock(
-	appConnConsensus proxy.AppConnConsensus,
-	block *types.Block,
-	logger log.Logger,
-	store Store,
-	initialHeight int64,
-) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+// It fires events when the node is replaying the final block.
+func ExecCommitBlock(params BlockCommitExecParams) ([]byte, error) {
+	abciResponses, err := execBlockOnProxyApp(
+		params.Logger,
+		params.AppConnConsensus,
+		params.Block,
+		params.Store,
+		params.InitialHeight,
+	)
 	if err != nil {
-		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
+		params.Logger.Error("failed executing block on proxy app", "height", params.Block.Height, "err", err)
 		return nil, err
 	}
 
 	// Commit block, get hash back
-	res, err := appConnConsensus.CommitSync()
+	res, err := params.AppConnConsensus.CommitSync()
 	if err != nil {
-		logger.Error("client error during proxyAppConn.CommitSync", "err", res)
+		params.Logger.Error("client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err
+	}
+
+	// fire events for indexer during the final block replay.
+	if params.FinalReplayBlock && params.EventBus != nil {
+		validatorUpdates, err := validateAndConvertValidatorUpdates(abciResponses.EndBlock.ValidatorUpdates, params.Validator)
+		if err != nil {
+			return nil, err
+		}
+
+		fireEvents(params.Logger, params.EventBus, params.Block, abciResponses, validatorUpdates)
 	}
 
 	// ResponseCommit has no error or log, just data
@@ -658,4 +678,16 @@ func (blockExec *BlockExecutor) pruneBlocks(retainHeight int64, state State) (ui
 		return 0, fmt.Errorf("failed to prune state store: %w", err)
 	}
 	return amountPruned, nil
+}
+
+// validateAndConvertValidatorUpdates validate the validator updates and convert to tendermint types.
+func validateAndConvertValidatorUpdates(
+	validatorUpdates []abci.ValidatorUpdate,
+	validator types.ValidatorParams,
+) ([]*types.Validator, error) {
+	if err := validateValidatorUpdates(validatorUpdates, validator); err != nil {
+		return nil, fmt.Errorf("error in validator updates: %v", err)
+	}
+
+	return types.PB2TM.ValidatorUpdates(validatorUpdates)
 }
