@@ -1,6 +1,14 @@
 FROM golang:1.18
+# We need to build in a Linux environment to support C libraries, e.g. RocksDB.
+# We use Debian instead of Alpine, so that we can use binary database packages
+# instead of spending time compiling them.
+FROM golang:1.18-bookworm
+
+RUN apt-get -qq update -y && apt-get -qq upgrade -y >/dev/null
+RUN apt-get -qq install -y libleveldb-dev librocksdb-dev >/dev/null
 
 # Set up build directory /src/tendermint
+ENV TENDERMINT_BUILD_OPTIONS badgerdb,boltdb,cleveldb,rocksdb
 WORKDIR /src/tendermint
 
 # Fetch dependencies separately (for layer caching)
