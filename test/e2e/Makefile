@@ -7,7 +7,7 @@ docker:
 # order to build a binary with a Tendermint node in it (for built-in
 # ABCI testing).
 node:
-	go build -o build/node -tags badgerdb,boltdb,cleveldb,rocksdb ./node
+	go build -o build/node ./node
 
 generator:
 	go build -o build/generator ./generator
