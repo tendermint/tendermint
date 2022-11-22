@@ -42,7 +42,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tm-db v0.6.7
 	github.com/vektra/mockery/v2 v2.15.0
-	golang.org/x/crypto v0.2.0
+	golang.org/x/crypto v0.3.0
 	golang.org/x/net v0.2.0
 	gonum.org/v1/gonum v0.12.0
 	google.golang.org/grpc v1.50.1
