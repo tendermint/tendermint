@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1
 	github.com/adlio/schema v1.3.3
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2
-	github.com/btcsuite/btcd/btcutil v1.1.2
+	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/bufbuild/buf v1.9.0
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cosmos/gogoproto v1.4.2
