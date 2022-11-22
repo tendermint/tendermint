@@ -28,14 +28,14 @@ type Metrics struct {
 	// transactions that passed CheckTx but failed to make it into the mempool
 	// due to resource limits, e.g. mempool is full and no lower priority
 	// transactions exist in the mempool.
-	//metrics:Number of rejected transactions.
+	// metrics:Number of rejected transactions.
 	RejectedTxs metrics.Counter
 
 	// EvictedTxs defines the number of evicted transactions. These are valid
 	// transactions that passed CheckTx and existed in the mempool but were later
 	// evicted to make room for higher priority valid transactions that passed
 	// CheckTx.
-	//metrics:Number of evicted transactions.
+	// metrics:Number of evicted transactions.
 	EvictedTxs metrics.Counter
 
 	// Number of times transactions are rechecked in the mempool.

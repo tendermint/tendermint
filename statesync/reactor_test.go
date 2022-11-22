@@ -26,11 +26,13 @@ func TestReactor_Receive_ChunkRequest(t *testing.T) {
 		"chunk is returned": {
 			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			[]byte{1, 2, 3},
-			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 2, 3}}},
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{1, 2, 3}},
+		},
 		"empty chunk is returned, as nil": {
 			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			[]byte{},
-			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: nil}},
+			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: nil},
+		},
 		"nil (missing) chunk is returned as missing": {
 			&ssproto.ChunkRequest{Height: 1, Format: 1, Index: 1},
 			nil,

@@ -30,8 +30,8 @@ var defaultTestTime = time.Date(2018, 10, 10, 8, 20, 13, 695936996, time.UTC)
 
 func newEvidence(t *testing.T, val *privval.FilePV,
 	vote *types.Vote, vote2 *types.Vote,
-	chainID string) *types.DuplicateVoteEvidence {
-
+	chainID string,
+) *types.DuplicateVoteEvidence {
 	var err error
 
 	v := vote.ToProto()

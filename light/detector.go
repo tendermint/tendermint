@@ -114,8 +114,8 @@ func (c *Client) detectDivergence(ctx context.Context, primaryTrace []*types.Lig
 //
 // 3: nil -> the hashes of the two headers match
 func (c *Client) compareNewHeaderWithWitness(ctx context.Context, errc chan error, h *types.SignedHeader,
-	witness provider.Provider, witnessIndex int) {
-
+	witness provider.Provider, witnessIndex int,
+) {
 	lightBlock, err := witness.LightBlock(ctx, h.Height)
 	switch err {
 	// no error means we move on to checking the hash of the two headers
@@ -293,7 +293,6 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 	targetBlock *types.LightBlock,
 	source provider.Provider, now time.Time,
 ) ([]*types.LightBlock, *types.LightBlock, error) {
-
 	var (
 		previouslyVerifiedBlock, sourceBlock *types.LightBlock
 		sourceTrace                          []*types.LightBlock
@@ -370,7 +369,6 @@ func (c *Client) examineConflictingHeaderAgainstTrace(
 	// prerequisites to this function were not met. Namely that either trace[len(trace)-1].Height < targetBlock.Height
 	// or that trace[i].Hash() != targetBlock.Hash()
 	return nil, nil, errNoDivergence
-
 }
 
 // getTargetBlockOrLatest gets the latest height, if it is greater than the target height then it queries

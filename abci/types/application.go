@@ -39,8 +39,7 @@ type Application interface {
 
 var _ Application = (*BaseApplication)(nil)
 
-type BaseApplication struct {
-}
+type BaseApplication struct{}
 
 func NewBaseApplication() *BaseApplication {
 	return &BaseApplication{}
@@ -109,7 +108,8 @@ func (BaseApplication) PrepareProposal(req RequestPrepareProposal) ResponsePrepa
 
 func (BaseApplication) ProcessProposal(req RequestProcessProposal) ResponseProcessProposal {
 	return ResponseProcessProposal{
-		Status: ResponseProcessProposal_ACCEPT}
+		Status: ResponseProcessProposal_ACCEPT,
+	}
 }
 
 //-------------------------------------------------------
@@ -172,37 +172,43 @@ func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) 
 }
 
 func (app *GRPCApplication) ListSnapshots(
-	ctx context.Context, req *RequestListSnapshots) (*ResponseListSnapshots, error) {
+	ctx context.Context, req *RequestListSnapshots,
+) (*ResponseListSnapshots, error) {
 	res := app.app.ListSnapshots(*req)
 	return &res, nil
 }
 
 func (app *GRPCApplication) OfferSnapshot(
-	ctx context.Context, req *RequestOfferSnapshot) (*ResponseOfferSnapshot, error) {
+	ctx context.Context, req *RequestOfferSnapshot,
+) (*ResponseOfferSnapshot, error) {
 	res := app.app.OfferSnapshot(*req)
 	return &res, nil
 }
 
 func (app *GRPCApplication) LoadSnapshotChunk(
-	ctx context.Context, req *RequestLoadSnapshotChunk) (*ResponseLoadSnapshotChunk, error) {
+	ctx context.Context, req *RequestLoadSnapshotChunk,
+) (*ResponseLoadSnapshotChunk, error) {
 	res := app.app.LoadSnapshotChunk(*req)
 	return &res, nil
 }
 
 func (app *GRPCApplication) ApplySnapshotChunk(
-	ctx context.Context, req *RequestApplySnapshotChunk) (*ResponseApplySnapshotChunk, error) {
+	ctx context.Context, req *RequestApplySnapshotChunk,
+) (*ResponseApplySnapshotChunk, error) {
 	res := app.app.ApplySnapshotChunk(*req)
 	return &res, nil
 }
 
 func (app *GRPCApplication) PrepareProposal(
-	ctx context.Context, req *RequestPrepareProposal) (*ResponsePrepareProposal, error) {
+	ctx context.Context, req *RequestPrepareProposal,
+) (*ResponsePrepareProposal, error) {
 	res := app.app.PrepareProposal(*req)
 	return &res, nil
 }
 
 func (app *GRPCApplication) ProcessProposal(
-	ctx context.Context, req *RequestProcessProposal) (*ResponseProcessProposal, error) {
+	ctx context.Context, req *RequestProcessProposal,
+) (*ResponseProcessProposal, error) {
 	res := app.app.ProcessProposal(*req)
 	return &res, nil
 }

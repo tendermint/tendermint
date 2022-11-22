@@ -429,7 +429,6 @@ func verifyUpdates(
 	vals *ValidatorSet,
 	removedPower int64,
 ) (tvpAfterUpdatesBeforeRemovals int64, err error) {
-
 	delta := func(update *Validator, vals *ValidatorSet) int64 {
 		_, val := vals.GetByAddress(update.Address)
 		if val != nil {
@@ -493,7 +492,6 @@ func computeNewPriorities(updates []*Validator, vals *ValidatorSet, updatedTotal
 			valUpdate.ProposerPriority = val.ProposerPriority
 		}
 	}
-
 }
 
 // Merges the vals' validator list with the updates list.
@@ -660,7 +658,8 @@ func (vals *ValidatorSet) UpdateWithChangeSet(changes []*Validator) error {
 // VerifyCommit verifies +2/3 of the set had signed the given commit and all
 // other signatures are valid
 func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
-	height int64, commit *Commit) error {
+	height int64, commit *Commit,
+) error {
 	return VerifyCommit(chainID, vals, blockID, height, commit)
 }
 
@@ -668,7 +667,8 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID,
 
 // VerifyCommitLight verifies +2/3 of the set had signed the given commit.
 func (vals *ValidatorSet) VerifyCommitLight(chainID string, blockID BlockID,
-	height int64, commit *Commit) error {
+	height int64, commit *Commit,
+) error {
 	return VerifyCommitLight(chainID, vals, blockID, height, commit)
 }
 
@@ -745,7 +745,6 @@ func (vals *ValidatorSet) StringIndented(indent string) string {
 		indent,
 		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)
-
 }
 
 //-------------------------------------

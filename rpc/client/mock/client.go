@@ -95,7 +95,8 @@ func (c Client) ABCIQueryWithOptions(
 	ctx context.Context,
 	path string,
 	data bytes.HexBytes,
-	opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	opts client.ABCIQueryOptions,
+) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(&rpctypes.Context{}, path, data, opts.Height, opts.Prove)
 }
 

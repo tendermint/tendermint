@@ -189,7 +189,8 @@ func (app *Application) BeginBlock(req types.RequestBeginBlock) types.ResponseBe
 }
 
 func (app *Application) ProcessProposal(
-	req types.RequestProcessProposal) types.ResponseProcessProposal {
+	req types.RequestProcessProposal,
+) types.ResponseProcessProposal {
 	for _, tx := range req.Txs {
 		if len(tx) == 0 {
 			return types.ResponseProcessProposal{Status: types.ResponseProcessProposal_REJECT}

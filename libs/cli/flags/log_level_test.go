@@ -26,21 +26,24 @@ func TestParseLogLevel(t *testing.T) {
 			``,
 			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
 			`{"_msg":"Mind","level":"info","module":"state"}`, // if no default is given, assume info
-			``}},
+			``,
+		}},
 
 		{"mempool:error,*:debug", []string{
 			`{"_msg":"Kingpin","level":"debug","module":"wire"}`,
 			``,
 			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
 			`{"_msg":"Mind","level":"info","module":"state"}`,
-			`{"_msg":"Gideon","level":"debug"}`}},
+			`{"_msg":"Gideon","level":"debug"}`,
+		}},
 
 		{"*:debug,wire:none", []string{
 			``,
 			`{"_msg":"Kitty Pryde","level":"info","module":"mempool"}`,
 			`{"_msg":"Mesmero","level":"error","module":"mempool"}`,
 			`{"_msg":"Mind","level":"info","module":"state"}`,
-			`{"_msg":"Gideon","level":"debug"}`}},
+			`{"_msg":"Gideon","level":"debug"}`,
+		}},
 	}
 
 	for _, c := range correctLogLevels {

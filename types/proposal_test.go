@@ -21,15 +21,17 @@ var (
 )
 
 func init() {
-	var stamp, err = time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
+	stamp, err := time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
 	if err != nil {
 		panic(err)
 	}
 	testProposal = &Proposal{
 		Height: 12345,
 		Round:  23456,
-		BlockID: BlockID{Hash: []byte("--June_15_2020_amino_was_removed"),
-			PartSetHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")}},
+		BlockID: BlockID{
+			Hash:          []byte("--June_15_2020_amino_was_removed"),
+			PartSetHeader: PartSetHeader{Total: 111, Hash: []byte("--June_15_2020_amino_was_removed")},
+		},
 		POLRound:  -1,
 		Timestamp: stamp,
 	}
@@ -123,7 +125,6 @@ func BenchmarkProposalVerifySignature(b *testing.B) {
 }
 
 func TestProposalValidateBasic(t *testing.T) {
-
 	privVal := NewMockPV()
 	testCases := []struct {
 		testName         string

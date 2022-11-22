@@ -52,7 +52,6 @@ var RootCmd = &cobra.Command{
 	Short: "the ABCI CLI tool wraps an ABCI client",
 	Long:  "the ABCI CLI tool wraps an ABCI client and is used for testing ABCI servers",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-
 		switch cmd.Use {
 		case "kvstore", "version":
 			return nil
@@ -198,6 +197,7 @@ var echoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE:  cmdEcho,
 }
+
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "get some info about the application",
@@ -283,7 +283,6 @@ var testCmd = &cobra.Command{
 
 // Generates new Args array based off of previous call args to maintain flag persistence
 func persistentArgs(line []byte) []string {
-
 	// generate the arguments to run from original os.Args
 	// to maintain flag arguments
 	args := os.Args
@@ -701,7 +700,6 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 //--------------------------------------------------------------------------------
 
 func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
-
 	if flagVerbose {
 		fmt.Println(">", cmd.Use, strings.Join(args, " "))
 	}
@@ -712,7 +710,6 @@ func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
 			fmt.Printf("-> code: OK\n")
 		} else {
 			fmt.Printf("-> code: %d\n", rsp.Code)
-
 		}
 
 		if len(rsp.Data) != 0 {

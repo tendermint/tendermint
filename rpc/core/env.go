@@ -33,10 +33,8 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16
 )
 
-var (
-	// set by Node
-	env *Environment
-)
+// set by Node
+var env *Environment
 
 // SetEnvironment sets up the given Environment.
 // It will race if multiple Node call SetEnvironment.

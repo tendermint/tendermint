@@ -7,10 +7,12 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-var _ p2p.Wrapper = &ChunkRequest{}
-var _ p2p.Wrapper = &ChunkResponse{}
-var _ p2p.Wrapper = &SnapshotsRequest{}
-var _ p2p.Wrapper = &SnapshotsResponse{}
+var (
+	_ p2p.Wrapper = &ChunkRequest{}
+	_ p2p.Wrapper = &ChunkResponse{}
+	_ p2p.Wrapper = &SnapshotsRequest{}
+	_ p2p.Wrapper = &SnapshotsResponse{}
+)
 
 func (m *SnapshotsResponse) Wrap() proto.Message {
 	sm := &Message{}

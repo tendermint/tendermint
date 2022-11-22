@@ -14,9 +14,7 @@ import (
 	nm "github.com/tendermint/tendermint/node"
 )
 
-var (
-	genesisHash []byte
-)
+var genesisHash []byte
 
 // AddNodeFlags exposes some common configuration options on the command-line
 // These are exposed for convenience of commands embedding a tendermint node

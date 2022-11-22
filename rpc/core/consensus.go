@@ -42,7 +42,8 @@ func Validators(ctx *rpctypes.Context, heightPtr *int64, pagePtr, perPagePtr *in
 		BlockHeight: height,
 		Validators:  v,
 		Count:       len(v),
-		Total:       totalCount}, nil
+		Total:       totalCount,
+	}, nil
 }
 
 // DumpConsensusState dumps consensus state.
@@ -75,7 +76,8 @@ func DumpConsensusState(ctx *rpctypes.Context) (*ctypes.ResultDumpConsensusState
 	}
 	return &ctypes.ResultDumpConsensusState{
 		RoundState: roundState,
-		Peers:      peerStates}, nil
+		Peers:      peerStates,
+	}, nil
 }
 
 // ConsensusState returns a concise summary of the consensus state.
@@ -104,5 +106,6 @@ func ConsensusParams(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultCon
 	}
 	return &ctypes.ResultConsensusParams{
 		BlockHeight:     height,
-		ConsensusParams: consensusParams}, nil
+		ConsensusParams: consensusParams,
+	}, nil
 }

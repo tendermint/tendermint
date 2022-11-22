@@ -17,9 +17,7 @@ const (
 	DefaultTestChainID = "test-chain"
 )
 
-var (
-	DefaultTestTime = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
-)
+var DefaultTestTime = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func RandomAddress() []byte {
 	return crypto.CRandBytes(crypto.AddressSize)

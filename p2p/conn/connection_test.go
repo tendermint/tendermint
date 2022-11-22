@@ -503,7 +503,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	protoWriter := protoio.NewDelimitedWriter(client)
 
 	// send msg thats just right
-	var packet = tmp2p.PacketMsg{
+	packet := tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       true,
 		Data:      make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
@@ -566,7 +566,6 @@ func TestMConnectionTrySend(t *testing.T) {
 
 //nolint:lll //ignore line length for tests
 func TestConnVectors(t *testing.T) {
-
 	testCases := []struct {
 		testName string
 		msg      proto.Message
@@ -602,7 +601,7 @@ func TestMConnectionChannelOverflow(t *testing.T) {
 	client := mconnClient.conn
 	protoWriter := protoio.NewDelimitedWriter(client)
 
-	var packet = tmp2p.PacketMsg{
+	packet := tmp2p.PacketMsg{
 		ChannelID: 0x01,
 		EOF:       true,
 		Data:      []byte(`42`),
@@ -615,7 +614,6 @@ func TestMConnectionChannelOverflow(t *testing.T) {
 	_, err = protoWriter.WriteMsg(mustWrapPacket(&packet))
 	require.NoError(t, err)
 	assert.False(t, expectSend(chOnRcv))
-
 }
 
 type stopper interface {

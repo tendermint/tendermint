@@ -6,8 +6,10 @@ import (
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
-type ChannelDescriptor = conn.ChannelDescriptor
-type ConnectionStatus = conn.ConnectionStatus
+type (
+	ChannelDescriptor = conn.ChannelDescriptor
+	ConnectionStatus  = conn.ConnectionStatus
+)
 
 // Envelope contains a message with sender routing info.
 type Envelope struct {

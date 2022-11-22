@@ -205,7 +205,7 @@ func (pubKey PubKey) VerifySignature(msg []byte, sigStr []byte) bool {
 	// see: https://github.com/ethereum/go-ethereum/blob/f9401ae011ddf7f8d2d95020b7446c17f8d98dc1/crypto/signature_nocgo.go#L90-L93
 	// Serialize() would negate S value if it is over half order.
 	// Hence, if the signature is different after Serialize() if should be rejected.
-	var modifiedSignature, parseErr = ecdsa.ParseDERSignature(signature.Serialize())
+	modifiedSignature, parseErr := ecdsa.ParseDERSignature(signature.Serialize())
 	if parseErr != nil {
 		return false
 	}

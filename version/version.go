@@ -16,8 +16,6 @@ const (
 	BlockProtocol uint64 = 11
 )
 
-var (
-	// TMGitCommitHash uses git rev-parse HEAD to find commit hash which is helpful
-	// for the engineering team when working with the tendermint binary. See Makefile
-	TMGitCommitHash = ""
-)
+// TMGitCommitHash uses git rev-parse HEAD to find commit hash which is helpful
+// for the engineering team when working with the tendermint binary. See Makefile
+var TMGitCommitHash = ""

@@ -110,7 +110,6 @@ func NewSwitch(
 	transport Transport,
 	options ...SwitchOption,
 ) *Switch {
-
 	sw := &Switch{
 		config:               cfg,
 		reactors:             make(map[string]Reactor),

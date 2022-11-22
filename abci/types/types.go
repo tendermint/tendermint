@@ -122,9 +122,11 @@ type jsonRoundTripper interface {
 	json.Unmarshaler
 }
 
-var _ jsonRoundTripper = (*ResponseCommit)(nil)
-var _ jsonRoundTripper = (*ResponseQuery)(nil)
-var _ jsonRoundTripper = (*ResponseDeliverTx)(nil)
-var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
+var (
+	_ jsonRoundTripper = (*ResponseCommit)(nil)
+	_ jsonRoundTripper = (*ResponseQuery)(nil)
+	_ jsonRoundTripper = (*ResponseDeliverTx)(nil)
+	_ jsonRoundTripper = (*ResponseCheckTx)(nil)
+)
 
 var _ jsonRoundTripper = (*EventAttribute)(nil)

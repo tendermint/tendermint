@@ -474,7 +474,8 @@ var events = []string{
 	EventLock,
 	EventRelock,
 	EventTimeoutWait,
-	EventVote}
+	EventVote,
+}
 
 func randEvent() string {
 	return events[tmrand.Intn(len(events))]
@@ -492,7 +493,8 @@ var queries = []tmpubsub.Query{
 	EventQueryLock,
 	EventQueryRelock,
 	EventQueryTimeoutWait,
-	EventQueryVote}
+	EventQueryVote,
+}
 
 func randQuery() tmpubsub.Query {
 	return queries[tmrand.Intn(len(queries))]

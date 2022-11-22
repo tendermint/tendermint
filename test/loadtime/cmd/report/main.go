@@ -75,7 +75,6 @@ func main() {
 			"\tMaximum Latency: %s\n"+
 			"\tAverage Latency: %s\n"+
 			"\tStandard Deviation: %s\n\n", r.ID, r.Connections, r.Rate, r.Size, len(r.All), r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
-
 	}
 	fmt.Printf("Total Invalid Tx: %d\n", rs.ErrorCount())
 }

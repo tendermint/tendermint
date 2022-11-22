@@ -28,7 +28,6 @@ func randBitArray(bits int) (*BitArray, []byte) {
 }
 
 func TestAnd(t *testing.T) {
-
 	bA1, _ := randBitArray(51)
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.And(bA2)
@@ -53,7 +52,6 @@ func TestAnd(t *testing.T) {
 }
 
 func TestOr(t *testing.T) {
-
 	bA1, _ := randBitArray(51)
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.Or(bA2)
@@ -218,7 +216,6 @@ func TestNewBitArrayNeverCrashesOnNegatives(t *testing.T) {
 }
 
 func TestJSONMarshalUnmarshal(t *testing.T) {
-
 	bA1 := NewBitArray(0)
 
 	bA2 := NewBitArray(1)

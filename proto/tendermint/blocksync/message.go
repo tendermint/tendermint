@@ -7,11 +7,13 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-var _ p2p.Wrapper = &StatusRequest{}
-var _ p2p.Wrapper = &StatusResponse{}
-var _ p2p.Wrapper = &NoBlockResponse{}
-var _ p2p.Wrapper = &BlockResponse{}
-var _ p2p.Wrapper = &BlockRequest{}
+var (
+	_ p2p.Wrapper = &StatusRequest{}
+	_ p2p.Wrapper = &StatusResponse{}
+	_ p2p.Wrapper = &NoBlockResponse{}
+	_ p2p.Wrapper = &BlockResponse{}
+	_ p2p.Wrapper = &BlockRequest{}
+)
 
 const (
 	BlockResponseMessagePrefixSize   = 4

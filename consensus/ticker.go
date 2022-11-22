@@ -7,9 +7,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-var (
-	tickTockBufferSize = 10
-)
+var tickTockBufferSize = 10
 
 // TimeoutTicker is a timer that schedules timeouts
 // conditional on the height/round/step in the timeoutInfo.
@@ -50,7 +48,6 @@ func NewTimeoutTicker() TimeoutTicker {
 
 // OnStart implements service.Service. It starts the timeout routine.
 func (t *timeoutTicker) OnStart() error {
-
 	go t.timeoutRoutine()
 
 	return nil

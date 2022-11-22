@@ -60,7 +60,6 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore, cleanupFu
 }
 
 func TestLoadBlockStoreState(t *testing.T) {
-
 	type blockStoreTest struct {
 		testName string
 		bss      *tmstore.BlockStoreState
@@ -68,8 +67,10 @@ func TestLoadBlockStoreState(t *testing.T) {
 	}
 
 	testCases := []blockStoreTest{
-		{"success", &tmstore.BlockStoreState{Base: 100, Height: 1000},
-			tmstore.BlockStoreState{Base: 100, Height: 1000}},
+		{
+			"success", &tmstore.BlockStoreState{Base: 100, Height: 1000},
+			tmstore.BlockStoreState{Base: 100, Height: 1000},
+		},
 		{"empty", &tmstore.BlockStoreState{}, tmstore.BlockStoreState{}},
 		{"no base", &tmstore.BlockStoreState{Height: 1000}, tmstore.BlockStoreState{Base: 1, Height: 1000}},
 	}
@@ -223,7 +224,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 					Height:          5,
 					ChainID:         "block_test",
 					Time:            tmtime.Now(),
-					ProposerAddress: tmrand.Bytes(crypto.AddressSize)},
+					ProposerAddress: tmrand.Bytes(crypto.AddressSize),
+				},
 				makeTestCommit(5, tmtime.Now()),
 			),
 			parts:      validPartSet,
@@ -325,8 +327,10 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 				require.NoError(t, err)
 			}
 			bCommit := bs.LoadBlockCommit(commitHeight)
-			return &quad{block: bBlock, seenCommit: bSeenCommit, commit: bCommit,
-				meta: bBlockMeta}, nil
+			return &quad{
+				block: bBlock, seenCommit: bSeenCommit, commit: bCommit,
+				meta: bBlockMeta,
+			}, nil
 		})
 
 		if subStr := tuple.wantPanic; subStr != "" {
@@ -550,7 +554,9 @@ func TestLoadBlockMeta(t *testing.T) {
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{Header: types.Header{
 		Version: tmversion.Consensus{
-			Block: version.BlockProtocol, App: 0}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize)}}
+			Block: version.BlockProtocol, App: 0,
+		}, Height: 1, ProposerAddress: tmrand.Bytes(crypto.AddressSize),
+	}}
 	pbm := meta.ToProto()
 	err = db.Set(calcBlockMetaKey(height), mustEncode(pbm))
 	require.NoError(t, err)

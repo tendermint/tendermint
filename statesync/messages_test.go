@@ -27,49 +27,63 @@ func TestValidateMsg(t *testing.T) {
 
 		"ChunkResponse valid": {
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{1}},
-			true},
+			true,
+		},
 		"ChunkResponse 0 height": {
 			&ssproto.ChunkResponse{Height: 0, Format: 1, Index: 1, Chunk: []byte{1}},
-			false},
+			false,
+		},
 		"ChunkResponse 0 format": {
 			&ssproto.ChunkResponse{Height: 1, Format: 0, Index: 1, Chunk: []byte{1}},
-			true},
+			true,
+		},
 		"ChunkResponse 0 chunk": {
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 0, Chunk: []byte{1}},
-			true},
+			true,
+		},
 		"ChunkResponse empty body": {
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: []byte{}},
-			true},
+			true,
+		},
 		"ChunkResponse nil body": {
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Chunk: nil},
-			false},
+			false,
+		},
 		"ChunkResponse missing": {
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true},
-			true},
+			true,
+		},
 		"ChunkResponse missing with empty": {
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{}},
-			true},
+			true,
+		},
 		"ChunkResponse missing with body": {
 			&ssproto.ChunkResponse{Height: 1, Format: 1, Index: 1, Missing: true, Chunk: []byte{1}},
-			false},
+			false,
+		},
 
 		"SnapshotsRequest valid": {&ssproto.SnapshotsRequest{}, true},
 
 		"SnapshotsResponse valid": {
 			&ssproto.SnapshotsResponse{Height: 1, Format: 1, Chunks: 2, Hash: []byte{1}},
-			true},
+			true,
+		},
 		"SnapshotsResponse 0 height": {
 			&ssproto.SnapshotsResponse{Height: 0, Format: 1, Chunks: 2, Hash: []byte{1}},
-			false},
+			false,
+		},
 		"SnapshotsResponse 0 format": {
 			&ssproto.SnapshotsResponse{Height: 1, Format: 0, Chunks: 2, Hash: []byte{1}},
-			true},
+			true,
+		},
 		"SnapshotsResponse 0 chunks": {
 			&ssproto.SnapshotsResponse{Height: 1, Format: 1, Hash: []byte{1}},
-			false},
+			false,
+		},
 		"SnapshotsResponse no hash": {
 			&ssproto.SnapshotsResponse{Height: 1, Format: 1, Chunks: 2, Hash: []byte{}},
-			false},
+			false,
+		},
 	}
 	for name, tc := range testcases {
 		tc := tc
@@ -86,7 +100,6 @@ func TestValidateMsg(t *testing.T) {
 
 //nolint:lll // ignore line length
 func TestStateSyncVectors(t *testing.T) {
-
 	testCases := []struct {
 		testName string
 		msg      proto.Message

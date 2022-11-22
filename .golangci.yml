@@ -8,8 +8,7 @@ linters:
     - errcheck
     - exportloopref
     - goconst
-    - gofmt
-    - goimports
+    - gofumpt
     - revive
     - gosec
     - gosimple

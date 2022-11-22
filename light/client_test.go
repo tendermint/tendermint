@@ -111,7 +111,6 @@ func TestValidateTrustOptions(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
-
 }
 
 func TestMock(t *testing.T) {
@@ -377,7 +376,6 @@ func TestClient_SkippingVerification(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 // start from a large light block to make sure that the pivot height doesn't select a height outside
@@ -1099,7 +1097,6 @@ func TestClientEnsureValidHeadersAndValSets(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
-
 }
 
 func TestClientHandlesContexts(t *testing.T) {
@@ -1157,5 +1154,4 @@ func TestClientHandlesContexts(t *testing.T) {
 	require.Error(t, ctxCancel.Err())
 	require.Error(t, err)
 	require.True(t, errors.Is(err, context.Canceled))
-
 }

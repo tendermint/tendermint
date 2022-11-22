@@ -145,6 +145,7 @@ func main() {
 		log.Fatalf("Generating code: %v", err)
 	}
 }
+
 func ignoreTestFiles(f fs.FileInfo) bool {
 	return !strings.Contains(f.Name(), "_test.go")
 }
@@ -210,9 +211,7 @@ func GenerateMetricsFile(w io.Writer, td TemplateData) error {
 }
 
 func findMetricsStruct(files map[string]*ast.File, structName string) (*ast.StructType, string, error) {
-	var (
-		st *ast.StructType
-	)
+	var st *ast.StructType
 	for _, file := range files {
 		mPkgName, err := extractMetricsPackageName(file.Imports)
 		if err != nil {

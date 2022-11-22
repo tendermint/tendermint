@@ -49,7 +49,6 @@ func NewReactor(
 	tempDir string,
 	metrics *Metrics,
 ) *Reactor {
-
 	r := &Reactor{
 		cfg:       cfg,
 		conn:      conn,

@@ -37,7 +37,7 @@ var (
 )
 
 const (
-	nodeDirPerm = 0755
+	nodeDirPerm = 0o755
 )
 
 func init() {

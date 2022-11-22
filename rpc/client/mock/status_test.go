@@ -23,7 +23,8 @@ func TestStatus(t *testing.T) {
 					LatestAppHash:     bytes.HexBytes("app"),
 					LatestBlockHeight: 10,
 				},
-			}},
+			},
+		},
 	}
 
 	r := mock.NewStatusRecorder(m)
