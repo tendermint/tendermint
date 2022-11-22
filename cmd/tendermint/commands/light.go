@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmmath "github.com/tendermint/tendermint/libs/math"

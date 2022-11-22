@@ -17,6 +17,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	dbm "github.com/tendermint/tendermint/db"
 	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 	mpmocks "github.com/tendermint/tendermint/mempool/mocks"
@@ -29,7 +30,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -738,7 +738,6 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	}
 
 	mp.AssertExpectations(t)
-
 }
 
 // TestPrepareProposalErrorOnTooManyTxs tests that the block creation logic returns

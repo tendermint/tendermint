@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/orderedcode"
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -221,7 +221,6 @@ func (idx *BlockerIndexer) matchRange(
 	filteredHeights map[string][]byte,
 	firstRun bool,
 ) (map[string][]byte, error) {
-
 	// A previous match was attempted but resulted in no matches, so we return
 	// no matches (assuming AND operand).
 	if !firstRun && len(filteredHeights) == 0 {
@@ -329,7 +328,6 @@ func (idx *BlockerIndexer) match(
 	filteredHeights map[string][]byte,
 	firstRun bool,
 ) (map[string][]byte, error) {
-
 	// A previous match was attempted but resulted in no matches, so we return
 	// no matches (assuming AND operand).
 	if !firstRun && len(filteredHeights) == 0 {

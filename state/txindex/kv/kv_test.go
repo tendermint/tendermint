@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	db "github.com/tendermint/tm-db"
+	db "github.com/tendermint/tendermint/db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -259,7 +259,7 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 }
 
 func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
-	var mockTx = types.Tx("MOCK_TX_HASH")
+	mockTx := types.Tx("MOCK_TX_HASH")
 
 	testCases := []struct {
 		name         string

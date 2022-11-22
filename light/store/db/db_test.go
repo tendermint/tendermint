@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -70,7 +70,6 @@ func Test_SaveLightBlock(t *testing.T) {
 	h, err = dbStore.LightBlock(1)
 	require.Error(t, err)
 	assert.Nil(t, h)
-
 }
 
 func Test_LightBlockBefore(t *testing.T) {

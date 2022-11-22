@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"

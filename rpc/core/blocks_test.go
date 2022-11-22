@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -25,7 +25,6 @@ func TestBlockchainInfo(t *testing.T) {
 		resultLength int64
 		wantErr      bool
 	}{
-
 		// min > max
 		{0, 0, 0, 0, 10, 0, true},  // min set to 1
 		{0, 1, 0, 0, 10, 0, true},  // max set to height (0)

@@ -10,7 +10,7 @@ import (
 
 	"github.com/cosmos/gogoproto/proto"
 	gogotypes "github.com/cosmos/gogoproto/types"
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -52,7 +52,6 @@ type Pool struct {
 // NewPool creates an evidence pool. If using an existing evidence store,
 // it will add all pending evidence to the concurrent list.
 func NewPool(evidenceDB dbm.DB, stateDB sm.Store, blockStore BlockStore) (*Pool, error) {
-
 	state, err := stateDB.Load()
 	if err != nil {
 		return nil, fmt.Errorf("cannot load state: %w", err)
@@ -434,8 +433,8 @@ func (evpool *Pool) removeExpiredPendingEvidence() (int64, time.Time) {
 }
 
 func (evpool *Pool) removeEvidenceFromList(
-	blockEvidenceMap map[string]struct{}) {
-
+	blockEvidenceMap map[string]struct{},
+) {
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
 		// Remove from clist
 		ev := e.Value.(types.Evidence)

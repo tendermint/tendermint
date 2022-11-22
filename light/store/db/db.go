@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strconv"
 
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/light/store"
@@ -14,9 +14,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	sizeKey = []byte("size")
-)
+var sizeKey = []byte("size")
 
 type dbs struct {
 	db     dbm.DB
@@ -29,7 +27,6 @@ type dbs struct {
 // New returns a Store that wraps any DB (with an optional prefix in case you
 // want to use one DB with many light clients).
 func New(db dbm.DB, prefix string) store.Store {
-
 	size := uint16(0)
 	bz, err := db.Get(sizeKey)
 	if err == nil && len(bz) > 0 {

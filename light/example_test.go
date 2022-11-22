@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	dbm "github.com/tendermint/tm-db"
+	dbm "github.com/tendermint/tendermint/db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/libs/log"
@@ -30,7 +30,7 @@ func ExampleClient_Update() {
 	}
 	defer os.RemoveAll(dbDir)
 
-	var config = rpctest.GetConfig()
+	config := rpctest.GetConfig()
 
 	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {
@@ -95,7 +95,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	}
 	defer os.RemoveAll(dbDir)
 
-	var config = rpctest.GetConfig()
+	config := rpctest.GetConfig()
 
 	primary, err := httpp.New(chainID, config.RPC.ListenAddress)
 	if err != nil {

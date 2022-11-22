@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	db "github.com/tendermint/tm-db"
+	db "github.com/tendermint/tendermint/db"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cfg "github.com/tendermint/tendermint/config"
@@ -220,7 +220,8 @@ func (w *byteBufferWAL) FlushAndSync() error { return nil }
 
 func (w *byteBufferWAL) SearchForEndHeight(
 	height int64,
-	options *WALSearchOptions) (rd io.ReadCloser, found bool, err error) {
+	options *WALSearchOptions,
+) (rd io.ReadCloser, found bool, err error) {
 	return nil, false, nil
 }
 
