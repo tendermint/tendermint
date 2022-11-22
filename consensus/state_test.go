@@ -1421,6 +1421,78 @@ func TestProcessProposalAccept(t *testing.T) {
 	}
 }
 
+func TestFinalizeBlockCalled(t *testing.T) {
+	for _, testCase := range []struct {
+		name         string
+		voteNil      bool
+		expectCalled bool
+	}{
+		{
+			name:         "finalize block called when block committed",
+			voteNil:      false,
+			expectCalled: true,
+		},
+		{
+			name:         "not called when block not committed",
+			voteNil:      true,
+			expectCalled: false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			m := abcimocks.NewApplication(t)
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{
+				Status: abci.ResponseProcessProposal_ACCEPT,
+			}, nil)
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			r := &abci.ResponseFinalizeBlock{AgreedAppData: []byte("the_hash")}
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
+			m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+
+			cs1, vss := randStateWithApp(4, m)
+			height, round := cs1.Height, cs1.Round
+
+			proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+			newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+			pv1, err := cs1.privValidator.GetPubKey()
+			require.NoError(t, err)
+			addr := pv1.Address()
+			voteCh := subscribeToVoter(cs1, addr)
+
+			startTestRound(cs1, cs1.Height, round)
+			ensureNewRound(newRoundCh, height, round)
+			ensureNewProposal(proposalCh, height, round)
+			rs := cs1.GetRoundState()
+
+			blockID := types.BlockID{}
+			nextRound := round + 1
+			nextHeight := height
+			if !testCase.voteNil {
+				nextRound = 0
+				nextHeight = height + 1
+				blockID = types.BlockID{
+					Hash:          rs.ProposalBlock.Hash(),
+					PartSetHeader: rs.ProposalBlockParts.Header(),
+				}
+			}
+
+			signAddVotes(cs1, tmproto.PrevoteType, blockID.Hash, blockID.PartSetHeader, vss[1:]...)
+			ensurePrevoteMatch(t, voteCh, height, round, rs.ProposalBlock.Hash())
+
+			signAddVotes(cs1, tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader, vss[1:]...)
+			ensurePrecommit(voteCh, height, round)
+
+			ensureNewRound(newRoundCh, nextHeight, nextRound)
+			m.AssertExpectations(t)
+
+			if !testCase.expectCalled {
+				m.AssertNotCalled(t, "FinalizeBlock", context.TODO(), mock.Anything)
+			} else {
+				m.AssertCalled(t, "FinalizeBlock", context.TODO(), mock.Anything)
+			}
+		})
+	}
+}
+
 // 4 vals, 3 Nil Precommits at P0
 // What we want:
 // P0 waits for timeoutPrecommit before starting next round
