@@ -53,7 +53,7 @@ func TestHangingAsyncCalls(t *testing.T) {
 		// Call CheckTx
 		reqres, err := c.CheckTxAsync(context.Background(), &types.RequestCheckTx{})
 		require.NoError(t, err)
-		// wait 20 ms for all events to travel socket, but
+		// wait 50 ms for all events to travel socket, but
 		// no response yet from server
 		time.Sleep(50 * time.Millisecond)
 		// kill the server, so the connections break
@@ -62,7 +62,6 @@ func TestHangingAsyncCalls(t *testing.T) {
 
 		// wait for the response from CheckTx
 		reqres.Wait()
-		fmt.Print(reqres)
 		resp <- c.Error()
 	}()
 
@@ -157,9 +156,9 @@ type slowApp struct {
 	types.BaseApplication
 }
 
-func (slowApp) CheckTxAsync(_ context.Context, req types.RequestCheckTx) types.ResponseCheckTx {
-	time.Sleep(200 * time.Millisecond)
-	return types.ResponseCheckTx{}
+func (slowApp) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	time.Sleep(time.Second)
+	return &types.ResponseCheckTx{}, nil
 }
 
 // TestCallbackInvokedWhenSetLaet ensures that the callback is invoked when
