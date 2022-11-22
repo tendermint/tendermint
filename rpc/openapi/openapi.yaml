@@ -919,7 +919,7 @@ paths:
         - Info
       description: |
         Get genesis document in multiple chunks to make it
-        easier to iterate through larger gensis structures.
+        easier to iterate through larger genesis structures.
 
         Upon success, the `Cache-Control` header will be set with the default
         maximum age.
