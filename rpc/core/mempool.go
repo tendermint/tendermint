@@ -17,7 +17,7 @@ import (
 // NOTE: tx should be signed, but this is only checked at the app level (not by Tendermint!)
 
 // BroadcastTxAsync returns right away, with no response. Does not wait for
-// CheckTx nor DeliverTx results.
+// CheckTx nor transcation results.
 // More: https://docs.tendermint.com/main/rpc/#/Tx/broadcast_tx_async
 func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := env.Mempool.CheckTx(tx, nil, mempl.TxInfo{})
@@ -29,7 +29,7 @@ func BroadcastTxAsync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadca
 }
 
 // BroadcastTxSync returns with the response from CheckTx. Does not wait for
-// DeliverTx result.
+// the transaction result.
 // More: https://docs.tendermint.com/main/rpc/#/Tx/broadcast_tx_sync
 func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.ResponseCheckTx, 1)
@@ -58,7 +58,7 @@ func BroadcastTxSync(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcas
 	}
 }
 
-// BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
+// BroadcastTxCommit returns with the responses from CheckTx and ExecTxResult.
 // More: https://docs.tendermint.com/main/rpc/#/Tx/broadcast_tx_commit
 func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	subscriber := ctx.RemoteAddr()
@@ -73,7 +73,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 	subCtx, cancel := context.WithTimeout(ctx.Context(), SubscribeTimeout)
 	defer cancel()
 	q := types.EventQueryTxFor(tx)
-	deliverTxSub, err := env.EventBus.Subscribe(subCtx, subscriber, q)
+	txSub, err := env.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
 		err = fmt.Errorf("failed to subscribe to tx: %w", err)
 		env.Logger.Error("Error on broadcast_tx_commit", "err", err)
@@ -111,7 +111,7 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 
 		// Wait for the tx to be included in a block or timeout.
 		select {
-		case msg := <-deliverTxSub.Out(): // The tx was included in a block.
+		case msg := <-txSub.Out(): // The tx was included in a block.
 			txResultEvent := msg.Data().(types.EventDataTx)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:  *checkTxRes,
@@ -119,14 +119,14 @@ func BroadcastTxCommit(ctx *rpctypes.Context, tx types.Tx) (*ctypes.ResultBroadc
 				Hash:     tx.Hash(),
 				Height:   txResultEvent.Height,
 			}, nil
-		case <-deliverTxSub.Cancelled():
+		case <-txSub.Cancelled():
 			var reason string
-			if deliverTxSub.Err() == nil {
+			if txSub.Err() == nil {
 				reason = "Tendermint exited"
 			} else {
-				reason = deliverTxSub.Err().Error()
+				reason = txSub.Err().Error()
 			}
-			err = fmt.Errorf("deliverTxSub was canceled (reason: %s)", reason)
+			err = fmt.Errorf("txSub was canceled (reason: %s)", reason)
 			env.Logger.Error("Error on broadcastTxCommit", "err", err)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:  *checkTxRes,

@@ -359,7 +359,7 @@ func TestRecoverPendingEvidence(t *testing.T) {
 func initializeStateFromValidatorSet(valSet *types.ValidatorSet, height int64) sm.Store {
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	state := sm.State{
 		ChainID:                     evidenceChainID,

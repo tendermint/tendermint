@@ -387,7 +387,7 @@ func (txmp *TxMempool) Update(
 ) error {
 	// Safety check: Transactions and responses must match in number.
 	if len(blockTxs) != len(txResults) {
-		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
+		panic(fmt.Sprintf("mempool: got %d transactions but %d TxResult responses",
 			len(blockTxs), len(txResults)))
 	}
 

@@ -50,7 +50,7 @@ func TestHangingAsyncCalls(t *testing.T) {
 
 	resp := make(chan error, 1)
 	go func() {
-		// Start BeginBlock and flush it
+		// Call CheckTx
 		reqres, err := c.CheckTxAsync(context.Background(), &types.RequestCheckTx{})
 		require.NoError(t, err)
 		// wait 20 ms for all events to travel socket, but
@@ -60,7 +60,7 @@ func TestHangingAsyncCalls(t *testing.T) {
 		err = s.Stop()
 		require.NoError(t, err)
 
-		// wait for the response from BeginBlock
+		// wait for the response from CheckTx
 		reqres.Wait()
 		fmt.Print(reqres)
 		resp <- c.Error()
@@ -94,7 +94,7 @@ func TestBulk(t *testing.T) {
 
 	// Connect to the socket
 	client := abcicli.NewSocketClient(socket, false)
-	
+
 	t.Cleanup(func() {
 		if err := client.Stop(); err != nil {
 			t.Log(err)
@@ -121,7 +121,6 @@ func TestBulk(t *testing.T) {
 	err = client.Flush(context.Background())
 	require.NoError(t, err)
 }
-
 
 func setupClientServer(t *testing.T, app types.Application) (
 	service.Service, abcicli.Client) {

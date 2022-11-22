@@ -214,11 +214,11 @@ func TestTxResultsHash(t *testing.T) {
 
 	root := sm.TxResultsHash(txResults)
 
-	// root should be Merkle tree root of DeliverTxs responses
+	// root should be Merkle tree root of ExecTxResult responses
 	results := types.NewResults(txResults)
 	assert.Equal(t, root, results.Hash())
 
-	// test we can prove first DeliverTx
+	// test we can prove first ExecTxResult
 	proof := results.ProveResult(0)
 	bz, err := results[0].Marshal()
 	require.NoError(t, err)
