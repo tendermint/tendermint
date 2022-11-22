@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/orderedcode"
+
 	dbm "github.com/tendermint/tendermint/db"
 
 	abci "github.com/tendermint/tendermint/abci/types"

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/cosmos/gogoproto/proto"
+
 	dbm "github.com/tendermint/tendermint/db"
 
 	"github.com/tendermint/tendermint/evidence"

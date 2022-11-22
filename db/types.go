@@ -111,13 +111,14 @@ type Batch interface {
 // var itr Iterator = ...
 // defer itr.Close()
 //
-// for ; itr.Valid(); itr.Next() {
-//   k, v := itr.Key(); itr.Value()
-//   ...
-// }
-// if err := itr.Error(); err != nil {
-//   ...
-// }
+//	for ; itr.Valid(); itr.Next() {
+//	  k, v := itr.Key(); itr.Value()
+//	  ...
+//	}
+//
+//	if err := itr.Error(); err != nil {
+//	  ...
+//	}
 type Iterator interface {
 	// Domain returns the start (inclusive) and end (exclusive) limits of the iterator.
 	// CONTRACT: start, end readonly []byte

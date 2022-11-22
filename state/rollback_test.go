@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	dbm "github.com/tendermint/tendermint/db"
 
 	"github.com/tendermint/tendermint/crypto"

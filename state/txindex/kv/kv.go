@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/cosmos/gogoproto/proto"
+
 	dbm "github.com/tendermint/tendermint/db"
 
 	abci "github.com/tendermint/tendermint/abci/types"

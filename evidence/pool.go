@@ -10,6 +10,7 @@ import (
 
 	"github.com/cosmos/gogoproto/proto"
 	gogotypes "github.com/cosmos/gogoproto/types"
+
 	dbm "github.com/tendermint/tendermint/db"
 
 	clist "github.com/tendermint/tendermint/libs/clist"
