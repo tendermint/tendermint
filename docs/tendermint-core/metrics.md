@@ -21,6 +21,7 @@ The following metrics are available:
 | **Name**                                 | **Type**  | **Tags**          | **Description**                                                                                                                            |
 |------------------------------------------|-----------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | `abci_connection_method_timing_seconds`  | Histogram | `method`, `type`  | Timings for each of the ABCI methods                                                                                                       |
+| `blocksync_syncing`                      | Gauge     |                   | Either 0 (not block syncing) or 1 (syncing)                                                                                                |
 | `consensus_height`                       | Gauge     |                   | Height of the chain                                                                                                                        |
 | `consensus_validators`                   | Gauge     |                   | Number of validators                                                                                                                       |
 | `consensus_validators_power`             | Gauge     |                   | Total voting power of all validators                                                                                                       |
@@ -37,8 +38,6 @@ The following metrics are available:
 | `consensus_total_txs`                    | Gauge     |                   | Total number of transactions committed                                                                                                     |
 | `consensus_block_parts`                  | Counter   | `peer_id`         | Number of blockparts transmitted by peer                                                                                                   |
 | `consensus_latest_block_height`          | Gauge     |                   | /status sync\_info number                                                                                                                  |
-| `consensus_block_syncing`                | Gauge     |                   | Either 0 (not block syncing) or 1 (syncing)                                                                                                |
-| `consensus_state_syncing`                | Gauge     |                   | Either 0 (not state syncing) or 1 (syncing)                                                                                                |
 | `consensus_block_size_bytes`             | Gauge     |                   | Block size in bytes                                                                                                                        |
 | `consensus_step_duration`                | Histogram | `step`            | Histogram of durations for each step in the consensus protocol                                                                             |
 | `consensus_round_duration`               | Histogram |                   | Histogram of durations for all the rounds that have occurred since the process started                                                     |
@@ -64,6 +63,7 @@ The following metrics are available:
 | `state_block_processing_time`            | Histogram |                   | Time between BeginBlock and EndBlock in ms                                                                                                 |
 | `state_consensus_param_updates`          | Counter   |                   | Number of consensus parameter updates returned by the application since process start                                                      |
 | `state_validator_set_updates`            | Counter   |                   | Number of validator set updates returned by the application since process start                                                            |
+| `statesync_syncing`                      | Gauge     |                   | Either 0 (not state syncing) or 1 (syncing)                                                                                                |
 
 ## Useful queries
 
