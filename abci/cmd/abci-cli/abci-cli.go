@@ -167,10 +167,9 @@ where example.file looks something like:
 
     check_tx 0x00
     check_tx 0xff
-    deliver_tx 0x00
+    finalize_block 0x00
     check_tx 0x00
-    deliver_tx 0x01
-    deliver_tx 0x04
+    finalize_block 0x01 0x04 0xff
     info
 `,
 	Args: cobra.ExactArgs(0),
@@ -186,7 +185,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "prepare_proposal", "process_proposal", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "finalize_block", "check_tx", "prepare_proposal", "process_proposal", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
