@@ -718,10 +718,10 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	err = handshaker.Handshake(proxyApp)
 	if expectError {
 		require.Error(t, err)
+		// finish the test early
 		return
-	} else {
-		require.NoError(t, err)
 	}
+	require.NoError(t, err)
 
 	// get the latest app hash from the app
 	res, err := proxyApp.Query().Info(context.Background(), proxy.RequestInfo)
@@ -865,7 +865,7 @@ func buildTMStateFromChain(
 		dummyStateStore.On("LoadValidators", penultimateHeight).Return(vals, nil)
 		dummyStateStore.On("Save", mock.Anything).Return(nil)
 		dummyStateStore.On("SaveFinalizeBlockResponse", lastHeight, mock.MatchedBy(func(response *abci.ResponseFinalizeBlock) bool {
-			stateStore.SaveFinalizeBlockResponse(lastHeight, response)
+			require.NoError(t, stateStore.SaveFinalizeBlockResponse(lastHeight, response))
 			return true
 		})).Return(nil)
 
