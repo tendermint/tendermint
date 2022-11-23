@@ -806,24 +806,24 @@ func (conR *Reactor) gossipVotesForHeight(
 
 	// If there are lastCommits to send...
 
-	/*
-		if prs.Step == cstypes.RoundStepNewHeight && prs.Height == rs.Height {
-			if ps.PickSendVote(rs.LastCommit) {
-				logger.Debug("Picked rs.LastCommit to send")
-				return true
-			}
+	if prs.Step == cstypes.RoundStepNewHeight && prs.Height == rs.Height {
+		if ps.PickSendVote(rs.LastCommit) {
+			logger.Debug("Picked rs.LastCommit to send")
+			return true
 		}
+	}
 
-			// If there are POL prevotes to send...
-			if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
-				if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-					if ps.PickSendVote(polPrevotes) {
-						logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-							"round", prs.ProposalPOLRound)
-						return true
-					}
+	/*
+		// If there are POL prevotes to send...
+		if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
+			if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+				if ps.PickSendVote(polPrevotes) {
+					logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
+						"round", prs.ProposalPOLRound)
+					return true
 				}
 			}
+		}
 	*/
 	// If there are prevotes to send...
 	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
@@ -1179,7 +1179,12 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 			ps.conMetrics.VoteSent.With("peer_id", string(ps.peer.ID()), "vote_type", vote.Type.String()).Add(1)
 			ps.SetHasVote(vote)
 			psVotes := ps.getVoteBitArray(votes.GetHeight(), votes.GetRound(), tmproto.SignedMsgType(votes.Type()))
-			ps.conMetrics.PeerVoteCount.With("peer_id", string(ps.peer.ID()), "vote_type", vote.Type.String()).Set(float64(len(psVotes.GetTrueIndices())))
+			vct := vote.Type.String()
+			if vote.Type == tmproto.PrecommitType && vote.Height+1 == ps.PRS.Height {
+				vct = fmt.Sprintf("last_commit_%s", vct)
+			}
+
+			ps.conMetrics.PeerVoteCount.With("peer_id", string(ps.peer.ID()), "vote_count_type", vct).Set(float64(len(psVotes.GetTrueIndices())))
 			return true
 		}
 		return false
