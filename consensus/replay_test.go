@@ -306,9 +306,9 @@ const numBlocks = 6
 // Test handshake/replay
 
 // 0 - all synced up
-// 1 - saved block but app and state are behind
-// 2 - save block and committed but state is behind
-// 3 - save block and committed with truncated block store and state behind
+// 1 - saved block but app and state are behind by one height
+// 2 - save block and committed (i.e. app got `Commit`) but state is behind
+// 3 - same as 2 but with a truncated block store
 var modes = []uint{0, 1, 2, 3}
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
@@ -736,8 +736,6 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	require.Equal(t, state.LastBlockHeight, res.LastBlockHeight)
 	require.Equal(t, int64(numBlocks), res.LastBlockHeight)
 
-	fmt.Printf("mode: %d, appHash: %X, data: %s\n", mode, latestAppHash, res.Data)
-
 	// the app hash should be synced up
 	if !bytes.Equal(latestAppHash, res.LastBlockAppHash) {
 		t.Fatalf(
@@ -800,9 +798,12 @@ func buildAppStateFromChain(t *testing.T, proxyApp proxy.AppConns, stateStore sm
 			state = applyBlock(t, stateStore, mempool, evpool, state, block, proxyApp, bs)
 		}
 
+		// mode 1 only the block at the last height is saved
+		// mode 2 and 3, the block is saved, commit is called, but the state is not saved
 		if mode == 2 || mode == 3 {
 			// update the kvstore height and apphash
 			// as if we ran commit but not
+			// here we expect a dummy state store to be used
 			state = applyBlock(t, stateStore, mempool, evpool, state, chain[nBlocks-1], proxyApp, bs)
 		}
 	default:
@@ -858,10 +859,15 @@ func buildTMStateFromChain(
 		}
 
 		dummyStateStore := &smmocks.Store{}
-		vals, _ := stateStore.LoadValidators(int64(len(chain) - 1))
-		dummyStateStore.On("LoadValidators", int64(5)).Return(vals, nil)
+		lastHeight := int64(len(chain))
+		penultimateHeight := int64(len(chain) - 1)
+		vals, _ := stateStore.LoadValidators(penultimateHeight)
+		dummyStateStore.On("LoadValidators", penultimateHeight).Return(vals, nil)
 		dummyStateStore.On("Save", mock.Anything).Return(nil)
-		dummyStateStore.On("SaveFinalizeBlockResponse", mock.Anything, mock.Anything).Return(nil)
+		dummyStateStore.On("SaveFinalizeBlockResponse", lastHeight, mock.MatchedBy(func(response *abci.ResponseFinalizeBlock) bool {
+			stateStore.SaveFinalizeBlockResponse(lastHeight, response)
+			return true
+		})).Return(nil)
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back

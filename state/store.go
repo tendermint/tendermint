@@ -445,7 +445,7 @@ func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.Response
 
 	// Here we validate the result by comparing its height to the expected height.
 	if height != info.GetHeight() {
-		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
+		return nil, fmt.Errorf("expected height %d but last stored abci responses was at height %d", height, info.GetHeight())
 	}
 
 	// It is possible if this is called directly after an upgrade that
