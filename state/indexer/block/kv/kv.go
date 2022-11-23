@@ -24,7 +24,10 @@ var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
 // events with an underlying KV store. Block events are indexed by their height,
 // such that matching search criteria returns the respective block height(s).
 type BlockerIndexer struct {
-	store     dbm.DB
+	store dbm.DB
+
+	// Add unique event identifier to use when querying
+	// Matching will be done both on height AND eventSeq
 	numEvents int64
 }
 
@@ -113,6 +116,9 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 		return results, nil
 	}
+
+	// Check whether we want to return heights where the conditions are true
+	// within the same event or it does not matter
 	matchEvents := lookForMatchEvent(conditions)
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
@@ -276,13 +282,7 @@ LOOP:
 			}
 
 			if include {
-				if matchEvents {
-					eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
-					retVal := it.Value()
-					tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
-				} else {
-					tmpHeights[string(it.Value())] = it.Value()
-				}
+				idx.setTmpHeights(tmpHeights, it, matchEvents)
 			}
 		}
 
@@ -328,6 +328,16 @@ LOOP:
 	return filteredHeights, nil
 }
 
+func (idx *BlockerIndexer) setTmpHeights(tmpHeights map[string][]byte, it dbm.Iterator, matchEvents bool) {
+	if matchEvents {
+		eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
+		retVal := it.Value()
+		tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
+	} else {
+		tmpHeights[string(it.Value())] = it.Value()
+	}
+}
+
 // match returns all matching heights that meet a given query condition and start
 // key. An already filtered result (filteredHeights) is provided such that any
 // non-intersecting matches are removed.
@@ -360,13 +370,7 @@ func (idx *BlockerIndexer) match(
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
-			if matchEvents {
-				eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
-				retVal := it.Value()
-				tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
-			} else {
-				tmpHeights[string(it.Value())] = it.Value()
-			}
+			idx.setTmpHeights(tmpHeights, it, matchEvents)
 
 			if err := ctx.Err(); err != nil {
 				break
@@ -390,13 +394,7 @@ func (idx *BlockerIndexer) match(
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
-			if matchEvents {
-				eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
-				retVal := it.Value()
-				tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
-			} else {
-				tmpHeights[string(it.Value())] = it.Value()
-			}
+			idx.setTmpHeights(tmpHeights, it, matchEvents)
 
 			select {
 			case <-ctx.Done():
@@ -429,13 +427,7 @@ func (idx *BlockerIndexer) match(
 			}
 
 			if strings.Contains(eventValue, c.Operand.(string)) {
-				if matchEvents {
-					eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
-					retVal := it.Value()
-					tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
-				} else {
-					tmpHeights[string(it.Value())] = it.Value()
-				}
+				idx.setTmpHeights(tmpHeights, it, matchEvents)
 			}
 
 			select {
@@ -487,8 +479,6 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 	heightBz := int64ToBytes(height)
 
 	for _, event := range events {
-		// Add unique event identifier to use when querying
-		// Matching will be done both on height AND eventSeq
 		idx.numEvents = idx.numEvents + 1
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
