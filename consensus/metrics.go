@@ -94,7 +94,9 @@ type Metrics struct {
 
 	DuplicateVoteReceive metrics.Counter
 
-	VoteSent metrics.Counter
+	VoteSent      metrics.Counter
+	VoteReceived  metrics.Counter
+	PeerVoteCount metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -265,8 +267,20 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "vote_sent",
-			Help:      "Number of votes sent by type",
-		}, append(labels, "type")).With(labelsAndValues...),
+			Help:      "Number of votes of each type sent.",
+		}, append(labels, "vote_type")).With(labelsAndValues...),
+		VoteReceived: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "vote_received",
+			Help:      "Number of votes of each type received.",
+		}, append(labels, "vote_type")).With(labelsAndValues...),
+		PeerVoteCount: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "vote_received",
+			Help:      "Number of votes of each type received.",
+		}, append(labels, "peer_id", "vote_type")).With(labelsAndValues...),
 	}
 }
 

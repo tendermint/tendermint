@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
@@ -179,7 +180,7 @@ func (conR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // InitPeer implements Reactor by creating a state for the peer.
 func (conR *Reactor) InitPeer(peer p2p.Peer) p2p.Peer {
-	peerState := NewPeerState(peer).SetLogger(conR.Logger)
+	peerState := NewPeerState(peer, conR.Metrics).SetLogger(conR.Logger)
 	peer.Set(types.PeerStateKey, peerState)
 	return peer
 }
@@ -230,6 +231,10 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	if !conR.IsRunning() {
 		conR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID)
 		return
+	}
+
+	if m, ok := e.Message.(*consensus.Vote); ok {
+		conR.Metrics.VoteReceived.With("vote_type", m.Vote.Type.String()).Add(1)
 	}
 	m := e.Message
 	if wm, ok := m.(p2p.Wrapper); ok {
@@ -1036,8 +1041,9 @@ var (
 // NOTE: THIS GETS DUMPED WITH rpc/core/consensus.go.
 // Be mindful of what you Expose.
 type PeerState struct {
-	peer   p2p.Peer
-	logger log.Logger
+	peer       p2p.Peer
+	logger     log.Logger
+	conMetrics *Metrics
 
 	mtx   sync.Mutex             // NOTE: Modify below using setters, never directly.
 	PRS   cstypes.PeerRoundState `json:"round_state"` // Exposed.
@@ -1056,10 +1062,11 @@ func (pss peerStateStats) String() string {
 }
 
 // NewPeerState returns a new PeerState for the given Peer
-func NewPeerState(peer p2p.Peer) *PeerState {
+func NewPeerState(peer p2p.Peer, m *Metrics) *PeerState {
 	return &PeerState{
-		peer:   peer,
-		logger: log.NewNopLogger(),
+		conMetrics: m,
+		peer:       peer,
+		logger:     log.NewNopLogger(),
 		PRS: cstypes.PeerRoundState{
 			Round:              -1,
 			ProposalPOLRound:   -1,
@@ -1165,7 +1172,10 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 				Vote: vote.ToProto(),
 			},
 		}, ps.logger) {
+			ps.conMetrics.VoteSent.With("vote_type", vote.Type.String()).Add(1)
 			ps.SetHasVote(vote)
+			psVotes := ps.getVoteBitArray(votes.GetHeight(), votes.GetRound(), tmproto.SignedMsgType(votes.Type()))
+			ps.conMetrics.PeerVoteCount.With("peer_id", string(ps.peer.ID()), "vote_type", vote.Type.String()).Set(float64(len(psVotes.GetTrueIndices())))
 			return true
 		}
 		return false
