@@ -221,7 +221,9 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	// stop reactors
 	for _, r := range reactors {
-		if err := r.Stop(); err != nil {
+		// we stop the reactor from the Switch due to the reactor doesn't stop
+		// the peer connection in Stop implementation
+		if err := r.Switch.Stop(); err != nil {
 			assert.NoError(t, err)
 		}
 	}
