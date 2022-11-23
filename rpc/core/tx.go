@@ -16,7 +16,7 @@ import (
 // Tx allows you to query the transaction results. `nil` could mean the
 // transaction is in the mempool, invalidated, or was not sent in the first
 // place.
-// More: https://docs.tendermint.com/master/rpc/#/Info/tx
+// More: https://docs.tendermint.com/main/rpc/#/Info/tx
 func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	// if index is disabled, return error
 	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
@@ -32,19 +32,16 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 		return nil, fmt.Errorf("tx (%X) not found", hash)
 	}
 
-	height := r.Height
-	index := r.Index
-
 	var proof types.TxProof
 	if prove {
-		block := env.BlockStore.LoadBlock(height)
-		proof = block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
+		block := env.BlockStore.LoadBlock(r.Height)
+		proof = block.Data.Txs.Proof(int(r.Index))
 	}
 
 	return &ctypes.ResultTx{
 		Hash:     hash,
-		Height:   height,
-		Index:    index,
+		Height:   r.Height,
+		Index:    r.Index,
 		TxResult: r.Result,
 		Tx:       r.Tx,
 		Proof:    proof,
@@ -53,7 +50,7 @@ func Tx(ctx *rpctypes.Context, hash []byte, prove bool) (*ctypes.ResultTx, error
 
 // TxSearch allows you to query for multiple transactions results. It returns a
 // list of transactions (maximum ?per_page entries) and the total count.
-// More: https://docs.tendermint.com/master/rpc/#/Info/tx_search
+// More: https://docs.tendermint.com/main/rpc/#/Info/tx_search
 func TxSearch(
 	ctx *rpctypes.Context,
 	query string,
@@ -118,7 +115,7 @@ func TxSearch(
 		var proof types.TxProof
 		if prove {
 			block := env.BlockStore.LoadBlock(r.Height)
-			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
+			proof = block.Data.Txs.Proof(int(r.Index))
 		}
 
 		apiResults = append(apiResults, &ctypes.ResultTx{

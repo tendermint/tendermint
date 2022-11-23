@@ -14,6 +14,16 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    target-branch: "v0.37.x"
+    open-pull-requests-limit: 10
+    labels:
+      - T:dependencies
+      - S:automerge
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
     target-branch: "v0.34.x"
     open-pull-requests-limit: 10
     labels:
@@ -43,9 +53,23 @@ updates:
   - package-ecosystem: gomod
     directory: "/"
     schedule:
-      interval: weekly
+      interval: daily
+    target-branch: "v0.37.x"
+    # Only allow automated security-related dependency updates on release
+    # branches.
+    open-pull-requests-limit: 0
+    labels:
+      - T:dependencies
+      - S:automerge
+
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: daily
     target-branch: "v0.34.x"
-    open-pull-requests-limit: 10
+    # Only allow automated security-related dependency updates on release
+    # branches.
+    open-pull-requests-limit: 0
     labels:
       - T:dependencies
       - S:automerge

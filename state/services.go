@@ -26,13 +26,16 @@ type BlockStore interface {
 
 	SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit)
 
-	PruneBlocks(height int64) (uint64, error)
+	PruneBlocks(height int64, state State) (uint64, int64, error)
 
 	LoadBlockByHash(hash []byte) *types.Block
+	LoadBlockMetaByHash(hash []byte) *types.BlockMeta
 	LoadBlockPart(height int64, index int) *types.Part
 
 	LoadBlockCommit(height int64) *types.Commit
 	LoadSeenCommit(height int64) *types.Commit
+
+	DeleteLatestBlock() error
 }
 
 //-----------------------------------------------------------------------------

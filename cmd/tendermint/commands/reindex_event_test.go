@@ -9,14 +9,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	dbm "github.com/tendermint/tm-db"
+
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test"
 	prototmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	blockmocks "github.com/tendermint/tendermint/state/indexer/mocks"
 	"github.com/tendermint/tendermint/state/mocks"
 	txmocks "github.com/tendermint/tendermint/state/txindex/mocks"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tm-db"
 )
 
 const (
@@ -97,7 +99,7 @@ func TestLoadEventSink(t *testing.T) {
 		cfg := tmcfg.TestConfig()
 		cfg.TxIndex.Indexer = tc.sinks
 		cfg.TxIndex.PsqlConn = tc.connURL
-		_, _, err := loadEventSinks(cfg)
+		_, _, err := loadEventSinks(cfg, test.DefaultTestChainID)
 		if tc.loadErr {
 			require.Error(t, err, idx)
 		} else {

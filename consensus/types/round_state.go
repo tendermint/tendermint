@@ -80,6 +80,15 @@ type RoundState struct {
 	LockedBlock        *types.Block        `json:"locked_block"`
 	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
 
+	// The variables below starting with "Valid..." derive their name from
+	// the algorithm presented in this paper:
+	// [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
+	// Therefore, "Valid...":
+	//   * means that the block or round that the variable refers to has
+	//     received 2/3+ non-`nil` prevotes (a.k.a. a *polka*)
+	//   * has nothing to do with whether the Application returned "Accept" in its
+	//     response to `ProcessProposal`, or "Reject"
+
 	// Last known round with POL for non-nil valid block.
 	ValidRound int32        `json:"valid_round"`
 	ValidBlock *types.Block `json:"valid_block"` // Last known block of POL mentioned above.
@@ -186,8 +195,8 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ProposalBlock: %v %v
 %s  LockedRound:   %v
 %s  LockedBlock:   %v %v
-%s  ValidRound:   %v
-%s  ValidBlock:   %v %v
+%s  ValidRound:    %v
+%s  ValidBlock:    %v %v
 %s  Votes:         %v
 %s  LastCommit:    %v
 %s  LastValidators:%v

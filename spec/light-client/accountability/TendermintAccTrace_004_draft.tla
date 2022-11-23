@@ -3,19 +3,23 @@
   When Apalache is running too slow and we have an idea of a counterexample,
   we use this module to restrict the behaviors only to certain actions.
   Once the whole trace is replayed, the system deadlocks.
- 
+
   Version 1.
 
   Igor Konnov, 2020.
  *)
 
-EXTENDS Sequences, Apalache, TendermintAcc_004_draft
+EXTENDS Sequences, Apalache, typedefs, TendermintAcc_004_draft
 
 \* a sequence of action names that should appear in the given order,
 \* excluding "Init"
-CONSTANT Trace
+CONSTANT
+  \* @type: $trace;
+  Trace
 
-VARIABLE toReplay
+VARIABLE
+  \* @type: $trace;
+  toReplay
 
 TraceInit ==
     /\ toReplay = Trace

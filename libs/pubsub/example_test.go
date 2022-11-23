@@ -24,7 +24,7 @@ func TestExample(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	subscription, err := s.Subscribe(ctx, "example-client", query.MustParse("abci.account.name='John'"))
+	subscription, err := s.Subscribe(ctx, "example-client", query.MustCompile("abci.account.name='John'"))
 	require.NoError(t, err)
 	err = s.PublishWithEvents(ctx, "Tombstone", map[string][]string{"abci.account.name": {"John"}})
 	require.NoError(t, err)

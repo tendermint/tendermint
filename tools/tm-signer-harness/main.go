@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,7 +17,6 @@ import (
 const (
 	defaultAcceptRetries    = 100
 	defaultBindAddr         = "tcp://127.0.0.1:0"
-	defaultTMHome           = "~/.tendermint"
 	defaultAcceptDeadline   = 1
 	defaultConnDeadline     = 3
 	defaultExtractKeyOutput = "./signing.key"
@@ -60,6 +58,7 @@ Use "tm-signer-harness help <command>" for more information about that command.`
 		fmt.Println("")
 	}
 
+	defaultTMHome := internal.ExpandPath("~/.tendermint")
 	runCmd = flag.NewFlagSet("run", flag.ExitOnError)
 	runCmd.IntVar(&flagAcceptRetries,
 		"accept-retries",
@@ -136,7 +135,7 @@ func extractKey(tmhome, outputPath string) {
 	stateFile := filepath.Join(internal.ExpandPath(tmhome), "data", "priv_validator_state.json")
 	fpv := privval.LoadFilePV(keyFile, stateFile)
 	pkb := []byte(fpv.Key.PrivKey.(ed25519.PrivKey))
-	if err := ioutil.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
+	if err := os.WriteFile(internal.ExpandPath(outputPath), pkb[:32], 0600); err != nil {
 		logger.Info("Failed to write private key", "output", outputPath, "err", err)
 		os.Exit(1)
 	}

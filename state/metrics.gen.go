@@ -22,11 +22,25 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 
 			Buckets: stdprometheus.LinearBuckets(1, 10, 10),
 		}, labels).With(labelsAndValues...),
+		ConsensusParamUpdates: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "consensus_param_updates",
+			Help:      "ConsensusParamUpdates is the total number of times the application has udated the consensus params since process start.",
+		}, labels).With(labelsAndValues...),
+		ValidatorSetUpdates: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validator_set_updates",
+			Help:      "ValidatorSetUpdates is the total number of times the application has udated the validator set since process start.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
 func NopMetrics() *Metrics {
 	return &Metrics{
-		BlockProcessingTime: discard.NewHistogram(),
+		BlockProcessingTime:   discard.NewHistogram(),
+		ConsensusParamUpdates: discard.NewCounter(),
+		ValidatorSetUpdates:   discard.NewCounter(),
 	}
 }

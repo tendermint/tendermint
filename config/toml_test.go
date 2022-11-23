@@ -1,21 +1,22 @@
-package config
+package config_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/internal/test"
 )
 
 func ensureFiles(t *testing.T, rootDir string, files ...string) {
 	for _, f := range files {
-		p := rootify(rootDir, f)
+		p := filepath.Join(rootDir, f)
 		_, err := os.Stat(p)
-		assert.Nil(t, err, p)
+		assert.NoError(t, err, p)
 	}
 }
 
@@ -23,20 +24,18 @@ func TestEnsureRoot(t *testing.T) {
 	require := require.New(t)
 
 	// setup temp dir for test
-	tmpDir, err := ioutil.TempDir("", "config-test")
+	tmpDir, err := os.MkdirTemp("", "config-test")
 	require.Nil(err)
 	defer os.RemoveAll(tmpDir)
 
 	// create root dir
-	EnsureRoot(tmpDir)
+	config.EnsureRoot(tmpDir)
 
 	// make sure config is set properly
-	data, err := ioutil.ReadFile(filepath.Join(tmpDir, defaultConfigFilePath))
+	data, err := os.ReadFile(filepath.Join(tmpDir, config.DefaultConfigDir, config.DefaultConfigFileName))
 	require.Nil(err)
 
-	if !checkConfig(string(data)) {
-		t.Fatalf("config file missing some information")
-	}
+	assertValidConfig(t, string(data))
 
 	ensureFiles(t, tmpDir, "data")
 }
@@ -44,35 +43,30 @@ func TestEnsureRoot(t *testing.T) {
 func TestEnsureTestRoot(t *testing.T) {
 	require := require.New(t)
 
-	testName := "ensureTestRoot"
-
 	// create root dir
-	cfg := ResetTestRoot(testName)
+	cfg := test.ResetTestRoot("ensureTestRoot")
 	defer os.RemoveAll(cfg.RootDir)
 	rootDir := cfg.RootDir
 
 	// make sure config is set properly
-	data, err := ioutil.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
+	data, err := os.ReadFile(filepath.Join(rootDir, config.DefaultConfigDir, config.DefaultConfigFileName))
 	require.Nil(err)
 
-	if !checkConfig(string(data)) {
-		t.Fatalf("config file missing some information")
-	}
+	assertValidConfig(t, string(data))
 
 	// TODO: make sure the cfg returned and testconfig are the same!
-	baseConfig := DefaultBaseConfig()
-	ensureFiles(t, rootDir, defaultDataDir, baseConfig.Genesis, baseConfig.PrivValidatorKey, baseConfig.PrivValidatorState)
+	baseConfig := config.DefaultBaseConfig()
+	ensureFiles(t, rootDir, config.DefaultDataDir, baseConfig.Genesis, baseConfig.PrivValidatorKey, baseConfig.PrivValidatorState)
 }
 
-func checkConfig(configFile string) bool {
-	var valid bool
-
+func assertValidConfig(t *testing.T, configFile string) {
+	t.Helper()
 	// list of words we expect in the config
 	var elems = []string{
 		"moniker",
 		"seeds",
 		"proxy_app",
-		"fast_sync",
+		"block_sync",
 		"create_empty_blocks",
 		"peer",
 		"timeout",
@@ -85,11 +79,6 @@ func checkConfig(configFile string) bool {
 		"genesis",
 	}
 	for _, e := range elems {
-		if !strings.Contains(configFile, e) {
-			valid = false
-		} else {
-			valid = true
-		}
+		assert.Contains(t, configFile, e)
 	}
-	return valid
 }

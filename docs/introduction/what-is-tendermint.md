@@ -6,7 +6,7 @@ order: 4
 
 Tendermint is software for securely and consistently replicating an
 application on many machines. By securely, we mean that Tendermint works
-even if up to 1/3 of machines fail in arbitrary ways. By consistently,
+as long as less than 1/3 of machines fail in arbitrary ways. By consistently,
 we mean that every non-faulty machine sees the same transaction log and
 computes the same state. Secure and consistent replication is a
 fundamental problem in distributed systems; it plays a critical role in
@@ -22,15 +22,14 @@ reformalization of BFT in a more modern setting, with emphasis on
 peer-to-peer networking and cryptographic authentication. The name
 derives from the way transactions are batched in blocks, where each
 block contains a cryptographic hash of the previous one, forming a
-chain. In practice, the blockchain data structure actually optimizes BFT
-design.
+chain. 
 
 Tendermint consists of two chief technical components: a blockchain
 consensus engine and a generic application interface. The consensus
 engine, called Tendermint Core, ensures that the same transactions are
 recorded on every machine in the same order. The application interface,
-called the Application BlockChain Interface (ABCI), enables the
-transactions to be processed in any programming language. Unlike other
+called the Application BlockChain Interface (ABCI), delivers the transactions
+to applications for processing. Unlike other
 blockchain and consensus solutions, which come pre-packaged with built
 in state machines (like a fancy key-value store, or a quirky scripting
 language), developers can use Tendermint for BFT state machine
@@ -51,13 +50,13 @@ Hyperledger's Burrow.
 
 ### Zookeeper, etcd, consul
 
-Zookeeper, etcd, and consul are all implementations of a key-value store
-atop a classical, non-BFT consensus algorithm. Zookeeper uses a version
-of Paxos called Zookeeper Atomic Broadcast, while etcd and consul use
-the Raft consensus algorithm, which is much younger and simpler. A
+Zookeeper, etcd, and consul are all implementations of key-value stores
+atop a classical, non-BFT consensus algorithm. Zookeeper uses an
+algorithm called Zookeeper Atomic Broadcast, while etcd and consul use
+the Raft log replication algorithm. A
 typical cluster contains 3-5 machines, and can tolerate crash failures
-in up to 1/2 of the machines, but even a single Byzantine fault can
-destroy the system.
+in less than 1/2 of the machines (e.g., 1 out of 3 or 2 out of 5), 
+but even a single Byzantine fault can jeopardize the whole system.
 
 Each offering provides a slightly different implementation of a
 featureful key-value store, but all are generally focused around
@@ -66,8 +65,8 @@ configuration, service discovery, locking, leader-election, and so on.
 
 Tendermint is in essence similar software, but with two key differences:
 
-- It is Byzantine Fault Tolerant, meaning it can only tolerate up to a
-  1/3 of failures, but those failures can include arbitrary behavior -
+- It is Byzantine Fault Tolerant, meaning it can only tolerate less than 1/3
+  of machines failing, but those failures can include arbitrary behavior -
   including hacking and malicious attacks. - It does not specify a
   particular application, like a fancy key-value store. Instead, it
   focuses on arbitrary state machine replication, so developers can build
@@ -106,8 +105,8 @@ docker containers, modules it calls "chaincode". It uses an
 implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf).
 from a team at IBM that is [augmented to handle potentially
 non-deterministic
-chaincode](https://www.zurich.ibm.com/~cca/papers/sieve.pdf) It is
-possible to implement this docker-based behavior as a ABCI app in
+chaincode](https://drops.dagstuhl.de/opus/volltexte/2017/7093/pdf/LIPIcs-OPODIS-2016-24.pdf).
+It is possible to implement this docker-based behavior as an ABCI app in
 Tendermint, though extending Tendermint to handle non-determinism
 remains for future work.
 
@@ -120,7 +119,7 @@ consensus engine, and provides a particular application state.
 ## ABCI Overview
 
 The [Application BlockChain Interface
-(ABCI)](https://github.com/tendermint/tendermint/tree/master/abci)
+(ABCI)](https://github.com/tendermint/tendermint/tree/main/abci)
 allows for Byzantine Fault Tolerant replication of applications
 written in any programming language.
 
@@ -143,24 +142,22 @@ in design and suffers from "spaghetti code".
 Another problem with monolithic design is that it limits you to the
 language of the blockchain stack (or vice versa). In the case of
 Ethereum which supports a Turing-complete bytecode virtual-machine, it
-limits you to languages that compile down to that bytecode; today, those
-are Serpent and Solidity.
+limits you to languages that compile down to that bytecode; while the 
+[list](https://github.com/pirapira/awesome-ethereum-virtual-machine#programming-languages-that-compile-into-evm)
+is growing, it is still very limited.
 
 In contrast, our approach is to decouple the consensus engine and P2P
-layers from the details of the application state of the particular
+layers from the details of the state of the particular
 blockchain application. We do this by abstracting away the details of
 the application to an interface, which is implemented as a socket
 protocol.
 
-Thus we have an interface, the Application BlockChain Interface (ABCI),
-and its primary implementation, the Tendermint Socket Protocol (TSP, or
-Teaspoon).
-
 ### Intro to ABCI
 
-[Tendermint Core](https://github.com/tendermint/tendermint) (the
-"consensus engine") communicates with the application via a socket
-protocol that satisfies the ABCI.
+[Tendermint Core](https://github.com/tendermint/tendermint), the
+"consensus engine", communicates with the application via a socket
+protocol that satisfies the ABCI, the Tendermint Socket Protocol 
+(TSP, or Teaspoon).
 
 To draw an analogy, lets talk about a well-known cryptocurrency,
 Bitcoin. Bitcoin is a cryptocurrency blockchain where each node
@@ -180,7 +177,7 @@ The application will be responsible for
 - Allowing clients to query the UTXO database.
 
 Tendermint is able to decompose the blockchain design by offering a very
-simple API (ie. the ABCI) between the application process and consensus
+simple API (i.e. the ABCI) between the application process and consensus
 process.
 
 The ABCI consists of 3 primary message types that get delivered from the
@@ -188,7 +185,7 @@ core to the application. The application replies with corresponding
 response messages.
 
 The messages are specified here: [ABCI Message
-Types](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types).
+Types](https://github.com/tendermint/tendermint/blob/main/abci/README.md#message-types).
 
 The **DeliverTx** message is the work horse of the application. Each
 transaction in the blockchain is delivered with this message. The
@@ -239,8 +236,7 @@ Solidity on Ethereum is a great language of choice for blockchain
 applications because, among other reasons, it is a completely
 deterministic programming language. However, it's also possible to
 create deterministic applications using existing popular languages like
-Java, C++, Python, or Go. Game programmers and blockchain developers are
-already familiar with creating deterministic programs by avoiding
+Java, C++, Python, or Go, by avoiding
 sources of non-determinism such as:
 
 - random number generators (without deterministic seeding)
@@ -271,14 +267,15 @@ committed in a chain, with one block at each **height**. A block may
 fail to be committed, in which case the protocol moves to the next
 **round**, and a new validator gets to propose a block for that height.
 Two stages of voting are required to successfully commit a block; we
-call them **pre-vote** and **pre-commit**. A block is committed when
-more than 2/3 of validators pre-commit for the same block in the same
-round.
+call them **pre-vote** and **pre-commit**. 
 
 There is a picture of a couple doing the polka because validators are
 doing something like a polka dance. When more than two-thirds of the
 validators pre-vote for the same block, we call that a **polka**. Every
 pre-commit must be justified by a polka in the same round.
+A block is committed when
+more than 2/3 of validators pre-commit for the same block in the same
+round.
 
 Validators may fail to commit a block for a number of reasons; the
 current proposer may be offline, or the network may be slow. Tendermint

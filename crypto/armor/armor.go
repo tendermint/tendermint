@@ -3,9 +3,9 @@ package armor
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 
-	"golang.org/x/crypto/openpgp/armor" // nolint: staticcheck
+	"golang.org/x/crypto/openpgp/armor" //nolint: staticcheck
 )
 
 func EncodeArmor(blockType string, headers map[string]string, data []byte) string {
@@ -31,7 +31,7 @@ func DecodeArmor(armorStr string) (blockType string, headers map[string]string, 
 	if err != nil {
 		return "", nil, nil, err
 	}
-	data, err = ioutil.ReadAll(block.Body)
+	data, err = io.ReadAll(block.Body)
 	if err != nil {
 		return "", nil, nil, err
 	}

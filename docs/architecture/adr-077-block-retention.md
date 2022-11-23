@@ -78,7 +78,7 @@ The returned `retain_height` would be the lowest height that satisfies:
 
 ## Status
 
-Accepted
+Implemented
 
 ## Consequences
 
@@ -102,7 +102,7 @@ Accepted
 
 ## References
 
-- State sync ADR: <https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-053-state-sync-prototype.md>
+- State sync ADR: <https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-053-state-sync-prototype.md>
 
 - State sync issue: <https://github.com/tendermint/tendermint/issues/828>
 

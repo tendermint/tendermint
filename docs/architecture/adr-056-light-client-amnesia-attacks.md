@@ -10,7 +10,7 @@
 
 ## Context
 
-Whilst most created evidence of malicious behavior is self evident such that any individual can verify them independently there are types of evidence, known collectively as global evidence, that require further collaboration from the network in order to accumulate enough information to create evidence that is individually verifiable and can therefore be processed through consensus. [Fork Accountability](https://github.com/tendermint/tendermint/blob/master/spec/consensus/light-client/accountability.md) has been coined to describe the entire process of detection, proving and punishing of malicious behavior. This ADR addresses specifically what a light client amnesia attack is and how it can be proven and the current decision around handling light client amnesia attacks. For information on evidence handling by the light client, it is recommended to read [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md).
+Whilst most created evidence of malicious behavior is self evident such that any individual can verify them independently there are types of evidence, known collectively as global evidence, that require further collaboration from the network in order to accumulate enough information to create evidence that is individually verifiable and can therefore be processed through consensus. [Fork Accountability](https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client/accountability.md) has been coined to describe the entire process of detection, proving and punishing of malicious behavior. This ADR addresses specifically what a light client amnesia attack is and how it can be proven and the current decision around handling light client amnesia attacks. For information on evidence handling by the light client, it is recommended to read [ADR 47](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-047-handling-evidence-from-light-client.md).
 
 ### Amnesia Attack
 
@@ -33,7 +33,7 @@ The decision surrounding amnesia attacks has both a short term and long term com
 
 The latter of the two options meant storing a record of all votes in any height with which there was more than one round. This information would then be accessible for applications if they wanted to perform some off-chain verification and punishment.
 
-In summary, this seemed like too much to ask of the application to implement only on a temporary basis, whilst not having the domain specific knowledge and considering such a difficult and unlikely attack. Therefore the short term decision is to identify when the attack has occurred and implement the detector algorithm highlighted in [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md) but to not implement any accountability protocol that would identify malicious validators and allow applications to punish them. This will hopefully change in the long term with the focus on eventually reaching a concrete and secure protocol with identifying and dealing with these attacks.
+In summary, this seemed like too much to ask of the application to implement only on a temporary basis, whilst not having the domain specific knowledge and considering such a difficult and unlikely attack. Therefore the short term decision is to identify when the attack has occurred and implement the detector algorithm highlighted in [ADR 47](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-047-handling-evidence-from-light-client.md) but to not implement any accountability protocol that would identify malicious validators and allow applications to punish them. This will hopefully change in the long term with the focus on eventually reaching a concrete and secure protocol with identifying and dealing with these attacks.
 
 ## Implications
 
@@ -63,9 +63,9 @@ Light clients where all witnesses are faulty can be subject to an amnesia attack
 
 
 ## References
-
+<!-- markdown-link-check-disable-next-line -->
 - [Fork accountability algorithm](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
-- [Fork accountability spec](https://github.com/tendermint/tendermint/blob/master/spec/consensus/light-client/accountability.md)
+- [Fork accountability spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/light-client/accountability.md)
 
 ## Appendix A: Detailed Walkthrough of Performing a Light Client Amnesia Attack
 
@@ -107,7 +107,7 @@ As the distinction between these two attacks (amnesia and back to the past) can 
 
 Currently, the evidence reactor is used to simply broadcast and store evidence. The idea of creating a new reactor for the specific task of verifying these attacks was briefly discussed, but it is decided that the current evidence reactor will be extended.
 
-The process begins with a light client receiving conflicting headers (in the future this could also be a full node during fast sync or state sync), which it sends to a full node to analyze. As part of [evidence handling](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md), this is extracted into potential amnesia evidence when the validator voted in more than one round for a different block.
+The process begins with a light client receiving conflicting headers (in the future this could also be a full node during fast sync or state sync), which it sends to a full node to analyze. As part of [evidence handling](https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-047-handling-evidence-from-light-client.md), this is extracted into potential amnesia evidence when the validator voted in more than one round for a different block.
 
 ```golang
 type PotentialAmnesiaEvidence struct {
@@ -128,7 +128,7 @@ This trial period will be discussed later.
 
 Returning to the event of an amnesia attack, if we were to examine the behavior of the honest nodes, C1 and C2, in the schematic, C2 will not PRECOMMIT an earlier round, but it is likely, if a node in C1 were to receive +2/3 PREVOTE's or PRECOMMIT's for a higher round, that it would remove the lock and PREVOTE and PRECOMMIT for the later round. Therefore, unfortunately it is not a case of simply punishing all nodes that have double voted in the `PotentialAmnesiaEvidence`.
 
-Instead we use the Proof of Lock Change (PoLC) referred to in the [consensus spec](https://github.com/tendermint/tendermint/blob/master/spec/consensus/consensus.md#terms). When an honest node votes again for a different block in a later round
+Instead we use the Proof of Lock Change (PoLC) referred to in the [consensus spec](https://github.com/tendermint/tendermint/blob/main/spec/consensus/consensus.md#terms). When an honest node votes again for a different block in a later round
 (which will only occur in very rare cases), it will generate the PoLC and store it in the evidence reactor for a time equal to the `MaxEvidenceAge`
 
 ```golang

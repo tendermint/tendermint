@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -13,13 +12,14 @@ import (
 	"time"
 
 	"github.com/adlio/schema"
-	"github.com/gogo/protobuf/proto"
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 
 	// Register the Postgres database driver.
@@ -169,8 +169,8 @@ func TestIndexing(t *testing.T) {
 
 			{Type: "", Attributes: []abci.EventAttribute{
 				{
-					Key:   []byte("not_allowed"),
-					Value: []byte("Vlad"),
+					Key:   "not_allowed",
+					Value: "Vlad",
 					Index: true,
 				},
 			}},
@@ -196,6 +196,55 @@ func TestIndexing(t *testing.T) {
 		// try to insert the duplicate tx events.
 		err = indexer.IndexTxEvents([]*abci.TxResult{txResult})
 		require.NoError(t, err)
+	})
+
+	t.Run("IndexerService", func(t *testing.T) {
+		indexer := &EventSink{store: testDB(), chainID: chainID}
+
+		// event bus
+		eventBus := types.NewEventBus()
+		err := eventBus.Start()
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			if err := eventBus.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
+
+		service := txindex.NewIndexerService(indexer.TxIndexer(), indexer.BlockIndexer(), eventBus, true)
+		err = service.Start()
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			if err := service.Stop(); err != nil {
+				t.Error(err)
+			}
+		})
+
+		// publish block with txs
+		err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
+			Header: types.Header{Height: 1},
+			NumTxs: int64(2),
+		})
+		require.NoError(t, err)
+		txResult1 := &abci.TxResult{
+			Height: 1,
+			Index:  uint32(0),
+			Tx:     types.Tx("foo"),
+			Result: abci.ResponseDeliverTx{Code: 0},
+		}
+		err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
+		require.NoError(t, err)
+		txResult2 := &abci.TxResult{
+			Height: 1,
+			Index:  uint32(1),
+			Tx:     types.Tx("bar"),
+			Result: abci.ResponseDeliverTx{Code: 1},
+		}
+		err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
+		require.NoError(t, err)
+
+		time.Sleep(100 * time.Millisecond)
+		require.True(t, service.IsRunning())
 	})
 }
 
@@ -227,7 +276,7 @@ func newTestBlockHeader() types.EventDataNewBlockHeader {
 // readSchema loads the indexing database schema file
 func readSchema() ([]*schema.Migration, error) {
 	const filename = "schema.sql"
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read sql file from '%s': %w", filename, err)
 	}

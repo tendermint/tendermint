@@ -4,14 +4,8 @@ OUTPUT?=$(BUILDDIR)/tendermint
 
 BUILD_TAGS?=tendermint
 
-# If building a release, please checkout the version tag to get the correct version setting
-ifneq ($(shell git symbolic-ref -q --short HEAD),)
-VERSION := unreleased-$(shell git symbolic-ref -q --short HEAD)-$(shell git rev-parse HEAD)
-else
-VERSION := $(shell git describe)
-endif
-
-LD_FLAGS = -X github.com/tendermint/tendermint/version.TMCoreSemVer=$(VERSION)
+COMMIT_HASH := $(shell git rev-parse --short HEAD)
+LD_FLAGS = -X github.com/tendermint/tendermint/version.TMGitCommitHash=$(COMMIT_HASH)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 HTTPS_GIT := https://github.com/tendermint/tendermint.git
 CGO_ENABLED ?= 0
@@ -131,6 +125,20 @@ install:
 	CGO_ENABLED=$(CGO_ENABLED) go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 .PHONY: install
 
+###############################################################################
+###                               Metrics                                   ###
+###############################################################################
+
+metrics: testdata-metrics
+	go generate -run="scripts/metricsgen" ./...
+.PHONY: metrics
+
+# By convention, the go tool ignores subdirectories of directories named
+# 'testdata'. This command invokes the generate command on the folder directly
+# to avoid this.
+testdata-metrics:
+	ls ./scripts/metricsgen/testdata | xargs -I{} go generate -v -run="scripts/metricsgen" ./scripts/metricsgen/testdata/{}
+.PHONY: testdata-metrics
 
 ###############################################################################
 ###                                Mocks                                    ###
@@ -146,7 +154,7 @@ mockery:
 
 check-proto-deps:
 ifeq (,$(shell which protoc-gen-gogofaster))
-	@go install github.com/gogo/protobuf/protoc-gen-gogofaster@latest
+	@go install github.com/cosmos/gogoproto/protoc-gen-gogofaster@latest
 endif
 .PHONY: check-proto-deps
 
@@ -160,6 +168,7 @@ proto-gen: check-proto-deps
 	@echo "Generating Protobuf files"
 	@go run github.com/bufbuild/buf/cmd/buf generate
 	@mv ./proto/tendermint/abci/types.pb.go ./abci/types/
+	@cp ./proto/tendermint/rpc/grpc/types.pb.go ./rpc/grpc
 .PHONY: proto-gen
 
 # These targets are provided for convenience and are intended for local
@@ -262,7 +271,7 @@ format:
 
 lint:
 	@echo "--> Running linter"
-	@golangci-lint run
+	@go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 .PHONY: lint
 
 DESTINATION = ./index.html.md
@@ -271,15 +280,32 @@ DESTINATION = ./index.html.md
 ###                           Documentation                                 ###
 ###############################################################################
 
+DOCS_OUTPUT?=/tmp/tendermint-core-docs
+
+# This builds a docs site for each branch/tag in `./docs/versions` and copies
+# each site to a version prefixed path. The last entry inside the `versions`
+# file will be the default root index.html. Only redirects that are built into
+# the "redirects" folder of each of the branches will be copied out to the root
+# of the build at the end.
 build-docs:
 	@cd docs && \
 	while read -r branch path_prefix; do \
 		(git checkout $${branch} && npm ci && VUEPRESS_BASE="/$${path_prefix}/" npm run build) ; \
-		mkdir -p ~/output/$${path_prefix} ; \
-		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
-		cp ~/output/$${path_prefix}/index.html ~/output ; \
+		mkdir -p $(DOCS_OUTPUT)/$${path_prefix} ; \
+		cp -r .vuepress/dist/* $(DOCS_OUTPUT)/$${path_prefix}/ ; \
+		cp $(DOCS_OUTPUT)/$${path_prefix}/index.html $(DOCS_OUTPUT) ; \
+		cp $(DOCS_OUTPUT)/$${path_prefix}/404.html $(DOCS_OUTPUT) ; \
+		cp -r $(DOCS_OUTPUT)/$${path_prefix}/redirects/* $(DOCS_OUTPUT) || true ; \
 	done < versions ;
 .PHONY: build-docs
+
+# Build and serve the local version of the docs on the current branch from
+# http://0.0.0.0:8080
+serve-docs:
+	@cd docs && \
+		npm ci && \
+		npm run serve
+.PHONY: serve-docs
 
 sync-docs:
 	cd ~/output && \
@@ -374,4 +400,4 @@ $(BUILDDIR)/packages.txt:$(GO_TEST_FILES) $(BUILDDIR)
 split-test-packages:$(BUILDDIR)/packages.txt
 	split -d -n l/$(NUM_SPLIT) $< $<.
 test-group-%:split-test-packages
-	cat $(BUILDDIR)/packages.txt.$* | xargs go test -mod=readonly -timeout=5m -race -coverprofile=$(BUILDDIR)/$*.profile.out
+	cat $(BUILDDIR)/packages.txt.$* | xargs go test -mod=readonly -timeout=15m -race -coverprofile=$(BUILDDIR)/$*.profile.out

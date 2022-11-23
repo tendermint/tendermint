@@ -152,9 +152,10 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	// the first reactor receives three more evidence
 	evList = make([]types.Evidence, 3)
 	for i := 0; i < 3; i++ {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(height-3+int64(i),
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(height-3+int64(i),
 			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, state.ChainID)
-		err := pools[0].AddEvidence(ev)
+		require.NoError(t, err)
+		err = pools[0].AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
 	}
@@ -207,7 +208,10 @@ func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
 	// i.e. broadcastEvidenceRoutine finishes when peer is stopped
 	defer leaktest.CheckTimeout(t, 10*time.Second)()
 
-	p.On("Send", evidence.EvidenceChannel, mock.AnythingOfType("[]uint8")).Return(false)
+	p.On("Send", mock.MatchedBy(func(i interface{}) bool {
+		e, ok := i.(p2p.Envelope)
+		return ok && e.ChannelID == evidence.EvidenceChannel
+	})).Return(false)
 	quitChan := make(<-chan struct{})
 	p.On("Quit").Return(quitChan)
 	ps := peerState{2}
@@ -327,9 +331,10 @@ func _waitForEvidence(
 func sendEvidence(t *testing.T, evpool *evidence.Pool, val types.PrivValidator, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
+		ev, err := types.NewMockDuplicateVoteEvidenceWithValidator(int64(i+1),
 			time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC), val, evidenceChainID)
-		err := evpool.AddEvidence(ev)
+		require.NoError(t, err)
+		err = evpool.AddEvidence(ev)
 		require.NoError(t, err)
 		evList[i] = ev
 	}
@@ -367,7 +372,7 @@ func exampleVote(t byte) *types.Vote {
 	}
 }
 
-// nolint:lll //ignore line length for tests
+//nolint:lll //ignore line length for tests
 func TestEvidenceVectors(t *testing.T) {
 
 	val := &types.Validator{
@@ -377,12 +382,13 @@ func TestEvidenceVectors(t *testing.T) {
 
 	valSet := types.NewValidatorSet([]*types.Validator{val})
 
-	dupl := types.NewDuplicateVoteEvidence(
+	dupl, err := types.NewDuplicateVoteEvidence(
 		exampleVote(1),
 		exampleVote(2),
 		defaultEvidenceTime,
 		valSet,
 	)
+	require.NoError(t, err)
 
 	testCases := []struct {
 		testName     string

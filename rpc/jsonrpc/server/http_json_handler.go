@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"reflect"
 	"sort"
@@ -19,7 +19,7 @@ import (
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			res := types.RPCInvalidRequestError(nil,
 				fmt.Errorf("error reading request body: %w", err),
@@ -55,6 +55,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			requests = []types.RPCRequest{request}
 		}
 
+		// Set the default response cache to true unless
+		// 1. Any RPC request error.
+		// 2. Any RPC request doesn't allow to be cached.
+		// 3. Any RPC request has the height argument and the value is 0 (the default).
+		cache := true
 		for _, request := range requests {
 			request := request
 
@@ -72,11 +77,13 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 					responses,
 					types.RPCInvalidRequestError(request.ID, fmt.Errorf("path %s is invalid", r.URL.Path)),
 				)
+				cache = false
 				continue
 			}
 			rpcFunc, ok := funcMap[request.Method]
-			if !ok || rpcFunc.ws {
+			if !ok || (rpcFunc.ws) {
 				responses = append(responses, types.RPCMethodNotFoundError(request.ID))
+				cache = false
 				continue
 			}
 			ctx := &types.Context{JSONReq: &request, HTTPReq: r}
@@ -88,9 +95,14 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 						responses,
 						types.RPCInvalidParamsError(request.ID, fmt.Errorf("error converting json params to arguments: %w", err)),
 					)
+					cache = false
 					continue
 				}
 				args = append(args, fnArgs...)
+			}
+
+			if cache && !rpcFunc.cacheableWithArgs(args) {
+				cache = false
 			}
 
 			returns := rpcFunc.f.Call(args)
@@ -103,7 +115,13 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		}
 
 		if len(responses) > 0 {
-			if wErr := WriteRPCResponseHTTP(w, responses...); wErr != nil {
+			var wErr error
+			if cache {
+				wErr = WriteCacheableRPCResponseHTTP(w, responses...)
+			} else {
+				wErr = WriteRPCResponseHTTP(w, responses...)
+			}
+			if wErr != nil {
 				logger.Error("failed to write responses", "res", responses, "err", wErr)
 			}
 		}
@@ -128,7 +146,6 @@ func mapParamsToArgs(
 	params map[string]json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
-
 	values := make([]reflect.Value, len(rpcFunc.argNames))
 	for i, argName := range rpcFunc.argNames {
 		argType := rpcFunc.args[i+argsOffset]
@@ -153,7 +170,6 @@ func arrayParamsToArgs(
 	params []json.RawMessage,
 	argsOffset int,
 ) ([]reflect.Value, error) {
-
 	if len(rpcFunc.argNames) != len(params) {
 		return nil, fmt.Errorf("expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
@@ -176,8 +192,9 @@ func arrayParamsToArgs(
 // array.
 //
 // Example:
-//   rpcFunc.args = [rpctypes.Context string]
-//   rpcFunc.argNames = ["arg"]
+//
+//	rpcFunc.args = [rpctypes.Context string]
+//	rpcFunc.argNames = ["arg"]
 func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte) ([]reflect.Value, error) {
 	const argsOffset = 1
 
@@ -237,5 +254,5 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	buf.WriteString("</body></html>")
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
-	w.Write(buf.Bytes()) // nolint: errcheck
+	w.Write(buf.Bytes()) //nolint: errcheck
 }

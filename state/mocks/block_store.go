@@ -4,6 +4,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
+	state "github.com/tendermint/tendermint/state"
 
 	types "github.com/tendermint/tendermint/types"
 )
@@ -22,6 +23,20 @@ func (_m *BlockStore) Base() int64 {
 		r0 = rf()
 	} else {
 		r0 = ret.Get(0).(int64)
+	}
+
+	return r0
+}
+
+// DeleteLatestBlock provides a mock function with given fields:
+func (_m *BlockStore) DeleteLatestBlock() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
 	}
 
 	return r0
@@ -121,6 +136,22 @@ func (_m *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	return r0
 }
 
+// LoadBlockMetaByHash provides a mock function with given fields: hash
+func (_m *BlockStore) LoadBlockMetaByHash(hash []byte) *types.BlockMeta {
+	ret := _m.Called(hash)
+
+	var r0 *types.BlockMeta
+	if rf, ok := ret.Get(0).(func([]byte) *types.BlockMeta); ok {
+		r0 = rf(hash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.BlockMeta)
+		}
+	}
+
+	return r0
+}
+
 // LoadBlockPart provides a mock function with given fields: height, index
 func (_m *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	ret := _m.Called(height, index)
@@ -153,25 +184,32 @@ func (_m *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return r0
 }
 
-// PruneBlocks provides a mock function with given fields: height
-func (_m *BlockStore) PruneBlocks(height int64) (uint64, error) {
-	ret := _m.Called(height)
+// PruneBlocks provides a mock function with given fields: height, _a1
+func (_m *BlockStore) PruneBlocks(height int64, _a1 state.State) (uint64, int64, error) {
+	ret := _m.Called(height, _a1)
 
 	var r0 uint64
-	if rf, ok := ret.Get(0).(func(int64) uint64); ok {
-		r0 = rf(height)
+	if rf, ok := ret.Get(0).(func(int64, state.State) uint64); ok {
+		r0 = rf(height, _a1)
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(int64) error); ok {
-		r1 = rf(height)
+	var r1 int64
+	if rf, ok := ret.Get(1).(func(int64, state.State) int64); ok {
+		r1 = rf(height, _a1)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int64)
 	}
 
-	return r0, r1
+	var r2 error
+	if rf, ok := ret.Get(2).(func(int64, state.State) error); ok {
+		r2 = rf(height, _a1)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // SaveBlock provides a mock function with given fields: block, blockParts, seenCommit

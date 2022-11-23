@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -51,11 +52,22 @@ type Manifest struct {
 	// Options are ed25519 & secp256k1
 	KeyType string `toml:"key_type"`
 
+	// Evidence indicates the amount of evidence that will be injected into the
+	// testnet via the RPC endpoint of a random node. Default is 0
+	Evidence int `toml:"evidence"`
+
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
 	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
 	// builtin will build a complete Tendermint node into the application and
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
+	// TODO: add vote extension and finalize block delay (@cmwaters)
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -64,6 +76,15 @@ type ManifestNode struct {
 	// Defaults to "validator". Full nodes do not get a signing key (a dummy key
 	// is generated), and seed nodes run in seed mode with the PEX reactor enabled.
 	Mode string `toml:"mode"`
+
+	// SyncApp specifies whether this node should use a synchronized application
+	// with an unsynchronized local client. By default this is `false`, meaning
+	// that the node will run an unsynchronized application with a synchronized
+	// local client.
+	//
+	// Only applies to validators and full nodes where their ABCI protocol is
+	// "builtin".
+	SyncApp bool `toml:"sync_app"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
 	Seeds []string `toml:"seeds"`
@@ -88,8 +109,9 @@ type ManifestNode struct {
 	// runner will wait for the network to reach at least this block height.
 	StartAt int64 `toml:"start_at"`
 
-	// FastSync specifies whether to enable the fast sync protocol.
-	FastSync bool `toml:"fast_sync"`
+	// BlockSync specifies the block sync mode: "" (disable), "v0" or "v2".
+	// Defaults to disabled.
+	BlockSync string `toml:"block_sync"`
 
 	// Mempool specifies which version of mempool to use. Either "v0" or "v1"
 	// This defaults to v0.

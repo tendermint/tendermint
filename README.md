@@ -10,12 +10,11 @@
 [![Go version][go-badge]][go-url]
 [![Discord chat][discord-badge]][discord-url]
 [![License][license-badge]][license-url]
-[![tendermint/tendermint][loc-badge]][loc-url]
 [![Sourcegraph][sg-badge]][sg-url]
 
-| Branch | Tests                 | Coverage                                 | Linting             |
-|--------|-----------------------|------------------------------------------|---------------------|
-| main   | ![Tests][tests-badge] | [![codecov][codecov-badge]][codecov-url] | ![Lint][lint-badge] |
+| Branch | Tests                              | Linting                         |
+|--------|------------------------------------|---------------------------------|
+| main   | [![Tests][tests-badge]][tests-url] | [![Lint][lint-badge]][lint-url] |
 
 Tendermint Core is a Byzantine Fault Tolerant (BFT) middleware that takes a
 state transition machine - written in any programming language - and securely
@@ -71,8 +70,8 @@ See the [install instructions](./docs/introduction/install.md).
 ### Quick Start
 
 - [Single node](./docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](./docs/tools/docker-compose.md)
-- [Remote cluster using Terraform and Ansible](./docs/tools/terraform-and-ansible.md)
+- [Local cluster using docker-compose](./docs/networks/docker-compose.md)
+- [Remote cluster using Terraform and Ansible](./docs/networks/terraform-and-ansible.md)
 
 ## Contributing
 
@@ -114,10 +113,15 @@ For more information on upgrading, see [UPGRADING.md](./UPGRADING.md).
 
 ### Supported Versions
 
-Because we are a small core team, we only ship patch updates, including security
-updates, to the most recent minor release and the second-most recent minor
-release. Consequently, we strongly recommend keeping Tendermint up-to-date.
-Upgrading instructions can be found in [UPGRADING.md](./UPGRADING.md).
+Because we are a small core team, we have limited capacity to ship patch
+updates, including security updates. Consequently, we strongly recommend keeping
+Tendermint up-to-date. Upgrading instructions can be found in
+[UPGRADING.md](./UPGRADING.md).
+
+Currently supported versions include:
+
+- v0.34.x
+- v0.37.x (release candidate)
 
 ## Resources
 
@@ -146,7 +150,7 @@ Upgrading instructions can be found in [UPGRADING.md](./UPGRADING.md).
 
 ## Join us!
 
-Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
+Tendermint Core is maintained by [Interchain GmbH](https://interchain.io).
 If you'd like to work full-time on Tendermint Core,
 [we're hiring](https://interchain-gmbh.breezy.hr/)!
 
@@ -155,25 +159,22 @@ Funding for Tendermint Core development comes primarily from the
 Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the
 for-profit entity that also maintains [tendermint.com](https://tendermint.com).
 
-
 [bft]: https://en.wikipedia.org/wiki/Byzantine_fault_tolerance
 [smr]: https://en.wikipedia.org/wiki/State_machine_replication
 [Blockchain]: https://en.wikipedia.org/wiki/Blockchain
-[version-badge]: https://img.shields.io/github/tag/tendermint/tendermint.svg
+[version-badge]: https://img.shields.io/github/v/release/tendermint/tendermint.svg
 [version-url]: https://github.com/tendermint/tendermint/releases/latest
 [api-badge]: https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 [api-url]: https://pkg.go.dev/github.com/tendermint/tendermint
-[go-badge]: https://img.shields.io/badge/go-1.17-blue.svg
+[go-badge]: https://img.shields.io/badge/go-1.18-blue.svg
 [go-url]: https://github.com/moovweb/gvm
 [discord-badge]: https://img.shields.io/discord/669268347736686612.svg
 [discord-url]: https://discord.gg/cosmosnetwork
 [license-badge]: https://img.shields.io/github/license/tendermint/tendermint.svg
 [license-url]: https://github.com/tendermint/tendermint/blob/main/LICENSE
-[loc-badge]: https://tokei.rs/b1/github/tendermint/tendermint?category=lines
-[loc-url]: https://github.com/tendermint/tendermint
 [sg-badge]: https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg
 [sg-url]: https://sourcegraph.com/github.com/tendermint/tendermint?badge
-[tests-badge]: https://github.com/tendermint/tendermint/workflows/Tests/badge.svg?branch=main
-[codecov-badge]: https://codecov.io/gh/tendermint/tendermint/branch/main/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/tendermint/tendermint
-[lint-badge]: https://github.com/tendermint/tendermint/workflows/Lint/badge.svg
+[tests-url]: https://github.com/tendermint/tendermint/actions/workflows/tests.yml
+[tests-badge]: https://github.com/tendermint/tendermint/actions/workflows/tests.yml/badge.svg?branch=main
+[lint-badge]: https://github.com/tendermint/tendermint/actions/workflows/lint.yml/badge.svg
+[lint-url]: https://github.com/tendermint/tendermint/actions/workflows/lint.yml

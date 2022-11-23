@@ -1,22 +1,28 @@
 package merkle
 
 import (
+	"crypto/sha256"
+	"hash"
 	"math/bits"
 )
 
 // HashFromByteSlices computes a Merkle tree where the leaves are the byte slice,
 // in the provided order. It follows RFC-6962.
 func HashFromByteSlices(items [][]byte) []byte {
+	return hashFromByteSlices(sha256.New(), items)
+}
+
+func hashFromByteSlices(sha hash.Hash, items [][]byte) []byte {
 	switch len(items) {
 	case 0:
 		return emptyHash()
 	case 1:
-		return leafHash(items[0])
+		return leafHashOpt(sha, items[0])
 	default:
 		k := getSplitPoint(int64(len(items)))
-		left := HashFromByteSlices(items[:k])
-		right := HashFromByteSlices(items[k:])
-		return innerHash(left, right)
+		left := hashFromByteSlices(sha, items[:k])
+		right := hashFromByteSlices(sha, items[k:])
+		return innerHashOpt(sha, left, right)
 	}
 }
 
@@ -47,10 +53,10 @@ func HashFromByteSlices(items [][]byte) []byte {
 //
 // These preliminary results suggest:
 //
-// 1. The performance of the HashFromByteSlice is pretty good
-// 2. Go has low overhead for recursive functions
-// 3. The performance of the HashFromByteSlice routine is dominated
-//    by the actual hashing of data
+//  1. The performance of the HashFromByteSlice is pretty good
+//  2. Go has low overhead for recursive functions
+//  3. The performance of the HashFromByteSlice routine is dominated
+//     by the actual hashing of data
 //
 // Although this work is in no way exhaustive, point #3 suggests that
 // optimization of this routine would need to take an alternative
@@ -61,7 +67,7 @@ func HashFromByteSlices(items [][]byte) []byte {
 // implementation for so little benefit.
 func HashFromByteSlicesIterative(input [][]byte) []byte {
 	items := make([][]byte, len(input))
-
+	sha := sha256.New()
 	for i, leaf := range input {
 		items[i] = leafHash(leaf)
 	}
@@ -78,7 +84,7 @@ func HashFromByteSlicesIterative(input [][]byte) []byte {
 			wp := 0 // write position
 			for rp < size {
 				if rp+1 < size {
-					items[wp] = innerHash(items[rp], items[rp+1])
+					items[wp] = innerHashOpt(sha, items[rp], items[rp+1])
 					rp += 2
 				} else {
 					items[wp] = items[rp]

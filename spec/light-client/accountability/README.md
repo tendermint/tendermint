@@ -22,7 +22,7 @@ The agreement property says that for a given height, any two correct validators 
 
 However, faulty nodes may forge blocks and try to convince users (light clients) that the blocks had been correctly generated. In addition, Tendermint agreement might be violated in the case where 1/3 or more of the voting power belongs to faulty validators: Two correct validators decide on different blocks. The latter case motivates the term "fork": as Tendermint consensus also agrees on the next validator set, correct validators may have decided on disjoint next validator sets, and the chain branches into two or more partitions (possibly having faulty validators in common) and each branch continues to generate blocks independently of the other.
 
-We say that a fork is a case in which there are two commits for different blocks at the same height of the blockchain. The proplem is to ensure that in those cases we are able to detect faulty validators (and not mistakenly accuse correct validators), and incentivize therefore validators to behave according to the protocol specification.
+We say that a fork is a case in which there are two commits for different blocks at the same height of the blockchain. The problem is to ensure that in those cases we are able to detect faulty validators (and not mistakenly accuse correct validators), and incentivize therefore validators to behave according to the protocol specification.
 
 **Conceptual Limit.** In order to prove misbehavior of a node, we have to show that the behavior deviates from correct behavior with respect to a given algorithm. Thus, an algorithm that detects misbehavior of nodes executing some algorithm *A* must be defined with respect to algorithm *A*. In our case, *A* is Tendermint consensus (+ other protocols in the infrastructure; e.g.,full nodes and the Light Client). If the consensus algorithm is changed/updated/optimized in the future, we have to check whether changes to the accountability algorithm are also required. All the discussions in this document are thus inherently specific to Tendermint consensus and the Light Client specification.
 
@@ -207,7 +207,9 @@ Execution:
 
 *Remark.* In this case, the more than 1/3 of faulty validators do not need to commit an equivocation (F1) as they only vote once per round in the execution.
 
-Detecting faulty validators in the case of such an attack can be done by the fork accountability mechanism described in: <https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing>.
+Detecting faulty validators in the case of such an attack can be done by the fork accountability mechanism described in: 
+<!-- markdown-link-check-disable-next-line -->
+<https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing>.
 
 If a light client is attacked using this attack with 1/3 or more of voting power (and less than 2/3), the attacker cannot change the application state arbitrarily. Rather, the attacker is limited to a state a correct validator finds acceptable: In the execution above, correct validators still find the value acceptable, however, the block the light client trusts deviates from the one on the main chain.
 
@@ -231,7 +233,7 @@ Consequences:
 
 * The validators in F1 will be detectable by the the fork accountability mechanisms.
 * The validators in F2 cannot be detected using this mechanism.
-Only in case they signed something which conflicts with the application this can be used against them. Otherwise they do not do anything incorrect.
+Only in case they signed something which conflicts with the application this can be used against them. Otherwise they do not do anything incorrect. <!-- markdown-link-check-disable-next-line -->
 * This case is not covered by the report <https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing> as it only assumes at most 2/3 of faulty validators.
 
 **Q:** do we need to define a special kind of attack for the case where a validator sign arbitrarily state? It seems that detecting such attack requires a different mechanism that would require as an evidence a sequence of blocks that led to that state. This might be very tricky to implement.

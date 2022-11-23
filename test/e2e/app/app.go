@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -20,7 +21,6 @@ const appVersion = 1
 // Application is an ABCI application for use by end-to-end tests. It is a
 // simple key/value store for strings, storing data in memory and persisting
 // to disk as JSON, taking state sync snapshots if requested.
-
 type Application struct {
 	abci.BaseApplication
 	logger          log.Logger
@@ -70,6 +70,13 @@ type Config struct {
 	//
 	// height <-> pubkey <-> voting power
 	ValidatorUpdates map[string]map[string]uint8 `toml:"validator_update"`
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
+	// TODO: add vote extension and finalize block delays once completed (@cmwaters)
 }
 
 func DefaultConfig(dir string) *Config {
@@ -81,7 +88,7 @@ func DefaultConfig(dir string) *Config {
 }
 
 // NewApplication creates the application.
-func NewApplication(cfg *Config) (*Application, error) {
+func NewApplication(cfg *Config) (abci.Application, error) {
 	state, err := NewState(cfg.Dir, cfg.PersistInterval)
 	if err != nil {
 		return nil, err
@@ -136,6 +143,11 @@ func (app *Application) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
 			Log:  err.Error(),
 		}
 	}
+
+	if app.cfg.CheckTxDelay != 0 {
+		time.Sleep(app.cfg.CheckTxDelay)
+	}
+
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK, GasWanted: 1}
 }
 
@@ -163,12 +175,12 @@ func (app *Application) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock
 				Type: "val_updates",
 				Attributes: []abci.EventAttribute{
 					{
-						Key:   []byte("size"),
-						Value: []byte(strconv.Itoa(valUpdates.Len())),
+						Key:   "size",
+						Value: strconv.Itoa(valUpdates.Len()),
 					},
 					{
-						Key:   []byte("height"),
-						Value: []byte(strconv.Itoa(int(req.Height))),
+						Key:   "height",
+						Value: strconv.Itoa(int(req.Height)),
 					},
 				},
 			},
@@ -255,6 +267,43 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 		app.restoreChunks = nil
 	}
 	return abci.ResponseApplySnapshotChunk{Result: abci.ResponseApplySnapshotChunk_ACCEPT}
+}
+
+func (app *Application) PrepareProposal(
+	req abci.RequestPrepareProposal,
+) abci.ResponsePrepareProposal {
+	txs := make([][]byte, 0, len(req.Txs))
+	var totalBytes int64
+	for _, tx := range req.Txs {
+		totalBytes += int64(len(tx))
+		if totalBytes > req.MaxTxBytes {
+			break
+		}
+		txs = append(txs, tx)
+	}
+
+	if app.cfg.PrepareProposalDelay != 0 {
+		time.Sleep(app.cfg.PrepareProposalDelay)
+	}
+
+	return abci.ResponsePrepareProposal{Txs: txs}
+}
+
+// ProcessProposal implements part of the Application interface.
+// It accepts any proposal that does not contain a malformed transaction.
+func (app *Application) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+	for _, tx := range req.Txs {
+		_, _, err := parseTx(tx)
+		if err != nil {
+			return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_REJECT}
+		}
+	}
+
+	if app.cfg.ProcessProposalDelay != 0 {
+		time.Sleep(app.cfg.ProcessProposalDelay)
+	}
+
+	return abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}
 }
 
 func (app *Application) Rollback() error {

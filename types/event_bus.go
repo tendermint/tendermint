@@ -23,7 +23,7 @@ type EventBusSubscriber interface {
 
 type Subscription interface {
 	Out() <-chan tmpubsub.Message
-	Cancelled() <-chan struct{} // nolint: misspell
+	Cancelled() <-chan struct{} //nolint: misspell
 	Err() error
 }
 
@@ -123,8 +123,8 @@ func (b *EventBus) validateAndStringifyEvents(events []types.Event, logger log.L
 				continue
 			}
 
-			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			result[compositeTag] = append(result[compositeTag], string(attr.Value))
+			compositeTag := fmt.Sprintf("%s.%s", event.Type, attr.Key)
+			result[compositeTag] = append(result[compositeTag], attr.Value)
 		}
 	}
 
@@ -227,7 +227,7 @@ func (b *EventBus) PublishEventValidatorSetUpdates(data EventDataValidatorSetUpd
 	return b.Publish(EventValidatorSetUpdates, data)
 }
 
-//-----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 type NopEventBus struct{}
 
 func (NopEventBus) Subscribe(

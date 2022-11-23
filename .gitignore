@@ -38,6 +38,7 @@ terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
 test/app/grpc_client
+test/loadtime/build
 test/e2e/build
 test/e2e/networks/*/
 test/logs
@@ -51,7 +52,8 @@ proto/spec/**/*.pb.go
 *.aux
 *.bbl
 *.blg
-*.log
 *.pdf
 *.gz
 *.dvi
+# Python virtual environments
+.venv

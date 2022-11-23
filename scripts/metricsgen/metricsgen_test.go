@@ -6,13 +6,13 @@ import (
 	"go/parser"
 	"go/token"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	metricsgen "github.com/tendermint/tendermint/scripts/metricsgen"
 )
 
@@ -38,7 +38,7 @@ func TestSimpleTemplate(t *testing.T) {
 }
 
 func TestFromData(t *testing.T) {
-	infos, err := ioutil.ReadDir(testDataDir)
+	infos, err := os.ReadDir(testDataDir)
 	if err != nil {
 		t.Fatalf("unable to open file %v", err)
 	}
@@ -67,12 +67,12 @@ func TestFromData(t *testing.T) {
 			if _, err := parser.ParseFile(token.NewFileSet(), outFile, nil, parser.AllErrors); err != nil {
 				t.Fatalf("unable to parse generated file %s: %v", outFile, err)
 			}
-			bNew, err := ioutil.ReadFile(outFile)
+			bNew, err := os.ReadFile(outFile)
 			if err != nil {
 				t.Fatalf("unable to read generated file %s: %v", outFile, err)
 			}
 			goldenFile := path.Join(dirName, "metrics.gen.go")
-			bOld, err := ioutil.ReadFile(goldenFile)
+			bOld, err := os.ReadFile(goldenFile)
 			if err != nil {
 				t.Fatalf("unable to read file %s: %v", goldenFile, err)
 			}
