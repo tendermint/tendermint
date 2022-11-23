@@ -755,6 +755,7 @@ OUTER_LOOP:
 		// If peer is lagging by height 1, send LastCommit.
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
 			if ps.PickSendVote(rs.LastCommit) {
+				conR.Metrics.VoteSent.With("type", "precommit").Add(1)
 				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
@@ -768,6 +769,7 @@ OUTER_LOOP:
 			// which contains precommit signatures for prs.Height.
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
 				if ps.PickSendVote(commit) {
+					conR.Metrics.VoteSent.With("type", "precommit").Add(1)
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
@@ -800,6 +802,7 @@ func (conR *Reactor) gossipVotesForHeight(
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
 		if ps.PickSendVote(rs.LastCommit) {
+			conR.Metrics.VoteSent.With("type", "precommit").Add(1)
 			logger.Debug("Picked rs.LastCommit to send")
 			return true
 		}
