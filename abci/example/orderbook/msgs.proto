@@ -1,4 +1,4 @@
-syntax = "proto3";
+€syntax = "proto3";
 
 package orderbook;
 option go_package = "github.com/tendermint/tendermint/abci/example/orderbook";
