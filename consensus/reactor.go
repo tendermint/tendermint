@@ -1172,7 +1172,7 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 				Vote: vote.ToProto(),
 			},
 		}, ps.logger) {
-			ps.conMetrics.VoteSent.With("vote_type", vote.Type.String()).Add(1)
+			ps.conMetrics.VoteSent.With("peer_id", string(ps.peer.ID()), "vote_type", vote.Type.String()).Add(1)
 			ps.SetHasVote(vote)
 			psVotes := ps.getVoteBitArray(votes.GetHeight(), votes.GetRound(), tmproto.SignedMsgType(votes.Type()))
 			ps.conMetrics.PeerVoteCount.With("peer_id", string(ps.peer.ID()), "vote_type", vote.Type.String()).Set(float64(len(psVotes.GetTrueIndices())))

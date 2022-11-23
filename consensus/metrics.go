@@ -268,7 +268,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "vote_sent",
 			Help:      "Number of votes of each type sent.",
-		}, append(labels, "vote_type")).With(labelsAndValues...),
+		}, append(labels, "peer_id", "vote_type")).With(labelsAndValues...),
 		VoteReceived: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
