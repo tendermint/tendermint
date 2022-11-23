@@ -831,24 +831,25 @@ func (conR *Reactor) gossipVotesForHeight(
 		}
 	}
 	/*
-		// If there are prevotes to send...Needed because of validBlock mechanism
-		if prs.Round != -1 && prs.Round <= rs.Round {
-			if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
-				logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-				return true
+			// If there are prevotes to send...Needed because of validBlock mechanism
+			if prs.Round != -1 && prs.Round <= rs.Round {
+				if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
+					logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+					return true
+				}
+			}
+		// If there are POLPrevotes to send...
+		if prs.ProposalPOLRound != -1 {
+			if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+				if ps.PickSendVote(polPrevotes) {
+					logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
+						"round", prs.ProposalPOLRound)
+					return true
+				}
 			}
 		}
+
 	*/
-	// If there are POLPrevotes to send...
-	if prs.ProposalPOLRound != -1 {
-		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if ps.PickSendVote(polPrevotes) {
-				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-					"round", prs.ProposalPOLRound)
-				return true
-			}
-		}
-	}
 
 	return false
 }
