@@ -756,28 +756,30 @@ OUTER_LOOP:
 			}
 		}
 
-		// Special catchup logic.
-		// If peer is lagging by height 1, send LastCommit.
-		if prs.Height != 0 && rs.Height == prs.Height+1 {
-			if ps.PickSendVote(rs.LastCommit) {
-				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
-				continue OUTER_LOOP
-			}
-		}
-
-		// Catchup logic
-		// If peer is lagging by more than 1, send Commit.
-		blockStoreBase := conR.conS.blockStore.Base()
-		if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
-			// Load the block commit for prs.Height,
-			// which contains precommit signatures for prs.Height.
-			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
-				if ps.PickSendVote(commit) {
-					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
+		/*
+			// Special catchup logic.
+			// If peer is lagging by height 1, send LastCommit.
+			if prs.Height != 0 && rs.Height == prs.Height+1 {
+				if ps.PickSendVote(rs.LastCommit) {
+					logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
 			}
-		}
+
+			// Catchup logic
+			// If peer is lagging by more than 1, send Commit.
+			blockStoreBase := conR.conS.blockStore.Base()
+			if blockStoreBase > 0 && prs.Height != 0 && rs.Height >= prs.Height+2 && prs.Height >= blockStoreBase {
+				// Load the block commit for prs.Height,
+				// which contains precommit signatures for prs.Height.
+				if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
+					if ps.PickSendVote(commit) {
+						logger.Debug("Picked Catchup commit to send", "height", prs.Height)
+						continue OUTER_LOOP
+					}
+				}
+			}
+		*/
 
 		if sleeping == 0 {
 			// We sent nothing. Sleep...
