@@ -351,7 +351,7 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 
 			duplicate := ps.SetReceivedVote(msg.Vote)
 			if duplicate {
-				conR.Metrics.DuplicateVoteReceive.With("peer_id", string(e.Src.ID())).Add(1)
+				conR.Metrics.DuplicateVoteReceive.With("peer_id", string(e.Src.ID()), "type", msg.Vote.Type.String()).Add(1)
 			}
 
 			cs.peerMsgQueue <- msgInfo{msg, e.Src.ID()}

@@ -19,6 +19,8 @@ type BitArray struct {
 	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
 }
 
+// New bit array creates a bit array where all of the bits are initially 'false'
+//
 // NewBitArray returns a new bit array.
 // It returns nil if the number of bits is zero.
 func NewBitArray(bits int) *BitArray {
@@ -39,6 +41,8 @@ func (bA *BitArray) Size() int {
 	return bA.Bits
 }
 
+// The bit array represents true as 1 and false as 0
+//
 // GetIndex returns the bit at index i within the bit array.
 // The behavior is undefined if i >= bA.Bits
 func (bA *BitArray) GetIndex(i int) bool {

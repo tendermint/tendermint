@@ -258,7 +258,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "duplicate_vote_receive",
 			Help:      "Number of votes received multiple times from the same peer by peer",
-		}, append(labels, "peer_id")).With(labelsAndValues...),
+		}, append(labels, "peer_id", "type")).With(labelsAndValues...),
 	}
 }
 
