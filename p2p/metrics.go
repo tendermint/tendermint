@@ -41,6 +41,8 @@ type Metrics struct {
 	MessageReceiveBytesTotal metrics.Counter
 	// Number of bytes of each message type sent.
 	MessageSendBytesTotal metrics.Counter
+	MessageSend           metrics.Counter
+	MessageReceive        metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -93,6 +95,18 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "message_send_bytes_total",
 			Help:      "Number of bytes of each message type sent.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
+		MessageSend: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_send",
+			Help:      "Number of messages of each type sent.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
+		MessageReceive: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_receive",
+			Help:      "Number of messages of each type received.",
 		}, append(labels, "message_type")).With(labelsAndValues...),
 	}
 }

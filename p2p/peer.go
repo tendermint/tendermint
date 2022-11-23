@@ -333,6 +333,7 @@ func (p *peer) SendEnvelope(e Envelope) bool {
 	res := p.Send(e.ChannelID, msgBytes)
 	if res {
 		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
+		p.metrics.MessageSend.With("message_type", metricLabelValue).Add(1)
 	}
 	return res
 }
@@ -382,6 +383,7 @@ func (p *peer) TrySendEnvelope(e Envelope) bool {
 	res := p.TrySend(e.ChannelID, msgBytes)
 	if res {
 		p.metrics.MessageSendBytesTotal.With("message_type", metricLabelValue).Add(float64(len(msgBytes)))
+		p.metrics.MessageSend.With("message_type", metricLabelValue).Add(1)
 	}
 	return res
 }
@@ -534,6 +536,7 @@ func createMConnection(
 		}
 		p.metrics.PeerReceiveBytesTotal.With(labels...).Add(float64(len(msgBytes)))
 		p.metrics.MessageReceiveBytesTotal.With("message_type", p.mlc.ValueToMetricLabel(msg)).Add(float64(len(msgBytes)))
+		p.metrics.MessageReceive.With("message_type", p.mlc.ValueToMetricLabel(msg)).Add(1)
 		if nr, ok := reactor.(EnvelopeReceiver); ok {
 			nr.ReceiveEnvelope(Envelope{
 				ChannelID: chID,

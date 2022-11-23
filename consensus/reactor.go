@@ -755,7 +755,6 @@ OUTER_LOOP:
 		// If peer is lagging by height 1, send LastCommit.
 		if prs.Height != 0 && rs.Height == prs.Height+1 {
 			if ps.PickSendVote(rs.LastCommit) {
-				conR.Metrics.VoteSent.With("type", "precommit").Add(1)
 				logger.Debug("Picked rs.LastCommit to send", "height", prs.Height)
 				continue OUTER_LOOP
 			}
@@ -769,7 +768,6 @@ OUTER_LOOP:
 			// which contains precommit signatures for prs.Height.
 			if commit := conR.conS.blockStore.LoadBlockCommit(prs.Height); commit != nil {
 				if ps.PickSendVote(commit) {
-					conR.Metrics.VoteSent.With("type", "precommit").Add(1)
 					logger.Debug("Picked Catchup commit to send", "height", prs.Height)
 					continue OUTER_LOOP
 				}
@@ -802,7 +800,6 @@ func (conR *Reactor) gossipVotesForHeight(
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
 		if ps.PickSendVote(rs.LastCommit) {
-			conR.Metrics.VoteSent.With("type", "precommit").Add(1)
 			logger.Debug("Picked rs.LastCommit to send")
 			return true
 		}
@@ -822,7 +819,6 @@ func (conR *Reactor) gossipVotesForHeight(
 	// If there are prevotes to send...
 	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
 		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
-			conR.Metrics.VoteSent.With("type", "prevote").Add(1)
 			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
 			return true
 		}
@@ -830,7 +826,6 @@ func (conR *Reactor) gossipVotesForHeight(
 	// If there are precommits to send...
 	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
 		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
-			conR.Metrics.VoteSent.With("type", "precommit").Add(1)
 			logger.Debug("Picked rs.Precommits(prs.Round) to send", "round", prs.Round)
 			return true
 		}
