@@ -349,6 +349,11 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
 
+			duplicate := ps.SetReceivedVote(msg.Vote)
+			if duplicate {
+				conR.Metrics.DuplicateVoteReceive.With("peer_id", string(e.Src.ID())).Add(1)
+			}
+
 			cs.peerMsgQueue <- msgInfo{msg, e.Src.ID()}
 
 		default:
@@ -1239,6 +1244,41 @@ func (ps *PeerState) getVoteBitArray(height int64, round int32, votesType tmprot
 	return nil
 }
 
+func (ps *PeerState) getVoteReceivedBitArray(height int64, round int32, votesType tmproto.SignedMsgType) *bits.BitArray {
+	if !types.IsVoteTypeValid(votesType) {
+		return nil
+	}
+
+	if ps.PRS.Height == height {
+		if ps.PRS.Round == round {
+			switch votesType {
+			case tmproto.PrevoteType:
+				return ps.PRS.PrevotesReceived
+			case tmproto.PrecommitType:
+				return ps.PRS.PrecommitsReceived
+			}
+		}
+		if ps.PRS.CatchupCommitRound == round {
+			switch votesType {
+			case tmproto.PrevoteType:
+				return nil
+			case tmproto.PrecommitType:
+				return ps.PRS.CatchupCommit
+			}
+		}
+		if ps.PRS.ProposalPOLRound == round {
+			switch votesType {
+			case tmproto.PrevoteType:
+				return ps.PRS.ProposalPOL
+			case tmproto.PrecommitType:
+				return nil
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
 // 'round': A round for which we have a +2/3 commit.
 func (ps *PeerState) ensureCatchupCommitRound(height int64, round int32, numValidators int) {
 	if ps.PRS.Height != height {
@@ -1285,6 +1325,12 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 		}
 		if ps.PRS.Precommits == nil {
 			ps.PRS.Precommits = bits.NewBitArray(numValidators)
+		}
+		if ps.PRS.PrevotesReceived == nil {
+			ps.PRS.PrevotesReceived = bits.NewBitArray(numValidators)
+		}
+		if ps.PRS.PrecommitsReceived == nil {
+			ps.PRS.PrecommitsReceived = bits.NewBitArray(numValidators)
 		}
 		if ps.PRS.CatchupCommit == nil {
 			ps.PRS.CatchupCommit = bits.NewBitArray(numValidators)
@@ -1345,6 +1391,13 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
+func (ps *PeerState) SetReceivedVote(vote *types.Vote) bool {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	return ps.setReceivedVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
+}
+
 func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) {
 	ps.logger.Debug("setHasVote",
 		"peerH/R",
@@ -1358,6 +1411,15 @@ func (ps *PeerState) setHasVote(height int64, round int32, voteType tmproto.Sign
 	if psVotes != nil {
 		psVotes.SetIndex(int(index), true)
 	}
+}
+func (ps *PeerState) setReceivedVote(height int64, round int32, voteType tmproto.SignedMsgType, index int32) bool {
+	psVotes := ps.getVoteReceivedBitArray(height, round, voteType)
+	var alreadySet bool
+	if psVotes != nil {
+		alreadySet = psVotes.GetIndex(int(index))
+		psVotes.SetIndex(int(index), true)
+	}
+	return alreadySet
 }
 
 // ApplyNewRoundStepMessage updates the peer state for the new round.
