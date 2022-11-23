@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,11 +24,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	"github.com/tendermint/tendermint/p2p/conn"
+	p2pproto "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
-var (
-	cfg *config.P2PConfig
-)
+var cfg *config.P2PConfig
 
 func init() {
 	cfg = config.DefaultP2PConfig()
@@ -36,9 +36,8 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerID  ID
-	Bytes   []byte
-	Counter int
+	Contents proto.Message
+	Counter  int
 }
 
 type TestReactor struct {
@@ -70,14 +69,32 @@ func (tr *TestReactor) AddPeer(peer Peer) {}
 
 func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {}
 
-func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
+func (tr *TestReactor) ReceiveEnvelope(e Envelope) {
 	if tr.logMessages {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
-		// fmt.Printf("Received: %X, %X\n", chID, msgBytes)
-		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.ID(), msgBytes, tr.msgsCounter})
+		// fmt.Printf("Received: %X, %X\n", e.ChannelID, e.Message)
+		tr.msgsReceived[e.ChannelID] = append(tr.msgsReceived[e.ChannelID], PeerMessage{Contents: e.Message, Counter: tr.msgsCounter})
 		tr.msgsCounter++
 	}
+}
+
+func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
+	msg := &p2pproto.Message{}
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
+	um, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+
+	tr.ReceiveEnvelope(Envelope{
+		ChannelID: chID,
+		Src:       peer,
+		Message:   um,
+	})
 }
 
 func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
@@ -99,16 +116,17 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 func initSwitchFunc(i int, sw *Switch) *Switch {
 	sw.SetAddrBook(&AddrBookMock{
 		Addrs:    make(map[string]struct{}),
-		OurAddrs: make(map[string]struct{})})
+		OurAddrs: make(map[string]struct{}),
+	})
 
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
-		{ID: byte(0x00), Priority: 10},
-		{ID: byte(0x01), Priority: 10},
+		{ID: byte(0x00), Priority: 10, MessageType: &p2pproto.Message{}},
+		{ID: byte(0x01), Priority: 10, MessageType: &p2pproto.Message{}},
 	}, true))
 	sw.AddReactor("bar", NewTestReactor([]*conn.ChannelDescriptor{
-		{ID: byte(0x02), Priority: 10},
-		{ID: byte(0x03), Priority: 10},
+		{ID: byte(0x02), Priority: 10, MessageType: &p2pproto.Message{}},
+		{ID: byte(0x03), Priority: 10, MessageType: &p2pproto.Message{}},
 	}, true))
 
 	return sw
@@ -135,31 +153,47 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Lets send some messages
-	ch0Msg := []byte("channel zero")
-	ch1Msg := []byte("channel foo")
-	ch2Msg := []byte("channel bar")
-
-	s1.Broadcast(byte(0x00), ch0Msg)
-	s1.Broadcast(byte(0x01), ch1Msg)
-	s1.Broadcast(byte(0x02), ch2Msg)
-
+	ch0Msg := &p2pproto.PexAddrs{
+		Addrs: []p2pproto.NetAddress{
+			{
+				ID: "1",
+			},
+		},
+	}
+	ch1Msg := &p2pproto.PexAddrs{
+		Addrs: []p2pproto.NetAddress{
+			{
+				ID: "1",
+			},
+		},
+	}
+	ch2Msg := &p2pproto.PexAddrs{
+		Addrs: []p2pproto.NetAddress{
+			{
+				ID: "2",
+			},
+		},
+	}
+	s1.BroadcastEnvelope(Envelope{ChannelID: byte(0x00), Message: ch0Msg})
+	s1.BroadcastEnvelope(Envelope{ChannelID: byte(0x01), Message: ch1Msg})
+	s1.BroadcastEnvelope(Envelope{ChannelID: byte(0x02), Message: ch2Msg})
 	assertMsgReceivedWithTimeout(t,
 		ch0Msg,
 		byte(0x00),
-		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+		s2.Reactor("foo").(*TestReactor), 200*time.Millisecond, 5*time.Second)
 	assertMsgReceivedWithTimeout(t,
 		ch1Msg,
 		byte(0x01),
-		s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+		s2.Reactor("foo").(*TestReactor), 200*time.Millisecond, 5*time.Second)
 	assertMsgReceivedWithTimeout(t,
 		ch2Msg,
 		byte(0x02),
-		s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+		s2.Reactor("bar").(*TestReactor), 200*time.Millisecond, 5*time.Second)
 }
 
 func assertMsgReceivedWithTimeout(
 	t *testing.T,
-	msgBytes []byte,
+	msg proto.Message,
 	channel byte,
 	reactor *TestReactor,
 	checkPeriod,
@@ -170,9 +204,13 @@ func assertMsgReceivedWithTimeout(
 		select {
 		case <-ticker.C:
 			msgs := reactor.getMsgs(channel)
+			expectedBytes, err := proto.Marshal(msgs[0].Contents)
+			require.NoError(t, err)
+			gotBytes, err := proto.Marshal(msg)
+			require.NoError(t, err)
 			if len(msgs) > 0 {
-				if !bytes.Equal(msgs[0].Bytes, msgBytes) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", msgBytes, msgs[0].Bytes)
+				if !bytes.Equal(expectedBytes, gotBytes) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", msg, msgs[0].Counter)
 				}
 				return
 			}
@@ -400,7 +438,7 @@ func TestSwitchStopPeerForError(t *testing.T) {
 		resp, err := http.Get(s.URL)
 		require.NoError(t, err)
 		defer resp.Body.Close()
-		buf, _ := ioutil.ReadAll(resp.Body)
+		buf, _ := io.ReadAll(resp.Body)
 		return string(buf)
 	}
 
@@ -429,7 +467,10 @@ func TestSwitchStopPeerForError(t *testing.T) {
 
 	// send messages to the peer from sw1
 	p := sw1.Peers().List()[0]
-	p.Send(0x1, []byte("here's a message to send"))
+	SendEnvelopeShim(p, Envelope{
+		ChannelID: 0x1,
+		Message:   &p2pproto.Message{},
+	}, sw1.Logger)
 
 	// stop sw2. this should cause the p to fail,
 	// which results in calling StopPeerForError internally
@@ -681,9 +722,11 @@ func (et errorTransport) NetAddress() NetAddress {
 func (et errorTransport) Accept(c peerConfig) (Peer, error) {
 	return nil, et.acceptErr
 }
+
 func (errorTransport) Dial(NetAddress, peerConfig) (Peer, error) {
 	panic("not implemented")
 }
+
 func (errorTransport) Cleanup(Peer) {
 	panic("not implemented")
 }
@@ -824,7 +867,7 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	// Send random message from foo channel to another
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
-		successChan := s1.Broadcast(chID, []byte("test data"))
+		successChan := s1.BroadcastEnvelope(Envelope{ChannelID: chID})
 		for s := range successChan {
 			if s {
 				numSuccess++
@@ -835,4 +878,16 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	}
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
+}
+
+func TestSwitchRemovalErr(t *testing.T) {
+	sw1, sw2 := MakeSwitchPair(t, func(i int, sw *Switch) *Switch {
+		return initSwitchFunc(i, sw)
+	})
+	assert.Equal(t, len(sw1.Peers().List()), 1)
+	p := sw1.Peers().List()[0]
+
+	sw2.StopPeerForError(p, fmt.Errorf("peer should error"))
+
+	assert.Equal(t, sw2.peers.Add(p).Error(), ErrPeerRemoval{}.Error())
 }

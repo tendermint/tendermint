@@ -52,10 +52,6 @@ func (rt *Routine) setLogger(logger log.Logger) {
 	rt.logger = logger
 }
 
-func (rt *Routine) setMetrics(metrics *Metrics) {
-	rt.metrics = metrics
-}
-
 func (rt *Routine) start() {
 	rt.logger.Info("routine start", "msg", log.NewLazySprintf("%s: run", rt.name))
 	running := atomic.CompareAndSwapUint32(rt.running, uint32(0), uint32(1))

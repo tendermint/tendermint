@@ -1,12 +1,13 @@
 package v0_test
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	mempoolv0 "github.com/tendermint/tendermint/test/fuzz/mempool/v0"
 )
 
@@ -25,7 +26,7 @@ func TestMempoolTestdataCases(t *testing.T) {
 			}()
 			f, err := os.Open(filepath.Join(testdataCasesDir, entry.Name()))
 			require.NoError(t, err)
-			input, err := ioutil.ReadAll(f)
+			input, err := io.ReadAll(f)
 			require.NoError(t, err)
 			mempoolv0.Fuzz(input)
 		})

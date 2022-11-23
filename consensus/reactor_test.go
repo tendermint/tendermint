@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -33,6 +34,7 @@ import (
 	mempoolv1 "github.com/tendermint/tendermint/mempool/v1"
 	"github.com/tendermint/tendermint/p2p"
 	p2pmock "github.com/tendermint/tendermint/p2p/mock"
+	tmcons "github.com/tendermint/tendermint/proto/tendermint/consensus"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	sm "github.com/tendermint/tendermint/state"
 	statemocks "github.com/tendermint/tendermint/state/mocks"
@@ -254,7 +256,7 @@ func TestReactorCreatesBlockWhenEmptyBlocksFalse(t *testing.T) {
 	}, css)
 }
 
-func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
+func TestLegacyReactorReceiveBasicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	N := 1
 	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	defer cleanup()
@@ -264,13 +266,45 @@ func TestReactorReceiveDoesNotPanicIfAddPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = p2pmock.NewPeer(nil)
-		msg     = MustEncode(&HasVoteMessage{Height: 1,
-			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	reactor.InitPeer(peer)
 
 	// simulate switch calling Receive before AddPeer
+	assert.NotPanics(t, func() {
+		reactor.ReceiveEnvelope(p2p.Envelope{
+			ChannelID: StateChannel,
+			Src:       peer,
+			Message: &tmcons.HasVote{Height: 1,
+				Round: 1, Index: 1, Type: tmproto.PrevoteType},
+		})
+		reactor.AddPeer(peer)
+	})
+}
+
+func TestLegacyReactorReceiveBasic(t *testing.T) {
+	N := 1
+	css, cleanup := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	defer cleanup()
+	reactors, _, eventBuses := startConsensusNet(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	var (
+		reactor = reactors[0]
+		peer    = p2pmock.NewPeer(nil)
+	)
+
+	reactor.InitPeer(peer)
+	v := &tmcons.HasVote{
+		Height: 1,
+		Round:  1,
+		Index:  1,
+		Type:   tmproto.PrevoteType,
+	}
+	w := v.Wrap()
+	msg, err := proto.Marshal(w)
+	assert.NoError(t, err)
+
 	assert.NotPanics(t, func() {
 		reactor.Receive(StateChannel, peer, msg)
 		reactor.AddPeer(peer)
@@ -287,15 +321,18 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 	var (
 		reactor = reactors[0]
 		peer    = p2pmock.NewPeer(nil)
-		msg     = MustEncode(&HasVoteMessage{Height: 1,
-			Round: 1, Index: 1, Type: tmproto.PrevoteType})
 	)
 
 	// we should call InitPeer here
 
 	// simulate switch calling Receive before AddPeer
 	assert.Panics(t, func() {
-		reactor.Receive(StateChannel, peer, msg)
+		reactor.ReceiveEnvelope(p2p.Envelope{
+			ChannelID: StateChannel,
+			Src:       peer,
+			Message: &tmcons.HasVote{Height: 1,
+				Round: 1, Index: 1, Type: tmproto.PrevoteType},
+		})
 	})
 }
 

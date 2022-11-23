@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"reflect"
 	"runtime/debug"
@@ -350,12 +350,12 @@ func (cs *State) enterPrecommit(height int64, round int32) {
 	} else {
 		defaultEnterPrecommit(cs, height, round)
 	}
-
 }
 
 func (cs *State) addVote(
 	vote *types.Vote,
-	peerID p2p.ID) (added bool, err error) {
+	peerID p2p.ID,
+) (added bool, err error) {
 	cs.Logger.Debug(
 		"addVote",
 		"voteHeight",
@@ -448,9 +448,7 @@ var (
 
 //-----------------------------------------------------------------------------
 
-var (
-	msgQueueSize = 1000
-)
+var msgQueueSize = 1000
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
@@ -732,7 +730,6 @@ func (cs *State) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 
 // SetProposal inputs a proposal.
 func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
-
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&tmcon.ProposalMessage{Proposal: proposal}, ""}
 	} else {
@@ -745,7 +742,6 @@ func (cs *State) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
 
 // AddProposalBlockPart inputs a part of the proposal block.
 func (cs *State) AddProposalBlockPart(height int64, round int32, part *types.Part, peerID p2p.ID) error {
-
 	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&tmcon.BlockPartMessage{Height: height, Round: round, Part: part}, ""}
 	} else {
@@ -1073,7 +1069,6 @@ func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 	default:
 		panic(fmt.Sprintf("Invalid timeout step: %v", ti.Step))
 	}
-
 }
 
 func (cs *State) handleTxsAvailable() {
@@ -1253,7 +1248,6 @@ func (cs *State) isProposalComplete() bool {
 	}
 	// if this is false the proposer is lying or we haven't received the POL yet
 	return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
-
 }
 
 // Create the next block to propose and return it. Returns nil block upon error.
@@ -1716,12 +1710,12 @@ func (cs *State) addProposalBlockPart(msg *tmcon.BlockPartMessage, peerID p2p.ID
 		)
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
-		bz, err := ioutil.ReadAll(cs.ProposalBlockParts.GetReader())
+		bz, err := io.ReadAll(cs.ProposalBlockParts.GetReader())
 		if err != nil {
 			return added, err
 		}
 
-		var pbb = new(tmproto.Block)
+		pbb := new(tmproto.Block)
 		err = proto.Unmarshal(bz, pbb)
 		if err != nil {
 			return added, err
@@ -1853,10 +1847,11 @@ func (cs *State) voteTime() time.Time {
 	now := tmtime.Now()
 	minVoteTime := now
 	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
-	// even if cs.LockedBlock != nil. See https://docs.tendermint.com/master/spec/.
+	// even if cs.LockedBlock != nil. See https://github.com/tendermint/tendermint/tree/v0.34.x/spec/.
 	timeIota := time.Duration(cs.state.ConsensusParams.Block.TimeIotaMs) * time.Millisecond
 	if cs.LockedBlock != nil {
-		// See the BFT time spec https://docs.tendermint.com/master/spec/consensus/bft-time.html
+		// See the BFT time spec
+		// https://github.com/tendermint/tendermint/blob/v0.34.x/spec/consensus/bft-time.md
 		minVoteTime = cs.LockedBlock.Time.Add(timeIota)
 	} else if cs.ProposalBlock != nil {
 		minVoteTime = cs.ProposalBlock.Time.Add(timeIota)

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/libs/log"
@@ -215,7 +217,7 @@ type bcBlockResponse struct {
 	priorityNormal
 	time   time.Time
 	peerID p2p.ID
-	size   int64
+	size   int
 	block  *types.Block
 }
 
@@ -349,9 +351,7 @@ func (r *BlockchainReactor) demux(events <-chan Event) {
 		case <-doProcessBlockCh:
 			r.processor.send(rProcessBlock{})
 		case <-doStatusCh:
-			if err := r.io.broadcastStatusRequest(); err != nil {
-				r.logger.Error("Error broadcasting status request", "err", err)
-			}
+			r.io.broadcastStatusRequest()
 
 		// Events from peers. Closing the channel signals event loop termination.
 		case event, ok := <-events:
@@ -455,39 +455,31 @@ func (r *BlockchainReactor) Stop() error {
 }
 
 // Receive implements Reactor by handling different message types.
-func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := bc.DecodeMsg(msgBytes)
-	if err != nil {
-		r.logger.Error("error decoding message",
-			"src", src.ID(), "chId", chID, "msg", msg, "err", err)
-		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+func (r *BlockchainReactor) ReceiveEnvelope(e p2p.Envelope) {
+	if err := bc.ValidateMsg(e.Message); err != nil {
+		r.logger.Error("peer sent us invalid msg", "peer", e.Src, "msg", e.Message, "err", err)
+		_ = r.reporter.Report(behaviour.BadMessage(e.Src.ID(), err.Error()))
 		return
 	}
 
-	if err = bc.ValidateMsg(msg); err != nil {
-		r.logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		_ = r.reporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
-		return
-	}
+	r.logger.Debug("Receive", "src", e.Src.ID(), "chID", e.ChannelID, "msg", e.Message)
 
-	r.logger.Debug("Receive", "src", src.ID(), "chID", chID, "msg", msg)
-
-	switch msg := msg.(type) {
+	switch msg := e.Message.(type) {
 	case *bcproto.StatusRequest:
-		if err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), src.ID()); err != nil {
-			r.logger.Error("Could not send status message to peer", "src", src)
+		if err := r.io.sendStatusResponse(r.store.Base(), r.store.Height(), e.Src.ID()); err != nil {
+			r.logger.Error("Could not send status message to peer", "src", e.Src)
 		}
 
 	case *bcproto.BlockRequest:
 		block := r.store.LoadBlock(msg.Height)
 		if block != nil {
-			if err = r.io.sendBlockToPeer(block, src.ID()); err != nil {
+			if err := r.io.sendBlockToPeer(block, e.Src.ID()); err != nil {
 				r.logger.Error("Could not send block message to peer: ", err)
 			}
 		} else {
-			r.logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
-			peerID := src.ID()
-			if err = r.io.sendBlockNotFound(msg.Height, peerID); err != nil {
+			r.logger.Info("peer asking for a block we don't have", "src", e.Src, "height", msg.Height)
+			peerID := e.Src.ID()
+			if err := r.io.sendBlockNotFound(msg.Height, peerID); err != nil {
 				r.logger.Error("Couldn't send block not found: ", err)
 			}
 		}
@@ -495,7 +487,7 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case *bcproto.StatusResponse:
 		r.mtx.RLock()
 		if r.events != nil {
-			r.events <- bcStatusResponse{peerID: src.ID(), base: msg.Base, height: msg.Height}
+			r.events <- bcStatusResponse{peerID: e.Src.ID(), base: msg.Base, height: msg.Height}
 		}
 		r.mtx.RUnlock()
 
@@ -508,10 +500,10 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		r.mtx.RLock()
 		if r.events != nil {
 			r.events <- bcBlockResponse{
-				peerID: src.ID(),
+				peerID: e.Src.ID(),
 				block:  bi,
-				size:   int64(len(msgBytes)),
 				time:   time.Now(),
+				size:   msg.Size(),
 			}
 		}
 		r.mtx.RUnlock()
@@ -519,10 +511,27 @@ func (r *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case *bcproto.NoBlockResponse:
 		r.mtx.RLock()
 		if r.events != nil {
-			r.events <- bcNoBlockResponse{peerID: src.ID(), height: msg.Height, time: time.Now()}
+			r.events <- bcNoBlockResponse{peerID: e.Src.ID(), height: msg.Height, time: time.Now()}
 		}
 		r.mtx.RUnlock()
 	}
+}
+
+func (r *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	msg := &bcproto.Message{}
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
+	uw, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+	r.ReceiveEnvelope(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+		Message:   uw,
+	})
 }
 
 // AddPeer implements Reactor interface
@@ -559,6 +568,7 @@ func (r *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: bc.MaxMsgSize,
+			MessageType:         &bcproto.Message{},
 		},
 	}
 }

@@ -74,13 +74,17 @@ func (fp *fuzzPeer) RemoteIP() net.IP { return net.IPv4(0, 0, 0, 0) }
 func (fp *fuzzPeer) RemoteAddr() net.Addr {
 	return &net.TCPAddr{IP: fp.RemoteIP(), Port: 98991, Zone: ""}
 }
-func (fp *fuzzPeer) IsOutbound() bool                  { return false }
-func (fp *fuzzPeer) IsPersistent() bool                { return false }
-func (fp *fuzzPeer) CloseConn() error                  { return nil }
-func (fp *fuzzPeer) NodeInfo() p2p.NodeInfo            { return defaultNodeInfo }
-func (fp *fuzzPeer) Status() p2p.ConnectionStatus      { var cs p2p.ConnectionStatus; return cs }
-func (fp *fuzzPeer) SocketAddr() *p2p.NetAddress       { return p2p.NewNetAddress(fp.ID(), fp.RemoteAddr()) }
-func (fp *fuzzPeer) Send(byte, []byte) bool            { return true }
-func (fp *fuzzPeer) TrySend(byte, []byte) bool         { return true }
-func (fp *fuzzPeer) Set(key string, value interface{}) { fp.m[key] = value }
-func (fp *fuzzPeer) Get(key string) interface{}        { return fp.m[key] }
+func (fp *fuzzPeer) IsOutbound() bool                    { return false }
+func (fp *fuzzPeer) IsPersistent() bool                  { return false }
+func (fp *fuzzPeer) CloseConn() error                    { return nil }
+func (fp *fuzzPeer) NodeInfo() p2p.NodeInfo              { return defaultNodeInfo }
+func (fp *fuzzPeer) Status() p2p.ConnectionStatus        { var cs p2p.ConnectionStatus; return cs }
+func (fp *fuzzPeer) SocketAddr() *p2p.NetAddress         { return p2p.NewNetAddress(fp.ID(), fp.RemoteAddr()) }
+func (fp *fuzzPeer) SendEnvelope(e p2p.Envelope) bool    { return true }
+func (fp *fuzzPeer) TrySendEnvelope(e p2p.Envelope) bool { return true }
+func (fp *fuzzPeer) Send(byte, []byte) bool              { return true }
+func (fp *fuzzPeer) TrySend(byte, []byte) bool           { return true }
+func (fp *fuzzPeer) Set(key string, value interface{})   { fp.m[key] = value }
+func (fp *fuzzPeer) Get(key string) interface{}          { return fp.m[key] }
+func (fp *fuzzPeer) SetRemovalFailed()                   {}
+func (fp *fuzzPeer) GetRemovalFailed() bool              { return false }

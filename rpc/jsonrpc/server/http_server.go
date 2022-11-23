@@ -104,7 +104,7 @@ func WriteRPCResponseHTTPError(
 		panic("tried to write http error response without RPC error")
 	}
 
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
+	jsonBytes, err := json.Marshal(res)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
@@ -117,6 +117,22 @@ func WriteRPCResponseHTTPError(
 
 // WriteRPCResponseHTTP marshals res as JSON (with indent) and writes it to w.
 func WriteRPCResponseHTTP(w http.ResponseWriter, res ...types.RPCResponse) error {
+	return writeRPCResponseHTTP(w, []httpHeader{}, res...)
+}
+
+// WriteCacheableRPCResponseHTTP marshals res as JSON (with indent) and writes
+// it to w. Adds cache-control to the response header and sets the expiry to
+// one day.
+func WriteCacheableRPCResponseHTTP(w http.ResponseWriter, res ...types.RPCResponse) error {
+	return writeRPCResponseHTTP(w, []httpHeader{{"Cache-Control", "public, max-age=86400"}}, res...)
+}
+
+type httpHeader struct {
+	name  string
+	value string
+}
+
+func writeRPCResponseHTTP(w http.ResponseWriter, headers []httpHeader, res ...types.RPCResponse) error {
 	var v interface{}
 	if len(res) == 1 {
 		v = res[0]
@@ -124,11 +140,14 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res ...types.RPCResponse) error
 		v = res
 	}
 
-	jsonBytes, err := json.MarshalIndent(v, "", "  ")
+	jsonBytes, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
+	for _, header := range headers {
+		w.Header().Set(header.name, header.value)
+	}
 	w.WriteHeader(200)
 	_, err = w.Write(jsonBytes)
 	return err
@@ -166,7 +185,6 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 			// Without this, Chrome & Firefox were retrying aborted ajax requests,
 			// at least to my localhost.
 			if e := recover(); e != nil {
-
 				// If RPCResponse
 				if res, ok := e.(types.RPCResponse); ok {
 					if wErr := WriteRPCResponseHTTP(rww, res); wErr != nil {

@@ -53,6 +53,20 @@ func (_m *Peer) Get(_a0 string) interface{} {
 	return r0
 }
 
+// GetRemovalFailed provides a mock function with given fields:
+func (_m *Peer) GetRemovalFailed() bool {
+	ret := _m.Called()
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // ID provides a mock function with given fields:
 func (_m *Peer) ID() p2p.ID {
 	ret := _m.Called()
@@ -102,6 +116,34 @@ func (_m *Peer) IsRunning() bool {
 	var r0 bool
 	if rf, ok := ret.Get(0).(func() bool); ok {
 		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// SendEnvelope provides a mock function with given fields: _a0
+func (_m *Peer) SendEnvelope(_a0 p2p.Envelope) bool {
+	ret := _m.Called(_a0)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(p2p.Envelope) bool); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// TrySendEnvelope provides a mock function with given fields: _a0
+func (_m *Peer) TrySendEnvelope(_a0 p2p.Envelope) bool {
+	ret := _m.Called(_a0)
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(p2p.Envelope) bool); ok {
+		r0 = rf(_a0)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -242,6 +284,11 @@ func (_m *Peer) Set(_a0 string, _a1 interface{}) {
 // SetLogger provides a mock function with given fields: _a0
 func (_m *Peer) SetLogger(_a0 log.Logger) {
 	_m.Called(_a0)
+}
+
+// SetRemovalFailed provides a mock function with given fields:
+func (_m *Peer) SetRemovalFailed() {
+	_m.Called()
 }
 
 // SocketAddr provides a mock function with given fields:

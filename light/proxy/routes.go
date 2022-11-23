@@ -21,20 +21,20 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"health":               rpcserver.NewRPCFunc(makeHealthFunc(c), ""),
 		"status":               rpcserver.NewRPCFunc(makeStatusFunc(c), ""),
 		"net_info":             rpcserver.NewRPCFunc(makeNetInfoFunc(c), ""),
-		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight"),
-		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), ""),
-		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), ""),
-		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height"),
-		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash"),
-		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height"),
-		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height"),
-		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove"),
+		"blockchain":           rpcserver.NewRPCFunc(makeBlockchainInfoFunc(c), "minHeight,maxHeight", rpcserver.Cacheable()),
+		"genesis":              rpcserver.NewRPCFunc(makeGenesisFunc(c), "", rpcserver.Cacheable()),
+		"genesis_chunked":      rpcserver.NewRPCFunc(makeGenesisChunkedFunc(c), "", rpcserver.Cacheable()),
+		"block":                rpcserver.NewRPCFunc(makeBlockFunc(c), "height", rpcserver.Cacheable("height")),
+		"block_by_hash":        rpcserver.NewRPCFunc(makeBlockByHashFunc(c), "hash", rpcserver.Cacheable()),
+		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", rpcserver.Cacheable("height")),
+		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height", rpcserver.Cacheable("height")),
+		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove", rpcserver.Cacheable()),
 		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
 		"block_search":         rpcserver.NewRPCFunc(makeBlockSearchFunc(c), "query,page,per_page,order_by"),
-		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page"),
+		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page", rpcserver.Cacheable("height")),
 		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
 		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), ""),
-		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height"),
+		"consensus_params":     rpcserver.NewRPCFunc(makeConsensusParamsFunc(c), "height", rpcserver.Cacheable("height")),
 		"unconfirmed_txs":      rpcserver.NewRPCFunc(makeUnconfirmedTxsFunc(c), "limit"),
 		"num_unconfirmed_txs":  rpcserver.NewRPCFunc(makeNumUnconfirmedTxsFunc(c), ""),
 
@@ -45,7 +45,7 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 
 		// abci API
 		"abci_query": rpcserver.NewRPCFunc(makeABCIQueryFunc(c), "path,data,height,prove"),
-		"abci_info":  rpcserver.NewRPCFunc(makeABCIInfoFunc(c), ""),
+		"abci_info":  rpcserver.NewRPCFunc(makeABCIInfoFunc(c), "", rpcserver.Cacheable()),
 
 		// evidence API
 		"broadcast_evidence": rpcserver.NewRPCFunc(makeBroadcastEvidenceFunc(c), "evidence"),
@@ -62,7 +62,7 @@ func makeHealthFunc(c *lrpc.Client) rpcHealthFunc {
 
 type rpcStatusFunc func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error)
 
-//nolint: interfacer
+//nolint:interfacer
 func makeStatusFunc(c *lrpc.Client) rpcStatusFunc {
 	return func(ctx *rpctypes.Context) (*ctypes.ResultStatus, error) {
 		return c.Status(ctx.Context())
@@ -259,8 +259,8 @@ type rpcABCIQueryFunc func(ctx *rpctypes.Context, path string,
 
 func makeABCIQueryFunc(c *lrpc.Client) rpcABCIQueryFunc {
 	return func(ctx *rpctypes.Context, path string, data bytes.HexBytes,
-		height int64, prove bool) (*ctypes.ResultABCIQuery, error) {
-
+		height int64, prove bool,
+	) (*ctypes.ResultABCIQuery, error) {
 		return c.ABCIQueryWithOptions(ctx.Context(), path, data, rpcclient.ABCIQueryOptions{
 			Height: height,
 			Prove:  prove,
@@ -278,7 +278,7 @@ func makeABCIInfoFunc(c *lrpc.Client) rpcABCIInfoFunc {
 
 type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error)
 
-//nolint: interfacer
+//nolint:interfacer
 func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
 	return func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 		return c.BroadcastEvidence(ctx.Context(), ev)

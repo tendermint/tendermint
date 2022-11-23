@@ -171,7 +171,7 @@ The default value is `-1`, meaning no limit, or that the concept of gas is
 meaningless.
 
 Responses contain a `GasWanted` and `GasUsed` field. The former is the maximum
-amount of gas the sender of a tx is willing to use, and the later is how much it actually
+amount of gas the sender of a tx is willing to use, and the latter is how much it actually
 used. Applications should enforce that `GasUsed <= GasWanted` - ie. tx execution
 should halt before it can use more resources than it requested.
 

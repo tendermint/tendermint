@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
@@ -134,6 +136,7 @@ func (memR *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			ID:                  mempool.MempoolChannel,
 			Priority:            5,
 			RecvMessageCapacity: batchMsg.Size(),
+			MessageType:         &protomem.Message{},
 		},
 	}
 }
@@ -154,30 +157,54 @@ func (memR *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
-func (memR *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := memR.decodeMsg(msgBytes)
-	if err != nil {
-		memR.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		memR.Switch.StopPeerForError(src, err)
-		return
-	}
-	memR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
-
-	txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(src)}
-	if src != nil {
-		txInfo.SenderP2PID = src.ID()
-	}
-
-	for _, tx := range msg.Txs {
-		err = memR.mempool.CheckTx(tx, nil, txInfo)
-		if errors.Is(err, mempool.ErrTxInCache) {
-			memR.Logger.Debug("Tx already exists in cache", "tx", tx.String())
-		} else if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", tx.String(), "err", err)
+func (memR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
+	memR.Logger.Debug("Receive", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
+	switch msg := e.Message.(type) {
+	case *protomem.Txs:
+		protoTxs := msg.GetTxs()
+		if len(protoTxs) == 0 {
+			memR.Logger.Error("received empty txs from peer", "src", e.Src)
+			return
 		}
+		txInfo := mempool.TxInfo{SenderID: memR.ids.GetForPeer(e.Src)}
+		if e.Src != nil {
+			txInfo.SenderP2PID = e.Src.ID()
+		}
+
+		var err error
+		for _, tx := range protoTxs {
+			ntx := types.Tx(tx)
+			err = memR.mempool.CheckTx(ntx, nil, txInfo)
+			if errors.Is(err, mempool.ErrTxInCache) {
+				memR.Logger.Debug("Tx already exists in cache", "tx", ntx.String())
+			} else if err != nil {
+				memR.Logger.Info("Could not check tx", "tx", ntx.String(), "err", err)
+			}
+		}
+	default:
+		memR.Logger.Error("unknown message type", "src", e.Src, "chId", e.ChannelID, "msg", e.Message)
+		memR.Switch.StopPeerForError(e.Src, fmt.Errorf("mempool cannot handle message of type: %T", e.Message))
+		return
 	}
 
 	// broadcasting happens from go routines per peer
+}
+
+func (memR *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	msg := &protomem.Message{}
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
+	uw, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+	memR.ReceiveEnvelope(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+		Message:   uw,
+	})
 }
 
 // PeerState describes the state of a peer.
@@ -234,18 +261,10 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 		// https://github.com/tendermint/tendermint/issues/5796
 
 		if _, ok := memTx.senders.Load(peerID); !ok {
-			msg := protomem.Message{
-				Sum: &protomem.Message_Txs{
-					Txs: &protomem.Txs{Txs: [][]byte{memTx.tx}},
-				},
-			}
-
-			bz, err := msg.Marshal()
-			if err != nil {
-				panic(err)
-			}
-
-			success := peer.Send(mempool.MempoolChannel, bz)
+			success := p2p.SendEnvelopeShim(peer, p2p.Envelope{ //nolint: staticcheck
+				ChannelID: mempool.MempoolChannel,
+				Message:   &protomem.Txs{Txs: [][]byte{memTx.tx}},
+			}, memR.Logger)
 			if !success {
 				time.Sleep(mempool.PeerCatchupSleepIntervalMS * time.Millisecond)
 				continue
@@ -262,35 +281,6 @@ func (memR *Reactor) broadcastTxRoutine(peer p2p.Peer) {
 			return
 		}
 	}
-}
-
-func (memR *Reactor) decodeMsg(bz []byte) (TxsMessage, error) {
-	msg := protomem.Message{}
-	err := msg.Unmarshal(bz)
-	if err != nil {
-		return TxsMessage{}, err
-	}
-
-	var message TxsMessage
-
-	if i, ok := msg.Sum.(*protomem.Message_Txs); ok {
-		txs := i.Txs.GetTxs()
-
-		if len(txs) == 0 {
-			return message, errors.New("empty TxsMessage")
-		}
-
-		decoded := make([]types.Tx, len(txs))
-		for j, tx := range txs {
-			decoded[j] = types.Tx(tx)
-		}
-
-		message = TxsMessage{
-			Txs: decoded,
-		}
-		return message, nil
-	}
-	return message, fmt.Errorf("msg type: %T is not supported", msg)
 }
 
 // TxsMessage is a Message containing transactions.
