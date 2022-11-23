@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/orderedcode"
 	dbm "github.com/tendermint/tm-db"
@@ -25,7 +24,8 @@ var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
 // events with an underlying KV store. Block events are indexed by their height,
 // such that matching search criteria returns the respective block height(s).
 type BlockerIndexer struct {
-	store dbm.DB
+	store     dbm.DB
+	numEvents int64
 }
 
 func New(store dbm.DB) *BlockerIndexer {
@@ -113,7 +113,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 		return results, nil
 	}
-
+	matchEvents := lookForMatchEvent(conditions)
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
 
@@ -133,7 +133,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 			}
 
 			if !heightsInitialized {
-				filteredHeights, err = idx.matchRange(ctx, qr, prefix, filteredHeights, true)
+				filteredHeights, err = idx.matchRange(ctx, qr, prefix, filteredHeights, true, matchEvents)
 				if err != nil {
 					return nil, err
 				}
@@ -146,7 +146,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 					break
 				}
 			} else {
-				filteredHeights, err = idx.matchRange(ctx, qr, prefix, filteredHeights, false)
+				filteredHeights, err = idx.matchRange(ctx, qr, prefix, filteredHeights, false, matchEvents)
 				if err != nil {
 					return nil, err
 				}
@@ -166,7 +166,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 		}
 
 		if !heightsInitialized {
-			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, true)
+			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, true, matchEvents)
 			if err != nil {
 				return nil, err
 			}
@@ -179,7 +179,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 				break
 			}
 		} else {
-			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, false)
+			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, false, matchEvents)
 			if err != nil {
 				return nil, err
 			}
@@ -224,6 +224,7 @@ func (idx *BlockerIndexer) matchRange(
 	startKey []byte,
 	filteredHeights map[string][]byte,
 	firstRun bool,
+	matchEvents bool,
 ) (map[string][]byte, error) {
 
 	// A previous match was attempted but resulted in no matches, so we return
@@ -275,7 +276,13 @@ LOOP:
 			}
 
 			if include {
-				tmpHeights[string(it.Value())] = it.Value()
+				if matchEvents {
+					eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
+					retVal := it.Value()
+					tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
+				} else {
+					tmpHeights[string(it.Value())] = it.Value()
+				}
 			}
 		}
 
@@ -304,8 +311,9 @@ LOOP:
 
 	// Remove/reduce matches in filteredHashes that were not found in this
 	// match (tmpHashes).
-	for k := range filteredHeights {
-		if tmpHeights[k] == nil {
+	for k, v := range filteredHeights {
+		tmpHeight := tmpHeights[k]
+		if (tmpHeight != nil && !bytes.Equal(tmpHeights[k], v)) || tmpHeight == nil {
 			delete(filteredHeights, k)
 
 			select {
@@ -332,6 +340,7 @@ func (idx *BlockerIndexer) match(
 	startKeyBz []byte,
 	filteredHeights map[string][]byte,
 	firstRun bool,
+	matchEvents bool,
 ) (map[string][]byte, error) {
 
 	// A previous match was attempted but resulted in no matches, so we return
@@ -351,9 +360,13 @@ func (idx *BlockerIndexer) match(
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
-			eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
-			retVal := it.Value()
-			tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
+			if matchEvents {
+				eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
+				retVal := it.Value()
+				tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
+			} else {
+				tmpHeights[string(it.Value())] = it.Value()
+			}
 
 			if err := ctx.Err(); err != nil {
 				break
@@ -377,7 +390,13 @@ func (idx *BlockerIndexer) match(
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
-			tmpHeights[string(it.Value())] = it.Value()
+			if matchEvents {
+				eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
+				retVal := it.Value()
+				tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
+			} else {
+				tmpHeights[string(it.Value())] = it.Value()
+			}
 
 			select {
 			case <-ctx.Done():
@@ -410,7 +429,13 @@ func (idx *BlockerIndexer) match(
 			}
 
 			if strings.Contains(eventValue, c.Operand.(string)) {
-				tmpHeights[string(it.Value())] = it.Value()
+				if matchEvents {
+					eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
+					retVal := it.Value()
+					tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
+				} else {
+					tmpHeights[string(it.Value())] = it.Value()
+				}
 			}
 
 			select {
@@ -464,7 +489,7 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 	for _, event := range events {
 		// Add unique event identifier to use when querying
 		// Matching will be done both on height AND eventSeq
-		numEvent := time.Now().UnixNano()
+		idx.numEvents = idx.numEvents + 1
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
 			continue
@@ -482,7 +507,7 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 			}
 
 			if attr.GetIndex() {
-				key, err := eventKey(compositeKey, typ, string(attr.Value), height, numEvent)
+				key, err := eventKey(compositeKey, typ, string(attr.Value), height, idx.numEvents)
 				if err != nil {
 					return fmt.Errorf("failed to create block index key: %w", err)
 				}

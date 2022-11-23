@@ -116,3 +116,12 @@ func lookForHeight(conditions []query.Condition) (int64, bool) {
 
 	return 0, false
 }
+
+func lookForMatchEvent(conditions []query.Condition) bool {
+	for _, c := range conditions {
+		if c.CompositeKey == types.MatchEventKey {
+			return true
+		}
+	}
+	return false
+}

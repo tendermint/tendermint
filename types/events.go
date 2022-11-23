@@ -140,6 +140,11 @@ const (
 	// BlockHeightKey is a reserved key used for indexing BeginBlock and Endblock
 	// events.
 	BlockHeightKey = "block.height"
+
+	// MatchEventsKey is a reserved key used to indicate to the indexer that the
+	// conditions in the query have to have occured both on the same height
+	// as well as in the same event
+	MatchEventKey = "match.event"
 )
 
 var (
