@@ -91,6 +91,8 @@ type Metrics struct {
 	// timestamp and the timestamp of the latest prevote in a round where 100%
 	// of the voting power on the network issued prevotes.
 	FullPrevoteMessageDelay metrics.Gauge
+
+	DuplicateVoteReceive metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -251,6 +253,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Help: "Difference in seconds between the proposal timestamp and the timestamp " +
 				"of the latest prevote that achieved 100% of the voting power in the prevote step.",
 		}, labels).With(labelsAndValues...),
+		DuplicateVoteReceive: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "duplicate_vote_receive",
+			Help:      "Number of votes received multiple times from the same peer by peer",
+		}, append(labels, "peer_id")).With(labelsAndValues...),
 	}
 }
 
@@ -286,6 +294,7 @@ func NopMetrics() *Metrics {
 		BlockGossipPartsReceived:  discard.NewCounter(),
 		QuorumPrevoteMessageDelay: discard.NewGauge(),
 		FullPrevoteMessageDelay:   discard.NewGauge(),
+		DuplicateVoteReceive:      discard.NewCounter(),
 	}
 }
 
