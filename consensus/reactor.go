@@ -806,23 +806,24 @@ func (conR *Reactor) gossipVotesForHeight(
 
 	// If there are lastCommits to send...
 
-	/*
-		if prs.Step == cstypes.RoundStepNewHeight {
-			if ps.PickSendVote(rs.LastCommit) {
-				logger.Debug("Picked rs.LastCommit to send")
-				return true
-			}
+	if prs.Step == cstypes.RoundStepNewHeight && prs.Height == rs.Height {
+		if ps.PickSendVote(rs.LastCommit) {
+			logger.Debug("Picked rs.LastCommit to send")
+			return true
 		}
-			// If there are POL prevotes to send...
-			if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
-				if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-					if ps.PickSendVote(polPrevotes) {
-						logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-							"round", prs.ProposalPOLRound)
-						return true
-					}
+	}
+
+	/*
+		// If there are POL prevotes to send...
+		if prs.Step <= cstypes.RoundStepPropose && prs.Round != -1 && prs.Round <= rs.Round && prs.ProposalPOLRound != -1 {
+			if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+				if ps.PickSendVote(polPrevotes) {
+					logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
+						"round", prs.ProposalPOLRound)
+					return true
 				}
 			}
+		}
 	*/
 	// If there are prevotes to send...
 	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
