@@ -278,8 +278,8 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		PeerVoteCount: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "vote_received",
-			Help:      "Number of votes of each type received.",
+			Name:      "peer_vote_count",
+			Help:      "Number of votes each peer is believed to have.",
 		}, append(labels, "peer_id", "vote_type")).With(labelsAndValues...),
 	}
 }
