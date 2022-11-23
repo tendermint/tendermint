@@ -280,7 +280,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_vote_count",
 			Help:      "Number of votes each peer is believed to have.",
-		}, append(labels, "peer_id", "vote_type")).With(labelsAndValues...),
+		}, append(labels, "peer_id", "vote_count_type")).With(labelsAndValues...),
 	}
 }
 
