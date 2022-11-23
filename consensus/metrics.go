@@ -93,6 +93,8 @@ type Metrics struct {
 	FullPrevoteMessageDelay metrics.Gauge
 
 	DuplicateVoteReceive metrics.Counter
+
+	VoteSent metrics.Counter
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -259,6 +261,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "duplicate_vote_receive",
 			Help:      "Number of votes received multiple times from the same peer by peer",
 		}, append(labels, "peer_id", "type")).With(labelsAndValues...),
+		VoteSent: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "vote_sent",
+			Help:      "Number of votes sent by type",
+		}, append(labels, "type")).With(labelsAndValues...),
 	}
 }
 
@@ -295,6 +303,7 @@ func NopMetrics() *Metrics {
 		QuorumPrevoteMessageDelay: discard.NewGauge(),
 		FullPrevoteMessageDelay:   discard.NewGauge(),
 		DuplicateVoteReceive:      discard.NewCounter(),
+		VoteSent:                  discard.NewCounter(),
 	}
 }
 
