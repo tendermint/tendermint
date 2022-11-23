@@ -234,7 +234,7 @@ func (conR *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	}
 
 	if m, ok := e.Message.(*consensus.Vote); ok {
-		conR.Metrics.VoteReceived.With("vote_type", m.Vote.Type.String()).Add(1)
+		conR.Metrics.VoteReceived.With("peer_id", string(e.Src.ID()), "vote_type", m.Vote.Type.String()).Add(1)
 	}
 	m := e.Message
 	if wm, ok := m.(p2p.Wrapper); ok {
