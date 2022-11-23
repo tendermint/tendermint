@@ -817,14 +817,12 @@ func (conR *Reactor) gossipVotesForHeight(
 		}
 	*/
 	// If there are prevotes to send...
-	/*
-		if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
-			if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
-				logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
-				return true
-			}
+	if prs.Step <= cstypes.RoundStepPrevoteWait && prs.Round != -1 && prs.Round <= rs.Round {
+		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
+			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
+			return true
 		}
-	*/
+	}
 	// If there are precommits to send...
 	if prs.Step <= cstypes.RoundStepPrecommitWait && prs.Round != -1 && prs.Round <= rs.Round {
 		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
