@@ -15,7 +15,7 @@ the block itself is never stored.
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
 details on `Events`, see the
-[ABCI](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/abci.md#events)
+[ABCI](https://github.com/tendermint/spec/blob/v0.34.x/spec/abci/abci.md#events)
 documentation.
 
 An `Event` has a composite key associated with it. A `compositeKey` is
@@ -33,6 +33,9 @@ would be equal to the composite key of `jack.account.number`.
 
 By default, Tendermint will index all transactions by their respective hashes
 and height and blocks by their height.
+
+Tendermint allows for different events within the same height to have 
+equal attributes.
 
 ## Configuration
 
@@ -66,6 +69,56 @@ underlying Tendermint database. Using the `kv` indexer type allows you to query
 for block and transaction events directly against Tendermint's RPC. However, the
 query syntax is limited and so this indexer type might be deprecated or removed
 entirely in the future.
+
+**Implementation and data layout**
+
+The kv indexer stores each attribute of an event individually, by creating a composite key 
+of the *event type*, *attribute key*, *attribute value*, *height* and *event sequence*. 
+
+For example the following events:
+ 
+```
+Type: "transfer",
+  Attributes: []abci.EventAttribute{
+   {Key: []byte("sender"), Value: []byte("Bob"), Index: true},
+   {Key: []byte("recipient"), Value: []byte("Alice"), Index: true},
+   {Key: []byte("balance"), Value: []byte("100"), Index: true},
+   {Key: []byte("note"), Value: []byte("nothing"), Index: true},
+   },
+ 
+```
+ 
+```
+Type: "transfer",
+  Attributes: []abci.EventAttribute{
+   {Key: []byte("sender"), Value: []byte("Tom"), Index: true},
+   {Key: []byte("recipient"), Value: []byte("Alice"), Index: true},
+   {Key: []byte("balance"), Value: []byte("200"), Index: true},
+   {Key: []byte("note"), Value: []byte("nothing"), Index: true},
+   },
+```
+
+will be represented as follows in the store: 
+
+```
+Key                                 value
+transferSenderBobEndBlock1           1
+transferRecepientAliceEndBlock11     1
+transferBalance100EndBlock11         1
+transferNodeNothingEndblock11        1
+---- event2 ------
+transferSenderTomEndBlock12          1
+transferRecepientAliceEndBlock12     1
+transferBalance200EndBlock12         1
+transferNodeNothingEndblock12        1
+ 
+```
+The key is thus formed of the event type, the attribute key and value, the event the attribute belongs to (`EndBlock` or `BeginBlock`),
+the height and the event number. The event number is a local variable kept by the indexer and incremented when a new event is processed. 
+
+It is a `int64` variable and has no other semantics besides being used to associate attributes belonging to the same events within a height. 
+This variable is not atomically incremented as event indexing is deterministic. **Should this ever change**, the event id generation
+will be broken. 
 
 #### PostgreSQL
 
@@ -176,6 +229,27 @@ You can query for a paginated set of blocks by their events by calling the
 ```bash
 curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
 ```
+
+### `match.events` keyword 
+
+The query results in the height number(s) where events whose attributes match the query conditions reside. 
+However, there are two option to query the block index. To demonstrate the two modes, we reuse the two events
+where Bob and Tom send money to Alice. We issue the following query:
+
+```bash
+curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\""
+```
+
+The result will return height 1 even though the attributes matching the conditions in the query 
+occured in different events. 
+
+If we wish to retrieve only heights where the attributes occured within the same event,
+the query syntax is as follows:
+
+```bash
+curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200 AND match.events = 1\""
+```
+
 
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#/Info/block_search)
 for more information on query syntax and other options.

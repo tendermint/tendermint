@@ -96,7 +96,7 @@ string pairs denoting metadata about what happened during the method's execution
 `Event` values can be used to index transactions and blocks according to what happened
 during their execution. Note that the set of events returned for a block from
 `BeginBlock` and `EndBlock` are merged. In case both methods return the same
-key, only the value defined in `EndBlock` is used.
+key and value combination, only the value defined in `EndBlock` is used.
 
 Each event has a `type` which is meant to categorize the event for a particular
 `Response*` or `Tx`. A `Response*` or `Tx` may contain multiple events with duplicate
