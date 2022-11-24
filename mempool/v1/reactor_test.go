@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,6 +53,10 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
 			}
+			sw := r.Switch
+			for _, peer := range sw.Peers().List() {
+				sw.StopPeerGracefully(peer)
+			}
 		}
 	}()
 	for _, r := range reactors {
@@ -67,6 +72,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	}
 
 	waitForTxsOnReactors(t, transactions, reactors)
+	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestMempoolVectors(t *testing.T) {

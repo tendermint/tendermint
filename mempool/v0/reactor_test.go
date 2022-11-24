@@ -54,6 +54,10 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
 			}
+			sw := r.Switch
+			for _, peer := range sw.Peers().List() {
+				sw.StopPeerGracefully(peer)
+			}
 		}
 	}()
 	for _, r := range reactors {
@@ -64,6 +68,8 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 
 	txs := checkTxs(t, reactors[0].mempool, numTxs, mempool.UnknownPeerID)
 	waitForTxsOnReactors(t, txs, reactors)
+
+	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 // regression test for https://github.com/tendermint/tendermint/issues/5408
@@ -75,6 +81,10 @@ func TestReactorConcurrency(t *testing.T) {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
+			}
+			sw := r.Switch
+			for _, peer := range sw.Peers().List() {
+				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -124,6 +134,7 @@ func TestReactorConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 // Send a bunch of txs to the first reactor's mempool, claiming it came from peer
@@ -137,6 +148,11 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
 			}
+
+			sw := r.Switch
+			for _, peer := range sw.Peers().List() {
+				sw.StopPeerGracefully(peer)
+			}
 		}
 	}()
 	for _, r := range reactors {
@@ -148,6 +164,8 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	const peerID = 1
 	checkTxs(t, reactors[0].mempool, numTxs, peerID)
 	ensureNoTxs(t, reactors[peerID], 100*time.Millisecond)
+
+	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestReactor_MaxTxBytes(t *testing.T) {
@@ -159,6 +177,11 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
+			}
+
+			sw := r.Switch
+			for _, peer := range sw.Peers().List() {
+				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -183,6 +206,8 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
 	err = reactors[0].mempool.CheckTx(tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.Error(t, err)
+
+	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
@@ -197,6 +222,11 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
+			}
+
+			sw := r.Switch
+			for _, peer := range sw.Peers().List() {
+				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -284,6 +314,11 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
 			}
+
+			sw := r.Switch
+			for _, peer := range sw.Peers().List() {
+				sw.StopPeerGracefully(peer)
+			}
 		}
 	}()
 	reactor := reactors[0]
@@ -298,6 +333,8 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		)
 		reactor.AddPeer(peer)
 	}
+
+	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 // mempoolLogger is a TestingLogger which uses a different
