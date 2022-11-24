@@ -17,6 +17,7 @@ that each plays a role in making sure that validators can produce blocks. These 
 - Protocol logic (controlling the local state of the protocols and deciding what messages to send to others, e.g., the rules we find in the arXiv paper)
 
 - Communication. Message exchange with other nodes (Gossip)
+> perhaps we should clarify nomenclature: the Consensus gossip service actually is not implemented by a gossip algorithm but a peer-to-peer system
 
 Tendermint (as many classic BFT algorithms) have an all-to-all communication pattern (e.g., every validator sends a `precommit` to every other validator). Naive implementations, e.g., maintaining a channel between each of the *N* validators is not scaling to the system sizes of typical Cosmos blockchains (e.g., N = 200 validator nodes + seed nodes + sentry nodes + other full nodes). There is the fundamental necessity to restrict the communication.
 
@@ -130,7 +131,7 @@ The p2p layer, specified here, manages the connections of a Tendermint node with
     > Even if at every time *t* we satisfy Point 1, if the overlays at times *t* and *t+1* are totally different, it might be hard to implement decent communication on top of it. E.g., Consensus gossip requires a neighbor to know its neighbors *k* state so that it can send the message to *k* that help *k* to advance. If *k* is connected only one second per hour, this is not feasible.
 3. Openness. It is always the case that new nodes can be added to the system
     > Assuming 1. and 2. holds, this means, there must always be nodes that are willing to add connections to new peers.
-
+4. Self-healing. The overlay network recovers swiftly from node crashes, partitions, unstable periods, etc. 
 
 
 ## Sequential Problem statement
@@ -163,10 +164,24 @@ general question (is it likely? do we care)
 
 ## Computational Model
 
-TODO: partially synchronous systems?
+TODO: 
+- partially synchronous systems?
+- nodes maintain  long-term persistent identity (public key)
+- nodes interact by exchanging messages via encrypted point-to-point communication channels (connections?)
+- deployment flexibility: deployment among multiple administrative domains; administrators may decide whether to expose nodes to the public network; not completely connected
 
 ## Distributed Problem Statement
 
+TODO
+- peer discovery
+    - seed nodes
+    - persistent peers (provided by operator; configuration?)
+    - peer exchange protocol
+- address book
+- establishin and managing connections
+
+TODO: notation
+- connection vs. channel
 
 ### Design choices
 
