@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // Unmarshal unmarshals JSON into the given value, using Amino-compatible JSON encoding (strings
@@ -108,7 +110,7 @@ func decodeReflectList(bz []byte, rv reflect.Value) error {
 	case reflect.Uint8:
 		if rv.Type().Kind() == reflect.Array {
 			var buf []byte
-			if err := json.Unmarshal(bz, &buf); err != nil {
+			if err := jsoniter.Unmarshal(bz, &buf); err != nil {
 				return err
 			}
 			if len(buf) != rv.Len() {
@@ -122,8 +124,8 @@ func decodeReflectList(bz []byte, rv reflect.Value) error {
 
 	// Decode anything else into a raw JSON slice, and decode values recursively.
 	default:
-		var rawSlice []json.RawMessage
-		if err := json.Unmarshal(bz, &rawSlice); err != nil {
+		var rawSlice []jsoniter.RawMessage
+		if err := jsoniter.Unmarshal(bz, &rawSlice); err != nil {
 			return err
 		}
 		if rv.Type().Kind() == reflect.Slice {
@@ -153,8 +155,8 @@ func decodeReflectMap(bz []byte, rv reflect.Value) error {
 	}
 
 	// Decode into a raw JSON map, using string keys.
-	rawMap := make(map[string]json.RawMessage)
-	if err := json.Unmarshal(bz, &rawMap); err != nil {
+	rawMap := make(map[string]jsoniter.RawMessage)
+	if err := jsoniter.Unmarshal(bz, &rawMap); err != nil {
 		return err
 	}
 	if rv.Type().Key().Kind() != reflect.String {
@@ -180,8 +182,8 @@ func decodeReflectStruct(bz []byte, rv reflect.Value) error {
 	sInfo := makeStructInfo(rv.Type())
 
 	// Decode raw JSON values into a string-keyed map.
-	rawMap := make(map[string]json.RawMessage)
-	if err := json.Unmarshal(bz, &rawMap); err != nil {
+	rawMap := make(map[string]jsoniter.RawMessage)
+	if err := jsoniter.Unmarshal(bz, &rawMap); err != nil {
 		return err
 	}
 	for i, fInfo := range sInfo.fields {
@@ -208,7 +210,7 @@ func decodeReflectInterface(bz []byte, rv reflect.Value) error {
 
 	// Decode the interface wrapper.
 	wrapper := interfaceWrapper{}
-	if err := json.Unmarshal(bz, &wrapper); err != nil {
+	if err := jsoniter.Unmarshal(bz, &wrapper); err != nil {
 		return err
 	}
 	if wrapper.Type == "" {
@@ -265,7 +267,7 @@ func decodeStdlib(bz []byte, rv reflect.Value) error {
 	if rv.Kind() != reflect.Ptr {
 		target = reflect.New(rv.Type())
 	}
-	if err := json.Unmarshal(bz, target.Interface()); err != nil {
+	if err := jsoniter.Unmarshal(bz, target.Interface()); err != nil {
 		return err
 	}
 	rv.Set(target.Elem())
@@ -273,6 +275,6 @@ func decodeStdlib(bz []byte, rv reflect.Value) error {
 }
 
 type interfaceWrapper struct {
-	Type  string          `json:"type"`
-	Value json.RawMessage `json:"value"`
+	Type  string              `json:"type"`
+	Value jsoniter.RawMessage `json:"value"`
 }

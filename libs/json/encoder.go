@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strconv"
 	"time"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 var (
@@ -240,7 +242,7 @@ func encodeReflectInterface(w io.Writer, rv reflect.Value) error {
 func encodeStdlib(w io.Writer, v interface{}) error {
 	// Doesn't stream the output because that adds a newline, as per:
 	// https://golang.org/pkg/encoding/json/#Encoder.Encode
-	blob, err := json.Marshal(v)
+	blob, err := jsoniter.Marshal(v)
 	if err != nil {
 		return err
 	}

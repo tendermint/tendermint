@@ -49,6 +49,7 @@ require (
 	github.com/cosmos/gogoproto v1.4.3
 	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/google/uuid v1.3.0
+	github.com/json-iterator/go v1.1.12
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220708102147-0a8a51822cae
 	github.com/vektra/mockery/v2 v2.15.0
 	gonum.org/v1/gonum v0.12.0
@@ -181,6 +182,8 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/buildkit v0.10.4 // indirect
 	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/moricho/tparallel v0.2.1 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/nakabonne/nestif v0.3.1 // indirect
