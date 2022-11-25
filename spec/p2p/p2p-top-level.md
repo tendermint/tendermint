@@ -125,7 +125,7 @@ TODO:
 
 
 The p2p layer, specified here, manages the connections of a Tendermint node with other Tendermint nodes. It continuously provides a list of peers ensuring
-1. Connectivity. The overlay network induced by the local neighborhoods (defined by the lists of peers) is sufficiently connected so that the reactors can implement communication on top of it that is sufficient for their needs
+1. Connectivity. The overlay network induced by the correct nodes in the local neighborhoods (defined by the lists of peers) is sufficiently connected to the remainder of the network so that the reactors can implement communication on top of it that is sufficient for their needs
     > There is the design decision that the same overlay is used by all reactors. It seems that consensus has the strongest requirements regarding connectivity and this defines the required properties
 2. Stability. Typically, connections between correct peers should be stable
     > Even if at every time *t* we satisfy Point 1, if the overlays at times *t* and *t+1* are totally different, it might be hard to implement decent communication on top of it. E.g., Consensus gossip requires a neighbor to know its neighbors *k* state so that it can send the message to *k* that help *k* to advance. If *k* is connected only one second per hour, this is not feasible.
