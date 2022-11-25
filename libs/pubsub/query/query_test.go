@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/pubsub/query"

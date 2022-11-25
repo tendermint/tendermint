@@ -32,9 +32,9 @@ require (
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tendermint/tm-db v0.6.6
-	golang.org/x/crypto v0.2.0
+	golang.org/x/crypto v0.3.0
 	golang.org/x/net v0.2.0
-	google.golang.org/grpc v1.50.1
+	google.golang.org/grpc v1.51.0
 )
 
 require (
@@ -44,9 +44,9 @@ require (
 )
 
 require (
-	github.com/btcsuite/btcd/btcec/v2 v2.3.1
-	github.com/btcsuite/btcd/btcutil v1.1.2
-	github.com/cosmos/gogoproto v1.4.2
+	github.com/btcsuite/btcd/btcec/v2 v2.3.2
+	github.com/btcsuite/btcd/btcutil v1.1.3
+	github.com/cosmos/gogoproto v1.4.3
 	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220708102147-0a8a51822cae
