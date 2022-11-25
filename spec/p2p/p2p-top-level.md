@@ -21,7 +21,7 @@ that each plays a role in making sure that validators can produce blocks. These 
 
 Tendermint (as many classic BFT algorithms) have an all-to-all communication pattern (e.g., every validator sends a `precommit` to every other full node). Naive implementations, e.g., maintaining a channel between each of the *N* validators is not scaling to the system sizes of typical Cosmos blockchains (e.g., N = 200 validator nodes + seed nodes + sentry nodes + other full nodes). There is the fundamental necessity to restrict the communication. There is another explicit requirement which is called "deployment flexibility", which means that we do not want to impose a completely-connected network (also for safety concerns).
 
-The design decision is to use an overlay network. Instead of having *N* connections, each node only maintains a relatively small number (bounded by constants, say 10 to 50). In principle, this allows to implement more efficient communication (e.g., gossiping), provided that with this small number of connections per node, the system as a whole stays connected. This overlay network 
+The design decision is to use an overlay network. Instead of having *N* connections, each node only maintains a relatively small number. In principle, this allows to implement more efficient communication (e.g., gossiping), provided that with this small number of connections per node, the system as a whole stays connected. This overlay network 
 is established by the **peer-to-peer system (p2p)**, which is composed of the p2p layers of the participating nodes that locally decide with which peers a node keeps connections.
 
 
