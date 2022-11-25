@@ -73,16 +73,11 @@ func parseValueFromEventKey(key []byte) (string, error) {
 	var (
 		compositeKey, typ, eventValue string
 		height                        int64
-		eventSeq                      int64
 	)
 
-	remaining, err := orderedcode.Parse(string(key), &compositeKey, &eventValue, &height, &typ, &eventSeq)
+	_, err := orderedcode.Parse(string(key), &compositeKey, &eventValue, &height, &typ)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse event key: %w", err)
-	}
-
-	if len(remaining) != 0 {
-		return "", fmt.Errorf("unexpected remainder in key: %s", remaining)
 	}
 
 	return eventValue, nil
@@ -95,13 +90,18 @@ func parseEventSeqFromEventKey(key []byte) (int64, error) {
 		eventSeq                      int64
 	)
 
-	remaining, err := orderedcode.Parse(string(key), &compositeKey, &eventValue, &height, &typ, &eventSeq)
+	remaining, err := orderedcode.Parse(string(key), &compositeKey, &eventValue, &height, &typ)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse event key: %w", err)
 	}
 
+	// This is done to support previous versions that did not have event sequence in their key
+
 	if len(remaining) != 0 {
-		return 0, fmt.Errorf("unexpected remainder in key: %s", remaining)
+		remaining, err = orderedcode.Parse(remaining, &eventSeq)
+		if err != nil || len(remaining) != 0 {
+			return 0, fmt.Errorf("unexpected remainder in key: %s", remaining)
+		}
 	}
 
 	return eventSeq, nil
@@ -117,11 +117,11 @@ func lookForHeight(conditions []query.Condition) (int64, bool) {
 	return 0, false
 }
 
-func lookForMatchEvent(conditions []query.Condition) bool {
-	for _, c := range conditions {
+func lookForMatchEvent(conditions []query.Condition) (bool, int) {
+	for i, c := range conditions {
 		if c.CompositeKey == types.MatchEventKey {
-			return true
+			return true, i
 		}
 	}
-	return false
+	return false, -1
 }

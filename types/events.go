@@ -144,7 +144,7 @@ const (
 	// MatchEventsKey is a reserved key used to indicate to the indexer that the
 	// conditions in the query have to have occurred both on the same height
 	// as well as in the same event
-	MatchEventKey = "match.event"
+	MatchEventKey = "match.events"
 )
 
 var (

@@ -119,7 +119,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// Check whether we want to return heights where the conditions are true
 	// within the same event or it does not matter
-	matchEvents := lookForMatchEvent(conditions)
+	matchEvents, matchEventIdx := lookForMatchEvent(conditions)
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
 
@@ -162,7 +162,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// for all other conditions
 	for i, c := range conditions {
-		if intInSlice(i, skipIndexes) {
+		if intInSlice(i, skipIndexes) || (matchEventIdx != -1 && i == matchEventIdx) {
 			continue
 		}
 
