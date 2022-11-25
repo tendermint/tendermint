@@ -132,6 +132,8 @@ func New(db dbm.DB) (*StateMachine, error) {
 		lastHeight:  int64(lastHeight),
 		lastHash:    lastHash,
 		db:          db,
+		touchedAccounts: make(map[uint64]struct{}),
+		newPairs: make([]*Pair, 0),
 	}, nil
 }
 
@@ -276,10 +278,14 @@ func (sm *StateMachine) PrepareProposal(req types.RequestPrepareProposal) types.
 			continue
 		}
 
+		fmt.Println("we have a tradeset")
+
 		tradeSet = sm.validateTradeSetAgainstState(tradeSet)
 		if tradeSet == nil || len(tradeSet.MatchedOrders) == 0 {
 			continue
 		}
+
+		fmt.Println("we have a valid tradeset")
 
 		// wrap this as a message typ
 		msgTradeSet := &MsgTradeSet{TradeSet: tradeSet}
@@ -311,6 +317,7 @@ func (sm *StateMachine) ProcessProposal(req types.RequestProcessProposal) types.
 		}
 
 		if status := sm.ValidateTx(msg); status != StatusOK {
+			fmt.Printf("tx failed validation, status: %d\n", status)
 			return rejectProposal()
 		}
 	}
@@ -349,11 +356,11 @@ func (sm *StateMachine) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 
 	case *Msg_MsgCreateAccount:
 		nextAccountID := uint64(len(sm.accounts))
-		sm.accounts[nextAccountID] = &Account{
+		sm.accounts = append(sm.accounts, &Account{
 			Index:       nextAccountID,
 			PublicKey:   m.MsgCreateAccount.PublicKey,
 			Commodities: m.MsgCreateAccount.Commodities,
-		}
+		})
 		sm.touchedAccounts[nextAccountID] = struct{}{}
 		sm.publicKeys[string(m.MsgCreateAccount.PublicKey)] = struct{}{}
 
@@ -452,7 +459,7 @@ func (sm *StateMachine) hash() []byte {
 func (sm *StateMachine) updateState(batch dbm.Batch, height int64, hash []byte) error {
 	sm.lastHash = hash
 	sm.lastHeight = height
-	var heightBytes []byte
+	heightBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(heightBytes, uint64(height))
 	return batch.Set(stateKey, append(heightBytes, hash...))
 }

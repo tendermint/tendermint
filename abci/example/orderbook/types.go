@@ -167,8 +167,8 @@ func (o *OrderBid) DeterministicSignatureBytes(pair *Pair) []byte {
 	buf.WriteString(pair.SellersDenomination)
 	buf.WriteString(pair.BuyersDenomination)
 	bz := buf.Bytes()
-	binary.BigEndian.PutUint64(bz, math.Float64bits(o.MaxQuantity))
-	binary.BigEndian.PutUint64(bz, math.Float64bits(o.MaxPrice))
+	bz = binary.BigEndian.AppendUint64(bz, math.Float64bits(o.MaxQuantity))
+	bz = binary.BigEndian.AppendUint64(bz, math.Float64bits(o.MaxPrice))
 	return bz
 }
 
@@ -227,9 +227,13 @@ func (o *OrderAsk) DeterministicSignatureBytes(pair *Pair) []byte {
 	buf.WriteString(pair.BuyersDenomination)
 	buf.WriteString(pair.SellersDenomination)
 	bz := buf.Bytes()
-	binary.BigEndian.PutUint64(bz, math.Float64bits(o.Quantity))
-	binary.BigEndian.PutUint64(bz, math.Float64bits(o.AskPrice))
+	bz = binary.BigEndian.AppendUint64(bz, math.Float64bits(o.Quantity))
+	bz = binary.BigEndian.AppendUint64(bz, math.Float64bits(o.AskPrice))
 	return bz
+}
+
+func (a Account) IsEmpty() bool {
+	return len(a.PublicKey) == 0
 }
 
 func (a *Account) FindCommidity(denom string) *Commodity {

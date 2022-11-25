@@ -47,15 +47,20 @@ func NewCLI() *CLI {
 			
 			viper.AddConfigPath(filepath.Join(root, "config"))
 			viper.SetConfigName("config")
-
-			if err := viper.ReadInConfig(); err != nil {
-				// return err
-			}
-
+			
 			config := cfg.DefaultConfig()
 
-			if err := viper.Unmarshal(config); err != nil {
-				return err
+			if err := viper.ReadInConfig(); err != nil {
+				if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+					// Config file not found; use default
+					// This often happens when initializing a config for the first time
+				} else {
+					return err
+				}
+			} else {
+				if err := viper.Unmarshal(config); err != nil {
+					return err
+				}
 			}
 
 			config.SetRoot(root)
