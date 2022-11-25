@@ -387,7 +387,7 @@ func (txmp *TxMempool) Update(
 ) error {
 	// Safety check: Transactions and responses must match in number.
 	if len(blockTxs) != len(txResults) {
-		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
+		panic(fmt.Sprintf("mempool: got %d transactions but %d TxResult responses",
 			len(blockTxs), len(txResults)))
 	}
 
@@ -693,7 +693,9 @@ func (txmp *TxMempool) recheckTransactions() {
 				return nil
 			})
 		}
-		_ = txmp.proxyAppConn.Flush(context.TODO())
+		// In <v0.37 we would call FlushAsync at the end of recheckTx forcing the buffer to flush
+		// all pending messages to the app. There doesn't seem to be any need here as the buffer
+		// will get flushed regularly or when filled.
 
 		// When recheck is complete, trigger a notification for more transactions.
 		_ = g.Wait()

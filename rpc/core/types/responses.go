@@ -181,7 +181,7 @@ type ResultBroadcastTx struct {
 	Hash bytes.HexBytes `json:"hash"`
 }
 
-// CheckTx and DeliverTx results
+// CheckTx and ExecTx results
 type ResultBroadcastTxCommit struct {
 	CheckTx  abci.ResponseCheckTx `json:"check_tx"`
 	TxResult abci.ExecTxResult    `json:"tx_result"`

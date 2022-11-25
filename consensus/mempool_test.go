@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"os"
 	"testing"
@@ -119,7 +118,7 @@ func deliverTxsRange(t *testing.T, cs *State, start, end int) {
 func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	blockDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardFinalizeBlockResponses: false})
+	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardABCIResponses: false})
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], kvstore.NewInMemoryApplication(), blockDB)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
@@ -144,19 +143,20 @@ func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	app := kvstore.NewInMemoryApplication()
 	blockDB := dbm.NewMemDB()
-	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardFinalizeBlockResponses: false})
+	stateStore := sm.NewStore(blockDB, sm.StoreOptions{DiscardABCIResponses: false})
 	cs := newStateWithConfigAndBlockStore(config, state, privVals[0], app, blockDB)
 	err := stateStore.Save(state)
 	require.NoError(t, err)
 
 	// increment the counter by 1
-	txBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(txBytes, uint64(0))
-
-	res, err := app.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: [][]byte{kvstore.NewTx("key", "value")}})
+	txBytes := kvstore.NewTx("key", "value")
+	res, err := app.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	require.NoError(t, err)
 	assert.False(t, res.TxResults[0].IsErr())
 	assert.True(t, len(res.AgreedAppData) > 0)
+
+	_, err = app.Commit(context.Background(), &abci.RequestCommit{})
+	require.NoError(t, err)
 
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})
@@ -164,9 +164,10 @@ func TestMempoolRmBadTx(t *testing.T) {
 		// Try to send the tx through the mempool.
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
-		err := assertMempool(cs.txNotifier).CheckTx(txBytes, func(r *abci.ResponseCheckTx) {
+		invalidTx := []byte("invalidTx")
+		err := assertMempool(cs.txNotifier).CheckTx(invalidTx, func(r *abci.ResponseCheckTx) {
 			if r.Code != kvstore.CodeTypeInvalidTxFormat {
-				t.Errorf("expected checktx to return bad nonce, got %v", r)
+				t.Errorf("expected checktx to return invalid format, got %v", r)
 				return
 			}
 			checkTxRespCh <- struct{}{}
@@ -178,7 +179,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 		// check for the tx
 		for {
-			txs := assertMempool(cs.txNotifier).ReapMaxBytesMaxGas(int64(len(txBytes)), -1)
+			txs := assertMempool(cs.txNotifier).ReapMaxBytesMaxGas(int64(len(invalidTx)), -1)
 			if len(txs) == 0 {
 				emptyMempoolCh <- struct{}{}
 				return

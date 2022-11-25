@@ -664,9 +664,9 @@ func (mem *CListMempool) recheckTxs() {
 		}
 	}
 
-	if err := mem.proxyAppConn.Flush(context.TODO()); err != nil {
-		mem.logger.Error("recheckTx flush", err, "err")
-	}
+	// In <v0.37 we would call FlushAsync at the end of recheckTx forcing the buffer to flush
+	// all pending messages to the app. There doesn't seem to be any need here as the buffer
+	// will get flushed regularly or when filled.
 }
 
 //--------------------------------------------------------------------------------

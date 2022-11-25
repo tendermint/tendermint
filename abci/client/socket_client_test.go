@@ -3,6 +3,8 @@ package abcicli_test
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -33,12 +35,90 @@ func TestCalls(t *testing.T) {
 	}()
 
 	select {
-	case <-time.After(1 * time.Second):
+	case <-time.After(time.Second):
 		require.Fail(t, "No response arrived")
 	case err, ok := <-resp:
 		require.True(t, ok, "Must not close channel")
 		assert.NoError(t, err, "This should return success")
 	}
+}
+
+func TestHangingAsyncCalls(t *testing.T) {
+	app := slowApp{}
+
+	s, c := setupClientServer(t, app)
+
+	resp := make(chan error, 1)
+	go func() {
+		// Call CheckTx
+		reqres, err := c.CheckTxAsync(context.Background(), &types.RequestCheckTx{})
+		require.NoError(t, err)
+		// wait 50 ms for all events to travel socket, but
+		// no response yet from server
+		time.Sleep(50 * time.Millisecond)
+		// kill the server, so the connections break
+		err = s.Stop()
+		require.NoError(t, err)
+
+		// wait for the response from CheckTx
+		reqres.Wait()
+		resp <- c.Error()
+	}()
+
+	select {
+	case <-time.After(time.Second):
+		require.Fail(t, "No response arrived")
+	case err, ok := <-resp:
+		require.True(t, ok, "Must not close channel")
+		assert.Error(t, err, "We should get EOF error")
+	}
+}
+
+func TestBulk(t *testing.T) {
+	const numTxs = 700000
+	// use a socket instead of a port
+	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
+	defer os.Remove(socketFile)
+	socket := fmt.Sprintf("unix://%v", socketFile)
+	app := types.NewBaseApplication()
+	// Start the listener
+	server := server.NewSocketServer(socket, app)
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+	err := server.Start()
+	require.NoError(t, err)
+
+	// Connect to the socket
+	client := abcicli.NewSocketClient(socket, false)
+
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+
+	err = client.Start()
+	require.NoError(t, err)
+
+	// Construct request
+	rfb := &types.RequestFinalizeBlock{Txs: make([][]byte, numTxs)}
+	for counter := 0; counter < numTxs; counter++ {
+		rfb.Txs[counter] = []byte("test")
+	}
+	// Send bulk request
+	res, err := client.FinalizeBlock(context.Background(), rfb)
+	require.NoError(t, err)
+	require.Equal(t, numTxs, len(res.TxResults), "Number of txs doesn't match")
+	for _, tx := range res.TxResults {
+		require.Equal(t, uint32(0), tx.Code, "Tx failed")
+	}
+
+	// Send final flush message
+	err = client.Flush(context.Background())
+	require.NoError(t, err)
 }
 
 func setupClientServer(t *testing.T, app types.Application) (
@@ -55,7 +135,7 @@ func setupClientServer(t *testing.T, app types.Application) (
 
 	t.Cleanup(func() {
 		if err := s.Stop(); err != nil {
-			t.Error(err)
+			t.Log(err)
 		}
 	})
 
@@ -65,11 +145,20 @@ func setupClientServer(t *testing.T, app types.Application) (
 
 	t.Cleanup(func() {
 		if err := c.Stop(); err != nil {
-			t.Error(err)
+			t.Log(err)
 		}
 	})
 
 	return s, c
+}
+
+type slowApp struct {
+	types.BaseApplication
+}
+
+func (slowApp) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	time.Sleep(time.Second)
+	return &types.ResponseCheckTx{}, nil
 }
 
 // TestCallbackInvokedWhenSetLaet ensures that the callback is invoked when

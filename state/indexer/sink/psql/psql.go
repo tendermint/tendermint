@@ -165,7 +165,7 @@ INSERT INTO `+tableBlocks+` (height, chain_id, created_at)
 		}
 		// Insert all the block events. Order is important here,
 		if err := insertEvents(dbtx, blockID, 0, h.Events); err != nil {
-			return fmt.Errorf("begin-block events: %w", err)
+			return fmt.Errorf("finalizeblock events: %w", err)
 		}
 		return nil
 	})

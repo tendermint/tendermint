@@ -191,8 +191,8 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 	}, nil
 }
 
-// BlockSearch searches for a paginated set of blocks matching BeginBlock and
-// EndBlock event search criteria.
+// BlockSearch searches for a paginated set of blocks matching
+// FinalizeBlock event search criteria.
 func BlockSearch(
 	ctx *rpctypes.Context,
 	query string,

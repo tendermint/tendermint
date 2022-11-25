@@ -98,11 +98,11 @@ func TestReactorConcurrency(t *testing.T) {
 			reactors[0].mempool.Lock()
 			defer reactors[0].mempool.Unlock()
 
-			deliverTxResponses := make([]*abci.ExecTxResult, len(txs))
+			txResponses := make([]*abci.ExecTxResult, len(txs))
 			for i := range txs {
-				deliverTxResponses[i] = &abci.ExecTxResult{Code: 0}
+				txResponses[i] = &abci.ExecTxResult{Code: 0}
 			}
-			err := reactors[0].mempool.Update(1, txs, deliverTxResponses, nil, nil)
+			err := reactors[0].mempool.Update(1, txs, txResponses, nil, nil)
 			assert.NoError(t, err)
 		}()
 
