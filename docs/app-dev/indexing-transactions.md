@@ -15,7 +15,7 @@ the block itself is never stored.
 Each event contains a type and a list of attributes, which are key-value pairs
 denoting something about what happened during the method's execution. For more
 details on `Events`, see the
-[ABCI](https://github.com/tendermint/spec/blob/v0.34.x/spec/abci/abci.md#events)
+[ABCI](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/abci/abci.md#events)
 documentation.
 
 An `Event` has a composite key associated with it. A `compositeKey` is
@@ -198,6 +198,9 @@ You can query for a paginated set of transaction by their events by calling the
 ```bash
 curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true"
 ```
+If the conditionsare related to transaction events and the user wants to make sure the
+conditions are true within the same events, the `match.event` keyword should be used, 
+as described [below](#querying_block_events)
 
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#/Info/tx_search)
 for more information on query syntax and other options.
@@ -221,7 +224,7 @@ a query to `/subscribe` RPC endpoint.
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#subscribe) for more information
 on query syntax and other options.
 
-## Querying Blocks Events
+## Querying Block Events
 
 You can query for a paginated set of blocks by their events by calling the
 `/block_search` RPC endpoint:
@@ -230,11 +233,11 @@ You can query for a paginated set of blocks by their events by calling the
 curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
 ```
 
-### `match.events` keyword 
+## `match.events` keyword 
 
-The query results in the height number(s) where events whose attributes match the query conditions reside. 
-However, there are two option to query the block index. To demonstrate the two modes, we reuse the two events
-where Bob and Tom send money to Alice. We issue the following query:
+The query results in the height number(s) (or transaction hashes when querying transactions) which contain events whose attributes match the query conditions. 
+However, there are two option to query the indexers. To demonstrate the two modes, we reuse the two events
+where Bob and Tom send money to Alice and query the block indexer. We issue the following query:
 
 ```bash
 curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\""

@@ -28,7 +28,7 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 type TxIndex struct {
 	store dbm.DB
 	// Number the events in the event list
-	numEvents int64
+	eventSeq int64
 }
 
 // NewTxIndex creates new KV indexer.
@@ -154,7 +154,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 
 func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Batch) error {
 	for _, event := range result.Result.Events {
-		txi.numEvents = txi.numEvents + 1
+		txi.eventSeq = txi.eventSeq + 1
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
 			continue
@@ -168,7 +168,7 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store dbm.Ba
 			// index if `index: true` is set
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			if attr.GetIndex() {
-				err := store.Set(keyForEvent(compositeTag, attr.Value, result, txi.numEvents), hash)
+				err := store.Set(keyForEvent(compositeTag, attr.Value, result, txi.eventSeq), hash)
 				if err != nil {
 					return err
 				}

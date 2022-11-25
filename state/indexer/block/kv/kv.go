@@ -28,7 +28,7 @@ type BlockerIndexer struct {
 
 	// Add unique event identifier to use when querying
 	// Matching will be done both on height AND eventSeq
-	numEvents int64
+	eventSeq int64
 }
 
 func New(store dbm.DB) *BlockerIndexer {
@@ -313,6 +313,9 @@ LOOP:
 	// match (tmpHashes).
 	for k, v := range filteredHeights {
 		tmpHeight := tmpHeights[k]
+
+		// Check whether in this iteration we have not found an overlapping height (tmpHeight == nil)
+		// or whether the events in which the attributed occured do not match (first part of the condition)
 		if (tmpHeight != nil && !bytes.Equal(tmpHeights[k], v)) || tmpHeight == nil {
 			delete(filteredHeights, k)
 
@@ -329,6 +332,8 @@ LOOP:
 }
 
 func (idx *BlockerIndexer) setTmpHeights(tmpHeights map[string][]byte, it dbm.Iterator, matchEvents bool) {
+	// If we return attributes that occur within the same events, then store the event sequence in the
+	// result map as well
 	if matchEvents {
 		eventSeq, _ := parseEventSeqFromEventKey(it.Key())
 		retVal := it.Value()
@@ -479,7 +484,7 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 	heightBz := int64ToBytes(height)
 
 	for _, event := range events {
-		idx.numEvents = idx.numEvents + 1
+		idx.eventSeq = idx.eventSeq + 1
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
 			continue
@@ -497,7 +502,7 @@ func (idx *BlockerIndexer) indexEvents(batch dbm.Batch, events []abci.Event, typ
 			}
 
 			if attr.GetIndex() {
-				key, err := eventKey(compositeKey, typ, string(attr.Value), height, idx.numEvents)
+				key, err := eventKey(compositeKey, typ, string(attr.Value), height, idx.eventSeq)
 				if err != nil {
 					return fmt.Errorf("failed to create block index key: %w", err)
 				}
