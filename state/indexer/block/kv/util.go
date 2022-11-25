@@ -88,7 +88,7 @@ func parseValueFromEventKey(key []byte) (string, error) {
 	return eventValue, nil
 }
 
-func ParseEventSeqFromEventKey(key []byte) (int64, error) {
+func parseEventSeqFromEventKey(key []byte) (int64, error) {
 	var (
 		compositeKey, typ, eventValue string
 		height                        int64

@@ -139,6 +139,46 @@ func TestTxSearch(t *testing.T) {
 	}
 }
 
+func TestTxSearchEventMatch(t *testing.T) {
+
+	indexer := NewTxIndex(db.NewMemDB())
+
+	txResult := txResultWithEvents([]abci.Event{
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("1"), Index: true}, {Key: []byte("owner"), Value: []byte("Ana"), Index: true}}},
+		{Type: "account", Attributes: []abci.EventAttribute{{Key: []byte("number"), Value: []byte("2"), Index: true}, {Key: []byte("owner"), Value: []byte("Ivan"), Index: true}}},
+		{Type: "", Attributes: []abci.EventAttribute{{Key: []byte("not_allowed"), Value: []byte("Vlad"), Index: true}}},
+	})
+
+	err := indexer.Index(txResult)
+	require.NoError(t, err)
+
+	testCases := []struct {
+		q             string
+		resultsLength int
+	}{
+		{"account.number = 2 AND account.owner = 'Ana' AND match.events = 1", 0},
+		{"account.number = 2 AND account.owner = 'Ana'", 1},
+		{"account.number < 2 AND account.owner = 'Ivan'", 1},
+		{"account.number < 2 AND account.owner = 'Ivan' AND match.events = 1", 0},
+	}
+
+	ctx := context.Background()
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.q, func(t *testing.T) {
+			results, err := indexer.Search(ctx, query.MustParse(tc.q))
+			assert.NoError(t, err)
+
+			assert.Len(t, results, tc.resultsLength)
+			if tc.resultsLength > 0 {
+				for _, txr := range results {
+					assert.True(t, proto.Equal(txResult, txr))
+				}
+			}
+		})
+	}
+}
 func TestTxSearchWithCancelation(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 

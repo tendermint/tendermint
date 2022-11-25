@@ -330,7 +330,7 @@ LOOP:
 
 func (idx *BlockerIndexer) setTmpHeights(tmpHeights map[string][]byte, it dbm.Iterator, matchEvents bool) {
 	if matchEvents {
-		eventSeq, _ := ParseEventSeqFromEventKey(it.Key())
+		eventSeq, _ := parseEventSeqFromEventKey(it.Key())
 		retVal := it.Value()
 		tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
 	} else {

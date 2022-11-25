@@ -241,9 +241,9 @@ curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\""
 ```
 
 The result will return height 1 even though the attributes matching the conditions in the query 
-occured in different events. 
+occurred in different events. 
 
-If we wish to retrieve only heights where the attributes occured within the same event,
+If we wish to retrieve only heights where the attributes occurred within the same event,
 the query syntax is as follows:
 
 ```bash
