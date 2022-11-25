@@ -194,10 +194,10 @@ func TestBlockIndexerMulti(t *testing.T) {
 			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400 AND match.events = 1"),
 			results: []int64{},
 		},
-		// "query matches fields from multiple events allowed": {
-		// 	q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400"),
-		// 	results: []int64{1},
-		// },
+		"query matches fields from multiple events allowed": {
+			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400"),
+			results: []int64{1},
+		},
 	}
 
 	for name, tc := range testCases {
