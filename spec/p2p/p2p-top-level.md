@@ -16,7 +16,7 @@ that each plays a role in making sure that validators can produce blocks. These 
 
 - Protocol logic (controlling the local state of the protocols and deciding what messages to send to others, e.g., the rules we find in the arXiv paper)
 
-- Communication. Message exchange with other nodes (Gossip)
+- Communication. Implement the communication abstractions needed by the protocol on top of the p2p system (e.g., Gossip)
 > perhaps we should clarify nomenclature: the Consensus gossip service actually is not implemented by a gossip algorithm but a peer-to-peer system
 
 Tendermint (as many classic BFT algorithms) have an all-to-all communication pattern (e.g., every validator sends a `precommit` to every other full node). Naive implementations, e.g., maintaining a channel between each of the *N* validators is not scaling to the system sizes of typical Cosmos blockchains (e.g., N = 200 validator nodes + seed nodes + sentry nodes + other full nodes). There is the fundamental necessity to restrict the communication. There is another explicit requirement which is called "deployment flexibility", which means that we do not want to impose a completely-connected network (also for safety concerns).
@@ -94,9 +94,12 @@ these tags we frequently use the following short forms:
 # Part I - A Tendermint node 
 
 TODO: 
-- perhaps we should survey here what we think are the expectations of the reactors from p2p? 
-    - consensus might need for liveness that neighborhood is stable
+- we should survey here what we think are the expectations of the reactors from p2p? 
+    - consensus might need 
+        - for liveness that neighborhood is stable
+        - proposers are not disconnected?
     - mempool might just need that a transaction can reach each validator within a reasonable amount of time (this might be achievable if at no point in time the current graph is connected, but, e.g., something along the lines that the union of the graphs over some period in time is connected.)
+    >  talk about the 1-to-1 and the 1-to-many/all delivery guarantees needed by the protocols (do this for each protocol. discuss how these requirements translate into what p2p should guarantee)
 - What does p2p expect from the reactors? (don't falsely report bad nodes; this puts requirements on the reactors and perhaps/likely also on the application running on top of ABCI)
 
 ## Context of this document
@@ -159,6 +162,7 @@ TODO:
      - DNS
      - filling up all your connections and then disconnecting you
      - feeding your reactors with garbage
+     - corrupt overlay to harm protocols running on top, e.g., isolating validators to prevent them from being proposers, but using them to vote for proposals from the bad nodes
 
 general question (is it likely? do we care)
 
@@ -178,7 +182,7 @@ TODO
     - persistent peers (provided by operator; configuration?)
     - peer exchange protocol
 - address book
-- establishin and managing connections
+- establishing and managing connections
 
 TODO: notation
 - connection vs. channel
