@@ -252,7 +252,7 @@ the query syntax is as follows:
 ```bash
 curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200 AND match.events = 1\""
 ```
-
+`match.events` is false by default but note that if it is added to a query, the actual value assigned to it is ignored and the query will match conditions within same events.
 
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#/Info/block_search)
 for more information on query syntax and other options.

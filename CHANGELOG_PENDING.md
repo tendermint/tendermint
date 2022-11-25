@@ -18,5 +18,7 @@
 
 ### IMPROVEMENTS
 
+- `[state/kvindexer]` [\#9759] Added `match.event` keyword to support condition evalution based on the event attributes belong to. (@jmalicevic)
+
 ### BUG FIXES
 
