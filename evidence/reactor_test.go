@@ -273,7 +273,7 @@ func makeAndConnectReactorsAndPools(t *testing.T, config *cfg.Config, stateStore
 	// stop every switch at the end of the test
 	t.Cleanup(func() {
 		for _, reactor := range reactors {
-			reactor.Switch.Stop()
+			_ = reactor.Switch.Stop()
 		}
 	})
 
