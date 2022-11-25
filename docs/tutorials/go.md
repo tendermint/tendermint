@@ -10,42 +10,47 @@ This guide is designed for beginners who want to get started with a Tendermint
 Core application from scratch. It does not assume that you have any prior
 experience with Tendermint Core.
 
-Tendermint Core is a service that provides a Byzantine Fault Tolerant consensus engine
-for state-machine replication. The replicated state-machine, or "application", can be written
-in any language that can send and receive protocol buffer messages in a client-server model.
-Applications written in Go can also use Tendermint as a library and run the service in the same 
-process as the application. 
+Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state
+transition machine - written in any programming language - and securely
+replicates it on many machines.
 
-By following along this tutorial you will create a Tendermint Core application called kvstore, 
-a (very) simple distributed BFT key-value store.
-The application will be written in Go and  
-some understanding of the Go programming language is expected.
-If you have never written Go, you may want to go through [Learn X in Y minutes
-Where X=Go](https://learnxinyminutes.com/docs/go/) first, to familiarize
+Although Tendermint Core is written in the Golang programming language, prior
+knowledge of it is not required for this guide. You can learn it as we go due
+to it's simplicity. However, you may want to go through [Learn X in Y minutes
+Where X=Go](https://learnxinyminutes.com/docs/go/) first to familiarize
 yourself with the syntax.
 
-Note: Please use the latest released version of this guide and of Tendermint.
-We strongly advise against using unreleased commits for your development.
+By following along with this guide, you'll create a Tendermint Core project
+called kvstore, a (very) simple distributed BFT key-value store.
 
-### Built-in app vs external app
-On the one hand, to get maximum performance you can run your application in 
-the same process as the Tendermint Core, as long as your application is written in Go. 
-[Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written
-this way. 
-If that is the way you wish to proceed, use the [Creating a built-in application in Go](./go-built-in.md) guide instead of this one.
+## Built-in app vs external app
 
-On the other hand, having a separate application might give you better security 
-guarantees as two processes would be communicating via established binary protocol. 
-Tendermint Core will not have access to application's state. 
-This is the approach followed in this tutorial.
+To get maximum performance it is better to run your application alongside
+Tendermint Core. [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written
+this way. Please refer to [Writing a built-in Tendermint Core application in
+Go](./go-built-in.md) guide for details.
+
+Having a separate application might give you better security guarantees as two
+processes would be communicating via established binary protocol. Tendermint
+Core will not have access to application's state.
 
 ## 1.1 Installing Go
 
-Verify that you have the latest version of Go installed (refer to the [official guide for installing Go](https://golang.org/doc/install)):
+Please refer to [the official guide for installing
+Go](https://golang.org/doc/install).
+
+Verify that you have the latest version of Go installed:
 
 ```bash
 $ go version
-go version go1.19.2 darwin/amd64
+go version go1.15.x darwin/amd64
+```
+
+Make sure you have `$GOPATH` environment variable set:
+
+```bash
+echo $GOPATH
+/Users/melekes/go
 ```
 
 ## 1.2 Creating a new Go project
@@ -54,80 +59,39 @@ We'll start by creating a new Go project.
 
 ```bash
 mkdir kvstore
+cd kvstore
 ```
 
-Inside the example directory, create a `main.go` file with the following content:
+Inside the example directory create a `main.go` file with the following content:
 
 ```go
 package main
 
 import (
-    "fmt"
+	"fmt"
 )
 
 func main() {
-    fmt.Println("Hello, Tendermint Core")
+	fmt.Println("Hello, Tendermint Core")
 }
 ```
 
 When run, this should print "Hello, Tendermint Core" to the standard output.
 
 ```bash
-cd kvstore
-$ go run main.go
+go run main.go
 Hello, Tendermint Core
 ```
-
-We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
-dependency management, so let's start by including a dependency on the latest version of
-Tendermint.
-
-```bash
-go mod init kvstore
-go get github.com/tendermint/tendermint@latest
-```
-
-After running the above commands you will see two generated files, `go.mod` and `go.sum`. 
-The go.mod file should look similar to:
-
-```go
-module github.com/me/example
-
-go 1.19
-
-require (
-	github.com/tendermint/tendermint v0.37.0
-)
-```
-
-As you write the kvstore application, you can rebuild the binary by
-pulling any new dependencies and recompiling it.
-
-```sh
-go get
-go build
-```
-
 
 ## 1.3 Writing a Tendermint Core application
 
 Tendermint Core communicates with the application through the Application
-<<<<<<< HEAD
 BlockChain Interface (ABCI). All message types are defined in the [protobuf
 file](https://github.com/tendermint/tendermint/blob/v0.37.x/proto/tendermint/abci/types.proto).
 This allows Tendermint Core to run applications written in any programming
 language.
-=======
-BlockChain Interface (ABCI). The messages exchanged through the interface are 
-defined in the ABCI [protobuf
-file](https://github.com/tendermint/tendermint/blob/main/proto/tendermint/abci/types.proto).
->>>>>>> f9bfdf4ce (docs: updates go.md and go-built-in.md as part of issue 9272 (#9688))
 
-We begin by creating the basic scaffolding for an ABCI application by 
-creating a new type, `KVStoreApplication`, which implements the
-methods defined by the `abcitypes.Application` interface.
-
-Create a file called `app.go` with the following contents:
+Create a file called `app.go` with the following content:
 
 ```go
 package main
@@ -136,7 +100,7 @@ import (
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 )
 
-type KVStoreApplication struct{}
+type KVStoreApplication struct {}
 
 var _ abcitypes.Application = (*KVStoreApplication)(nil)
 
@@ -144,369 +108,238 @@ func NewKVStoreApplication() *KVStoreApplication {
 	return &KVStoreApplication{}
 }
 
-func (app *KVStoreApplication) Info(info abcitypes.RequestInfo) abcitypes.ResponseInfo {
+func (KVStoreApplication) Info(req abcitypes.RequestInfo) abcitypes.ResponseInfo {
 	return abcitypes.ResponseInfo{}
 }
-
-func (app *KVStoreApplication) Query(query abcitypes.RequestQuery) abcitypes.ResponseQuery {
-	return abcitypes.ResponseQuery{}
+func (KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
+	return abcitypes.ResponseDeliverTx{Code: 0}
 }
 
-func (app *KVStoreApplication) CheckTx(tx abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
-	return abcitypes.ResponseCheckTx{}
+func (KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
+	return abcitypes.ResponseCheckTx{Code: 0}
 }
 
-func (app *KVStoreApplication) InitChain(chain abcitypes.RequestInitChain) abcitypes.ResponseInitChain {
-	return abcitypes.ResponseInitChain{}
-}
-
-func (app *KVStoreApplication) PrepareProposal(proposal abcitypes.RequestPrepareProposal) abcitypes.ResponsePrepareProposal {
-	return abcitypes.ResponsePrepareProposal{}
-}
-
-func (app *KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcessProposal) abcitypes.ResponseProcessProposal {
-	return abcitypes.ResponseProcessProposal{}
-}
-
-func (app *KVStoreApplication) BeginBlock(block abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	return abcitypes.ResponseBeginBlock{}
-}
-
-func (app *KVStoreApplication) DeliverTx(tx abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
-	return abcitypes.ResponseDeliverTx{}
-}
-
-func (app *KVStoreApplication) EndBlock(block abcitypes.RequestEndBlock) abcitypes.ResponseEndBlock {
-	return abcitypes.ResponseEndBlock{}
-}
-
-func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
+func (KVStoreApplication) Commit() abcitypes.ResponseCommit {
 	return abcitypes.ResponseCommit{}
 }
 
-func (app *KVStoreApplication) ListSnapshots(snapshots abcitypes.RequestListSnapshots) abcitypes.ResponseListSnapshots {
+func (KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
+	return abcitypes.ResponseQuery{Code: 0}
+}
+
+func (KVStoreApplication) InitChain(req abcitypes.RequestInitChain) abcitypes.ResponseInitChain {
+	return abcitypes.ResponseInitChain{}
+}
+
+func (KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
+	return abcitypes.ResponseBeginBlock{}
+}
+
+func (KVStoreApplication) EndBlock(req abcitypes.RequestEndBlock) abcitypes.ResponseEndBlock {
+	return abcitypes.ResponseEndBlock{}
+}
+
+func (KVStoreApplication) ListSnapshots(abcitypes.RequestListSnapshots) abcitypes.ResponseListSnapshots {
 	return abcitypes.ResponseListSnapshots{}
 }
 
-func (app *KVStoreApplication) OfferSnapshot(snapshot abcitypes.RequestOfferSnapshot) abcitypes.ResponseOfferSnapshot {
+func (KVStoreApplication) OfferSnapshot(abcitypes.RequestOfferSnapshot) abcitypes.ResponseOfferSnapshot {
 	return abcitypes.ResponseOfferSnapshot{}
 }
 
-func (app *KVStoreApplication) LoadSnapshotChunk(chunk abcitypes.RequestLoadSnapshotChunk) abcitypes.ResponseLoadSnapshotChunk {
+func (KVStoreApplication) LoadSnapshotChunk(abcitypes.RequestLoadSnapshotChunk) abcitypes.ResponseLoadSnapshotChunk {
 	return abcitypes.ResponseLoadSnapshotChunk{}
 }
 
-func (app *KVStoreApplication) ApplySnapshotChunk(chunk abcitypes.RequestApplySnapshotChunk) abcitypes.ResponseApplySnapshotChunk {
+func (KVStoreApplication) ApplySnapshotChunk(abcitypes.RequestApplySnapshotChunk) abcitypes.ResponseApplySnapshotChunk {
 	return abcitypes.ResponseApplySnapshotChunk{}
 }
 ```
 
-The types used here are defined in the Tendermint library and were added as a dependency
-to the project when you ran `go get`. If your IDE is not recognizing the types, go ahead and run the command again.
+Now I will go through each method explaining when it's called and adding
+required business logic.
 
-```bash
-go get github.com/tendermint/tendermint@latest
-```
+### 1.3.1 CheckTx
 
-Now go back to the `main.go` and modify the `main` function so it matches the following, 
-where an instance of the `KVStoreApplication` type is created.
-
+When a new transaction is added to the Tendermint Core, it will ask the
+application to check it (validate the format, signatures, etc.).
 
 ```go
-func main() {
-    fmt.Println("Hello, Tendermint Core")
+import "bytes"
 
-    _ = NewKVStoreApplication()
-}
-```
-
-You can recompile and run the application now by running `go get` and `go build`, but it does
-not do anything.
-So let's revisit the code adding the logic needed to implement our minimal key/value store
-and to start it along with the Tendermint Service.
-
-
-### 1.3.1 Add a persistent data store
-Our application will need to write its state out to persistent storage so that it
-can stop and start without losing all of its data.
-
-For this tutorial, we will use [BadgerDB](https://github.com/dgraph-io/badger), a
-a fast embedded key-value store. 
-
-First, add Badger as a dependency of your go module using the `go get` command:
-
-`go get github.com/dgraph-io/badger/v3`
-
-Next, let's update the application and its constructor to receive a handle to the database, as follows: 
-
-```go
-type KVStoreApplication struct {
-	db           *badger.DB
-	onGoingBlock *badger.Txn
-}
-
-var _ abcitypes.Application = (*KVStoreApplication)(nil)
-
-func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
-	return &KVStoreApplication{db: db}
-}
-```
-
-The `onGoingBlock` keeps track of the Badger transaction that will update the application's state when a block 
-is completed. Don't worry about it for now, we'll get to that later.
-
-Next, update the `import` stanza at the top to include the Badger library:
-
-```go
-import(
-	"github.com/dgraph-io/badger/v3"
-	abcitypes "github.com/tendermint/tendermint/abci/types"
-)
-```
-
-Finally, update the `main.go` file to invoke the updated constructor:
-
-```go
-	_ = NewKVStoreApplication(nil)
-```
-
-
-### 1.3.2 CheckTx
-When Tendermint Core receives a new transaction from a client, Tendermint asks the application if 
-the transaction is acceptable, using the `CheckTx` method.
-
-In our application, a transaction is a string with the form `key=value`, indicating a key and value to write to the store.
-
-The most basic validation check we can perform is to check if the transaction conforms to the `key=value` pattern.
-For that, let's add the following helper method to app.go:
-
-```go
-func (app *KVStoreApplication) isValid(tx []byte) uint32 {
+func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
 	// check format
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) != 2 {
 		return 1
 	}
 
-	return 0
+	key, value := parts[0], parts[1]
+
+	// check if the same key=value already exists
+	err := app.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil && err != badger.ErrKeyNotFound {
+			return err
+		}
+		if err == nil {
+			return item.Value(func(val []byte) error {
+				if bytes.Equal(val, value) {
+					code = 2
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	return code
 }
-```
 
-Now you can rewrite the `CheckTx` method to use the helper function:
-
-```go
 func (app *KVStoreApplication) CheckTx(req abcitypes.RequestCheckTx) abcitypes.ResponseCheckTx {
 	code := app.isValid(req.Tx)
-	return abcitypes.ResponseCheckTx{Code: code}
+	return abcitypes.ResponseCheckTx{Code: code, GasWanted: 1}
 }
 ```
 
-While this `CheckTx` is simple and only validates that the transaction is well-formed, 
-it is very common for `CheckTx` to make more complex use of the state of an application.
-For example, you may refuse to overwrite an existing value, or you can associate 
-versions to the key/value pairs and allow the caller to specify a version to
-perform a conditional update.
+Don't worry if this does not compile yet.
 
-Depending on the checks and on the conditions violated, the function may return
-different values, but any response with a non-zero code will be considered invalid 
-by Tendermint. Our `CheckTx` logic returns 0 to Tendermint when a transaction passes 
-its validation checks. The specific value of the code is meaningless to Tendermint. 
-Non-zero codes are logged by Tendermint so applications can provide more specific 
-information on why the transaction was rejected.
+If the transaction does not have a form of `{bytes}={bytes}`, we return `1`
+code. When the same key=value already exist (same key and value), we return `2`
+code. For others, we return a zero code indicating that they are valid.
 
-Note that `CheckTx` does not execute the transaction, it only verifies that that the transaction could be executed. We do not know yet if the rest of the network has agreed to accept this transaction into a block.
+Note that anything with non-zero code will be considered invalid (`-1`, `100`,
+etc.) by Tendermint Core.
 
-<<<<<<< HEAD
 Valid transactions will eventually be committed given they are not too big and
 have enough gas. To learn more about gas, check out ["the
 specification"](https://github.com/tendermint/tendermint/blob/v0.37.x/spec/abci/apps.md#gas).
-=======
->>>>>>> f9bfdf4ce (docs: updates go.md and go-built-in.md as part of issue 9272 (#9688))
 
-Finally, make sure to add the bytes package to the `import` stanza at the top of `app.go`:
-
-```go
-import(
-	"bytes"
-
-	"github.com/dgraph-io/badger/v3"
-	abcitypes "github.com/tendermint/tendermint/abci/types"
-)
-```
-
-
-### 1.3.3 BeginBlock -> DeliverTx -> EndBlock -> Commit
-
-When the Tendermint consensus engine has decided on the block, the block is transferred to the
-application over three ABCI method calls: `BeginBlock`, `DeliverTx`, and `EndBlock`.
-
-- `BeginBlock` is called once to indicate to the application that it is about to
-receive a block.
-- `DeliverTx` is called repeatedly, once for each application transaction that was included in the block.
-- `EndBlock` is called once to indicate to the application that no more transactions
-will be delivered to the application in within this block.
-
-Note that, to implement these calls in our application we're going to make use of Badger's 
-transaction mechanism. We will always refer to these as Badger transactions, not to
-confuse them with the transactions included in the blocks delivered by Tendermint,
-the _application transactions_.
-
-First, let's create a new Badger transaction during `BeginBlock`. All application transactions in the
-current block will be executed within this Badger transaction.
-Then, return informing Tendermint that the application is ready to receive application transactions:
+For the underlying key-value store we'll use
+[badger](https://github.com/dgraph-io/badger), which is an embeddable,
+persistent and fast key-value (KV) database.
 
 ```go
-func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
-	app.onGoingBlock = app.db.NewTransaction(true)
-	return abcitypes.ResponseBeginBlock{}
+import "github.com/dgraph-io/badger"
+
+type KVStoreApplication struct {
+	db           *badger.DB
+	currentBatch *badger.Txn
+}
+
+func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
+	return &KVStoreApplication{
+		db: db,
+	}
 }
 ```
 
-Next, let's modify `DeliverTx` to add the `key` and `value` to the database transaction every time our application
-receives a new application transaction through `RequestDeliverTx`.
+### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
+
+When Tendermint Core has decided on the block, it's transferred to the
+application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
+`EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
+responses are expected to come in order.
+
+```go
+func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
+	app.currentBatch = app.db.NewTransaction(true)
+	return abcitypes.ResponseBeginBlock{}
+}
+
+```
+
+Here we create a batch, which will store block's transactions.
 
 ```go
 func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
-	if code := app.isValid(req.Tx); code != 0 {
+	code := app.isValid(req.Tx)
+	if code != 0 {
 		return abcitypes.ResponseDeliverTx{Code: code}
 	}
 
-	parts := bytes.SplitN(req.Tx, []byte("="), 2)
+	parts := bytes.Split(req.Tx, []byte("="))
 	key, value := parts[0], parts[1]
 
-	if err := app.onGoingBlock.Set(key, value); err != nil {
-		log.Panicf("Error writing to database, unable to execute tx: %v", err)
+	err := app.currentBatch.Set(key, value)
+	if err != nil {
+		panic(err)
 	}
 
 	return abcitypes.ResponseDeliverTx{Code: 0}
 }
 ```
 
-Note that we check the validity of the transaction _again_ during `DeliverTx`.
-Transactions are not guaranteed to be valid when they are delivered to an
-application, even if they were valid when they were proposed. 
-This can happen if the application state is used to determine transaction
-validity. Application state may have changed between the initial execution of `CheckTx`
-and the transaction delivery in `DeliverTx` in a way that rendered the transaction
-no longer valid.
+If the transaction is badly formatted or the same key=value already exist, we
+again return the non-zero code. Otherwise, we add it to the current batch.
 
-`EndBlock` is called to inform the application that the full block has been delivered
-and give the application a chance to perform any other computation needed, before the 
-effects of the transactions become permanent.
+In the current design, a block can include incorrect transactions (those who
+passed CheckTx, but failed DeliverTx or transactions included by the proposer
+directly). This is done for performance reasons.
 
-Note that `EndBlock` **cannot** yet commit the Badger transaction we were building 
-in during `DeliverTx`.
-Since other methods, such as `Query`, rely on a consistent view of the application's
-state, the application should only update its state by committing the Badger transactions 
-when the full block has been delivered and the `Commit` method is invoked.
+Note we can't commit transactions inside the `DeliverTx` because in such case
+`Query`, which may be called in parallel, will return inconsistent data (i.e.
+it will report that some value already exist even when the actual block was not
+yet committed).
 
-The `Commit` method tells the application to make permanent the effects of 
-the application transactions.
-Let's update the method to terminate the pending Badger transaction and
-persist the resulting state: 
+`Commit` instructs the application to persist the new state.
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
-	if err := app.onGoingBlock.Commit(); err != nil {
-		log.Panicf("Error writing to database, unable to commit block: %v", err)
-	}
+	app.currentBatch.Commit()
 	return abcitypes.ResponseCommit{Data: []byte{}}
 }
 ```
 
-Finally, make sure to add the log library to the `import` stanza as well:
+### 1.3.3 Query
+
+Now, when the client wants to know whenever a particular key/value exist, it
+will call Tendermint Core RPC `/abci_query` endpoint, which in turn will call
+the application's `Query` method.
+
+Applications are free to provide their own APIs. But by using Tendermint Core
+as a proxy, clients (including [light client
+package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
+the unified API across different applications. Plus they won't have to call the
+otherwise separate Tendermint Core API for additional proofs.
+
+Note we don't include a proof here.
 
 ```go
-import (
-	"bytes"
-	"log"
-
-	"github.com/dgraph-io/badger/v3"
-	abcitypes "github.com/tendermint/tendermint/abci/types"
-)
-```
-
-You may have noticed that the application we are writing will crash if it receives
-an unexpected error from the Badger database during the `DeliverTx` or `Commit` methods.
-This is not an accident. If the application received an error from the database, there 
-is no deterministic way for it to make progress so the only safe option is to terminate.
-
-### 1.3.4 Query
-When a client tries to read some information from the `kvstore`, the request will be
-handled in the `Query` method. To do this, let's rewrite the `Query` method in `app.go`:
-
-```go
-func (app *KVStoreApplication) Query(req abcitypes.RequestQuery) abcitypes.ResponseQuery {
-	resp := abcitypes.ResponseQuery{Key: req.Data}
-
-	dbErr := app.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(req.Data)
-		if err != nil {
-			if err != badger.ErrKeyNotFound {
-				return err
-			}
-			resp.Log = "key does not exist"
-			return nil
+func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {
+	resQuery.Key = reqQuery.Data
+	err := app.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(reqQuery.Data)
+		if err != nil && err != badger.ErrKeyNotFound {
+			return err
 		}
-
-		return item.Value(func(val []byte) error {
-			resp.Log = "exists"
-			resp.Value = val
-			return nil
-		})
+		if err == badger.ErrKeyNotFound {
+			resQuery.Log = "does not exist"
+		} else {
+			return item.Value(func(val []byte) error {
+				resQuery.Log = "exists"
+				resQuery.Value = val
+				return nil
+			})
+		}
+		return nil
 	})
-	if dbErr != nil {
-		log.Panicf("Error reading database, unable to execute query: %v", dbErr)
+	if err != nil {
+		panic(err)
 	}
-	return resp
+	return
 }
 ```
 
-Since it reads only committed data from the store, transactions that are part of a block
-that is being processed are not reflected in the query result.
-
-### 1.3.5 PrepareProposal and ProcessProposal
-`PrepareProposal` and `ProcessProposal` are methods introduced in Tendermint v0.37.0 
-to give the application more control over the construction and processing of transaction blocks.
-
-When Tendermint Core sees that valid transactions (validated through `CheckTx`) are available to be
-included in blocks, it groups some of these transactions and then gives the application a chance 
-to modify the group by invoking `PrepareProposal`.
-
-The application is free to modify the group before returning from the call.
-For example, the application may reorder, add, or even remove transactions from the group to improve the
-execution of the block once accepted.
-In the following code, the application simply returns the unmodified group of transactions:
-
-```go
-func (app *KVStoreApplication) PrepareProposal(proposal abcitypes.RequestPrepareProposal) abcitypes.ResponsePrepareProposal {
-	return abcitypes.ResponsePrepareProposal{Txs: proposal.Txs}
-}
-```
-
-<<<<<<< HEAD
 The complete specification can be found
 [here](https://github.com/tendermint/tendermint/tree/v0.37.x/spec/abci/).
-=======
-Once a proposed block is received by a node, the proposal is passed to the application to give
-its blessing before voting to accept the proposal.
->>>>>>> f9bfdf4ce (docs: updates go.md and go-built-in.md as part of issue 9272 (#9688))
 
-This mechanism may be used for different reasons, for example to deal with blocks manipulated 
-by malicious nodes, in which case the block should not be considered valid.
-The following code simply accepts all proposals:
+## 1.4 Starting an application and a Tendermint Core instances
 
-```go
-func (app *KVStoreApplication) ProcessProposal(proposal abcitypes.RequestProcessProposal) abcitypes.ResponseProcessProposal {
-	return abcitypes.ResponseProcessProposal{Status: abcitypes.ResponseProcessProposal_ACCEPT}
-}
-```
-
-## 1.4 Starting an application and a Tendermint Core instance
-
-Now that we have the basic functionality of our application in place, let's put it all together inside of our `main.go` file.
-
-Change the contents of your `main.go` file to the following.
+Put the following code into the "main.go" file:
 
 ```go
 package main
@@ -514,49 +347,37 @@ package main
 import (
 	"flag"
 	"fmt"
-	abciserver "github.com/tendermint/tendermint/abci/server"
-	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
-	"github.com/dgraph-io/badger/v3"
-	tmlog "github.com/tendermint/tendermint/libs/log"
+	"github.com/dgraph-io/badger"
+
+	abciserver "github.com/tendermint/tendermint/abci/server"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
-var homeDir string
 var socketAddr string
 
 func init() {
-	flag.StringVar(&homeDir, "kv-home", "", "Path to the kvstore directory (if empty, uses $HOME/.kvstore)")
-	flag.StringVar(&socketAddr, "socket-addr", "unix://example.sock", "Unix domain socket address (if empty, uses \"unix://example.sock\"")
+	flag.StringVar(&socketAddr, "socket-addr", "unix://example.sock", "Unix domain socket address")
 }
 
 func main() {
-	flag.Parse()
-	if homeDir == "" {
-		homeDir = os.ExpandEnv("$HOME/.kvstore")
-	}
-
-	dbPath := filepath.Join(homeDir, "badger")
-	db, err := badger.Open(badger.DefaultOptions(dbPath))
+	db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
 	if err != nil {
-		log.Fatalf("Opening database: %v", err)
+		fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
+		os.Exit(1)
 	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatalf("Closing database: %v", err)
-		}
-	}()
-
+	defer db.Close()
 	app := NewKVStoreApplication(db)
 
-	logger := tmlog.NewTMLogger(tmlog.NewSyncWriter(os.Stdout))
+	flag.Parse()
+
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	server := abciserver.NewSocketServer(socketAddr, app)
 	server.SetLogger(logger)
-
 	if err := server.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
 		os.Exit(1)
@@ -566,6 +387,7 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
+	os.Exit(0)
 }
 ```
 
@@ -574,18 +396,20 @@ This is a huge blob of code, so let's break it down into pieces.
 First, we initialize the Badger database and create an app instance:
 
 ```go
-	dbPath := filepath.Join(homeDir, "badger")
-	db, err := badger.Open(badger.DefaultOptions(dbPath))
-	if err != nil {
-		log.Fatalf("Opening database: %v", err)
-	}
-	defer func() {
-		if err := db.Close(); err != nil {
-			log.Fatalf("Closing database: %v", err)
-		}
-	}()
+db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
+if err != nil {
+	fmt.Fprintf(os.Stderr, "failed to open badger db: %v", err)
+	os.Exit(1)
+}
+defer db.Close()
+app := NewKVStoreApplication(db)
+```
 
-	app := NewKVStoreApplication(db)
+For **Windows** users, restarting this app will make badger throw an error as it requires value log to be truncated. For more information on this, visit [here](https://github.com/dgraph-io/badger/issues/744).
+This can be avoided by setting the truncate option to true, like this:
+
+```go
+db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
 ```
 
 Then we start the ABCI server and add some signal handling to gracefully stop
@@ -593,147 +417,143 @@ it upon receiving SIGTERM or Ctrl-C. Tendermint Core will act as a client,
 which connects to our server and send us transactions and other messages.
 
 ```go
-	server := abciserver.NewSocketServer(socketAddr, app)
-	server.SetLogger(logger)
+server := abciserver.NewSocketServer(socketAddr, app)
+server.SetLogger(logger)
+if err := server.Start(); err != nil {
+	fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
+	os.Exit(1)
+}
+defer server.Stop()
 
-	if err := server.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "error starting socket server: %v", err)
-		os.Exit(1)
-	}
-	defer server.Stop()
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
+c := make(chan os.Signal, 1)
+signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+<-c
+os.Exit(0)
 ```
-## 1.5 Initializing and Running
 
-Our application is almost ready to run, but first we'll need to populate the Tendermint Core configuration files.
-The following command will create a `tendermint-home` directory in your project and add a basic set of configuration files in `tendermint-home/config/`.
-For more information on what these files contain see [the configuration documentation](https://github.com/tendermint/tendermint/blob/v0.37.0/docs/nodes/configuration.md).
+## 1.5 Getting Up and Running
 
-From the root of your project, run:
+We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
+dependency management.
 
 ```bash
-go run github.com/tendermint/tendermint/cmd/tendermint@v0.37.0 init --home /tmp/tendermint-home
+go mod init github.com/me/example
+go get github.com/tendermint/tendermint/@v0.34.0
 ```
 
-You should see an output similar to the following:
+After running the above commands you will see two generated files, go.mod and go.sum. The go.mod file should look similar to:
 
-```bash
-I[2022-11-09|09:06:34.444] Generated private validator                  module=main keyFile=/tmp/tendermint-home/config/priv_validator_key.json stateFile=/tmp/tendermint-home/data/priv_validator_state.json
-I[2022-11-09|09:06:34.444] Generated node key                           module=main path=/tmp/tendermint-home/config/node_key.json
-I[2022-11-09|09:06:34.444] Generated genesis file                       module=main path=/tmp/tendermint-home/config/genesis.json
+```go
+module github.com/me/example
+
+go 1.15
+
+require (
+	github.com/dgraph-io/badger v1.6.2
+	github.com/tendermint/tendermint v0.34.0
+)
 ```
 
-Now rebuild the app:
+Finally, we will build our binary:
 
-```bash
-go build -mod=mod # use -mod=mod to automatically refresh the dependencies
+```sh
+go build
 ```
 
-Everything is now in place to run your application. Run:
-
-```bash
-./kvstore -kv-home /tmp/badger-home
-```
-
-<<<<<<< HEAD
 To create a default configuration, nodeKey and private validator files, let's
 execute `tendermint init`. But before we do that, we will need to install
 Tendermint Core. Please refer to [the official
 guide](https://docs.tendermint.com/v0.37/introduction/install.html). If you're
 installing from source, don't forget to checkout the latest release (`git checkout vX.Y.Z`).
-=======
-The application will start and you should see an output similar to the following:
->>>>>>> f9bfdf4ce (docs: updates go.md and go-built-in.md as part of issue 9272 (#9688))
 
 ```bash
-badger 2022/11/09 17:01:28 INFO: All 0 tables opened in 0s
-badger 2022/11/09 17:01:28 INFO: Discard stats nextEmptySlot: 0
-badger 2022/11/09 17:01:28 INFO: Set nextTxnTs to 0
-I[2022-11-09|17:01:28.726] service start                                msg="Starting ABCIServer service" impl=ABCIServer
-I[2022-11-09|17:01:28.726] Waiting for new connection...
+rm -rf /tmp/example
+TMHOME="/tmp/example" tendermint init
+
+I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
+I[2019-07-16|18:20:36.481] Generated node key                           module=main path=/tmp/example/config/node_key.json
+I[2019-07-16|18:20:36.482] Generated genesis file                       module=main path=/tmp/example/config/genesis.json
 ```
 
-<<<<<<< HEAD
 Feel free to explore the generated files, which can be found at
 `/tmp/example/config` directory. Documentation on the config can be found
 [here](https://docs.tendermint.com/v0.37/tendermint-core/configuration.html).
 
 We are ready to start our application:
-=======
-Then we need to start Tendermint Core service and point it to our application. 
-Open a new terminal window and cd to the same folder where the app is running. 
-Then execute the following command:
->>>>>>> f9bfdf4ce (docs: updates go.md and go-built-in.md as part of issue 9272 (#9688))
 
 ```bash
-go run github.com/tendermint/tendermint/cmd/tendermint@v0.37.0 node --home /tmp/tendermint-home --proxy_app=unix://example.sock
+rm example.sock
+./example
+
+badger 2019/07/16 18:25:11 INFO: All 0 tables opened in 0s
+badger 2019/07/16 18:25:11 INFO: Replaying file id: 0 at offset: 0
+badger 2019/07/16 18:25:11 INFO: Replay took: 300.4s
+I[2019-07-16|18:25:11.523] Starting ABCIServer                          impl=ABCIServ
 ```
 
-This should start the full node and connect to our ABCI application, which will be
-reflected in the application output.
+Then we need to start Tendermint Core and point it to our application. Staying
+within the application directory execute:
+
+```bash
+TMHOME="/tmp/example" tendermint node --proxy_app=unix://example.sock
+
+I[2019-07-16|18:26:20.362] Version info                                 module=main software=0.32.1 block=10 p2p=7
+I[2019-07-16|18:26:20.383] Starting Node                                module=main impl=Node
+E[2019-07-16|18:26:20.392] Couldn't connect to any seeds                module=p2p
+I[2019-07-16|18:26:20.394] Started node                                 module=main nodeInfo="{ProtocolVersion:{P2P:7 Block:10 App:0} ID_:8dab80770ae8e295d4ce905d86af78c4ff634b79 ListenAddr:tcp://0.0.0.0:26656 Network:test-chain-nIO96P Version:0.32.1 Channels:4020212223303800 Moniker:app48.fun-box.ru Other:{TxIndex:on RPCAddress:tcp://127.0.0.1:26657}}"
+I[2019-07-16|18:26:21.440] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
+I[2019-07-16|18:26:21.446] Committed state                              module=state height=1 txs=0 appHash=
+```
+
+This should start the full node and connect to our ABCI application.
 
 ```sh
-I[2022-11-09|17:07:08.124] service start                                msg="Starting ABCIServer service" impl=ABCIServer
-I[2022-11-09|17:07:08.124] Waiting for new connection...
-I[2022-11-09|17:08:12.702] Accepted a new connection
-I[2022-11-09|17:08:12.703] Waiting for new connection...
-I[2022-11-09|17:08:12.703] Accepted a new connection
-I[2022-11-09|17:08:12.703] Waiting for new connection...
+I[2019-07-16|18:25:11.525] Waiting for new connection...
+I[2019-07-16|18:26:20.329] Accepted a new connection
+I[2019-07-16|18:26:20.329] Waiting for new connection...
+I[2019-07-16|18:26:20.330] Accepted a new connection
+I[2019-07-16|18:26:20.330] Waiting for new connection...
+I[2019-07-16|18:26:20.330] Accepted a new connection
 ```
 
-Also, the application using Tendermint Core is producing blocks  🎉🎉 and you can see this reflected in the log output of the service in lines like this:
-
-```bash
-I[2022-11-09|09:08:52.147] received proposal                            module=consensus proposal="Proposal{2/0 (F518444C0E348270436A73FD0F0B9DFEA758286BEB29482F1E3BEA75330E825C:1:C73D3D1273F2, -1) AD19AE292A45 @ 2022-11-09T12:08:52.143393Z}"
-I[2022-11-09|09:08:52.152] received complete proposal block             module=consensus height=2 hash=F518444C0E348270436A73FD0F0B9DFEA758286BEB29482F1E3BEA75330E825C
-I[2022-11-09|09:08:52.160] finalizing commit of block                   module=consensus height=2 hash=F518444C0E348270436A73FD0F0B9DFEA758286BEB29482F1E3BEA75330E825C root= num_txs=0
-I[2022-11-09|09:08:52.167] executed block                               module=state height=2 num_valid_txs=0 num_invalid_txs=0
-I[2022-11-09|09:08:52.171] committed state                              module=state height=2 num_txs=0 app_hash=
-```
-
-The blocks, as you can see from the `num_valid_txs=0` part, are empty, but let's remedy that next.
-
-## 1.6 Using the application
-
-Let's try submitting a transaction to our new application.
-Open another terminal window and run the following curl command:
-
-
-```bash
-curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
-```
-If everything went well, you should see a response indicating which height the 
-transaction was included in the blockchain.
-
-Finally, let's make sure that transaction really was persisted by the application.
-Run the following command:
-
-```bash
-curl -s 'localhost:26657/abci_query?data="tendermint"'
-```
-
-Let's examine the response object that this request returns.
-The request returns a `json` object with a `key` and `value` field set.
+Now open another tab in your terminal and try sending a transaction:
 
 ```json
-...
-	"key": "dGVuZGVybWludA==",
-	"value": "cm9ja3M=",
-...
+curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
+{
+  "jsonrpc": "2.0",
+  "id": "",
+  "result": {
+    "check_tx": {
+      "gasWanted": "1"
+    },
+    "deliver_tx": {},
+    "hash": "CDD3C6DFA0A08CAEDF546F9938A2EEC232209C24AA0E4201194E0AFB78A2C2BB",
+    "height": "33"
+}
 ```
 
-Those values don't look like the `key` and `value` we sent to Tendermint.
-What's going on here? 
+Response should contain the height where this transaction was committed.
 
-The response contains a `base64` encoded representation of the data we submitted.
-To get the original value out of this data, we can use the `base64` command line utility:
+Now let's check if the given key now exists and its value:
 
-```bash
-echo cm9ja3M=" | base64 -d
+```json
+curl -s 'localhost:26657/abci_query?data="tendermint"'
+{
+  "jsonrpc": "2.0",
+  "id": "",
+  "result": {
+    "response": {
+      "log": "exists",
+      "key": "dGVuZGVybWludA==",
+      "value": "cm9ja3My"
+    }
+  }
+}
 ```
+
+"dGVuZGVybWludA==" and "cm9ja3M=" are the base64-encoding of the ASCII of
+"tendermint" and "rocks" accordingly.
 
 ## Outro
 
