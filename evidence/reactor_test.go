@@ -51,7 +51,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	}
 
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, stateDBs)
+	reactors, pools := makeAndConnectReactorsAndPools(t, config, stateDBs)
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -82,7 +82,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	stateDB2 := initializeValidatorState(val, height2)
 
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+	reactors, pools := makeAndConnectReactorsAndPools(t, config, []sm.Store{stateDB1, stateDB2})
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -127,7 +127,7 @@ func TestReactorsGossipNoCommittedEvidence(t *testing.T) {
 	state.LastBlockHeight++
 
 	// make reactors from statedb
-	reactors, pools := makeAndConnectReactorsAndPools(config, []sm.Store{stateDB1, stateDB2})
+	reactors, pools := makeAndConnectReactorsAndPools(t, config, []sm.Store{stateDB1, stateDB2})
 
 	evList := sendEvidence(t, pools[0], val, 2)
 	pools[0].Update(state, evList)
@@ -240,7 +240,7 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) ([]*evidence.Reactor,
+func makeAndConnectReactorsAndPools(t *testing.T, config *cfg.Config, stateStores []sm.Store) ([]*evidence.Reactor,
 	[]*evidence.Pool) {
 	N := len(stateStores)
 
@@ -269,6 +269,13 @@ func makeAndConnectReactorsAndPools(config *cfg.Config, stateStores []sm.Store) 
 		return s
 
 	}, p2p.Connect2Switches)
+
+	// stop every switch at the end of the test
+	t.Cleanup(func() {
+		for _, reactor := range reactors {
+			reactor.Switch.Stop()
+		}
+	})
 
 	return reactors, pools
 }
