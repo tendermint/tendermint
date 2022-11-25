@@ -48,15 +48,11 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	// replace Connect2Switches (full mesh) with a func, which connects first
 	// reactor to others and nothing else, this test should also pass with >2 reactors.
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
-			}
-			sw := r.Switch
-			for _, peer := range sw.Peers().List() {
-				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -76,15 +72,11 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 func TestReactorConcurrency(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
-			}
-			sw := r.Switch
-			for _, peer := range sw.Peers().List() {
-				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -142,16 +134,11 @@ func TestReactorConcurrency(t *testing.T) {
 func TestReactorNoBroadcastToSender(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
-			}
-
-			sw := r.Switch
-			for _, peer := range sw.Peers().List() {
-				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -172,16 +159,11 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	config := cfg.TestConfig()
 
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
-			}
-
-			sw := r.Switch
-			for _, peer := range sw.Peers().List() {
-				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -217,16 +199,11 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
-			}
-
-			sw := r.Switch
-			for _, peer := range sw.Peers().List() {
-				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -247,19 +224,12 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 
 	// stop reactors
 	for _, r := range reactors {
 		if err := r.Stop(); err != nil {
 			assert.NoError(t, err)
-		}
-
-		// stop peers from switch due to the reactor doesn't stop
-		// the peer connection
-		sw := r.Switch
-		for _, peer := range sw.Peers().List() {
-			sw.StopPeerGracefully(peer)
 		}
 	}
 
@@ -308,16 +278,11 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 1
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
 				assert.NoError(t, err)
-			}
-
-			sw := r.Switch
-			for _, peer := range sw.Peers().List() {
-				sw.StopPeerGracefully(peer)
 			}
 		}
 	}()
@@ -351,7 +316,7 @@ func mempoolLogger() log.Logger {
 }
 
 // connect N mempool reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
+func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor {
 	reactors := make([]*Reactor, n)
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
@@ -369,6 +334,13 @@ func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 		return s
 
 	}, p2p.Connect2Switches)
+
+	// stop every switch at the end of the test
+	t.Cleanup(func() {
+		for _, reactor := range reactors {
+			reactor.Switch.Stop()
+		}
+	})
 	return reactors
 }
 
