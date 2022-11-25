@@ -351,8 +351,6 @@ func (txi *TxIndex) match(
 
 		for ; it.Valid(); it.Next() {
 			txi.setTmpHashes(tmpHashes, it, matchEvents)
-			// tmpHashes[string(it.Value())] = it.Value()
-			fmt.Println(string(it.Key()))
 			// Potentially exit early.
 			select {
 			case <-ctx.Done():

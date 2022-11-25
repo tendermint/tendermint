@@ -315,7 +315,7 @@ LOOP:
 		tmpHeight := tmpHeights[k]
 
 		// Check whether in this iteration we have not found an overlapping height (tmpHeight == nil)
-		// or whether the events in which the attributed occured do not match (first part of the condition)
+		// or whether the events in which the attributed occurred do not match (first part of the condition)
 		if (tmpHeight != nil && !bytes.Equal(tmpHeights[k], v)) || tmpHeight == nil {
 			delete(filteredHeights, k)
 
