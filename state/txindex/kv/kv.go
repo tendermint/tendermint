@@ -577,11 +577,14 @@ func keyForEvent(key string, value []byte, result *abci.TxResult, eventSeq int64
 }
 
 func keyForHeight(result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%d/%d",
+	return []byte(fmt.Sprintf("%s/%d/%d/%d/%d",
 		types.TxHeightKey,
 		result.Height,
 		result.Height,
 		result.Index,
+		// Added to facilitate having the eventSeq in event keys
+		// Otherwise queries break expecting 5 entries
+		-1,
 	))
 }
 
