@@ -272,3 +272,5 @@ require (
 	mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b // indirect
 	mvdan.cc/unparam v0.0.0-20220706161116-678bad134442 // indirect
 )
+
+retract [v0.35.0, v0.35.9] // See https://github.com/tendermint/tendermint/discussions/9155
