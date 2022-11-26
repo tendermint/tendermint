@@ -2,6 +2,9 @@
 
 ## Changelog
 
+- 2022-11-26: Clarify user stories and alternatives, allow for selective
+  publishing of data via the companion API, buffer on disk instead of in memory
+  (@thanethomson)
 - 2022-09-10: First draft (@thanethomson)
 
 ## Status
@@ -11,12 +14,15 @@ Accepted | Rejected | Deprecated | Superseded by
 ## Context
 
 This ADR proposes to effectively offload some data storage responsibilities and
-functionality to **single external companion service** in order to:
+functionality to a **single trusted external companion service** such that:
 
-1. Improve core consensus stability.
-2. Eventually reduce the amount of functionality for which the core team is
-   responsible, thereby improving maintainability.
-3. Still cater for certain use cases that require this data and functionality.
+1. Integrators can expose Tendermint data in whatever format/protocol they want
+   (e.g. JSON-RPC or gRPC).
+2. Integrators can index data in whatever way suits them best.
+3. All users eventually benefit from faster changes to Tendermint because the
+   core team has less, and less complex, code to maintain (implementing this ADR
+   would add more code in the short-term, but would pave the way for significant
+   reductions in complexity in future).
 
 The way the system is currently built is such that a Tendermint node is mostly
 self-contained. While this philosophy initially allowed a certain degree of ease
@@ -47,12 +53,12 @@ etc.).
 
 Specifically, this mechanism would initially publish:
 
-1. The results of block execution (e.g. data from `FinalizeBlockResponse`). This
-   data is not accessible from the P2P layer, and currently provides valuable
-   information for Tendermint users (whether events should be handled at all by
-   Tendermint is a different problem).
-2. All block data (i.e. `Block` data structures that have been committed by the
+1. Block data (i.e. `Block` data structures that have been committed by the
    consensus engine).
+2. The results of block execution (e.g. data from `FinalizeBlockResponse`). This
+   data is not accessible from the P2P layer, and currently provides valuable
+   information for Tendermint integrators (whether events should be handled at
+   all by Tendermint is a different problem).
 
 ## Alternative Approaches
 
@@ -89,7 +95,14 @@ Specifically, this mechanism would initially publish:
 
    This approach could also inevitably lead to feature sprawl in people wanting
    us to support multiple different databases. It is also not clear which
-   database would be the best option here.
+   database would be the best option here, as that would most likely be
+   influenced by integrators' use cases.
+
+   Beyond this, if we exclusively support one database but integrators needed
+   another for their use case, they would be forced to perform some kind of
+   continuous ETL operation to transfer the data from the one database to the
+   other, potentially doubling their storage capacity requirements and therefore
+   their storage-related costs. This would also increase pruning complexity.
 
 ## Decision
 
@@ -99,10 +112,9 @@ Specifically, this mechanism would initially publish:
 
 ### Use Cases
 
-1. Transaction facilitators could provide standalone RPC services that would be
-   capable of receiving transactions and providing confirmations to submitters.
-   These RPC services could be architected to scale independently of the node
-   facilitating consensus.
+1. Integrators could provide standalone RPC services that would be able to scale
+   independently of the Tendermint node. They would also be able to present the
+   data in whatever format and by whichever protocol they want.
 2. Block explorers could make use of this data to provide real-time information
    about the blockchain.
 3. IBC relayer nodes could use this data to filter and store only the data they
@@ -113,10 +125,8 @@ Specifically, this mechanism would initially publish:
 ### Requirements
 
 1. All of the following data must be published to a single external consumer:
-   1. `FinalizeBlockResponse` data, which includes at the very least:
-      1. Events
-      2. Transaction results
-   2. Committed block data
+   1. Committed block data
+   2. `FinalizeBlockResponse` data, but only for committed blocks
 
 2. It must be opt-in. In other words, it is off by default and turned on by way
    of a configuration parameter. When off, it must have negligible (ideally no)
@@ -126,20 +136,25 @@ Specifically, this mechanism would initially publish:
 
 4. It must not cause unbounded memory growth.
 
-5. Data must be published reliably. If data cannot be published, the node must
+5. It must not cause unbounded disk storage growth.
+
+6. Data must be published reliably. If data cannot be published, the node must
    rather crash in such a way that bringing the node up again will cause it to
    attempt to republish the unpublished data.
 
-6. The interface must support extension by allowing more kinds of data to be
+7. The interface must support extension by allowing more kinds of data to be
    exposed via this API (bearing in mind that every extension has the potential
    to affect system stability in the case of an unreliable data companion
    service).
+
+8. Integrators must have some control over which broad types of data are
+   published.
 
 ### Entity Relationships
 
 The following simple diagram shows the proposed relationships between
 Tendermint, a socket-based ABCI application, and the proposed data companion
-service to contextualize this ADR.
+service.
 
 ```
      +----------+      +------------+      +----------------+
@@ -150,15 +165,22 @@ service to contextualize this ADR.
 
 As can be seen in this diagram, Tendermint connects out to both the ABCI
 application and data companion service based on the Tendermint node's
-configuration. The fact that Tendermint connects out to the companion service
-instead of the other way around provides a natural constraint on the number of
-consumers of the API.
+configuration.
+
+The fact that Tendermint connects out to the companion service instead of the
+other way around provides a natural constraint on the number of consumers of the
+API. This also implies that the data companion is a trusted external service,
+just like an ABCI application, as it would need to be configured within the
+Tendermint configuration file.
 
 ### gRPC API
 
 The following gRPC API is proposed:
 
 ```protobuf
+import "tendermint/abci/types.proto";
+import "tendermint/types/block.proto";
+
 // DataCompanionService allows Tendermint to publish certain data generated by
 // the consensus engine to a single external consumer with specific reliability
 // guarantees.
@@ -166,102 +188,91 @@ The following gRPC API is proposed:
 // Note that implementers of this service must take into account the possibility
 // that Tendermint may re-send data that was previously sent. Therefore
 // the service should simply ignore previously seen data instead of responding
-// with errors to ensure correct functioning of the node.
+// with errors to ensure correct functioning of the node, as responding with an
+// error is taken as a signal to Tendermint that it must crash and await
+// operator intervention.
 service DataCompanionService {
-    // CommitBlock is called after a block has been committed. This method is
+    // BlockCommitted is called after a block has been committed. This method is
     // also called on Tendermint startup to ensure that the service received the
     // last committed block, in case there was previously a transport failure.
     //
     // If an error is returned, Tendermint will crash.
-    rpc CommitBlock (CommitBlockRequest) returns (CommitBlockResponse) {}
+    rpc BlockCommitted(BlockCommittedRequest) returns (BlockCommittedResponse) {}
 }
 
-// CommitBlockRequest contains information about a block that has been committed
-// by the consensus engine.
-message CommitBlockRequest {
-    // The block committed by the consensus engine.
-    Block block = 1;
-
-    // The results from execution of this block.
-    ExecBlockResults block_results = 2;
+// BlockCommittedRequest contains at least the data for the block that was just
+// committed. If enabled, it also contains the ABCI FinalizeBlock response data
+// related to the block in this request.
+message BlockCommittedRequest {
+    // The block data for the block that was just committed.
+    tendermint.types.Block                         block = 1;
+    // The FinalizeBlockResponse related to the block in this request. This
+    // field is optional, depending on the Tendermint node's configuration.
+    optional tendermint.abci.FinalizeBlockResponse finalize_block_response = 2;
 }
 
-// ExecBlockResults contains additional information about the execution of a
-// specific block that will not necessarily be included in the block itself.
-// This data is obtained from the FinalizeBlock ABCI response.
-message ExecBlockResults {
-    repeated Event events = 1;
-    repeated ExecTxResult tx_results = 2;
+// BlockCommittedResponse is either empty upon succes, or returns one or more
+// errors. Note that returning any errors here will cause Tendermint to crash.
+message BlockCommittedResponse {
+    // Zero or more errors occurred during the companion's processing of the
+    // request.
+    repeated Error errors = 1;
 }
 
-// CommitBlockResponse is either empty or returns an error. Note that returning
-// an error here will cause Tendermint to crash.
-message CommitBlockResponse {
+// Error can be one of several different types of errors.
+message Error {
     oneof error {
         UnexpectedBlockError unexpected_block_err = 1;
+        UnexpectedFieldError unexpected_field_err = 2;
+        ExpectedFieldError   expected_field_err   = 3;
     }
 }
 
-// UnexpectedBlockError is an error returned by the server when Tendermint sent
-// it a block that is ahead of the block expected by the server.
+// UnexpectedBlockError is returned by the server when Tendermint sent it a
+// block that is ahead of the block expected by the server.
 message UnexpectedBlockError {
     // The height of the block expected by the server.
     int64 expected_height = 1;
 }
 
-//-----------------------------------------------------------------------------
-// The following types are defined as part of ABCI++, and provided here for
-// reference.
-//-----------------------------------------------------------------------------
-
-// Event allows application developers to attach additional information to
-// ResponseFinalizeBlock, ResponseDeliverTx, ExecTxResult
-// Later, transactions may be queried using these events.
-message Event {
-  string                  type       = 1;
-  repeated EventAttribute attributes = 2 [(gogoproto.nullable) = false, (gogoproto.jsontag) = "attributes,omitempty"];
+// UnexpectedFieldError is returned by the server when Tendermint sent it a
+// message containing an unexpected field. For instance, if the companion
+// expects only the `block` field but not `finalize_block_response`, but somehow
+// the companion receives a value for `finalize_block_response`, it should
+// return this error because it indicates that either Tendermint or the data
+// companion are most likely incorrectly configured.
+message UnexpectedFieldError {
+    // The name of the field whose value was expected to be empty, but was not.
+    string field_name = 1;
 }
 
-// EventAttribute is a single key-value pair, associated with an event.
-message EventAttribute {
-  string key   = 1;
-  string value = 2;
-  bool   index = 3;  // nondeterministic
-}
-
-// ExecTxResult contains results of executing one individual transaction.
-//
-// * Its structure is equivalent to #ResponseDeliverTx which will be deprecated/deleted
-message ExecTxResult {
-  uint32         code       = 1;
-  bytes          data       = 2;
-  string         log        = 3;  // nondeterministic
-  string         info       = 4;  // nondeterministic
-  int64          gas_wanted = 5;
-  int64          gas_used   = 6;
-  repeated Event events     = 7
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
-  string codespace = 8;
+// ExpectedFieldError is returned by the server when Tendermint sent it a
+// message containing an empty field value for a field it was expecting to be
+// populated. If this occurs, it indicates that either Tendermint or the data
+// companion are most likely incorrectly configured.
+message ExpectedFieldError {
+    // The name of the field whose value was expected to be populated, but was
+    // empty.
+    string field_name = 1;
 }
 ```
 
 ### Request Buffering
 
 In order to ensure reliable delivery, while also catering for intermittent
-faults, we should allow for configurable buffering of a reasonable, yet small,
-number of requests to the companion service. If this buffer fills up, we should
-panic.
+faults, we should facilitate buffering of data destined for the companion
+service. This data would need to be stored on disk to ensure that Tendermint
+could attempt to resubmit all unsubmitted data upon Tendermint startup.
 
-This data would need to be stored on disk to ensure that Tendermint could
-attempt to resubmit all unsubmitted data upon Tendermint startup. At present,
-this data is already stored on disk, and so practically we would need to
-implement some form of background pruning mechanism to remove the data we know
-has been shared with the companion service.
+At present, this data is already stored on disk, and so practically we would
+need to implement some form of background pruning mechanism to remove the data
+we know has been shared with the companion service.
 
-### Interaction with Block Sync
-
-During block sync, request buffering should be disabled and requests to the
-companion service should be blocking.
+In order to not allow disk storage to grow unbounded, _and_ ensure that we do
+not lose any critical data, we need to impose some kind of limit on the number
+of requests we will buffer before crashing the Tendermint node. In case there is
+manual intervention needed to restore the companion service, Tendermint should
+attempt to flush this buffer upon startup before continuing normal operations.
 
 ### Configuration
 
@@ -281,16 +292,20 @@ enabled = false
 # interfering in node operation.
 addr = "http://localhost:26659"
 
-# The number of requests to the companion service to durably buffer. Set to 0 to
-# enable blocking send mode, which will block on every request to the companion
-# service. A sensible non-zero value would be 10 (if the companion service is
-# unavailable to receive 10 blocks' data, something is probably wrong and
-# requires intervention).
-buffer_size = 0
-
 # Use the experimental gzip compression call option when submitting data to the
 # server. See https://pkg.go.dev/google.golang.org/grpc#UseCompressor
 experimental_use_gzip = false
+
+# Controls the BlockCommitted gRPC call.
+[data_companion.block_committed]
+# Enable the BlockCommitted gRPC call. Only relevant if the data companion is
+# enabled.
+enabled = true
+# Additional fields to publish in each BlockCommittedRequest sent to the
+# companion. Available options:
+# - "finalize_block_response": Also publish the FinalizeBlock response related
+#                              to the block in the BlockCommittedRequest.
+additionally_publish = ["finalize_block_response"]
 ```
 
 It is unclear at present whether compressing the data being sent to the
@@ -305,8 +320,14 @@ service, the following additional Prometheus metrics are proposed:
   milliseconds, taken to send a single request to the companion service take
   from a rolling window of tracked send times (e.g. the maximum send time over
   the past minute).
-- `data_companion_buffer_utilization` - A gauge indicating how much of the
-  request buffer has been used.
+- `data_companion_send_bytes` - A counter indicating the number of bytes sent to
+  the data companion since node startup.
+- `data_companion_buffer_size` - A gauge indicating the number of requests
+  currently being buffered on disk on behalf of the companion service for each
+  kind of request.
+- `data_companion_buffer_size_bytes` - A gauge indicating how much data is being
+  buffered by Tendermint on disk, in bytes, on behalf of the companion service,
+  for each kind of request.
 
 ## Implications
 
@@ -315,8 +336,11 @@ service, the following additional Prometheus metrics are proposed:
    1. The [WebSocket subscription API][websocket-api]
    2. [`/tx_search`]
    3. [`/block_search`]
-   4. [`/broadcast_tx_commit`]
-   5. [`/block_results`]
+   4. [`/block_results`]
+
+   We may eventually be able to remove the [`/broadcast_tx_commit`] endpoint,
+   but this is often useful during debugging and development, so we may want to
+   keep it around.
 
 2. We will be able to remove all event indexing from Tendermint once we remove
    the above APIs.
