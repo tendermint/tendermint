@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
@@ -54,6 +55,7 @@ func NewURI(remote string) (*URIClient, error) {
 func (c *URIClient) Call(ctx context.Context, method string,
 	params map[string]interface{}, result interface{}) (interface{}, error) {
 
+	<-time.After(1 * time.Second)
 	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode params: %w", err)
