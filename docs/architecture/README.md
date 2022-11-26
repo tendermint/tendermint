@@ -118,3 +118,4 @@ None
 - [ADR-073: Adopt LibP2P](./adr-073-libp2p.md)
 - [ADR-074: Migrate Timeout Parameters to Consensus Parameters](./adr-074-timeout-params.md)
 - [ADR-080: Reverse Sync](./adr-080-reverse-sync.md)
+- [ADR-082: Data Companion API](./adr-082-data-companion-api.md)
