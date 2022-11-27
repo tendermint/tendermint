@@ -554,17 +554,28 @@ LOOP:
 // Keys
 
 func isTagKey(key []byte) bool {
-	return strings.Count(string(key), tagKeySeparator) == 4
+	// This should be always 4 if data is indexed together with event sequences
+	// The check for 3 was added to allow data indexed before (w/o the event number)
+	// to be retrieved. Note that this is no the cleanest solution, we should probably
+	// redesign this part.
+	numTags := strings.Count(string(key), tagKeySeparator)
+	return numTags == 4 || numTags == 3
 }
 
 func extractValueFromKey(key []byte) string {
-	parts := strings.SplitN(string(key), tagKeySeparator, 4)
+	numTags := strings.Count(string(key), tagKeySeparator)
+	parts := strings.SplitN(string(key), tagKeySeparator, numTags)
 	return parts[1]
 }
 
 func extractEventSeqFromKey(key []byte) string {
-	parts := strings.SplitN(string(key), tagKeySeparator, 4)
-	return parts[3]
+	numTags := strings.Count(string(key), tagKeySeparator)
+	parts := strings.SplitN(string(key), tagKeySeparator, numTags)
+	if len(parts) == 4 {
+		return parts[3]
+	} else {
+		return "0"
+	}
 }
 func keyForEvent(key string, value []byte, result *abci.TxResult, eventSeq int64) []byte {
 	return []byte(fmt.Sprintf("%s/%s/%d/%d/%d",
