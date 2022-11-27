@@ -59,6 +59,18 @@ func (app *SyncApplication) ProcessProposal(ctx context.Context, req *abci.Reque
 	return app.app.ProcessProposal(ctx, req)
 }
 
+func (app *SyncApplication) ExtendVote(ctx context.Context, req *abci.RequestExtendVote) (*abci.ResponseExtendVote, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.app.ExtendVote(ctx, req)
+}
+
+func (app *SyncApplication) VerifyVoteExtension(ctx context.Context, req *abci.RequestVerifyVoteExtension) (*abci.ResponseVerifyVoteExtension, error) {
+	app.mtx.Lock()
+	defer app.mtx.Unlock()
+	return app.app.VerifyVoteExtension(ctx, req)
+}
+
 func (app *SyncApplication) FinalizeBlock(ctx context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
