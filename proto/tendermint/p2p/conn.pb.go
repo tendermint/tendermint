@@ -158,7 +158,6 @@ func (m *PacketMsg) GetData() []byte {
 
 type Packet struct {
 	// Types that are valid to be assigned to Sum:
-	//
 	//	*Packet_PacketPing
 	//	*Packet_PacketPong
 	//	*Packet_PacketMsg
