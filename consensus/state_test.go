@@ -363,7 +363,7 @@ func TestStateFullRound1(t *testing.T) {
 
 // nil is proposed, so prevote and precommit nil
 func TestStateFullRoundNil(t *testing.T) {
-	cs, vss := randState(1)
+	cs, _ := randState(1)
 	height, round := cs.Height, cs.Round
 
 	voteCh := subscribeUnBuffered(cs.eventBus, types.EventQueryVote)
@@ -371,11 +371,8 @@ func TestStateFullRoundNil(t *testing.T) {
 	cs.enterPrevote(height, round)
 	cs.startRoutines(4)
 
-	ensurePrevote(voteCh, height, round)   // prevote
-	ensurePrecommit(voteCh, height, round) // precommit
-
-	// should prevote and precommit nil
-	validatePrevoteAndPrecommit(t, cs, round, -1, vss[0], nil, nil)
+	ensurePrevoteMatch(t, voteCh, height, round, nil)   // prevote
+	ensurePrecommitMatch(t, voteCh, height, round, nil) // precommit
 }
 
 // run through propose, prevote, precommit commit with two validators
@@ -1424,32 +1421,30 @@ func TestProcessProposalAccept(t *testing.T) {
 // TestExtendVoteCalled tests that the vote extension methods are called at the
 // correct point in the consensus algorithm.
 func TestExtendVoteCalled(t *testing.T) {
-	config := configSetup(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	m := abcimocks.NewBaseMock()
-	m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
-	m.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{
+	m := abcimocks.NewApplication(t)
+	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
+	m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{
 		VoteExtension: []byte("extension"),
-	})
-	m.On("VerifyVoteExtension", mock.Anything).Return(abci.ResponseVerifyVoteExtension{
+	}, nil)
+	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
 		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
-	})
-	m.On("FinalizeBlock", mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
-	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
+	}, nil)
+	m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
+	cs1, vss := randStateWithApp(4, m)
 	height, round := cs1.Height, cs1.Round
 
-	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
-	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	pv1, err := cs1.privValidator.GetPubKey()
 	require.NoError(t, err)
 	addr := pv1.Address()
-	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+	voteCh := subscribeToVoter(cs1, addr)
 
-	startTestRound(ctx, cs1, cs1.Height, round)
-	ensureNewRound(t, newRoundCh, height, round)
-	ensureNewProposal(t, proposalCh, height, round)
+	startTestRound(cs1, cs1.Height, round)
+	ensureNewRound(newRoundCh, height, round)
+	ensureNewProposal(proposalCh, height, round)
 
 	m.AssertNotCalled(t, "ExtendVote", mock.Anything)
 
@@ -1459,34 +1454,34 @@ func TestExtendVoteCalled(t *testing.T) {
 		Hash:          rs.ProposalBlock.Hash(),
 		PartSetHeader: rs.ProposalBlockParts.Header(),
 	}
-	signAddVotes(ctx, t, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vss[1:]...)
+	signAddVotes(cs1, tmproto.PrevoteType, blockID.Hash, blockID.PartSetHeader, vss[1:]...)
 	ensurePrevoteMatch(t, voteCh, height, round, blockID.Hash)
 
-	ensurePrecommit(t, voteCh, height, round)
+	ensurePrecommit(voteCh, height, round)
 
-	m.AssertCalled(t, "ExtendVote", abci.RequestExtendVote{
+	m.AssertCalled(t, "ExtendVote", context.TODO(), &abci.RequestExtendVote{
 		Height: height,
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+	m.AssertCalled(t, "VerifyVoteExtension", context.TODO(), &abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
 		VoteExtension:    []byte("extension"),
 	})
 
-	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), blockID, vss[1:]...)
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	signAddVotes(cs1, tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader, vss[1:]...)
+	ensureNewRound(newRoundCh, height+1, 0)
 	m.AssertExpectations(t)
 
 	// Only 3 of the vote extensions are seen, as consensus proceeds as soon as the +2/3 threshold
 	// is observed by the consensus engine.
 	for _, pv := range vss[:3] {
-		pv, err := pv.GetPubKey(ctx)
+		pv, err := pv.GetPubKey()
 		require.NoError(t, err)
 		addr := pv.Address()
-		m.AssertCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+		m.AssertCalled(t, "VerifyVoteExtension", context.TODO(), &abci.RequestVerifyVoteExtension{
 			Hash:             blockID.Hash,
 			ValidatorAddress: addr,
 			Height:           height,
@@ -1499,66 +1494,64 @@ func TestExtendVoteCalled(t *testing.T) {
 // TestVerifyVoteExtensionNotCalledOnAbsentPrecommit tests that the VerifyVoteExtension
 // method is not called for a validator's vote that is never delivered.
 func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
-	config := configSetup(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	m := abcimocks.NewBaseMock()
-	m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
-	m.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{
+	m := abcimocks.NewApplication(t)
+	m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
+	m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{
 		VoteExtension: []byte("extension"),
-	})
-	m.On("VerifyVoteExtension", mock.Anything).Return(abci.ResponseVerifyVoteExtension{
+	}, nil)
+	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
 		Status: abci.ResponseVerifyVoteExtension_ACCEPT,
-	})
-	m.On("FinalizeBlock", mock.Anything).Return(abci.ResponseFinalizeBlock{}).Maybe()
-	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
+	}, nil)
+	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
+	m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+	cs1, vss := randStateWithApp(4, m)
 	height, round := cs1.Height, cs1.Round
 
-	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
-	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	pv1, err := cs1.privValidator.GetPubKey()
 	require.NoError(t, err)
 	addr := pv1.Address()
-	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+	voteCh := subscribeToVoter(cs1, addr)
 
-	startTestRound(ctx, cs1, cs1.Height, round)
-	ensureNewRound(t, newRoundCh, height, round)
-	ensureNewProposal(t, proposalCh, height, round)
+	startTestRound(cs1, cs1.Height, round)
+	ensureNewRound(newRoundCh, height, round)
+	ensureNewProposal(proposalCh, height, round)
 	rs := cs1.GetRoundState()
 
 	blockID := types.BlockID{
 		Hash:          rs.ProposalBlock.Hash(),
 		PartSetHeader: rs.ProposalBlockParts.Header(),
 	}
-	signAddVotes(ctx, t, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vss[2:]...)
+	signAddVotes(cs1, tmproto.PrevoteType, blockID.Hash, blockID.PartSetHeader, vss[2:]...)
 	ensurePrevoteMatch(t, voteCh, height, round, blockID.Hash)
 
-	ensurePrecommit(t, voteCh, height, round)
+	ensurePrecommit(voteCh, height, round)
 
-	m.AssertCalled(t, "ExtendVote", abci.RequestExtendVote{
+	m.AssertCalled(t, "ExtendVote", context.TODO(), &abci.RequestExtendVote{
 		Height: height,
 		Hash:   blockID.Hash,
 	})
 
-	m.AssertCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+	m.AssertCalled(t, "VerifyVoteExtension", context.TODO(), &abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
 		VoteExtension:    []byte("extension"),
 	})
 
-	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), blockID, vss[2:]...)
-	ensureNewRound(t, newRoundCh, height+1, 0)
+	signAddVotes(cs1, tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader, vss[2:]...)
+	ensureNewRound(newRoundCh, height+1, 0)
 	m.AssertExpectations(t)
 
 	// vss[1] did not issue a precommit for the block, ensure that a vote extension
 	// for its address was not sent to the application.
-	pv, err := vss[1].GetPubKey(ctx)
+	pv, err := vss[1].GetPubKey()
 	require.NoError(t, err)
 	addr = pv.Address()
 
-	m.AssertNotCalled(t, "VerifyVoteExtension", abci.RequestVerifyVoteExtension{
+	m.AssertNotCalled(t, "VerifyVoteExtension", context.TODO(), &abci.RequestVerifyVoteExtension{
 		Hash:             blockID.Hash,
 		ValidatorAddress: addr,
 		Height:           height,
@@ -1574,10 +1567,6 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 // is the proposer again and ensures that the mock application receives the set of
 // vote extensions from the previous consensus instance.
 func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
-	config := configSetup(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// create a list of vote extensions, one for each validator.
 	voteExtensions := [][]byte{
 		[]byte("extension 0"),
@@ -1586,39 +1575,50 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 		[]byte("extension 3"),
 	}
 
-	m := abcimocks.NewBaseMock()
-	m.On("ExtendVote", mock.Anything).Return(abci.ResponseExtendVote{
+	m := abcimocks.NewApplication(t)
+	m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{
 		VoteExtension: voteExtensions[0],
-	})
-	m.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{}).Once()
+	}, nil)
+	m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 
-	cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m})
+	// capture the prepare proposal request.
+	rpp := &abci.RequestPrepareProposal{}
+	m.On("PrepareProposal", mock.Anything, mock.MatchedBy(func(r *abci.RequestPrepareProposal) bool {
+		rpp = r
+		return true
+	})).Return(&abci.ResponsePrepareProposal{}, nil)
+
+	m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{Status: abci.ResponseVerifyVoteExtension_ACCEPT}, nil)
+	m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+	m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil)
+
+	cs1, vss := randStateWithApp(4, m)
 	height, round := cs1.Height, cs1.Round
 
-	newRoundCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryNewRound)
-	proposalCh := subscribe(ctx, t, cs1.eventBus, types.EventQueryCompleteProposal)
-	pv1, err := cs1.privValidator.GetPubKey(ctx)
+	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+	pv1, err := cs1.privValidator.GetPubKey()
 	require.NoError(t, err)
 	addr := pv1.Address()
-	voteCh := subscribeToVoter(ctx, t, cs1, addr)
+	voteCh := subscribeToVoter(cs1, addr)
 
-	startTestRound(ctx, cs1, height, round)
-	ensureNewRound(t, newRoundCh, height, round)
-	ensureNewProposal(t, proposalCh, height, round)
+	startTestRound(cs1, height, round)
+	ensureNewRound(newRoundCh, height, round)
+	ensureNewProposal(proposalCh, height, round)
 
 	rs := cs1.GetRoundState()
 	blockID := types.BlockID{
 		Hash:          rs.ProposalBlock.Hash(),
 		PartSetHeader: rs.ProposalBlockParts.Header(),
 	}
-	signAddVotes(ctx, t, cs1, tmproto.PrevoteType, config.ChainID(), blockID, vss[1:]...)
+	signAddVotes(cs1, tmproto.PrevoteType, blockID.Hash, blockID.PartSetHeader, vss[1:]...)
 
 	// create a precommit for each validator with the associated vote extension.
 	for i, vs := range vss[1:] {
-		signAddPrecommitWithExtension(ctx, t, cs1, config.ChainID(), blockID, voteExtensions[i+1], vs)
+		signAddPrecommitWithExtension(t, cs1, blockID.Hash, blockID.PartSetHeader, voteExtensions[i+1], vs)
 	}
 
-	ensurePrevote(t, voteCh, height, round)
+	ensurePrevote(voteCh, height, round)
 
 	// ensure that the height is committed.
 	ensurePrecommitMatch(t, voteCh, height, round, blockID.Hash)
@@ -1626,25 +1626,20 @@ func TestPrepareProposalReceivesVoteExtensions(t *testing.T) {
 
 	height++
 	round = 0
-	ensureNewRound(t, newRoundCh, height, round)
+	ensureNewRound(newRoundCh, height, round)
 	incrementRound(vss[1:]...)
 	incrementRound(vss[1:]...)
 	incrementRound(vss[1:]...)
 	round = 3
 
-	// capture the prepare proposal request.
-	rpp := abci.RequestPrepareProposal{}
-	m.On("PrepareProposal", mock.MatchedBy(func(r abci.RequestPrepareProposal) bool {
-		rpp = r
-		return true
-	})).Return(abci.ResponsePrepareProposal{})
-
-	signAddVotes(ctx, t, cs1, tmproto.PrecommitType, config.ChainID(), types.BlockID{}, vss[1:]...)
-	ensureNewRound(t, newRoundCh, height, round)
-	ensureNewProposal(t, proposalCh, height, round)
+	blockID2 := types.BlockID{}
+	signAddVotes(cs1, tmproto.PrecommitType, blockID2.Hash, blockID2.PartSetHeader, vss[1:]...)
+	ensureNewRound(newRoundCh, height, round)
+	ensureNewProposal(proposalCh, height, round)
 
 	// ensure that the proposer received the list of vote extensions from the
 	// previous height.
+	require.Len(t, rpp.LocalLastCommit.Votes, len(vss))
 	for i := range vss {
 		require.Equal(t, rpp.LocalLastCommit.Votes[i].VoteExtension, voteExtensions[i])
 	}
@@ -1673,6 +1668,10 @@ func TestFinalizeBlockCalled(t *testing.T) {
 				Status: abci.ResponseProcessProposal_ACCEPT,
 			}, nil)
 			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{}, nil)
+			m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
+				Status: abci.ResponseVerifyVoteExtension_ACCEPT,
+			}, nil)
 			r := &abci.ResponseFinalizeBlock{AgreedAppData: []byte("the_hash")}
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
 			m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
@@ -2320,14 +2319,14 @@ func subscribeUnBuffered(eventBus *types.EventBus, q tmpubsub.Query) <-chan tmpu
 	return sub.Out()
 }
 
-func signAddPrecommitWithExtension(ctx context.Context,
+func signAddPrecommitWithExtension(
 	t *testing.T,
 	cs *State,
-	chainID string,
-	blockID types.BlockID,
+	hash []byte,
+	header types.PartSetHeader,
 	extension []byte,
 	stub *validatorStub) {
-	v, err := stub.signVote(ctx, tmproto.PrecommitType, chainID, blockID, extension)
+	v, err := stub.signVote(tmproto.PrecommitType, hash, header, extension)
 	require.NoError(t, err, "failed to sign vote")
 	addVotes(cs, v)
 }

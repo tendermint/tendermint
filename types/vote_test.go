@@ -1,7 +1,6 @@
 package types
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -13,8 +12,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/protoio"
-	tmtime "github.com/tendermint/tendermint/libs/time"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func examplePrevote() *Vote {
@@ -203,9 +202,6 @@ func TestVoteVerifySignature(t *testing.T) {
 // TestVoteExtension tests that the vote verification behaves correctly in each case
 // of vote extension being set on the vote.
 func TestVoteExtension(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	testCases := []struct {
 		name             string
 		extension        []byte
@@ -244,7 +240,7 @@ func TestVoteExtension(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			height, round := int64(1), int32(0)
 			privVal := NewMockPV()
-			pk, err := privVal.GetPubKey(ctx)
+			pk, err := privVal.GetPubKey()
 			require.NoError(t, err)
 			blk := Block{}
 			ps, err := blk.MakePartSet(BlockPartSizeBytes)
@@ -260,7 +256,7 @@ func TestVoteExtension(t *testing.T) {
 			}
 
 			v := vote.ToProto()
-			err = privVal.SignVote(ctx, "test_chain_id", v)
+			err = privVal.SignVote("test_chain_id", v)
 			require.NoError(t, err)
 			vote.Signature = v.Signature
 			if tc.includeSignature {

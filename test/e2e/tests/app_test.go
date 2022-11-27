@@ -2,7 +2,6 @@ package e2e_test
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -107,7 +106,7 @@ func TestApp_Tx(t *testing.T) {
 }
 
 func TestApp_VoteExtensions(t *testing.T) {
-	testNode(t, func(ctx context.Context, t *testing.T, node e2e.Node) {
+	testNode(t, func(t *testing.T, node e2e.Node) {
 		client, err := node.Client()
 		require.NoError(t, err)
 

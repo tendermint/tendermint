@@ -80,11 +80,10 @@ func MakeCommit(blockID types.BlockID, height int64, round int32, valSet *types.
 		}
 
 		sigs[idx] = types.CommitSig{
-			BlockIDFlag:        types.BlockIDFlagCommit,
-			ValidatorAddress:   addr,
-			Timestamp:          now,
-			Signature:          v.Signature,
-			ExtensionSignature: v.ExtensionSignature,
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: addr,
+			Timestamp:        now,
+			Signature:        v.Signature,
 		}
 	}
 

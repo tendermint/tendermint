@@ -1,7 +1,6 @@
 package privval
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -29,16 +28,11 @@ func TestGenLoadValidator(t *testing.T) {
 	addr := privVal.GetAddress()
 
 	privVal = LoadFilePV(tempKeyFileName, tempStateFileName)
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
-	assert.Equal(height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
+	assert.Equal(t, addr, privVal.GetAddress(), "expected privval addr to be the same")
+	assert.Equal(t, height, privVal.LastSignState.Height, "expected privval.LastHeight to have been saved")
 }
 
 func TestResetValidator(t *testing.T) {
-	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
-	require.Nil(t, err)
-	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
-	require.Nil(t, err)
-
 	privVal, _, tempStateFileName := newTestFilePV(t)
 	emptyState := FilePVLastSignState{filePath: tempStateFileName}
 
@@ -51,7 +45,7 @@ func TestResetValidator(t *testing.T) {
 	randBytes := tmrand.Bytes(tmhash.Size)
 	blockID := types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}}
 	vote := newVote(privVal.Key.Address, 0, height, round, voteType, blockID, nil)
-	err = privVal.SignVote("mychainid", vote.ToProto())
+	err := privVal.SignVote("mychainid", vote.ToProto())
 	assert.NoError(t, err, "expected no error signing vote")
 
 	// priv val after signing is not same as empty
@@ -307,11 +301,8 @@ func TestDifferByTimestamp(t *testing.T) {
 }
 
 func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	privVal, _, _ := newTestFilePV(t)
-	pubKey, err := privVal.GetPubKey(ctx)
+	pubKey, err := privVal.GetPubKey()
 	assert.NoError(t, err)
 
 	block := types.BlockID{
@@ -326,7 +317,7 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	vote1 := newVote(privVal.Key.Address, 0, height, round, voteType, block, nil)
 	vpb1 := vote1.ToProto()
 
-	err = privVal.SignVote(ctx, "mychainid", vpb1)
+	err = privVal.SignVote("mychainid", vpb1)
 	assert.NoError(t, err, "expected no error signing vote")
 	assert.NotNil(t, vpb1.ExtensionSignature)
 
@@ -339,7 +330,7 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	vote2.Extension = []byte("new extension")
 	vpb2 := vote2.ToProto()
 
-	err = privVal.SignVote(ctx, "mychainid", vpb2)
+	err = privVal.SignVote("mychainid", vpb2)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated vote extension")
 
 	// We need to ensure that a valid new extension signature has been created
@@ -358,7 +349,7 @@ func TestVoteExtensionsAreAlwaysSigned(t *testing.T) {
 	vpb2.Signature = nil
 	vpb2.ExtensionSignature = nil
 
-	err = privVal.SignVote(ctx, "mychainid", vpb2)
+	err = privVal.SignVote("mychainid", vpb2)
 	assert.NoError(t, err, "expected no error signing same vote with manipulated timestamp and vote extension")
 	assert.Equal(t, expectedTimestamp, vpb2.Timestamp)
 
@@ -396,8 +387,7 @@ func newTestFilePV(t *testing.T) (*FilePV, string, string) {
 	tempStateFile, err := os.CreateTemp(t.TempDir(), "priv_validator_state_")
 	require.NoError(t, err)
 
-	privVal, err := GenFilePV(tempKeyFile.Name(), tempStateFile.Name(), "")
-	require.NoError(t, err)
+	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
 
 	return privVal, tempKeyFile.Name(), tempStateFile.Name()
 }

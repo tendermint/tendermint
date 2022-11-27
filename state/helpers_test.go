@@ -89,14 +89,13 @@ func makeValidCommit(
 	vals *types.ValidatorSet,
 	privVals map[string]types.PrivValidator,
 ) (*types.Commit, []*types.Vote, error) {
-	t.Helper()
 	sigs := make([]types.CommitSig, vals.Size())
 	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
 		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		sigs[i] = vote.CommitSig()
 		votes[i] = vote
