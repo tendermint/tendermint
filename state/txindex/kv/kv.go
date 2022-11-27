@@ -573,9 +573,8 @@ func extractEventSeqFromKey(key []byte) string {
 	parts := strings.SplitN(string(key), tagKeySeparator, numTags)
 	if len(parts) == 4 {
 		return parts[3]
-	} else {
-		return "0"
 	}
+	return "0"
 }
 func keyForEvent(key string, value []byte, result *abci.TxResult, eventSeq int64) []byte {
 	return []byte(fmt.Sprintf("%s/%s/%d/%d/%d",
