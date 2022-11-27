@@ -148,6 +148,29 @@ func (_m *Client) Error() error {
 	return r0
 }
 
+// ExtendVote provides a mock function with given fields: _a0, _a1
+func (_m *Client) ExtendVote(_a0 context.Context, _a1 *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *types.ResponseExtendVote
+	if rf, ok := ret.Get(0).(func(context.Context, *types.RequestExtendVote) *types.ResponseExtendVote); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseExtendVote)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *types.RequestExtendVote) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // FinalizeBlock provides a mock function with given fields: _a0, _a1
 func (_m *Client) FinalizeBlock(_a0 context.Context, _a1 *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	ret := _m.Called(_a0, _a1)
@@ -496,6 +519,29 @@ func (_m *Client) String() string {
 	}
 
 	return r0
+}
+
+// VerifyVoteExtension provides a mock function with given fields: _a0, _a1
+func (_m *Client) VerifyVoteExtension(_a0 context.Context, _a1 *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	ret := _m.Called(_a0, _a1)
+
+	var r0 *types.ResponseVerifyVoteExtension
+	if rf, ok := ret.Get(0).(func(context.Context, *types.RequestVerifyVoteExtension) *types.ResponseVerifyVoteExtension); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ResponseVerifyVoteExtension)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, *types.RequestVerifyVoteExtension) error); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 type mockConstructorTestingTNewClient interface {
