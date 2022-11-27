@@ -89,6 +89,16 @@ func (app *appConnConsensus) ProcessProposal(ctx context.Context, req *types.Req
 	return app.appConn.ProcessProposal(ctx, req)
 }
 
+func (app *appConnConsensus) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "deliver_tx", "type", "async"))()
+	return app.appConn.ExtendVote(ctx, req)
+}
+
+func (app *appConnConsensus) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "deliver_tx", "type", "async"))()
+	return app.appConn.VerifyVoteExtension(ctx, req)
+}
+
 func (app *appConnConsensus) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
 	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "deliver_tx", "type", "async"))()
 	return app.appConn.FinalizeBlock(ctx, req)
@@ -97,14 +107,6 @@ func (app *appConnConsensus) FinalizeBlock(ctx context.Context, req *types.Reque
 func (app *appConnConsensus) Commit(ctx context.Context) (*types.ResponseCommit, error) {
 	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "commit"))()
 	return app.appConn.Commit(ctx, &types.RequestCommit{})
-}
-
-func (app *appConnConsensus) ExtendVoteSync(req types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	return app.appConn.ExtendVoteSync(req)
-}
-
-func (app *appConnConsensus) VerifyVoteExtensionSync(req types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	return app.appConn.VerifyVoteExtensionSync(req)
 }
 
 //------------------------------------------------

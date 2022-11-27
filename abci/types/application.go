@@ -103,7 +103,9 @@ func (BaseApplication) ExtendVote(_ context.Context, req *RequestExtendVote) (*R
 }
 
 func (BaseApplication) VerifyVoteExtension(_ context.Context, req *RequestVerifyVoteExtension) (*ResponseVerifyVoteExtension, error) {
-	return &ResponseVerifyVoteExtension{Result: OK}, nil
+	return &ResponseVerifyVoteExtension{
+		Status: ResponseVerifyVoteExtension_ACCEPT,
+	}, nil
 }
 
 func (BaseApplication) FinalizeBlock(_ context.Context, req *RequestFinalizeBlock) (*ResponseFinalizeBlock, error) {

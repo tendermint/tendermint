@@ -300,7 +300,7 @@ func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) ([]byte, error) {
 		Height: vote.Height,
 	}
 
-	resp, err := blockExec.proxyApp.ExtendVoteSync(req)
+	resp, err := blockExec.proxyApp.ExtendVote(context.TODO(), &req)
 	if err != nil {
 		panic(fmt.Errorf("ExtendVote call failed: %w", err))
 	}
@@ -315,7 +315,7 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
 		VoteExtension:    vote.Extension,
 	}
 
-	resp, err := blockExec.proxyApp.VerifyVoteExtensionSync(req)
+	resp, err := blockExec.proxyApp.VerifyVoteExtension(context.TODO(), &req)
 	if err != nil {
 		panic(fmt.Errorf("VerifyVoteExtension call failed: %w", err))
 	}
