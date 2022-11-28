@@ -312,7 +312,7 @@ const numBlocks = 6
 var modes = []uint{0, 1, 2, 3}
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
-func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*cfg.Config, []*types.Block, []*types.Commit, sm.State) {
+func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*cfg.Config, []*types.Block, []*types.ExtendedCommit, sm.State) {
 	nPeers := 7
 	nVals := 4
 	css, genDoc, config, cleanup := randConsensusNetWithPeers(
@@ -543,7 +543,7 @@ func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*
 		chain = append(chain, css[0].blockStore.LoadBlock(int64(i)))
 		extCommits = append(extCommits, css[0].blockStore.LoadBlockExtendedCommit(int64(i)))
 	}
-	return config, chain, commits, genesisState
+	return config, chain, extCommits, genesisState
 }
 
 // Sync from scratch
