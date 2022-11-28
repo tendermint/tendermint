@@ -34,13 +34,22 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "validator_set_updates",
 			Help:      "ValidatorSetUpdates is the total number of times the application has udated the validator set since process start.",
 		}, labels).With(labelsAndValues...),
+		StoreAccessDurationSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "store_access_duration_seconds",
+			Help:      "The duration of accesses to the state store labeled by which method was called on the store.",
+
+			Buckets: stdprometheus.ExponentialBuckets(0.01, 2, 5),
+		}, append(labels, "method")).With(labelsAndValues...),
 	}
 }
 
 func NopMetrics() *Metrics {
 	return &Metrics{
-		BlockProcessingTime:   discard.NewHistogram(),
-		ConsensusParamUpdates: discard.NewCounter(),
-		ValidatorSetUpdates:   discard.NewCounter(),
+		BlockProcessingTime:        discard.NewHistogram(),
+		ConsensusParamUpdates:      discard.NewCounter(),
+		ValidatorSetUpdates:        discard.NewCounter(),
+		StoreAccessDurationSeconds: discard.NewHistogram(),
 	}
 }

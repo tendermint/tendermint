@@ -80,6 +80,8 @@ type Store interface {
 type dbStore struct {
 	db dbm.DB
 
+	metrics *Metrics
+
 	StoreOptions
 }
 
@@ -95,7 +97,10 @@ var _ Store = (*dbStore)(nil)
 
 // NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB, options StoreOptions) Store {
-	return dbStore{db, options}
+	return dbStore{
+		db:           db,
+		StoreOptions: options,
+	}
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
