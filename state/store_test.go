@@ -301,17 +301,17 @@ func TestLastFinalizeBlockResponses(t *testing.T) {
 
 func TestFinalizeBlockRecoveryUsingLegacyABCIResponses(t *testing.T) {
 	var (
-		height int64 = 10
-		lastABCIResponseKey = []byte("lastABCIResponseKey")
-		memDB = dbm.NewMemDB()
-		cp = types.DefaultConsensusParams().ToProto()
-		legacyResp = tmstate.ABCIResponsesInfo{
+		height              int64 = 10
+		lastABCIResponseKey       = []byte("lastABCIResponseKey")
+		memDB                     = dbm.NewMemDB()
+		cp                        = types.DefaultConsensusParams().ToProto()
+		legacyResp                = tmstate.ABCIResponsesInfo{
 			LegacyAbciResponses: &tmstate.LegacyABCIResponses{
 				BeginBlock: &tmstate.ResponseBeginBlock{
 					Events: []abci.Event{{
 						Type: "begin_block",
 						Attributes: []abci.EventAttribute{{
-							Key: "key",
+							Key:   "key",
 							Value: "value",
 						}},
 					}},
@@ -320,7 +320,7 @@ func TestFinalizeBlockRecoveryUsingLegacyABCIResponses(t *testing.T) {
 					Events: []abci.Event{{
 						Type: "tx",
 						Attributes: []abci.EventAttribute{{
-							Key: "key",
+							Key:   "key",
 							Value: "value",
 						}},
 					}},
@@ -335,7 +335,7 @@ func TestFinalizeBlockRecoveryUsingLegacyABCIResponses(t *testing.T) {
 	bz, err := legacyResp.Marshal()
 	require.NoError(t, err)
 	// should keep this in parity with state/store.go
-	memDB.Set(lastABCIResponseKey, bz)
+	require.NoError(t, memDB.Set(lastABCIResponseKey, bz))
 	stateStore := sm.NewStore(memDB, sm.StoreOptions{DiscardABCIResponses: false})
 	resp, err := stateStore.LoadLastFinalizeBlockResponse(height)
 	require.NoError(t, err)
