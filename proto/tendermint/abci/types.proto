@@ -332,7 +332,7 @@ message ExtendedCommitInfo {
 }
 
 // Event allows application developers to attach additional information to
-// ResponseBeginBlock, ResponseEndBlock, ResponseCheckTx and ResponseDeliverTx.
+// ResponseFinalizeBlock and ResponseCheckTx.
 // Later, transactions may be queried using these events.
 message Event {
   string                  type       = 1;
