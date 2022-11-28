@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
@@ -377,7 +376,7 @@ func TestLoadBaseMeta(t *testing.T) {
 }
 
 func TestLoadBlockPart(t *testing.T) {
-	cfg := config.ResetTestRoot("blockchain_reactor_test")
+	config := test.ResetTestRoot("blockchain_reactor_test")
 
 	bs, db := newInMemoryBlockStore()
 	const height, index = 10, 1
@@ -386,7 +385,7 @@ func TestLoadBlockPart(t *testing.T) {
 		return part, nil
 	}
 
-	state, err := sm.MakeGenesisStateFromFile(cfg.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	require.NoError(t, err)
 
 	// Initially no contents.
