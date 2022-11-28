@@ -34,10 +34,12 @@
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
 - [rpc] \#9650 Enable caching of RPC responses (@JayT106)
+- [consensus] \#9760 Save peer LastCommit correctly to achieve 50% reduction in gossiped precommits. (@williambanfield)
 
 ### BUG FIXES
 
 - [docker] \#9462 ensure Docker image uses consistent version of Go
+- [abci-cli] \#9717 fix broken abci-cli help command
 
 ## v0.37.0
 
