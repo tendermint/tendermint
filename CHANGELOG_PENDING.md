@@ -12,6 +12,7 @@
 
 - Go API
   - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
+  - [rpc] \#9655 Remove global environment and replace with constructor. (@williambanfield,@tychoish)
 
 - Blockchain Protocol
 
@@ -22,6 +23,7 @@
   - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
   - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
     labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
+  - [inspect] \#9655 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
 
 ### FEATURES
 
