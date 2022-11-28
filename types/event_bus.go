@@ -135,8 +135,7 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultEvents := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
-	events := b.validateAndStringifyEvents(resultEvents, b.Logger.With("block", data.Block.StringShort()))
+	events := b.validateAndStringifyEvents(data.ResultFinalizeBlock.Events, b.Logger.With("height", data.Block.Height))
 
 	// add predefined new block event
 	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlock)
@@ -144,18 +143,20 @@ func (b *EventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 	return b.pubsub.PublishWithEvents(ctx, data, events)
 }
 
-func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
+func (b *EventBus) PublishEventNewBlockEvents(data EventDataNewBlockEvents) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	resultTags := append(data.ResultBeginBlock.Events, data.ResultEndBlock.Events...)
-	// TODO: Create StringShort method for Header and use it in logger.
-	events := b.validateAndStringifyEvents(resultTags, b.Logger.With("header", data.Header))
+	events := b.validateAndStringifyEvents(data.Events, b.Logger.With("height", data.Height))
 
-	// add predefined new block header event
-	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlockHeader)
+	// add predefined new block event
+	events[EventTypeKey] = append(events[EventTypeKey], EventNewBlockEvents)
 
 	return b.pubsub.PublishWithEvents(ctx, data, events)
+}
+
+func (b *EventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
+	return b.Publish(EventNewBlockHeader, data)
 }
 
 func (b *EventBus) PublishEventNewEvidence(evidence EventDataNewEvidence) error {
@@ -252,6 +253,10 @@ func (NopEventBus) PublishEventNewBlock(data EventDataNewBlock) error {
 }
 
 func (NopEventBus) PublishEventNewBlockHeader(data EventDataNewBlockHeader) error {
+	return nil
+}
+
+func (NopEventBus) PublishEventNewBlockEvents(data EventDataNewBlockEvents) error {
 	return nil
 }
 

@@ -77,13 +77,90 @@ func TestApplyBlock(t *testing.T) {
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
-// TestBeginBlockValidators ensures we send absent validators list.
-func TestBeginBlockValidators(t *testing.T) {
+// TestFinalizeBlockDecidedLastCommit ensures we correctly send the
+// DecidedLastCommit to the application. The test ensures that the
+// DecidedLastCommit properly reflects which validators signed the preceding
+// block.
+func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+	state, stateDB, privVals := makeState(7, 1)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
+	absentSig := types.NewCommitSigAbsent()
+
+	testCases := []struct {
+		name             string
+		absentCommitSigs map[int]bool
+	}{
+		{"none absent", map[int]bool{}},
+		{"one absent", map[int]bool{1: true}},
+		{"multiple absent", map[int]bool{1: true, 3: true}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			blockStore := store.NewBlockStore(dbm.NewMemDB())
+			evpool := &mocks.EvidencePool{}
+			evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, 0)
+			evpool.On("Update", mock.Anything, mock.Anything).Return()
+			evpool.On("CheckEvidence", mock.Anything).Return(nil)
+			mp := &mpmocks.Mempool{}
+			mp.On("Lock").Return()
+			mp.On("Unlock").Return()
+			mp.On("FlushAppConn", mock.Anything).Return(nil)
+			mp.On("Update",
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything).Return(nil)
+
+			eventBus := types.NewEventBus()
+			require.NoError(t, eventBus.Start())
+
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp.Consensus(), mp, evpool, blockStore)
+			state, _, lastCommit, err := makeAndCommitGoodBlock(state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
+			require.NoError(t, err)
+
+			for idx, isAbsent := range tc.absentCommitSigs {
+				if isAbsent {
+					lastCommit.Signatures[idx] = absentSig
+				}
+			}
+
+			// block for height 2
+			block := makeBlock(state, 2, lastCommit)
+			bps, err := block.MakePartSet(testPartSize)
+			require.NoError(t, err)
+			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+			_, err = blockExec.ApplyBlock(state, blockID, block)
+			require.NoError(t, err)
+
+			// -> app receives a list of validators with a bool indicating if they signed
+			for i, v := range app.CommitVotes {
+				_, absent := tc.absentCommitSigs[i]
+				assert.Equal(t, !absent, v.SignedLastBlock)
+			}
+		})
+	}
+}
+
+// TestFinalizeBlockValidators ensures we send absent validators list.
+func TestFinalizeBlockValidators(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+	err := proxyApp.Start()
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // no need to check error again
 
 	state, stateDB, _ := makeState(2, 2)
@@ -142,13 +219,13 @@ func TestBeginBlockValidators(t *testing.T) {
 	}
 }
 
-// TestBeginBlockByzantineValidators ensures we send byzantine validators list.
-func TestBeginBlockByzantineValidators(t *testing.T) {
+// TestFinalizeBlockMisbehavior ensures we send misbehavior list.
+func TestFinalizeBlockMisbehavior(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, privVals := makeState(1, 1)
@@ -247,8 +324,8 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 	blockID = types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
 
-	state, err = blockExec.ApplyBlock(state, blockID, block)
-	require.Nil(t, err)
+	_, err = blockExec.ApplyBlock(state, blockID, block)
+	require.NoError(t, err)
 
 	// TODO check state and mempool
 	assert.Equal(t, abciMb, app.Misbehavior)
@@ -259,8 +336,8 @@ func TestProcessProposal(t *testing.T) {
 	txs := test.MakeNTxs(height, 10)
 
 	logger := log.NewNopLogger()
-	app := abcimocks.NewBaseMock()
-	app.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT})
+	app := &abcimocks.Application{}
+	app.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: abci.ResponseProcessProposal_ACCEPT}, nil)
 
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -316,7 +393,7 @@ func TestProcessProposal(t *testing.T) {
 	})
 	block1.Txs = txs
 
-	expectedRpp := abci.RequestProcessProposal{
+	expectedRpp := &abci.RequestProcessProposal{
 		Txs:         block1.Txs.ToSliceOfBytes(),
 		Hash:        block1.Hash(),
 		Height:      block1.Header.Height,
@@ -334,7 +411,7 @@ func TestProcessProposal(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, acceptBlock)
 	app.AssertExpectations(t)
-	app.AssertCalled(t, "ProcessProposal", expectedRpp)
+	app.AssertCalled(t, "ProcessProposal", context.TODO(), expectedRpp)
 }
 
 func TestValidateValidatorUpdates(t *testing.T) {
@@ -467,13 +544,13 @@ func TestUpdateValidators(t *testing.T) {
 	}
 }
 
-// TestEndBlockValidatorUpdates ensures we update validator set and send an event.
-func TestEndBlockValidatorUpdates(t *testing.T) {
+// TestFinalizeBlockValidatorUpdates ensures we update validator set and send an event.
+func TestFinalizeBlockValidatorUpdates(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
@@ -530,7 +607,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 
 	state, err = blockExec.ApplyBlock(state, blockID, block)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	// test new validator was added to NextValidators
 	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
 		idx, _ := state.NextValidators.GetByAddress(pubkey.Address())
@@ -555,14 +632,14 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	}
 }
 
-// TestEndBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
+// TestFinalizeBlockValidatorUpdatesResultingInEmptySet checks that processing validator updates that
 // would result in empty set causes no panic, an error is raised and NextValidators is not updated
-func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
+func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
 
 	state, stateDB, _ := makeState(1, 1)
@@ -592,14 +669,14 @@ func TestEndBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 	}
 
 	assert.NotPanics(t, func() { state, err = blockExec.ApplyBlock(state, blockID, block) })
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 	assert.NotEmpty(t, state.NextValidators.Validators)
 }
 
 func TestEmptyPrepareProposal(t *testing.T) {
 	const height = 2
 
-	app := abcimocks.NewBaseMock()
+	app := &abci.BaseApplication{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
@@ -654,12 +731,12 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 
 	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs[2:]))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs[2:])
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		Txs: types.Txs(txs).ToSliceOfBytes(),
-	})
+	app := &abcimocks.Application{}
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
+		Txs: txs.ToSliceOfBytes(),
+	}, nil)
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
@@ -703,15 +780,15 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 
 	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
 
 	txs = txs[2:]
 	txs = append(txs[len(txs)/2:], txs[:len(txs)/2]...)
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		Txs: types.Txs(txs).ToSliceOfBytes(),
-	})
+	app := &abcimocks.Application{}
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
+		Txs: txs.ToSliceOfBytes(),
+	}, nil)
 
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -761,12 +838,12 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	maxDataBytes := types.MaxDataBytes(state.ConsensusParams.Block.MaxBytes, 0, nValidators)
 	txs := test.MakeNTxs(height, maxDataBytes/bytesPerTx+2) // +2 so that tx don't fit
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
 
-	app := abcimocks.NewBaseMock()
-	app.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{
-		Txs: types.Txs(txs).ToSliceOfBytes(),
-	})
+	app := &abcimocks.Application{}
+	app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{
+		Txs: txs.ToSliceOfBytes(),
+	}, nil)
 
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
@@ -809,13 +886,13 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 
 	txs := test.MakeNTxs(height, 10)
 	mp := &mpmocks.Mempool{}
-	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(types.Txs(txs))
+	mp.On("ReapMaxBytesMaxGas", mock.Anything, mock.Anything).Return(txs)
 
 	cm := &abciclientmocks.Client{}
 	cm.On("SetLogger", mock.Anything).Return()
 	cm.On("Start").Return(nil)
 	cm.On("Quit").Return(nil)
-	cm.On("PrepareProposalSync", mock.Anything).Return(nil, errors.New("an injected error")).Once()
+	cm.On("PrepareProposal", mock.Anything, mock.Anything).Return(nil, errors.New("an injected error")).Once()
 	cm.On("Stop").Return(nil)
 	cc := &pmocks.ClientCreator{}
 	cc.On("NewABCIClient").Return(cm, nil)

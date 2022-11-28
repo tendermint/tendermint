@@ -24,8 +24,7 @@ import (
 )
 
 const (
-	eventTypeBeginBlock = "begin_block"
-	eventTypeEndBlock   = "end_block"
+	eventTypeFinalizeBlock = "finaliz_block"
 )
 
 // TxIndexer returns a bridge from es to the Tendermint v0.34 transaction indexer.
@@ -77,7 +76,7 @@ func (BackportBlockIndexer) Has(height int64) (bool, error) {
 
 // Index indexes block begin and end events for the specified block.  It is
 // part of the BlockIndexer interface.
-func (b BackportBlockIndexer) Index(block types.EventDataNewBlockHeader) error {
+func (b BackportBlockIndexer) Index(block types.EventDataNewBlockEvents) error {
 	return b.psql.IndexBlockEvents(block)
 }
 

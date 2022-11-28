@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmlog "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 
@@ -140,7 +141,7 @@ func TestMain(m *testing.M) {
 func TestIndexing(t *testing.T) {
 	t.Run("IndexBlockEvents", func(t *testing.T) {
 		indexer := &EventSink{store: testDB(), chainID: chainID}
-		require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
+		require.NoError(t, indexer.IndexBlockEvents(newTestBlockEvents()))
 
 		verifyBlock(t, 1)
 		verifyBlock(t, 2)
@@ -156,7 +157,7 @@ func TestIndexing(t *testing.T) {
 		require.NoError(t, verifyTimeStamp(tableBlocks))
 
 		// Attempting to reindex the same events should gracefully succeed.
-		require.NoError(t, indexer.IndexBlockEvents(newTestBlockHeader()))
+		require.NoError(t, indexer.IndexBlockEvents(newTestBlockEvents()))
 	})
 
 	t.Run("IndexTxEvents", func(t *testing.T) {
@@ -212,6 +213,7 @@ func TestIndexing(t *testing.T) {
 		})
 
 		service := txindex.NewIndexerService(indexer.TxIndexer(), indexer.BlockIndexer(), eventBus, true)
+		service.SetLogger(tmlog.TestingLogger())
 		err = service.Start()
 		require.NoError(t, err)
 		t.Cleanup(func() {
@@ -221,16 +223,16 @@ func TestIndexing(t *testing.T) {
 		})
 
 		// publish block with txs
-		err = eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{
-			Header: types.Header{Height: 1},
-			NumTxs: int64(2),
+		err = eventBus.PublishEventNewBlockEvents(types.EventDataNewBlockEvents{
+			Height: 1,
+			NumTxs: 2,
 		})
 		require.NoError(t, err)
 		txResult1 := &abci.TxResult{
 			Height: 1,
 			Index:  uint32(0),
 			Tx:     types.Tx("foo"),
-			Result: abci.ResponseDeliverTx{Code: 0},
+			Result: abci.ExecTxResult{Code: 0},
 		}
 		err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult1})
 		require.NoError(t, err)
@@ -238,7 +240,7 @@ func TestIndexing(t *testing.T) {
 			Height: 1,
 			Index:  uint32(1),
 			Tx:     types.Tx("bar"),
-			Result: abci.ResponseDeliverTx{Code: 1},
+			Result: abci.ExecTxResult{Code: 1},
 		}
 		err = eventBus.PublishEventTx(types.EventDataTx{TxResult: *txResult2})
 		require.NoError(t, err)
@@ -253,22 +255,16 @@ func TestStop(t *testing.T) {
 	require.NoError(t, indexer.Stop())
 }
 
-// newTestBlockHeader constructs a fresh copy of a block header containing
+// newTestBlock constructs a fresh copy of a new block event containing
 // known test values to exercise the indexer.
-func newTestBlockHeader() types.EventDataNewBlockHeader {
-	return types.EventDataNewBlockHeader{
-		Header: types.Header{Height: 1},
-		ResultBeginBlock: abci.ResponseBeginBlock{
-			Events: []abci.Event{
-				makeIndexedEvent("begin_event.proposer", "FCAA001"),
-				makeIndexedEvent("thingy.whatzit", "O.O"),
-			},
-		},
-		ResultEndBlock: abci.ResponseEndBlock{
-			Events: []abci.Event{
-				makeIndexedEvent("end_event.foo", "100"),
-				makeIndexedEvent("thingy.whatzit", "-.O"),
-			},
+func newTestBlockEvents() types.EventDataNewBlockEvents {
+	return types.EventDataNewBlockEvents{
+		Height: 1,
+		Events: []abci.Event{
+			makeIndexedEvent("begin_event.proposer", "FCAA001"),
+			makeIndexedEvent("thingy.whatzit", "O.O"),
+			makeIndexedEvent("end_event.foo", "100"),
+			makeIndexedEvent("thingy.whatzit", "-.O"),
 		},
 	}
 }
@@ -307,7 +303,7 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		Height: 1,
 		Index:  0,
 		Tx:     types.Tx("HELLO WORLD"),
-		Result: abci.ResponseDeliverTx{
+		Result: abci.ExecTxResult{
 			Data:   []byte{0},
 			Code:   abci.CodeTypeOK,
 			Log:    "",
@@ -355,17 +351,8 @@ SELECT height FROM `+tableBlocks+` WHERE height = $1;
 	if err := testDB().QueryRow(`
 SELECT type, height, chain_id FROM `+viewBlockEvents+`
   WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, eventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", eventTypeBeginBlock, height)
-	} else if err != nil {
-		t.Fatalf("Database query failed: %v", err)
-	}
-
-	if err := testDB().QueryRow(`
-SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, eventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", eventTypeEndBlock, height)
+`, height, eventTypeFinalizeBlock, chainID).Err(); err == sql.ErrNoRows {
+		t.Errorf("No %q event found for height=%d", eventTypeFinalizeBlock, height)
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}

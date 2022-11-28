@@ -6,15 +6,32 @@ option go_package = "github.com/tendermint/tendermint/abci/types";
 // For more information on gogo.proto, see:
 // https://github.com/cosmos/gogoproto/blob/master/extensions.md
 import "tendermint/crypto/proof.proto";
-import "tendermint/types/types.proto";
 import "tendermint/crypto/keys.proto";
 import "tendermint/types/params.proto";
 import "google/protobuf/timestamp.proto";
 import "gogoproto/gogo.proto";
 
-// This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
 // https://github.com/cosmos/gogoproto/blob/master/custom_types.md#warnings-and-issues
+
+service ABCI {
+  rpc Echo(RequestEcho) returns (ResponseEcho);
+  rpc Flush(RequestFlush) returns (ResponseFlush);
+  rpc Info(RequestInfo) returns (ResponseInfo);
+  rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
+  rpc Query(RequestQuery) returns (ResponseQuery);
+  rpc Commit(RequestCommit) returns (ResponseCommit);
+  rpc InitChain(RequestInitChain) returns (ResponseInitChain);
+  rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
+  rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
+  rpc LoadSnapshotChunk(RequestLoadSnapshotChunk)
+      returns (ResponseLoadSnapshotChunk);
+  rpc ApplySnapshotChunk(RequestApplySnapshotChunk)
+      returns (ResponseApplySnapshotChunk);
+  rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
+  rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
+  rpc FinalizeBlock(RequestFinalizeBlock) returns (ResponseFinalizeBlock);
+}
 
 //----------------------------------------
 // Request types
@@ -26,10 +43,7 @@ message Request {
     RequestInfo               info                 = 3;
     RequestInitChain          init_chain           = 5;
     RequestQuery              query                = 6;
-    RequestBeginBlock         begin_block          = 7;
     RequestCheckTx            check_tx             = 8;
-    RequestDeliverTx          deliver_tx           = 9;
-    RequestEndBlock           end_block            = 10;
     RequestCommit             commit               = 11;
     RequestListSnapshots      list_snapshots       = 12;
     RequestOfferSnapshot      offer_snapshot       = 13;
@@ -37,8 +51,9 @@ message Request {
     RequestApplySnapshotChunk apply_snapshot_chunk = 15;
     RequestPrepareProposal    prepare_proposal     = 16;
     RequestProcessProposal    process_proposal     = 17;
+    RequestFinalizeBlock      finalize_block       = 20;
   }
-  reserved 4;
+  reserved 4, 7, 9, 10;  // SetOption, BeginBlock, DeliverTx, EndBlock
 }
 
 message RequestEcho {
@@ -71,13 +86,6 @@ message RequestQuery {
   bool   prove  = 4;
 }
 
-message RequestBeginBlock {
-  bytes                   hash                 = 1;
-  tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
-  CommitInfo              last_commit_info     = 3 [(gogoproto.nullable) = false];
-  repeated Misbehavior    byzantine_validators = 4 [(gogoproto.nullable) = false];
-}
-
 enum CheckTxType {
   NEW     = 0 [(gogoproto.enumvalue_customname) = "New"];
   RECHECK = 1 [(gogoproto.enumvalue_customname) = "Recheck"];
@@ -86,14 +94,6 @@ enum CheckTxType {
 message RequestCheckTx {
   bytes       tx   = 1;
   CheckTxType type = 2;
-}
-
-message RequestDeliverTx {
-  bytes tx = 1;
-}
-
-message RequestEndBlock {
-  int64 height = 1;
 }
 
 message RequestCommit {}
@@ -149,6 +149,19 @@ message RequestProcessProposal {
   bytes proposer_address = 8;
 }
 
+message RequestFinalizeBlock {
+  repeated bytes       txs                 = 1;
+  CommitInfo           decided_last_commit = 2 [(gogoproto.nullable) = false];
+  repeated Misbehavior misbehavior         = 3 [(gogoproto.nullable) = false];
+  // hash is the merkle root hash of the fields of the decided block.
+  bytes                     hash                 = 4;
+  int64                     height               = 5;
+  google.protobuf.Timestamp time                 = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  bytes                     next_validators_hash = 7;
+  // proposer_address is the address of the public key of the original proposer of the block.
+  bytes proposer_address = 8;
+}
+
 //----------------------------------------
 // Response types
 
@@ -160,10 +173,7 @@ message Response {
     ResponseInfo               info                 = 4;
     ResponseInitChain          init_chain           = 6;
     ResponseQuery              query                = 7;
-    ResponseBeginBlock         begin_block          = 8;
     ResponseCheckTx            check_tx             = 9;
-    ResponseDeliverTx          deliver_tx           = 10;
-    ResponseEndBlock           end_block            = 11;
     ResponseCommit             commit               = 12;
     ResponseListSnapshots      list_snapshots       = 13;
     ResponseOfferSnapshot      offer_snapshot       = 14;
@@ -171,8 +181,9 @@ message Response {
     ResponseApplySnapshotChunk apply_snapshot_chunk = 16;
     ResponsePrepareProposal    prepare_proposal     = 17;
     ResponseProcessProposal    process_proposal     = 18;
+    ResponseFinalizeBlock      finalize_block       = 21;
   }
-  reserved 5;
+  reserved 5, 8, 10, 11;  // SetOption, BeginBlock, DeliverTx, EndBlock
 }
 
 // nondeterministic
@@ -215,11 +226,6 @@ message ResponseQuery {
   string                     codespace = 10;
 }
 
-message ResponseBeginBlock {
-  repeated Event events = 1
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-}
-
 message ResponseCheckTx {
   uint32         code       = 1;
   bytes          data       = 2;
@@ -238,30 +244,8 @@ message ResponseCheckTx {
   string mempool_error = 11;
 }
 
-message ResponseDeliverTx {
-  uint32         code       = 1;
-  bytes          data       = 2;
-  string         log        = 3;  // nondeterministic
-  string         info       = 4;  // nondeterministic
-  int64          gas_wanted = 5 [json_name = "gas_wanted"];
-  int64          gas_used   = 6 [json_name = "gas_used"];
-  repeated Event events     = 7 [
-    (gogoproto.nullable) = false,
-    (gogoproto.jsontag)  = "events,omitempty"
-  ];  // nondeterministic
-  string codespace = 8;
-}
-
-message ResponseEndBlock {
-  repeated ValidatorUpdate         validator_updates       = 1 [(gogoproto.nullable) = false];
-  tendermint.types.ConsensusParams consensus_param_updates = 2;
-  repeated Event                   events                  = 3
-      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-}
-
 message ResponseCommit {
-  // reserve 1
-  bytes data          = 2;
+  reserved 1, 2;  // data was previously returned here
   int64 retain_height = 3;
 }
 
@@ -315,6 +299,22 @@ message ResponseProcessProposal {
   }
 }
 
+message ResponseFinalizeBlock {
+  // set of block events emmitted as part of executing the block
+  repeated Event events = 1
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  // the result of executing each transaction including the events
+  // the particular transction emitted. This should match the order
+  // of the transactions delivered in the block itself
+  repeated ExecTxResult tx_results = 2;
+  // a list of updates to the validator set. These will reflect the validator set at current height + 2.
+  repeated ValidatorUpdate validator_updates = 3 [(gogoproto.nullable) = false];
+  // updates to the consensus params, if any.
+  tendermint.types.ConsensusParams consensus_param_updates = 4;
+  // agreed_app_data is the bytes that all nodes reach consensus upon in the following height. It is often the hash of the applications' state which can be used to confirm that execution of the transactions was deterministic.
+  bytes agreed_app_data = 5;
+}
+
 //----------------------------------------
 // Misc.
 
@@ -332,7 +332,7 @@ message ExtendedCommitInfo {
 }
 
 // Event allows application developers to attach additional information to
-// ResponseBeginBlock, ResponseEndBlock, ResponseCheckTx and ResponseDeliverTx.
+// ResponseFinalizeBlock and ResponseCheckTx.
 // Later, transactions may be queried using these events.
 message Event {
   string                  type       = 1;
@@ -349,14 +349,29 @@ message EventAttribute {
   bool   index = 3;  // nondeterministic
 }
 
+// ExecTxResult contains results of executing one individual transaction.
+//
+// * Its structure is equivalent to #ResponseDeliverTx which will be deprecated/deleted
+message ExecTxResult {
+  uint32         code       = 1;
+  bytes          data       = 2;
+  string         log        = 3;  // nondeterministic
+  string         info       = 4;  // nondeterministic
+  int64          gas_wanted = 5;
+  int64          gas_used   = 6;
+  repeated Event events     = 7
+      [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];  // nondeterministic
+  string codespace = 8;
+}
+
 // TxResult contains results of executing the transaction.
 //
 // One usage is indexing transaction results.
 message TxResult {
-  int64             height = 1;
-  uint32            index  = 2;
-  bytes             tx     = 3;
-  ResponseDeliverTx result = 4 [(gogoproto.nullable) = false];
+  int64        height = 1;
+  uint32       index  = 2;
+  bytes        tx     = 3;
+  ExecTxResult result = 4 [(gogoproto.nullable) = false];
 }
 
 //----------------------------------------
@@ -417,28 +432,4 @@ message Snapshot {
   uint32 chunks   = 3;  // Number of chunks in the snapshot
   bytes  hash     = 4;  // Arbitrary snapshot hash, equal only if identical
   bytes  metadata = 5;  // Arbitrary application metadata
-}
-
-//----------------------------------------
-// Service Definition
-
-service ABCIApplication {
-  rpc Echo(RequestEcho) returns (ResponseEcho);
-  rpc Flush(RequestFlush) returns (ResponseFlush);
-  rpc Info(RequestInfo) returns (ResponseInfo);
-  rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
-  rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
-  rpc Query(RequestQuery) returns (ResponseQuery);
-  rpc Commit(RequestCommit) returns (ResponseCommit);
-  rpc InitChain(RequestInitChain) returns (ResponseInitChain);
-  rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
-  rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
-  rpc ListSnapshots(RequestListSnapshots) returns (ResponseListSnapshots);
-  rpc OfferSnapshot(RequestOfferSnapshot) returns (ResponseOfferSnapshot);
-  rpc LoadSnapshotChunk(RequestLoadSnapshotChunk)
-      returns (ResponseLoadSnapshotChunk);
-  rpc ApplySnapshotChunk(RequestApplySnapshotChunk)
-      returns (ResponseApplySnapshotChunk);
-  rpc PrepareProposal(RequestPrepareProposal) returns (ResponsePrepareProposal);
-  rpc ProcessProposal(RequestProcessProposal) returns (ResponseProcessProposal);
 }

@@ -44,10 +44,10 @@ func (is *IndexerService) OnStart() error {
 	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
 	// canceled due to not pulling messages fast enough. Cause this might
 	// sometimes happen when there are no other subscribers.
-	blockHeadersSub, err := is.eventBus.SubscribeUnbuffered(
+	blockSub, err := is.eventBus.SubscribeUnbuffered(
 		context.Background(),
 		subscriber,
-		types.EventQueryNewBlockHeader)
+		types.EventQueryNewBlockEvents)
 	if err != nil {
 		return err
 	}
@@ -59,12 +59,14 @@ func (is *IndexerService) OnStart() error {
 
 	go func() {
 		for {
-			msg := <-blockHeadersSub.Out()
-			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
-			height := eventDataHeader.Header.Height
-			batch := NewBatch(eventDataHeader.NumTxs)
+			msg := <-blockSub.Out()
+			eventNewBlockEvents := msg.Data().(types.EventDataNewBlockEvents)
+			height := eventNewBlockEvents.Height
+			numTxs := eventNewBlockEvents.NumTxs
 
-			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
+			batch := NewBatch(numTxs)
+
+			for i := int64(0); i < numTxs; i++ {
 				msg2 := <-txsSub.Out()
 				txResult := msg2.Data().(types.EventDataTx).TxResult
 
@@ -85,7 +87,7 @@ func (is *IndexerService) OnStart() error {
 				}
 			}
 
-			if err := is.blockIdxr.Index(eventDataHeader); err != nil {
+			if err := is.blockIdxr.Index(eventNewBlockEvents); err != nil {
 				is.Logger.Error("failed to index block", "height", height, "err", err)
 				if is.terminateOnError {
 					if err := is.Stop(); err != nil {
@@ -106,7 +108,7 @@ func (is *IndexerService) OnStart() error {
 					return
 				}
 			} else {
-				is.Logger.Debug("indexed transactions", "height", height, "num_txs", eventDataHeader.NumTxs)
+				is.Logger.Debug("indexed block txs", "height", height, "num_txs", numTxs)
 			}
 		}
 	}()

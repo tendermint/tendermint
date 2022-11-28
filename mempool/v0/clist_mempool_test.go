@@ -1,7 +1,7 @@
 package v0
 
 import (
-	"crypto/rand"
+	"context"
 	"encoding/binary"
 	"fmt"
 	mrand "math/rand"
@@ -100,12 +100,8 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 	txs := make(types.Txs, count)
 	txInfo := mempool.TxInfo{SenderID: peerID}
 	for i := 0; i < count; i++ {
-		txBytes := make([]byte, 20)
+		txBytes := kvstore.NewRandomTx(20)
 		txs[i] = txBytes
-		_, err := rand.Read(txBytes)
-		if err != nil {
-			t.Error(err)
-		}
 		if err := mp.CheckTx(txBytes, nil, txInfo); err != nil {
 			// Skip invalid txs.
 			// TestMempoolFilters will fail otherwise. It asserts a number of txs
@@ -120,7 +116,7 @@ func checkTxs(t *testing.T, mp mempool.Mempool, count int, peerID uint16) types.
 }
 
 func TestReapMaxBytesMaxGas(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -128,8 +124,6 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 	// Ensure gas calculation behaves as expected
 	checkTxs(t, mp, 1, mempool.UnknownPeerID)
 	tx0 := mp.TxsFront().Value.(*mempoolTx)
-	// assert that kv store has gas wanted = 1.
-	require.Equal(t, app.CheckTx(abci.RequestCheckTx{Tx: tx0.tx}).GasWanted, int64(1), "KVStore had a gas value neq to 1")
 	require.Equal(t, tx0.gasWanted, int64(1), "transactions gas was set incorrectly")
 	// ensure each tx is 20 bytes long
 	require.Equal(t, len(tx0.tx), 20, "Tx is longer than 20 bytes")
@@ -169,7 +163,7 @@ func TestReapMaxBytesMaxGas(t *testing.T) {
 }
 
 func TestMempoolFilters(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -208,16 +202,17 @@ func TestMempoolFilters(t *testing.T) {
 }
 
 func TestMempoolUpdate(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
 
 	// 1. Adds valid txs to the cache
 	{
-		err := mp.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+		tx1 := kvstore.NewTxFromID(1)
+		err := mp.Update(1, []types.Tx{tx1}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
-		err = mp.CheckTx([]byte{0x01}, nil, mempool.TxInfo{})
+		err = mp.CheckTx(tx1, nil, mempool.TxInfo{})
 		if assert.Error(t, err) {
 			assert.Equal(t, mempool.ErrTxInCache, err)
 		}
@@ -225,22 +220,24 @@ func TestMempoolUpdate(t *testing.T) {
 
 	// 2. Removes valid txs from the mempool
 	{
-		err := mp.CheckTx([]byte{0x02}, nil, mempool.TxInfo{})
+		tx2 := kvstore.NewTxFromID(2)
+		err := mp.CheckTx(tx2, nil, mempool.TxInfo{})
 		require.NoError(t, err)
-		err = mp.Update(1, []types.Tx{[]byte{0x02}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+		err = mp.Update(1, []types.Tx{tx2}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 		require.NoError(t, err)
 		assert.Zero(t, mp.Size())
 	}
 
 	// 3. Removes invalid transactions from the cache and the mempool (if present)
 	{
-		err := mp.CheckTx([]byte{0x03}, nil, mempool.TxInfo{})
+		tx3 := kvstore.NewTxFromID(3)
+		err := mp.CheckTx(tx3, nil, mempool.TxInfo{})
 		require.NoError(t, err)
-		err = mp.Update(1, []types.Tx{[]byte{0x03}}, abciResponses(1, 1), nil, nil)
+		err = mp.Update(1, []types.Tx{tx3}, abciResponses(1, 1), nil, nil)
 		require.NoError(t, err)
 		assert.Zero(t, mp.Size())
 
-		err = mp.CheckTx([]byte{0x03}, nil, mempool.TxInfo{})
+		err = mp.CheckTx(tx3, nil, mempool.TxInfo{})
 		require.NoError(t, err)
 	}
 }
@@ -252,10 +249,9 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	mockClient.On("SetLogger", mock.Anything)
 
 	mockClient.On("Error").Return(nil).Times(4)
-	mockClient.On("FlushAsync", mock.Anything).Return(abciclient.NewReqRes(abci.ToRequestFlush()), nil)
 	mockClient.On("SetResponseCallback", mock.MatchedBy(func(cb abciclient.Callback) bool { callback = cb; return true }))
 
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mp, cleanup, err := newMempoolWithAppMock(cc, mockClient)
 	require.NoError(t, err)
@@ -264,8 +260,8 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	// Add 4 transactions to the mempool by calling the mempool's `CheckTx` on each of them.
 	txs := []types.Tx{[]byte{0x01}, []byte{0x02}, []byte{0x03}, []byte{0x04}}
 	for _, tx := range txs {
-		reqRes := abciclient.NewReqRes(abci.ToRequestCheckTx(abci.RequestCheckTx{Tx: tx}))
-		reqRes.Response = abci.ToResponseCheckTx(abci.ResponseCheckTx{Code: abci.CodeTypeOK})
+		reqRes := abciclient.NewReqRes(abci.ToRequestCheckTx(&abci.RequestCheckTx{Tx: tx}))
+		reqRes.Response = abci.ToResponseCheckTx(&abci.ResponseCheckTx{Code: abci.CodeTypeOK})
 
 		mockClient.On("CheckTxAsync", mock.Anything, mock.Anything).Return(reqRes, nil)
 		err := mp.CheckTx(tx, nil, mempool.TxInfo{})
@@ -286,17 +282,17 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	// This simulates the client dropping the second request.
 	// Previous versions of this code panicked when the ABCI application missed
 	// a recheck-tx request.
-	resp := abci.ResponseCheckTx{Code: abci.CodeTypeOK}
-	req := abci.RequestCheckTx{Tx: txs[1]}
+	resp := &abci.ResponseCheckTx{Code: abci.CodeTypeOK}
+	req := &abci.RequestCheckTx{Tx: txs[1]}
 	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
 
-	req = abci.RequestCheckTx{Tx: txs[3]}
+	req = &abci.RequestCheckTx{Tx: txs[3]}
 	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
 	mockClient.AssertExpectations(t)
 }
 
 func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	wcfg := config.DefaultConfig()
 	wcfg.Mempool.KeepInvalidTxsInCache = true
@@ -315,10 +311,12 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 		require.NoError(t, err)
 
 		// simulate new block
-		_ = app.DeliverTx(abci.RequestDeliverTx{Tx: a})
-		_ = app.DeliverTx(abci.RequestDeliverTx{Tx: b})
+		_, err = app.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{
+			Txs: [][]byte{a, b},
+		})
+		require.NoError(t, err)
 		err = mp.Update(1, []types.Tx{a, b},
-			[]*abci.ResponseDeliverTx{{Code: abci.CodeTypeOK}, {Code: 2}}, nil, nil)
+			[]*abci.ExecTxResult{{Code: abci.CodeTypeOK}, {Code: 2}}, nil, nil)
 		require.NoError(t, err)
 
 		// a must be added to the cache
@@ -348,7 +346,7 @@ func TestMempool_KeepInvalidTxsInCache(t *testing.T) {
 }
 
 func TestTxsAvailable(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mp, cleanup := newMempoolWithApp(cc)
 	defer cleanup()
@@ -367,7 +365,7 @@ func TestTxsAvailable(t *testing.T) {
 	// call update with half the txs.
 	// it should fire once now for the new height
 	// since there are still txs left
-	committedTxs, txs := txs[:50], txs[50:]
+	committedTxs, remainingTxs := txs[:50], txs[50:]
 	if err := mp.Update(1, committedTxs, abciResponses(len(committedTxs), abci.CodeTypeOK), nil, nil); err != nil {
 		t.Error(err)
 	}
@@ -379,7 +377,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mp.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left
-	committedTxs = append(txs, moreTxs...)
+	committedTxs = append(remainingTxs, moreTxs...)
 	if err := mp.Update(2, committedTxs, abciResponses(len(committedTxs), abci.CodeTypeOK), nil, nil); err != nil {
 		t.Error(err)
 	}
@@ -392,7 +390,7 @@ func TestTxsAvailable(t *testing.T) {
 }
 
 func TestSerialReap(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
 	mp, cleanup := newMempoolWithApp(cc)
@@ -407,10 +405,7 @@ func TestSerialReap(t *testing.T) {
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.
 		for i := start; i < end; i++ {
-
-			// This will succeed
-			txBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(txBytes, uint64(i))
+			txBytes := kvstore.NewTx(fmt.Sprintf("%d", i), "true")
 			err := mp.CheckTx(txBytes, nil, mempool.TxInfo{})
 			_, cached := cacheMap[string(txBytes)]
 			if cached {
@@ -432,11 +427,9 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	updateRange := func(start, end int) {
-		txs := make([]types.Tx, 0)
+		txs := make(types.Txs, end-start)
 		for i := start; i < end; i++ {
-			txBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			txs = append(txs, txBytes)
+			txs[i-start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
 		}
 		if err := mp.Update(0, txs, abciResponses(len(txs), abci.CodeTypeOK), nil, nil); err != nil {
 			t.Error(err)
@@ -444,25 +437,29 @@ func TestSerialReap(t *testing.T) {
 	}
 
 	commitRange := func(start, end int) {
-		// Deliver some txs.
+		// Deliver some txs in a block
+		txs := make([][]byte, end-start)
 		for i := start; i < end; i++ {
-			txBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
-			if err != nil {
-				t.Errorf("client error committing tx: %v", err)
-			}
-			if res.IsErr() {
+			txs[i-start] = kvstore.NewTx(fmt.Sprintf("%d", i), "true")
+		}
+
+		res, err := appConnCon.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: txs})
+		if err != nil {
+			t.Errorf("client error committing tx: %v", err)
+		}
+		for _, txResult := range res.TxResults {
+			if txResult.IsErr() {
 				t.Errorf("error committing tx. Code:%v result:%X log:%v",
-					res.Code, res.Data, res.Log)
+					txResult.Code, txResult.Data, txResult.Log)
 			}
 		}
-		res, err := appConnCon.CommitSync()
+		if len(res.AgreedAppData) != 8 {
+			t.Errorf("error committing. Hash:%X", res.AgreedAppData)
+		}
+
+		_, err = appConnCon.Commit(context.Background(), &abci.RequestCommit{})
 		if err != nil {
 			t.Errorf("client error committing: %v", err)
-		}
-		if len(res.Data) != 8 {
-			t.Errorf("error committing. Hash:%X", res.Data)
 		}
 	}
 
@@ -502,7 +499,7 @@ func TestSerialReap(t *testing.T) {
 }
 
 func TestMempool_CheckTxChecksTxSize(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
 	mempl, cleanup := newMempoolWithApp(cc)
@@ -548,12 +545,12 @@ func TestMempool_CheckTxChecksTxSize(t *testing.T) {
 }
 
 func TestMempoolTxsBytes(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	cc := proxy.NewLocalClientCreator(app)
 
 	cfg := test.ResetTestRoot("mempool_test")
 
-	cfg.Mempool.MaxTxsBytes = 10
+	cfg.Mempool.MaxTxsBytes = 100
 	mp, cleanup := newMempoolWithAppAndConfig(cc, cfg)
 	defer cleanup()
 
@@ -561,49 +558,48 @@ func TestMempoolTxsBytes(t *testing.T) {
 	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 2. len(tx) after CheckTx
-	err := mp.CheckTx([]byte{0x01}, nil, mempool.TxInfo{})
+	tx1 := kvstore.NewRandomTx(10)
+	err := mp.CheckTx(tx1, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 1, mp.SizeBytes())
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 	// 3. zero again after tx is removed by Update
-	err = mp.Update(1, []types.Tx{[]byte{0x01}}, abciResponses(1, abci.CodeTypeOK), nil, nil)
+	err = mp.Update(1, []types.Tx{tx1}, abciResponses(1, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
 	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 4. zero after Flush
-	err = mp.CheckTx([]byte{0x02, 0x03}, nil, mempool.TxInfo{})
+	tx2 := kvstore.NewRandomTx(20)
+	err = mp.CheckTx(tx2, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 2, mp.SizeBytes())
+	assert.EqualValues(t, 20, mp.SizeBytes())
 
 	mp.Flush()
 	assert.EqualValues(t, 0, mp.SizeBytes())
 
 	// 5. ErrMempoolIsFull is returned when/if MaxTxsBytes limit is reached.
-	err = mp.CheckTx(
-		[]byte{0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04},
-		nil,
-		mempool.TxInfo{},
-	)
+	tx3 := kvstore.NewRandomTx(100)
+	err = mp.CheckTx(tx3, nil, mempool.TxInfo{})
 	require.NoError(t, err)
 
-	err = mp.CheckTx([]byte{0x05}, nil, mempool.TxInfo{})
+	tx4 := kvstore.NewRandomTx(10)
+	err = mp.CheckTx(tx4, nil, mempool.TxInfo{})
 	if assert.Error(t, err) {
 		assert.IsType(t, mempool.ErrMempoolIsFull{}, err)
 	}
 
 	// 6. zero after tx is rechecked and removed due to not being valid anymore
-	app2 := kvstore.NewApplication()
+	app2 := kvstore.NewInMemoryApplication()
 	cc = proxy.NewLocalClientCreator(app2)
 
 	mp, cleanup = newMempoolWithApp(cc)
 	defer cleanup()
 
-	txBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(txBytes, uint64(0))
+	txBytes := kvstore.NewRandomTx(10)
 
 	err = mp.CheckTx(txBytes, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 8, mp.SizeBytes())
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
@@ -615,27 +611,27 @@ func TestMempoolTxsBytes(t *testing.T) {
 		}
 	})
 
-	res, err := appConnCon.DeliverTxSync(abci.RequestDeliverTx{Tx: txBytes})
+	res, err := appConnCon.FinalizeBlock(context.Background(), &abci.RequestFinalizeBlock{Txs: [][]byte{txBytes}})
 	require.NoError(t, err)
-	require.EqualValues(t, 0, res.Code)
+	require.EqualValues(t, 0, res.TxResults[0].Code)
+	require.NotEmpty(t, res.AgreedAppData)
 
-	res2, err := appConnCon.CommitSync()
+	_, err = appConnCon.Commit(context.Background(), &abci.RequestCommit{})
 	require.NoError(t, err)
-	require.NotEmpty(t, res2.Data)
 
 	// Pretend like we committed nothing so txBytes gets rechecked and removed.
 	err = mp.Update(1, []types.Tx{}, abciResponses(0, abci.CodeTypeOK), nil, nil)
 	require.NoError(t, err)
-	assert.EqualValues(t, 8, mp.SizeBytes())
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 	// 7. Test RemoveTxByKey function
-	err = mp.CheckTx([]byte{0x06}, nil, mempool.TxInfo{})
+	err = mp.CheckTx(tx1, nil, mempool.TxInfo{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 9, mp.SizeBytes())
+	assert.EqualValues(t, 20, mp.SizeBytes())
 	assert.Error(t, mp.RemoveTxByKey(types.Tx([]byte{0x07}).Key()))
-	assert.EqualValues(t, 9, mp.SizeBytes())
-	assert.NoError(t, mp.RemoveTxByKey(types.Tx([]byte{0x06}).Key()))
-	assert.EqualValues(t, 8, mp.SizeBytes())
+	assert.EqualValues(t, 20, mp.SizeBytes())
+	assert.NoError(t, mp.RemoveTxByKey(types.Tx(tx1).Key()))
+	assert.EqualValues(t, 10, mp.SizeBytes())
 
 }
 
@@ -645,7 +641,7 @@ func TestMempoolTxsBytes(t *testing.T) {
 // since otherwise we're not actually testing the concurrency of the mempool here!
 func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", tmrand.Str(6))
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	_, server := newRemoteApp(t, sockPath, app)
 	t.Cleanup(func() {
 		if err := server.Stop(); err != nil {
@@ -663,7 +659,7 @@ func TestMempoolRemoteAppConcurrency(t *testing.T) {
 	txLen := 200
 	txs := make([]types.Tx, nTxs)
 	for i := 0; i < nTxs; i++ {
-		txs[i] = tmrand.Bytes(txLen)
+		txs[i] = kvstore.NewRandomTx(txLen)
 	}
 
 	// simulate a group of peers sending them over and over
@@ -696,10 +692,10 @@ func newRemoteApp(t *testing.T, addr string, app abci.Application) (abciclient.C
 	return clientCreator, server
 }
 
-func abciResponses(n int, code uint32) []*abci.ResponseDeliverTx {
-	responses := make([]*abci.ResponseDeliverTx, 0, n)
+func abciResponses(n int, code uint32) []*abci.ExecTxResult {
+	responses := make([]*abci.ExecTxResult, 0, n)
 	for i := 0; i < n; i++ {
-		responses = append(responses, &abci.ResponseDeliverTx{Code: code})
+		responses = append(responses, &abci.ExecTxResult{Code: code})
 	}
 	return responses
 }

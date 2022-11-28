@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -241,7 +242,7 @@ func (h *Handshaker) NBlocks() int {
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().InfoSync(proxy.RequestInfo)
+	res, err := proxyApp.Query().Info(context.TODO(), proxy.RequestInfo)
 	if err != nil {
 		return fmt.Errorf("error calling Info: %v", err)
 	}
@@ -265,7 +266,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	// Replay blocks up to the latest in the blockstore.
-	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
+	appHash, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
 	if err != nil {
 		return fmt.Errorf("error on replay: %v", err)
 	}
@@ -308,7 +309,7 @@ func (h *Handshaker) ReplayBlocks(
 		validatorSet := types.NewValidatorSet(validators)
 		nextVals := types.TM2PB.ValidatorUpdates(validatorSet)
 		pbparams := h.genDoc.ConsensusParams.ToProto()
-		req := abci.RequestInitChain{
+		req := &abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			InitialHeight:   h.genDoc.InitialHeight,
@@ -316,7 +317,7 @@ func (h *Handshaker) ReplayBlocks(
 			Validators:      nextVals,
 			AppStateBytes:   h.genDoc.AppState,
 		}
-		res, err := proxyApp.Consensus().InitChainSync(req)
+		res, err := proxyApp.Consensus().InitChain(context.TODO(), req)
 		if err != nil {
 			return nil, err
 		}
@@ -418,11 +419,18 @@ func (h *Handshaker) ReplayBlocks(
 
 		case appBlockHeight == storeBlockHeight:
 			// We ran Commit, but didn't save the state, so replayBlock with mock app.
-			abciResponses, err := h.stateStore.LoadLastABCIResponse(storeBlockHeight)
+			finalizeBlockResponse, err := h.stateStore.LoadLastFinalizeBlockResponse(storeBlockHeight)
 			if err != nil {
 				return nil, err
 			}
-			mockApp := newMockProxyApp(appHash, abciResponses)
+			// NOTE: There is a rare edge case where a node has upgraded from
+			// v0.37 with endblock to v0.38 with finalize block and thus
+			// does not have the app hash saved from the previous height
+			// here we take the appHash provided from the Info handshake
+			if len(finalizeBlockResponse.AgreedAppData) == 0 {
+				finalizeBlockResponse.AgreedAppData = appHash
+			}
+			mockApp := newMockProxyApp(finalizeBlockResponse)
 			h.logger.Info("Replay last block using mock app")
 			state, err = h.replayBlock(state, storeBlockHeight, mockApp)
 			return state.AppHash, err

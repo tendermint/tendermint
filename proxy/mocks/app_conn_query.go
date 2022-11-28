@@ -3,6 +3,8 @@
 package mocks
 
 import (
+	context "context"
+
 	mock "github.com/stretchr/testify/mock"
 
 	types "github.com/tendermint/tendermint/abci/types"
@@ -13,13 +15,13 @@ type AppConnQuery struct {
 	mock.Mock
 }
 
-// EchoSync provides a mock function with given fields: _a0
-func (_m *AppConnQuery) EchoSync(_a0 string) (*types.ResponseEcho, error) {
-	ret := _m.Called(_a0)
+// Echo provides a mock function with given fields: _a0, _a1
+func (_m *AppConnQuery) Echo(_a0 context.Context, _a1 string) (*types.ResponseEcho, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseEcho
-	if rf, ok := ret.Get(0).(func(string) *types.ResponseEcho); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, string) *types.ResponseEcho); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.ResponseEcho)
@@ -27,8 +29,8 @@ func (_m *AppConnQuery) EchoSync(_a0 string) (*types.ResponseEcho, error) {
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -50,13 +52,13 @@ func (_m *AppConnQuery) Error() error {
 	return r0
 }
 
-// InfoSync provides a mock function with given fields: _a0
-func (_m *AppConnQuery) InfoSync(_a0 types.RequestInfo) (*types.ResponseInfo, error) {
-	ret := _m.Called(_a0)
+// Info provides a mock function with given fields: _a0, _a1
+func (_m *AppConnQuery) Info(_a0 context.Context, _a1 *types.RequestInfo) (*types.ResponseInfo, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseInfo
-	if rf, ok := ret.Get(0).(func(types.RequestInfo) *types.ResponseInfo); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, *types.RequestInfo) *types.ResponseInfo); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.ResponseInfo)
@@ -64,8 +66,8 @@ func (_m *AppConnQuery) InfoSync(_a0 types.RequestInfo) (*types.ResponseInfo, er
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestInfo) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, *types.RequestInfo) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -73,13 +75,13 @@ func (_m *AppConnQuery) InfoSync(_a0 types.RequestInfo) (*types.ResponseInfo, er
 	return r0, r1
 }
 
-// QuerySync provides a mock function with given fields: _a0
-func (_m *AppConnQuery) QuerySync(_a0 types.RequestQuery) (*types.ResponseQuery, error) {
-	ret := _m.Called(_a0)
+// Query provides a mock function with given fields: _a0, _a1
+func (_m *AppConnQuery) Query(_a0 context.Context, _a1 *types.RequestQuery) (*types.ResponseQuery, error) {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 *types.ResponseQuery
-	if rf, ok := ret.Get(0).(func(types.RequestQuery) *types.ResponseQuery); ok {
-		r0 = rf(_a0)
+	if rf, ok := ret.Get(0).(func(context.Context, *types.RequestQuery) *types.ResponseQuery); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.ResponseQuery)
@@ -87,8 +89,8 @@ func (_m *AppConnQuery) QuerySync(_a0 types.RequestQuery) (*types.ResponseQuery,
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(types.RequestQuery) error); ok {
-		r1 = rf(_a0)
+	if rf, ok := ret.Get(1).(func(context.Context, *types.RequestQuery) error); ok {
+		r1 = rf(_a0, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -94,9 +94,9 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
 	case "kvstore":
-		return NewLocalClientCreator(kvstore.NewApplication())
+		return NewLocalClientCreator(kvstore.NewInMemoryApplication())
 	case "persistent_kvstore":
-		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
+		return NewLocalClientCreator(kvstore.NewPersistentApplication(dbDir))
 	case "e2e":
 		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))
 		if err != nil {

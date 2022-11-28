@@ -1,7 +1,10 @@
 package abcicli_test
 
 import (
+	"context"
 	"fmt"
+	"math/rand"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -16,28 +19,17 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 )
 
-func TestProperSyncCalls(t *testing.T) {
-	app := slowApp{}
+func TestCalls(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	app := types.BaseApplication{}
 
-	s, c := setupClientServer(t, app)
-	t.Cleanup(func() {
-		if err := s.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
-	t.Cleanup(func() {
-		if err := c.Stop(); err != nil {
-			t.Error(err)
-		}
-	})
+	_, c := setupClientServer(t, app)
 
 	resp := make(chan error, 1)
 	go func() {
-		// This is BeginBlockSync unrolled....
-		reqres := c.BeginBlockAsync(types.RequestBeginBlock{})
-		err := c.FlushSync()
+		res, err := c.Echo(ctx, "hello")
 		require.NoError(t, err)
-		res := reqres.Response.GetBeginBlock()
 		require.NotNil(t, res)
 		resp <- c.Error()
 	}()
@@ -51,36 +43,25 @@ func TestProperSyncCalls(t *testing.T) {
 	}
 }
 
-func TestHangingSyncCalls(t *testing.T) {
+func TestHangingAsyncCalls(t *testing.T) {
 	app := slowApp{}
 
 	s, c := setupClientServer(t, app)
-	t.Cleanup(func() {
-		if err := s.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
-	t.Cleanup(func() {
-		if err := c.Stop(); err != nil {
-			t.Log(err)
-		}
-	})
 
 	resp := make(chan error, 1)
 	go func() {
-		// Start BeginBlock and flush it
-		reqres := c.BeginBlockAsync(types.RequestBeginBlock{})
-		flush := c.FlushAsync()
-		// wait 20 ms for all events to travel socket, but
+		// Call CheckTx
+		reqres, err := c.CheckTxAsync(context.Background(), &types.RequestCheckTx{})
+		require.NoError(t, err)
+		// wait 50 ms for all events to travel socket, but
 		// no response yet from server
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 		// kill the server, so the connections break
-		err := s.Stop()
+		err = s.Stop()
 		require.NoError(t, err)
 
-		// wait for the response from BeginBlock
+		// wait for the response from CheckTx
 		reqres.Wait()
-		flush.Wait()
 		resp <- c.Error()
 	}()
 
@@ -93,20 +74,80 @@ func TestHangingSyncCalls(t *testing.T) {
 	}
 }
 
+func TestBulk(t *testing.T) {
+	const numTxs = 700000
+	// use a socket instead of a port
+	socketFile := fmt.Sprintf("test-%08x.sock", rand.Int31n(1<<30))
+	defer os.Remove(socketFile)
+	socket := fmt.Sprintf("unix://%v", socketFile)
+	app := types.NewBaseApplication()
+	// Start the listener
+	server := server.NewSocketServer(socket, app)
+	t.Cleanup(func() {
+		if err := server.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+	err := server.Start()
+	require.NoError(t, err)
+
+	// Connect to the socket
+	client := abcicli.NewSocketClient(socket, false)
+
+	t.Cleanup(func() {
+		if err := client.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
+
+	err = client.Start()
+	require.NoError(t, err)
+
+	// Construct request
+	rfb := &types.RequestFinalizeBlock{Txs: make([][]byte, numTxs)}
+	for counter := 0; counter < numTxs; counter++ {
+		rfb.Txs[counter] = []byte("test")
+	}
+	// Send bulk request
+	res, err := client.FinalizeBlock(context.Background(), rfb)
+	require.NoError(t, err)
+	require.Equal(t, numTxs, len(res.TxResults), "Number of txs doesn't match")
+	for _, tx := range res.TxResults {
+		require.Equal(t, uint32(0), tx.Code, "Tx failed")
+	}
+
+	// Send final flush message
+	err = client.Flush(context.Background())
+	require.NoError(t, err)
+}
+
 func setupClientServer(t *testing.T, app types.Application) (
 	service.Service, abcicli.Client) {
+	t.Helper()
+
 	// some port between 20k and 30k
 	port := 20000 + tmrand.Int32()%10000
 	addr := fmt.Sprintf("localhost:%d", port)
 
-	s, err := server.NewServer(addr, "socket", app)
+	s := server.NewSocketServer(addr, app)
+	err := s.Start()
 	require.NoError(t, err)
-	err = s.Start()
-	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if err := s.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
 
 	c := abcicli.NewSocketClient(addr, true)
 	err = c.Start()
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		if err := c.Stop(); err != nil {
+			t.Log(err)
+		}
+	})
 
 	return s, c
 }
@@ -115,9 +156,9 @@ type slowApp struct {
 	types.BaseApplication
 }
 
-func (slowApp) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
-	time.Sleep(200 * time.Millisecond)
-	return types.ResponseBeginBlock{}
+func (slowApp) CheckTx(_ context.Context, req *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
+	time.Sleep(time.Second)
+	return &types.ResponseCheckTx{}, nil
 }
 
 // TestCallbackInvokedWhenSetLaet ensures that the callback is invoked when
@@ -125,13 +166,17 @@ func (slowApp) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock 
 // test relies on the callback being allowed to be invoked twice if set multiple
 // times, once when set early and once when set late.
 func TestCallbackInvokedWhenSetLate(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	app := blockedABCIApplication{
 		wg: wg,
 	}
 	_, c := setupClientServer(t, app)
-	reqRes := c.CheckTxAsync(types.RequestCheckTx{})
+	reqRes, err := c.CheckTxAsync(ctx, &types.RequestCheckTx{})
+	require.NoError(t, err)
 
 	done := make(chan struct{})
 	cb := func(_ *types.Response) {
@@ -154,21 +199,25 @@ type blockedABCIApplication struct {
 	types.BaseApplication
 }
 
-func (b blockedABCIApplication) CheckTx(r types.RequestCheckTx) types.ResponseCheckTx {
+func (b blockedABCIApplication) CheckTxAsync(ctx context.Context, r *types.RequestCheckTx) (*types.ResponseCheckTx, error) {
 	b.wg.Wait()
-	return b.BaseApplication.CheckTx(r)
+	return b.BaseApplication.CheckTx(ctx, r)
 }
 
 // TestCallbackInvokedWhenSetEarly ensures that the callback is invoked when
 // set before the client completes the call into the app.
 func TestCallbackInvokedWhenSetEarly(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	app := blockedABCIApplication{
 		wg: wg,
 	}
 	_, c := setupClientServer(t, app)
-	reqRes := c.CheckTxAsync(types.RequestCheckTx{})
+	reqRes, err := c.CheckTxAsync(ctx, &types.RequestCheckTx{})
+	require.NoError(t, err)
 
 	done := make(chan struct{})
 	cb := func(_ *types.Response) {

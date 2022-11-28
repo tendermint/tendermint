@@ -252,7 +252,7 @@ func TestAppCalls(t *testing.T) {
 		k, v, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(context.Background(), tx)
 		require.NoError(err)
-		require.True(bres.DeliverTx.IsOK())
+		require.True(bres.TxResult.IsOK())
 		txh := bres.Height
 		apph := txh + 1 // this is where the tx will be applied to the state
 
@@ -368,7 +368,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 		bres, err := c.BroadcastTxCommit(context.Background(), tx)
 		require.Nil(err, "%d: %+v", i, err)
 		require.True(bres.CheckTx.IsOK())
-		require.True(bres.DeliverTx.IsOK())
+		require.True(bres.TxResult.IsOK())
 
 		require.Equal(0, mempool.Size())
 	}
@@ -377,9 +377,9 @@ func TestBroadcastTxCommit(t *testing.T) {
 func TestUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	ch := make(chan *abci.Response, 1)
+	ch := make(chan *abci.ResponseCheckTx, 1)
 	mempool := node.Mempool()
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	err := mempool.CheckTx(tx, func(resp *abci.ResponseCheckTx) { ch <- resp }, mempl.TxInfo{})
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.
@@ -407,9 +407,9 @@ func TestUnconfirmedTxs(t *testing.T) {
 func TestNumUnconfirmedTxs(t *testing.T) {
 	_, _, tx := MakeTxKV()
 
-	ch := make(chan *abci.Response, 1)
+	ch := make(chan *abci.ResponseCheckTx, 1)
 	mempool := node.Mempool()
-	err := mempool.CheckTx(tx, func(resp *abci.Response) { ch <- resp }, mempl.TxInfo{})
+	err := mempool.CheckTx(tx, func(resp *abci.ResponseCheckTx) { ch <- resp }, mempl.TxInfo{})
 	require.NoError(t, err)
 
 	// wait for tx to arrive in mempoool.

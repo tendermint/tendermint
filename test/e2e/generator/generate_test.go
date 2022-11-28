@@ -15,11 +15,12 @@ import (
 func TestGenerator(t *testing.T) {
 	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)))
 	require.NoError(t, err)
-	require.True(t, len(manifests) >= 24, "insufficient combinations %d", len(manifests))
 
 	for idx, m := range manifests {
 		t.Run(fmt.Sprintf("Case%04d", idx), func(t *testing.T) {
-			_, err := e2e.NewTestnetFromManifest(m, filepath.Join(t.TempDir(), fmt.Sprintf("Case%04d", idx)))
+			infra, err := e2e.NewDockerInfrastructureData(m)
+			require.NoError(t, err)
+			_, err = e2e.NewTestnetFromManifest(m, filepath.Join(t.TempDir(), fmt.Sprintf("Case%04d", idx)), infra)
 			require.NoError(t, err)
 		})
 	}

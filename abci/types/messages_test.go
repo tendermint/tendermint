@@ -13,8 +13,8 @@ import (
 )
 
 func TestMarshalJSON(t *testing.T) {
-	b, err := json.Marshal(&ResponseDeliverTx{})
-	assert.Nil(t, err)
+	b, err := json.Marshal(&ExecTxResult{Code: 1})
+	assert.NoError(t, err)
 	// include empty fields.
 	assert.True(t, strings.Contains(string(b), "code"))
 	r1 := ResponseCheckTx{

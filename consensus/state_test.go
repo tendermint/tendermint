@@ -665,7 +665,7 @@ func TestStateLockPOLRelock(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
+	cs2 := newState(cs1.state, vs2, kvstore.NewInMemoryApplication())
 	prop, propBlock := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")
@@ -853,7 +853,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	cs2 := newState(cs1.state, vs2, kvstore.NewApplication())
+	cs2 := newState(cs1.state, vs2, kvstore.NewInMemoryApplication())
 	prop, propBlock := decideProposal(t, cs2, vs2, vs2.Height, vs2.Round+1)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")
@@ -899,7 +899,7 @@ func TestStateLockPOLUnlockOnUnknownBlock(t *testing.T) {
 	signAddVotes(cs1, tmproto.PrecommitType, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
 	// before we timeout to the new round set the new proposal
-	cs3 := newState(cs1.state, vs3, kvstore.NewApplication())
+	cs3 := newState(cs1.state, vs3, kvstore.NewInMemoryApplication())
 	prop, propBlock = decideProposal(t, cs3, vs3, vs3.Height, vs3.Round+1)
 	if prop == nil || propBlock == nil {
 		t.Fatal("Failed to create proposal block with vs2")
@@ -1395,8 +1395,8 @@ func TestProcessProposalAccept(t *testing.T) {
 			if testCase.accept {
 				status = abci.ResponseProcessProposal_ACCEPT
 			}
-			m.On("ProcessProposal", mock.Anything).Return(abci.ResponseProcessProposal{Status: status})
-			m.On("PrepareProposal", mock.Anything).Return(abci.ResponsePrepareProposal{}).Maybe()
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{Status: status}, nil)
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil).Maybe()
 			cs1, _ := randStateWithApp(4, m)
 			height, round := cs1.Height, cs1.Round
 
@@ -1417,6 +1417,78 @@ func TestProcessProposalAccept(t *testing.T) {
 				prevoteHash = rs.ProposalBlock.Hash()
 			}
 			ensurePrevoteMatch(t, voteCh, height, round, prevoteHash)
+		})
+	}
+}
+
+func TestFinalizeBlockCalled(t *testing.T) {
+	for _, testCase := range []struct {
+		name         string
+		voteNil      bool
+		expectCalled bool
+	}{
+		{
+			name:         "finalize block called when block committed",
+			voteNil:      false,
+			expectCalled: true,
+		},
+		{
+			name:         "not called when block not committed",
+			voteNil:      true,
+			expectCalled: false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			m := abcimocks.NewApplication(t)
+			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{
+				Status: abci.ResponseProcessProposal_ACCEPT,
+			}, nil)
+			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			r := &abci.ResponseFinalizeBlock{AgreedAppData: []byte("the_hash")}
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(r, nil).Maybe()
+			m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+
+			cs1, vss := randStateWithApp(4, m)
+			height, round := cs1.Height, cs1.Round
+
+			proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
+			newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
+			pv1, err := cs1.privValidator.GetPubKey()
+			require.NoError(t, err)
+			addr := pv1.Address()
+			voteCh := subscribeToVoter(cs1, addr)
+
+			startTestRound(cs1, cs1.Height, round)
+			ensureNewRound(newRoundCh, height, round)
+			ensureNewProposal(proposalCh, height, round)
+			rs := cs1.GetRoundState()
+
+			blockID := types.BlockID{}
+			nextRound := round + 1
+			nextHeight := height
+			if !testCase.voteNil {
+				nextRound = 0
+				nextHeight = height + 1
+				blockID = types.BlockID{
+					Hash:          rs.ProposalBlock.Hash(),
+					PartSetHeader: rs.ProposalBlockParts.Header(),
+				}
+			}
+
+			signAddVotes(cs1, tmproto.PrevoteType, blockID.Hash, blockID.PartSetHeader, vss[1:]...)
+			ensurePrevoteMatch(t, voteCh, height, round, rs.ProposalBlock.Hash())
+
+			signAddVotes(cs1, tmproto.PrecommitType, blockID.Hash, blockID.PartSetHeader, vss[1:]...)
+			ensurePrecommit(voteCh, height, round)
+
+			ensureNewRound(newRoundCh, nextHeight, nextRound)
+			m.AssertExpectations(t)
+
+			if !testCase.expectCalled {
+				m.AssertNotCalled(t, "FinalizeBlock", context.TODO(), mock.Anything)
+			} else {
+				m.AssertCalled(t, "FinalizeBlock", context.TODO(), mock.Anything)
+			}
 		})
 	}
 }

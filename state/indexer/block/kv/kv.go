@@ -20,7 +20,7 @@ import (
 
 var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
 
-// BlockerIndexer implements a block indexer, indexing BeginBlock and EndBlock
+// BlockerIndexer implements a block indexer, indexing FinalizeBlock
 // events with an underlying KV store. Block events are indexed by their height,
 // such that matching search criteria returns the respective block height(s).
 type BlockerIndexer struct {
@@ -44,17 +44,16 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 	return idx.store.Has(key)
 }
 
-// Index indexes BeginBlock and EndBlock events for a given block by its height.
+// Index indexes FinalizeBlock events for a given block by its height.
 // The following is indexed:
 //
 // primary key: encode(block.height | height) => encode(height)
-// BeginBlock events: encode(eventType.eventAttr|eventValue|height|begin_block) => encode(height)
-// EndBlock events: encode(eventType.eventAttr|eventValue|height|end_block) => encode(height)
-func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
+// FinalizeBlock events: encode(eventType.eventAttr|eventValue|height|finalize_block) => encode(height)
+func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockEvents) error {
 	batch := idx.store.NewBatch()
 	defer batch.Close()
 
-	height := bh.Header.Height
+	height := bh.Height
 
 	// 1. index by height
 	key, err := heightKey(height)
@@ -65,21 +64,16 @@ func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
 		return err
 	}
 
-	// 2. index BeginBlock events
-	if err := idx.indexEvents(batch, bh.ResultBeginBlock.Events, "begin_block", height); err != nil {
-		return fmt.Errorf("failed to index BeginBlock events: %w", err)
-	}
-
-	// 3. index EndBlock events
-	if err := idx.indexEvents(batch, bh.ResultEndBlock.Events, "end_block", height); err != nil {
-		return fmt.Errorf("failed to index EndBlock events: %w", err)
+	// 2. index block events
+	if err := idx.indexEvents(batch, bh.Events, "finalize_block", height); err != nil {
+		return fmt.Errorf("failed to index FinalizeBlock events: %w", err)
 	}
 
 	return batch.WriteSync()
 }
 
-// Search performs a query for block heights that match a given BeginBlock
-// and Endblock event search criteria. The given query can match against zero,
+// Search performs a query for block heights that match a given FinalizeBlock
+// event search criteria. The given query can match against zero,
 // one or more block heights. In the case of height queries, i.e. block.height=H,
 // if the height is indexed, that height alone will be returned. An error and
 // nil slice is returned. Otherwise, a non-nil slice and nil error is returned.

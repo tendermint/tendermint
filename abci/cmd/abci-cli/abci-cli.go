@@ -15,7 +15,6 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 
 	abcicli "github.com/tendermint/tendermint/abci/client"
-	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/abci/server"
 	servertest "github.com/tendermint/tendermint/abci/tests/server"
@@ -139,7 +138,6 @@ func addCommands() {
 	RootCmd.AddCommand(consoleCmd)
 	RootCmd.AddCommand(echoCmd)
 	RootCmd.AddCommand(infoCmd)
-	RootCmd.AddCommand(deliverTxCmd)
 	RootCmd.AddCommand(checkTxCmd)
 	RootCmd.AddCommand(commitCmd)
 	RootCmd.AddCommand(versionCmd)
@@ -148,6 +146,7 @@ func addCommands() {
 	RootCmd.AddCommand(processProposalCmd)
 	addQueryFlags()
 	RootCmd.AddCommand(queryCmd)
+	RootCmd.AddCommand(finalizeBlockCmd)
 
 	// examples
 	addKVStoreFlags()
@@ -168,10 +167,9 @@ where example.file looks something like:
 
     check_tx 0x00
     check_tx 0xff
-    deliver_tx 0x00
+    finalize_block 0x00
     check_tx 0x00
-    deliver_tx 0x01
-    deliver_tx 0x04
+    finalize_block 0x01 0x04 0xff
     info
 `,
 	Args: cobra.ExactArgs(0),
@@ -187,7 +185,7 @@ This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"echo", "info", "deliver_tx", "check_tx", "prepare_proposal", "process_proposal", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "finalize_block", "check_tx", "prepare_proposal", "process_proposal", "commit", "query"},
 	RunE:      cmdConsole,
 }
 
@@ -206,12 +204,12 @@ var infoCmd = &cobra.Command{
 	RunE:  cmdInfo,
 }
 
-var deliverTxCmd = &cobra.Command{
-	Use:   "deliver_tx",
-	Short: "deliver a new transaction to the application",
-	Long:  "deliver a new transaction to the application",
-	Args:  cobra.ExactArgs(1),
-	RunE:  cmdDeliverTx,
+var finalizeBlockCmd = &cobra.Command{
+	Use:   "finalize_block",
+	Short: "deliver a block of transactions to the application",
+	Long:  "deliver a block of transactions to the application",
+	Args:  cobra.MinimumNArgs(1),
+	RunE:  cmdFinalizeBlock,
 }
 
 var checkTxCmd = &cobra.Command{
@@ -311,30 +309,52 @@ func compose(fs []func() error) error {
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
 	return compose(
 		[]func() error{
-			func() error { return servertest.InitChain(client) },
-			func() error { return servertest.Commit(client, nil) },
-			func() error { return servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil) },
-			func() error { return servertest.Commit(client, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeOK, nil) },
-			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x01}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x02}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x03}, code.CodeTypeOK, nil) },
-			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x04}, code.CodeTypeOK, nil) },
+			func() error { return servertest.InitChain(ctx, client) },
+			func() error { return servertest.Commit(ctx, client) },
 			func() error {
-				return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
+				return servertest.FinalizeBlock(ctx, client, [][]byte{
+					[]byte("abc"),
+				}, []uint32{
+					kvstore.CodeTypeInvalidTxFormat,
+				}, nil, nil)
 			},
-			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
+			func() error { return servertest.Commit(ctx, client) },
 			func() error {
-				return servertest.PrepareProposal(client, [][]byte{
+				return servertest.FinalizeBlock(ctx, client, [][]byte{
+					{0x00},
+				}, []uint32{
+					kvstore.CodeTypeOK,
+				}, nil, []byte{0, 0, 0, 0, 0, 0, 0, 1})
+			},
+			func() error { return servertest.Commit(ctx, client) },
+			func() error {
+				return servertest.FinalizeBlock(ctx, client, [][]byte{
+					{0x00},
+					{0x01},
+					{0x00, 0x02},
+					{0x00, 0x03},
+					{0x00, 0x00, 0x04},
+					{0x00, 0x00, 0x06},
+				}, []uint32{
+					kvstore.CodeTypeInvalidTxFormat,
+					kvstore.CodeTypeOK,
+					kvstore.CodeTypeOK,
+					kvstore.CodeTypeOK,
+					kvstore.CodeTypeOK,
+					kvstore.CodeTypeInvalidTxFormat,
+				}, nil, []byte{0, 0, 0, 0, 0, 0, 0, 5})
+			},
+			func() error { return servertest.Commit(ctx, client) },
+			func() error {
+				return servertest.PrepareProposal(ctx, client, [][]byte{
 					{0x01},
 				}, [][]byte{{0x01}}, nil)
 			},
 			func() error {
-				return servertest.ProcessProposal(client, [][]byte{
+				return servertest.ProcessProposal(ctx, client, [][]byte{
 					{0x01},
 				}, types.ResponseProcessProposal_ACCEPT)
 			},
@@ -430,8 +450,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 		return cmdCheckTx(cmd, actualArgs)
 	case "commit":
 		return cmdCommit(cmd, actualArgs)
-	case "deliver_tx":
-		return cmdDeliverTx(cmd, actualArgs)
+	case "finalize_block":
+		return cmdFinalizeBlock(cmd, actualArgs)
 	case "echo":
 		return cmdEcho(cmd, actualArgs)
 	case "info":
@@ -462,7 +482,7 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s: %s\n", echoCmd.Use, echoCmd.Short)
 	fmt.Printf("%s: %s\n", infoCmd.Use, infoCmd.Short)
 	fmt.Printf("%s: %s\n", checkTxCmd.Use, checkTxCmd.Short)
-	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
+	fmt.Printf("%s: %s\n", finalizeBlockCmd.Use, finalizeBlockCmd.Short)
 	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
 	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
 	fmt.Println("Use \"[command] --help\" for more information about a command.")
@@ -476,13 +496,15 @@ func cmdEcho(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		msg = args[0]
 	}
-	res, err := client.EchoSync(msg)
+	res, err := client.Echo(cmd.Context(), msg)
 	if err != nil {
 		return err
 	}
+
 	printResponse(cmd, args, response{
 		Data: []byte(res.Message),
 	})
+
 	return nil
 }
 
@@ -492,7 +514,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	res, err := client.InfoSync(types.RequestInfo{Version: version})
+	res, err := client.Info(cmd.Context(), &types.RequestInfo{Version: version})
 	if err != nil {
 		return err
 	}
@@ -504,29 +526,40 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 
 const codeBad uint32 = 10
 
-// Append a new tx to application
-func cmdDeliverTx(cmd *cobra.Command, args []string) error {
+// Append new txs to application
+func cmdFinalizeBlock(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,
-			Log:  "want the tx",
+			Log:  "Must provide at least one transaction",
 		})
 		return nil
 	}
-	txBytes, err := stringOrHexToBytes(args[0])
+	txs := make([][]byte, len(args))
+	for i, arg := range args {
+		txBytes, err := stringOrHexToBytes(arg)
+		if err != nil {
+			return err
+		}
+		txs[i] = txBytes
+	}
+	res, err := client.FinalizeBlock(cmd.Context(), &types.RequestFinalizeBlock{Txs: txs})
 	if err != nil {
 		return err
 	}
-	res, err := client.DeliverTxSync(types.RequestDeliverTx{Tx: txBytes})
-	if err != nil {
-		return err
+	resps := make([]response, 0, len(res.TxResults)+1)
+	for _, tx := range res.TxResults {
+		resps = append(resps, response{
+			Code: tx.Code,
+			Data: tx.Data,
+			Info: tx.Info,
+			Log:  tx.Log,
+		})
 	}
-	printResponse(cmd, args, response{
-		Code: res.Code,
-		Data: res.Data,
-		Info: res.Info,
-		Log:  res.Log,
+	resps = append(resps, response{
+		Data: res.AgreedAppData,
 	})
+	printResponse(cmd, args, resps...)
 	return nil
 }
 
@@ -543,7 +576,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res, err := client.CheckTxSync(types.RequestCheckTx{Tx: txBytes})
+	res, err := client.CheckTx(cmd.Context(), &types.RequestCheckTx{Tx: txBytes})
 	if err != nil {
 		return err
 	}
@@ -558,13 +591,11 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res, err := client.CommitSync()
+	_, err := client.Commit(cmd.Context(), &types.RequestCommit{})
 	if err != nil {
 		return err
 	}
-	printResponse(cmd, args, response{
-		Data: res.Data,
-	})
+	printResponse(cmd, args, response{})
 	return nil
 }
 
@@ -583,7 +614,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resQuery, err := client.QuerySync(types.RequestQuery{
+	resQuery, err := client.Query(cmd.Context(), &types.RequestQuery{
 		Data:   queryBytes,
 		Path:   flagPath,
 		Height: int64(flagHeight),
@@ -617,7 +648,7 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 		txsBytesArray[i] = txBytes
 	}
 
-	res, err := client.PrepareProposalSync(types.RequestPrepareProposal{
+	res, err := client.PrepareProposal(cmd.Context(), &types.RequestPrepareProposal{
 		Txs: txsBytesArray,
 		// kvstore has to have this parameter in order not to reject a tx as the default value is 0
 		MaxTxBytes: 65536,
@@ -628,7 +659,7 @@ func cmdPrepareProposal(cmd *cobra.Command, args []string) error {
 	resps := make([]response, 0, len(res.Txs))
 	for _, tx := range res.Txs {
 		resps = append(resps, response{
-			Code: code.CodeTypeOK,
+			Code: 0, // CodeOK
 			Log:  "Succeeded. Tx: " + string(tx),
 		})
 	}
@@ -648,7 +679,7 @@ func cmdProcessProposal(cmd *cobra.Command, args []string) error {
 		txsBytesArray[i] = txBytes
 	}
 
-	res, err := client.ProcessProposalSync(types.RequestProcessProposal{
+	res, err := client.ProcessProposal(cmd.Context(), &types.RequestProcessProposal{
 		Txs: txsBytesArray,
 	})
 	if err != nil {
@@ -673,8 +704,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	app = kvstore.NewPersistentKVStoreApplication(flagPersist)
-	app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
+	app = kvstore.NewPersistentApplication(flagPersist)
 
 	// Start the listener
 	srv, err := server.NewServer(flagAddress, flagAbci, app)
@@ -716,9 +746,9 @@ func printResponse(cmd *cobra.Command, args []string, rsps ...response) {
 		}
 
 		if len(rsp.Data) != 0 {
-			// Do no print this line when using the commit command
+			// Do no print this line when using the finalize_block command
 			// because the string comes out as gibberish
-			if cmd.Use != "commit" {
+			if cmd.Use != "finalize_block" {
 				fmt.Printf("-> data: %s\n", rsp.Data)
 			}
 			fmt.Printf("-> data.hex: 0x%X\n", rsp.Data)

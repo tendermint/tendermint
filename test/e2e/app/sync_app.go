@@ -1,12 +1,13 @@
 package app
 
 import (
+	"context"
 	"sync"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-// SyncApplication wraps an Application, managing its own synchronization. This
+// SyncApplication wraps the e2e Application, managing its own synchronization. This
 // allows it to be called from an unsynchronized local client, as it is
 // implemented in a thread-safe way.
 type SyncApplication struct {
@@ -26,86 +27,74 @@ func NewSyncApplication(cfg *Config) (abci.Application, error) {
 	}, nil
 }
 
-func (app *SyncApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
+func (app *SyncApplication) Info(ctx context.Context, req *abci.RequestInfo) (*abci.ResponseInfo, error) {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
-	return app.app.Info(req)
+	return app.app.Info(ctx, req)
 }
 
-func (app *SyncApplication) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
+func (app *SyncApplication) InitChain(ctx context.Context, req *abci.RequestInitChain) (*abci.ResponseInitChain, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	return app.app.InitChain(req)
+	return app.app.InitChain(ctx, req)
 }
 
-func (app *SyncApplication) CheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+func (app *SyncApplication) CheckTx(ctx context.Context, req *abci.RequestCheckTx) (*abci.ResponseCheckTx, error) {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
-	return app.app.CheckTx(req)
+	return app.app.CheckTx(ctx, req)
 }
 
-func (app *SyncApplication) PrepareProposal(req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
+func (app *SyncApplication) PrepareProposal(ctx context.Context, req *abci.RequestPrepareProposal) (*abci.ResponsePrepareProposal, error) {
 	// app.app.PrepareProposal does not modify state
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
-	return app.app.PrepareProposal(req)
+	return app.app.PrepareProposal(ctx, req)
 }
 
-func (app *SyncApplication) ProcessProposal(req abci.RequestProcessProposal) abci.ResponseProcessProposal {
+func (app *SyncApplication) ProcessProposal(ctx context.Context, req *abci.RequestProcessProposal) (*abci.ResponseProcessProposal, error) {
 	// app.app.ProcessProposal does not modify state
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
-	return app.app.ProcessProposal(req)
+	return app.app.ProcessProposal(ctx, req)
 }
 
-func (app *SyncApplication) DeliverTx(req abci.RequestDeliverTx) abci.ResponseDeliverTx {
+func (app *SyncApplication) FinalizeBlock(ctx context.Context, req *abci.RequestFinalizeBlock) (*abci.ResponseFinalizeBlock, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	return app.app.DeliverTx(req)
+	return app.app.FinalizeBlock(ctx, req)
 }
 
-func (app *SyncApplication) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
+func (app *SyncApplication) Commit(ctx context.Context, req *abci.RequestCommit) (*abci.ResponseCommit, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	return app.app.BeginBlock(req)
+	return app.app.Commit(ctx, req)
 }
 
-func (app *SyncApplication) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	return app.app.EndBlock(req)
-}
-
-func (app *SyncApplication) Commit() abci.ResponseCommit {
-	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	return app.app.Commit()
-}
-
-func (app *SyncApplication) Query(req abci.RequestQuery) abci.ResponseQuery {
+func (app *SyncApplication) Query(ctx context.Context, req *abci.RequestQuery) (*abci.ResponseQuery, error) {
 	app.mtx.RLock()
 	defer app.mtx.RUnlock()
-	return app.app.Query(req)
+	return app.app.Query(ctx, req)
 }
 
-func (app *SyncApplication) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
+func (app *SyncApplication) ApplySnapshotChunk(ctx context.Context, req *abci.RequestApplySnapshotChunk) (*abci.ResponseApplySnapshotChunk, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	return app.app.ApplySnapshotChunk(req)
+	return app.app.ApplySnapshotChunk(ctx, req)
 }
 
-func (app *SyncApplication) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseListSnapshots {
+func (app *SyncApplication) ListSnapshots(ctx context.Context, req *abci.RequestListSnapshots) (*abci.ResponseListSnapshots, error) {
 	// Calls app.snapshots.List(), which is thread-safe.
-	return app.app.ListSnapshots(req)
+	return app.app.ListSnapshots(ctx, req)
 }
 
-func (app *SyncApplication) LoadSnapshotChunk(req abci.RequestLoadSnapshotChunk) abci.ResponseLoadSnapshotChunk {
+func (app *SyncApplication) LoadSnapshotChunk(ctx context.Context, req *abci.RequestLoadSnapshotChunk) (*abci.ResponseLoadSnapshotChunk, error) {
 	// Calls app.snapshots.LoadChunk, which is thread-safe.
-	return app.app.LoadSnapshotChunk(req)
+	return app.app.LoadSnapshotChunk(ctx, req)
 }
 
-func (app *SyncApplication) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOfferSnapshot {
+func (app *SyncApplication) OfferSnapshot(ctx context.Context, req *abci.RequestOfferSnapshot) (*abci.ResponseOfferSnapshot, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	return app.app.OfferSnapshot(req)
+	return app.app.OfferSnapshot(ctx, req)
 }

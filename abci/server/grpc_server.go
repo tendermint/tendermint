@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net"
 
 	"google.golang.org/grpc"
@@ -18,11 +19,11 @@ type GRPCServer struct {
 	listener net.Listener
 	server   *grpc.Server
 
-	app types.ABCIApplicationServer
+	app types.Application
 }
 
 // NewGRPCServer returns a new gRPC ABCI server
-func NewGRPCServer(protoAddr string, app types.ABCIApplicationServer) service.Service {
+func NewGRPCServer(protoAddr string, app types.Application) service.Service {
 	proto, addr := tmnet.ProtocolAndAddress(protoAddr)
 	s := &GRPCServer{
 		proto:    proto,
@@ -44,7 +45,7 @@ func (s *GRPCServer) OnStart() error {
 
 	s.listener = ln
 	s.server = grpc.NewServer()
-	types.RegisterABCIApplicationServer(s.server, s.app)
+	types.RegisterABCIServer(s.server, &gRPCApplication{s.app})
 
 	s.Logger.Info("Listening", "proto", s.proto, "addr", s.addr)
 	go func() {
@@ -58,4 +59,19 @@ func (s *GRPCServer) OnStart() error {
 // OnStop stops the gRPC server.
 func (s *GRPCServer) OnStop() {
 	s.server.Stop()
+}
+
+//-------------------------------------------------------
+
+// gRPCApplication is a gRPC shim for Application
+type gRPCApplication struct {
+	types.Application
+}
+
+func (app *gRPCApplication) Echo(_ context.Context, req *types.RequestEcho) (*types.ResponseEcho, error) {
+	return &types.ResponseEcho{Message: req.Message}, nil
+}
+
+func (app *gRPCApplication) Flush(_ context.Context, req *types.RequestFlush) (*types.ResponseFlush, error) {
+	return &types.ResponseFlush{}, nil
 }

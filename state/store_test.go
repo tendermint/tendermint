@@ -154,8 +154,8 @@ func TestPruneStates(t *testing.T) {
 				err := stateStore.Save(state)
 				require.NoError(t, err)
 
-				err = stateStore.SaveABCIResponses(h, &tmstate.ABCIResponses{
-					DeliverTxs: []*abci.ResponseDeliverTx{
+				err = stateStore.SaveFinalizeBlockResponse(h, &abci.ResponseFinalizeBlock{
+					TxResults: []*abci.ExecTxResult{
 						{Data: []byte{1}},
 						{Data: []byte{2}},
 						{Data: []byte{3}},
@@ -195,7 +195,7 @@ func TestPruneStates(t *testing.T) {
 					require.Empty(t, params)
 				}
 
-				abci, err := stateStore.LoadABCIResponses(h)
+				abci, err := stateStore.LoadFinalizeBlockResponse(h)
 				if expectABCI[h] {
 					require.NoError(t, err, "abci height %v", h)
 					require.NotNil(t, abci)
@@ -208,22 +208,18 @@ func TestPruneStates(t *testing.T) {
 	}
 }
 
-func TestABCIResponsesResultsHash(t *testing.T) {
-	responses := &tmstate.ABCIResponses{
-		BeginBlock: &abci.ResponseBeginBlock{},
-		DeliverTxs: []*abci.ResponseDeliverTx{
-			{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
-		},
-		EndBlock: &abci.ResponseEndBlock{},
+func TestTxResultsHash(t *testing.T) {
+	txResults := []*abci.ExecTxResult{
+		{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
 	}
 
-	root := sm.ABCIResponsesResultsHash(responses)
+	root := sm.TxResultsHash(txResults)
 
-	// root should be Merkle tree root of DeliverTxs responses
-	results := types.NewResults(responses.DeliverTxs)
+	// root should be Merkle tree root of ExecTxResult responses
+	results := types.NewResults(txResults)
 	assert.Equal(t, root, results.Hash())
 
-	// test we can prove first DeliverTx
+	// test we can prove first ExecTxResult
 	proof := results.ProveResult(0)
 	bz, err := results[0].Marshal()
 	require.NoError(t, err)
@@ -238,41 +234,39 @@ func sliceToMap(s []int64) map[int64]bool {
 	return m
 }
 
-func TestLastABCIResponses(t *testing.T) {
+func TestLastFinalizeBlockResponses(t *testing.T) {
 	// create an empty state store.
 	t.Run("Not persisting responses", func(t *testing.T) {
 		stateDB := dbm.NewMemDB()
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 			DiscardABCIResponses: false,
 		})
-		responses, err := stateStore.LoadABCIResponses(1)
+		responses, err := stateStore.LoadFinalizeBlockResponse(1)
 		require.Error(t, err)
 		require.Nil(t, responses)
 		// stub the abciresponses.
-		response1 := &tmstate.ABCIResponses{
-			BeginBlock: &abci.ResponseBeginBlock{},
-			DeliverTxs: []*abci.ResponseDeliverTx{
+		response1 := &abci.ResponseFinalizeBlock{
+			TxResults: []*abci.ExecTxResult{
 				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
 			},
-			EndBlock: &abci.ResponseEndBlock{},
 		}
 		// create new db and state store and set discard abciresponses to false.
 		stateDB = dbm.NewMemDB()
 		stateStore = sm.NewStore(stateDB, sm.StoreOptions{DiscardABCIResponses: false})
 		height := int64(10)
 		// save the last abci response.
-		err = stateStore.SaveABCIResponses(height, response1)
+		err = stateStore.SaveFinalizeBlockResponse(height, response1)
 		require.NoError(t, err)
-		// search for the last abciresponse and check if it has saved.
-		lastResponse, err := stateStore.LoadLastABCIResponse(height)
+		// search for the last finalize block response and check if it has saved.
+		lastResponse, err := stateStore.LoadLastFinalizeBlockResponse(height)
 		require.NoError(t, err)
 		// check to see if the saved response height is the same as the loaded height.
 		assert.Equal(t, lastResponse, response1)
 		// use an incorret height to make sure the state store errors.
-		_, err = stateStore.LoadLastABCIResponse(height + 1)
+		_, err = stateStore.LoadLastFinalizeBlockResponse(height + 1)
 		assert.Error(t, err)
 		// check if the abci response didnt save in the abciresponses.
-		responses, err = stateStore.LoadABCIResponses(height)
+		responses, err = stateStore.LoadFinalizeBlockResponse(height)
 		require.NoError(t, err, responses)
 		require.Equal(t, response1, responses)
 	})
@@ -281,28 +275,71 @@ func TestLastABCIResponses(t *testing.T) {
 		stateDB := dbm.NewMemDB()
 		height := int64(10)
 		// stub the second abciresponse.
-		response2 := &tmstate.ABCIResponses{
-			BeginBlock: &abci.ResponseBeginBlock{},
-			DeliverTxs: []*abci.ResponseDeliverTx{
+		response2 := &abci.ResponseFinalizeBlock{
+			TxResults: []*abci.ExecTxResult{
 				{Code: 44, Data: []byte("Hello again"), Log: "????"},
 			},
-			EndBlock: &abci.ResponseEndBlock{},
 		}
 		// create a new statestore with the responses on.
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 			DiscardABCIResponses: true,
 		})
 		// save an additional response.
-		err := stateStore.SaveABCIResponses(height+1, response2)
+		err := stateStore.SaveFinalizeBlockResponse(height+1, response2)
 		require.NoError(t, err)
 		// check to see if the response saved by calling the last response.
-		lastResponse2, err := stateStore.LoadLastABCIResponse(height + 1)
+		lastResponse2, err := stateStore.LoadLastFinalizeBlockResponse(height + 1)
 		require.NoError(t, err)
 		// check to see if the saved response height is the same as the loaded height.
 		assert.Equal(t, response2, lastResponse2)
 		// should error as we are no longer saving the response.
-		_, err = stateStore.LoadABCIResponses(height + 1)
-		assert.Equal(t, sm.ErrABCIResponsesNotPersisted, err)
+		_, err = stateStore.LoadFinalizeBlockResponse(height + 1)
+		assert.Equal(t, sm.ErrFinalizeBlockResponsesNotPersisted, err)
 	})
 
+}
+
+func TestFinalizeBlockRecoveryUsingLegacyABCIResponses(t *testing.T) {
+	var (
+		height              int64 = 10
+		lastABCIResponseKey       = []byte("lastABCIResponseKey")
+		memDB                     = dbm.NewMemDB()
+		cp                        = types.DefaultConsensusParams().ToProto()
+		legacyResp                = tmstate.ABCIResponsesInfo{
+			LegacyAbciResponses: &tmstate.LegacyABCIResponses{
+				BeginBlock: &tmstate.ResponseBeginBlock{
+					Events: []abci.Event{{
+						Type: "begin_block",
+						Attributes: []abci.EventAttribute{{
+							Key:   "key",
+							Value: "value",
+						}},
+					}},
+				},
+				DeliverTxs: []*abci.ExecTxResult{{
+					Events: []abci.Event{{
+						Type: "tx",
+						Attributes: []abci.EventAttribute{{
+							Key:   "key",
+							Value: "value",
+						}},
+					}},
+				}},
+				EndBlock: &tmstate.ResponseEndBlock{
+					ConsensusParamUpdates: &cp,
+				},
+			},
+			Height: height,
+		}
+	)
+	bz, err := legacyResp.Marshal()
+	require.NoError(t, err)
+	// should keep this in parity with state/store.go
+	require.NoError(t, memDB.Set(lastABCIResponseKey, bz))
+	stateStore := sm.NewStore(memDB, sm.StoreOptions{DiscardABCIResponses: false})
+	resp, err := stateStore.LoadLastFinalizeBlockResponse(height)
+	require.NoError(t, err)
+	require.Equal(t, resp.ConsensusParamUpdates, &cp)
+	require.Equal(t, resp.Events, legacyResp.LegacyAbciResponses.BeginBlock.Events)
+	require.Equal(t, resp.TxResults[0], legacyResp.LegacyAbciResponses.DeliverTxs[0])
 }

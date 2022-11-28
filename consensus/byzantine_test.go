@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/libs/service"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	mempl "github.com/tendermint/tendermint/mempool"
+	"github.com/tendermint/tendermint/proxy"
 
 	cfg "github.com/tendermint/tendermint/config"
 	mempoolv0 "github.com/tendermint/tendermint/mempool/v0"
@@ -60,15 +61,16 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.ValidatorUpdates(state.Validators)
-		app.InitChain(abci.RequestInitChain{Validators: vals})
+		_, err := app.InitChain(context.Background(), &abci.RequestInitChain{Validators: vals})
+		require.NoError(t, err)
 
 		blockDB := dbm.NewMemDB()
 		blockStore := store.NewBlockStore(blockDB)
 
 		mtx := new(tmsync.Mutex)
 		// one for mempool, one for consensus
-		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
-		proxyAppConnConMem := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnCon := proxy.NewAppConnConsensus(abcicli.NewLocalClient(mtx, app), proxy.NopMetrics())
+		proxyAppConnMem := proxy.NewAppConnMempool(abcicli.NewLocalClient(mtx, app), proxy.NopMetrics())
 
 		// Make Mempool
 		var mempool mempl.Mempool
@@ -76,14 +78,14 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		switch thisConfig.Mempool.Version {
 		case cfg.MempoolV0:
 			mempool = mempoolv0.NewCListMempool(config.Mempool,
-				proxyAppConnConMem,
+				proxyAppConnMem,
 				state.LastBlockHeight,
 				mempoolv0.WithPreCheck(sm.TxPreCheck(state)),
 				mempoolv0.WithPostCheck(sm.TxPostCheck(state)))
 		case cfg.MempoolV1:
 			mempool = mempoolv1.NewTxMempool(logger,
 				config.Mempool,
-				proxyAppConnConMem,
+				proxyAppConnMem,
 				state.LastBlockHeight,
 				mempoolv1.WithPreCheck(sm.TxPreCheck(state)),
 				mempoolv1.WithPostCheck(sm.TxPostCheck(state)),
@@ -298,9 +300,6 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 			}
 		}
 	case <-time.After(20 * time.Second):
-		for i, reactor := range reactors {
-			t.Logf("Consensus Reactor %d\n%v", i, reactor)
-		}
 		t.Fatalf("Timed out waiting for validators to commit evidence")
 	}
 }
@@ -314,7 +313,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
 	app := newKVStore
-	css, cleanup := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), app)
+	css, cleanup := randConsensusNet(t, N, "consensus_byzantine_test", newMockTickerFunc(false), app)
 	defer cleanup()
 
 	// give the byzantine validator a normal ticker
@@ -486,7 +485,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	proposal1.Signature = p1.Signature
 
 	// some new transactions come in (this ensures that the proposals are different)
-	deliverTxsRange(cs, 0, 1)
+	deliverTxsRange(t, cs, 0, 1)
 
 	// Create a new proposal block from state/txs from the mempool.
 	block2, err := cs.createProposalBlock()

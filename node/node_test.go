@@ -125,7 +125,7 @@ func TestNodeSetAppVersion(t *testing.T) {
 	require.NoError(t, err)
 
 	// default config uses the kvstore app
-	var appVersion = kvstore.ProtocolVersion
+	var appVersion = kvstore.AppVersion
 
 	// check version is set in state
 	state, err := n.stateStore.Load()
@@ -250,7 +250,7 @@ func testFreeAddr(t *testing.T) string {
 func TestCreateProposalBlock(t *testing.T) {
 	config := test.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewInMemoryApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -362,7 +362,7 @@ func TestCreateProposalBlock(t *testing.T) {
 func TestMaxProposalBlockSize(t *testing.T) {
 	config := test.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
-	cc := proxy.NewLocalClientCreator(kvstore.NewApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewInMemoryApplication())
 	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
 	err := proxyApp.Start()
 	require.Nil(t, err)

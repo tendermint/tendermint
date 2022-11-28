@@ -4,7 +4,6 @@ import (
 	dbm "github.com/tendermint/tm-db"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -27,10 +26,10 @@ func UpdateState(
 	state State,
 	blockID types.BlockID,
 	header *types.Header,
-	abciResponses *tmstate.ABCIResponses,
+	resp *abci.ResponseFinalizeBlock,
 	validatorUpdates []*types.Validator,
 ) (State, error) {
-	return updateState(state, blockID, header, abciResponses, validatorUpdates)
+	return updateState(state, blockID, header, resp, validatorUpdates)
 }
 
 // ValidateValidatorUpdates is an alias for validateValidatorUpdates exported

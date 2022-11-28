@@ -34,7 +34,7 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestProvider(t *testing.T) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	app.RetainBlocks = 10
 	node := rpctest.StartTendermint(app)
 

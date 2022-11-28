@@ -1,8 +1,15 @@
 package kvstore
 
 import (
+	"context"
+	"encoding/base64"
+	"fmt"
+	"strings"
+
 	"github.com/tendermint/tendermint/abci/types"
+	cryptoencoding "github.com/tendermint/tendermint/crypto/encoding"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 // RandVal creates one random validator, with a key derived
@@ -29,8 +36,44 @@ func RandVals(cnt int) []types.ValidatorUpdate {
 // InitKVStore initializes the kvstore app with some data,
 // which allows tests to pass and is fine as long as you
 // don't make any tx that modify the validator state
-func InitKVStore(app *PersistentKVStoreApplication) {
-	app.InitChain(types.RequestInitChain{
+func InitKVStore(ctx context.Context, app *Application) error {
+	_, err := app.InitChain(ctx, &types.RequestInitChain{
 		Validators: RandVals(1),
 	})
+	return err
+}
+
+// Create a new transaction
+func NewTx(key, value string) []byte {
+	return []byte(strings.Join([]string{key, value}, "="))
+}
+
+func NewRandomTx(size int) []byte {
+	if size < 4 {
+		panic("random tx size must be greater than 3")
+	}
+	return NewTx(tmrand.Str(2), tmrand.Str(size-3))
+}
+
+func NewRandomTxs(n int) [][]byte {
+	txs := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		txs[i] = NewRandomTx(10)
+	}
+	return txs
+}
+
+func NewTxFromID(i int) []byte {
+	return []byte(fmt.Sprintf("%d=%d", i, i))
+}
+
+// Create a transaction to add/remove/update a validator
+// To remove, set power to 0.
+func MakeValSetChangeTx(pubkey crypto.PublicKey, power int64) []byte {
+	pk, err := cryptoencoding.PubKeyFromProto(pubkey)
+	if err != nil {
+		panic(err)
+	}
+	pubStr := base64.StdEncoding.EncodeToString(pk.Bytes())
+	return []byte(fmt.Sprintf("%s%s!%d", ValidatorPrefix, pubStr, power))
 }

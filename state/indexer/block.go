@@ -15,10 +15,10 @@ type BlockIndexer interface {
 	// upon database query failure.
 	Has(height int64) (bool, error)
 
-	// Index indexes BeginBlock and EndBlock events for a given block by its height.
-	Index(types.EventDataNewBlockHeader) error
+	// Index indexes FinalizeBlock events for a given block by its height.
+	Index(types.EventDataNewBlockEvents) error
 
-	// Search performs a query for block heights that match a given BeginBlock
-	// and Endblock event search criteria.
+	// Search performs a query for block heights that match a given FinalizeBlock
+	// event search criteria.
 	Search(ctx context.Context, q *query.Query) ([]int64, error)
 }

@@ -15,7 +15,7 @@ import (
 )
 
 func FuzzMempool(f *testing.F) {
-	app := kvstore.NewApplication()
+	app := kvstore.NewInMemoryApplication()
 	logger := log.NewNopLogger()
 	mtx := new(tmsync.Mutex)
 	conn := abciclient.NewLocalClient(mtx, app)

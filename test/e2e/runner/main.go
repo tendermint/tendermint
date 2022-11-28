@@ -79,7 +79,7 @@ func NewCLI() *CLI {
 				return fmt.Errorf("unknown infrastructure type '%s'", inft)
 			}
 
-			testnet, err := e2e.LoadTestnet(m, file, ifd)
+			testnet, err := e2e.LoadTestnet(file, ifd)
 			if err != nil {
 				return fmt.Errorf("loading testnet: %s", err)
 			}
