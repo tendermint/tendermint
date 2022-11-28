@@ -13,6 +13,7 @@
 - Go API
   - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
   - [rpc] \#9655 Remove global environment and replace with constructor. (@williambanfield,@tychoish)
+  - [node] \#9655 Move DBContext and DBProvider from the node package to the config package. (@williambanfield,@tychoish)
 
 - Blockchain Protocol
 
