@@ -149,6 +149,11 @@ type ManifestNode struct {
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
+
+	// SendNoLoad determines if the e2e test should send load to this node.
+	// It defaults to false so unless the configured, the node will
+	// receive load.
+	SendNoLoad bool `toml:"send_no_laod"`
 }
 
 // Save saves the testnet manifest to a file.

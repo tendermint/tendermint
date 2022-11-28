@@ -95,6 +95,9 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
+
+	// SendNoLoad determines if the e2e test should send load to this node.
+	SendNoLoad bool
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -173,6 +176,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
+			SendNoLoad:       nodeManifest.SendNoLoad,
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
