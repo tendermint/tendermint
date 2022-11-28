@@ -227,7 +227,7 @@ func (bcR *Reactor) Receive(e p2p.Envelope) {
 		extCommit, err := types.ExtendedCommitFromProto(msg.ExtCommit)
 		if err != nil {
 			bcR.Logger.Error("failed to convert extended commit from proto",
-				"peer", src,
+				"peer", e.Src,
 				"err", err)
 			return
 		}
