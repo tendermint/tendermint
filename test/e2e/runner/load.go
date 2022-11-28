@@ -27,6 +27,9 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	started := time.Now()
 	u := [16]byte(uuid.New()) // generate run ID on startup
 
+	txCh := make(chan types.Tx)
+	go loadGenerate(ctx, txCh, testnet, u[:])
+
 	for _, n := range testnet.Nodes {
 		if n.SendNoLoad {
 			continue
@@ -38,7 +41,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 		}
 
 		for w := 0; w < testnet.LoadTxConnections; w++ {
-			go loadProcess(ctx, testnet, chSuccess, cli, u[:])
+			go loadProcess(ctx, txCh, chSuccess, cli)
 		}
 	}
 
@@ -64,7 +67,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 }
 
 // loadGenerate generates jobs until the context is canceled
-func loadGenerate(ctx context.Context, chTx chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
+func loadGenerate(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
 	for i := 0; i < math.MaxInt64; i++ {
 		// We keep generating the same 1000 keys over and over, with different values.
 		// This gives a reasonable load without putting too much data in the app.
@@ -79,23 +82,21 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, testnet *e2e.Testne
 		}
 
 		select {
-		case chTx <- tx:
+		case txCh <- tx:
 			time.Sleep(time.Second)
 
 		case <-ctx.Done():
-			close(chTx)
+			close(txCh)
 			return
 		}
 	}
 }
 
 // loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, chSuccess chan<- struct{}, client *rpchttp.HTTP, id []byte) {
+func loadProcess(ctx context.Context, txCh <-chan types.Tx, chSuccess chan<- struct{}, client *rpchttp.HTTP) {
 	var err error
 	s := struct{}{}
-	chTx := make(chan types.Tx)
-	go loadGenerate(ctx, chTx, testnet, id)
-	for tx := range chTx {
+	for tx := range txCh {
 		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
 			continue
 		}
