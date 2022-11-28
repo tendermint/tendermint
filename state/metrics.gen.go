@@ -40,7 +40,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "store_access_duration_seconds",
 			Help:      "The duration of accesses to the state store labeled by which method was called on the store.",
 
-			Buckets: stdprometheus.ExponentialBuckets(0.01, 2, 5),
+			Buckets: stdprometheus.ExponentialBuckets(0.00002, 5, 5),
 		}, append(labels, "method")).With(labelsAndValues...),
 	}
 }

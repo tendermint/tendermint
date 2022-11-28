@@ -27,5 +27,5 @@ type Metrics struct {
 
 	// The duration of accesses to the state store labeled by which method
 	// was called on the store.
-	StoreAccessDurationSeconds metrics.Histogram `metrics_buckettype:"exp" metrics_bucketsizes:"0.01, 2, 5" metrics_labels:"method"`
+	StoreAccessDurationSeconds metrics.Histogram `metrics_buckettype:"exp" metrics_bucketsizes:"0.00002, 5, 5" metrics_labels:"method"`
 }
