@@ -47,7 +47,7 @@ func TestValidateBlockHeader(t *testing.T) {
 		mock.Anything,
 		mock.Anything).Return(nil)
 
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(dbm.NewMemDB(), store.BlockStoreOptions{}) 
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -135,7 +135,7 @@ func TestValidateBlockCommit(t *testing.T) {
 		mock.Anything,
 		mock.Anything).Return(nil)
 
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(dbm.NewMemDB(), store.BlockStoreOptions{}) 
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,
@@ -277,7 +277,7 @@ func TestValidateBlockEvidence(t *testing.T) {
 		mock.Anything,
 		mock.Anything).Return(nil)
 	state.ConsensusParams.Evidence.MaxBytes = 1000
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(dbm.NewMemDB(), store.BlockStoreOptions{}) 
 
 	blockExec := sm.NewBlockExecutor(
 		stateStore,

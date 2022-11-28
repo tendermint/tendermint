@@ -155,7 +155,7 @@ func TestReactorWithEvidence(t *testing.T) {
 		// css[i] = newStateWithConfig(thisConfig, state, privVals[i], app)
 
 		blockDB := dbm.NewMemDB()
-		blockStore := store.NewBlockStore(blockDB)
+		blockStore := store.NewBlockStore(blockDB, store.BlockStoreOptions{}) 
 
 		mtx := new(tmsync.Mutex)
 		memplMetrics := mempl.NopMetrics()

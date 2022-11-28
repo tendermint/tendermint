@@ -46,7 +46,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	s := store.NewBlockStore(db)
+	s := store.NewBlockStore(db, store.BlockStoreOptions{}) 
 	defer s.Close()
 	rs, err := report.GenerateFromBlockStore(s)
 	if err != nil {

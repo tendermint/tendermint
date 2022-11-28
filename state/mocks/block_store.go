@@ -237,7 +237,7 @@ type mockConstructorTestingTNewBlockStore interface {
 }
 
 // NewBlockStore creates a new instance of BlockStore. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-func NewBlockStore(t mockConstructorTestingTNewBlockStore) *BlockStore {
+func NewBlockStore(t mockConstructorTestingTNewBlockStore, store.BlockStoreOptions{})  *BlockStore {
 	mock := &BlockStore{}
 	mock.Mock.Test(t)
 

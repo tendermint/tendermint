@@ -290,7 +290,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	if err != nil {
 		tmos.Exit(err.Error())
 	}
-	blockStore := store.NewBlockStore(blockStoreDB)
+	blockStore := store.NewBlockStore(blockStoreDB, store.BlockStoreOptions{}) 
 
 	// Get State
 	stateDB, err := dbm.NewDB("state", dbType, config.DBDir())

@@ -392,7 +392,7 @@ func newStateWithConfigAndBlockStore(
 	blockDB dbm.DB,
 ) *State {
 	// Get BlockStore
-	blockStore := store.NewBlockStore(blockDB)
+	blockStore := store.NewBlockStore(blockDB, store.BlockStoreOptions{}) 
 
 	// one for mempool, one for consensus
 	mtx := new(tmsync.Mutex)

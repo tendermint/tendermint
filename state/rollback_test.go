@@ -87,7 +87,7 @@ func TestRollback(t *testing.T) {
 
 func TestRollbackHard(t *testing.T) {
 	const height int64 = 100
-	blockStore := store.NewBlockStore(dbm.NewMemDB())
+	blockStore := store.NewBlockStore(dbm.NewMemDB(), store.BlockStoreOptions{}) 
 	stateStore := state.NewStore(dbm.NewMemDB(), state.StoreOptions{DiscardABCIResponses: false})
 
 	valSet, _ := types.RandValidatorSet(5, 10)

@@ -47,14 +47,23 @@ type BlockStore struct {
 	height int64
 }
 
+type BlockStoreOptions struct {
+	Metrics *Metrics
+}
+
 // NewBlockStore returns a new BlockStore with the given DB,
 // initialized to the last height that was committed to the DB.
-func NewBlockStore(db dbm.DB) *BlockStore {
+func NewBlockStore(db dbm.DB, o BlockStoreOptions) *BlockStore {
 	bs := LoadBlockStoreState(db)
+	m := NopMetrics()
+	if o.Metrics != nil {
+		m = o.Metrics
+	}
 	return &BlockStore{
-		base:   bs.Base,
-		height: bs.Height,
-		db:     db,
+		metrics: m,
+		base:    bs.Base,
+		height:  bs.Height,
+		db:      db,
 	}
 }
 
