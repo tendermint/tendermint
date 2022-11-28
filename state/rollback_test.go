@@ -118,7 +118,7 @@ func TestRollbackHard(t *testing.T) {
 
 	partSet, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
-	blockStore.SaveBlock(block, partSet, &types.Commit{Height: block.Height})
+	blockStore.SaveBlock(block, partSet, &types.ExtendedCommit{Height: block.Height})
 
 	currState := state.State{
 		Version: tmstate.Version{
@@ -160,7 +160,7 @@ func TestRollbackHard(t *testing.T) {
 
 	nextPartSet, err := nextBlock.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
-	blockStore.SaveBlock(nextBlock, nextPartSet, &types.Commit{Height: nextBlock.Height})
+	blockStore.SaveBlock(nextBlock, nextPartSet, &types.ExtendedCommit{Height: nextBlock.Height})
 
 	rollbackHeight, rollbackHash, err := state.Rollback(blockStore, stateStore, true)
 	require.NoError(t, err)
@@ -173,7 +173,7 @@ func TestRollbackHard(t *testing.T) {
 	require.Equal(t, currState, loadedState)
 
 	// resave the same block
-	blockStore.SaveBlock(nextBlock, nextPartSet, &types.Commit{Height: nextBlock.Height})
+	blockStore.SaveBlock(nextBlock, nextPartSet, &types.ExtendedCommit{Height: nextBlock.Height})
 
 	params.Version.App = 11
 

@@ -202,10 +202,14 @@ func TestFinalizeBlockValidators(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		lastCommit := types.NewExtendedCommit(1, 0, prevBlockID, tc.lastCommitSigs)
+		lastCommit := &types.Commit{
+			Height:     1,
+			BlockID:    prevBlockID,
+			Signatures: tc.lastCommitSigs,
+		}
 
 		// block for height 2
-		block := makeBlock(state, 2, lastCommit.StripExtensions())
+		block := makeBlock(state, 2, lastCommit)
 
 		_, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), stateStore, 1)
 		require.Nil(t, err, tc.desc)
