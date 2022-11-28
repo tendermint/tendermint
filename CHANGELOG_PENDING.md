@@ -1,5 +1,49 @@
 # Unreleased Changes
 
+<<<<<<< HEAD
+=======
+## v0.38.0
+
+### BREAKING CHANGES
+
+- CLI/RPC/Config
+
+- Apps
+
+- P2P Protocol
+
+- Go API
+  - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
+
+- Blockchain Protocol
+
+- Data Storage
+  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
+
+- Tooling
+  - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
+    labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
+
+### FEATURES
+
+- [config] \#9680 Introduce `BootstrapPeers` to the config to allow nodes to list peers to be added to
+  the addressbook upon start up (@cmwaters)
+
+### IMPROVEMENTS
+
+- [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
+- [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
+- [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
+- [rpc] \#9650 Enable caching of RPC responses (@JayT106)
+- [consensus] \#9760 Save peer LastCommit correctly to achieve 50% reduction in gossiped precommits. (@williambanfield)
+
+### BUG FIXES
+
+- [docker] \#9462 ensure Docker image uses consistent version of Go
+- [abci-cli] \#9717 fix broken abci-cli help command
+
+>>>>>>> da204d371 (consensus: correctly save reference to previous height precommits (#9760))
 ## v0.37.0
 
 Special thanks to external contributors on this release:
