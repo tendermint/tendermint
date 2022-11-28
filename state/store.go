@@ -406,13 +406,7 @@ func (store dbStore) LoadFinalizeBlockResponse(height int64) (*abci.ResponseFina
 		// The state store contains the old format. Migrate to
 		// the new ResponseFinalizeBlock format. Note that the
 		// new struct expects the AgreedAppData which we don't have.
-		resp = &abci.ResponseFinalizeBlock{
-			TxResults:             legacyResp.DeliverTxs,
-			ValidatorUpdates:      legacyResp.EndBlock.ValidatorUpdates,
-			ConsensusParamUpdates: legacyResp.EndBlock.ConsensusParamUpdates,
-			Events:                append(legacyResp.BeginBlock.Events, legacyResp.EndBlock.Events...),
-			// NOTE: AgreedAppData is missing in the response
-		}
+		return responseFinalizeBlockFromLegacy(legacyResp), nil
 	}
 
 	// TODO: ensure that buf is completely read.
@@ -456,15 +450,7 @@ func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.Response
 		if info.LegacyAbciResponses == nil {
 			panic("state store contains last abci response but it is empty")
 		}
-		legacyResp := info.LegacyAbciResponses
-		return &abci.ResponseFinalizeBlock{
-			TxResults:             legacyResp.DeliverTxs,
-			ValidatorUpdates:      legacyResp.EndBlock.ValidatorUpdates,
-			ConsensusParamUpdates: legacyResp.EndBlock.ConsensusParamUpdates,
-			Events:                append(legacyResp.BeginBlock.Events, legacyResp.EndBlock.Events...),
-			// NOTE: AgreedAppData is missing in the response but will
-			// be caught and filled in consensus/replay.go
-		}, nil
+		return responseFinalizeBlockFromLegacy(info.LegacyAbciResponses), nil
 	}
 
 	return info.ResponseFinalizeBlock, nil
@@ -705,4 +691,17 @@ func min(a int64, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+// responseFinalizeBlockFromLegacy is a convenience function that takes the old abci responses and morphs
+// it to the finalize block response. Note that the agreed app data is missing
+func responseFinalizeBlockFromLegacy(legacyResp *tmstate.LegacyABCIResponses) *abci.ResponseFinalizeBlock {
+	return &abci.ResponseFinalizeBlock{
+		TxResults:             legacyResp.DeliverTxs,
+		ValidatorUpdates:      legacyResp.EndBlock.ValidatorUpdates,
+		ConsensusParamUpdates: legacyResp.EndBlock.ConsensusParamUpdates,
+		Events:                append(legacyResp.BeginBlock.Events, legacyResp.EndBlock.Events...),
+		// NOTE: AgreedAppData is missing in the response but will
+		// be caught and filled in consensus/replay.go
+	}
 }
