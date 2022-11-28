@@ -91,14 +91,23 @@ type StoreOptions struct {
 	// the store will maintain only the response object from the latest
 	// height.
 	DiscardABCIResponses bool
+
+	// Metrics defines the metrics collector to use for the state store.
+	// if none is specified then a NopMetrics collector is used.
+	Metrics *Metrics
 }
 
 var _ Store = (*dbStore)(nil)
 
 // NewStore creates the dbStore of the state pkg.
 func NewStore(db dbm.DB, options StoreOptions) Store {
+	m := NopMetrics()
+	if options.Metrics != nil {
+		m = options.Metrics
+	}
 	return dbStore{
 		db:           db,
+		metrics:      m,
 		StoreOptions: options,
 	}
 }
