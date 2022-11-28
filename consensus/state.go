@@ -522,7 +522,7 @@ func (cs *State) updateHeight(height int64) {
 func (cs *State) updateRoundStep(round int32, step cstypes.RoundStepType) {
 	if !cs.replayMode {
 		if round != cs.Round || round == 0 && step == cstypes.RoundStepNewRound {
-			cs.metrics.MarkRound(cs.Round, cs.StartTime)
+			cs.metrics.MarkRound(cs.Round)
 		}
 		if cs.Step != step {
 			cs.metrics.MarkStep(cs.Step)

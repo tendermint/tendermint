@@ -29,9 +29,6 @@ type Metrics struct {
 	// Number of rounds.
 	Rounds metrics.Gauge
 
-	// Histogram of round duration.
-	RoundDuration metrics.Histogram
-
 	// Number of validators.
 	Validators metrics.Gauge
 	// Total power of all validators.
@@ -113,13 +110,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "rounds",
 			Help:      "Number of rounds.",
-		}, labels).With(labelsAndValues...),
-		RoundDuration: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Namespace: namespace,
-			Subsystem: MetricsSubsystem,
-			Name:      "round_duration_seconds",
-			Help:      "Time spent in a round.",
-			Buckets:   stdprometheus.ExponentialBucketsRange(0.1, 100, 8),
 		}, labels).With(labelsAndValues...),
 		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
@@ -261,9 +251,8 @@ func NopMetrics() *Metrics {
 
 		ValidatorLastSignedHeight: discard.NewGauge(),
 
-		Rounds:        discard.NewGauge(),
-		RoundDuration: discard.NewHistogram(),
-		StepDuration:  discard.NewHistogram(),
+		Rounds:       discard.NewGauge(),
+		StepDuration: discard.NewHistogram(),
 
 		Validators:               discard.NewGauge(),
 		ValidatorsPower:          discard.NewGauge(),
@@ -289,10 +278,8 @@ func NopMetrics() *Metrics {
 	}
 }
 
-func (m *Metrics) MarkRound(r int32, st time.Time) {
+func (m *Metrics) MarkRound(r int32) {
 	m.Rounds.Set(float64(r))
-	roundTime := time.Since(st).Seconds()
-	m.RoundDuration.Observe(roundTime)
 }
 
 func (m *Metrics) MarkStep(s cstypes.RoundStepType) {
