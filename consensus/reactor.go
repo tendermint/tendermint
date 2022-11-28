@@ -119,8 +119,6 @@ func (conR *Reactor) SwitchToConsensus(state sm.State, skipWAL bool) {
 	conR.mtx.Lock()
 	conR.waitSync = false
 	conR.mtx.Unlock()
-	conR.Metrics.BlockSyncing.Set(0)
-	conR.Metrics.StateSyncing.Set(0)
 
 	if skipWAL {
 		conR.conS.doWALCatchup = false
@@ -1353,6 +1351,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 	psRound := ps.PRS.Round
 	psCatchupCommitRound := ps.PRS.CatchupCommitRound
 	psCatchupCommit := ps.PRS.CatchupCommit
+	lastPrecommits := ps.PRS.Precommits
 
 	startTime := tmtime.Now().Add(-1 * time.Duration(msg.SecondsSinceStartTime) * time.Second)
 	ps.PRS.Height = msg.Height
@@ -1380,7 +1379,7 @@ func (ps *PeerState) ApplyNewRoundStepMessage(msg *NewRoundStepMessage) {
 		// Shift Precommits to LastCommit.
 		if psHeight+1 == msg.Height && psRound == msg.LastCommitRound {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
-			ps.PRS.LastCommit = ps.PRS.Precommits
+			ps.PRS.LastCommit = lastPrecommits
 		} else {
 			ps.PRS.LastCommitRound = msg.LastCommitRound
 			ps.PRS.LastCommit = nil
