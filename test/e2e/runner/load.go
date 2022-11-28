@@ -20,21 +20,26 @@ import (
 func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	initialTimeout := 1 * time.Minute
 	stallTimeout := 30 * time.Second
-
-	chSuccess := make(chan types.Tx)
+	chSuccess := make(chan struct{})
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	started := time.Now()
-
 	u := [16]byte(uuid.New()) // generate run ID on startup
-	cli, err := testnet.RandomNode().Client()
-	if err != nil {
-		return err
-	}
 
-	for w := 0; w < testnet.LoadTxConnections; w++ {
-		go loadProcess(ctx, testnet, chSuccess, cli, u[:])
+	for _, n := range testnet.Nodes {
+		if n.SendNoLoad {
+			continue
+		}
+
+		cli, err := n.Client()
+		if err != nil {
+			return err
+		}
+
+		for w := 0; w < testnet.LoadTxConnections; w++ {
+			go loadProcess(ctx, testnet, chSuccess, cli, u[:])
+		}
 	}
 
 	// Monitor successful transactions, and abort on stalls.
@@ -85,14 +90,15 @@ func loadGenerate(ctx context.Context, chTx chan<- types.Tx, testnet *e2e.Testne
 }
 
 // loadProcess processes transactions
-func loadProcess(ctx context.Context, testnet *e2e.Testnet, chSuccess chan<- types.Tx, client *rpchttp.HTTP, id []byte) {
+func loadProcess(ctx context.Context, testnet *e2e.Testnet, chSuccess chan<- struct{}, client *rpchttp.HTTP, id []byte) {
 	var err error
+	s := struct{}{}
 	chTx := make(chan types.Tx)
 	go loadGenerate(ctx, chTx, testnet, id)
 	for tx := range chTx {
 		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
 			continue
 		}
-		chSuccess <- tx
+		chSuccess <- s
 	}
 }
