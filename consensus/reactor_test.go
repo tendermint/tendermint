@@ -142,7 +142,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-			DiscardFinalizeBlockResponses: false,
+			DiscardABCIResponses: false,
 		})
 		cfg := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		defer os.RemoveAll(cfg.RootDir)

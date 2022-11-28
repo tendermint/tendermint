@@ -61,7 +61,7 @@ func NewPersistentApplication(dbDir string) *Application {
 	name := "kvstore"
 	db, err := dbm.NewGoLevelDB(name, dbDir)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("failed to create persistent app at %s: %w", dbDir, err))
 	}
 	return NewApplication(db)
 }
@@ -77,9 +77,6 @@ func NewInMemoryApplication() *Application {
 // Tendermint will ensure it is in sync with the application by potentially replaying the blocks it has. If the
 // Application returns a 0 appBlockHeight, Tendermint will call InitChain to initialize the application with consensus related data
 func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.ResponseInfo, error) {
-	appHash := make([]byte, 8)
-	binary.PutVarint(appHash, app.state.Size)
-
 	// Tendermint expects the application to persist validators, on start-up we need to reload them to memory if they exist
 	if len(app.valAddrToPubKeyMap) == 0 && app.state.Height > 0 {
 		validators := app.getValidators()
@@ -97,7 +94,7 @@ func (app *Application) Info(_ context.Context, req *types.RequestInfo) (*types.
 		Version:          version.ABCIVersion,
 		AppVersion:       AppVersion,
 		LastBlockHeight:  app.state.Height,
-		LastBlockAppHash: appHash,
+		LastBlockAppHash: app.state.Hash(),
 	}, nil
 }
 

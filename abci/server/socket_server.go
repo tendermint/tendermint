@@ -183,6 +183,7 @@ func (s *SocketServer) handleRequests(closeConn chan error, conn io.Reader, resp
 	}()
 
 	for {
+
 		var req = &types.Request{}
 		err := types.ReadMessage(bufReader, req)
 		if err != nil {
@@ -315,11 +316,12 @@ func (s *SocketServer) handleResponses(closeConn chan error, conn io.Writer, res
 			closeConn <- fmt.Errorf("error writing message: %w", err)
 			return
 		}
-
-		err = bufWriter.Flush()
-		if err != nil {
-			closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
-			return
+		if _, ok := res.Value.(*types.Response_Flush); ok {
+			err = bufWriter.Flush()
+			if err != nil {
+				closeConn <- fmt.Errorf("error flushing write buffer: %w", err)
+				return
+			}
 		}
 
 		// If the application has responded with an exception, the server returns the error

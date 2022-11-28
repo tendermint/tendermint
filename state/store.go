@@ -84,11 +84,11 @@ type dbStore struct {
 }
 
 type StoreOptions struct {
-	// DiscardFinalizeBlockResponses determines whether or not the store
-	// retains all ABCIResponses. If DiscardFinalizeBlockResponses is enabled,
+	// DiscardABCIResponses determines whether or not the store
+	// retains all ABCIResponses. If DiscardABCIResponses is enabled,
 	// the store will maintain only the response object from the latest
 	// height.
-	DiscardFinalizeBlockResponses bool
+	DiscardABCIResponses bool
 }
 
 var _ Store = (*dbStore)(nil)
@@ -375,11 +375,11 @@ func TxResultsHash(txResults []*abci.ExecTxResult) []byte {
 	return types.NewResults(txResults).Hash()
 }
 
-// LoadFinalizeBlockResponse loads the DiscardFinalizeBlockResponses for the given height from the
+// LoadFinalizeBlockResponse loads the DiscardABCIResponses for the given height from the
 // database. If the node has D set to true, ErrABCIResponsesNotPersisted
 // is persisted. If not found, ErrNoABCIResponsesForHeight is returned.
 func (store dbStore) LoadFinalizeBlockResponse(height int64) (*abci.ResponseFinalizeBlock, error) {
-	if store.DiscardFinalizeBlockResponses {
+	if store.DiscardABCIResponses {
 		return nil, ErrFinalizeBlockResponsesNotPersisted
 	}
 
@@ -445,7 +445,26 @@ func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.Response
 
 	// Here we validate the result by comparing its height to the expected height.
 	if height != info.GetHeight() {
-		return nil, errors.New("expected height %d but last stored abci responses was at height %d")
+		return nil, fmt.Errorf("expected height %d but last stored abci responses was at height %d", height, info.GetHeight())
+	}
+
+	// It is possible if this is called directly after an upgrade that
+	// ResponseFinalizeBlock is nil. In which case we use the legacy
+	// ABCI responses
+	if info.ResponseFinalizeBlock == nil {
+		// sanity check
+		if info.LegacyAbciResponses == nil {
+			panic("state store contains last abci response but it is empty")
+		}
+		legacyResp := info.LegacyAbciResponses
+		return &abci.ResponseFinalizeBlock{
+			TxResults:             legacyResp.DeliverTxs,
+			ValidatorUpdates:      legacyResp.EndBlock.ValidatorUpdates,
+			ConsensusParamUpdates: legacyResp.EndBlock.ConsensusParamUpdates,
+			Events:                append(legacyResp.BeginBlock.Events, legacyResp.EndBlock.Events...),
+			// NOTE: AgreedAppData is missing in the response but will
+			// be caught and filled in consensus/replay.go
+		}, nil
 	}
 
 	return info.ResponseFinalizeBlock, nil
@@ -469,7 +488,7 @@ func (store dbStore) SaveFinalizeBlockResponse(height int64, resp *abci.Response
 
 	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
 	// query or to reindex an event using the command line.
-	if !store.DiscardFinalizeBlockResponses {
+	if !store.DiscardABCIResponses {
 		bz, err := resp.Marshal()
 		if err != nil {
 			return err

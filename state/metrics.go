@@ -14,7 +14,7 @@ const (
 
 // Metrics contains metrics exposed by this package.
 type Metrics struct {
-	// Time between BeginBlock and EndBlock in ms.
+	// Time spent processing FinalizeBlock
 	BlockProcessingTime metrics.Histogram `metrics_buckettype:"lin" metrics_bucketsizes:"1, 10, 10"`
 
 	// ConsensusParamUpdates is the total number of times the application has

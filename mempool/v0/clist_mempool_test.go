@@ -249,7 +249,6 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 	mockClient.On("SetLogger", mock.Anything)
 
 	mockClient.On("Error").Return(nil).Times(4)
-	mockClient.On("Flush", mock.Anything).Return(nil)
 	mockClient.On("SetResponseCallback", mock.MatchedBy(func(cb abciclient.Callback) bool { callback = cb; return true }))
 
 	app := kvstore.NewInMemoryApplication()
@@ -289,8 +288,6 @@ func TestMempoolUpdateDoesNotPanicWhenApplicationMissedTx(t *testing.T) {
 
 	req = &abci.RequestCheckTx{Tx: txs[3]}
 	callback(abci.ToRequestCheckTx(req), abci.ToResponseCheckTx(resp))
-	mockClient.AssertExpectations(t)
-
 	mockClient.AssertExpectations(t)
 }
 

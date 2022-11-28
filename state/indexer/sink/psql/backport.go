@@ -24,8 +24,7 @@ import (
 )
 
 const (
-	eventTypeBeginBlock = "begin_block"
-	eventTypeEndBlock   = "end_block"
+	eventTypeFinalizeBlock = "finaliz_block"
 )
 
 // TxIndexer returns a bridge from es to the Tendermint v0.34 transaction indexer.

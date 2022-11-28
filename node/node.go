@@ -152,7 +152,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: config.Storage.DiscardFinalizeBlockResponses,
+		DiscardABCIResponses: config.Storage.DiscardABCIResponses,
 	})
 
 	state, genDoc, err := LoadStateFromDBOrGenesisDocProvider(stateDB, genesisDocProvider)
@@ -171,7 +171,7 @@ func NewNode(config *cfg.Config,
 	// EventBus and IndexerService must be started before the handshake because
 	// we might need to index the txs of the replayed block as this might not have happened
 	// when the node stopped last time (i.e. the node stopped after it saved the block
-	// but before it indexed the txs, or, endblocker panicked)
+	// but before it indexed the txs)
 	eventBus, err := createAndStartEventBus(logger)
 	if err != nil {
 		return nil, err

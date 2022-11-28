@@ -56,7 +56,7 @@ func newReactor(
 	blockDB := dbm.NewMemDB()
 	stateDB := dbm.NewMemDB()
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	blockStore := store.NewBlockStore(blockDB)
 

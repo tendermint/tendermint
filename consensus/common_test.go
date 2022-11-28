@@ -43,7 +43,7 @@ const (
 	testSubscriber = "test-client"
 
 	// genesis, chain_id, priv_val
-	ensureTimeout = time.Millisecond * 200
+	ensureTimeout = time.Millisecond * 500
 )
 
 func ensureDir(dir string, mode os.FileMode) {
@@ -481,7 +481,7 @@ func newState(
 
 	// Make State
 	stateStore := sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 
 	err := stateStore.Save(state) // for save height 1's validators info

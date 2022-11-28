@@ -351,17 +351,8 @@ SELECT height FROM `+tableBlocks+` WHERE height = $1;
 	if err := testDB().QueryRow(`
 SELECT type, height, chain_id FROM `+viewBlockEvents+`
   WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, eventTypeBeginBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", eventTypeBeginBlock, height)
-	} else if err != nil {
-		t.Fatalf("Database query failed: %v", err)
-	}
-
-	if err := testDB().QueryRow(`
-SELECT type, height, chain_id FROM `+viewBlockEvents+`
-  WHERE height = $1 AND type = $2 AND chain_id = $3;
-`, height, eventTypeEndBlock, chainID).Err(); err == sql.ErrNoRows {
-		t.Errorf("No %q event found for height=%d", eventTypeEndBlock, height)
+`, height, eventTypeFinalizeBlock, chainID).Err(); err == sql.ErrNoRows {
+		t.Errorf("No %q event found for height=%d", eventTypeFinalizeBlock, height)
 	} else if err != nil {
 		t.Fatalf("Database query failed: %v", err)
 	}

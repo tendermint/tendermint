@@ -79,7 +79,7 @@ func TestBlockResults(t *testing.T) {
 
 	env = &Environment{}
 	env.StateStore = sm.NewStore(dbm.NewMemDB(), sm.StoreOptions{
-		DiscardFinalizeBlockResponses: false,
+		DiscardABCIResponses: false,
 	})
 	err := env.StateStore.SaveFinalizeBlockResponse(100, results)
 	require.NoError(t, err)
