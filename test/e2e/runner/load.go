@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,12 +34,11 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 			continue
 		}
 
-		cli, err := n.Client()
-		if err != nil {
-			return err
-		}
-
 		for w := 0; w < testnet.LoadTxConnections; w++ {
+			cli, err := n.Client()
+			if err != nil {
+				return err
+			}
 			go loadProcess(ctx, txCh, chSuccess, cli)
 		}
 	}
@@ -68,23 +66,31 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 
 // loadGenerate generates jobs until the context is canceled
 func loadGenerate(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
-	for i := 0; i < math.MaxInt64; i++ {
-		// We keep generating the same 1000 keys over and over, with different values.
-		// This gives a reasonable load without putting too much data in the app.
-		tx, err := payload.NewBytes(&payload.Payload{
-			Id:          id,
-			Size:        uint64(testnet.LoadTxSizeBytes),
-			Rate:        uint64(testnet.LoadTxBatchSize),
-			Connections: uint64(testnet.LoadTxConnections),
-		})
-		if err != nil {
-			panic(fmt.Sprintf("Failed to generate tx: %v", err))
+	t := time.NewTimer(0)
+	<-t.C
+	for {
+		for i := 0; i < testnet.LoadTxBatchSize; i++ {
+			tx, err := payload.NewBytes(&payload.Payload{
+				Id:          id,
+				Size:        uint64(testnet.LoadTxSizeBytes),
+				Rate:        uint64(testnet.LoadTxBatchSize),
+				Connections: uint64(testnet.LoadTxConnections),
+			})
+			if err != nil {
+				panic(fmt.Sprintf("Failed to generate tx: %v", err))
+			}
+
+			select {
+			case txCh <- tx:
+
+			case <-ctx.Done():
+				close(txCh)
+				return
+			}
 		}
-
+		t.Reset(time.Second)
 		select {
-		case txCh <- tx:
-			time.Sleep(time.Second)
-
+		case <-t.C:
 		case <-ctx.Done():
 			close(txCh)
 			return
