@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/exec"
 )
 
 // Cleanup removes the Docker Compose containers and testnet directory.
@@ -32,13 +34,13 @@ func cleanupDocker() error {
 	// does this by default. Ugly, but works.
 	xargsR := `$(if [[ $OSTYPE == "linux-gnu"* ]]; then echo -n "-r"; fi)`
 
-	err := exec("bash", "-c", fmt.Sprintf(
+	err := exec.Command(context.Background(), "bash", "-c", fmt.Sprintf(
 		"docker container ls -qa --filter label=e2e | xargs %v docker container rm -f", xargsR))
 	if err != nil {
 		return err
 	}
 
-	err = exec("bash", "-c", fmt.Sprintf(
+	err = exec.Command(context.Background(), "bash", "-c", fmt.Sprintf(
 		"docker network ls -q --filter label=e2e | xargs %v docker network rm", xargsR))
 	if err != nil {
 		return err
