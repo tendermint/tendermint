@@ -16,6 +16,7 @@ type Provider interface {
 
 	StartTendermint(context.Context, *e2e.Node) error
 	KillTendermint(context.Context, *e2e.Node) error
+	TerminateTendermint(context.Context, *e2e.Node) error
 }
 
 // NoopProvider implements the provider interface by performing noops for every
@@ -24,8 +25,9 @@ type Provider interface {
 type NoopProvider struct {
 }
 
-func (NoopProvider) Setup() error                                         { return nil }
-func (NoopProvider) StartTendermint(_ context.Context, _ *e2e.Node) error { return nil }
-func (NoopProvider) KillTendermint(_ context.Context, _ *e2e.Node) error  { return nil }
+func (NoopProvider) Setup() error                                             { return nil }
+func (NoopProvider) StartTendermint(_ context.Context, _ *e2e.Node) error     { return nil }
+func (NoopProvider) TerminateTendermint(_ context.Context, _ *e2e.Node) error { return nil }
+func (NoopProvider) KillTendermint(_ context.Context, _ *e2e.Node) error      { return nil }
 
 var _ Provider = NoopProvider{}
