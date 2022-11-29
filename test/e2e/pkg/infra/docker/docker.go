@@ -33,8 +33,9 @@ func (p *Provider) Setup() error {
 	}
 	return nil
 }
-func (Provider) StartTendermint(_ context.Context, _ *e2e.Node) error { panic("unimplemented") }
-func (Provider) KillTendermint(_ context.Context, _ *e2e.Node) error  { panic("unimplemented") }
+func (Provider) StartTendermint(_ context.Context, _ *e2e.Node) error     { panic("unimplemented") }
+func (Provider) TerminateTendermint(_ context.Context, _ *e2e.Node) error { panic("unimplemented") }
+func (Provider) KillTendermint(_ context.Context, _ *e2e.Node) error      { panic("unimplemented") }
 
 // dockerComposeBytes generates a Docker Compose config file for a testnet and returns the
 // file as bytes to be written out to disk.
