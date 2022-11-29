@@ -16,7 +16,6 @@ import (
 	abcimocks "github.com/tendermint/tendermint/abci/types/mocks"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/internal/test"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -1449,11 +1448,11 @@ func TestExtendVoteCalledWhenEnabled(t *testing.T) {
 			}
 			m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
-			c := test.ConsensusParams()
+			height := int64(1)
 			if !testCase.enabled {
-				c.ABCI.VoteExtensionsEnableHeight = 0
+				height = 0
 			}
-			cs1, vss := randStateWithApp(4, m)
+			cs1, vss := randStateWithAppWithHeight(4, m, height)
 
 			height, round := cs1.Height, cs1.Round
 
@@ -1810,12 +1809,9 @@ func TestVoteExtensionEnableHeight(t *testing.T) {
 					Status: abci.ResponseVerifyVoteExtension_ACCEPT,
 				}, nil).Times(numValidators - 1)
 			}
-			//m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
-			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
-			c := test.ConsensusParams()
-			c.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
-			//consensusParams: c})
-			cs1, vss := randStateWithApp(numValidators, m)
+			m.On("FinalizeBlock", mock.Anything, mock.Anything).Return(&abci.ResponseFinalizeBlock{}, nil).Maybe()
+			m.On("Commit", mock.Anything, mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
+			cs1, vss := randStateWithAppWithHeight(numValidators, m, testCase.enableHeight)
 			cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
 			height, round := cs1.Height, cs1.Round
 
