@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra/docker"
 )
 
 // Perturbs a running testnet.
@@ -40,26 +41,26 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 
 	case e2e.PerturbationKill:
 		logger.Info("perturb node", "msg", log.NewLazySprintf("Killing node %v...", node.Name))
-		if err := execCompose(testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
+		if err := docker.ExecCompose(testnet.Dir, "kill", "-s", "SIGKILL", node.Name); err != nil {
 			return nil, err
 		}
-		if err := execCompose(testnet.Dir, "start", node.Name); err != nil {
+		if err := docker.ExecCompose(testnet.Dir, "start", node.Name); err != nil {
 			return nil, err
 		}
 
 	case e2e.PerturbationPause:
 		logger.Info("perturb node", "msg", log.NewLazySprintf("Pausing node %v...", node.Name))
-		if err := execCompose(testnet.Dir, "pause", node.Name); err != nil {
+		if err := docker.ExecCompose(testnet.Dir, "pause", node.Name); err != nil {
 			return nil, err
 		}
 		time.Sleep(10 * time.Second)
-		if err := execCompose(testnet.Dir, "unpause", node.Name); err != nil {
+		if err := docker.ExecCompose(testnet.Dir, "unpause", node.Name); err != nil {
 			return nil, err
 		}
 
 	case e2e.PerturbationRestart:
 		logger.Info("perturb node", "msg", log.NewLazySprintf("Restarting node %v...", node.Name))
-		if err := execCompose(testnet.Dir, "restart", node.Name); err != nil {
+		if err := docker.ExecCompose(testnet.Dir, "restart", node.Name); err != nil {
 			return nil, err
 		}
 

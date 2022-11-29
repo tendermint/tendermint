@@ -211,7 +211,7 @@ func NewCLI() *CLI {
 		Short: "Stops the Docker testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Stopping testnet")
-			return execCompose(cli.testnet.Dir, "down")
+			return docker.ExecCompose(cli.testnet.Dir, "down")
 		},
 	})
 
