@@ -14,8 +14,8 @@ type Provider interface {
 	// provider during testnet setup.
 	Setup() error
 
-	StartNode(context.Context, *e2e.Node) error
-	StopNode(context.Context, *e2e.Node) error
+	StartTendermint(context.Context, *e2e.Node) error
+	StopTendermint(context.Context, *e2e.Node) error
 }
 
 // NoopProvider implements the provider interface by performing noops for every
@@ -24,8 +24,8 @@ type Provider interface {
 type NoopProvider struct {
 }
 
-func (NoopProvider) Setup() error                                   { return nil }
-func (NoopProvider) StartNode(_ context.Context, _ *e2e.Node) error { return nil }
-func (NoopProvider) StopNode(_ context.Context, _ *e2e.Node) error  { return nil }
+func (NoopProvider) Setup() error                                         { return nil }
+func (NoopProvider) StartTendermint(_ context.Context, _ *e2e.Node) error { return nil }
+func (NoopProvider) StopTendermint(_ context.Context, _ *e2e.Node) error  { return nil }
 
 var _ Provider = NoopProvider{}
