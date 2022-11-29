@@ -24,7 +24,7 @@ Tendermint (as many classic BFT algorithms) have an all-to-all communication pat
 The design decision is to use an overlay network. Instead of having *N* connections, each node only maintains a relatively small number (bounded by constants, say 10 to 50). In principle, this allows to implement more efficient communication (e.g., gossiping), provided that with this small number of connections per node, the system as a whole stays connected. This overlay network 
 is established by the **peer-to-peer system (p2p)**, which is composed of the p2p layers of the participating nodes that locally decide with which peers a node keeps connections.
 
-
+GOAL: what are the consequences of the choices in the config file
  
 <!---
 # Outline
@@ -98,9 +98,21 @@ TODO:
     - consensus might need 
         - for liveness that neighborhood is stable
         - proposers are not disconnected?
-    - mempool might just need that a transaction can reach each validator within a reasonable amount of time (this might be achievable if at no point in time the current graph is connected, but, e.g., something along the lines that the union of the graphs over some period in time is connected.)
+    - mempool 
+        - might just need that a transaction can reach each validator within a reasonable amount of time (this might be achievable if at no point in time the current graph is connected, but, e.g., something along the lines that the union of the graphs over some period in time is connected.)
+        - sends ordered list of transactions to peers (ordering might also require stability)
+    - evidence: evidence reaches proposer before the evidence expires
     >  talk about the 1-to-1 and the 1-to-many/all delivery guarantees needed by the protocols (do this for each protocol. discuss how these requirements translate into what p2p should guarantee)
+    - blocksync and statesync: mainly request/response protocols
 - What does p2p expect from the reactors? (don't falsely report bad nodes; this puts requirements on the reactors and perhaps/likely also on the application running on top of ABCI)
+
+Unclassified expectations (need to figure out where they come from)
+- establish connections
+- end-to-end encrypted
+- prioritization of messages
+- non blocking
+- don't trust peers (DDOS-resistant)
+- manual configuration possible
 
 ## Context of this document
 
@@ -130,6 +142,8 @@ TODO:
 The p2p layer, specified here, manages the connections of a Tendermint node with other Tendermint nodes. It continuously provides a list of peers ensuring
 1. Connectivity. The overlay network induced by the correct nodes in the local neighborhoods (defined by the lists of peers) is sufficiently connected to the remainder of the network so that the reactors can implement communication on top of it that is sufficient for their needs
     > There is the design decision that the same overlay is used by all reactors. It seems that consensus has the strongest requirements regarding connectivity and this defines the required properties
+ 
+    > The overlay network shall be robust agains eclipse attacks. Apparently the current p2p was designed to mixed geographically close and far away neighbors to achieve that.
 2. Stability. Typically, connections between correct peers should be stable
     > Even if at every time *t* we satisfy Point 1, if the overlays at times *t* and *t+1* are totally different, it might be hard to implement decent communication on top of it. E.g., Consensus gossip requires a neighbor to know its neighbors *k* state so that it can send the message to *k* that help *k* to advance. If *k* is connected only one second per hour, this is not feasible.
 3. Openness. It is always the case that new nodes can be added to the system
@@ -203,7 +217,7 @@ TODO: The following two points seem to be implementation details/legacy design d
 - I/O
    - dispatch messages incoming from the network to the reactors
    - send messages incoming from the reactors to the network (the peers the messages should go to) 
-
+- number of connections is bounded by constants, say 10 to 50
 
 ### Temporal Properties
 
