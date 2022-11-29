@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -44,7 +45,7 @@ func Start(testnet *e2e.Testnet) error {
 	for len(nodeQueue) > 0 && nodeQueue[0].StartAt == 0 {
 		node := nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
-		if err := docker.ExecCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
+		if err := docker.ExecCompose(context.Background(), testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
 		if _, err := waitForNode(node, 0, 15*time.Second); err != nil {
@@ -98,7 +99,7 @@ func Start(testnet *e2e.Testnet) error {
 
 		logger.Info("Starting catch up node", "node", node.Name, "height", node.StartAt)
 
-		if err := docker.ExecCompose(testnet.Dir, "up", "-d", node.Name); err != nil {
+		if err := docker.ExecCompose(context.Background(), testnet.Dir, "up", "-d", node.Name); err != nil {
 			return err
 		}
 		status, err := waitForNode(node, node.StartAt, 3*time.Minute)
