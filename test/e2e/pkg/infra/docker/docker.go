@@ -110,6 +110,6 @@ func ExecComposeVerbose(ctx context.Context, dir string, args ...string) error {
 }
 
 // Exec runs a Docker command.
-func Exec(args ...string) error {
-	return exec.Command(context.Background(), append([]string{"docker"}, args...)...)
+func Exec(ctx context.Context, args ...string) error {
+	return exec.Command(ctx, append([]string{"docker"}, args...)...)
 }
