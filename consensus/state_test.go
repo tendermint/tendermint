@@ -1796,10 +1796,6 @@ func TestVoteExtensionEnableHeight(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			config := configSetup(t)
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			numValidators := 3
 			m := abcimocks.NewApplication(t)
 			m.On("ProcessProposal", mock.Anything, mock.Anything).Return(&abci.ResponseProcessProposal{
@@ -1818,7 +1814,8 @@ func TestVoteExtensionEnableHeight(t *testing.T) {
 			m.On("Commit", mock.Anything).Return(&abci.ResponseCommit{}, nil).Maybe()
 			c := test.ConsensusParams()
 			c.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
-			cs1, vss := makeState(ctx, t, makeStateArgs{config: config, application: m, validators: numValidators, consensusParams: c})
+			//consensusParams: c})
+			cs1, vss := randStateWithApp(numValidators, m)
 			cs1.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.enableHeight
 			height, round := cs1.Height, cs1.Round
 
