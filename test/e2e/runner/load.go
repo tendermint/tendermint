@@ -73,7 +73,7 @@ func loadGenerate(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testne
 		// This gives a reasonable load without putting too much data in the app.
 		tx, err := payload.NewBytes(&payload.Payload{
 			Id:          id,
-			Size:        uint64(testnet.LoadTxSize),
+			Size:        uint64(testnet.LoadTxSizeBytes),
 			Rate:        uint64(testnet.LoadTxBatchSize),
 			Connections: uint64(testnet.LoadTxConnections),
 		})

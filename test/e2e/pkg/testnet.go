@@ -21,6 +21,10 @@ import (
 const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
+
+	defaultBatchSize   = 50
+	defaultConnections = 1
+	defaultTxSizeBytes = 1024
 )
 
 type (
@@ -63,7 +67,7 @@ type Testnet struct {
 	Nodes                []*Node
 	KeyType              string
 	Evidence             int
-	LoadTxSize           int
+	LoadTxSizeBytes      int
 	LoadTxBatchSize      int
 	LoadTxConnections    int
 	ABCIProtocol         string
@@ -125,8 +129,8 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		ValidatorUpdates:     map[int64]map[*Node]int64{},
 		Nodes:                []*Node{},
 		Evidence:             manifest.Evidence,
-		LoadTxSize:           manifest.LoadTxSizeBytes,
-		LoadTxBatchSize:      manifest.LoadTxBatchSizeBytes,
+		LoadTxSizeBytes:      manifest.LoadTxSizeBytes,
+		LoadTxBatchSize:      manifest.LoadTxBatchSize,
 		LoadTxConnections:    manifest.LoadTxConnections,
 		ABCIProtocol:         manifest.ABCIProtocol,
 		PrepareProposalDelay: manifest.PrepareProposalDelay,
@@ -141,6 +145,15 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 	}
 	if testnet.ABCIProtocol == "" {
 		testnet.ABCIProtocol = string(ProtocolBuiltin)
+	}
+	if testnet.LoadTxConnections == 0 {
+		testnet.LoadTxConnections = 1
+	}
+	if testnet.LoadTxBatchSize == 0 {
+		testnet.LoadTxBatchSize = defaultBatchSize
+	}
+	if testnet.LoadTxSizeBytes == 0 {
+		testnet.LoadTxSizeBytes = defaultTxSizeBytes
 	}
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
