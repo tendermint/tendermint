@@ -109,7 +109,7 @@ func ExecComposeVerbose(dir string, args ...string) error {
 		args...)...)
 }
 
-// ExecDocker runs a Docker command.
-func ExecDocker(args ...string) error {
+// Exec runs a Docker command.
+func Exec(args ...string) error {
 	return exec.Command(context.Background(), append([]string{"docker"}, args...)...)
 }

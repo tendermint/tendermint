@@ -276,7 +276,7 @@ func NewCLI() *CLI {
 		Use:   "logs",
 		Short: "Shows the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return execComposeVerbose(cli.testnet.Dir, "logs")
+			return docker.ExecComposeVerbose(cli.testnet.Dir, "logs")
 		},
 	})
 
@@ -284,7 +284,7 @@ func NewCLI() *CLI {
 		Use:   "tail",
 		Short: "Tails the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return execComposeVerbose(cli.testnet.Dir, "logs", "--follow")
+			return docker.ExecComposeVerbose(cli.testnet.Dir, "logs", "--follow")
 		},
 	})
 
