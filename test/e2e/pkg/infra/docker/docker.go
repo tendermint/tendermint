@@ -103,8 +103,8 @@ func ExecCompose(ctx context.Context, dir string, args ...string) error {
 }
 
 // ExecComposeVerbose runs a Docker Compose command for a testnet and displays its output.
-func ExecComposeVerbose(dir string, args ...string) error {
-	return exec.CommandVerbose(context.Background(), append(
+func ExecComposeVerbose(ctx context.Context, dir string, args ...string) error {
+	return exec.CommandVerbose(ctx, append(
 		[]string{"docker-compose", "-f", filepath.Join(dir, "docker-compose.yml")},
 		args...)...)
 }
