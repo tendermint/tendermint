@@ -35,13 +35,13 @@ func (p *Provider) Setup() error {
 	return nil
 }
 func (p Provider) StartTendermint(ctx context.Context, n *e2e.Node) error {
-	return ExecCompose(p.Testnet.Dir, "start", n.Name)
+	return ExecCompose(ctx, p.Testnet.Dir, "start", n.Name)
 }
 func (p Provider) TerminateTendermint(ctx context.Context, n *e2e.Node) error {
-	return ExecCompose(p.Testnet.Dir, "kill", "-s", "SIGTERM", n.Name)
+	return ExecCompose(ctx, p.Testnet.Dir, "kill", "-s", "SIGTERM", n.Name)
 }
 func (p Provider) KillTendermint(ctx context.Context, n *e2e.Node) error {
-	return ExecCompose(p.Testnet.Dir, "kill", "-s", "SIGKILL", n.Name)
+	return ExecCompose(ctx, p.Testnet.Dir, "kill", "-s", "SIGKILL", n.Name)
 }
 
 // dockerComposeBytes generates a Docker Compose config file for a testnet and returns the
@@ -96,8 +96,8 @@ services:
 }
 
 // ExecCompose runs a Docker Compose command for a testnet.
-func ExecCompose(dir string, args ...string) error {
-	return exec.Command(context.Background(), append(
+func ExecCompose(ctx context.Context, dir string, args ...string) error {
+	return exec.Command(ctx, append(
 		[]string{"docker-compose", "-f", filepath.Join(dir, "docker-compose.yml")},
 		args...)...)
 }
