@@ -233,7 +233,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	}
 	err = proto.Unmarshal(bz, pbc)
 	if err != nil {
-		panic(fmt.Sprintf("error reading block commit: %v", err))
+		panic(fmt.Errorf("error reading block commit: %w", err))
 	}
 	commit, err := types.CommitFromProto(pbc)
 	if err != nil {
