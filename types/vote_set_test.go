@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -511,11 +510,8 @@ func TestVoteSet_VoteExtensionsEnabled(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
 			height, round := int64(1), int32(0)
-			valSet, privValidators := randValidatorPrivValSet(ctx, t, 5, 10)
+			valSet, privValidators := RandValidatorSet(5, 10)
 			var voteSet *VoteSet
 			if tc.requireExtensions {
 				voteSet = NewExtendedVoteSet("test_chain_id", height, round, tmproto.PrecommitType, valSet)
@@ -525,7 +521,7 @@ func TestVoteSet_VoteExtensionsEnabled(t *testing.T) {
 
 			val0 := privValidators[0]
 
-			val0p, err := val0.GetPubKey(ctx)
+			val0p, err := val0.GetPubKey()
 			require.NoError(t, err)
 			val0Addr := val0p.Address()
 			blockHash := crypto.CRandBytes(32)
@@ -542,7 +538,7 @@ func TestVoteSet_VoteExtensionsEnabled(t *testing.T) {
 				BlockID:          BlockID{blockHash, blockPartSetHeader},
 			}
 			v := vote.ToProto()
-			err = val0.SignVote(ctx, voteSet.ChainID(), v)
+			err = val0.SignVote(voteSet.ChainID(), v)
 			require.NoError(t, err)
 			vote.Signature = v.Signature
 

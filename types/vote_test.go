@@ -240,9 +240,6 @@ func TestVoteExtension(t *testing.T) {
 			privVal := NewMockPV()
 			pk, err := privVal.GetPubKey()
 			require.NoError(t, err)
-			blk := Block{}
-			ps, err := blk.MakePartSet(BlockPartSizeBytes)
-			require.NoError(t, err)
 			vote := &Vote{
 				ValidatorAddress: pk.Address(),
 				ValidatorIndex:   0,
@@ -250,7 +247,7 @@ func TestVoteExtension(t *testing.T) {
 				Round:            round,
 				Timestamp:        tmtime.Now(),
 				Type:             tmproto.PrecommitType,
-				BlockID:          BlockID{blk.Hash(), ps.Header()},
+				BlockID:          makeBlockIDRandom(),
 			}
 
 			v := vote.ToProto()

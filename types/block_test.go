@@ -3,7 +3,7 @@ package types
 import (
 	// it is ok to use math/rand here: we do not need a cryptographically secure random
 	// number generator here and we can run the tests a bit faster
-	"context"
+
 	"crypto/rand"
 	"encoding/hex"
 	"math"
@@ -537,10 +537,8 @@ func TestVoteSetToExtendedCommit(t *testing.T) {
 
 		t.Run(testCase.name, func(t *testing.T) {
 			blockID := makeBlockIDRandom()
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
 
-			valSet, vals := randValidatorPrivValSet(ctx, t, 10, 1)
+			valSet, vals := RandValidatorSet(10, 1)
 			var voteSet *VoteSet
 			if testCase.includeExtension {
 				voteSet = NewExtendedVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
@@ -548,7 +546,7 @@ func TestVoteSetToExtendedCommit(t *testing.T) {
 				voteSet = NewVoteSet("test_chain_id", 3, 1, tmproto.PrecommitType, valSet)
 			}
 			for i := 0; i < len(vals); i++ {
-				pubKey, err := vals[i].GetPubKey(ctx)
+				pubKey, err := vals[i].GetPubKey()
 				require.NoError(t, err)
 				vote := &Vote{
 					ValidatorAddress: pubKey.Address(),
@@ -560,7 +558,7 @@ func TestVoteSetToExtendedCommit(t *testing.T) {
 					Timestamp:        time.Now(),
 				}
 				v := vote.ToProto()
-				err = vals[i].SignVote(ctx, voteSet.ChainID(), v)
+				err = vals[i].SignVote(voteSet.ChainID(), v)
 				require.NoError(t, err)
 				vote.Signature = v.Signature
 				if testCase.includeExtension {
