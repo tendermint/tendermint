@@ -22,7 +22,7 @@ const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
 
-	defaultBatchSize   = 1
+	defaultBatchSize   = 2
 	defaultConnections = 1
 	defaultTxSizeBytes = 1024
 )
@@ -147,7 +147,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		testnet.ABCIProtocol = string(ProtocolBuiltin)
 	}
 	if testnet.LoadTxConnections == 0 {
-		testnet.LoadTxConnections = 1
+		testnet.LoadTxConnections = defaultConnections
 	}
 	if testnet.LoadTxBatchSize == 0 {
 		testnet.LoadTxBatchSize = defaultBatchSize
