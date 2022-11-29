@@ -887,8 +887,10 @@ paths:
       tags:
         - Info
       description: |
-        Get genesis document in multiple chunks to make it
-        easier to iterate through larger genesis structures.
+        Get genesis document in multiple chunks to make it easier to iterate
+        through larger genesis structures. Each chunk is produced by converting
+        the genesis document to JSON and then splitting the resulting payload
+        into 16MB blocks, and then Base64-encoding each block.
 
         Upon success, the `Cache-Control` header will be set with the default
         maximum age.
@@ -902,7 +904,7 @@ paths:
             example: 1
       responses:
         "200":
-          description: Genesis results.
+          description: Genesis chunk response.
           content:
             application/json:
               schema:
