@@ -22,7 +22,7 @@ const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
 
-	defaultBatchSize   = 50
+	defaultBatchSize   = 1
 	defaultConnections = 1
 	defaultTxSizeBytes = 1024
 )
