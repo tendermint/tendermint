@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/exec"
 	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 )
 
@@ -92,4 +93,23 @@ services:
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// ExecCompose runs a Docker Compose command for a testnet.
+func ExecCompose(dir string, args ...string) error {
+	return exec.Command(context.Background(), append(
+		[]string{"docker-compose", "-f", filepath.Join(dir, "docker-compose.yml")},
+		args...)...)
+}
+
+// ExecComposeVerbose runs a Docker Compose command for a testnet and displays its output.
+func ExecComposeVerbose(dir string, args ...string) error {
+	return exec.CommandVerbose(context.Background(), append(
+		[]string{"docker-compose", "-f", filepath.Join(dir, "docker-compose.yml")},
+		args...)...)
+}
+
+// ExecDocker runs a Docker command.
+func ExecDocker(args ...string) error {
+	return exec.Command(context.Background(), append([]string{"docker"}, args...)...)
 }
