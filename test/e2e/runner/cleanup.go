@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/test/e2e/pkg/exec"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra/docker"
 )
 
 // Cleanup removes the Docker Compose containers and testnet directory.
@@ -71,7 +72,7 @@ func cleanupDir(dir string) error {
 	if err != nil {
 		return err
 	}
-	err = execDocker("run", "--rm", "--entrypoint", "", "-v", fmt.Sprintf("%v:/network", absDir),
+	err = docker.Exec("run", "--rm", "--entrypoint", "", "-v", fmt.Sprintf("%v:/network", absDir),
 		"tendermint/e2e-node", "sh", "-c", "rm -rf /network/*/")
 	if err != nil {
 		return err
