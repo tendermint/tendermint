@@ -2,6 +2,8 @@ package ssh
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -49,8 +51,28 @@ func NewClientConfig() (*ssh.ClientConfig, error) {
 	}
 	return &ssh.ClientConfig{
 		User:              "root",
-		HostKeyCallback:   hkc,
+		HostKeyCallback:   hkcWrapper(hkc),
 		Auth:              am,
 		HostKeyAlgorithms: []string{ssh.KeyAlgoED25519},
 	}, nil
+}
+
+func hkcWrapper(hkc ssh.HostKeyCallback) ssh.HostKeyCallback {
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		err := hkc(hostname, remote, key)
+		if err == nil {
+			return nil
+		}
+		ke := &knownhosts.KeyError{}
+		if errors.As(err, &ke) && len(ke.Want) == 0 {
+			h, _, err := net.SplitHostPort(hostname)
+			if err != nil {
+				panic(fmt.Errorf("hostname incorrectly formatted: %w", err))
+			}
+			log.Printf("ignoring knownhosts error for unknown host: %s", h)
+			return nil
+		}
+
+		return err
+	}
 }
