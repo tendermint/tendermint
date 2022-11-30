@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -112,7 +113,6 @@ type Node struct {
 func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Testnet, error) {
 	dir := strings.TrimSuffix(fname, filepath.Ext(fname))
 	keyGen := newKeyGenerator(randomSeed)
-	proxyPortGen := newPortGenerator(proxyPortFirst)
 	_, ipNet, err := net.ParseCIDR(ifd.Network)
 	if err != nil {
 		return nil, fmt.Errorf("invalid IP network address %q: %w", ifd.Network, err)
@@ -175,7 +175,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
 			IP:               ind.IPAddress,
-			ProxyPort:        proxyPortGen.Next(),
+			ProxyPort:        ind.Port,
 			Mode:             ModeValidator,
 			SyncApp:          nodeManifest.SyncApp,
 			Database:         "goleveldb",
@@ -320,7 +320,7 @@ func (n Node) Validate(testnet Testnet) error {
 			return fmt.Errorf("local port %v must be >1024", n.ProxyPort)
 		}
 		for _, peer := range testnet.Nodes {
-			if peer.Name != n.Name && peer.ProxyPort == n.ProxyPort {
+			if peer.Name != n.Name && peer.ProxyPort == n.ProxyPort && bytes.Equal(peer.IP, n.IP) {
 				return fmt.Errorf("peer %q also has local port %v", peer.Name, n.ProxyPort)
 			}
 		}
@@ -460,7 +460,7 @@ func (n Node) AddressRPC() string {
 
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://127.0.0.1:%v", n.ProxyPort), "/websocket")
+	return rpchttp.New(fmt.Sprintf("http://%s:%v", n.IP, n.ProxyPort), "/websocket")
 }
 
 // Stateless returns true if the node is either a seed node or a light node

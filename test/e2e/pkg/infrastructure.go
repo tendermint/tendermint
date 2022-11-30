@@ -38,6 +38,7 @@ type InfrastructureData struct {
 // one of the nodes in the testnet.
 type InstanceData struct {
 	IPAddress net.IP `json:"ip_address"`
+	Port      uint32 `json:"port"`
 }
 
 func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
@@ -49,6 +50,8 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 	if err != nil {
 		return InfrastructureData{}, fmt.Errorf("invalid IP network address %q: %w", netAddress, err)
 	}
+
+	portGen := newPortGenerator(proxyPortFirst)
 	ipGen := newIPGenerator(ipNet)
 	ifd := InfrastructureData{
 		Provider:  "docker",
@@ -58,6 +61,7 @@ func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
 	for name := range m.Nodes {
 		ifd.Instances[name] = InstanceData{
 			IPAddress: ipGen.Next(),
+			Port:      portGen.Next(),
 		}
 	}
 	return ifd, nil

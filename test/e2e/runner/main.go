@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
@@ -91,10 +92,13 @@ func NewCLI() *CLI {
 			switch inft {
 			case "docker":
 				cli.infp = &docker.Provider{Testnet: testnet}
-			case "digitalocean":
-
-				// TMP: hardcoded key
-				cfg, err := e2essh.NewClientConfig(filepath.Join(os.Getenv("HOME"), ".ssh", "PVT_KEY"))
+			case "digital-ocean":
+				c, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")) // TODO(williambanfield): Ensure this is a consistent location for the authentication socket of the agent.
+				if err != nil {
+					return err
+				}
+				ac := agent.NewClient(c)
+				cfg, err := e2essh.NewClientConfig(ac)
 				if err != nil {
 					return err
 				}
