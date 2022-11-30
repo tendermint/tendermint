@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,8 @@ import (
 	"github.com/tendermint/tendermint/test/loadtime/payload"
 	"github.com/tendermint/tendermint/types"
 )
+
+const workerPoolSize = 16
 
 // Load generates transactions against the network until the given context is
 // canceled.
@@ -91,23 +94,31 @@ func loadGenerate(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testne
 // returns when either a full batch has been sent to the txCh or the context
 // is canceled.
 func createTxBatch(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
-	for i := 0; i < testnet.LoadTxBatchSize; i++ {
-		tx, err := payload.NewBytes(&payload.Payload{
-			Id:          id,
-			Size:        uint64(testnet.LoadTxSizeBytes),
-			Rate:        uint64(testnet.LoadTxBatchSize),
-			Connections: uint64(testnet.LoadTxConnections),
-		})
-		if err != nil {
-			panic(fmt.Sprintf("Failed to generate tx: %v", err))
-		}
+	wg := &sync.WaitGroup{}
+	for i := 0; i < workerPoolSize; i++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < testnet.LoadTxBatchSize; i++ {
+				tx, err := payload.NewBytes(&payload.Payload{
+					Id:          id,
+					Size:        uint64(testnet.LoadTxSizeBytes),
+					Rate:        uint64(testnet.LoadTxBatchSize),
+					Connections: uint64(testnet.LoadTxConnections),
+				})
+				if err != nil {
+					panic(fmt.Sprintf("Failed to generate tx: %v", err))
+				}
 
-		select {
-		case txCh <- tx:
-		case <-ctx.Done():
-			return
-		}
+				select {
+				case txCh <- tx:
+				case <-ctx.Done():
+					return
+				}
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 }
 
 // loadProcess processes transactions by sending transactions received on the txCh
