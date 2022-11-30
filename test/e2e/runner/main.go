@@ -112,7 +112,7 @@ func NewCLI() *CLI {
 				chLoadResult <- err
 			}()
 
-			if err := Start(cli.testnet); err != nil {
+			if err := Start(cli.testnet, cli.infp); err != nil {
 				return err
 			}
 
@@ -186,7 +186,7 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			return Start(cli.testnet)
+			return Start(cli.testnet, cli.infp)
 		},
 	})
 
@@ -211,7 +211,7 @@ func NewCLI() *CLI {
 		Short: "Stops the Docker testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Stopping testnet")
-			return docker.ExecCompose(context.Background(), cli.testnet.Dir, "down") 
+			return docker.ExecCompose(context.Background(), cli.testnet.Dir, "down")
 		},
 	})
 
@@ -276,7 +276,7 @@ func NewCLI() *CLI {
 		Use:   "logs",
 		Short: "Shows the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return docker.ExecComposeVerbose(context.Background(), cli.testnet.Dir, "logs") 
+			return docker.ExecComposeVerbose(context.Background(), cli.testnet.Dir, "logs")
 		},
 	})
 
@@ -284,7 +284,7 @@ func NewCLI() *CLI {
 		Use:   "tail",
 		Short: "Tails the testnet logs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return docker.ExecComposeVerbose(context.Background(), cli.testnet.Dir, "logs", "--follow") 
+			return docker.ExecComposeVerbose(context.Background(), cli.testnet.Dir, "logs", "--follow")
 		},
 	})
 
@@ -319,7 +319,7 @@ Does not run any perbutations.
 				chLoadResult <- err
 			}()
 
-			if err := Start(cli.testnet); err != nil {
+			if err := Start(cli.testnet, cli.infp); err != nil {
 				return err
 			}
 
