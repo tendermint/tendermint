@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -25,7 +26,11 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 }
 
 func NewClientConfig() (*ssh.ClientConfig, error) {
-	c, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	ss := os.Getenv("SSH_AUTH_SOCK")
+	if ss == "" {
+		return nil, errors.New("SSH_AUTH_SOCK environment variable is empty. Is the ssh-agent running?")
+	}
+	c, err := net.Dial("unix", ss)
 	if err != nil {
 		return nil, err
 	}
