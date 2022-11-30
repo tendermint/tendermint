@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 
@@ -23,7 +24,12 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 	return nil
 }
 
-func NewClientConfig(ac agent.ExtendedAgent) (*ssh.ClientConfig, error) {
+func NewClientConfig() (*ssh.ClientConfig, error) {
+	c, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err != nil {
+		return nil, err
+	}
+	ac := agent.NewClient(c)
 	hkc, err := knownhosts.New(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
 	if err != nil {
 		return nil, err
