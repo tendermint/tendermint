@@ -38,6 +38,8 @@ func MakeVote(
 	}
 
 	v.Signature = vpb.Signature
-	v.ExtensionSignature = vpb.ExtensionSignature
+	if tmproto.SignedMsgType(step) == tmproto.PrecommitType {
+		v.ExtensionSignature = vpb.ExtensionSignature
+	}
 	return v, nil
 }

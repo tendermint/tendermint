@@ -2322,7 +2322,15 @@ func (cs *State) signVote(
 	v := vote.ToProto()
 	err := cs.privValidator.SignVote(cs.state.ChainID, v)
 	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
+	// append the extension signature if it is expected
+	if msgType == tmproto.PrecommitType && !vote.BlockID.IsZero() &&
+		cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+		// defensively check that the signer correctly signed the vote extension
+		if len(v.ExtensionSignature) == 0 {
+			panic(fmt.Sprintf("expected signer to sign vote extension but empty signature returned (%d/%d)", vote.Height, vote.Round))
+		}
+		vote.ExtensionSignature = v.ExtensionSignature
+	}
 	vote.Timestamp = v.Timestamp
 
 	return vote, err

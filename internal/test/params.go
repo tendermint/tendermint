@@ -8,6 +8,7 @@ import (
 // for use in testing
 func ConsensusParams() *types.ConsensusParams {
 	c := types.DefaultConsensusParams()
+	// enable vote extensions
 	c.ABCI.VoteExtensionsEnableHeight = 1
 	return c
 }

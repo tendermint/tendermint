@@ -68,6 +68,7 @@ type VersionParams struct {
 // Interface.
 type ABCIParams struct {
 	VoteExtensionsEnableHeight int64 `json:"vote_extensions_enable_height"`
+	RecheckTx                  bool  `json:"recheck_tx"`
 }
 
 // VoteExtensionsEnabled returns true if vote extensions are enabled at height h

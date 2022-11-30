@@ -149,6 +149,9 @@ func newReactor(
 		}
 
 		blockStore.SaveBlockWithExtendedCommit(thisBlock, thisParts, seenExtCommit)
+		if err = stateStore.Save(state); err != nil {
+			panic(err)
+		}
 	}
 
 	bcReactor := NewReactor(state.Copy(), blockExec, blockStore, fastSync, NopMetrics())

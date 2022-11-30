@@ -285,6 +285,7 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 	blocksSynced := uint64(0)
 
 	chainID := bcR.initialState.ChainID
+	//??? Anoma's bug?
 	state := bcR.initialState
 
 	lastHundred := time.Now()

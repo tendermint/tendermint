@@ -153,15 +153,19 @@ message RequestProcessProposal {
   bytes proposer_address = 8;
 }
 
-// Extends a vote with application-side injection
+// Extends a vote with application-injected data
 message RequestExtendVote {
+  // the hash of the block  that this vote may be referring to
   bytes hash   = 1;
+  // the height of the extended vote
   int64 height = 2;
 }
 
 // Verify the vote extension
 message RequestVerifyVoteExtension {
+  // the hash of the block that this received vote corresponds to
   bytes hash              = 1;
+  // the validator that signed the vote extension
   bytes validator_address = 2;
   int64 height            = 3;
   bytes vote_extension    = 4;
@@ -329,6 +333,10 @@ message ResponseVerifyVoteExtension {
   enum VerifyStatus {
     UNKNOWN = 0;
     ACCEPT  = 1;
+    // Rejecting the vote extension will reject the entire precommit by the sender.
+    // Incorrectly implementing this thus has liveness implications as it may affect
+    // tendermint's ability to receive 2/3+ valid votes to finalize the block.
+    // Honest nodes should never be rejected.
     REJECT  = 2;
   }
 }

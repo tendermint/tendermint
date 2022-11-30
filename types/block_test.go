@@ -232,21 +232,21 @@ func TestCommit(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
+	extCommit, err := MakeExtCommit(lastID, h-1, 1, voteSet, vals, time.Now())
 	require.NoError(t, err)
 
-	assert.Equal(t, h-1, commit.Height)
-	assert.EqualValues(t, 1, commit.Round)
-	assert.Equal(t, tmproto.PrecommitType, tmproto.SignedMsgType(commit.Type()))
-	if commit.Size() <= 0 {
-		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
+	assert.Equal(t, h-1, extCommit.Height)
+	assert.EqualValues(t, 1, extCommit.Round)
+	assert.Equal(t, tmproto.PrecommitType, tmproto.SignedMsgType(extCommit.Type()))
+	if extCommit.Size() <= 0 {
+		t.Fatalf("commit %v has a zero or negative size: %d", extCommit, extCommit.Size())
 	}
 
-	require.NotNil(t, commit.BitArray())
-	assert.Equal(t, bits.NewBitArray(10).Size(), commit.BitArray().Size())
+	require.NotNil(t, extCommit.BitArray())
+	assert.Equal(t, bits.NewBitArray(10).Size(), extCommit.BitArray().Size())
 
-	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
-	assert.True(t, commit.IsCommit())
+	assert.Equal(t, voteSet.GetByIndex(0), extCommit.GetByIndex(0))
+	assert.True(t, extCommit.IsCommit())
 }
 
 func TestCommitValidateBasic(t *testing.T) {
@@ -440,11 +440,11 @@ func randCommit(now time.Time) *Commit {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 	voteSet, _, vals := randVoteSet(h-1, 1, tmproto.PrecommitType, 10, 1)
-	commit, err := MakeExtCommit(lastID, h-1, 1, voteSet, vals, now)
+	extCommit, err := MakeExtCommit(lastID, h-1, 1, voteSet, vals, now)
 	if err != nil {
 		panic(err)
 	}
-	return commit.ToCommit()
+	return extCommit.ToCommit()
 }
 
 func hexBytesFromString(s string) bytes.HexBytes {

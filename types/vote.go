@@ -246,6 +246,10 @@ func (vote *Vote) VerifyVoteAndExtension(chainID string, pubKey crypto.PubKey) e
 	}
 	// We only verify vote extension signatures for non-nil precommits.
 	if vote.Type == tmproto.PrecommitType && !ProtoBlockIDIsNil(&v.BlockID) {
+		if len(vote.ExtensionSignature) == 0 {
+			return errors.New("expected vote extension signature")
+		}
+
 		extSignBytes := VoteExtensionSignBytes(chainID, v)
 		if !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
 			return ErrVoteInvalidSignature
@@ -276,8 +280,8 @@ func (vote *Vote) ValidateBasic() error {
 		return errors.New("invalid Type")
 	}
 
-	if vote.Height < 0 {
-		return errors.New("negative Height")
+	if vote.Height <= 0 {
+		return errors.New("negative or zero Height")
 	}
 
 	if vote.Round < 0 {
@@ -326,9 +330,17 @@ func (vote *Vote) ValidateBasic() error {
 	}
 
 	if vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 {
+		// It's possible that this vote has vote extensions but
+		// they could also be disabled and thus not present thus
+		// we can't do all checks		if len(vote.ExtensionSignature) > MaxSignatureSize {
 		if len(vote.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
+
+		// NOTE: extended votes should have a signature regardless of
+		// of whether there is any data in the extension or not however
+		// we don't know if extensions are enabled so we can only
+		// enforce the signature when extension size is no nil
 		if len(vote.ExtensionSignature) == 0 && len(vote.Extension) != 0 {
 			return fmt.Errorf("vote extension signature absent on vote with extension")
 		}

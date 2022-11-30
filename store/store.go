@@ -247,7 +247,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // The extended commit is not guaranteed to contain the same +2/3 precommits data
 // as the commit in the block.
 func (bs *BlockStore) LoadBlockExtendedCommit(height int64) *types.ExtendedCommit {
-	var pbec = new(tmproto.ExtendedCommit)
+	pbec := new(tmproto.ExtendedCommit)
 	bz, err := bs.db.Get(calcExtCommitKey(height))
 	if err != nil {
 		panic(fmt.Errorf("fetching extended commit: %w", err))

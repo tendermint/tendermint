@@ -90,17 +90,17 @@ func (app *appConnConsensus) ProcessProposal(ctx context.Context, req *types.Req
 }
 
 func (app *appConnConsensus) ExtendVote(ctx context.Context, req *types.RequestExtendVote) (*types.ResponseExtendVote, error) {
-	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "deliver_tx", "type", "async"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "extend_vote"))()
 	return app.appConn.ExtendVote(ctx, req)
 }
 
 func (app *appConnConsensus) VerifyVoteExtension(ctx context.Context, req *types.RequestVerifyVoteExtension) (*types.ResponseVerifyVoteExtension, error) {
-	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "deliver_tx", "type", "async"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "verify_vote_extension"))()
 	return app.appConn.VerifyVoteExtension(ctx, req)
 }
 
 func (app *appConnConsensus) FinalizeBlock(ctx context.Context, req *types.RequestFinalizeBlock) (*types.ResponseFinalizeBlock, error) {
-	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "deliver_tx", "type", "async"))()
+	defer addTimeSample(app.metrics.MethodTimingSeconds.With("method", "finalize_block"))()
 	return app.appConn.FinalizeBlock(ctx, req)
 }
 
