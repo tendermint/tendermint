@@ -53,38 +53,21 @@ const (
 
 // Testnet represents a single testnet.
 type Testnet struct {
-<<<<<<< HEAD
-	Name             string
-	File             string
-	Dir              string
-	IP               *net.IPNet
-	InitialHeight    int64
-	InitialState     map[string]string
-	Validators       map[*Node]int64
-	ValidatorUpdates map[int64]map[*Node]int64
-	Nodes            []*Node
-	KeyType          string
-	ABCIProtocol     string
-=======
-	Name                 string
-	File                 string
-	Dir                  string
-	IP                   *net.IPNet
-	InitialHeight        int64
-	InitialState         map[string]string
-	Validators           map[*Node]int64
-	ValidatorUpdates     map[int64]map[*Node]int64
-	Nodes                []*Node
-	KeyType              string
-	Evidence             int
-	LoadTxSizeBytes      int
-	LoadTxBatchSize      int
-	LoadTxConnections    int
-	ABCIProtocol         string
-	PrepareProposalDelay time.Duration
-	ProcessProposalDelay time.Duration
-	CheckTxDelay         time.Duration
->>>>>>> 21b2801c6 (e2e: test runner generates loadtime formatted transactions. (#9779))
+	Name              string
+	File              string
+	Dir               string
+	IP                *net.IPNet
+	InitialHeight     int64
+	InitialState      map[string]string
+	Validators        map[*Node]int64
+	ValidatorUpdates  map[int64]map[*Node]int64
+	Nodes             []*Node
+	KeyType           string
+	Evidence          int
+	LoadTxSizeBytes   int
+	LoadTxBatchSize   int
+	LoadTxConnections int
+	ABCIProtocol      string
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -109,13 +92,10 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
-<<<<<<< HEAD
 	Misbehaviors     map[int64]string
-=======
 
 	// SendNoLoad determines if the e2e test should send load to this node.
 	SendNoLoad bool
->>>>>>> 21b2801c6 (e2e: test runner generates loadtime formatted transactions. (#9779))
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -133,36 +113,19 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 	}
 
 	testnet := &Testnet{
-<<<<<<< HEAD
-		Name:             filepath.Base(dir),
-		File:             fname,
-		Dir:              dir,
-		IP:               ipNet,
-		InitialHeight:    1,
-		InitialState:     manifest.InitialState,
-		Validators:       map[*Node]int64{},
-		ValidatorUpdates: map[int64]map[*Node]int64{},
-		Nodes:            []*Node{},
-		ABCIProtocol:     manifest.ABCIProtocol,
-=======
-		Name:                 filepath.Base(dir),
-		File:                 fname,
-		Dir:                  dir,
-		IP:                   ipNet,
-		InitialHeight:        1,
-		InitialState:         manifest.InitialState,
-		Validators:           map[*Node]int64{},
-		ValidatorUpdates:     map[int64]map[*Node]int64{},
-		Nodes:                []*Node{},
-		Evidence:             manifest.Evidence,
-		LoadTxSizeBytes:      manifest.LoadTxSizeBytes,
-		LoadTxBatchSize:      manifest.LoadTxBatchSize,
-		LoadTxConnections:    manifest.LoadTxConnections,
-		ABCIProtocol:         manifest.ABCIProtocol,
-		PrepareProposalDelay: manifest.PrepareProposalDelay,
-		ProcessProposalDelay: manifest.ProcessProposalDelay,
-		CheckTxDelay:         manifest.CheckTxDelay,
->>>>>>> 21b2801c6 (e2e: test runner generates loadtime formatted transactions. (#9779))
+		Name:              filepath.Base(dir),
+		File:              fname,
+		Dir:               dir,
+		IP:                ipNet,
+		InitialHeight:     1,
+		InitialState:      manifest.InitialState,
+		Validators:        map[*Node]int64{},
+		ValidatorUpdates:  map[int64]map[*Node]int64{},
+		Nodes:             []*Node{},
+		LoadTxSizeBytes:   manifest.LoadTxSizeBytes,
+		LoadTxBatchSize:   manifest.LoadTxBatchSize,
+		LoadTxConnections: manifest.LoadTxConnections,
+		ABCIProtocol:      manifest.ABCIProtocol,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -215,11 +178,8 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
-<<<<<<< HEAD
 			Misbehaviors:     make(map[int64]string),
-=======
 			SendNoLoad:       nodeManifest.SendNoLoad,
->>>>>>> 21b2801c6 (e2e: test runner generates loadtime formatted transactions. (#9779))
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
