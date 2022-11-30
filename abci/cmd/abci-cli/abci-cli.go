@@ -53,7 +53,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		switch cmd.Use {
-		case "kvstore", "version":
+		case "kvstore", "version", "help [command]":
 			return nil
 		}
 
