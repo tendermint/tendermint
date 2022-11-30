@@ -22,12 +22,24 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 	return nil
 }
 
-func NewClientConfig(key string) (*ssh.ClientConfig, error) {
+func NewClientConfig(keyFile string) (*ssh.ClientConfig, error) {
 	hkc, err := knownhosts.New(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
+	if err != nil {
+		return nil, err
+	}
+	key, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, err
+	}
+	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
 		return nil, err
 	}
 	return &ssh.ClientConfig{
 		HostKeyCallback: hkc,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyAlgorithms: []string{ssh.KeyAlgoED25519},
 	}, nil
 }

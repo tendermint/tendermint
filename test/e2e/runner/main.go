@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -13,7 +14,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra/digitalocean"
 	"github.com/tendermint/tendermint/test/e2e/pkg/infra/docker"
+	e2essh "github.com/tendermint/tendermint/test/e2e/pkg/ssh"
 )
 
 const randomSeed = 2308084734268
@@ -85,9 +88,23 @@ func NewCLI() *CLI {
 			}
 
 			cli.testnet = testnet
-			cli.infp = &infra.NoopProvider{}
-			if inft == "docker" {
+			switch inft {
+			case "docker":
 				cli.infp = &docker.Provider{Testnet: testnet}
+			case "digitalocean":
+
+				// TMP: hardcoded key
+				cfg, err := e2essh.NewClientConfig(filepath.Join(os.Getenv("HOME"), ".ssh", "PVT_KEY"))
+				if err != nil {
+					return err
+				}
+				cli.infp = &digitalocean.Provider{
+					Testnet:            testnet,
+					InfrastructureData: ifd,
+					SSHConfig:          cfg,
+				}
+			default:
+				cli.infp = &infra.NoopProvider{}
 			}
 			return nil
 		},
