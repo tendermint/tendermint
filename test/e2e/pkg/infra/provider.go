@@ -14,6 +14,7 @@ type Provider interface {
 	// provider during testnet setup.
 	Setup() error
 
+	CreateNode(context.Context, *e2e.Node) error
 	StartTendermint(context.Context, *e2e.Node) error
 	KillTendermint(context.Context, *e2e.Node) error
 	TerminateTendermint(context.Context, *e2e.Node) error
@@ -26,6 +27,7 @@ type NoopProvider struct {
 }
 
 func (NoopProvider) Setup() error                                             { return nil }
+func (NoopProvider) CreateNode(_ context.Context, _ *e2e.Node) error          { return nil }
 func (NoopProvider) StartTendermint(_ context.Context, _ *e2e.Node) error     { return nil }
 func (NoopProvider) TerminateTendermint(_ context.Context, _ *e2e.Node) error { return nil }
 func (NoopProvider) KillTendermint(_ context.Context, _ *e2e.Node) error      { return nil }
