@@ -67,38 +67,51 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 // loadGenerate generates jobs until the context is canceled
 func loadGenerate(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
 	t := time.NewTimer(0)
-	<-t.C
+	defer t.Stop()
 	for {
-		for i := 0; i < testnet.LoadTxBatchSize; i++ {
-			tx, err := payload.NewBytes(&payload.Payload{
-				Id:          id,
-				Size:        uint64(testnet.LoadTxSizeBytes),
-				Rate:        uint64(testnet.LoadTxBatchSize),
-				Connections: uint64(testnet.LoadTxConnections),
-			})
-			if err != nil {
-				panic(fmt.Sprintf("Failed to generate tx: %v", err))
-			}
-
-			select {
-			case txCh <- tx:
-
-			case <-ctx.Done():
-				close(txCh)
-				return
-			}
-		}
-		t.Reset(time.Second)
 		select {
 		case <-t.C:
 		case <-ctx.Done():
 			close(txCh)
 			return
 		}
+		t.Reset(time.Second)
+
+		// A context with a timeout is created here to time the createTxBatch
+		// function out. If createTxBatch has not completed its work by the time
+		// the next batch is set to be sent out, then the context is cancled so that
+		// the current batch is halted, allowing the next batch to begin.
+		tctx, cf := context.WithTimeout(ctx, time.Second)
+		createTxBatch(tctx, txCh, testnet, id)
+		cf()
 	}
 }
 
-// loadProcess processes transactions
+// createTxBatch creates new transactions and sends them into the txCh. createTxBatch
+// returns when either a full batch has been sent to the txCh or the context
+// is canceled.
+func createTxBatch(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
+	for i := 0; i < testnet.LoadTxBatchSize; i++ {
+		tx, err := payload.NewBytes(&payload.Payload{
+			Id:          id,
+			Size:        uint64(testnet.LoadTxSizeBytes),
+			Rate:        uint64(testnet.LoadTxBatchSize),
+			Connections: uint64(testnet.LoadTxConnections),
+		})
+		if err != nil {
+			panic(fmt.Sprintf("Failed to generate tx: %v", err))
+		}
+
+		select {
+		case txCh <- tx:
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// loadProcess processes transactions by sending transactions received on the txCh
+// to the client.
 func loadProcess(ctx context.Context, txCh <-chan types.Tx, chSuccess chan<- struct{}, client *rpchttp.HTTP) {
 	var err error
 	s := struct{}{}
