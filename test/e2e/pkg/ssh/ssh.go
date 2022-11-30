@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
@@ -22,24 +23,23 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 	return nil
 }
 
-func NewClientConfig(keyFile string) (*ssh.ClientConfig, error) {
+func NewClientConfig(ac agent.ExtendedAgent) (*ssh.ClientConfig, error) {
 	hkc, err := knownhosts.New(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
 	if err != nil {
 		return nil, err
 	}
-	key, err := os.ReadFile(keyFile)
+	signers, err := ac.Signers()
 	if err != nil {
 		return nil, err
 	}
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		return nil, err
+	am := make([]ssh.AuthMethod, 0, len(signers))
+	for _, signer := range signers {
+		am = append(am, ssh.PublicKeys(signer))
 	}
 	return &ssh.ClientConfig{
-		HostKeyCallback: hkc,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
+		User:              "root",
+		HostKeyCallback:   hkc,
+		Auth:              am,
 		HostKeyAlgorithms: []string{ssh.KeyAlgoED25519},
 	}, nil
 }
