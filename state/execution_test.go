@@ -94,7 +94,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: false,
 	})
-	absentSig := types.NewCommitSigAbsent()
+	absentSig := types.NewExtendedCommitSigAbsent()
 
 	testCases := []struct {
 		name             string
@@ -134,12 +134,12 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 
 			for idx, isAbsent := range tc.absentCommitSigs {
 				if isAbsent {
-					lastCommit.Signatures[idx] = absentSig
+					lastCommit.ExtendedSignatures[idx] = absentSig
 				}
 			}
 
 			// block for height 2
-			block := makeBlock(state, 2, lastCommit)
+			block := makeBlock(state, 2, lastCommit.StripExtensions())
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
 			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
