@@ -17,6 +17,7 @@ const (
 // InfrastructureData contains the relevant information for a set of existing
 // infrastructure that is to be used for running a testnet.
 type InfrastructureData struct {
+	path string
 
 	// Provider is the name of infrastructure provider backing the testnet.
 	// For example, 'docker' if it is running locally in a docker network or
@@ -39,6 +40,10 @@ type InfrastructureData struct {
 type InstanceData struct {
 	IPAddress net.IP `json:"ip_address"`
 	Port      uint32 `json:"port"`
+}
+
+func (i InfrastructureData) Path() string {
+	return i.path
 }
 
 func NewDockerInfrastructureData(m Manifest) (InfrastructureData, error) {
@@ -80,5 +85,6 @@ func InfrastructureDataFromFile(p string) (InfrastructureData, error) {
 	if ifd.Network == "" {
 		ifd.Network = globalIPv4CIDR
 	}
+	ifd.path = p
 	return ifd, nil
 }
