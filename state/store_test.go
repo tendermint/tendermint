@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/internal/test"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
+	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -296,4 +297,49 @@ func TestLastFinalizeBlockResponses(t *testing.T) {
 		assert.Equal(t, sm.ErrFinalizeBlockResponsesNotPersisted, err)
 	})
 
+}
+
+func TestFinalizeBlockRecoveryUsingLegacyABCIResponses(t *testing.T) {
+	var (
+		height              int64 = 10
+		lastABCIResponseKey       = []byte("lastABCIResponseKey")
+		memDB                     = dbm.NewMemDB()
+		cp                        = types.DefaultConsensusParams().ToProto()
+		legacyResp                = tmstate.ABCIResponsesInfo{
+			LegacyAbciResponses: &tmstate.LegacyABCIResponses{
+				BeginBlock: &tmstate.ResponseBeginBlock{
+					Events: []abci.Event{{
+						Type: "begin_block",
+						Attributes: []abci.EventAttribute{{
+							Key:   "key",
+							Value: "value",
+						}},
+					}},
+				},
+				DeliverTxs: []*abci.ExecTxResult{{
+					Events: []abci.Event{{
+						Type: "tx",
+						Attributes: []abci.EventAttribute{{
+							Key:   "key",
+							Value: "value",
+						}},
+					}},
+				}},
+				EndBlock: &tmstate.ResponseEndBlock{
+					ConsensusParamUpdates: &cp,
+				},
+			},
+			Height: height,
+		}
+	)
+	bz, err := legacyResp.Marshal()
+	require.NoError(t, err)
+	// should keep this in parity with state/store.go
+	require.NoError(t, memDB.Set(lastABCIResponseKey, bz))
+	stateStore := sm.NewStore(memDB, sm.StoreOptions{DiscardABCIResponses: false})
+	resp, err := stateStore.LoadLastFinalizeBlockResponse(height)
+	require.NoError(t, err)
+	require.Equal(t, resp.ConsensusParamUpdates, &cp)
+	require.Equal(t, resp.Events, legacyResp.LegacyAbciResponses.BeginBlock.Events)
+	require.Equal(t, resp.TxResults[0], legacyResp.LegacyAbciResponses.DeliverTxs[0])
 }

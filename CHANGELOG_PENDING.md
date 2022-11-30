@@ -7,6 +7,8 @@
 - CLI/RPC/Config
 
 - Apps
+ - [abci] \#9468 Introduce `FinalizeBlock` which condenses `BeginBlock`, `DeliverTx` and `EndBlock`
+  into a single method call (@cmwaters)
 
 - P2P Protocol
 
