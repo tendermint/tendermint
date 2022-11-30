@@ -200,15 +200,31 @@ func (blockExec *BlockExecutor) ApplyBlock(
 		return state, ErrInvalidBlock(err)
 	}
 
+	commitInfo := buildLastCommitInfo(block, blockExec.store, state.InitialHeight)
+
 	startTime := time.Now().UnixNano()
-	abciResponse, err := execBlockOnProxyApp(
-		blockExec.logger, blockExec.proxyApp, block, blockExec.store, state.InitialHeight,
-	)
+	abciResponse, err := blockExec.proxyApp.FinalizeBlock(context.TODO(), &abci.RequestFinalizeBlock{
+		Hash:               block.Hash(),
+		NextValidatorsHash: block.NextValidatorsHash,
+		ProposerAddress:    block.ProposerAddress,
+		Height:             block.Height,
+		DecidedLastCommit:  commitInfo,
+		Misbehavior:        block.Evidence.Evidence.ToABCI(),
+		Txs:                block.Txs.ToSliceOfBytes(),
+	})
 	endTime := time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
 	if err != nil {
-		return state, ErrProxyAppConn(err)
+		blockExec.logger.Error("error in proxyAppConn.FinalizeBlock", "err", err)
+		return state, err
 	}
+
+	// Assert that the application correctly returned tx results for each of the transactions provided in the block
+	if len(block.Data.Txs) != len(abciResponse.TxResults) {
+		return state, fmt.Errorf("expected tx results length to match size of transactions in block. Expected %d, got %d", len(block.Data.Txs), len(abciResponse.TxResults))
+	}
+
+	blockExec.logger.Info("executed block", "height", block.Height, "agreed_app_data", abciResponse.AgreedAppData)
 
 	fail.Fail() // XXX
 
@@ -357,40 +373,6 @@ func (blockExec *BlockExecutor) VerifyVoteExtension(ctx context.Context, vote *t
 
 //---------------------------------------------------------
 // Helper functions for executing blocks and updating state
-
-// Executes block's transactions on proxyAppConn.
-// Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(
-	logger log.Logger,
-	proxyAppConn proxy.AppConnConsensus,
-	block *types.Block,
-	store Store,
-	initialHeight int64,
-) (*abci.ResponseFinalizeBlock, error) {
-	commitInfo := buildLastCommitInfo(block, store, initialHeight)
-
-	resp, err := proxyAppConn.FinalizeBlock(context.TODO(), &abci.RequestFinalizeBlock{
-		Hash:               block.Hash(),
-		NextValidatorsHash: block.NextValidatorsHash,
-		ProposerAddress:    block.ProposerAddress,
-		Height:             block.Height,
-		DecidedLastCommit:  commitInfo,
-		Misbehavior:        block.Evidence.Evidence.ToABCI(),
-		Txs:                block.Txs.ToSliceOfBytes(),
-	})
-	if err != nil {
-		logger.Error("error in proxyAppConn.FinalizeBlock", "err", err)
-		return nil, err
-	}
-
-	// Assert that the application correctly returned tx results for each of the transactions provided in the block
-	if len(block.Data.Txs) != len(resp.TxResults) {
-		return nil, fmt.Errorf("expected tx results length to match size of transactions in block. Expected %d, got %d", len(block.Data.Txs), len(resp.TxResults))
-	}
-
-	logger.Info("executed block", "height", block.Height, "agreed_app_data", resp.AgreedAppData)
-	return resp, nil
-}
 
 func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) abci.CommitInfo {
 	if block.Height == initialHeight {
@@ -671,11 +653,28 @@ func ExecCommitBlock(
 	store Store,
 	initialHeight int64,
 ) ([]byte, error) {
-	resp, err := execBlockOnProxyApp(logger, appConnConsensus, block, store, initialHeight)
+	commitInfo := buildLastCommitInfo(block, store, initialHeight)
+
+	resp, err := appConnConsensus.FinalizeBlock(context.TODO(), &abci.RequestFinalizeBlock{
+		Hash:               block.Hash(),
+		NextValidatorsHash: block.NextValidatorsHash,
+		ProposerAddress:    block.ProposerAddress,
+		Height:             block.Height,
+		DecidedLastCommit:  commitInfo,
+		Misbehavior:        block.Evidence.Evidence.ToABCI(),
+		Txs:                block.Txs.ToSliceOfBytes(),
+	})
 	if err != nil {
-		logger.Error("failed executing block on proxy app", "height", block.Height, "err", err)
+		logger.Error("error in proxyAppConn.FinalizeBlock", "err", err)
 		return nil, err
 	}
+
+	// Assert that the application correctly returned tx results for each of the transactions provided in the block
+	if len(block.Data.Txs) != len(resp.TxResults) {
+		return nil, fmt.Errorf("expected tx results length to match size of transactions in block. Expected %d, got %d", len(block.Data.Txs), len(resp.TxResults))
+	}
+
+	logger.Info("executed block", "height", block.Height, "agreed_app_data", resp.AgreedAppData)
 
 	// Commit block, get hash back
 	_, err = appConnConsensus.Commit(context.TODO())

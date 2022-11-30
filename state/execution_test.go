@@ -77,6 +77,83 @@ func TestApplyBlock(t *testing.T) {
 	assert.EqualValues(t, 1, state.Version.Consensus.App, "App version wasn't updated")
 }
 
+// TestFinalizeBlockDecidedLastCommit ensures we correctly send the
+// DecidedLastCommit to the application. The test ensures that the
+// DecidedLastCommit properly reflects which validators signed the preceding
+// block.
+func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc, proxy.NopMetrics())
+	err := proxyApp.Start()
+	require.NoError(t, err)
+	defer proxyApp.Stop() //nolint:errcheck // ignore for tests
+
+	state, stateDB, privVals := makeState(7, 1)
+	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
+		DiscardABCIResponses: false,
+	})
+	absentSig := types.NewCommitSigAbsent()
+
+	testCases := []struct {
+		name             string
+		absentCommitSigs map[int]bool
+	}{
+		{"none absent", map[int]bool{}},
+		{"one absent", map[int]bool{1: true}},
+		{"multiple absent", map[int]bool{1: true, 3: true}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			blockStore := store.NewBlockStore(dbm.NewMemDB())
+			evpool := &mocks.EvidencePool{}
+			evpool.On("PendingEvidence", mock.Anything).Return([]types.Evidence{}, 0)
+			evpool.On("Update", mock.Anything, mock.Anything).Return()
+			evpool.On("CheckEvidence", mock.Anything).Return(nil)
+			mp := &mpmocks.Mempool{}
+			mp.On("Lock").Return()
+			mp.On("Unlock").Return()
+			mp.On("FlushAppConn", mock.Anything).Return(nil)
+			mp.On("Update",
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything,
+				mock.Anything).Return(nil)
+
+			eventBus := types.NewEventBus()
+			require.NoError(t, eventBus.Start())
+
+			blockExec := sm.NewBlockExecutor(stateStore, log.NewNopLogger(), proxyApp.Consensus(), mp, evpool, blockStore)
+			state, _, lastCommit, err := makeAndCommitGoodBlock(state, 1, new(types.Commit), state.NextValidators.Validators[0].Address, blockExec, privVals, nil)
+			require.NoError(t, err)
+
+			for idx, isAbsent := range tc.absentCommitSigs {
+				if isAbsent {
+					lastCommit.Signatures[idx] = absentSig
+				}
+			}
+
+			// block for height 2
+			block := makeBlock(state, 2, lastCommit)
+			bps, err := block.MakePartSet(testPartSize)
+			require.NoError(t, err)
+			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
+			_, err = blockExec.ApplyBlock(state, blockID, block)
+			require.NoError(t, err)
+
+			// -> app receives a list of validators with a bool indicating if they signed
+			for i, v := range app.CommitVotes {
+				_, absent := tc.absentCommitSigs[i]
+				assert.Equal(t, !absent, v.SignedLastBlock)
+			}
+		})
+	}
+}
+
 // TestFinalizeBlockValidators ensures we send absent validators list.
 func TestFinalizeBlockValidators(t *testing.T) {
 	app := &testApp{}
