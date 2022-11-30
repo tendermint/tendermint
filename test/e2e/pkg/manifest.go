@@ -56,6 +56,20 @@ type Manifest struct {
 	// builtin will build a complete Tendermint node into the application and
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
+<<<<<<< HEAD
+=======
+
+	// Add artificial delays to each of the main ABCI calls to mimic computation time
+	// of the application
+	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
+	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
+	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
+	// TODO: add vote extension and finalize block delay (@cmwaters)
+
+	LoadTxSizeBytes   int `toml:"load_tx_size_bytes"`
+	LoadTxBatchSize   int `toml:"load_tx_batch_size"`
+	LoadTxConnections int `toml:"load_tx_connections"`
+>>>>>>> 21b2801c6 (e2e: test runner generates loadtime formatted transactions. (#9779))
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -125,6 +139,7 @@ type ManifestNode struct {
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
 
+<<<<<<< HEAD
 	// Misbehaviors sets how a validator behaves during consensus at a
 	// certain height. Multiple misbehaviors at different heights can be used
 	//
@@ -134,6 +149,12 @@ type ManifestNode struct {
 	// For more information, look at the readme in the maverick folder.
 	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
 	Misbehaviors map[string]string `toml:"misbehaviors"`
+=======
+	// SendNoLoad determines if the e2e test should send load to this node.
+	// It defaults to false so unless the configured, the node will
+	// receive load.
+	SendNoLoad bool `toml:"send_no_laod"`
+>>>>>>> 21b2801c6 (e2e: test runner generates loadtime formatted transactions. (#9779))
 }
 
 // Save saves the testnet manifest to a file.
