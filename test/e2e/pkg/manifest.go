@@ -68,6 +68,10 @@ type Manifest struct {
 	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
 	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
 	// TODO: add vote extension and finalize block delay (@cmwaters)
+
+	LoadTxSizeBytes   int `toml:"load_tx_size_bytes"`
+	LoadTxBatchSize   int `toml:"load_tx_batch_size"`
+	LoadTxConnections int `toml:"load_tx_connections"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -136,6 +140,11 @@ type ManifestNode struct {
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
+
+	// SendNoLoad determines if the e2e test should send load to this node.
+	// It defaults to false so unless the configured, the node will
+	// receive load.
+	SendNoLoad bool `toml:"send_no_laod"`
 }
 
 // Save saves the testnet manifest to a file.
