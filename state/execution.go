@@ -545,7 +545,7 @@ func updateState(
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponse.ConsensusParamUpdates != nil {
-		// NOTE: must not mutate s.ConsensusParams
+		// NOTE: must not mutate state.ConsensusParams
 		nextParams = state.ConsensusParams.Update(abciResponse.ConsensusParamUpdates)
 		err := nextParams.ValidateBasic()
 		if err != nil {

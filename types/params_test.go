@@ -154,8 +154,8 @@ func TestConsensusParamsUpdate_AppVersion(t *testing.T) {
 func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 	t.Run("set to height but initial height already run", func(*testing.T) {
 		initialParams := makeParams(1, 0, 2, 0, valEd25519, 1)
-		update := &ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 10,
 			},
 		}
@@ -164,8 +164,8 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 	})
 	t.Run("reset to 0", func(t *testing.T) {
 		initialParams := makeParams(1, 0, 2, 0, valEd25519, 1)
-		update := &ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 0,
 			},
 		}
@@ -173,8 +173,8 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 	})
 	t.Run("set to height before current height run", func(*testing.T) {
 		initialParams := makeParams(1, 0, 2, 0, valEd25519, 100)
-		update := &ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 10,
 			},
 		}
@@ -183,8 +183,8 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 	})
 	t.Run("set to height after current height run", func(*testing.T) {
 		initialParams := makeParams(1, 0, 2, 0, valEd25519, 300)
-		update := &ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 99,
 			},
 		}
@@ -193,8 +193,8 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 	})
 	t.Run("no error when unchanged", func(*testing.T) {
 		initialParams := makeParams(1, 0, 2, 0, valEd25519, 100)
-		update := &ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 100,
 			},
 		}
@@ -202,8 +202,8 @@ func TestConsensusParamsUpdate_VoteExtensionsEnableHeight(t *testing.T) {
 	})
 	t.Run("updated from 0 to 0", func(t *testing.T) {
 		initialParams := makeParams(1, 0, 2, 0, valEd25519, 0)
-		update := &ConsensusParams{
-			ABCI: ABCIParams{
+		update := &tmproto.ConsensusParams{
+			Abci: &tmproto.ABCIParams{
 				VoteExtensionsEnableHeight: 0,
 			},
 		}
