@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -320,7 +319,7 @@ func (n Node) Validate(testnet Testnet) error {
 			return fmt.Errorf("local port %v must be >1024", n.ProxyPort)
 		}
 		for _, peer := range testnet.Nodes {
-			if peer.Name != n.Name && peer.ProxyPort == n.ProxyPort && bytes.Equal(peer.IP, n.IP) {
+			if peer.Name != n.Name && peer.ProxyPort == n.ProxyPort && peer.IP.Equal(n.IP) {
 				return fmt.Errorf("peer %q also has local port %v", peer.Name, n.ProxyPort)
 			}
 		}
