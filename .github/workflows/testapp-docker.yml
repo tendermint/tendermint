@@ -54,7 +54,7 @@ jobs:
         uses: docker/build-push-action@v3.2.0
         with:
           context: ./test/e2e/
-          file: ./DOCKER/Dockerfile
+          file: ./test/e2e/docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'beep_boop' }}
           tags: ${{ steps.prep.outputs.tags }}
