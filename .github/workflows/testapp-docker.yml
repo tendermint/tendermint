@@ -53,7 +53,7 @@ jobs:
       - name: Publish to Docker Hub
         uses: docker/build-push-action@v3.2.0
         with:
-          context: ./test/e2e/
+          context: .
           file: ./test/e2e/docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'beep_boop' }}
