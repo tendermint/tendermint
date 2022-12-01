@@ -6,6 +6,8 @@ import (
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
+var _ Client = (*localClient)(nil)
+
 // NOTE: use defer to unlock mutex because Application might panic (e.g., in
 // case of malicious tx or query). It only makes sense for publicly exposed
 // methods like CheckTx (/broadcast_tx_* RPC endpoint) or Query (/abci_query
@@ -22,6 +24,8 @@ var _ Client = (*localClient)(nil)
 
 // NewLocalClient creates a local client, which will be directly calling the
 // methods of the given app.
+//
+// Both Async and Sync methods ignore the given context.Context parameter.
 func NewLocalClient(mtx *tmsync.Mutex, app types.Application) Client {
 	if mtx == nil {
 		mtx = new(tmsync.Mutex)
@@ -305,8 +309,7 @@ func (app *localClient) OfferSnapshotSync(req types.RequestOfferSnapshot) (*type
 }
 
 func (app *localClient) LoadSnapshotChunkSync(
-	req types.RequestLoadSnapshotChunk,
-) (*types.ResponseLoadSnapshotChunk, error) {
+	req types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 
@@ -315,8 +318,7 @@ func (app *localClient) LoadSnapshotChunkSync(
 }
 
 func (app *localClient) ApplySnapshotChunkSync(
-	req types.RequestApplySnapshotChunk,
-) (*types.ResponseApplySnapshotChunk, error) {
+	req types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
 

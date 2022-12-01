@@ -88,15 +88,6 @@ type ManifestNode struct {
 	// on the machine where the test is being run.
 	Version string `toml:"version"`
 
-	// SyncApp specifies whether this node should use a synchronized application
-	// with an unsynchronized local client. By default this is `false`, meaning
-	// that the node will run an unsynchronized application with a synchronized
-	// local client.
-	//
-	// Only applies to validators and full nodes where their ABCI protocol is
-	// "builtin".
-	SyncApp bool `toml:"sync_app"`
-
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
 	Seeds []string `toml:"seeds"`
 

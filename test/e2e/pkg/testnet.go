@@ -82,7 +82,6 @@ type Node struct {
 	Version          string
 	Testnet          *Testnet
 	Mode             Mode
-	SyncApp          bool // Should we use a synchronized app with an unsynchronized local client?
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
 	IP               net.IP
@@ -183,7 +182,6 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			IP:               ind.IPAddress,
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
-			SyncApp:          nodeManifest.SyncApp,
 			Database:         "goleveldb",
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
