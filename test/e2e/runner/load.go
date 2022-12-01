@@ -26,6 +26,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	logger.Info("load", "msg", log.NewLazySprintf("Starting transaction load (%v workers)...", workerPoolSize))
 	started := time.Now()
 	u := [16]byte(uuid.New()) // generate run ID on startup
 
