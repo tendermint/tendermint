@@ -3,7 +3,7 @@
 This guide provides instructions for upgrading to specific versions of
 Tendermint Core.
 
-## Unreleased
+## v0.37.0
 
 ### ABCI Changes
 
