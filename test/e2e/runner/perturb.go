@@ -32,11 +32,11 @@ func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.Resul
 	switch perturbation {
 	case e2e.PerturbationDisconnect:
 		logger.Info("perturb node", "msg", log.NewLazySprintf("Disconnecting node %v...", node.Name))
-		if err := docker.Exec(context.Background(), "network", "disconnect", testnet.Name+"_"+testnet.Name, node.Name) ; err != nil {
+		if err := docker.Exec(context.Background(), "network", "disconnect", testnet.Name+"_"+testnet.Name, node.Name); err != nil {
 			return nil, err
 		}
 		time.Sleep(10 * time.Second)
-		if err := docker.Exec(context.Background(), "network", "connect", testnet.Name+"_"+testnet.Name, node.Name) ; err != nil {
+		if err := docker.Exec(context.Background(), "network", "connect", testnet.Name+"_"+testnet.Name, node.Name); err != nil {
 			return nil, err
 		}
 
