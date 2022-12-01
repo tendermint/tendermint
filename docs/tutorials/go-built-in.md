@@ -461,7 +461,8 @@ When Tendermint Core sees that valid transactions (validated through `CheckTx`) 
 included in blocks, it groups some of these transactions and then gives the application a chance 
 to modify the group by invoking `PrepareProposal`.
 
-The application is free to modify the group before returning from the call.
+The application is free to modify the group before returning from the call, as long as the resulting set
+does not use more bytes than `RequestPrepareProposal.max_tx_bytes'
 For example, the application may reorder, add, or even remove transactions from the group to improve the
 execution of the block once accepted.
 In the following code, the application simply returns the unmodified group of transactions:
