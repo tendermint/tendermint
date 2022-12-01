@@ -9,7 +9,7 @@ import (
 
 // Command executes a shell command.
 func Command(ctx context.Context, args ...string) error {
-	// nolint: gosec
+	//nolint: gosec
 	// G204: Subprocess launched with a potential tainted input or cmd arguments
 	cmd := osexec.CommandContext(ctx, args[0], args[1:]...)
 	out, err := cmd.CombinedOutput()
@@ -25,7 +25,7 @@ func Command(ctx context.Context, args ...string) error {
 
 // CommandVerbose executes a shell command while displaying its output.
 func CommandVerbose(ctx context.Context, args ...string) error {
-	// nolint: gosec
+	//nolint: gosec
 	// G204: Subprocess launched with a potential tainted input or cmd arguments
 	cmd := osexec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Stdout = os.Stdout
