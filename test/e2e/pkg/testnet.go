@@ -170,9 +170,13 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		if !ok {
 			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
 		}
+		v := nodeManifest.Version
+		if v == "" {
+			v = Version()
+		}
 		node := &Node{
 			Name:             name,
-			Version:          nodeManifest.Version,
+			Version:          v,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),

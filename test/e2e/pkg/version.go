@@ -1,11 +1,11 @@
 package e2e
 
 // Set by the makefile
-var version string
+var pkgGitVersion string
 
 func Version() string {
-	if version == "" {
+	if pkgGitVersion == "" {
 		panic("version not set. Was this program not built using the e2e package's Makefile?")
 	}
-	return version
+	return pkgGitVersion
 }

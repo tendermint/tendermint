@@ -4,7 +4,7 @@ ifeq (,$(VERSION))
 	VERSION=$(shell git rev-parse HEAD)
 endif
 
-LD_FLAGS=-X github.com/tendermint/tendermint/test/e2e/pkg.version=$(VERSION)
+LD_FLAGS=-X github.com/tendermint/tendermint/test/e2e/pkg.pkgGitVersion=$(VERSION)
 
 docker:
 	docker build --tag tendermint/e2e-node:$(VERSION) -f docker/Dockerfile ../..
