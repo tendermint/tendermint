@@ -1,7 +1,7 @@
 all: docker generator runner
 
 docker:
-	docker build --tag tendermint/e2e-node -f docker/Dockerfile ../..
+	docker build --tag tendermint/e2e-node --tag tendermint/e2e-node:local-version -f docker/Dockerfile ../..
 
 # We need to build support for database backends into the app in
 # order to build a binary with a Tendermint node in it (for built-in
