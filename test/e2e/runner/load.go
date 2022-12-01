@@ -38,11 +38,7 @@ func Load(ctx context.Context, testnet *e2e.Testnet) error {
 		}
 
 		for w := 0; w < testnet.LoadTxConnections; w++ {
-			cli, err := n.Client()
-			if err != nil {
-				return err
-			}
-			go loadProcess(ctx, txCh, chSuccess, cli)
+			go loadProcess(ctx, txCh, chSuccess, n)
 		}
 	}
 
@@ -123,10 +119,17 @@ func createTxBatch(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testn
 
 // loadProcess processes transactions by sending transactions received on the txCh
 // to the client.
-func loadProcess(ctx context.Context, txCh <-chan types.Tx, chSuccess chan<- struct{}, client *rpchttp.HTTP) {
+func loadProcess(ctx context.Context, txCh <-chan types.Tx, chSuccess chan<- struct{}, n *e2e.Node) {
+	var client *rpchttp.HTTP
 	var err error
 	s := struct{}{}
 	for tx := range txCh {
+		if client == nil {
+			client, err = n.Client()
+			if err != nil {
+				continue
+			}
+		}
 		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
 			continue
 		}
