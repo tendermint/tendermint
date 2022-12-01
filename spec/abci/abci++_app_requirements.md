@@ -518,7 +518,7 @@ all full nodes have the same value at a given height.
 
 #### List of Parameters
 
-These are the current consensus parameters (as of v0.36.x):
+These are the current consensus parameters (as of v0.37.x):
 
 1. [BlockParams.MaxBytes](#blockparamsmaxbytes)
 2. [BlockParams.MaxGas](#blockparamsmaxgas)
