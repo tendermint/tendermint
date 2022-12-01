@@ -18,7 +18,11 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 	if err != nil {
 		return err
 	}
+	defer c.Close()
 	s, err := c.NewSession()
+	if err != nil {
+		return err
+	}
 	defer s.Close()
 	err = s.Run(cmd)
 	if err != nil {
@@ -29,16 +33,21 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 
 func MultiExec(cfg *ssh.ClientConfig, addr string, cmds ...string) error {
 	c, err := ssh.Dial("tcp", addr, cfg)
-	s, err := c.NewSession()
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	defer c.Close()
 	for _, cmd := range cmds {
-		err := s.Run(cmd)
+		s, err := c.NewSession()
 		if err != nil {
 			return err
 		}
+		err = s.Run(cmd)
+		if err != nil {
+			s.Close()
+			return err
+		}
+		s.Close()
 	}
 	return nil
 }
