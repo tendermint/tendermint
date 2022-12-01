@@ -18,6 +18,7 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 	if err != nil {
 		return err
 	}
+	defer c.Close()
 	s, err := c.NewSession()
 	if err != nil {
 		return err
