@@ -35,14 +35,29 @@ func Load(ctx context.Context, testnet *e2e.Testnet, multiplier int) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+<<<<<<< HEAD
 	// Spawn job generator and processors.
 	logger.Info("load", "msg", log.NewLazySprintf("Starting transaction load (%v workers)...", concurrency))
+=======
+	logger.Info("load", "msg", log.NewLazySprintf("Starting transaction load (%v workers)...", workerPoolSize))
+>>>>>>> d09f4f503 (e2e: create client when sending transaction (#9814))
 	started := time.Now()
 
 	go loadGenerate(ctx, chTx, multiplier)
 
+<<<<<<< HEAD
 	for w := 0; w < concurrency; w++ {
 		go loadProcess(ctx, testnet, chTx, chSuccess)
+=======
+	for _, n := range testnet.Nodes {
+		if n.SendNoLoad {
+			continue
+		}
+
+		for w := 0; w < testnet.LoadTxConnections; w++ {
+			go loadProcess(ctx, txCh, chSuccess, n)
+		}
+>>>>>>> d09f4f503 (e2e: create client when sending transaction (#9814))
 	}
 
 	// Monitor successful transactions, and abort on stalls.
@@ -97,6 +112,7 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 	// concurrency while still bounding it.
 	clients := map[string]*rpchttp.HTTP{}
 
+<<<<<<< HEAD
 	var err error
 	for tx := range chTx {
 		node := testnet.RandomNode()
@@ -116,6 +132,22 @@ func loadProcess(ctx context.Context, testnet *e2e.Testnet, chTx <-chan types.Tx
 			clients[node.Name] = client
 		}
 
+=======
+// loadProcess processes transactions by sending transactions received on the txCh
+// to the client.
+func loadProcess(ctx context.Context, txCh <-chan types.Tx, chSuccess chan<- struct{}, n *e2e.Node) {
+	var client *rpchttp.HTTP
+	var err error
+	s := struct{}{}
+	for tx := range txCh {
+		if client == nil {
+			client, err = n.Client()
+			if err != nil {
+				logger.Info("non-fatal error creating node client", "error", err)
+				continue
+			}
+		}
+>>>>>>> d09f4f503 (e2e: create client when sending transaction (#9814))
 		if _, err = client.BroadcastTxSync(ctx, tx); err != nil {
 			continue
 		}
