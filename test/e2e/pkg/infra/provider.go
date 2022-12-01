@@ -18,6 +18,8 @@ type Provider interface {
 	StartTendermint(context.Context, *e2e.Node) error
 	KillTendermint(context.Context, *e2e.Node) error
 	TerminateTendermint(context.Context, *e2e.Node) error
+	Connect(context.Context, *e2e.Node) error
+	Disconnect(context.Context, *e2e.Node) error
 }
 
 // NoopProvider implements the provider interface by performing noops for every
@@ -31,5 +33,7 @@ func (NoopProvider) CreateNode(_ context.Context, _ *e2e.Node) error          { 
 func (NoopProvider) StartTendermint(_ context.Context, _ *e2e.Node) error     { return nil }
 func (NoopProvider) TerminateTendermint(_ context.Context, _ *e2e.Node) error { return nil }
 func (NoopProvider) KillTendermint(_ context.Context, _ *e2e.Node) error      { return nil }
+func (NoopProvider) Connect(_ context.Context, _ *e2e.Node) error             { return nil }
+func (NoopProvider) Disconnect(_ context.Context, _ *e2e.Node) error          { return nil }
 
 var _ Provider = NoopProvider{}

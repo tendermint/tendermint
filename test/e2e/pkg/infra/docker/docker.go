@@ -47,6 +47,12 @@ func (p Provider) TerminateTendermint(ctx context.Context, n *e2e.Node) error {
 func (p Provider) KillTendermint(ctx context.Context, n *e2e.Node) error {
 	return ExecCompose(ctx, p.Testnet.Dir, "kill", "-s", "SIGKILL", n.Name)
 }
+func (p Provider) Connect(ctx context.Context, n *e2e.Node) error {
+	return Exec(ctx, "network", "connect", p.Testnet.Name+"_"+p.Testnet.Name, n.Name)
+}
+func (p Provider) Disconnect(ctx context.Context, n *e2e.Node) error {
+	return Exec(ctx, "network", "disconnect", p.Testnet.Name+"_"+p.Testnet.Name, n.Name)
+}
 
 // dockerComposeBytes generates a Docker Compose config file for a testnet and returns the
 // file as bytes to be written out to disk.

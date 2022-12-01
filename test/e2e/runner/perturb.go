@@ -8,14 +8,15 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
 	"github.com/tendermint/tendermint/test/e2e/pkg/infra/docker"
 )
 
 // Perturbs a running testnet.
-func Perturb(testnet *e2e.Testnet) error {
+func Perturb(testnet *e2e.Testnet, ifp infra.Provider) error {
 	for _, node := range testnet.Nodes {
 		for _, perturbation := range node.Perturbations {
-			_, err := PerturbNode(node, perturbation)
+			_, err := PerturbNode(node, perturbation, ifp)
 			if err != nil {
 				return err
 			}
@@ -27,16 +28,16 @@ func Perturb(testnet *e2e.Testnet) error {
 
 // PerturbNode perturbs a node with a given perturbation, returning its status
 // after recovering.
-func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation) (*rpctypes.ResultStatus, error) {
+func PerturbNode(node *e2e.Node, perturbation e2e.Perturbation, ifp infra.Provider) (*rpctypes.ResultStatus, error) {
 	testnet := node.Testnet
 	switch perturbation {
 	case e2e.PerturbationDisconnect:
 		logger.Info("perturb node", "msg", log.NewLazySprintf("Disconnecting node %v...", node.Name))
-		if err := docker.Exec(context.Background(), "network", "disconnect", testnet.Name+"_"+testnet.Name, node.Name) ; err != nil {
+		if err := ifp.Disconnect(context.Background(), node); err != nil {
 			return nil, err
 		}
 		time.Sleep(10 * time.Second)
-		if err := docker.Exec(context.Background(), "network", "connect", testnet.Name+"_"+testnet.Name, node.Name) ; err != nil {
+		if err := ifp.Connect(context.Background(), node); err != nil {
 			return nil, err
 		}
 

@@ -137,7 +137,7 @@ func NewCLI() *CLI {
 			}
 
 			if cli.testnet.HasPerturbations() {
-				if err := Perturb(cli.testnet); err != nil {
+				if err := Perturb(cli.testnet, cli.infp); err != nil {
 					return err
 				}
 				if err := Wait(cli.testnet, 5); err != nil { // allow some txs to go through
@@ -210,7 +210,7 @@ func NewCLI() *CLI {
 		Use:   "perturb",
 		Short: "Perturbs the Docker testnet, e.g. by restarting or disconnecting nodes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Perturb(cli.testnet)
+			return Perturb(cli.testnet, cli.infp)
 		},
 	})
 

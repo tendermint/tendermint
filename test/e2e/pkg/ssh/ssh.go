@@ -27,6 +27,22 @@ func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
 	return nil
 }
 
+func MultiExec(cfg *ssh.ClientConfig, addr string, cmds ...string) error {
+	c, err := ssh.Dial("tcp", addr, cfg)
+	s, err := c.NewSession()
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	for _, cmd := range cmds {
+		err := s.Run(cmd)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func NewClientConfig() (*ssh.ClientConfig, error) {
 	ss := os.Getenv("SSH_AUTH_SOCK")
 	if ss == "" {
