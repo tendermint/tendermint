@@ -79,6 +79,7 @@ type Testnet struct {
 // Node represents a Tendermint node in a testnet.
 type Node struct {
 	Name             string
+	Version          string
 	Testnet          *Testnet
 	Mode             Mode
 	SyncApp          bool // Should we use a synchronized app with an unsynchronized local client?
@@ -171,6 +172,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		}
 		node := &Node{
 			Name:             name,
+			Version:          nodeManifest.Version,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
