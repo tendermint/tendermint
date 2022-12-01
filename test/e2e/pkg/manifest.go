@@ -56,6 +56,10 @@ type Manifest struct {
 	// builtin will build a complete Tendermint node into the application and
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
+
+	LoadTxSizeBytes   int `toml:"load_tx_size_bytes"`
+	LoadTxBatchSize   int `toml:"load_tx_batch_size"`
+	LoadTxConnections int `toml:"load_tx_connections"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -134,6 +138,11 @@ type ManifestNode struct {
 	// For more information, look at the readme in the maverick folder.
 	// A list of all behaviors can be found in ../maverick/consensus/behavior.go
 	Misbehaviors map[string]string `toml:"misbehaviors"`
+
+	// SendNoLoad determines if the e2e test should send load to this node.
+	// It defaults to false so unless the configured, the node will
+	// receive load.
+	SendNoLoad bool `toml:"send_no_load"`
 }
 
 // Save saves the testnet manifest to a file.
