@@ -30,7 +30,7 @@ jobs:
       - name: Capture git repo info
         id: git-info
         run: |
-          echo "::set-output name=branch::`git branch --show-current`"
+          echo "branch=`git branch --show-current`" >> $GITHUB_OUTPUT
 
       - name: Build
         working-directory: test/e2e
