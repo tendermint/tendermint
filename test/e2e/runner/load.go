@@ -128,6 +128,7 @@ func loadProcess(ctx context.Context, txCh <-chan types.Tx, chSuccess chan<- str
 		if client == nil {
 			client, err = n.Client()
 			if err != nil {
+				logger.Info("non-fatal error creating node client", "error", err)
 				continue
 			}
 		}
