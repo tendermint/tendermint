@@ -556,7 +556,7 @@ func (c *Client) updateLightClientIfNeededTo(ctx context.Context, height *int64)
 		l, err = c.lc.VerifyLightBlockAtHeight(ctx, *height, time.Now())
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to update light client to %d: %w", height, err)
+		return nil, fmt.Errorf("failed to update light client to %d: %w", *height, err)
 	}
 	return l, nil
 }
