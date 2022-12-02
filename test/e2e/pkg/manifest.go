@@ -81,8 +81,6 @@ type ManifestNode struct {
 	// is generated), and seed nodes run in seed mode with the PEX reactor enabled.
 	Mode string `toml:"mode"`
 
-<<<<<<< HEAD
-=======
 	// Version specifies which version of Tendermint this node is. Specifying different
 	// versions for different nodes allows for testing the interaction of different
 	// node's compatibility. Note that in order to use a node at a particular version,
@@ -90,16 +88,6 @@ type ManifestNode struct {
 	// on the machine where the test is being run.
 	Version string `toml:"version"`
 
-	// SyncApp specifies whether this node should use a synchronized application
-	// with an unsynchronized local client. By default this is `false`, meaning
-	// that the node will run an unsynchronized application with a synchronized
-	// local client.
-	//
-	// Only applies to validators and full nodes where their ABCI protocol is
-	// "builtin".
-	SyncApp bool `toml:"sync_app"`
-
->>>>>>> 5ba0d131c (e2e: setup testing for multi-version (#9819))
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
 	Seeds []string `toml:"seeds"`
 
