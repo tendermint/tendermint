@@ -95,6 +95,7 @@ func createTxBatch(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testn
 	for i := 0; i < workerPoolSize; i++ {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for i := 0; i < testnet.LoadTxBatchSize; i++ {
 				tx, err := payload.NewBytes(&payload.Payload{
 					Id:          id,
@@ -112,7 +113,6 @@ func createTxBatch(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testn
 					return
 				}
 			}
-			wg.Done()
 		}()
 	}
 	wg.Wait()
