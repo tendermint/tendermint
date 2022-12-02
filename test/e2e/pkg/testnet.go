@@ -73,6 +73,7 @@ type Testnet struct {
 // Node represents a Tendermint node in a testnet.
 type Node struct {
 	Name             string
+	Version          string
 	Testnet          *Testnet
 	Mode             Mode
 	PrivvalKey       crypto.PrivKey
@@ -159,8 +160,13 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		if !ok {
 			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
 		}
+		v := nodeManifest.Version
+		if v == "" {
+			v = "local-version"
+		}
 		node := &Node{
 			Name:             name,
+			Version:          v,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
