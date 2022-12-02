@@ -123,7 +123,7 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 	if len(req.Tx) == 0 {
-		return types.ResponseCheckTx{Code: code.CodeTypeUnauthorized}
+		return types.ResponseCheckTx{Code: code.CodeTypeRejected}
 	}
 
 	if req.Type == types.CheckTxType_Recheck {
