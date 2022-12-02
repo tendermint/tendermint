@@ -260,7 +260,7 @@ func NewCLI() *CLI {
 	Max Block Interval
 over a 100 block sampling period.
 		
-Does not run any perbutations.
+Does not run any perturbations.
 		`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := Cleanup(cli.testnet); err != nil {
@@ -276,7 +276,7 @@ Does not run any perbutations.
 			go func() {
 				err := Load(ctx, cli.testnet)
 				if err != nil {
-					logger.Error(fmt.Sprintf("Transaction load failed: %v", err.Error()))
+					logger.Error(fmt.Sprintf("Transaction load errored: %v", err.Error()))
 				}
 				chLoadResult <- err
 			}()

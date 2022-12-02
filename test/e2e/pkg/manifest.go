@@ -142,7 +142,7 @@ type ManifestNode struct {
 	// SendNoLoad determines if the e2e test should send load to this node.
 	// It defaults to false so unless the configured, the node will
 	// receive load.
-	SendNoLoad bool `toml:"send_no_laod"`
+	SendNoLoad bool `toml:"send_no_load"`
 }
 
 // Save saves the testnet manifest to a file.
