@@ -1,4 +1,4 @@
-name: Docker
+name: Testapp Docker
 # Build & Push rebuilds the Testapp docker image on every push to main and creation of tags
 # and pushes the image to https://hub.docker.com/r/tendermint/testapp
 on:
