@@ -122,6 +122,10 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	if len(req.Tx) == 0 {
+		return types.ResponseCheckTx{Code: code.CodeTypeUnauthorized}
+	}
+
 	if req.Type == types.CheckTxType_Recheck {
 		if _, ok := app.txToRemove[string(req.Tx)]; ok {
 			return types.ResponseCheckTx{Code: code.CodeTypeExecuted, GasWanted: 1}
