@@ -92,11 +92,12 @@ func loadGenerate(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testne
 // is canceled.
 func createTxBatch(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testnet, id []byte) {
 	wg := &sync.WaitGroup{}
+	genCh := make(chan struct{})
 	for i := 0; i < workerPoolSize; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for i := 0; i < testnet.LoadTxBatchSize; i++ {
+			for range genCh {
 				tx, err := payload.NewBytes(&payload.Payload{
 					Id:          id,
 					Size:        uint64(testnet.LoadTxSizeBytes),
@@ -115,6 +116,14 @@ func createTxBatch(ctx context.Context, txCh chan<- types.Tx, testnet *e2e.Testn
 			}
 		}()
 	}
+	for i := 0; i < testnet.LoadTxBatchSize; i++ {
+		select {
+		case genCh <- struct{}{}:
+		case <-ctx.Done():
+			break
+		}
+	}
+	close(genCh)
 	wg.Wait()
 }
 
