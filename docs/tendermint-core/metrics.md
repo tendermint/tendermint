@@ -41,7 +41,6 @@ The following metrics are available:
 | consensus_state_syncing                | gauge     |                 | either 0 (not state syncing) or 1 (syncing)                                            |
 | consensus_block_size_bytes             | Gauge     |                 | Block size in bytes                                                                    |
 | consensus_step_duration                | Histogram | step            | Histogram of durations for each step in the consensus protocol                         |
-| consensus_round_duration               | Histogram |                 | Histogram of durations for all the rounds that have occurred since the process started |
 | consensus_block_gossip_parts_received  | Counter   | matches_current | Number of block parts received by the node                                             |
 | p2p_peers                              | Gauge     |                 | Number of peers node's connected to                                                    |
 | p2p_peer_receive_bytes_total           | counter   | peer_id, chID   | number of bytes per channel received from a given peer                                 |
