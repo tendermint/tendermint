@@ -64,8 +64,6 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 
 	txs := checkTxs(t, reactors[0].mempool, numTxs, mempool.UnknownPeerID)
 	waitForTxsOnReactors(t, txs, reactors)
-
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 // regression test for https://github.com/tendermint/tendermint/issues/5408
@@ -126,7 +124,6 @@ func TestReactorConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 // Send a bunch of txs to the first reactor's mempool, claiming it came from peer
@@ -151,8 +148,6 @@ func TestReactorNoBroadcastToSender(t *testing.T) {
 	const peerID = 1
 	checkTxs(t, reactors[0].mempool, numTxs, peerID)
 	ensureNoTxs(t, reactors[peerID], 100*time.Millisecond)
-
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestReactor_MaxTxBytes(t *testing.T) {
@@ -188,8 +183,6 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	tx2 := tmrand.Bytes(config.Mempool.MaxTxBytes + 1)
 	err = reactors[0].mempool.CheckTx(tx2, nil, mempool.TxInfo{SenderID: mempool.UnknownPeerID})
 	require.Error(t, err)
-
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
@@ -211,10 +204,6 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	// stop peer
 	sw := reactors[1].Switch
 	sw.StopPeerForError(sw.Peers().List()[0], errors.New("some reason"))
-
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when peer is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
@@ -232,10 +221,6 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
-
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when reactor is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestMempoolIDsBasic(t *testing.T) {
@@ -298,8 +283,6 @@ func TestDontExhaustMaxActiveIDs(t *testing.T) {
 		)
 		reactor.AddPeer(peer)
 	}
-
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 // mempoolLogger is a TestingLogger which uses a different
@@ -340,6 +323,10 @@ func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor 
 		for _, reactor := range reactors {
 			_ = reactor.Switch.Stop()
 		}
+
+		// check that we are not leaking any go-routines
+		// i.e. broadcastTxRoutine finishes when peer is stopped
+		leaktest.CheckTimeout(t, 10*time.Second)()
 	})
 	return reactors
 }

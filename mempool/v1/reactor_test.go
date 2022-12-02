@@ -68,7 +68,6 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	}
 
 	waitForTxsOnReactors(t, transactions, reactors)
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestMempoolVectors(t *testing.T) {
@@ -120,6 +119,10 @@ func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor 
 		for _, reactor := range reactors {
 			_ = reactor.Switch.Stop()
 		}
+
+		// check that we are not leaking any go-routines
+		// i.e. broadcastTxRoutine finishes when peer is stopped
+		leaktest.CheckTimeout(t, 10*time.Second)()
 	})
 	return reactors
 }
