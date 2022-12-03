@@ -21,7 +21,6 @@ const appVersion = 1
 // Application is an ABCI application for use by end-to-end tests. It is a
 // simple key/value store for strings, storing data in memory and persisting
 // to disk as JSON, taking state sync snapshots if requested.
-
 type Application struct {
 	abci.BaseApplication
 	logger          log.Logger
@@ -271,7 +270,8 @@ func (app *Application) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) a
 }
 
 func (app *Application) PrepareProposal(
-	req abci.RequestPrepareProposal) abci.ResponsePrepareProposal {
+	req abci.RequestPrepareProposal,
+) abci.ResponsePrepareProposal {
 	txs := make([][]byte, 0, len(req.Txs))
 	var totalBytes int64
 	for _, tx := range req.Txs {
