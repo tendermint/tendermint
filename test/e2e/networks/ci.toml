@@ -60,6 +60,7 @@ perturb = ["kill"]
 persistent_peers = ["validator01"]
 database = "rocksdb"
 abci_protocol = "builtin"
+builtin_proxy_mode = "unsync"
 perturb = ["pause"]
 
 [node.validator05]

@@ -30,6 +30,7 @@ var (
 	ipv6          = uniformChoice{false, true}
 	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
 	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
+	nodeBuiltinProxyModes = uniformChoice{"sync", "unsync"}
 	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
 	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
@@ -223,6 +224,7 @@ func generateNode(
 	node := e2e.ManifestNode{
 		Version:          nodeVersions.Choose(r).(string),
 		Mode:             string(mode),
+		BuiltinProxyMode: nodeBuiltinProxyModes.Choose(r).(string),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),

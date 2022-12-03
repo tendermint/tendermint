@@ -28,9 +28,10 @@ const (
 )
 
 type (
-	Mode         string
-	Protocol     string
-	Perturbation string
+	Mode             string
+	Protocol         string
+	BuiltinProxyMode string
+	Perturbation     string
 )
 
 const (
@@ -44,6 +45,9 @@ const (
 	ProtocolGRPC    Protocol = "grpc"
 	ProtocolTCP     Protocol = "tcp"
 	ProtocolUNIX    Protocol = "unix"
+
+	BuiltinProxySync   BuiltinProxyMode = "sync"
+	BuiltinProxyUnsync BuiltinProxyMode = "unsync"
 
 	PerturbationDisconnect Perturbation = "disconnect"
 	PerturbationKill       Perturbation = "kill"
@@ -82,6 +86,7 @@ type Node struct {
 	Version          string
 	Testnet          *Testnet
 	Mode             Mode
+	BuiltinProxyMode BuiltinProxyMode
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
 	IP               net.IP
@@ -184,6 +189,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
+			BuiltinProxyMode: BuiltinProxyMode(nodeManifest.BuiltinProxyMode),
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			BlockSync:        nodeManifest.BlockSync,

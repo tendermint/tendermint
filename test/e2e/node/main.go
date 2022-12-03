@@ -123,10 +123,19 @@ func startNode(cfg *Config) error {
 		return fmt.Errorf("failed to setup config: %w", err)
 	}
 
+	var clientCreator proxy.ClientCreator
+	if cfg.BuiltinProxyMode == string(e2e.BuiltinProxyUnsync) {
+		clientCreator = proxy.NewUnsyncLocalClientCreator(app)
+		nodeLogger.Info("Using unsynchronized local client creator")
+	} else {
+		clientCreator = proxy.NewLocalClientCreator(app)
+		nodeLogger.Info("Using default (synchronized) local client creator")
+	}
+
 	n, err := node.NewNode(tmcfg,
 		privval.LoadOrGenFilePV(tmcfg.PrivValidatorKeyFile(), tmcfg.PrivValidatorStateFile()),
 		nodeKey,
-		proxy.NewLocalClientCreator(app),
+		clientCreator,
 		node.DefaultGenesisDocProviderFunc(tmcfg),
 		config.DefaultDBProvider,
 		node.DefaultMetricsProvider(tmcfg.Instrumentation),

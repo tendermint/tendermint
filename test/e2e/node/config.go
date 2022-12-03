@@ -11,11 +11,12 @@ import (
 
 // Config is the application configuration.
 type Config struct {
-	ChainID          string `toml:"chain_id"`
-	Listen           string
-	Protocol         string
-	Dir              string
+	ChainID          string                      `toml:"chain_id"`
+	Listen           string                      `toml:"listen"`
+	Protocol         string                      `toml:"protocol"`
+	Dir              string                      `toml:"dir"`
 	Mode             string                      `toml:"mode"`
+	BuiltinProxyMode string                      `toml:"builtin_proxy_mode"`
 	PersistInterval  uint64                      `toml:"persist_interval"`
 	SnapshotInterval uint64                      `toml:"snapshot_interval"`
 	RetainBlocks     uint64                      `toml:"retain_blocks"`
