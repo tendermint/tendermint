@@ -29,7 +29,7 @@ type localClientCreator struct {
 // NewLocalClientCreator returns a [ClientCreator] for the given app, which
 // will be running locally.
 //
-// Maintains a single mutex over all new clients created with `NewABCIClient`.
+// Maintains a single mutex over all new clients created with NewABCIClient.
 // For a local client creator that uses a single mutex per new client, rather
 // use [NewUnsyncLocalClientCreator].
 func NewLocalClientCreator(app types.Application) ClientCreator {
@@ -51,7 +51,7 @@ type unsyncLocalClientCreator struct {
 }
 
 // NewUnsyncLocalClientCreator returns a [ClientCreator] for the given app.
-// Unlike [NewLocalClientCreator], each call to `NewABCIClient` returns an ABCI
+// Unlike [NewLocalClientCreator], each call to NewABCIClient returns an ABCI
 // client that maintains its own mutex over the application.
 func NewUnsyncLocalClientCreator(app types.Application) ClientCreator {
 	return &unsyncLocalClientCreator{
