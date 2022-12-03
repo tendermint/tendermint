@@ -10,22 +10,30 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var (
-	// DefaultTrustLevel - new header can be trusted if at least one correct
-	// validator signed it.
-	DefaultTrustLevel = tmmath.Fraction{Numerator: 1, Denominator: 3}
-)
+// DefaultTrustLevel - We default to assuming that 2/3 in voting power of the validator set must be in common
+// between the trusted and untrusted validator set. Guarantees at least 1/3 honest validators signed.
+//
+// Trust level must at minimum be greater than 1/3 and less than or equal to 1. Assuming that
+// 1/3 or less of the validator set are byzantine (Tendermint's standard security guarantee), this equates
+// to at least 1 honest node that we can trust in the untrusted signer set.
+//
+// Practically speaking, a trust level greater than 2/3 does not provide signifcantly greater
+// security as a plethora of other attack vectors become apparent at that level of byzantine.
+// The lower the trust level the less amount of intermediary verification steps need to be taken
+// between a trusted header and untrusted header. This is also depedent on how much a validator
+// set changes. In chains with low turnover, 2/3 should be a good balance of speed and security.
+var DefaultTrustLevel = tmmath.Fraction{Numerator: 2, Denominator: 3}
 
 // VerifyNonAdjacent verifies non-adjacent untrustedHeader against
 // trustedHeader. It ensures that:
 //
 //		a) trustedHeader can still be trusted (if not, ErrOldHeaderExpired is returned)
 //		b) untrustedHeader is valid (if not, ErrInvalidHeader is returned)
-//		c) trustLevel ([1/3, 1]) of trustedHeaderVals (or trustedHeaderNextVals)
+//		c) trustLevel ([1/3, 2/3]) of trustedHeaderVals (or trustedHeaderNextVals)
 //	 signed correctly (if not, ErrNewValSetCantBeTrusted is returned)
 //		d) more than 2/3 of untrustedVals have signed h2
 //	   (otherwise, ErrInvalidHeader is returned)
-//	 e) headers are non-adjacent.
+//	    e) headers are non-adjacent.
 //
 // maxClockDrift defines how much untrustedHeader.Time can drift into the
 // future.

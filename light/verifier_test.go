@@ -12,9 +12,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const (
-	maxClockDrift = 10 * time.Second
-)
+const maxClockDrift = 10 * time.Second
+
+var minimumTrustLevel = tmmath.Fraction{Numerator: 1, Denominator: 3}
 
 func TestVerifyAdjacentHeaders(t *testing.T) {
 	const (
@@ -271,7 +271,7 @@ func TestVerifyNonAdjacentHeaders(t *testing.T) {
 		t.Run(fmt.Sprintf("#%d", i), func(t *testing.T) {
 			err := light.VerifyNonAdjacent(header, vals, tc.newHeader, tc.newVals, tc.trustingPeriod,
 				tc.now, maxClockDrift,
-				light.DefaultTrustLevel)
+				minimumTrustLevel)
 
 			switch {
 			case tc.expErr != nil && assert.Error(t, err):

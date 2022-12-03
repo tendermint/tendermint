@@ -57,6 +57,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 		light.MaxRetryAttempts(1),
+		light.SkippingVerification(minimumTrustLevel),
 	)
 	require.NoError(t, err)
 
@@ -92,7 +93,7 @@ func TestLightClientAttackEvidence_Lunatic(t *testing.T) {
 func TestLightClientAttackEvidence_Equivocation(t *testing.T) {
 	verificationOptions := map[string]light.Option{
 		"sequential": light.SequentialVerification(),
-		"skipping":   light.SkippingVerification(light.DefaultTrustLevel),
+		"skipping":   light.SkippingVerification(minimumTrustLevel),
 	}
 
 	for s, verificationOption := range verificationOptions {
@@ -230,6 +231,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		light.Logger(log.TestingLogger()),
 		light.MaxClockDrift(1*time.Second),
 		light.MaxBlockLag(1*time.Second),
+		light.SkippingVerification(minimumTrustLevel),
 	)
 	require.NoError(t, err)
 
@@ -297,6 +299,7 @@ func TestLightClientAttackEvidence_ForwardLunatic(t *testing.T) {
 		light.Logger(log.TestingLogger()),
 		light.MaxClockDrift(1*time.Second),
 		light.MaxBlockLag(1*time.Second),
+		light.SkippingVerification(minimumTrustLevel),
 	)
 	require.NoError(t, err)
 
@@ -327,6 +330,7 @@ func TestClientDivergentTraces1(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 		light.MaxRetryAttempts(1),
+		light.SkippingVerification(minimumTrustLevel),
 	)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not match primary")
@@ -351,6 +355,7 @@ func TestClientDivergentTraces2(t *testing.T) {
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
 		light.MaxRetryAttempts(1),
+		light.SkippingVerification(minimumTrustLevel),
 	)
 	require.NoError(t, err)
 
@@ -422,6 +427,7 @@ func TestClientDivergentTraces4(t *testing.T) {
 		[]provider.Provider{witness},
 		dbs.New(dbm.NewMemDB(), chainID),
 		light.Logger(log.TestingLogger()),
+		light.SkippingVerification(minimumTrustLevel),
 	)
 	require.NoError(t, err)
 
