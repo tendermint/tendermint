@@ -460,11 +460,14 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("Available commands:")
 	fmt.Printf("%s: %s\n", echoCmd.Use, echoCmd.Short)
-	fmt.Printf("%s: %s\n", infoCmd.Use, infoCmd.Short)
 	fmt.Printf("%s: %s\n", checkTxCmd.Use, checkTxCmd.Short)
-	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
-	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
 	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
+	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
+	fmt.Printf("%s: %s\n", infoCmd.Use, infoCmd.Short)
+	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
+	fmt.Printf("%s: %s\n", prepareProposalCmd.Use, prepareProposalCmd.Short)
+	fmt.Printf("%s: %s\n", processProposalCmd.Use, processProposalCmd.Short)
+
 	fmt.Println("Use \"[command] --help\" for more information about a command.")
 
 	return nil
