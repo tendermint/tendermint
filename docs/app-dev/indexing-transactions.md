@@ -256,3 +256,21 @@ curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200 AND matc
 
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#/Info/block_search)
 for more information on query syntax and other options.
+
+**Backwards compatibility**
+
+Up until Tendermint 0.34.25, the event sequence was not stored in the kvstore and the `match.events` keyword is not recognized by older versions. For backwards compatibility and to use v0.34.25 with older Tendermint versions, we recommend trigger the same behaviour using RPC by extending the RPC query as follows:
+
+```bash
+curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\"&match_events=true"
+```
+
+or 
+
+```bash
+curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true&match_events=true"
+```
+
+for the transaction indexer. 
+
+Event attributes indexed with older versions will be quried as if it all occured within the same event on a particular height but all event attributes indexed with v0.34.24 will be returned only if the attributes occured within the same event.
