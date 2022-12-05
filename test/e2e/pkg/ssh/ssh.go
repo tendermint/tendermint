@@ -54,10 +54,9 @@ func NewClientConfig() (*ssh.ClientConfig, error) {
 		am = append(am, ssh.PublicKeys(signer))
 	}
 	return &ssh.ClientConfig{
-		User:              "root",
-		HostKeyCallback:   hkcWrapper(hkc),
-		Auth:              am,
-		HostKeyAlgorithms: []string{ssh.KeyAlgoED25519},
+		User:            "root",
+		HostKeyCallback: hkcWrapper(hkc),
+		Auth:            am,
 	}, nil
 }
 
