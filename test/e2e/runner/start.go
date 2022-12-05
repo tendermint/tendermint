@@ -56,7 +56,7 @@ func Start(testnet *e2e.Testnet, p infra.Provider) error {
 		if _, err := waitForNode(node, 0, 15*time.Second); err != nil {
 			return err
 		}
-		logger.Info("start", "msg", log.NewLazySprintf("Node %v up on http://%s:%v", node.Name, node.IP, node.ProxyPort))
+		logger.Info("start", "msg", log.NewLazySprintf("Node %v up on http://%s:%v", node.Name, node.InternalIP, node.ProxyPort))
 	}
 
 	networkHeight := testnet.InitialHeight
@@ -117,7 +117,7 @@ func Start(testnet *e2e.Testnet, p infra.Provider) error {
 			return err
 		}
 		logger.Info("start", "msg", log.NewLazySprintf("Node %v up on http://%s:%v at height %v",
-			node.Name, node.IP, node.ProxyPort, status.SyncInfo.LatestBlockHeight))
+			node.Name, node.InternalIP, node.ProxyPort, status.SyncInfo.LatestBlockHeight))
 	}
 
 	return nil

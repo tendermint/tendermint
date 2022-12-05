@@ -84,7 +84,7 @@ type Node struct {
 	SyncApp          bool // Should we use a synchronized app with an unsynchronized local client?
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
-	IP               net.IP
+	InternalIP       net.IP
 	ProxyPort        uint32
 	StartAt          int64
 	BlockSync        string
@@ -173,7 +173,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
-			IP:               ind.IPAddress,
+			InternalIP:       ind.IPAddress,
 			ProxyPort:        ind.Port,
 			Mode:             ModeValidator,
 			SyncApp:          nodeManifest.SyncApp,
@@ -308,18 +308,18 @@ func (n Node) Validate(testnet Testnet) error {
 	if n.Name == "" {
 		return errors.New("node has no name")
 	}
-	if n.IP == nil {
+	if n.InternalIP == nil {
 		return errors.New("node has no IP address")
 	}
-	if !testnet.IP.Contains(n.IP) {
-		return fmt.Errorf("node IP %v is not in testnet network %v", n.IP, testnet.IP)
+	if !testnet.IP.Contains(n.InternalIP) {
+		return fmt.Errorf("node IP %v is not in testnet network %v", n.InternalIP, testnet.IP)
 	}
 	if n.ProxyPort > 0 {
 		if n.ProxyPort <= 1024 {
 			return fmt.Errorf("local port %v must be >1024", n.ProxyPort)
 		}
 		for _, peer := range testnet.Nodes {
-			if peer.Name != n.Name && peer.ProxyPort == n.ProxyPort && peer.IP.Equal(n.IP) {
+			if peer.Name != n.Name && peer.ProxyPort == n.ProxyPort && peer.InternalIP.Equal(n.InternalIP) {
 				return fmt.Errorf("peer %q also has local port %v", peer.Name, n.ProxyPort)
 			}
 		}
@@ -435,8 +435,8 @@ func (t Testnet) HasPerturbations() bool {
 
 // Address returns a P2P endpoint address for the node.
 func (n Node) AddressP2P(withID bool) string {
-	ip := n.IP.String()
-	if n.IP.To4() == nil {
+	ip := n.InternalIP.String()
+	if n.InternalIP.To4() == nil {
 		// IPv6 addresses must be wrapped in [] to avoid conflict with : port separator
 		ip = fmt.Sprintf("[%v]", ip)
 	}
@@ -449,8 +449,8 @@ func (n Node) AddressP2P(withID bool) string {
 
 // Address returns an RPC endpoint address for the node.
 func (n Node) AddressRPC() string {
-	ip := n.IP.String()
-	if n.IP.To4() == nil {
+	ip := n.InternalIP.String()
+	if n.InternalIP.To4() == nil {
 		// IPv6 addresses must be wrapped in [] to avoid conflict with : port separator
 		ip = fmt.Sprintf("[%v]", ip)
 	}
@@ -459,7 +459,7 @@ func (n Node) AddressRPC() string {
 
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://%s:%v", n.IP, n.ProxyPort), "/websocket")
+	return rpchttp.New(fmt.Sprintf("http://%s:%v", n.InternalIP, n.ProxyPort), "/websocket")
 }
 
 // Stateless returns true if the node is either a seed node or a light node

@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -14,10 +15,13 @@ import (
 )
 
 func Exec(cfg *ssh.ClientConfig, addr, cmd string) error {
+	start := time.Now()
 	c, err := ssh.Dial("tcp", addr, cfg)
 	if err != nil {
 		return err
 	}
+	after := time.Since(start)
+	fmt.Printf("Time: %s\n", after)
 	defer c.Close()
 	s, err := c.NewSession()
 	if err != nil {
