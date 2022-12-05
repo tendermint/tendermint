@@ -30,8 +30,7 @@ jobs:
       - name: Capture git repo info
         id: git-info
         run: |
-          echo "::set-output name=branch::`git branch --show-current`"
-          echo "::set-output name=commit::`git rev-parse HEAD`"
+          echo "branch=`git branch --show-current`" >> $GITHUB_OUTPUT
 
       - name: Build
         working-directory: test/e2e
@@ -49,7 +48,6 @@ jobs:
 
     outputs:
       git-branch: ${{ steps.git-info.outputs.branch }}
-      git-commit: ${{ steps.git-info.outputs.commit }}
 
   e2e-nightly-fail:
     needs: e2e-nightly-test
@@ -63,7 +61,7 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
           BRANCH: ${{ needs.e2e-nightly-test.outputs.git-branch }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          COMMIT_URL: "${{ github.server_url }}/${{ github.repository }}/commit/${{ needs.e2e-nightly-test.outputs.git-commit }}"
+          COMMITS_URL: "${{ github.server_url }}/${{ github.repository }}/commits/${{ needs.e2e-nightly-test.outputs.git-branch }}"
         with:
           payload: |
             {
@@ -72,7 +70,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":skull: Nightly E2E tests for `${{ env.BRANCH }}` failed. See the <${{ env.RUN_URL }}|run details> and the <${{ env.COMMIT_URL }}|commit> related to the failure."
+                    "text": ":skull: Nightly E2E tests for `${{ env.BRANCH }}` failed. See the <${{ env.RUN_URL }}|run details> and the <${{ env.COMMITS_URL }}|latest commits> possibly related to the failure."
                   }
                 }
               ]

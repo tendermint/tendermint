@@ -33,7 +33,7 @@ jobs:
           if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
             TAGS="$TAGS,${DOCKER_IMAGE}:${VERSION}"
           fi
-          echo ::set-output name=tags::${TAGS}
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
