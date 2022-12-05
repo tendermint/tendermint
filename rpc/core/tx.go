@@ -133,3 +133,30 @@ func TxSearch(
 
 	return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
 }
+
+// TxSearchMatchEvents allows you to query for multiple transactions results and match the
+// query attributes to a common event. It returns a
+// list of transactions (maximum ?per_page entries) and the total count.
+// More: https://docs.tendermint.com/v0.34/rpc/#/Info/tx_search
+func TxSearchMatchEvents(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	pagePtr, perPagePtr *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultTxSearch, error) {
+
+	// if index is disabled, return error
+	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
+		return nil, errors.New("transaction indexing is disabled")
+	} else if len(query) > maxQueryLength {
+		return nil, errors.New("maximum query length exceeded")
+	}
+
+	if matchEvents {
+		query = query + " AND match.events = 1"
+	}
+	return TxSearch(ctx, query, prove, pagePtr, perPagePtr, orderBy)
+
+}

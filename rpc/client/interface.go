@@ -81,6 +81,18 @@ type SignClient interface {
 		orderBy string,
 	) (*ctypes.ResultTxSearch, error)
 
+	// TxSearchMatchEvents allows additional filtering
+	// of event attributes depending on whether they occured
+	// within the same event
+	TxSearchMatchEvents(
+		ctx context.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+		matchEvents bool,
+	) (*ctypes.ResultTxSearch, error)
+
 	// BlockSearch defines a method to search for a paginated set of blocks by
 	// BeginBlock and EndBlock event search criteria.
 	BlockSearch(
@@ -88,6 +100,17 @@ type SignClient interface {
 		query string,
 		page, perPage *int,
 		orderBy string,
+	) (*ctypes.ResultBlockSearch, error)
+
+	// BlockSearchMatchEvents allows additional filtering
+	// of event attributes depending on whether they occured
+	// within the same event
+	BlockSearchMatchEvents(
+		ctx context.Context,
+		query string,
+		page, perPage *int,
+		orderBy string,
+		matchEvents bool,
 	) (*ctypes.ResultBlockSearch, error)
 }
 

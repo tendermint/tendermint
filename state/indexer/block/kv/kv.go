@@ -100,11 +100,25 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse query conditions: %w", err)
 	}
+	// conditions to skip because they're handled before "everything else"
+	skipIndexes := make([]int, 0)
 
+	// Check whether we want to return heights where the conditions are true
+	// within the same event or it does not matter
+	matchEvents, matchEventIdx := lookForMatchEvent(conditions)
+
+	if matchEventIdx != -1 {
+		skipIndexes = append(skipIndexes, matchEventIdx)
+	}
 	// If there is an exact height query, return the result immediately
 	// (if it exists).
-	height, ok := lookForHeight(conditions)
-	if ok {
+	height, ok, heightIdx := lookForHeight(conditions)
+
+	// If we have additional constraints and want to query per event
+	// attributed, we cannot simply return all blocks for a height.
+	// But we remember the height we want to find and forward it to
+	// match()
+	if ok && (!matchEvents || (matchEvents && len(conditions) == 2)) {
 		ok, err := idx.Has(height)
 		if err != nil {
 			return nil, err
@@ -117,22 +131,35 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 		return results, nil
 	}
 
-	// Check whether we want to return heights where the conditions are true
-	// within the same event or it does not matter
-	matchEvents, matchEventIdx := lookForMatchEvent(conditions)
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
-
-	// conditions to skip because they're handled before "everything else"
-	skipIndexes := make([]int, 0)
+	if matchEvents && heightIdx != -1 {
+		skipIndexes = append(skipIndexes, heightIdx)
+	}
 
 	// Extract ranges. If both upper and lower bounds exist, it's better to get
 	// them in order as to not iterate over kvs that are not within range.
 	ranges, rangeIndexes := indexer.LookForRanges(conditions)
+	var heightRanges indexer.QueryRange
 	if len(ranges) > 0 {
 		skipIndexes = append(skipIndexes, rangeIndexes...)
 
 		for _, qr := range ranges {
+			// If we have a query range over height and want to still look for
+			// specific event values we do not want to simply return all
+			// blocks in this height range. We remember the height range info
+			// and pass it on to match() to take into account when processing events.
+			if qr.Key == types.
+				BlockHeightKey && matchEvents {
+				heightRanges = qr
+				// If the query contains ranges other than the height then we need to treat the height
+				// range when querying the conditions of the other range.
+				// Otherwise we can just return all the blocks within the height range (as there is no
+				// additional constraint on events)
+				if len(ranges)+1 != 2 {
+					continue
+				}
+			}
 			prefix, err := orderedcode.Append(nil, qr.Key)
 			if err != nil {
 				return nil, fmt.Errorf("failed to create prefix key: %w", err)
@@ -162,17 +189,18 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// for all other conditions
 	for i, c := range conditions {
-		if intInSlice(i, skipIndexes) || (matchEventIdx != -1 && i == matchEventIdx) {
+		if intInSlice(i, skipIndexes) {
 			continue
 		}
 
 		startKey, err := orderedcode.Append(nil, c.CompositeKey, fmt.Sprintf("%v", c.Operand))
+
 		if err != nil {
 			return nil, err
 		}
 
 		if !heightsInitialized {
-			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, true, matchEvents)
+			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, true, matchEvents, height, heightRanges)
 			if err != nil {
 				return nil, err
 			}
@@ -185,7 +213,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 				break
 			}
 		} else {
-			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, false, matchEvents)
+			filteredHeights, err = idx.match(ctx, c, startKey, filteredHeights, false, matchEvents, height, heightRanges)
 			if err != nil {
 				return nil, err
 			}
@@ -240,8 +268,6 @@ func (idx *BlockerIndexer) matchRange(
 	}
 
 	tmpHeights := make(map[string][]byte)
-	lowerBound := qr.LowerBoundValue()
-	upperBound := qr.UpperBoundValue()
 
 	it, err := dbm.IteratePrefix(idx.store, startKey)
 	if err != nil {
@@ -271,17 +297,7 @@ LOOP:
 			if err != nil {
 				continue LOOP
 			}
-
-			include := true
-			if lowerBound != nil && v < lowerBound.(int64) {
-				include = false
-			}
-
-			if upperBound != nil && v > upperBound.(int64) {
-				include = false
-			}
-
-			if include {
+			if checkBounds(qr, v) {
 				idx.setTmpHeights(tmpHeights, it, matchEvents)
 			}
 		}
@@ -343,6 +359,21 @@ func (idx *BlockerIndexer) setTmpHeights(tmpHeights map[string][]byte, it dbm.It
 	}
 }
 
+func checkBounds(ranges indexer.QueryRange, v int64) bool {
+	include := true
+	lowerBound := ranges.LowerBoundValue()
+	upperBound := ranges.UpperBoundValue()
+	if lowerBound != nil && v < lowerBound.(int64) {
+		include = false
+	}
+
+	if upperBound != nil && v > upperBound.(int64) {
+		include = false
+	}
+
+	return include
+}
+
 // match returns all matching heights that meet a given query condition and start
 // key. An already filtered result (filteredHeights) is provided such that any
 // non-intersecting matches are removed.
@@ -356,6 +387,8 @@ func (idx *BlockerIndexer) match(
 	filteredHeights map[string][]byte,
 	firstRun bool,
 	matchEvents bool,
+	height int64,
+	heightRanges indexer.QueryRange,
 ) (map[string][]byte, error) {
 
 	// A previous match was attempted but resulted in no matches, so we return
@@ -375,6 +408,22 @@ func (idx *BlockerIndexer) match(
 		defer it.Close()
 
 		for ; it.Valid(); it.Next() {
+			if matchEvents {
+
+				if heightRanges.Key != "" {
+					eventHeight, err := parseHeightFromEventKey(it.Key())
+					if err != nil || !checkBounds(heightRanges, eventHeight) {
+						continue
+					}
+				} else {
+					if height != 0 {
+						eventHeight, _ := parseHeightFromEventKey(it.Key())
+						if eventHeight != height {
+							continue
+						}
+					}
+				}
+			}
 			idx.setTmpHeights(tmpHeights, it, matchEvents)
 
 			if err := ctx.Err(); err != nil {

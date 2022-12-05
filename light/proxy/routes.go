@@ -29,8 +29,8 @@ func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 		"block_results":        rpcserver.NewRPCFunc(makeBlockResultsFunc(c), "height", rpcserver.Cacheable("height")),
 		"commit":               rpcserver.NewRPCFunc(makeCommitFunc(c), "height", rpcserver.Cacheable("height")),
 		"tx":                   rpcserver.NewRPCFunc(makeTxFunc(c), "hash,prove", rpcserver.Cacheable()),
-		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFunc(c), "query,prove,page,per_page,order_by"),
-		"block_search":         rpcserver.NewRPCFunc(makeBlockSearchFunc(c), "query,page,per_page,order_by"),
+		"tx_search":            rpcserver.NewRPCFunc(makeTxSearchFuncMatchEvents(c), "query,prove,page,per_page,order_by,match_events"),
+		"block_search":         rpcserver.NewRPCFunc(makeBlockSearchFuncMatchEvents(c), "query,page,per_page,order_by,match_events"),
 		"validators":           rpcserver.NewRPCFunc(makeValidatorsFunc(c), "height,page,per_page", rpcserver.Cacheable("height")),
 		"dump_consensus_state": rpcserver.NewRPCFunc(makeDumpConsensusStateFunc(c), ""),
 		"consensus_state":      rpcserver.NewRPCFunc(makeConsensusStateFunc(c), ""),
@@ -158,6 +158,50 @@ func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
 		orderBy string,
 	) (*ctypes.ResultTxSearch, error) {
 		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
+	}
+}
+
+type rpcTxSearchFuncMatchEvents func(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultTxSearch, error)
+
+func makeTxSearchFuncMatchEvents(c *lrpc.Client) rpcTxSearchFuncMatchEvents {
+	return func(
+		ctx *rpctypes.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+		matchEvents bool,
+	) (*ctypes.ResultTxSearch, error) {
+		return c.TxSearchMatchEvents(ctx.Context(), query, prove, page, perPage, orderBy, matchEvents)
+	}
+}
+
+type rpcBlockSearchFuncMatchEvents func(
+	ctx *rpctypes.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultBlockSearch, error)
+
+func makeBlockSearchFuncMatchEvents(c *lrpc.Client) rpcBlockSearchFuncMatchEvents {
+	return func(
+		ctx *rpctypes.Context,
+		query string,
+		prove bool,
+		page, perPage *int,
+		orderBy string,
+		matchEvents bool,
+	) (*ctypes.ResultBlockSearch, error) {
+		return c.BlockSearchMatchEvents(ctx.Context(), query, page, perPage, orderBy, matchEvents)
 	}
 }
 

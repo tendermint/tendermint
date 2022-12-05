@@ -156,8 +156,10 @@ func TestTxSearchEventMatch(t *testing.T) {
 		q             string
 		resultsLength int
 	}{
-		{"account.number = 2 AND account.owner = 'Ana' AND match.events = 1", 0},
-		{"account.number = 2 AND account.owner = 'Ana'", 1},
+		{"tx.height = 1 AND match.events = 1", 1},
+		{"tx.height < 2 AND tx.height > 0 AND account.number = 1 AND account.owner CONTAINS 'Ana' AND match.events = 1", 1},
+		{"tx.height < 2 AND tx.height > 0 AND account.number = 2 AND account.owner = 'Ana' AND match.events = 1", 0},
+		{"account.number = 2 AND account.owner = 'Ana' AND tx.height = 1", 1},
 		{"account.number < 2 AND account.owner = 'Ivan'", 1},
 		{"account.number < 2 AND account.owner = 'Ivan' AND match.events = 1", 0},
 	}

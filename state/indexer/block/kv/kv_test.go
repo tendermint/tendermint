@@ -186,17 +186,74 @@ func TestBlockIndexerMulti(t *testing.T) {
 		},
 	}))
 
+	require.NoError(t, indexer.Index(types.EventDataNewBlockHeader{
+		Header: types.Header{Height: 2},
+		ResultBeginBlock: abci.ResponseBeginBlock{
+			Events: []abci.Event{},
+		},
+		ResultEndBlock: abci.ResponseEndBlock{
+			Events: []abci.Event{
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("100"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("200"),
+							Index: true,
+						},
+					},
+				},
+				{
+					Type: "end_event",
+					Attributes: []abci.EventAttribute{
+						{
+							Key:   []byte("foo"),
+							Value: []byte("300"),
+							Index: true,
+						},
+						{
+							Key:   []byte("bar"),
+							Value: []byte("400"),
+							Index: true,
+						},
+					},
+				},
+			},
+		},
+	}))
+
 	testCases := map[string]struct {
 		q       *query.Query
 		results []int64
 	}{
+		"query return all events from a height - exact": {
+			q:       query.MustParse("block.height = 1 AND match.events = 1"),
+			results: []int64{1},
+		},
+		"query return all events from a height - range": {
+			q:       query.MustParse("block.height < 2 AND block.height > 0 AND match.events = 1"),
+			results: []int64{1},
+		},
+		"query matches fields from same event": {
+			q:       query.MustParse("end_event.bar < 300 AND end_event.foo = 100 AND match.events = 1 AND block.height > 0 AND block.height <= 2"),
+			results: []int64{1, 2},
+		},
 		"query matches fields from multiple events": {
-			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400 AND match.events = 1"),
+			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400 AND match.events = 1 AND block.height = 2"),
 			results: []int64{},
 		},
 		"query matches fields from multiple events allowed": {
 			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400"),
-			results: []int64{1},
+			results: []int64{1, 2},
+		},
+		"query matches fields from all events whose attribute is within range": {
+			q:       query.MustParse("end_event.foo < 300 AND match.events = 1 AND block.height = 2"),
+			results: []int64{1, 2},
 		},
 	}
 

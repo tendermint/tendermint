@@ -501,6 +501,34 @@ func (c *baseRPCClient) TxSearch(
 	return result, nil
 }
 
+func (c *baseRPCClient) TxSearchMatchEvents(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page,
+	perPage *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultTxSearch, error) {
+	if matchEvents {
+		query = query + " AND match.events = 1"
+	}
+	return c.TxSearch(ctx, query, prove, page, perPage, orderBy)
+}
+func (c *baseRPCClient) BlockSearchMatchEvents(
+	ctx context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultBlockSearch, error) {
+	if matchEvents {
+		query = query + " AND match.events = 1"
+	}
+
+	return c.BlockSearch(ctx, query, page, perPage, orderBy)
+}
+
 func (c *baseRPCClient) BlockSearch(
 	ctx context.Context,
 	query string,

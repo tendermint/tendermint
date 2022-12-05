@@ -487,6 +487,26 @@ func (c *Client) TxSearch(
 ) (*ctypes.ResultTxSearch, error) {
 	return c.next.TxSearch(ctx, query, prove, page, perPage, orderBy)
 }
+func (c *Client) TxSearchMatchEvents(
+	ctx context.Context,
+	query string,
+	prove bool,
+	page, perPage *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultTxSearch, error) {
+	return c.next.TxSearchMatchEvents(ctx, query, prove, page, perPage, orderBy, matchEvents)
+}
+
+func (c *Client) BlockSearchMatchEvents(
+	ctx context.Context,
+	query string,
+	page, perPage *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultBlockSearch, error) {
+	return c.next.BlockSearchMatchEvents(ctx, query, page, perPage, orderBy, matchEvents)
+}
 
 func (c *Client) BlockSearch(
 	ctx context.Context,

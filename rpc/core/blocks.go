@@ -160,6 +160,23 @@ func BlockResults(ctx *rpctypes.Context, heightPtr *int64) (*ctypes.ResultBlockR
 	}, nil
 }
 
+func BlockSearchMatchEvents(
+	ctx *rpctypes.Context,
+	query string,
+	pagePtr, perPagePtr *int,
+	orderBy string,
+	matchEvents bool,
+) (*ctypes.ResultBlockSearch, error) {
+	// skip if block indexing is disabled
+	if _, ok := env.BlockIndexer.(*blockidxnull.BlockerIndexer); ok {
+		return nil, errors.New("block indexing is disabled")
+	}
+	if matchEvents {
+		query = query + " AND match.events = 1"
+	}
+	return BlockSearch(ctx, query, pagePtr, perPagePtr, orderBy)
+}
+
 // BlockSearch searches for a paginated set of blocks matching BeginBlock and
 // EndBlock event search criteria.
 func BlockSearch(
@@ -173,7 +190,6 @@ func BlockSearch(
 	if _, ok := env.BlockIndexer.(*blockidxnull.BlockerIndexer); ok {
 		return nil, errors.New("block indexing is disabled")
 	}
-
 	q, err := tmquery.New(query)
 	if err != nil {
 		return nil, err

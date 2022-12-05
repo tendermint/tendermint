@@ -83,6 +83,20 @@ func parseValueFromEventKey(key []byte) (string, error) {
 	return eventValue, nil
 }
 
+func parseHeightFromEventKey(key []byte) (int64, error) {
+	var (
+		compositeKey, typ, eventValue string
+		height                        int64
+	)
+
+	_, err := orderedcode.Parse(string(key), &compositeKey, &eventValue, &height, &typ)
+	if err != nil {
+		return -1, fmt.Errorf("failed to parse event key: %w", err)
+	}
+
+	return height, nil
+}
+
 func parseEventSeqFromEventKey(key []byte) (int64, error) {
 	var (
 		compositeKey, typ, eventValue string
@@ -107,14 +121,14 @@ func parseEventSeqFromEventKey(key []byte) (int64, error) {
 	return eventSeq, nil
 }
 
-func lookForHeight(conditions []query.Condition) (int64, bool) {
-	for _, c := range conditions {
+func lookForHeight(conditions []query.Condition) (int64, bool, int) {
+	for i, c := range conditions {
 		if c.CompositeKey == types.BlockHeightKey && c.Op == query.OpEqual {
-			return c.Operand.(int64), true
+			return c.Operand.(int64), true, i
 		}
 	}
 
-	return 0, false
+	return 0, false, -1
 }
 
 func lookForMatchEvent(conditions []query.Condition) (bool, int) {

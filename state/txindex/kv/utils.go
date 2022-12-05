@@ -18,13 +18,13 @@ func intInSlice(a int, list []int) bool {
 	return false
 }
 
-func lookForMatchEvent(conditions []query.Condition) bool {
-	for _, c := range conditions {
+func lookForMatchEvent(conditions []query.Condition) (bool, int) {
+	for i, c := range conditions {
 		if c.CompositeKey == types.MatchEventKey {
-			return true
+			return true, i
 		}
 	}
-	return false
+	return false, -1
 }
 
 func ParseEventSeqFromEventKey(key []byte) (int64, error) {
