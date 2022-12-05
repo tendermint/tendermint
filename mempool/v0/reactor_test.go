@@ -312,7 +312,7 @@ func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor 
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+	_, mts := p2p.MakeConnectedSwitchesWithMultiplexTransports(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("MEMPOOL", reactors[i])
 		return s
 
@@ -322,6 +322,10 @@ func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor 
 	t.Cleanup(func() {
 		for _, reactor := range reactors {
 			_ = reactor.Switch.Stop()
+		}
+
+		for _, mt := range mts {
+			_ = mt.Close()
 		}
 
 		// check that we are not leaking any go-routines
