@@ -114,14 +114,14 @@ func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor 
 
 	}, p2p.Connect2Switches)
 
-	// stop every switch at the end of the test
+	// stop every switch and MultiplexTransport at the end of the test
 	t.Cleanup(func() {
-		for _, reactor := range reactors {
-			_ = reactor.Switch.Stop()
-		}
-
 		for _, mt := range mts {
 			_ = mt.Close()
+		}
+
+		for _, reactor := range reactors {
+			_ = reactor.Switch.Stop()
 		}
 
 		// check that we are not leaking any go-routines
