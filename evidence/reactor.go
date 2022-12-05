@@ -126,7 +126,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		}
 
 		ev := next.Value.(types.Evidence)
-		evis := prepareEvidenceMessage(peer, evR.evpool.State(), ev, evR.Logger)
+		evis := prepareEvidenceMessage(peer, ev, evR.evpool.State(), evR.Logger)
 		if len(evis) > 0 {
 			evR.Logger.Debug("Gossiping evidence to peer", "ev", ev, "peer", peer)
 			evp, err := evidenceListToProto(evis)
@@ -165,8 +165,8 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 // If message is nil, we should sleep and try again.
 func prepareEvidenceMessage(
 	peer p2p.Peer,
-	poolState state.State,
 	ev types.Evidence,
+	poolState state.State,
 	logger log.Logger,
 ) (evis []types.Evidence) {
 	// make sure the peer is up to date
