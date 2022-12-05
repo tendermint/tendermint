@@ -81,9 +81,23 @@ func MakeConnectedSwitches(cfg *config.P2PConfig,
 	initSwitch func(int, *Switch) *Switch,
 	connect func([]*Switch, int, int),
 ) []*Switch {
+	sws, _ := MakeConnectedSwitchesWithMultiplexTransports(cfg, n, initSwitch, connect)
+	return sws
+}
+
+// MakeConnectedSwitchesWithMultiplexTransports returns n switches and n transports,
+// connected according to the connect func. The other details please see the description of
+// MakeConnectedSwitches.
+func MakeConnectedSwitchesWithMultiplexTransports(
+	cfg *config.P2PConfig,
+	n int,
+	initSwitch func(int, *Switch) *Switch,
+	connect func([]*Switch, int, int),
+) ([]*Switch, []*MultiplexTransport) {
 	switches := make([]*Switch, n)
+	mts := make([]*MultiplexTransport, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TestHost, "123.123.123", initSwitch)
+		switches[i], mts[i] = MakeSwitchWithMultiplexTransport(cfg, i, TestHost, "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -96,7 +110,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig,
 		}
 	}
 
-	return switches
+	return switches, mts
 }
 
 // Connect2Switches will connect switches i and j via net.Pipe().
@@ -182,6 +196,17 @@ func MakeSwitch(
 	initSwitch func(int, *Switch) *Switch,
 	opts ...SwitchOption,
 ) *Switch {
+	sw, _ := MakeSwitchWithMultiplexTransport(cfg, i, network, version, initSwitch, opts...)
+	return sw
+}
+
+func MakeSwitchWithMultiplexTransport(
+	cfg *config.P2PConfig,
+	i int,
+	network, version string,
+	initSwitch func(int, *Switch) *Switch,
+	opts ...SwitchOption,
+) (*Switch, *MultiplexTransport) {
 
 	nodeKey := NodeKey{
 		PrivKey: ed25519.GenPrivKey(),
@@ -194,14 +219,14 @@ func MakeSwitch(
 		panic(err)
 	}
 
-	t := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
+	mt := NewMultiplexTransport(nodeInfo, nodeKey, MConnConfig(cfg))
 
-	if err := t.Listen(*addr); err != nil {
+	if err := mt.Listen(*addr); err != nil {
 		panic(err)
 	}
 
 	// TODO: let the config be passed in?
-	sw := initSwitch(i, NewSwitch(cfg, t, opts...))
+	sw := initSwitch(i, NewSwitch(cfg, mt, opts...))
 	sw.SetLogger(log.TestingLogger().With("switch", i))
 	sw.SetNodeKey(&nodeKey)
 
@@ -213,10 +238,10 @@ func MakeSwitch(
 
 	// TODO: We need to setup reactors ahead of time so the NodeInfo is properly
 	// populated and we don't have to do those awkward overrides and setters.
-	t.nodeInfo = nodeInfo
+	mt.nodeInfo = nodeInfo
 	sw.SetNodeInfo(nodeInfo)
 
-	return sw
+	return sw, mt
 }
 
 func testInboundPeerConn(
