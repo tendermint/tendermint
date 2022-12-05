@@ -264,18 +264,19 @@ func makeAndConnectReactorsAndPools(t *testing.T, config *cfg.Config, stateStore
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	_, mts := p2p.MakeConnectedSwitchesWithMultiplexTransports(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("EVIDENCE", reactors[i])
 		return s
 
 	}, p2p.Connect2Switches)
 
-	// stop every switch at the end of the test
+	// stop every switch and multiplexTransport at the end of the test
 	t.Cleanup(func() {
+		for _, mt := range mts {
+			mt.Close()
+		}
 		for _, reactor := range reactors {
-			for _, peer := range reactor.Switch.Peers().List() {
-				reactor.Switch.StopPeerGracefully(peer)
-			}
+			reactor.Switch.Stop()
 		}
 		leaktest.CheckTimeout(t, 10*time.Second)
 	})
