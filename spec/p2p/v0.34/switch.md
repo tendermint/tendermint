@@ -47,7 +47,7 @@ this same `DialPeerWithAddress` method for dialing peers.
 ### Manual operation
 
 The `DialPeersAsync` method receives a list of peer addresses (strings)
-and dials all of them in parallel. 
+and dials all of them in parallel.
 It is invoked in two situations:
 
 - In the [setup](https://github.com/tendermint/tendermint/blob/29c5a062d23aaef653f11195db55c45cd9e02715/node/node.go#L985) of a node, to establish connections with every configured
@@ -61,7 +61,7 @@ In case of parsing errors, the method returns. An exception is made for
 DNS resolution `ErrNetAddressLookup` errors, which do not interrupt the procedure.
 
 As the peer addresses provided to this method are typically not known by the node,
-contrarily to the addressed dialed using the `DialPeerWithAddress` method, 
+contrarily to the addressed dialed using the `DialPeerWithAddress` method,
 they are added to the node's address book, which is persisted to disk.
 
 The switch dials the provided peers in parallel.
@@ -173,7 +173,7 @@ precisely, not providing to the switch any "reason" for that.
 In both cases the `Peer` instance is stopped, the peer is removed from all
 registered reactors, and finally from the list of connected peers.
 
-> Issue https://github.com/tendermint/tendermint/issues/3338 is mentioned in
+> Issue <https://github.com/tendermint/tendermint/issues/3338> is mentioned in
 > the internal `stopAndRemovePeer` method explaining why removing the peer from
 > the list of connected peers is the last action taken.
 
@@ -232,6 +232,7 @@ The return value (a boolean) of these calls are redirected to a channel that is
 returned by the method.
 
 > TODO: detail where this method is invoked:
+>
 > - By the consensus protocol, in `broadcastNewRoundStepMessage`,
 >   `broadcastNewValidBlockMessage`, and `broadcastHasVoteMessage`
 > - By the state sync protocol

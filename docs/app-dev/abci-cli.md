@@ -262,7 +262,7 @@ deployment, the role of sending messages is taken by Tendermint, which
 connects to the app using three separate connections, each with its own
 pattern of messages.
 
-For examples of running an ABCI app with Tendermint, see the 
+For examples of running an ABCI app with Tendermint, see the
 [getting started guide](./getting-started.md).
 
 ## Bounties

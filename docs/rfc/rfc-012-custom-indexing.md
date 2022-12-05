@@ -329,7 +329,7 @@ something like this (subject to refinement):
 - [KV transaction indexer][kv-index]
 - [Pluggable custom event indexing][i7135] (#7135)
 - [PostgreSQL event sink][psql]
-   - [PostgreSQL database][postgres]
+    - [PostgreSQL database][postgres]
 - [Query filter language][query]
 - [Stream events to postgres for indexing][i1161] (#1161)
 - [Unbuffered event subscription slow down the consensus][i7247] (#7247)
@@ -345,7 +345,6 @@ something like this (subject to refinement):
 [i7247]: https://github.com/tendermint/tendermint/issues/7247
 [kv-index]: https://github.com/tendermint/tendermint/blob/main/state/indexer/block/kv
 [postgres]: https://postgresql.org/
-[psql]: https://github.com/tendermint/tendermint/tree/main/state/indexer/sink/psql
 [psql]: https://github.com/tendermint/tendermint/tree/main/state/indexer/sink/psql
 [query]: https://pkg.go.dev/github.com/tendermint/tendermint/internal/pubsub/query/syntax
 [sdk]: https://github.com/cosmos/cosmos-sdk

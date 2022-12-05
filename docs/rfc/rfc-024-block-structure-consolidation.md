@@ -140,7 +140,7 @@ these are not its primary concern.
 
 ### Data to consider removing
 
-This section proposes a list of data that could be completely removed from the 
+This section proposes a list of data that could be completely removed from the
 Merkle tree with no loss to the functionality of our consensus algorithm.
 
 Where the change is possible but would hamper external protocols or make
@@ -241,7 +241,7 @@ only one header.
 validation. The light client uses this field to ensure that the validator set
 it fetched from a full node is correct. It can be sure of the correctness of
 the retrieved structure by hashing it and checking the hash against the `ValidatorsHash`
-of the block it is verifying. Because a validator that the light client trusts 
+of the block it is verifying. Because a validator that the light client trusts
 signed over the `ValidatorsHash`, it can be certain of the validity of the
 structure. Without this check, phony validator sets could be handed to the light
 client and the code tricked into believing a different validator set was present
@@ -268,7 +268,7 @@ of basic information about the chain.
 
 #### ProofOfLockRound
 
-The *proof of lock round* is the round of consensus for a height in which the
+The _proof of lock round_ is the round of consensus for a height in which the
 Tendermint algorithm observed a super majority of voting power on the network for
 a block.
 
@@ -318,7 +318,7 @@ or unchanged from previous blocks_. For example, we propagate the `ValidatorAddr
 for each block in the `CommitSig` structure even when it never changed from a
 previous height. We could achieve a speed-up in many cases by communicating the
 hashes _first_ and letting peers request additional information when they do not
-recognize the communicated hash. 
+recognize the communicated hash.
 
 For example, in the case of the `ValidatorAddress`es, the node would first
 communicate the `ValidatorsHash` of the block to its peers. The peers would
@@ -353,12 +353,10 @@ this would not be light client breaking.
 
 ## References
 
-[light-verify-trusting]: https://github.com/tendermint/tendermint/blob/208a15dadf01e4e493c187d8c04a55a61758c3cc/types/validation.go#L124
 [part-set-header]: https://github.com/tendermint/tendermint/blob/208a15dadf01e4e493c187d8c04a55a61758c3cc/types/part_set.go#L94
 [block-id]: https://github.com/tendermint/tendermint/blob/208a15dadf01e4e493c187d8c04a55a61758c3cc/types/block.go#L1090
 [psh-check]: https://github.com/tendermint/tendermint/blob/208a15dadf01e4e493c187d8c04a55a61758c3cc/types/part_set.go#L116
 [proposer-selection]: https://github.com/tendermint/tendermint/blob/208a15dadf01e4e493c187d8c04a55a61758c3cc/spec/consensus/proposer-selection.md
-[chain-experiment]: https://github.com/williambanfield/tmtools/blob/master/hash-changes/RUN.txt
 [val-hash]: https://github.com/tendermint/tendermint/blob/29e5fbcc648510e4763bd0af0b461aed92c21f30/types/validator.go#L160
 [proposer-check]: https://github.com/tendermint/tendermint/blob/29e5fbcc648510e4763bd0af0b461aed92c21f30/internal/state/validation.go#L102
 [save-block]: https://github.com/tendermint/tendermint/blob/59f0236b845c83009bffa62ed44053b04370b8a9/internal/store/store.go#L490

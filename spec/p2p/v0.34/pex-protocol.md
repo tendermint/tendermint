@@ -85,7 +85,7 @@ This leads the peer to be disconnected and [marked as a bad peer](addressbook.md
 When a node receives a `PexRequest` message from a peer,
 it replies with a `PexAddrs` message.
 
-This message encodes a [random selection of peer addresses](./addressbook.md#random-selection) 
+This message encodes a [random selection of peer addresses](./addressbook.md#random-selection)
 retrieved from the address book.
 
 Sending a PEX response to a peer is implemented by the `SendAddrs` method of

@@ -22,7 +22,7 @@ reformalization of BFT in a more modern setting, with emphasis on
 peer-to-peer networking and cryptographic authentication. The name
 derives from the way transactions are batched in blocks, where each
 block contains a cryptographic hash of the previous one, forming a
-chain. 
+chain.
 
 Tendermint consists of two chief technical components: a blockchain
 consensus engine and a generic application interface. The consensus
@@ -55,7 +55,7 @@ atop a classical, non-BFT consensus algorithm. Zookeeper uses an
 algorithm called Zookeeper Atomic Broadcast, while etcd and consul use
 the Raft log replication algorithm. A
 typical cluster contains 3-5 machines, and can tolerate crash failures
-in less than 1/2 of the machines (e.g., 1 out of 3 or 2 out of 5), 
+in less than 1/2 of the machines (e.g., 1 out of 3 or 2 out of 5),
 but even a single Byzantine fault can jeopardize the whole system.
 
 Each offering provides a slightly different implementation of a
@@ -142,7 +142,7 @@ in design and suffers from "spaghetti code".
 Another problem with monolithic design is that it limits you to the
 language of the blockchain stack (or vice versa). In the case of
 Ethereum which supports a Turing-complete bytecode virtual-machine, it
-limits you to languages that compile down to that bytecode; while the 
+limits you to languages that compile down to that bytecode; while the
 [list](https://github.com/pirapira/awesome-ethereum-virtual-machine#programming-languages-that-compile-into-evm)
 is growing, it is still very limited.
 
@@ -156,7 +156,7 @@ protocol.
 
 [Tendermint Core](https://github.com/tendermint/tendermint), the
 "consensus engine", communicates with the application via a socket
-protocol that satisfies the ABCI, the Tendermint Socket Protocol 
+protocol that satisfies the ABCI, the Tendermint Socket Protocol
 (TSP, or Teaspoon).
 
 To draw an analogy, lets talk about a well-known cryptocurrency,
@@ -267,7 +267,7 @@ committed in a chain, with one block at each **height**. A block may
 fail to be committed, in which case the protocol moves to the next
 **round**, and a new validator gets to propose a block for that height.
 Two stages of voting are required to successfully commit a block; we
-call them **pre-vote** and **pre-commit**. 
+call them **pre-vote** and **pre-commit**.
 
 There is a picture of a couple doing the polka because validators are
 doing something like a polka dance. When more than two-thirds of the

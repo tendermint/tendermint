@@ -14,7 +14,7 @@ Pex has one channel. The channel identifier is listed below.
 
 ## Message Types
 
-The current PEX service has two versions. The first uses IP/port pair but since the p2p stack is moving towards a transport agnostic approach, 
+The current PEX service has two versions. The first uses IP/port pair but since the p2p stack is moving towards a transport agnostic approach,
 node endpoints require a `Protocol` and `Path` hence the V2 version uses a [url](https://golang.org/pkg/net/url/#URL) instead.
 
 ### PexRequest

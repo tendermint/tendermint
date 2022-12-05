@@ -16,29 +16,29 @@ become confusing quickly. Different sources appear to use slightly different
 meanings of each term and this can certainly add to the confusion. Below is
 a brief glossary that may be helpful in understanding the discussion that follows.
 
-* **Short Signature**: A signature that does not vary in length with the
+- **Short Signature**: A signature that does not vary in length with the
 number of signers.
-* **Multi-Signature**: A signature generated over a single message
+- **Multi-Signature**: A signature generated over a single message
 where, given the message and signature, a verifier is able to determine that
 all parties signed the message. May be short or may vary with the number of signers.
-* **Aggregated Signature**: A _short_ signature generated over messages with
+- **Aggregated Signature**: A _short_ signature generated over messages with
 possibly different content where, given the messages and signature, a verifier
 should be able to determine that all the parties signed the designated messages.
-* **Threshold Signature**: A _short_ signature generated from multiple signers
+- **Threshold Signature**: A _short_ signature generated from multiple signers
 where, given a message and the signature, a verifier is able to determine that
 a large enough share of the parties signed the message. The identities of the
 parties that contributed to the signature are not revealed.
-* **BLS Signature**: An elliptic-curve pairing-based signature system that
+- **BLS Signature**: An elliptic-curve pairing-based signature system that
 has some nice properties for short multi-signatures. May stand for
-*Boneh-Lynn-Schacham* or *Barreto-Lynn-Scott* depending on the context. A
+_Boneh-Lynn-Schacham_ or _Barreto-Lynn-Scott_ depending on the context. A
 BLS signature is type of signature scheme that is distinct from other forms
 of elliptic-curve signatures such as ECDSA and EdDSA.
-* **Interactive**: Cryptographic scheme where parties need to perform one or
+- **Interactive**: Cryptographic scheme where parties need to perform one or
 more request-response cycles to produce the cryptographic material. For
 example, an interactive signature scheme may require the signer and the
 verifier to cooperate to create and/or verify the signature, rather than a
 signature being created ahead of time.
-* **Non-interactive**: Cryptographic scheme where parties do not need to
+- **Non-interactive**: Cryptographic scheme where parties do not need to
 perform any request-response cycles to produce the cryptographic material.
 
 ### Brief notes on pairing-based elliptic-curve cryptography
@@ -89,11 +89,11 @@ depth discussion, see the specific paper on BLS12-381, [Short signatures from
 
 BLS signatures have already gained traction within several popular projects.
 
-* Algorand is working on an implementation.
-* [Zcash][zcash-adoption] has adopted BLS12-381 into the protocol.
-* [Ethereum 2.0][eth-2-adoption] has adopted BLS12-381 into the protocol.
-* [Chia Network][chia-adoption] has adopted BLS for signing blocks.
-* [Ostracon][line-ostracon-pr], a fork of Tendermint has adopted BLS for signing blocks.
+- Algorand is working on an implementation.
+- [Zcash][zcash-adoption] has adopted BLS12-381 into the protocol.
+- [Ethereum 2.0][eth-2-adoption] has adopted BLS12-381 into the protocol.
+- [Chia Network][chia-adoption] has adopted BLS for signing blocks.
+- [Ostracon][line-ostracon-pr], a fork of Tendermint has adopted BLS for signing blocks.
 
 ### What systems may be affected by adding aggregated signatures?
 
@@ -106,7 +106,7 @@ overhead. How costly this is is still subject to further investigation and
 performance testing.
 
 Even if vote signatures were aggregated before gossip, each validator would still
-need to receive and verify vote extension data from each (individual) peer validator in 
+need to receive and verify vote extension data from each (individual) peer validator in
 order for consensus to proceed. That displaces any advantage gained by aggregating signatures across the vote message in the presence of vote extensions.
 
 #### Block Creation
@@ -190,7 +190,7 @@ check an aggregated signature from 1024 validators versus our ed25519 library's
 
 #### Reduce Light-Client Verification Time
 
-The light client aims to be a faster and lighter-weight way to verify that a 
+The light client aims to be a faster and lighter-weight way to verify that a
 block was voted on by a Tendermint network. The light client fetches
 Tendermint block headers and commit signatures, performing public key
 verification to ensure that the associated validator set signed the block.
@@ -212,7 +212,7 @@ able to check if some singular validator's key signed the block.
 ##### Vote Gossip
 
 It is possible to aggregate subsets of signatures during voting, so that the
-network need not gossip all *n* validator signatures to all *n* validators.
+network need not gossip all _n_ validator signatures to all _n_ validators.
 Theoretically, subsets of the signatures could be aggregated during consensus
 and vote messages could carry those aggregated signatures. Implementing this
 would certainly increase the complexity of the gossip layer but could possibly
@@ -243,12 +243,12 @@ possible for storing highly sensitive private key material.
 
 Below is a list of popular HSMs along with their support for BLS signatures.
 
-* YubiKey
-  * [No support][yubi-key-bls-support]
-* Amazon Cloud HSM
-  * [No support][cloud-hsm-support]
-* Ledger
-  * [Lists support for the BLS12-381 curve][ledger-bls-announce]
+- YubiKey
+    - [No support][yubi-key-bls-support]
+- Amazon Cloud HSM
+    - [No support][cloud-hsm-support]
+- Ledger
+    - [Lists support for the BLS12-381 curve][ledger-bls-announce]
 
 I cannot find support listed for Google Cloud, although perhaps it exists.
 
@@ -261,7 +261,7 @@ reasonably unclear benefit.
 
 ### Can aggregated signatures be added as soft-upgrades?
 
-In my estimation, yes. With the implementation of proposer-based timestamps, 
+In my estimation, yes. With the implementation of proposer-based timestamps,
 all validators now produce signatures on only one of two messages:
 
 1. A [CanonicalVote][canonical-vote-proto] where the BlockID is the hash of the block or
@@ -409,7 +409,7 @@ the block.
 
 ### Library Support
 
-Libraries for BLS signature creation are limited in number, although active 
+Libraries for BLS signature creation are limited in number, although active
 development appears to be ongoing. Cryptographic algorithms are difficult to
 implement correctly and correctness issues are extremely serious and dangerous.
 No further exploration of BLS should be undertaken without strong assurance of
@@ -422,7 +422,7 @@ and is supported by funds from the Ethereum foundation, adopting a new cryptogra
 library presents some serious risks. Namely, if the support for the library were
 to be discontinued, Tendermint may become saddled with the requirement of supporting
 a very complex piece of software or force a massive ecosystem-wide migration away
-from BLS signatures. 
+from BLS signatures.
 
 This is one of the more serious reasons to avoid adopting BLS signatures at this
 time. There is no gold standard library. Some projects look promising, but no
@@ -472,7 +472,7 @@ of re-aggregating the public key. Aggregation is _not_ constant time in the
 number of keys and instead grows linearly. When [benchmarked locally][blst-verify-bench-agg],
 blst public key aggregation of 128 keys took 2.43 milliseconds. This, along with
 the 1.5 milliseconds to verify a signature would raise light client signature
-verification time to 3.9 milliseconds, a time above the previously mentioned 
+verification time to 3.9 milliseconds, a time above the previously mentioned
 batch verification time using our ed25519 library of 2.0 milliseconds.
 
 Schemes to cache aggregated subsets of keys could certainly cut this time down at the
@@ -501,8 +501,8 @@ the associated protocols.
 
 ## Open Questions
 
-* *Q*: Can you aggregate Ed25519 signatures in Tendermint?
-  * There is a suggested scheme in github issue [7892][suggested-ed25519-agg],
+- _Q_: Can you aggregate Ed25519 signatures in Tendermint?
+    - There is a suggested scheme in github issue [7892][suggested-ed25519-agg],
 but additional rigor would be required to fully verify its correctness.
 
 ## Current Consideration
@@ -523,9 +523,7 @@ standards develop.
 
 ### References
 
-[line-ostracon-repo]: https://github.com/line/ostracon
 [line-ostracon-pr]: https://github.com/line/ostracon/pull/117
-[mit-BLS-lecture]: https://youtu.be/BFwc2XA8rSk?t=2521
 [gcp-storage-pricing]: https://cloud.google.com/storage/pricing#north-america_2
 [yubi-key-bls-support]: https://github.com/Yubico/yubihsm-shell/issues/66
 [cloud-hsm-support]: https://docs.aws.amazon.com/cloudhsm/latest/userguide/pkcs11-key-types.html
@@ -533,7 +531,6 @@ standards develop.
 [bls-ietf-terms]: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-1.3
 [bls-ietf-pop]: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-3.3
 [multi-signatures-smaller-blockchains]: https://eprint.iacr.org/2018/483.pdf
-[ibc-tendermint]: https://github.com/cosmos/ibc/tree/master/spec/client/ics-007-tendermint-client
 [zcash-adoption]: https://github.com/zcash/zcash/issues/2502
 [chia-adoption]: https://github.com/Chia-Network/chia-blockchain#chia-blockchain
 [bls-ietf-ecdsa-compare]: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#section-1.1
@@ -551,5 +548,4 @@ standards develop.
 [bls-weil-pairing]: https://www.iacr.org/archive/asiacrypt2001/22480516.pdf
 [summing-zero-paper]: https://eprint.iacr.org/2021/323.pdf
 [circl]: https://github.com/cloudflare/circl
-[light-client-evidence]: https://github.com/tendermint/tendermint/blob/a6fd1fe20116d4b1f7e819cded81cece8e5c1ac7/types/evidence.go#L245
 [suggested-ed25519-agg]: https://github.com/tendermint/tendermint/issues/7892

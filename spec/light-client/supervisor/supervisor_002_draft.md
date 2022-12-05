@@ -25,7 +25,7 @@ Types](https://github.com/tendermint/tendermint/blob/main/types/genesis.go).
 The light client is based on subjective initialization. It has to
 trust the initial data given to it by the user. It cannot perform any
 detection of an attack yet instead requires an initial point of trust.
-There are three forms of initial data which are used to obtain the 
+There are three forms of initial data which are used to obtain the
 first trusted block:
 
 - A trusted block from a prior initialization

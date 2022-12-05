@@ -771,13 +771,9 @@ Once a bogus block is recognized as such the secondary is removed.
 
 [supervisor]:  https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/supervisor/supervisor.md
 
-[block]: https://github.com/tendermint/spec/blob/d46cd7f573a2c6a2399fcab2cde981330aa63f37/spec/core/data_structures.md
 
-[TMBC-FM-2THIRDS-link]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification.md#tmbc-fm-2thirds1
 
-[TMBC-SOUND-DISTR-POSS-COMMIT-link]: https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification.md#tmbc-sound-distr-poss-commit1
 
-[LCV-SEQ-SAFE-link]:https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification.md#lcv-seq-safe1
 
 [TMBC-VAL-CONTAINS-CORR-link]:
 https://github.com/tendermint/spec/blob/master/rust-spec/lightclient/verification/verification.md#tmbc-val-contains-corr1

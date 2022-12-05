@@ -265,6 +265,5 @@ This specification describes the changes needed to be done to the Tendermint con
 
 [sysmodel]: ./pbts-sysmodel_001_draft.md
 
-[main]: ./pbts_001_draft.md
 
 [proposertla]: ./tla/TendermintPBT_001_draft.tla

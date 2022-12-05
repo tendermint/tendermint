@@ -201,14 +201,14 @@ title: Methods
 
 * **Usage**:
     * [**Required**] The core method of the application.
-    * `DeliverTx` is called once for each transaction in the block. 
-    * When `DeliverTx` is called, the application must execute the transaction deterministically 
-    in full before returning control to Tendermint. 
+    * `DeliverTx` is called once for each transaction in the block.
+    * When `DeliverTx` is called, the application must execute the transaction deterministically
+    in full before returning control to Tendermint.
     * Alternatively, the application can apply a candidate state corresponding
      to the same block previously executed via `PrepareProposal` or `ProcessProposal` any time between the calls to `BeginBlock`, the various
      calls to `DeliverTx` and `EndBlock`.
     * `ResponseDeliverTx.Code == 0` only if the transaction is fully valid.
-      
+
 
 ### EndBlock
 
@@ -238,7 +238,7 @@ title: Methods
     * `consensus_param_updates` returned for block `H` apply to the consensus
       params for block `H+1`. For more information on the consensus parameters,
       see the [application spec entry on consensus parameters](abci++_app_requirements.md#consensus-parameters).
-    * `validator_updates` and `consensus_param_updates` may be empty. In this case, Tendermint will keep the current values. 
+    * `validator_updates` and `consensus_param_updates` may be empty. In this case, Tendermint will keep the current values.
 
 
 
@@ -261,7 +261,7 @@ title: Methods
     * Signal the application to persist the application state.
     * Return an (optional) Merkle root hash of the application state
     * `ResponseCommit.Data` is included as the `Header.AppHash` in the next block
-        * It may be empty or hard-coded, but MUST be **deterministic** - it must not be a function of anything that did not come from the parameters of the execution calls (` BeginBlock/DeliverTx/EndBlock methods`) and the previous committed state. 
+        * It may be empty or hard-coded, but MUST be **deterministic** - it must not be a function of anything that did not come from the parameters of the execution calls (`BeginBlock/DeliverTx/EndBlock methods`) and the previous committed state.
     * Later calls to `Query` can return proofs about the application state anchored
     in this Merkle root hash
     * Use `RetainHeight` with caution! If all nodes in the network remove historical
@@ -453,11 +453,11 @@ title: Methods
       returned in `ResponsePrepareProposal.txs` .
     * As a result of executing the prepared proposal, the Application may produce block events or transaction events.
       The Application must keep those events until a block is decided. It will then forward the events to the `BeginBlock-DeliverTx-EndBlock` functions depending on where each event should be placed, thereby returning the events to Tendermint.
-    * Tendermint does NOT provide any additional validity checks (such as checking for duplicate 
+    * Tendermint does NOT provide any additional validity checks (such as checking for duplicate
       transactions).
       <!--
       As a sanity check, Tendermint will check the returned parameters for validity if the Application modified them.
-      In particular, `ResponsePrepareProposal.txs` will be deemed invalid if there are duplicate transactions in the list. 
+      In particular, `ResponsePrepareProposal.txs` will be deemed invalid if there are duplicate transactions in the list.
        -->
     * If Tendermint fails to validate the `ResponsePrepareProposal`, Tendermint will assume the
       Application is faulty and crash.
@@ -897,7 +897,7 @@ Most of the data structures used in ABCI are shared [common data structures](../
 * **Usage**:
     * Indicates whether a validator signed the last block, allowing for rewards based on validator availability.
     * This information is extracted from Tendermint's data structures in the local process.
-    * `vote_extension` is reserved for future use when vote extensions are added. Currently, this field is always set to `nil`. 
+    * `vote_extension` is reserved for future use when vote extensions are added. Currently, this field is always set to `nil`.
 
 
 ### CommitInfo

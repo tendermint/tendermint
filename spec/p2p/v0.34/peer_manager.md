@@ -10,7 +10,7 @@ but a role that is played by the [PEX reactor](./pex.md).
 The `ensurePeersRoutine` is a persistent routine intended to ensure that a node
 is connected to `MaxNumOutboundPeers` outbound peers.
 This routine is continuously executed by regular nodes, i.e. nodes not
-operating in seed mode, as part of the PEX reactor implementation. 
+operating in seed mode, as part of the PEX reactor implementation.
 
 The logic defining when the node should dial peers, for selecting peers to dial
 and for actually dialing them is implemented in the `ensurePeers` method.
@@ -70,7 +70,7 @@ They are contacted by a node when, after an invocation of the `ensurePeers`
 method, no suitable peer address to dial is retrieved from the address book
 (e.g., because it is empty).
 
-Once a connection with a seed node is established, the node immediately 
+Once a connection with a seed node is established, the node immediately
 [sends a PEX request](./pex-protocol.md#Requesting-Addresses) to it, as it is
 added as an outbound peer.
 When the corresponding PEX response is received, the addresses provided by the
@@ -137,7 +137,7 @@ A peer can be in the following states:
 - Connected peers: peers that a node has successfully dialed, added as outbound peers.
 - [Bad peers](addressbook.md#bad-peers): peers marked as bad in the address
   book due to exhibited [misbehavior](pex-protocol.md#misbehavior).
-  Peers can be reinstated after being marked as bad. 
+  Peers can be reinstated after being marked as bad.
 
 ## Pending of documentation
 

@@ -84,7 +84,7 @@ the `psql` indexer type.
 Example:
 
 ```shell
-$ psql ... -f state/indexer/sink/psql/schema.sql
+psql ... -f state/indexer/sink/psql/schema.sql
 ```
 
 ## Default Indexes

@@ -77,7 +77,7 @@ from the mempool, so this would be a pretty straightforward change.
 Transaction replacement would would enable applications to aggregate or disaggregate transactions.
 
 For aggregation, a set of transactions that all related work, such as transferring
-tokens between the same two accounts, could be replaced with a single transaction, 
+tokens between the same two accounts, could be replaced with a single transaction,
 i.e. one that transfers a single sum from one account to the other.
 Applications that make frequent use of aggregation may be able to achieve a higher throughput.
 Aggregation would decrease the space occupied by a single client-submitted transaction in the block, allowing
@@ -189,7 +189,7 @@ it did not want executed.
 In this validation scheme, applications that allow replacement would check that
 each listed replaced transaction was correctly reflected in the replacement transaction.
 In order to perform such validation, the node would need to have the replaced transactions
-locally. This could be accomplished one of a few ways: by querying the mempool, 
+locally. This could be accomplished one of a few ways: by querying the mempool,
 by adding an additional p2p gossip channel for transaction replacements, or by including the replaced transactions
 in the block. Replacement validation via mempool querying would require the node
 to have received all of the replaced transactions in the mempool which is far from
@@ -255,7 +255,5 @@ power instead of immediately solving the problem for them.
 ### References
 
 [inclusion-proof]: https://github.com/tendermint/tendermint/blob/0fcfaa4568cb700e27c954389c1fcd0b9e786332/types/tx.go#L67
-[tx-serach-result]: https://github.com/tendermint/tendermint/blob/0fcfaa4568cb700e27c954389c1fcd0b9e786332/rpc/coretypes/responses.go#L267
-[tx-rpc-func]: https://github.com/tendermint/tendermint/blob/0fcfaa4568cb700e27c954389c1fcd0b9e786332/internal/rpc/core/tx.go#L21
 [tx-result-index]: https://github.com/tendermint/tendermint/blob/0fcfaa4568cb700e27c954389c1fcd0b9e786332/internal/state/indexer/tx/kv/kv.go#L90
 [abci-event-type]: https://github.com/tendermint/tendermint/blob/0fcfaa4568cb700e27c954389c1fcd0b9e786332/abci/types/types.pb.go#L3168
