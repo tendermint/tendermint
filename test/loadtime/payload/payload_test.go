@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
 	"github.com/tendermint/tendermint/test/loadtime/payload"
 )
 
