@@ -85,6 +85,7 @@ type Node struct {
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
 	InternalIP       net.IP
+	ExternalIP       net.IP
 	ProxyPort        uint32
 	StartAt          int64
 	BlockSync        string
@@ -161,6 +162,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		nodeNames = append(nodeNames, name)
 	}
 	sort.Strings(nodeNames)
+	localHostIP := net.ParseIP("127.0.0.1")
 
 	for _, name := range nodeNames {
 		nodeManifest := manifest.Nodes[name]
@@ -168,12 +170,17 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		if !ok {
 			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
 		}
+		extIP := localHostIP
+		if ifd.Provider != "docker" {
+			extIP = ind.IPAddress
+		}
 		node := &Node{
 			Name:             name,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
 			InternalIP:       ind.IPAddress,
+			ExternalIP:       extIP,
 			ProxyPort:        ind.Port,
 			Mode:             ModeValidator,
 			SyncApp:          nodeManifest.SyncApp,
@@ -459,7 +466,7 @@ func (n Node) AddressRPC() string {
 
 // Client returns an RPC client for a node.
 func (n Node) Client() (*rpchttp.HTTP, error) {
-	return rpchttp.New(fmt.Sprintf("http://%s:%v", n.InternalIP, n.ProxyPort), "/websocket")
+	return rpchttp.New(fmt.Sprintf("http://%s:%v", n.ExternalIP, n.ProxyPort), "/websocket")
 }
 
 // Stateless returns true if the node is either a seed node or a light node
