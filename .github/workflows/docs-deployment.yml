@@ -35,6 +35,8 @@ jobs:
           # versions will be available for the build.
           fetch-depth: 0
       - name: Build documentation
+        env:
+          NODE_OPTIONS: "--openssl-legacy-provider"
         run: |
           git config --global --add safe.directory "$PWD"
           make build-docs

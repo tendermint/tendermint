@@ -2,6 +2,24 @@
 
 Friendly reminder, we have a [bug bounty program](https://hackerone.com/cosmos).
 
+## v0.34.24
+
+*Nov 22, 2022*
+
+Apart from one minor bug fix, this release aims to optimize the output of the
+RPC (both HTTP and WebSocket endpoints). See our [upgrading
+guidelines](./UPGRADING.md#v03424) for more details.
+
+### IMPROVEMENTS
+
+- `[rpc]` [\#9724](https://github.com/tendermint/tendermint/issues/9724) Remove
+  useless whitespace in RPC output (@adizere, @thanethomson)
+
+### BUG FIXES
+
+- `[rpc]` [\#9692](https://github.com/tendermint/tendermint/issues/9692) Remove
+  `Cache-Control` header response from `/check_tx` endpoint (@JayT106)
+
 ## v0.34.23
 
 *Nov 9, 2022*
