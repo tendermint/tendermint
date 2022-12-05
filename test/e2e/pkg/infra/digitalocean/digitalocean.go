@@ -34,11 +34,11 @@ func (p Provider) CreateNode(ctx context.Context, n *e2e.Node) error {
 	return nil
 }
 func (p Provider) StartTendermint(ctx context.Context, n *e2e.Node) error {
-	return e2essh.Exec(p.SSHConfig, fmt.Sprintf("%s:%d", n.InternalIP, sshPort), fmt.Sprintf("systemctl start %s", testappName))
+	return e2essh.Exec(p.SSHConfig, fmt.Sprintf("%s:%d", n.ExternalIP, sshPort), fmt.Sprintf("systemctl start %s", testappName))
 }
 func (p Provider) TerminateTendermint(ctx context.Context, n *e2e.Node) error {
-	return e2essh.Exec(p.SSHConfig, fmt.Sprintf("%s:%d", n.InternalIP, sshPort), fmt.Sprintf("systemctl -s SIGTERM %s", testappName))
+	return e2essh.Exec(p.SSHConfig, fmt.Sprintf("%s:%d", n.ExternalIP, sshPort), fmt.Sprintf("systemctl -s SIGTERM %s", testappName))
 }
 func (p Provider) KillTendermint(ctx context.Context, n *e2e.Node) error {
-	return e2essh.Exec(p.SSHConfig, fmt.Sprintf("%s:%d", n.InternalIP, sshPort), fmt.Sprintf("systemctl -s SIGKILL %s", testappName))
+	return e2essh.Exec(p.SSHConfig, fmt.Sprintf("%s:%d", n.ExternalIP, sshPort), fmt.Sprintf("systemctl -s SIGKILL %s", testappName))
 }
