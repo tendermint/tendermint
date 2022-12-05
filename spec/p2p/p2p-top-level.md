@@ -100,20 +100,64 @@ We survey the communication protocols within the reactors. These should inform t
 
 ## Consensus reactor
 
-#### [TM-REQ-CR-GOSIP.0]
-The consensus protocol is based on the "gossip" property: every message delivered by a correct process (after stabilization time) is received by every correct process within bounded time.
-ß
-#### [TM-REQ-CR-COMM.0]
-Gossiping is done by surveying the peers' states within the consensus protocol. The information of peer *p* tells us what consensus messages *p* is waiting for.
+The consensus protocol is based on the "gossip" property: every message delivered by a correct process (after stabilization time) is received by every correct process within bounded time. In practice, this requirement is sufficient but not necessary. 
+
+
+#### [TM-REQ-CONS-GOSSIP.0]
+If there is a messages *m* emitted by a correct process, such that
+
+- *m* has not been received by correct process *p*
+- correct process *p* is in a state where *m* would help *p* "to make progress"
+
+then eventually it MUST BE that
+- *p* receives *m*, OR
+- *p* transitions into a state where *m* is not needed anymore to make progress.
 
 
 
-#### [TM-REQ-CR-CONNECT.0]
+#### [TM-PROTOCOL-CR-COMM.0]
+Gossiping is done by surveying the peers' states within the consensus protocol. The information of peer *p* tells us what consensus messages *p* is waiting for. We then send these messages to *p*.
+
+> In the current information this information is coarse. Peer *p* informs us about consensus height and round, and we send all votes for that height and round to *p*.
+
+TODO: proposal.
+
+The question is under which conditions [[TM-REQ-CR-COMM.0]] is sufficient to implement [[TM-REQ-CONS-GOSSIP.0]]. These conditions translate into requirements for the p2p layer
+
+### Requirements on the p2p layer
+
+#### [TM-REQ-CR+P2P-STABLE.0]
+In order to make sure that we can help a peer to make progress, the p2p layer MUST ensure that we need to stay connected to that peer sufficiently long to get a good view of its state, and to act on it by sending messages.
+
+#### [TM-REQ-CR+P2P-ENCRYPTED.0]
+In order  to make sure that we can help a peer to make progress, we need to be sure that we can trust the messages from a correct peer (IOW no masquerading). This is done by end-to-end encrypted channels. 
 
 
-    - consensus might need 
-        - for liveness that neighborhood is stable
-        - proposers are not disconnected?
+> The previous properties can be used to solve a local version of [[TM-REQ-CONS-GOSSIP.0]], that is, between neighbors. However, [[TM-REQ-CONS-GOSSIP.0]] is global, that is, whoever emits *m*, potentially we require that *m* is received by all correct processes in a potentially dynamic distributed system:
+- nodes may join an leave physically (connection)
+- validators join and leave logically (the validator set)
+
+This translates into **global requirements** for the p2p layer.
+
+#### [TM-REQ-CR+P2P-CONNECT.0]
+TODO:
+- all-to-all communication
+- eclypse attack
+- system can autonomously from failure (self-healing)
+- proposers are not disconnected?
+
+#### [TM-REQ-CR+P2P-STABILITY.0]
+TODO: stay connected to good peers for some time
+
+#### [TM-REQ-CR+P2P-OPENNESS.0]
+TODO: New nodes can join / new validators can join
+
+
+## Mempool
+
+
+
+     
     - mempool 
         - might just need that a transaction can reach each validator within a reasonable amount of time (this might be achievable if at no point in time the current graph is connected, but, e.g., something along the lines that the union of the graphs over some period in time is connected.)
         - sends ordered list of transactions to peers (ordering might also require stability)
