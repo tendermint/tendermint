@@ -17,7 +17,7 @@ const (
 
 var _ infra.Provider = &Provider{}
 
-// Provider implements a docker-compose backed infrastructure provider.
+// Provider implements a DigitalOcean-backed infrastructure provider.
 type Provider struct {
 	Testnet            *e2e.Testnet
 	InfrastructureData e2e.InfrastructureData
