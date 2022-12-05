@@ -126,6 +126,8 @@ The question is under which conditions [[TM-REQ-CR-COMM.0]] is sufficient to imp
 
 ### Requirements on the p2p layer
 
+There are **local requirements** that express needs as connections to neighbors
+
 #### [TM-REQ-CR+P2P-STABLE.0]
 In order to make sure that we can help a peer to make progress, the p2p layer MUST ensure that we need to stay connected to that peer sufficiently long to get a good view of its state, and to act on it by sending messages.
 
@@ -151,6 +153,9 @@ TODO: stay connected to good peers for some time
 
 #### [TM-REQ-CR+P2P-OPENNESS.0]
 TODO: New nodes can join / new validators can join
+
+
+Since the systems we are building are decentralized and distributed, the global requirements can only be ensured by local actions of the distributed nodes. For instance, openness has been ensured by distinguishing inbound and outbound connections, and making sure that there are always nodes with open inbound connections.
 
 
 ## Mempool
