@@ -273,10 +273,10 @@ func makeAndConnectReactorsAndPools(t *testing.T, config *cfg.Config, stateStore
 	// stop every switch and multiplexTransport at the end of the test
 	t.Cleanup(func() {
 		for _, mt := range mts {
-			mt.Close()
+			_ = mt.Close()
 		}
 		for _, reactor := range reactors {
-			reactor.Switch.Stop()
+			_ = reactor.Switch.Stop()
 		}
 		leaktest.CheckTimeout(t, 10*time.Second)
 	})
