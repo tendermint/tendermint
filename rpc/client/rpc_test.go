@@ -520,7 +520,9 @@ func TestBlockSearch(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.NoError(t, client.WaitForHeight(c, 5, nil))
-	result, err := c.BlockSearchMatchEvents(context.Background(), "begin_event.foo = 100 AND begin_event.bar = 300", nil, nil, "asc", true)
+	// This cannot test match_events as it calls the client BlockSearch function directly
+	// It is the RPC request handler that processes the match_event
+	result, err := c.BlockSearch(context.Background(), "begin_event.foo = 100 AND begin_event.bar = 300", nil, nil, "asc")
 	require.NoError(t, err)
 	blockCount := len(result.Blocks)
 	require.Equal(t, blockCount, 0)
@@ -538,7 +540,7 @@ func TestTxSearch(t *testing.T) {
 
 	// since we're not using an isolated test server, we'll have lingering transactions
 	// from other tests as well
-	result, err := c.TxSearchMatchEvents(context.Background(), "tx.height >= 0", true, nil, nil, "asc", false)
+	result, err := c.TxSearch(context.Background(), "tx.height >= 0", true, nil, nil, "asc")
 	require.NoError(t, err)
 	txCount := len(result.Txs)
 
@@ -549,7 +551,7 @@ func TestTxSearch(t *testing.T) {
 	for _, c := range GetClients() {
 
 		// now we query for the tx.
-		result, err := c.TxSearchMatchEvents(context.Background(), fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc", false)
+		result, err := c.TxSearch(context.Background(), fmt.Sprintf("tx.hash='%v'", find.Hash), true, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 		require.Equal(t, find.Hash, result.Txs[0].Hash)
@@ -567,51 +569,51 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// query by height
-		result, err = c.TxSearchMatchEvents(context.Background(), fmt.Sprintf("tx.height=%d", find.Height), true, nil, nil, "asc", false)
+		result, err = c.TxSearch(context.Background(), fmt.Sprintf("tx.height=%d", find.Height), true, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 1)
 
 		// query for non existing tx
-		result, err = c.TxSearchMatchEvents(context.Background(), fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, nil, nil, "asc", false)
+		result, err = c.TxSearch(context.Background(), fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
 		// query using a compositeKey (see kvstore application)
-		result, err = c.TxSearchMatchEvents(context.Background(), "app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc", false)
+		result, err = c.TxSearch(context.Background(), "app.creator='Cosmoshi Netowoko'", false, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query using an index key
-		result, err = c.TxSearchMatchEvents(context.Background(), "app.index_key='index is working'", false, nil, nil, "asc", false)
+		result, err = c.TxSearch(context.Background(), "app.index_key='index is working'", false, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query using an noindex key
-		result, err = c.TxSearchMatchEvents(context.Background(), "app.noindex_key='index is working'", false, nil, nil, "asc", false)
+		result, err = c.TxSearch(context.Background(), "app.noindex_key='index is working'", false, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Equal(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query using a compositeKey (see kvstore application) and height
-		result, err = c.TxSearchMatchEvents(context.Background(),
-			"app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, nil, nil, "asc", false)
+		result, err = c.TxSearch(context.Background(),
+			"app.creator='Cosmoshi Netowoko' AND tx.height<10000", true, nil, nil, "asc")
 		require.Nil(t, err)
 		require.Greater(t, len(result.Txs), 0, "expected a lot of transactions")
 
 		// query a non existing tx with page 1 and txsPerPage 1
 		perPage := 1
-		result, err = c.TxSearchMatchEvents(context.Background(), "app.creator='Cosmoshi Neetowoko'", true, nil, &perPage, "asc", false)
+		result, err = c.TxSearch(context.Background(), "app.creator='Cosmoshi Neetowoko'", true, nil, &perPage, "asc")
 		require.Nil(t, err)
 		require.Len(t, result.Txs, 0)
 
 		// check sorting
-		result, err = c.TxSearchMatchEvents(context.Background(), "tx.height >= 1", false, nil, nil, "asc", false)
+		result, err = c.TxSearch(context.Background(), "tx.height >= 1", false, nil, nil, "asc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.LessOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)
 			require.LessOrEqual(t, result.Txs[k].Index, result.Txs[k+1].Index)
 		}
 
-		result, err = c.TxSearchMatchEvents(context.Background(), "tx.height >= 1", false, nil, nil, "desc", false)
+		result, err = c.TxSearch(context.Background(), "tx.height >= 1", false, nil, nil, "desc")
 		require.Nil(t, err)
 		for k := 0; k < len(result.Txs)-1; k++ {
 			require.GreaterOrEqual(t, result.Txs[k].Height, result.Txs[k+1].Height)

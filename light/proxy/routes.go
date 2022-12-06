@@ -141,26 +141,6 @@ func makeTxFunc(c *lrpc.Client) rpcTxFunc {
 	}
 }
 
-type rpcTxSearchFunc func(
-	ctx *rpctypes.Context,
-	query string,
-	prove bool,
-	page, perPage *int,
-	orderBy string,
-) (*ctypes.ResultTxSearch, error)
-
-func makeTxSearchFunc(c *lrpc.Client) rpcTxSearchFunc {
-	return func(
-		ctx *rpctypes.Context,
-		query string,
-		prove bool,
-		page, perPage *int,
-		orderBy string,
-	) (*ctypes.ResultTxSearch, error) {
-		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
-	}
-}
-
 type rpcTxSearchFuncMatchEvents func(
 	ctx *rpctypes.Context,
 	query string,
@@ -179,7 +159,10 @@ func makeTxSearchFuncMatchEvents(c *lrpc.Client) rpcTxSearchFuncMatchEvents {
 		orderBy string,
 		matchEvents bool,
 	) (*ctypes.ResultTxSearch, error) {
-		return c.TxSearchMatchEvents(ctx.Context(), query, prove, page, perPage, orderBy, matchEvents)
+		if matchEvents {
+			query = query + " AND match.events = 1"
+		}
+		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
 	}
 }
 
@@ -201,26 +184,9 @@ func makeBlockSearchFuncMatchEvents(c *lrpc.Client) rpcBlockSearchFuncMatchEvent
 		orderBy string,
 		matchEvents bool,
 	) (*ctypes.ResultBlockSearch, error) {
-		return c.BlockSearchMatchEvents(ctx.Context(), query, page, perPage, orderBy, matchEvents)
-	}
-}
-
-type rpcBlockSearchFunc func(
-	ctx *rpctypes.Context,
-	query string,
-	prove bool,
-	page, perPage *int,
-	orderBy string,
-) (*ctypes.ResultBlockSearch, error)
-
-func makeBlockSearchFunc(c *lrpc.Client) rpcBlockSearchFunc {
-	return func(
-		ctx *rpctypes.Context,
-		query string,
-		prove bool,
-		page, perPage *int,
-		orderBy string,
-	) (*ctypes.ResultBlockSearch, error) {
+		if matchEvents {
+			query = query + " AND match.events = 1"
+		}
 		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
 	}
 }
