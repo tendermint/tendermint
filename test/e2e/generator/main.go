@@ -44,25 +44,31 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			return cli.generate(dir, groups)
+			multiversion, err := cmd.Flags().GetString("multi-version")
+			if err != nil {
+				return err
+			}
+			return cli.generate(dir, groups, multiversion)
 		},
 	}
 
 	cli.root.PersistentFlags().StringP("dir", "d", "", "Output directory for manifests")
 	_ = cli.root.MarkPersistentFlagRequired("dir")
+	cli.root.PersistentFlags().StringP("multi-version", "m", "", "Include multi-version testing."+
+		"If multi-version is not specified, then only the current Tendermint version will be used in generated testnets.")
 	cli.root.PersistentFlags().IntP("groups", "g", 0, "Number of groups")
 
 	return cli
 }
 
 // generate generates manifests in a directory.
-func (cli *CLI) generate(dir string, groups int) error {
+func (cli *CLI) generate(dir string, groups int, multiversion string) error {
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	manifests, err := Generate(rand.New(rand.NewSource(randomSeed))) //nolint:gosec
+	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), multiversion) //nolint:gosec
 	if err != nil {
 		return err
 	}
