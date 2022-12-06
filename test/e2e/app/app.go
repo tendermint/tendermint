@@ -433,14 +433,10 @@ func (app *Application) VerifyVoteExtension(_ context.Context, req *abci.Request
 		}, nil
 	}
 	if req.Height != int64(app.state.Height)+1 {
-		app.logger.Error(
-			"got unexpected height in VerifyVoteExtension request",
-			"expectedHeight", app.state.Height,
-			"requestHeight", req.Height,
-		)
-		return &abci.ResponseVerifyVoteExtension{
-			Status: abci.ResponseVerifyVoteExtension_REJECT,
-		}, nil
+		panic(fmt.Errorf(
+			"got unexpected height in VerifyVoteExtension request; expected %d, actual %d",
+			app.state.Height, req.Height,
+		))
 	}
 
 	num, err := parseVoteExtension(req.VoteExtension)
