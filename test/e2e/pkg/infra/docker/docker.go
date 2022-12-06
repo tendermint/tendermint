@@ -72,7 +72,7 @@ services:
     labels:
       e2e: true
     container_name: {{ .Name }}
-    image: tendermint/e2e-node
+    image: tendermint/e2e-node:{{ .Version }}
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
 {{- else if .Misbehaviors }}

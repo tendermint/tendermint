@@ -849,6 +849,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /genesis_chunked:
+    get:
+      summary: Get Genesis in multiple chunks
+      operationId: genesis_chunked
+      tags:
+        - Info
+      description: |
+        Get genesis document in multiple chunks to make it easier to iterate
+        through larger genesis structures. Each chunk is produced by converting
+        the genesis document to JSON and then splitting the resulting payload
+        into 16MB blocks, and then Base64-encoding each block.
+
+        Upon success, the `Cache-Control` header will be set with the default
+        maximum age.
+      parameters:
+        - in: query
+          name: chunk
+          description: Sequence number of the chunk to download.
+          schema:
+            type: integer
+            default: 0
+            example: 1
+      responses:
+        "200":
+          description: Genesis chunk response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenesisChunkedResponse"
+        "500":
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /dump_consensus_state:
     get:
       summary: Get consensus state
@@ -1912,6 +1947,35 @@ components:
                 app_state:
                   properties: {}
                   type: object
+
+    GenesisChunkedResponse:
+      type: object
+      required:
+        - "jsonrpc"
+        - "id"
+        - "result"
+      properties:
+        jsonrpc:
+          type: string
+          example: "2.0"
+        id:
+          type: integer
+          example: 0
+        result:
+          required:
+            - "chunk"
+            - "total"
+            - "data"
+          properties:
+            chunk:
+              type: integer
+              example: 0
+            total:
+              type: integer
+              example: 1
+            data:
+              type: string
+              example: "Z2VuZXNpcwo="
 
     DumpConsensusResponse:
       type: object
