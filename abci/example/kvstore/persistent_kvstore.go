@@ -324,11 +324,15 @@ func (app *PersistentKVStoreApplication) execPrepareTx(tx []byte) types.Response
 }
 
 // substPrepareTx substitutes all the transactions prefixed with 'prepare' in the
-// proposal for transactions with the prefix stripped.
+// proposal for transactions with the prefix stripped, while discarding invalid empty transactions.
 func (app *PersistentKVStoreApplication) substPrepareTx(blockData [][]byte, maxTxBytes int64) [][]byte {
 	txs := make([][]byte, 0, len(blockData))
 	var totalBytes int64
 	for _, tx := range blockData {
+		if len(tx) == 0 {
+			continue
+		}
+
 		txMod := tx
 		if isPrepareTx(tx) {
 			txMod = bytes.Replace(tx, []byte(PreparePrefix), []byte(ReplacePrefix), 1)
