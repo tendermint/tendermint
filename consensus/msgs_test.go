@@ -349,6 +349,8 @@ func TestConsMsgsVectors(t *testing.T) {
 		BlockID:          bi,
 	}
 	vpb := v.ToProto()
+	v.Extension = []byte("extension")
+	vextPb := v.ToProto()
 
 	testCases := []struct {
 		testName string
@@ -381,9 +383,12 @@ func TestConsMsgsVectors(t *testing.T) {
 		{"BlockPart", &tmcons.Message{Sum: &tmcons.Message_BlockPart{
 			BlockPart: &tmcons.BlockPart{Height: 1, Round: 1, Part: *pbParts}}},
 			"2a36080110011a3008011204746573741a26080110011a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d"},
-		{"Vote", &tmcons.Message{Sum: &tmcons.Message_Vote{
+		{"Vote_without_ext", &tmcons.Message{Sum: &tmcons.Message_Vote{
 			Vote: &tmcons.Vote{Vote: vpb}}},
 			"32700a6e0802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a0608c0b89fdc0532146164645f6d6f72655f6578636c616d6174696f6e3801"},
+		{"Vote_with_ext", &tmcons.Message{Sum: &tmcons.Message_Vote{
+			Vote: &tmcons.Vote{Vote: vextPb}}},
+			"327b0a790802100122480a206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d1224080112206164645f6d6f72655f6578636c616d6174696f6e5f6d61726b735f636f64652d2a0608c0b89fdc0532146164645f6d6f72655f6578636c616d6174696f6e38014a09657874656e73696f6e"},
 		{"HasVote", &tmcons.Message{Sum: &tmcons.Message_HasVote{
 			HasVote: &tmcons.HasVote{Height: 1, Round: 1, Type: tmproto.PrevoteType, Index: 1}}},
 			"3a080801100118012001"},

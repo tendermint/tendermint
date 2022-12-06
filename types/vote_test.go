@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"github.com/tendermint/tendermint/libs/protoio"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func examplePrevote() *Vote {
@@ -127,6 +128,27 @@ func TestVoteSignBytesTestVectors(t *testing.T) {
 				0x32,
 				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64}, // chainID
 		},
+		// containing vote extension
+		5: {
+			"test_chain_id", &Vote{
+				Height:    1,
+				Round:     1,
+				Extension: []byte("extension"),
+			},
+			[]byte{
+				0x2e,                                   // length
+				0x11,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // height
+				0x19,                                   // (field_number << 3) | wire_type
+				0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // round
+				// remaning fields:
+				0x2a,                                                                // (field_number << 3) | wire_type
+				0xb, 0x8, 0x80, 0x92, 0xb8, 0xc3, 0x98, 0xfe, 0xff, 0xff, 0xff, 0x1, // timestamp
+				// (field_number << 3) | wire_type
+				0x32,
+				0xd, 0x74, 0x65, 0x73, 0x74, 0x5f, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x5f, 0x69, 0x64, // chainID
+			}, // chainID
+		},
 	}
 	for i, tc := range tests {
 		v := tc.vote.ToProto()
@@ -177,6 +199,79 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.True(t, valid)
 }
 
+// TestVoteExtension tests that the vote verification behaves correctly in each case
+// of vote extension being set on the vote.
+func TestVoteExtension(t *testing.T) {
+	testCases := []struct {
+		name             string
+		extension        []byte
+		includeSignature bool
+		expectError      bool
+	}{
+		{
+			name:             "all fields present",
+			extension:        []byte("extension"),
+			includeSignature: true,
+			expectError:      false,
+		},
+		// TODO: Re-enable once
+		// https://github.com/tendermint/tendermint/issues/8272 is resolved.
+		//{
+		//	name:             "no extension signature",
+		//	extension:        []byte("extension"),
+		//	includeSignature: false,
+		//	expectError:      true,
+		//},
+		{
+			name:             "empty extension",
+			includeSignature: true,
+			expectError:      false,
+		},
+		// TODO: Re-enable once
+		// https://github.com/tendermint/tendermint/issues/8272 is resolved.
+		//{
+		//	name:             "no extension and no signature",
+		//	includeSignature: false,
+		//	expectError:      true,
+		//},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			height, round := int64(1), int32(0)
+			privVal := NewMockPV()
+			pk, err := privVal.GetPubKey()
+			require.NoError(t, err)
+			blk := Block{}
+			ps, err := blk.MakePartSet(BlockPartSizeBytes)
+			require.NoError(t, err)
+			vote := &Vote{
+				ValidatorAddress: pk.Address(),
+				ValidatorIndex:   0,
+				Height:           height,
+				Round:            round,
+				Timestamp:        tmtime.Now(),
+				Type:             tmproto.PrecommitType,
+				BlockID:          BlockID{blk.Hash(), ps.Header()},
+			}
+
+			v := vote.ToProto()
+			err = privVal.SignVote("test_chain_id", v)
+			require.NoError(t, err)
+			vote.Signature = v.Signature
+			if tc.includeSignature {
+				vote.ExtensionSignature = v.ExtensionSignature
+			}
+			err = vote.Verify("test_chain_id", pk)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestIsVoteTypeValid(t *testing.T) {
 	tc := []struct {
 		name string
@@ -219,13 +314,13 @@ func TestVoteVerify(t *testing.T) {
 
 func TestVoteString(t *testing.T) {
 	str := examplePrecommit().String()
-	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
+	expected := `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PRECOMMIT(Precommit) 8B01023386C3 000000000000 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
 	if str != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 
 	str2 := examplePrevote().String()
-	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
+	expected = `Vote{56789:6AF1F4111082 12345/02/SIGNED_MSG_TYPE_PREVOTE(Prevote) 8B01023386C3 000000000000 000000000000 @ 2017-12-25T03:00:01.234Z}` //nolint:lll //ignore line length for tests
 	if str2 != expected {
 		t.Errorf("got unexpected string for Vote. Expected:\n%v\nGot:\n%v", expected, str2)
 	}

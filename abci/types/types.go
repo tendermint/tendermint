@@ -51,6 +51,10 @@ func (r ResponseProcessProposal) IsStatusUnknown() bool {
 	return r.Status == ResponseProcessProposal_UNKNOWN
 }
 
+func (r ResponseVerifyVoteExtension) IsAccepted() bool {
+	return r.Status == ResponseVerifyVoteExtension_ACCEPT
+}
+
 //---------------------------------------------------------------------------
 // override JSON marshaling so we emit defaults (ie. disable omitempty)
 
@@ -156,3 +160,6 @@ func MarshalTxResults(r []*ExecTxResult) ([][]byte, error) {
 	}
 	return s, nil
 }
+
+// -----------------------------------------------
+// construct Result data

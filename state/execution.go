@@ -6,6 +6,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	"github.com/tendermint/tendermint/libs/fail"
 	"github.com/tendermint/tendermint/libs/log"
@@ -293,6 +294,39 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	return state, nil
 }
 
+func (blockExec *BlockExecutor) ExtendVote(vote *types.Vote) ([]byte, error) {
+	req := abci.RequestExtendVote{
+		Hash:   vote.BlockID.Hash,
+		Height: vote.Height,
+	}
+
+	resp, err := blockExec.proxyApp.ExtendVote(context.TODO(), &req)
+	if err != nil {
+		panic(fmt.Errorf("ExtendVote call failed: %w", err))
+	}
+	return resp.VoteExtension, nil
+}
+
+func (blockExec *BlockExecutor) VerifyVoteExtension(vote *types.Vote) error {
+	req := abci.RequestVerifyVoteExtension{
+		Hash:             vote.BlockID.Hash,
+		ValidatorAddress: vote.ValidatorAddress,
+		Height:           vote.Height,
+		VoteExtension:    vote.Extension,
+	}
+
+	resp, err := blockExec.proxyApp.VerifyVoteExtension(context.TODO(), &req)
+	if err != nil {
+		panic(fmt.Errorf("VerifyVoteExtension call failed: %w", err))
+	}
+
+	if !resp.IsAccepted() {
+		return types.ErrVoteInvalidExtension
+	}
+
+	return nil
+}
+
 // Commit locks the mempool, runs the ABCI Commit message, and updates the
 // mempool.
 // It returns the result of calling abci.Commit (the AppHash) and the height to retain (if any).
@@ -384,16 +418,39 @@ func buildLastCommitInfo(block *types.Block, store Store, initialHeight int64) a
 	}
 }
 
+// extendedCommitInfo expects a CommitInfo struct along with all of the
+// original votes relating to that commit, including their vote extensions. The
+// order of votes does not matter.
 func extendedCommitInfo(c abci.CommitInfo, votes []*types.Vote) abci.ExtendedCommitInfo {
+	if len(c.Votes) != len(votes) {
+		panic(fmt.Sprintf("extendedCommitInfo: number of votes from commit differ from the number of votes supplied (%d != %d)", len(c.Votes), len(votes)))
+	}
+	votesByVal := make(map[string]*types.Vote)
+	for _, vote := range votes {
+		if vote != nil {
+			valAddr := vote.ValidatorAddress.String()
+			if _, ok := votesByVal[valAddr]; ok {
+				panic(fmt.Sprintf("extendedCommitInfo: found duplicate vote for validator with address %s", valAddr))
+			}
+			votesByVal[valAddr] = vote
+		}
+	}
 	vs := make([]abci.ExtendedVoteInfo, len(c.Votes))
 	for i := range vs {
+		var ext []byte
+		// votes[i] will be nil if c.Votes[i].SignedLastBlock is false
+		if c.Votes[i].SignedLastBlock {
+			valAddr := crypto.Address(c.Votes[i].Validator.Address).String()
+			vote, ok := votesByVal[valAddr]
+			if !ok || vote == nil {
+				panic(fmt.Sprintf("extendedCommitInfo: validator with address %s signed last block, but could not find vote for it", valAddr))
+			}
+			ext = vote.Extension
+		}
 		vs[i] = abci.ExtendedVoteInfo{
 			Validator:       c.Votes[i].Validator,
 			SignedLastBlock: c.Votes[i].SignedLastBlock,
-			/*
-				TODO: Include vote extensions information when implementing vote extensions.
-				VoteExtension:   []byte{},
-			*/
+			VoteExtension:   ext,
 		}
 	}
 	return abci.ExtendedCommitInfo{
@@ -473,7 +530,7 @@ func updateState(
 
 	nextVersion := state.Version
 
-	// NOTE: the AppHash has not been populated.
+	// NOTE: the AppHash and the VoteExtension has not been populated.
 	// It will be filled on state.Save.
 	return State{
 		Version:                          nextVersion,
