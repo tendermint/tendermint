@@ -390,8 +390,9 @@ func newStateWithConfigAndBlockStore(
 
 	// one for mempool, one for consensus
 	mtx := new(tmsync.Mutex)
-	proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
-	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+	dbmtx := new(tmsync.Mutex)
+	proxyAppConnMem := abcicli.NewLocalClient(mtx, dbmtx, app)
+	proxyAppConnCon := abcicli.NewLocalClient(mtx, dbmtx, app)
 
 	// Make Mempool
 	mempool := mempl.NewCListMempool(thisConfig.Mempool, proxyAppConnMem, 0)
