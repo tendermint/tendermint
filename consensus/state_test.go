@@ -1562,7 +1562,7 @@ func TestVerifyVoteExtensionNotCalledOnAbsentPrecommit(t *testing.T) {
 
 // TestPrepareProposalReceivesVoteExtensions tests that the PrepareProposal method
 // is called with the vote extensions from the previous height. The test functions
-// be completing a consensus height with a mock application as the proposer. The
+// by completing a consensus height with a mock application as the proposer. The
 // test then proceeds to fail sever rounds of consensus until the mock application
 // is the proposer again and ensures that the mock application receives the set of
 // vote extensions from the previous consensus instance.
