@@ -77,7 +77,7 @@ func TestPersistentKVStoreEmptyTX(t *testing.T) {
 	}
 	kvstore := NewPersistentKVStoreApplication(dir)
 	tx := []byte("")
-	reqCheck := types.RequestCheckTx{Tx: tx, Type: types.CheckTxType_New}
+	reqCheck := types.RequestCheckTx{Tx: tx}
 	resCheck := kvstore.CheckTx(reqCheck)
 	require.Equal(t, resCheck.Code, code.CodeTypeRejected)
 
@@ -85,7 +85,7 @@ func TestPersistentKVStoreEmptyTX(t *testing.T) {
 	txs = append(txs, []byte("key=value"), []byte("key"), []byte(""), []byte("kee=value"))
 	reqPrepare := types.RequestPrepareProposal{Txs: txs, MaxTxBytes: 10 * 1024}
 	resPrepare := kvstore.PrepareProposal(reqPrepare)
-	require.Equal(t, len(reqPrepare.Txs), len(resPrepare.Txs)+1, "Request ")
+	require.Equal(t, len(reqPrepare.Txs), len(resPrepare.Txs)+1, "Empty transaction not properly removed")
 }
 
 func TestPersistentKVStoreKV(t *testing.T) {
