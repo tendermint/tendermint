@@ -42,8 +42,9 @@ type ConsensusParams struct {
 // BlockParams define limits on the block size and gas plus minimum time
 // between blocks.
 type BlockParams struct {
-	MaxBytes int64 `json:"max_bytes"`
-	MaxGas   int64 `json:"max_gas"`
+	MaxBytes   int64 `json:"max_bytes"`
+	MaxGas     int64 `json:"max_gas"`
+	TimeIotaMs int64 `json:"time_iota_ms"`
 }
 
 // EvidenceParams determine how we handle evidence of malfeasance.
@@ -76,8 +77,9 @@ func DefaultConsensusParams() *ConsensusParams {
 // DefaultBlockParams returns a default BlockParams.
 func DefaultBlockParams() BlockParams {
 	return BlockParams{
-		MaxBytes: 22020096, // 21MB
-		MaxGas:   -1,
+		MaxBytes:   22020096, // 21MB
+		MaxGas:     -1,
+		TimeIotaMs: 1000,
 	}
 }
 
