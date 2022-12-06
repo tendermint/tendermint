@@ -192,35 +192,6 @@ func (c *Local) TxSearch(
 	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
 }
 
-func (c *Local) TxSearchMatchEvents(
-	_ context.Context,
-	query string,
-	prove bool,
-	page,
-	perPage *int,
-	orderBy string,
-	matchEvents bool,
-) (*ctypes.ResultTxSearch, error) {
-	if matchEvents {
-		query = query + " AND match.events = 1"
-	}
-	return core.TxSearch(c.ctx, query, prove, page, perPage, orderBy)
-}
-
-func (c *Local) BlockSearchMatchEvents(
-	_ context.Context,
-	query string,
-	page, perPage *int,
-	orderBy string,
-	matchEvents bool,
-) (*ctypes.ResultBlockSearch, error) {
-
-	if matchEvents {
-		query = query + " AND match.events = 1"
-	}
-	return core.BlockSearch(c.ctx, query, page, perPage, orderBy)
-}
-
 func (c *Local) BlockSearch(
 	_ context.Context,
 	query string,
