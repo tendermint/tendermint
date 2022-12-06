@@ -51,8 +51,8 @@ Available Commands:
   commit           commit the application state and return the Merkle root hash
   completion       Generate the autocompletion script for the specified shell
   console          start an interactive ABCI console for multiple commands
-  deliver_tx       deliver a new transaction to the application
   echo             have the application echo a message
+  finalize_block   deliver a block of transactions to the application
   help             Help about any command
   info             get some info about the application
   kvstore          ABCI demo example
