@@ -182,6 +182,8 @@ func MsgFromProto(p proto.Message) (Message, error) {
 			Part:   parts,
 		}
 	case *tmcons.Vote:
+		// Vote validation will be handled in the vote message ValidateBasic
+		// call below.
 		vote, err := types.VoteFromProto(msg.Vote)
 		if err != nil {
 			return nil, fmt.Errorf("vote msg to proto error: %w", err)

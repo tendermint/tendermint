@@ -61,6 +61,30 @@ type Vote struct {
 	ExtensionSignature []byte                `json:"extension_signature"`
 }
 
+// VoteFromProto attempts to convert the given serialization (Protobuf) type to
+// our Vote domain type. No validation is performed on the resulting vote -
+// this is left up to the caller to decide whether to call ValidateBasic or
+// ValidateWithExtension.
+func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
+	blockID, err := BlockIDFromProto(&pv.BlockID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Vote{
+		Type:               pv.Type,
+		Height:             pv.Height,
+		Round:              pv.Round,
+		BlockID:            *blockID,
+		Timestamp:          pv.Timestamp,
+		ValidatorAddress:   pv.ValidatorAddress,
+		ValidatorIndex:     pv.ValidatorIndex,
+		Signature:          pv.Signature,
+		Extension:          pv.Extension,
+		ExtensionSignature: pv.ExtensionSignature,
+	}, nil
+}
+
 // CommitSig converts the Vote to a CommitSig.
 func (vote *Vote) CommitSig() CommitSig {
 	if vote == nil {
@@ -164,24 +188,49 @@ func (vote *Vote) String() string {
 	)
 }
 
-func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
+func (vote *Vote) verifyAndReturnProto(chainID string, pubKey crypto.PubKey) (*tmproto.Vote, error) {
 	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
-		return ErrVoteInvalidValidatorAddress
+		return nil, ErrVoteInvalidValidatorAddress
 	}
 	v := vote.ToProto()
 	if !pubKey.VerifySignature(VoteSignBytes(chainID, v), vote.Signature) {
-		return ErrVoteInvalidSignature
+		return nil, ErrVoteInvalidSignature
 	}
-	extSignBytes := VoteExtensionSignBytes(chainID, v)
-	// TODO: Remove extension signature nil check to enforce vote extension
-	//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
-	if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
-		return ErrVoteInvalidSignature
+	return v, nil
+}
+
+// Verify checks whether the signature associated with this vote corresponds to
+// the given chain ID and public key. This function does not validate vote
+// extension signatures - to do so, use VerifyWithExtension instead.
+func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
+	_, err := vote.verifyAndReturnProto(chainID, pubKey)
+	return err
+}
+
+// VerifyWithExtension performs the same verification as Verify, but
+// additionally checks whether the vote extension signature corresponds to the
+// given chain ID and public key. We only verify vote extension signatures for
+// precommits.
+func (vote *Vote) VerifyWithExtension(chainID string, pubKey crypto.PubKey) error {
+	v, err := vote.verifyAndReturnProto(chainID, pubKey)
+	if err != nil {
+		return err
+	}
+	// We only verify vote extension signatures for precommits.
+	if vote.Type == tmproto.PrecommitType {
+		extSignBytes := VoteExtensionSignBytes(chainID, v)
+		// TODO: Remove extension signature nil check to enforce vote extension
+		//       signing once we resolve https://github.com/tendermint/tendermint/issues/8272
+		if vote.ExtensionSignature != nil && !pubKey.VerifySignature(extSignBytes, vote.ExtensionSignature) {
+			return ErrVoteInvalidSignature
+		}
 	}
 	return nil
 }
 
-// ValidateBasic performs basic validation.
+// ValidateBasic checks whether the vote is well-formed. It does not, however,
+// check vote extensions - for vote validation with vote extension validation,
+// use ValidateWithExtension.
 func (vote *Vote) ValidateBasic() error {
 	if !IsVoteTypeValid(vote.Type) {
 		return errors.New("invalid Type")
@@ -224,10 +273,38 @@ func (vote *Vote) ValidateBasic() error {
 		return fmt.Errorf("signature is too big (max: %d)", MaxSignatureSize)
 	}
 
-	// TODO: Remove the extension length check such that we always require
-	//       extension signatures to be present.
-	if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
-		return errors.New("vote extension signature is missing")
+	// We should only ever see vote extensions in precommits.
+	if vote.Type != tmproto.PrecommitType {
+		if len(vote.Extension) > 0 {
+			return errors.New("unexpected vote extension")
+		}
+		if len(vote.ExtensionSignature) > 0 {
+			return errors.New("unexpected vote extension signature")
+		}
+	}
+
+	return nil
+}
+
+// ValidateWithExtension performs the same validations as ValidateBasic, but
+// additionally checks whether a vote extension signature is present. This
+// function is used in places where vote extension signatures are expected.
+func (vote *Vote) ValidateWithExtension() error {
+	if err := vote.ValidateBasic(); err != nil {
+		return err
+	}
+
+	// We should always see vote extension signatures in precommits
+	if vote.Type == tmproto.PrecommitType {
+		// TODO(thane): Remove extension length check once
+		//              https://github.com/tendermint/tendermint/issues/8272 is
+		//              resolved.
+		if len(vote.Extension) > 0 && len(vote.ExtensionSignature) == 0 {
+			return errors.New("vote extension signature is missing")
+		}
+		if len(vote.ExtensionSignature) > MaxSignatureSize {
+			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
+		}
 	}
 
 	return nil
@@ -268,31 +345,4 @@ func VotesToProto(votes []*Vote) []*tmproto.Vote {
 		}
 	}
 	return res
-}
-
-// FromProto converts a proto generetad type to a handwritten type
-// return type, nil if everything converts safely, otherwise nil, error
-func VoteFromProto(pv *tmproto.Vote) (*Vote, error) {
-	if pv == nil {
-		return nil, errors.New("nil vote")
-	}
-
-	blockID, err := BlockIDFromProto(&pv.BlockID)
-	if err != nil {
-		return nil, err
-	}
-
-	vote := new(Vote)
-	vote.Type = pv.Type
-	vote.Height = pv.Height
-	vote.Round = pv.Round
-	vote.BlockID = *blockID
-	vote.Timestamp = pv.Timestamp
-	vote.ValidatorAddress = pv.ValidatorAddress
-	vote.ValidatorIndex = pv.ValidatorIndex
-	vote.Signature = pv.Signature
-	vote.Extension = pv.Extension
-	vote.ExtensionSignature = pv.ExtensionSignature
-
-	return vote, vote.ValidateBasic()
 }
