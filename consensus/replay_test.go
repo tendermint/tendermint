@@ -97,7 +97,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	require.NoError(t, err)
 	select {
 	case <-newBlockSub.Out():
-	case <-newBlockSub.Cancelled():
+	case <-newBlockSub.Canceled():
 		t.Fatal("newBlockSub was canceled")
 	case <-time.After(120 * time.Second):
 		t.Fatal("Timed out waiting for new block (see trace above)")
@@ -1198,6 +1198,7 @@ func (bs *mockBlockStore) PruneBlocks(height int64, state sm.State) (uint64, int
 }
 
 func (bs *mockBlockStore) DeleteLatestBlock() error { return nil }
+func (bs *mockBlockStore) Close() error             { return nil }
 
 //---------------------------------------
 // Test handshake/init chain
