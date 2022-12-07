@@ -22,7 +22,9 @@ var (
 		},
 		"validators": {"genesis", "initchain"},
 	}
-
+	nodeVersions = weightedChoice{
+		"": 2,
+	}
 	// The following specify randomly chosen values for testnet nodes.
 	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	ipv6          = uniformChoice{false, true}
@@ -50,7 +52,10 @@ var (
 )
 
 // Generate generates random testnets using the given RNG.
-func Generate(r *rand.Rand) ([]e2e.Manifest, error) {
+func Generate(r *rand.Rand, multiversion string) ([]e2e.Manifest, error) {
+	if multiversion != "" {
+		nodeVersions[multiversion] = 1
+	}
 	manifests := []e2e.Manifest{}
 	for _, opt := range combinations(testnetCombinations) {
 		manifest, err := generateTestnet(r, opt)
@@ -216,6 +221,7 @@ func generateNode(
 	r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool,
 ) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
+		Version:          nodeVersions.Choose(r).(string),
 		Mode:             string(mode),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
