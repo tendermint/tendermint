@@ -183,8 +183,11 @@ func EventsWithContext(ctx context.Context,
 		maxItems = 100
 	}
 
+	const minWaitTime = 1 * time.Second
 	const maxWaitTime = 30 * time.Second
-	if waitTime > maxWaitTime {
+	if waitTime < minWaitTime {
+		waitTime = minWaitTime
+	} else if waitTime > maxWaitTime {
 		waitTime = maxWaitTime
 	}
 
@@ -203,7 +206,7 @@ func EventsWithContext(ctx context.Context,
 	accept := func(itm *eventlog.Item) error {
 		// N.B. We accept up to one item more than requested, so we can tell how
 		// to set the "more" flag in the response.
-		if len(items) > maxItems {
+		if len(items) > maxItems || itm.Cursor.Before(after) {
 			return eventlog.ErrStopScan
 		}
 		match, err := query.MatchesEvents(itm.Events)
@@ -216,7 +219,7 @@ func EventsWithContext(ctx context.Context,
 		return nil
 	}
 
-	if waitTime > 0 && before.IsZero() {
+	if before.IsZero() {
 		ctx, cancel := context.WithTimeout(ctx, waitTime)
 		defer cancel()
 
