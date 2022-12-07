@@ -494,7 +494,7 @@ func ensureNoNewEvent(ch <-chan tmpubsub.Message, timeout time.Duration,
 func ensureNoNewEventOnChannel(ch <-chan tmpubsub.Message) {
 	ensureNoNewEvent(
 		ch,
-		ensureTimeout,
+		ensureTimeout*8/10, // 20% leniency for goroutine scheduling uncertainty
 		"We should be stuck waiting, not receiving new event on the channel")
 }
 
@@ -725,7 +725,7 @@ func ensurePrecommitTimeout(ch <-chan tmpubsub.Message) {
 
 func ensureNewEventOnChannel(ch <-chan tmpubsub.Message) {
 	select {
-	case <-time.After(ensureTimeout):
+	case <-time.After(ensureTimeout * 12 / 10): // 20% leniency for goroutine scheduling uncertainty
 		panic("Timeout expired while waiting for new activity on the channel")
 	case <-ch:
 	}
