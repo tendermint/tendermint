@@ -1668,6 +1668,8 @@ func TestFinalizeBlockCalled(t *testing.T) {
 				Status: abci.ResponseProcessProposal_ACCEPT,
 			}, nil)
 			m.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
+			// We only expect VerifyVoteExtension to be called on non-nil precommits.
+			// https://github.com/tendermint/tendermint/issues/8487
 			if !testCase.voteNil {
 				m.On("ExtendVote", mock.Anything, mock.Anything).Return(&abci.ResponseExtendVote{}, nil)
 				m.On("VerifyVoteExtension", mock.Anything, mock.Anything).Return(&abci.ResponseVerifyVoteExtension{
