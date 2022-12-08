@@ -158,7 +158,7 @@ consensus and are gossiped by all nodes to all peers during each consensus
 round. Data collected from the Blockpane node running on Osmosis indicates that
 about 9 gigabytes of `Vote` messages were sent during the nearly 3 hour period
 of observation. Examination of the [Vote message][vote-msg] indicates that it
-contains 152 bytes of data, with the proto encoding adding a few additional
+contains 184 bytes of data, with the proto encoding adding a few additional
 bytes when transmitting.
 
 The Tendermint consensus reactor starts a new
