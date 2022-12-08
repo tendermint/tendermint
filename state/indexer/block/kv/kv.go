@@ -354,7 +354,7 @@ func (idx *BlockerIndexer) setTmpHeights(tmpHeights map[string][]byte, it dbm.It
 	if matchEvents {
 		eventSeq, _ := parseEventSeqFromEventKey(it.Key())
 		retVal := it.Value()
-		tmpHeights[string(append(retVal, byte(eventSeq)))] = it.Value()
+		tmpHeights[string(retVal)+strconv.FormatInt(eventSeq, 10)] = it.Value()
 	} else {
 		tmpHeights[string(it.Value())] = it.Value()
 	}
