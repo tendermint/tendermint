@@ -7,7 +7,7 @@ coverage:
       default:
         threshold: 20%
     patch: off
-    changes: off
+    changes: false
 
 github_checks:
   annotations: false
@@ -16,7 +16,7 @@ comment: false
 
 ignore:
   - "docs"
-  - "DOCKER"
+  - "docker"
   - "scripts"
   - "**/*.pb.go"
   - "libs/pubsub/query/query.peg.go"

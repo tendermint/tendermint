@@ -9,19 +9,19 @@ coverage:
     project:
       default:
         threshold: 1%
-    patch: on
-    changes: off
+    patch: true
+    changes: false
 
 comment:
   layout: "diff, files"
   behavior: default
-  require_changes: no
-  require_base: no
-  require_head: yes
+  require_changes: false
+  require_base: false
+  require_head: true
 
 ignore:
   - "docs"
-  - "DOCKER"
+  - "docker"
   - "scripts"
   - "**/*.pb.go"
   - "libs/pubsub/query/query.peg.go"

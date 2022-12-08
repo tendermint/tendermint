@@ -325,9 +325,9 @@ check-docs-toc:
 ###############################################################################
 
 build-docker: build-linux
-	cp $(OUTPUT) DOCKER/tendermint
-	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
-	rm -rf DOCKER/tendermint
+	cp $(OUTPUT) docker/tendermint
+	docker build --label=tendermint --tag="tendermint/tendermint" docker
+	rm -rf docker/tendermint
 .PHONY: build-docker
 
 ###############################################################################
@@ -347,7 +347,7 @@ build-docker-localnode:
 # Linux (v2)-based Docker build container in order to build an Amazon
 # Linux-compatible binary. Produces a compatible binary at ./build/tendermint
 build_c-amazonlinux:
-	$(MAKE) -C ./DOCKER build_amazonlinux_buildimage
+	$(MAKE) -C ./docker build_amazonlinux_buildimage
 	docker run --rm -it -v `pwd`:/tendermint tendermint/tendermint:build_c-amazonlinux
 .PHONY: build_c-amazonlinux
 

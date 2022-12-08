@@ -6,9 +6,9 @@ DockerHub tags for official releases are [here](https://hub.docker.com/r/tenderm
 
 Official releases can be found [here](https://github.com/tendermint/tendermint/releases).
 
-The Dockerfile for Tendermint is not expected to change in the near future. The main file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/main/DOCKER/Dockerfile).
+The Dockerfile for Tendermint is not expected to change in the near future. The main file used for all builds can be found [here](https://raw.githubusercontent.com/tendermint/tendermint/main/docker/Dockerfile).
 
-Respective versioned files can be found at `https://raw.githubusercontent.com/tendermint/tendermint/vX.XX.XX/DOCKER/Dockerfile` (replace the Xs with the version number).
+Respective versioned files can be found at `https://raw.githubusercontent.com/tendermint/tendermint/vX.XX.XX/docker/Dockerfile` (replace the Xs with the version number).
 
 ## Quick reference
 
