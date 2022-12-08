@@ -396,7 +396,7 @@ type RPCConfig struct {
 	// the effect of disabling the /subscribe, /unsubscribe, and /unsubscribe_all
 	// methods for event subscription.
 	//
-	// EXPERIMENTAL: This setting will be removed in Tendermint v0.37.
+	// EXPERIMENTAL: This setting will be removed in Tendermint v0.38.
 	ExperimentalDisableWebsocket bool `mapstructure:"experimental-disable-websocket"`
 
 	// The time window size for the event log. All events up to this long before
