@@ -271,7 +271,7 @@ func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time 
 	totalVotingPower := int64(0)
 
 	for i, commitSig := range commit.Signatures {
-		if commitSig.Absent() {
+		if commitSig.BlockIDFlag == types.BlockIDFlagAbsent {
 			continue
 		}
 		_, validator := validators.GetByAddress(commitSig.ValidatorAddress)

@@ -94,7 +94,7 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
 		DiscardABCIResponses: false,
 	})
-	absentSig := types.NewCommitSigAbsent()
+	absentSig := types.NewExtendedCommitSigAbsent()
 
 	testCases := []struct {
 		name             string
@@ -134,12 +134,12 @@ func TestFinalizeBlockDecidedLastCommit(t *testing.T) {
 
 			for idx, isAbsent := range tc.absentCommitSigs {
 				if isAbsent {
-					lastCommit.Signatures[idx] = absentSig
+					lastCommit.ExtendedSignatures[idx] = absentSig
 				}
 			}
 
 			// block for height 2
-			block := makeBlock(state, 2, lastCommit)
+			block := makeBlock(state, 2, lastCommit.StripExtensions())
 			bps, err := block.MakePartSet(testPartSize)
 			require.NoError(t, err)
 			blockID := types.BlockID{Hash: block.Hash(), PartSetHeader: bps.Header()}
@@ -175,16 +175,19 @@ func TestFinalizeBlockValidators(t *testing.T) {
 
 	var (
 		now        = tmtime.Now()
-		commitSig0 = types.NewCommitSigForBlock(
-			[]byte("Signature1"),
-			state.Validators.Validators[0].Address,
-			now,
-		)
-		commitSig1 = types.NewCommitSigForBlock(
-			[]byte("Signature2"),
-			state.Validators.Validators[1].Address,
-			now,
-		)
+		commitSig0 = types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: state.Validators.Validators[0].Address,
+			Timestamp:        now,
+			Signature:        []byte("Signature1"),
+		}
+
+		commitSig1 = types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlagCommit,
+			ValidatorAddress: state.Validators.Validators[1].Address,
+			Timestamp:        now,
+			Signature:        []byte("Signature2"),
+		}
 		absentSig = types.NewCommitSigAbsent()
 	)
 
@@ -199,7 +202,11 @@ func TestFinalizeBlockValidators(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		lastCommit := types.NewCommit(1, 0, prevBlockID, tc.lastCommitSigs)
+		lastCommit := &types.Commit{
+			Height:     1,
+			BlockID:    prevBlockID,
+			Signatures: tc.lastCommitSigs,
+		}
 
 		// block for height 2
 		block := makeBlock(state, 2, lastCommit)
@@ -264,12 +271,15 @@ func TestFinalizeBlockMisbehavior(t *testing.T) {
 		ConflictingBlock: &types.LightBlock{
 			SignedHeader: &types.SignedHeader{
 				Header: header,
-				Commit: types.NewCommit(10, 0, makeBlockID(header.Hash(), 100, []byte("partshash")), []types.CommitSig{{
-					BlockIDFlag:      types.BlockIDFlagNil,
-					ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
-					Timestamp:        defaultEvidenceTime,
-					Signature:        crypto.CRandBytes(types.MaxSignatureSize),
-				}}),
+				Commit: &types.Commit{
+					Height:  10,
+					BlockID: makeBlockID(header.Hash(), 100, []byte("partshash")),
+					Signatures: []types.CommitSig{{
+						BlockIDFlag:      types.BlockIDFlagNil,
+						ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
+						Timestamp:        defaultEvidenceTime,
+						Signature:        crypto.CRandBytes(types.MaxSignatureSize)}},
+				},
 			},
 			ValidatorSet: state.Validators,
 		},
@@ -394,6 +404,7 @@ func TestProcessProposal(t *testing.T) {
 		Height:     height - 1,
 		Signatures: lastCommitSig,
 	})
+
 	block1.Txs = txs
 
 	expectedRpp := &abci.RequestProcessProposal{
@@ -713,9 +724,9 @@ func TestEmptyPrepareProposal(t *testing.T) {
 		blockStore,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
+	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	_, err = blockExec.CreateProposalBlock(height, state, commit, pa, votes)
+	_, err = blockExec.CreateProposalBlock(height, state, commit, pa)
 	require.NoError(t, err)
 }
 
@@ -756,9 +767,9 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 		blockStore,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
+	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, votes)
+	block, err := blockExec.CreateProposalBlock(height, state, commit, pa)
 	require.NoError(t, err)
 
 	for i, tx := range block.Data.Txs {
@@ -809,9 +820,9 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 		blockStore,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
+	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, votes)
+	block, err := blockExec.CreateProposalBlock(height, state, commit, pa)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, txs[i], tx)
@@ -864,10 +875,9 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 		blockStore,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
+	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-
-	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, votes)
+	block, err := blockExec.CreateProposalBlock(height, state, commit, pa)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "transaction data size exceeds maximum")
 
@@ -914,10 +924,9 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 		blockStore,
 	)
 	pa, _ := state.Validators.GetByIndex(0)
-	commit, votes, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
+	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-
-	block, err := blockExec.CreateProposalBlock(height, state, commit, pa, votes)
+	block, err := blockExec.CreateProposalBlock(height, state, commit, pa)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "an injected error")
 

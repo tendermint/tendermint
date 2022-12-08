@@ -63,7 +63,7 @@ func TestMsgToProto(t *testing.T) {
 	val := types.NewValidator(pk, 100)
 
 	vote, err := types.MakeVote(
-		1, types.BlockID{}, &types.ValidatorSet{Proposer: val, Validators: []*types.Validator{val}},
+		1, bi, &types.ValidatorSet{Proposer: val, Validators: []*types.Validator{val}},
 		pv, "chainID", time.Now())
 	require.NoError(t, err)
 	pbVote := vote.ToProto()

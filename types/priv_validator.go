@@ -77,7 +77,6 @@ func (pv MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 	}
 
 	signBytes := VoteSignBytes(useChainID, vote)
-	extSignBytes := VoteExtensionSignBytes(useChainID, vote)
 	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
 		return err
@@ -85,14 +84,15 @@ func (pv MockPV) SignVote(chainID string, vote *tmproto.Vote) error {
 	vote.Signature = sig
 
 	var extSig []byte
-	// We only sign vote extensions for precommits
-	if vote.Type == tmproto.PrecommitType {
+	// We only sign vote extensions for non-nil precommits
+	if vote.Type == tmproto.PrecommitType && !ProtoBlockIDIsNil(&vote.BlockID) {
+		extSignBytes := VoteExtensionSignBytes(useChainID, vote)
 		extSig, err = pv.PrivKey.Sign(extSignBytes)
 		if err != nil {
 			return err
 		}
 	} else if len(vote.Extension) > 0 {
-		return errors.New("unexpected vote extension - vote extensions are only allowed in precommits")
+		return errors.New("unexpected vote extension - vote extensions are only allowed in non-nil precommits")
 	}
 	vote.ExtensionSignature = extSig
 	return nil
