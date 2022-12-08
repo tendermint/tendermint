@@ -25,34 +25,48 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_receive_bytes_total",
 			Help:      "Number of bytes received from a given peer.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "peer_id", "chID")).With(labelsAndValues...),
 		PeerSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_send_bytes_total",
 			Help:      "Number of bytes sent to a given peer.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "peer_id", "chID")).With(labelsAndValues...),
 		PeerPendingSendBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "peer_pending_send_bytes",
 			Help:      "Pending bytes to be sent to a given peer.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "peer_id")).With(labelsAndValues...),
 		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
 			Name:      "num_txs",
 			Help:      "Number of transactions submitted by each peer.",
-		}, labels).With(labelsAndValues...),
+		}, append(labels, "peer_id")).With(labelsAndValues...),
+		MessageReceiveBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_receive_bytes_total",
+			Help:      "Number of bytes of each message type received.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
+		MessageSendBytesTotal: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "message_send_bytes_total",
+			Help:      "Number of bytes of each message type sent.",
+		}, append(labels, "message_type")).With(labelsAndValues...),
 	}
 }
 
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Peers:                 discard.NewGauge(),
-		PeerReceiveBytesTotal: discard.NewCounter(),
-		PeerSendBytesTotal:    discard.NewCounter(),
-		PeerPendingSendBytes:  discard.NewGauge(),
-		NumTxs:                discard.NewGauge(),
+		Peers:                    discard.NewGauge(),
+		PeerReceiveBytesTotal:    discard.NewCounter(),
+		PeerSendBytesTotal:       discard.NewCounter(),
+		PeerPendingSendBytes:     discard.NewGauge(),
+		NumTxs:                   discard.NewGauge(),
+		MessageReceiveBytesTotal: discard.NewCounter(),
+		MessageSendBytesTotal:    discard.NewCounter(),
 	}
 }

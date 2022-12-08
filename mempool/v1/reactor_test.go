@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/internal/test"
 
 	cfg "github.com/tendermint/tendermint/config"
 
@@ -128,7 +129,7 @@ func mempoolLogger() log.Logger {
 }
 
 func newMempoolWithApp(cc proxy.ClientCreator) (*TxMempool, func()) {
-	conf := cfg.ResetTestRoot("mempool_test")
+	conf := test.ResetTestRoot("mempool_test")
 
 	mp, cu := newMempoolWithAppAndConfig(cc, conf)
 	return mp, cu

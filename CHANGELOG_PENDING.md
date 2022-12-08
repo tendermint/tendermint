@@ -11,21 +11,38 @@
 - P2P Protocol
 
 - Go API
+  - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
+  - [rpc] \#9655 Remove global environment and replace with constructor. (@williambanfield,@tychoish)
+  - [node] \#9655 Move DBContext and DBProvider from the node package to the config package. (@williambanfield,@tychoish)
 
 - Blockchain Protocol
 
 - Data Storage
   - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
-  
+
+- Tooling
+  - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+  - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
+    labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
+  - [inspect] \#9655 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
+
 ### FEATURES
+
+- [config] \#9680 Introduce `BootstrapPeers` to the config to allow nodes to list peers to be added to
+  the addressbook upon start up (@cmwaters)
 
 ### IMPROVEMENTS
 
 - [pubsub] \#7319 Performance improvements for the event query API (@creachadair)
 - [p2p/pex] \#6509 Improve addrBook.hash performance (@cuonglm)
 - [crypto/merkle] \#6443 & \#6513 Improve HashAlternatives performance (@cuonglm, @marbar3778)
+- [rpc] \#9650 Enable caching of RPC responses (@JayT106)
+- [consensus] \#9760 Save peer LastCommit correctly to achieve 50% reduction in gossiped precommits. (@williambanfield)
 
 ### BUG FIXES
+
+- [docker] \#9462 ensure Docker image uses consistent version of Go
+- [abci-cli] \#9717 fix broken abci-cli help command
 
 ## v0.37.0
 
@@ -87,8 +104,10 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [crypto] \#6120 Implement batch verification interface for ed25519 and sr25519. (@marbar3778 & @Yawning)
 - [types] \#6120 use batch verification for verifying commits signatures. (@marbar3778 & @cmwaters & @Yawning)
     - If the key type supports the batch verification API it will try to batch verify. If the verification fails we will single verify each signature.
+- [state] \#9505 Added logic so when pruning, the evidence period is taken into consideration and only deletes unecessary data (@samricotta)
 
 ### BUG FIXES
 
 - [consensus] \#9229 fix round number of `enterPropose` when handling `RoundStepNewRound` timeout. (@fatcat22)
 - [docker] \#9073 enable cross platform build using docker buildx
+- [blocksync] \#9518 handle the case when the sending queue is full: retry block request after a timeout

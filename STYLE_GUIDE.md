@@ -98,7 +98,7 @@ Sometimes it's necessary to rename libraries to avoid naming collisions or ambig
     * Make use of table driven testing where possible and not-cumbersome
         * [Inspiration](https://dave.cheney.net/2013/06/09/writing-table-driven-tests-in-go)
     * Make use of [assert](https://godoc.org/github.com/stretchr/testify/assert) and [require](https://godoc.org/github.com/stretchr/testify/require)
-* When using mocks, it is recommended to use Testify [mock] (<https://pkg.go.dev/github.com/stretchr/testify/mock>
+* When using mocks, it is recommended to use Testify [mock](<https://pkg.go.dev/github.com/stretchr/testify/mock>
  ) along with [Mockery](https://github.com/vektra/mockery) for autogeneration
 
 ## Errors

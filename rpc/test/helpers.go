@@ -9,6 +9,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/internal/test"
 	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -91,7 +92,7 @@ func makeAddrs() (string, string, string) {
 
 func createConfig() *cfg.Config {
 	pathname := makePathname()
-	c := cfg.ResetTestRoot(pathname)
+	c := test.ResetTestRoot(pathname)
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
@@ -170,7 +171,7 @@ func NewTendermint(app abci.Application, opts *Options) *nm.Node {
 	}
 	node, err := nm.NewNode(config, pv, nodeKey, papp,
 		nm.DefaultGenesisDocProviderFunc(config),
-		nm.DefaultDBProvider,
+		cfg.DefaultDBProvider,
 		nm.DefaultMetricsProvider(config.Instrumentation),
 		logger)
 	if err != nil {

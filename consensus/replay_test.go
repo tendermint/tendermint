@@ -97,7 +97,7 @@ func startNewStateAndWaitForBlock(t *testing.T, consensusReplayConfig *cfg.Confi
 	require.NoError(t, err)
 	select {
 	case <-newBlockSub.Out():
-	case <-newBlockSub.Cancelled():
+	case <-newBlockSub.Canceled():
 		t.Fatal("newBlockSub was canceled")
 	case <-time.After(120 * time.Second):
 		t.Fatal("Timed out waiting for new block (see trace above)")
@@ -373,7 +373,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal := types.NewProposal(vss[1].Height, round, -1, blockID)
 	p := proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(genDoc.ChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -405,7 +405,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[2].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[2].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[2].SignProposal(genDoc.ChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -464,7 +464,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 
 	proposal = types.NewProposal(vss[3].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[3].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[3].SignProposal(genDoc.ChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -525,7 +525,7 @@ func TestSimulateValidatorsChange(t *testing.T) {
 	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
 	p = proposal.ToProto()
-	if err := vss[1].SignProposal(config.ChainID(), p); err != nil {
+	if err := vss[1].SignProposal(genDoc.ChainID, p); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 	proposal.Signature = p.Signature
@@ -735,7 +735,7 @@ func testHandshakeReplay(t *testing.T, config *cfg.Config, nBlocks int, mode uin
 	// Prune block store if requested
 	expectError := false
 	if mode == 3 {
-		pruned, err := store.PruneBlocks(2)
+		pruned, _, err := store.PruneBlocks(2, state)
 		require.NoError(t, err)
 		require.EqualValues(t, 1, pruned)
 		expectError = int64(nBlocks) < 2
@@ -1185,7 +1185,8 @@ func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return bs.commits[height-1]
 }
 
-func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
+func (bs *mockBlockStore) PruneBlocks(height int64, state sm.State) (uint64, int64, error) {
+	evidencePoint := height
 	pruned := uint64(0)
 	for i := int64(0); i < height-1; i++ {
 		bs.chain[i] = nil
@@ -1193,10 +1194,11 @@ func (bs *mockBlockStore) PruneBlocks(height int64) (uint64, error) {
 		pruned++
 	}
 	bs.base = height
-	return pruned, nil
+	return pruned, evidencePoint, nil
 }
 
 func (bs *mockBlockStore) DeleteLatestBlock() error { return nil }
+func (bs *mockBlockStore) Close() error             { return nil }
 
 //---------------------------------------
 // Test handshake/init chain

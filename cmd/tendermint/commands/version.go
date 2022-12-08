@@ -14,6 +14,11 @@ var VersionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version info",
 	Run: func(cmd *cobra.Command, args []string) {
+		tmVersion := version.TMCoreSemVer
+		if version.TMGitCommitHash != "" {
+			tmVersion += "+" + version.TMGitCommitHash
+		}
+
 		if verbose {
 			values, _ := json.MarshalIndent(struct {
 				Tendermint    string `json:"tendermint"`
@@ -21,14 +26,14 @@ var VersionCmd = &cobra.Command{
 				BlockProtocol uint64 `json:"block_protocol"`
 				P2PProtocol   uint64 `json:"p2p_protocol"`
 			}{
-				Tendermint:    version.TMCoreSemVer,
-				ABCI:          version.ABCIVersion,
+				Tendermint:    tmVersion,
+				ABCI:          version.ABCISemVer,
 				BlockProtocol: version.BlockProtocol,
 				P2PProtocol:   version.P2PProtocol,
 			}, "", "  ")
 			fmt.Println(string(values))
 		} else {
-			fmt.Println(version.TMCoreSemVer)
+			fmt.Println(tmVersion)
 		}
 	},
 }

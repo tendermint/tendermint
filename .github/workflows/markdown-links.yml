@@ -1,23 +1,20 @@
 name: Check Markdown links
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches: [main]
+  schedule:
+    # 2am UTC daily
+    - cron: '0 2 * * *'
 
 jobs:
   markdown-link-check:
+    strategy:
+      matrix:
+        branch: ['main', 'v0.37.x', 'v0.34.x']
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: technote-space/get-diff-action@v6
         with:
-          PATTERNS: |
-            **/**.md
-      - uses: creachadair/github-action-markdown-link-check@master
+          ref: ${{ matrix.branch }}
+      - uses: informalsystems/github-action-markdown-link-check@main
         with:
-          check-modified-files-only: 'yes'
           config-file: '.md-link-check.json'
-        if: env.GIT_DIFF

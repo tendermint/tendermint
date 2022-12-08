@@ -57,12 +57,18 @@ want to use this command.
 			return
 		}
 
+		state, err := ss.Load()
+		if err != nil {
+			fmt.Println(reindexFailed, err)
+			return
+		}
+
 		if err := checkValidHeight(bs); err != nil {
 			fmt.Println(reindexFailed, err)
 			return
 		}
 
-		bi, ti, err := loadEventSinks(config)
+		bi, ti, err := loadEventSinks(config, state.ChainID)
 		if err != nil {
 			fmt.Println(reindexFailed, err)
 			return
@@ -94,7 +100,7 @@ func init() {
 	ReIndexEventCmd.Flags().Int64Var(&endHeight, "end-height", 0, "the block height would like to finish for re-index")
 }
 
-func loadEventSinks(cfg *tmcfg.Config) (indexer.BlockIndexer, txindex.TxIndexer, error) {
+func loadEventSinks(cfg *tmcfg.Config, chainID string) (indexer.BlockIndexer, txindex.TxIndexer, error) {
 	switch strings.ToLower(cfg.TxIndex.Indexer) {
 	case "null":
 		return nil, nil, errors.New("found null event sink, please check the tx-index section in the config.toml")
@@ -103,7 +109,7 @@ func loadEventSinks(cfg *tmcfg.Config) (indexer.BlockIndexer, txindex.TxIndexer,
 		if conn == "" {
 			return nil, nil, errors.New("the psql connection settings cannot be empty")
 		}
-		es, err := psql.NewEventSink(conn, cfg.ChainID())
+		es, err := psql.NewEventSink(conn, chainID)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -22,8 +22,8 @@ const (
 )
 
 // Subscribe for events via WebSocket.
-// More: https://docs.tendermint.com/main/rpc/#/Websocket/subscribe
-func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/subscribe
+func (env *Environment) Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, error) {
 	addr := ctx.RemoteAddr()
 
 	if env.EventBus.NumClients() >= env.Config.MaxSubscriptionClients {
@@ -79,7 +79,7 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 						return
 					}
 				}
-			case <-sub.Cancelled():
+			case <-sub.Canceled():
 				if sub.Err() != tmpubsub.ErrUnsubscribed {
 					var reason string
 					if sub.Err() == nil {
@@ -105,8 +105,8 @@ func Subscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultSubscribe, er
 }
 
 // Unsubscribe from events via WebSocket.
-// More: https://docs.tendermint.com/main/rpc/#/Websocket/unsubscribe
-func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe
+func (env *Environment) Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe, error) {
 	addr := ctx.RemoteAddr()
 	env.Logger.Info("Unsubscribe from query", "remote", addr, "query", query)
 	q, err := tmquery.New(query)
@@ -121,8 +121,8 @@ func Unsubscribe(ctx *rpctypes.Context, query string) (*ctypes.ResultUnsubscribe
 }
 
 // UnsubscribeAll from all events via WebSocket.
-// More: https://docs.tendermint.com/main/rpc/#/Websocket/unsubscribe_all
-func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
+// More: https://docs.tendermint.com/master/rpc/#/Websocket/unsubscribe_all
+func (env *Environment) UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 	addr := ctx.RemoteAddr()
 	env.Logger.Info("Unsubscribe from all", "remote", addr)
 	err := env.EventBus.UnsubscribeAll(context.Background(), addr)
@@ -148,7 +148,7 @@ func UnsubscribeAll(ctx *rpctypes.Context) (*ctypes.ResultUnsubscribe, error) {
 // If maxItems ≤ 0, a default positive number of events is chosen. The values
 // of maxItems and waitTime may be capped to sensible internal maxima without
 // reporting an error to the caller.
-func Events(ctx *rpctypes.Context,
+func (env *Environment) Events(ctx *rpctypes.Context,
 	filter string,
 	maxItems int,
 	before, after string,
@@ -161,12 +161,12 @@ func Events(ctx *rpctypes.Context,
 	if err := curAfter.UnmarshalText([]byte(after)); err != nil {
 		return nil, err
 	}
-	return EventsWithContext(ctx.Context(), &ctypes.EventFilter{
+	return env.EventsWithContext(ctx.Context(), &ctypes.EventFilter{
 		Query: filter,
 	}, maxItems, curBefore, curAfter, waitTime)
 }
 
-func EventsWithContext(ctx context.Context,
+func (env *Environment) EventsWithContext(ctx context.Context,
 	filter *ctypes.EventFilter,
 	maxItems int,
 	before, after cursor.Cursor,

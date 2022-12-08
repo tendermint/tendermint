@@ -1,5 +1,9 @@
+# Use a build arg to ensure that both stages use the same,
+# hopefully current, go version.
+ARG GOLANG_BASE_IMAGE=golang:1.18-alpine
+
 # stage 1 Generate Tendermint Binary
-FROM --platform=$BUILDPLATFORM golang:1.18-alpine as builder
+FROM --platform=$BUILDPLATFORM $GOLANG_BASE_IMAGE as builder
 RUN apk update && \
     apk upgrade && \
     apk --no-cache add make
@@ -8,7 +12,7 @@ WORKDIR /tendermint
 RUN TARGETPLATFORM=$TARGETPLATFORM make build-linux
 
 # stage 2
-FROM golang:1.15-alpine
+FROM $GOLANG_BASE_IMAGE
 LABEL maintainer="hello@tendermint.com"
 
 # Tendermint will be looking for the genesis file in /tendermint/config/genesis.json

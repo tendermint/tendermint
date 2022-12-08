@@ -6,56 +6,60 @@ import (
 
 // TODO: better system than "unsafe" prefix
 
+type RoutesMap map[string]*rpc.RPCFunc
+
 // Routes is a map of available routes.
-var Routes = map[string]*rpc.RPCFunc{
-	// Event subscription. Note that subscribe, unsubscribe, and
-	// unsubscribe_all are only available via the websocket endpoint.
-	"events":          rpc.NewRPCFunc(Events, "filter,maxItems,before,after,waitTime"),
-	"subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),
-	"unsubscribe":     rpc.NewWSRPCFunc(Unsubscribe, "query"),
-	"unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
+func (env *Environment) GetRoutes() RoutesMap {
+	return RoutesMap{
+		// Event subscription. Note that subscribe, unsubscribe, and
+		// unsubscribe_all are only available via the websocket endpoint.
+		"events": rpc.NewRPCFunc(env.Events, "filter,maxItems,before,after,waitTime"),
+		// subscribe/unsubscribe are reserved for websocket events.
+		"subscribe":       rpc.NewWSRPCFunc(env.Subscribe, "query"),
+		"unsubscribe":     rpc.NewWSRPCFunc(env.Unsubscribe, "query"),
+		"unsubscribe_all": rpc.NewWSRPCFunc(env.UnsubscribeAll, ""),
+		// info AP
+		"health":               rpc.NewRPCFunc(env.Health, ""),
+		"status":               rpc.NewRPCFunc(env.Status, ""),
+		"net_info":             rpc.NewRPCFunc(env.NetInfo, ""),
+		"blockchain":           rpc.NewRPCFunc(env.BlockchainInfo, "minHeight,maxHeight", rpc.Cacheable()),
+		"genesis":              rpc.NewRPCFunc(env.Genesis, "", rpc.Cacheable()),
+		"genesis_chunked":      rpc.NewRPCFunc(env.GenesisChunked, "chunk", rpc.Cacheable()),
+		"block":                rpc.NewRPCFunc(env.Block, "height", rpc.Cacheable("height")),
+		"block_by_hash":        rpc.NewRPCFunc(env.BlockByHash, "hash", rpc.Cacheable()),
+		"block_results":        rpc.NewRPCFunc(env.BlockResults, "height", rpc.Cacheable("height")),
+		"commit":               rpc.NewRPCFunc(env.Commit, "height", rpc.Cacheable("height")),
+		"header":               rpc.NewRPCFunc(env.Header, "height", rpc.Cacheable("height")),
+		"header_by_hash":       rpc.NewRPCFunc(env.HeaderByHash, "hash", rpc.Cacheable()),
+		"check_tx":             rpc.NewRPCFunc(env.CheckTx, "tx"),
+		"tx":                   rpc.NewRPCFunc(env.Tx, "hash,prove", rpc.Cacheable()),
+		"tx_search":            rpc.NewRPCFunc(env.TxSearch, "query,prove,page,per_page,order_by"),
+		"block_search":         rpc.NewRPCFunc(env.BlockSearch, "query,page,per_page,order_by"),
+		"validators":           rpc.NewRPCFunc(env.Validators, "height,page,per_page", rpc.Cacheable("height")),
+		"dump_consensus_state": rpc.NewRPCFunc(env.DumpConsensusState, ""),
+		"consensus_state":      rpc.NewRPCFunc(env.GetConsensusState, ""),
+		"consensus_params":     rpc.NewRPCFunc(env.ConsensusParams, "height", rpc.Cacheable("height")),
+		"unconfirmed_txs":      rpc.NewRPCFunc(env.UnconfirmedTxs, "limit"),
+		"num_unconfirmed_txs":  rpc.NewRPCFunc(env.NumUnconfirmedTxs, ""),
 
-	// info API
-	"health":               rpc.NewRPCFunc(Health, ""),
-	"status":               rpc.NewRPCFunc(Status, ""),
-	"net_info":             rpc.NewRPCFunc(NetInfo, ""),
-	"blockchain":           rpc.NewRPCFunc(BlockchainInfo, "minHeight,maxHeight"),
-	"genesis":              rpc.NewRPCFunc(Genesis, ""),
-	"genesis_chunked":      rpc.NewRPCFunc(GenesisChunked, "chunk"),
-	"block":                rpc.NewRPCFunc(Block, "height"),
-	"block_by_hash":        rpc.NewRPCFunc(BlockByHash, "hash"),
-	"block_results":        rpc.NewRPCFunc(BlockResults, "height"),
-	"commit":               rpc.NewRPCFunc(Commit, "height"),
-	"header":               rpc.NewRPCFunc(Header, "height"),
-	"header_by_hash":       rpc.NewRPCFunc(HeaderByHash, "hash"),
-	"check_tx":             rpc.NewRPCFunc(CheckTx, "tx"),
-	"tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
-	"tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove,page,per_page,order_by"),
-	"block_search":         rpc.NewRPCFunc(BlockSearch, "query,page,per_page,order_by"),
-	"validators":           rpc.NewRPCFunc(Validators, "height,page,per_page"),
-	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, ""),
-	"consensus_state":      rpc.NewRPCFunc(ConsensusState, ""),
-	"consensus_params":     rpc.NewRPCFunc(ConsensusParams, "height"),
-	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, "limit"),
-	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxs, ""),
+		// tx broadcast API
+		"broadcast_tx_commit": rpc.NewRPCFunc(env.BroadcastTxCommit, "tx"),
+		"broadcast_tx_sync":   rpc.NewRPCFunc(env.BroadcastTxSync, "tx"),
+		"broadcast_tx_async":  rpc.NewRPCFunc(env.BroadcastTxAsync, "tx"),
 
-	// tx broadcast API
-	"broadcast_tx_commit": rpc.NewRPCFunc(BroadcastTxCommit, "tx"),
-	"broadcast_tx_sync":   rpc.NewRPCFunc(BroadcastTxSync, "tx"),
-	"broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx"),
+		// abci API
+		"abci_query": rpc.NewRPCFunc(env.ABCIQuery, "path,data,height,prove"),
+		"abci_info":  rpc.NewRPCFunc(env.ABCIInfo, "", rpc.Cacheable()),
 
-	// abci API
-	"abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,height,prove"),
-	"abci_info":  rpc.NewRPCFunc(ABCIInfo, ""),
-
-	// evidence API
-	"broadcast_evidence": rpc.NewRPCFunc(BroadcastEvidence, "evidence"),
+		// evidence API
+		"broadcast_evidence": rpc.NewRPCFunc(env.BroadcastEvidence, "evidence"),
+	}
 }
 
 // AddUnsafeRoutes adds unsafe routes.
-func AddUnsafeRoutes() {
+func (env *Environment) AddUnsafeRoutes(routes RoutesMap) {
 	// control API
-	Routes["dial_seeds"] = rpc.NewRPCFunc(UnsafeDialSeeds, "seeds")
-	Routes["dial_peers"] = rpc.NewRPCFunc(UnsafeDialPeers, "peers,persistent,unconditional,private")
-	Routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(UnsafeFlushMempool, "")
+	routes["dial_seeds"] = rpc.NewRPCFunc(env.UnsafeDialSeeds, "seeds")
+	routes["dial_peers"] = rpc.NewRPCFunc(env.UnsafeDialPeers, "peers,persistent,unconditional,private")
+	routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(env.UnsafeFlushMempool, "")
 }

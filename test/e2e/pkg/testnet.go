@@ -21,8 +21,10 @@ import (
 const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
-	networkIPv4           = "10.186.73.0/24"
-	networkIPv6           = "fd80:b10c::/48"
+
+	defaultBatchSize   = 2
+	defaultConnections = 1
+	defaultTxSizeBytes = 1024
 )
 
 type (
@@ -65,6 +67,9 @@ type Testnet struct {
 	Nodes                []*Node
 	KeyType              string
 	Evidence             int
+	LoadTxSizeBytes      int
+	LoadTxBatchSize      int
+	LoadTxConnections    int
 	ABCIProtocol         string
 	PrepareProposalDelay time.Duration
 	ProcessProposalDelay time.Duration
@@ -74,8 +79,10 @@ type Testnet struct {
 // Node represents a Tendermint node in a testnet.
 type Node struct {
 	Name             string
+	Version          string
 	Testnet          *Testnet
 	Mode             Mode
+	SyncApp          bool // Should we use a synchronized app with an unsynchronized local client?
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
 	IP               net.IP
@@ -93,6 +100,9 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
+
+	// SendNoLoad determines if the e2e test should send load to this node.
+	SendNoLoad bool
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -100,38 +110,29 @@ type Node struct {
 // The testnet generation must be deterministic, since it is generated
 // separately by the runner and the test cases. For this reason, testnets use a
 // random seed to generate e.g. keys.
-func LoadTestnet(file string) (*Testnet, error) {
-	manifest, err := LoadManifest(file)
-	if err != nil {
-		return nil, err
-	}
-	dir := strings.TrimSuffix(file, filepath.Ext(file))
-
-	// Set up resource generators. These must be deterministic.
-	netAddress := networkIPv4
-	if manifest.IPv6 {
-		netAddress = networkIPv6
-	}
-	_, ipNet, err := net.ParseCIDR(netAddress)
-	if err != nil {
-		return nil, fmt.Errorf("invalid IP network address %q: %w", netAddress, err)
-	}
-
-	ipGen := newIPGenerator(ipNet)
+func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Testnet, error) {
+	dir := strings.TrimSuffix(fname, filepath.Ext(fname))
 	keyGen := newKeyGenerator(randomSeed)
 	proxyPortGen := newPortGenerator(proxyPortFirst)
+	_, ipNet, err := net.ParseCIDR(ifd.Network)
+	if err != nil {
+		return nil, fmt.Errorf("invalid IP network address %q: %w", ifd.Network, err)
+	}
 
 	testnet := &Testnet{
 		Name:                 filepath.Base(dir),
-		File:                 file,
+		File:                 fname,
 		Dir:                  dir,
-		IP:                   ipGen.Network(),
+		IP:                   ipNet,
 		InitialHeight:        1,
 		InitialState:         manifest.InitialState,
 		Validators:           map[*Node]int64{},
 		ValidatorUpdates:     map[int64]map[*Node]int64{},
 		Nodes:                []*Node{},
 		Evidence:             manifest.Evidence,
+		LoadTxSizeBytes:      manifest.LoadTxSizeBytes,
+		LoadTxBatchSize:      manifest.LoadTxBatchSize,
+		LoadTxConnections:    manifest.LoadTxConnections,
 		ABCIProtocol:         manifest.ABCIProtocol,
 		PrepareProposalDelay: manifest.PrepareProposalDelay,
 		ProcessProposalDelay: manifest.ProcessProposalDelay,
@@ -146,6 +147,15 @@ func LoadTestnet(file string) (*Testnet, error) {
 	if testnet.ABCIProtocol == "" {
 		testnet.ABCIProtocol = string(ProtocolBuiltin)
 	}
+	if testnet.LoadTxConnections == 0 {
+		testnet.LoadTxConnections = defaultConnections
+	}
+	if testnet.LoadTxBatchSize == 0 {
+		testnet.LoadTxBatchSize = defaultBatchSize
+	}
+	if testnet.LoadTxSizeBytes == 0 {
+		testnet.LoadTxSizeBytes = defaultTxSizeBytes
+	}
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
 	nodeNames := []string{}
@@ -156,14 +166,24 @@ func LoadTestnet(file string) (*Testnet, error) {
 
 	for _, name := range nodeNames {
 		nodeManifest := manifest.Nodes[name]
+		ind, ok := ifd.Instances[name]
+		if !ok {
+			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
+		}
+		v := nodeManifest.Version
+		if v == "" {
+			v = "local-version"
+		}
 		node := &Node{
 			Name:             name,
+			Version:          v,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
-			IP:               ipGen.Next(),
+			IP:               ind.IPAddress,
 			ProxyPort:        proxyPortGen.Next(),
 			Mode:             ModeValidator,
+			SyncApp:          nodeManifest.SyncApp,
 			Database:         "goleveldb",
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
@@ -175,6 +195,7 @@ func LoadTestnet(file string) (*Testnet, error) {
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
+			SendNoLoad:       nodeManifest.SendNoLoad,
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this

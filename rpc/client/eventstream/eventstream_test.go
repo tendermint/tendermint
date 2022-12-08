@@ -197,7 +197,6 @@ func newStreamTester(t *testing.T, query string, logOpts eventlog.LogSettings, s
 	s.log = lg
 	s.env = &rpccore.Environment{EventLog: lg}
 	s.stream = eventstream.New(s, query, streamOpts)
-	rpccore.SetEnvironment(s.env)
 	return s
 }
 
@@ -283,5 +282,5 @@ func (s *streamTester) Events(ctx context.Context, req *coretypes.RequestEvents)
 	if err := after.UnmarshalText([]byte(req.After)); err != nil {
 		return nil, err
 	}
-	return rpccore.EventsWithContext(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
+	return s.env.EventsWithContext(ctx, req.Filter, req.MaxItems, before, after, req.WaitTime)
 }

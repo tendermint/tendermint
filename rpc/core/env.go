@@ -6,7 +6,6 @@ import (
 	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/internal/eventlog"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -34,17 +33,6 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16
 )
 
-var (
-	// set by Node
-	env *Environment
-)
-
-// SetEnvironment sets up the given Environment.
-// It will race if multiple Node call SetEnvironment.
-func SetEnvironment(e *Environment) {
-	env = e
-}
-
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
@@ -70,6 +58,10 @@ type peers interface {
 	Peers() p2p.IPeerSet
 }
 
+type consensusReactor interface {
+	WaitSync() bool
+}
+
 // ----------------------------------------------
 // Environment contains objects and interfaces used by the RPC. It is expected
 // to be setup once during startup.
@@ -79,22 +71,22 @@ type Environment struct {
 	ProxyAppMempool proxy.AppConnMempool
 
 	// interfaces defined in types and above
-	StateStore     sm.Store
-	BlockStore     sm.BlockStore
-	EvidencePool   sm.EvidencePool
-	ConsensusState Consensus
-	P2PPeers       peers
-	P2PTransport   transport
+	StateStore       sm.Store
+	BlockStore       sm.BlockStore
+	EvidencePool     sm.EvidencePool
+	ConsensusState   Consensus
+	ConsensusReactor consensusReactor
+	P2PPeers         peers
+	P2PTransport     transport
 
 	// objects
-	PubKey           crypto.PubKey
-	GenDoc           *types.GenesisDoc // cache the genesis structure
-	TxIndexer        txindex.TxIndexer
-	BlockIndexer     indexer.BlockIndexer
-	ConsensusReactor *consensus.Reactor
-	EventBus         *types.EventBus // thread safe
-	EventLog         *eventlog.Log
-	Mempool          mempl.Mempool
+	PubKey       crypto.PubKey
+	GenDoc       *types.GenesisDoc // cache the genesis structure
+	TxIndexer    txindex.TxIndexer
+	BlockIndexer indexer.BlockIndexer
+	EventBus     *types.EventBus // thread safe
+	EventLog     *eventlog.Log
+	Mempool      mempl.Mempool
 
 	Logger log.Logger
 
@@ -127,7 +119,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 	return page, nil
 }
 
-func validatePerPage(perPagePtr *int) int {
+func (env *Environment) validatePerPage(perPagePtr *int) int {
 	if perPagePtr == nil { // no per_page parameter
 		return defaultPerPage
 	}
@@ -143,7 +135,7 @@ func validatePerPage(perPagePtr *int) int {
 
 // InitGenesisChunks configures the environment and should be called on service
 // startup.
-func InitGenesisChunks() error {
+func (env *Environment) InitGenesisChunks() error {
 	if env.genChunks != nil {
 		return nil
 	}
@@ -180,7 +172,7 @@ func validateSkipCount(page, perPage int) int {
 }
 
 // latestHeight can be either latest committed or uncommitted (+1) height.
-func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
+func (env *Environment) getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	if heightPtr != nil {
 		height := *heightPtr
 		if height <= 0 {
@@ -200,7 +192,7 @@ func getHeight(latestHeight int64, heightPtr *int64) (int64, error) {
 	return latestHeight, nil
 }
 
-func latestUncommittedHeight() int64 {
+func (env *Environment) latestUncommittedHeight() int64 {
 	nodeIsSyncing := env.ConsensusReactor.WaitSync()
 	if nodeIsSyncing {
 		return env.BlockStore.Height()

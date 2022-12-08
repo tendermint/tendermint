@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/cosmos/gogoproto/proto"
+
 	"github.com/tendermint/tendermint/libs/protoio"
 )
 

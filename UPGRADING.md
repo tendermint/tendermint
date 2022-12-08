@@ -5,6 +5,15 @@ Tendermint Core.
 
 ## Unreleased
 
+## Config Changes
+
+* A new config field, `BootstrapPeers` has been introduced as a means of
+  adding a list of addresses to the addressbook upon initializing a node. This is an
+  alternative to `PersistentPeers`. `PersistentPeers` shold be only used for
+  nodes that you want to keep a constant connection with i.e. sentry nodes
+
+----
+
 ### ABCI Changes
 
 * The `ABCIVersion` is now `1.0.0`.
@@ -31,6 +40,14 @@ Tendermint Core.
   guidelines](https://developers.google.com/protocol-buffers/docs/proto3#updating),
   this should have no effect on the wire-level encoding for UTF8-encoded
   strings.
+
+## v0.34.24
+
+Note that in [\#9724](https://github.com/tendermint/tendermint/pull/9724) we
+un-prettified the JSON output (i.e. removed all indentation) of the HTTP and
+WebSocket RPC for performance and subscription stability reasons. We recommend
+using a tool such as [jq](https://github.com/stedolan/jq) to obtain prettified
+output if you rely on that prettified output in some way.
 
 ## v0.34.20
 

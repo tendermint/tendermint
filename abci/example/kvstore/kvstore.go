@@ -79,7 +79,7 @@ func NewApplication() *Application {
 func (app *Application) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{
 		Data:             fmt.Sprintf("{\"size\":%v}", app.state.Size),
-		Version:          version.ABCIVersion,
+		Version:          version.ABCISemVer,
 		AppVersion:       ProtocolVersion,
 		LastBlockHeight:  app.state.Height,
 		LastBlockAppHash: app.state.AppHash,
@@ -122,6 +122,10 @@ func (app *Application) DeliverTx(req types.RequestDeliverTx) types.ResponseDeli
 }
 
 func (app *Application) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	if len(req.Tx) == 0 {
+		return types.ResponseCheckTx{Code: code.CodeTypeRejected}
+	}
+
 	if req.Type == types.CheckTxType_Recheck {
 		if _, ok := app.txToRemove[string(req.Tx)]; ok {
 			return types.ResponseCheckTx{Code: code.CodeTypeExecuted, GasWanted: 1}

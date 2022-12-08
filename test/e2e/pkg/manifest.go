@@ -68,6 +68,10 @@ type Manifest struct {
 	ProcessProposalDelay time.Duration `toml:"process_proposal_delay"`
 	CheckTxDelay         time.Duration `toml:"check_tx_delay"`
 	// TODO: add vote extension and finalize block delay (@cmwaters)
+
+	LoadTxSizeBytes   int `toml:"load_tx_size_bytes"`
+	LoadTxBatchSize   int `toml:"load_tx_batch_size"`
+	LoadTxConnections int `toml:"load_tx_connections"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
@@ -76,6 +80,22 @@ type ManifestNode struct {
 	// Defaults to "validator". Full nodes do not get a signing key (a dummy key
 	// is generated), and seed nodes run in seed mode with the PEX reactor enabled.
 	Mode string `toml:"mode"`
+
+	// Version specifies which version of Tendermint this node is. Specifying different
+	// versions for different nodes allows for testing the interaction of different
+	// node's compatibility. Note that in order to use a node at a particular version,
+	// there must be a docker image of the test app tagged with this version present
+	// on the machine where the test is being run.
+	Version string `toml:"version"`
+
+	// SyncApp specifies whether this node should use a synchronized application
+	// with an unsynchronized local client. By default this is `false`, meaning
+	// that the node will run an unsynchronized application with a synchronized
+	// local client.
+	//
+	// Only applies to validators and full nodes where their ABCI protocol is
+	// "builtin".
+	SyncApp bool `toml:"sync_app"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
 	Seeds []string `toml:"seeds"`
@@ -136,6 +156,11 @@ type ManifestNode struct {
 	// pause:      temporarily pauses (freezes) the node
 	// restart:    restarts the node, shutting it down with SIGTERM
 	Perturb []string `toml:"perturb"`
+
+	// SendNoLoad determines if the e2e test should send load to this node.
+	// It defaults to false so unless the configured, the node will
+	// receive load.
+	SendNoLoad bool `toml:"send_no_load"`
 }
 
 // Save saves the testnet manifest to a file.

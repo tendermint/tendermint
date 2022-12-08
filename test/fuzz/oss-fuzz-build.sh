@@ -13,7 +13,7 @@ build_go_fuzzer() {
 	compile_native_go_fuzzer "$FUZZ_ROOT"/test/fuzz/tests "$function" "$fuzzer"
 }
 
-go get github.com/AdamKorcz/go-118-fuzz-build/utils
+go get github.com/AdamKorcz/go-118-fuzz-build/testing
 go get github.com/prometheus/common/expfmt@v0.32.1
 
 build_go_fuzzer FuzzP2PSecretConnection fuzz_p2p_secretconnection
