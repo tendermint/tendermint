@@ -55,5 +55,6 @@ proto/spec/**/*.pb.go
 *.pdf
 *.gz
 *.dvi
+docker/tendermint
 # Python virtual environments
 .venv
