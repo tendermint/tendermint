@@ -9,9 +9,10 @@ import (
 	"strconv"
 	"strings"
 
+	dbm "github.com/tendermint/tm-db"
+
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/test/loadtime/report"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (

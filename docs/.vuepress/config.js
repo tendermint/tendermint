@@ -9,8 +9,8 @@ module.exports = {
     editLinks: true,
     label: 'core',
     algolia: {
-      id: "BH4D9OD16A",
-      key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
+      id: "QQFROLBNZC",
+      key: "f1b68b96fb31d8aa4a54412c44917a26",
       index: "tendermint"
     },
     versions: [

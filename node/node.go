@@ -141,7 +141,7 @@ func NewNode(config *cfg.Config,
 	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
-	dbProvider DBProvider,
+	dbProvider cfg.DBProvider,
 	metricsProvider MetricsProvider,
 	logger log.Logger,
 	options ...Option,
@@ -503,12 +503,12 @@ func (n *Node) OnStop() {
 }
 
 // ConfigureRPC makes sure RPC has all the objects it needs to operate.
-func (n *Node) ConfigureRPC() error {
+func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 	pubKey, err := n.privValidator.GetPubKey()
-	if err != nil {
-		return fmt.Errorf("can't get pubkey: %w", err)
+	if pubKey == nil || err != nil {
+		return nil, fmt.Errorf("can't get pubkey: %w", err)
 	}
-	rpccore.SetEnvironment(&rpccore.Environment{
+	rpcCoreEnv := rpccore.Environment{
 		ProxyAppQuery:   n.proxyApp.Query(),
 		ProxyAppMempool: n.proxyApp.Mempool(),
 
@@ -518,8 +518,8 @@ func (n *Node) ConfigureRPC() error {
 		ConsensusState: n.consensusState,
 		P2PPeers:       n.sw,
 		P2PTransport:   n,
+		PubKey:         pubKey,
 
-		PubKey:           pubKey,
 		GenDoc:           n.genesisDoc,
 		TxIndexer:        n.txIndexer,
 		BlockIndexer:     n.blockIndexer,
@@ -530,24 +530,24 @@ func (n *Node) ConfigureRPC() error {
 		Logger: n.Logger.With("module", "rpc"),
 
 		Config: *n.config.RPC,
-	})
-	if err := rpccore.InitGenesisChunks(); err != nil {
-		return err
 	}
-
-	return nil
+	if err := rpcCoreEnv.InitGenesisChunks(); err != nil {
+		return nil, err
+	}
+	return &rpcCoreEnv, nil
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {
-	err := n.ConfigureRPC()
+	env, err := n.ConfigureRPC()
 	if err != nil {
 		return nil, err
 	}
 
 	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
+	routes := env.GetRoutes()
 
 	if n.config.RPC.Unsafe {
-		rpccore.AddUnsafeRoutes()
+		env.AddUnsafeRoutes(routes)
 	}
 
 	config := rpcserver.DefaultConfig()
@@ -567,7 +567,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
 		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes,
+		wm := rpcserver.NewWebsocketManager(routes,
 			rpcserver.OnDisconnect(func(remoteAddr string) {
 				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
@@ -579,10 +579,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		)
 		wm.SetLogger(wmLogger)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
+		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
 		listener, err := rpcserver.Listen(
 			listenAddr,
-			config,
+			config.MaxOpenConnections,
 		)
 		if err != nil {
 			return nil, err
@@ -640,12 +640,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		if config.WriteTimeout <= n.config.RPC.TimeoutBroadcastTxCommit {
 			config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 		}
-		listener, err := rpcserver.Listen(grpcListenAddr, config)
+		listener, err := rpcserver.Listen(grpcListenAddr, config.MaxOpenConnections)
 		if err != nil {
 			return nil, err
 		}
 		go func() {
-			if err := grpccore.StartGRPCServer(listener); err != nil {
+			if err := grpccore.StartGRPCServer(env, listener); err != nil {
 				n.Logger.Error("Error starting gRPC server", "err", err)
 			}
 		}()
