@@ -109,7 +109,7 @@ peer's blockpart state.
  1. [We send][block-part-send-1] [the peer a block part][block-part-send-2].
  1. Our peer tells us about the parts they have block [via `NewValidBlock`
 messages][new-valid-block-message-send]. This message is only sent when the
-validator has a quorum of prevotes or precommits for a block.
+peer has a quorum of prevotes or precommits for a block.
 
 Each node receives block parts from all of its peers. The particular block part
 to send at any given time is randomly selected from the set of parts that the
