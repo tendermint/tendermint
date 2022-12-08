@@ -119,7 +119,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	// But we remember the height we want to find and forward it to
 	// match(). If we only have the height constraint and match.events keyword
 	// in the query (the second part of the ||), we don't need to query
-	// per event conditions and return all events withing the height range.
+	// per event conditions and return all events within the height range.
 	if ok && (!matchEvents || (matchEvents && len(conditions) == 2)) {
 		ok, err := idx.Has(height)
 		if err != nil {
