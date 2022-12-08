@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/tendermint/tendermint/test/loadtime/payload"
 	"github.com/tendermint/tendermint/test/loadtime/report"
 	"github.com/tendermint/tendermint/types"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type mockBlockStore struct {

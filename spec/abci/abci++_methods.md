@@ -541,16 +541,16 @@ proposal and will not call `RequestPrepareProposal`.
 
 #### When does Tendermint call `ProcessProposal`?
 
-When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which _q_ is the proposer (possibly _p_ = _q_):
+When a node _p_ enters Tendermint consensus round _r_, height _h_, in which _q_ is the proposer (possibly _p_ = _q_):
 
 1. _p_ sets up timer `ProposeTimeout`.
 2. If _p_ is the proposer, _p_ executes steps 1-6 in [PrepareProposal](#prepareproposal).
 3. Upon reception of Proposal message (which contains the header) for round _r_, height _h_ from
    _q_, _p_'s Tendermint verifies the block header.
 4. Upon reception of Proposal message, along with all the block parts, for round _r_, height _h_
-   from _q_, _p_'s Tendermint follows its algorithm to check whether it should prevote for the
+   from _q_, _p_'s Tendermint follows the validators' algorithm to check whether it should prevote for the
    proposed block, or `nil`.
-5. If Tendermint should prevote for the proposed block:
+5. If the validators' algorithm indicates Tendermint should prevote for the proposed block:
     1. Tendermint calls `RequestProcessProposal` with the block. The call is synchronous.
     2. The Application checks/processes the proposed block, which is read-only, and returns
        `ACCEPT` or `REJECT` in the `ResponseProcessProposal.status` field.
@@ -559,7 +559,9 @@ When a validator _p_ enters Tendermint consensus round _r_, height _h_, in which
          * or after doing some basic checks, and process the block asynchronously. In this case the
            Application will not be able to reject the block, or force prevote/precommit `nil`
            afterwards.
-    3. If the returned value is
+         * or immediately, returning `ACCEPT`, if _p_ is not a validator
+           and the Application does not want non-validating nodes to handle `ProcessProposal`
+    3. If _p_ is a validator and the returned value is
          * `ACCEPT`: Tendermint prevotes on this proposal for round _r_, height _h_.
          * `REJECT`: Tendermint prevotes `nil`.
 <!--

@@ -70,6 +70,24 @@ func TestKVStoreKV(t *testing.T) {
 	testKVStore(t, kvstore, tx, key, value)
 }
 
+func TestPersistentKVStoreEmptyTX(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
+	if err != nil {
+		t.Fatal(err)
+	}
+	kvstore := NewPersistentKVStoreApplication(dir)
+	tx := []byte("")
+	reqCheck := types.RequestCheckTx{Tx: tx}
+	resCheck := kvstore.CheckTx(reqCheck)
+	require.Equal(t, resCheck.Code, code.CodeTypeRejected)
+
+	txs := make([][]byte, 0, 4)
+	txs = append(txs, []byte("key=value"), []byte("key"), []byte(""), []byte("kee=value"))
+	reqPrepare := types.RequestPrepareProposal{Txs: txs, MaxTxBytes: 10 * 1024}
+	resPrepare := kvstore.PrepareProposal(reqPrepare)
+	require.Equal(t, len(reqPrepare.Txs), len(resPrepare.Txs)+1, "Empty transaction not properly removed")
+}
+
 func TestPersistentKVStoreKV(t *testing.T) {
 	dir, err := os.MkdirTemp("/tmp", "abci-kvstore-test") // TODO
 	if err != nil {

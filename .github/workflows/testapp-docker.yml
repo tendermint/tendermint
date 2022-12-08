@@ -1,6 +1,6 @@
-name: Docker
-# Build & Push rebuilds the Tendermint docker image on every push to main and creation of tags
-# and pushes the image to https://hub.docker.com/r/tendermint/tendermint
+name: Docker E2E Node
+# Build & Push rebuilds the e2e Testapp docker image on every push to main and creation of tags
+# and pushes the image to https://hub.docker.com/r/tendermint/e2e-node
 on:
   push:
     branches:
@@ -19,7 +19,7 @@ jobs:
       - name: Prepare
         id: prep
         run: |
-          DOCKER_IMAGE=tendermint/tendermint
+          DOCKER_IMAGE=tendermint/e2e-node
           VERSION=noop
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -33,7 +33,7 @@ jobs:
           if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
             TAGS="$TAGS,${DOCKER_IMAGE}:${VERSION}"
           fi
-          echo ::set-output name=tags::${TAGS}
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@master
@@ -54,7 +54,7 @@ jobs:
         uses: docker/build-push-action@v3.2.0
         with:
           context: .
-          file: ./DOCKER/Dockerfile
+          file: ./test/e2e/docker/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'beep_boop' }}
           tags: ${{ steps.prep.outputs.tags }}

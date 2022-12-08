@@ -104,7 +104,7 @@ func WriteRPCResponseHTTPError(
 		panic("tried to write http error response without RPC error")
 	}
 
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
+	jsonBytes, err := json.Marshal(res)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
@@ -140,7 +140,7 @@ func writeRPCResponseHTTP(w http.ResponseWriter, headers []httpHeader, res ...ty
 		v = res
 	}
 
-	jsonBytes, err := json.MarshalIndent(v, "", "  ")
+	jsonBytes, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
@@ -258,7 +258,7 @@ func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Listen starts a new net.Listener on the given address.
 // It returns an error if the address is invalid or the call to Listen() fails.
-func Listen(addr string, config *Config) (listener net.Listener, err error) {
+func Listen(addr string, maxOpenConnections int) (listener net.Listener, err error) {
 	parts := strings.SplitN(addr, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf(
@@ -271,8 +271,8 @@ func Listen(addr string, config *Config) (listener net.Listener, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on %v: %v", addr, err)
 	}
-	if config.MaxOpenConnections > 0 {
-		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
+	if maxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, maxOpenConnections)
 	}
 
 	return listener, nil

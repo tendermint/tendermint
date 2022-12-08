@@ -64,7 +64,7 @@ jobs:
 
       - name: Set crashers count
         working-directory: test/fuzz
-        run: echo "::set-output name=count::$(find . -type d -name 'crashers' | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')"
+        run: echo "count=$(find . -type d -name 'crashers' | xargs -I % sh -c 'ls % | wc -l' | awk '{total += $1} END {print total}')" >> $GITHUB_OUTPUT
         id: set-crashers-count
 
     outputs:

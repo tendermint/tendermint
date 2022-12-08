@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	dbm "github.com/tendermint/tm-db"
+
 	abciclientmocks "github.com/tendermint/tendermint/abci/client/mocks"
 	abci "github.com/tendermint/tendermint/abci/types"
 	abcimocks "github.com/tendermint/tendermint/abci/types/mocks"
@@ -29,7 +31,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 	"github.com/tendermint/tendermint/version"
-	dbm "github.com/tendermint/tm-db"
 )
 
 var (
@@ -548,7 +549,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
 			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
 		}
-	case <-updatesSub.Cancelled():
+	case <-updatesSub.Canceled():
 		t.Fatalf("updatesSub was canceled (reason: %v)", updatesSub.Err())
 	case <-time.After(1 * time.Second):
 		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
