@@ -100,7 +100,7 @@ Given that Tendermint informs all peers of _each_ vote message it receives, all 
 
 #### Gossip Known BlockPart Data
 
-The `BlockPart` messages, by far, account for the majority of the data sent to each peer. At the moment, peers do not inform the node of which block parts they already have. This means that each block part is _very likely_ to be transmitted many times to each node. This frivolous consumption is even worse in networks large blocks. 
+The `BlockPart` messages, by far, account for the majority of the data sent to each peer. At the moment, peers do not inform the node of which block parts they already have. This means that each block part is _very likely_ to be transmitted many times to each node. This frivolous consumption is even worse in networks with large blocks. 
 
 The very simple solution to this issue is to copy the technique used in consensus for informing peers when the node receives a vote. The consensus reactor can be augmented with a `HasBlockPart` message that is broadcast to each peer every time the node receives a block part. By informing each peer every time the node receives a block part, we can drastically reduce the amount of duplicate data sent to each node. There would be no algorithmic way of enforcing that a peer accurately reports its block parts, so providing this message would be a somewhat altruistic action on the part of the node. Such a system [has been proposed in the past][i627] as well, so this is certainly not totally new ground.
 
