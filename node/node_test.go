@@ -53,7 +53,7 @@ func TestNodeStartStop(t *testing.T) {
 	require.NoError(t, err)
 	select {
 	case <-blocksSub.Out():
-	case <-blocksSub.Cancelled():
+	case <-blocksSub.Canceled():
 		t.Fatal("blocksSub was canceled")
 	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
@@ -461,7 +461,7 @@ func TestNodeNewNodeCustomReactors(t *testing.T) {
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
+		cfg.DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		log.TestingLogger(),
 		CustomReactors(map[string]p2p.Reactor{"FOO": cr, "BLOCKSYNC": customBlocksyncReactor}),
