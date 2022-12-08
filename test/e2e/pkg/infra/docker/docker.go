@@ -85,7 +85,7 @@ services:
     - ./{{ .Name }}:/tendermint
     networks:
       {{ $.Name }}:
-        ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .IP }}
+        ipv{{ if $.IPv6 }}6{{ else }}4{{ end}}_address: {{ .InternalIP }}
 
 {{end}}`)
 	if err != nil {
