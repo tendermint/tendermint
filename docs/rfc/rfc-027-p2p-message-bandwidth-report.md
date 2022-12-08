@@ -55,10 +55,24 @@ the total bandwidth consumption of these three message types.
 
 
 #### Send: 
+
+##### Top 3 Percent: 
+
 ![](./images/top-3-percent-send.png)
 
+##### Rate For All Messages: 
+
+![](./images/send-rate-all.png)
+
 #### Receive: 
+
+##### Top 3 Percent: 
+
 ![](./images/top-3-percent-receive.png)
+
+##### Rate For All Messages: 
+
+![](./images/receive-rate-all.png)
 
 ### Investigation of Message Usage
 
