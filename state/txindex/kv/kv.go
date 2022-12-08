@@ -375,14 +375,12 @@ func (txi *TxIndex) match(
 				if err != nil || !checkBounds(heightRanges, eventHeight) {
 					continue
 				}
-			} else {
+			} else if height != 0 {
 				// If we have a particular height in the query, return only transactions
 				// matching this height.
-				if height != 0 {
-					eventHeight, err := extractHeightFromKey(it.Key())
-					if eventHeight != height || err != nil {
-						continue
-					}
+				eventHeight, err := extractHeightFromKey(it.Key())
+				if eventHeight != height || err != nil {
+					continue
 				}
 			}
 
@@ -469,7 +467,7 @@ func (txi *TxIndex) match(
 	// match (tmpHashes).
 	for k, v := range filteredHashes {
 		tmpHash := tmpHashes[k]
-		if (tmpHash != nil && !bytes.Equal(tmpHashes[k], v)) || tmpHash == nil {
+		if tmpHash == nil || !bytes.Equal(tmpHash, v) {
 			delete(filteredHashes, k)
 
 			// Potentially exit early.
@@ -563,7 +561,7 @@ LOOP:
 	// match (tmpHashes).
 	for k, v := range filteredHashes {
 		tmpHash := tmpHashes[k]
-		if (tmpHash != nil && !bytes.Equal(tmpHashes[k], v)) || tmpHash == nil {
+		if tmpHash == nil || !bytes.Equal(tmpHashes[k], v) {
 			delete(filteredHashes, k)
 
 			// Potentially exit early.

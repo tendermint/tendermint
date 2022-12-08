@@ -115,7 +115,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	height, ok, heightIdx := lookForHeight(conditions)
 
 	// If we have additional constraints and want to query per event
-	// attributed, we cannot simply return all blocks for a height.
+	// attributes, we cannot simply return all blocks for a height.
 	// But we remember the height we want to find and forward it to
 	// match()
 	if ok && (!matchEvents || (matchEvents && len(conditions) == 2)) {
@@ -514,7 +514,7 @@ func (idx *BlockerIndexer) match(
 	// match (tmpHeights).
 	for k, v := range filteredHeights {
 		tmpHeight := tmpHeights[k]
-		if (tmpHeight != nil && !bytes.Equal(tmpHeights[k], v)) || tmpHeight == nil {
+		if (tmpHeight != nil && !bytes.Equal(tmpHeight, v)) || tmpHeight == nil {
 			delete(filteredHeights, k)
 
 			select {

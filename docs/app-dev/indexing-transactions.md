@@ -116,7 +116,7 @@ transferNodeNothingEndblock12        1
 The key is thus formed of the event type, the attribute key and value, the event the attribute belongs to (`EndBlock` or `BeginBlock`),
 the height and the event number. The event number is a local variable kept by the indexer and incremented when a new event is processed. 
 
-It is a `int64` variable and has no other semantics besides being used to associate attributes belonging to the same events within a height. 
+It is an `int64` variable and has no other semantics besides being used to associate attributes belonging to the same events within a height. 
 This variable is not atomically incremented as event indexing is deterministic. **Should this ever change**, the event id generation
 will be broken. 
 
@@ -198,7 +198,7 @@ You can query for a paginated set of transaction by their events by calling the
 ```bash
 curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true"
 ```
-If the conditionsare related to transaction events and the user wants to make sure the
+If the conditions are related to transaction events and the user wants to make sure the
 conditions are true within the same events, the `match.event` keyword should be used, 
 as described [below](#querying_block_events)
 
@@ -236,7 +236,7 @@ curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_cha
 ## `match.events` keyword 
 
 The query results in the height number(s) (or transaction hashes when querying transactions) which contain events whose attributes match the query conditions. 
-However, there are two option to query the indexers. To demonstrate the two modes, we reuse the two events
+However, there are two options to query the indexers. To demonstrate the two modes, we reuse the two events
 where Bob and Tom send money to Alice and query the block indexer. We issue the following query:
 
 ```bash
