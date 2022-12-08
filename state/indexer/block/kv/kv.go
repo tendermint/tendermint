@@ -117,7 +117,9 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	// If we have additional constraints and want to query per event
 	// attributes, we cannot simply return all blocks for a height.
 	// But we remember the height we want to find and forward it to
-	// match()
+	// match(). If we only have the height constraint and match.events keyword
+	// in the query (the second part of the ||), we don't need to query
+	// per event conditions and return all events withing the height range.
 	if ok && (!matchEvents || (matchEvents && len(conditions) == 2)) {
 		ok, err := idx.Has(height)
 		if err != nil {
@@ -149,8 +151,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 			// specific event values we do not want to simply return all
 			// blocks in this height range. We remember the height range info
 			// and pass it on to match() to take into account when processing events.
-			if qr.Key == types.
-				BlockHeightKey && matchEvents {
+			if qr.Key == types.BlockHeightKey && matchEvents {
 				heightRanges = qr
 				// If the query contains ranges other than the height then we need to treat the height
 				// range when querying the conditions of the other range.

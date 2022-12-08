@@ -502,8 +502,6 @@ func (txi *TxIndex) matchRange(
 	}
 
 	tmpHashes := make(map[string][]byte)
-	// lowerBound := qr.LowerBoundValue()
-	// upperBound := qr.UpperBoundValue()
 
 	it, err := dbm.IteratePrefix(txi.store, startKey)
 	if err != nil {
@@ -581,8 +579,7 @@ LOOP:
 func isTagKey(key []byte) bool {
 	// This should be always 4 if data is indexed together with event sequences
 	// The check for 3 was added to allow data indexed before (w/o the event number)
-	// to be retrieved. Note that this is no the cleanest solution, we should probably
-	// redesign this part.
+	// to be retrieved.
 	numTags := strings.Count(string(key), tagKeySeparator)
 	return numTags == 4 || numTags == 3
 }

@@ -110,10 +110,12 @@ func parseEventSeqFromEventKey(key []byte) (int64, error) {
 	}
 
 	// This is done to support previous versions that did not have event sequence in their key
-
 	if len(remaining) != 0 {
 		remaining, err = orderedcode.Parse(remaining, &eventSeq)
-		if err != nil || len(remaining) != 0 {
+		if err != nil {
+			return 0, fmt.Errorf("failed to parse event key: %w", err)
+		}
+		if len(remaining) != 0 {
 			return 0, fmt.Errorf("unexpected remainder in key: %s", remaining)
 		}
 	}

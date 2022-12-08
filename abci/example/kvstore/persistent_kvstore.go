@@ -33,11 +33,6 @@ type PersistentKVStoreApplication struct {
 	valAddrToPubKeyMap map[string]pc.PublicKey
 
 	logger log.Logger
-
-	// If true, the test app will generate block events in BeginBlock
-	// false by default as we do not want to increase the storage footpring
-	// if we are not testing the event indexer
-	genBlockEvents bool
 }
 
 func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
@@ -57,7 +52,7 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 }
 
 func (app *PersistentKVStoreApplication) SetGenBlockEvents() {
-	app.genBlockEvents = true
+	app.app.genBlockEvents = true
 }
 func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 	app.logger = l
@@ -150,67 +145,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 		}
 	}
 
-	response := types.ResponseBeginBlock{}
-	if !app.genBlockEvents {
-		return response
-	}
-	if app.app.state.Height%2 == 0 {
-		response = types.ResponseBeginBlock{
-			Events: []types.Event{
-				{
-					Type: "begin_event",
-					Attributes: []types.EventAttribute{
-						{
-							Key:   []byte("foo"),
-							Value: []byte("100"),
-							Index: true,
-						},
-						{
-							Key:   []byte("bar"),
-							Value: []byte("200"),
-							Index: true,
-						},
-					},
-				},
-				{
-					Type: "begin_event",
-					Attributes: []types.EventAttribute{
-						{
-							Key:   []byte("foo"),
-							Value: []byte("200"),
-							Index: true,
-						},
-						{
-							Key:   []byte("bar"),
-							Value: []byte("300"),
-							Index: true,
-						},
-					},
-				},
-			},
-		}
-	} else {
-		response = types.ResponseBeginBlock{
-			Events: []types.Event{
-				{
-					Type: "begin_event",
-					Attributes: []types.EventAttribute{
-						{
-							Key:   []byte("foo"),
-							Value: []byte("400"),
-							Index: true,
-						},
-						{
-							Key:   []byte("bar"),
-							Value: []byte("300"),
-							Index: true,
-						},
-					},
-				},
-			},
-		}
-	}
-	return response
+	return app.app.BeginBlock(req)
 }
 
 // Update the validator set
