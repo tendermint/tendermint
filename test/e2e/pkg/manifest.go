@@ -69,6 +69,13 @@ type ManifestNode struct {
 	// is generated), and seed nodes run in seed mode with the PEX reactor enabled.
 	Mode string `toml:"mode"`
 
+	// Version specifies which version of Tendermint this node is. Specifying different
+	// versions for different nodes allows for testing the interaction of different
+	// node's compatibility. Note that in order to use a node at a particular version,
+	// there must be a docker image of the test app tagged with this version present
+	// on the machine where the test is being run.
+	Version string `toml:"version"`
+
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
 	Seeds []string `toml:"seeds"`
 
