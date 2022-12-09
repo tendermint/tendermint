@@ -36,7 +36,7 @@ func (p *Provider) Setup() error {
 }
 
 func (p Provider) CreateNode(ctx context.Context, n *e2e.Node) error {
-	return ExecCompose(ctx, p.Testnet.Dir, "create", n.Name)
+	return ExecCompose(ctx, p.Testnet.Dir, "up", "-d", "--no-start", n.Name)
 }
 func (p Provider) StartTendermint(ctx context.Context, n *e2e.Node) error {
 	return ExecCompose(ctx, p.Testnet.Dir, "start", n.Name)
