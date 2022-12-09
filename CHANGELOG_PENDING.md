@@ -23,6 +23,7 @@
 - `[state/kvindexer]` [\#9759] Added `match.event` keyword to support condition evalution based on the event attributes belong to. (@jmalicevic)
 - [crypto] \#9250 Update to use btcec v2 and the latest btcutil. (@wcsiu)
 - [consensus] \#9760 Save peer LastCommit correctly to achieve 50% reduction in gossiped precommits. (@williambanfield)
+- [metrics] \#9733 Add metrics for timing the consensus steps and for the progress of block gossip. (@williambanfield)
 
 ### BUG FIXES
 
