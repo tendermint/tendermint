@@ -133,7 +133,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	// to unroll unwieldy abstractions. Here we duplicate the code from:
 	// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newKVStore)
 
-	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	genDoc, privVals := randGenesisDoc(nValidators, false, 30, nil)
 	css := make([]*State, nValidators)
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
@@ -307,6 +307,108 @@ func TestReactorReceivePanicsIfInitPeerHasntBeenCalledYet(t *testing.T) {
 				Round: 1, Index: 1, Type: tmproto.PrevoteType},
 		})
 	})
+}
+
+// TestSwitchToConsensusVoteExtensions tests that the SwitchToConsensus correctly
+// checks for vote extension data when required.
+func TestSwitchToConsensusVoteExtensions(t *testing.T) {
+	for _, testCase := range []struct {
+		name                  string
+		storedHeight          int64
+		initialRequiredHeight int64
+		includeExtensions     bool
+		shouldPanic           bool
+	}{
+		{
+			name:                  "no vote extensions but not required",
+			initialRequiredHeight: 0,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           false,
+		},
+		{
+			name:                  "no vote extensions but required this height",
+			initialRequiredHeight: 2,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           true,
+		},
+		{
+			name:                  "no vote extensions and required in future",
+			initialRequiredHeight: 3,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           false,
+		},
+		{
+			name:                  "no vote extensions and required previous height",
+			initialRequiredHeight: 1,
+			storedHeight:          2,
+			includeExtensions:     false,
+			shouldPanic:           true,
+		},
+		{
+			name:                  "vote extensions and required previous height",
+			initialRequiredHeight: 1,
+			storedHeight:          2,
+			includeExtensions:     true,
+			shouldPanic:           false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			cs, vs := randState(1)
+			validator := vs[0]
+			validator.Height = testCase.storedHeight
+
+			cs.state.LastBlockHeight = testCase.storedHeight
+			cs.state.LastValidators = cs.state.Validators.Copy()
+			cs.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.initialRequiredHeight
+
+			propBlock, err := cs.createProposalBlock()
+			require.NoError(t, err)
+
+			// Consensus is preparing to do the next height after the stored height.
+			cs.Height = testCase.storedHeight + 1
+			propBlock.Height = testCase.storedHeight
+			blockParts, err := propBlock.MakePartSet(types.BlockPartSizeBytes)
+			require.NoError(t, err)
+
+			var voteSet *types.VoteSet
+			if testCase.includeExtensions {
+				voteSet = types.NewExtendedVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators)
+			} else {
+				voteSet = types.NewVoteSet(cs.state.ChainID, testCase.storedHeight, 0, tmproto.PrecommitType, cs.state.Validators)
+			}
+			signedVote := signVote(validator, tmproto.PrecommitType, propBlock.Hash(), blockParts.Header())
+
+			if !testCase.includeExtensions {
+				signedVote.Extension = nil
+				signedVote.ExtensionSignature = nil
+			}
+
+			added, err := voteSet.AddVote(signedVote)
+			require.NoError(t, err)
+			require.True(t, added)
+
+			if testCase.includeExtensions {
+				cs.blockStore.SaveBlockWithExtendedCommit(propBlock, blockParts, voteSet.MakeExtendedCommit())
+			} else {
+				cs.blockStore.SaveBlock(propBlock, blockParts, voteSet.MakeExtendedCommit().ToCommit())
+			}
+			reactor := NewReactor(
+				cs,
+				true,
+			)
+
+			if testCase.shouldPanic {
+				assert.Panics(t, func() {
+					reactor.SwitchToConsensus(cs.state, false)
+				})
+			} else {
+				reactor.SwitchToConsensus(cs.state, false)
+			}
+		})
+	}
 }
 
 // Test we record stats about votes and block parts from other peers.
