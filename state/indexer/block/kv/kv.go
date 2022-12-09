@@ -515,7 +515,7 @@ func (idx *BlockerIndexer) match(
 	// match (tmpHeights).
 	for k, v := range filteredHeights {
 		tmpHeight := tmpHeights[k]
-		if (tmpHeight != nil && !bytes.Equal(tmpHeight, v)) || tmpHeight == nil {
+		if tmpHeight == nil || !bytes.Equal(tmpHeight, v) {
 			delete(filteredHeights, k)
 
 			select {
