@@ -169,7 +169,7 @@ func BlockSearchMatchEvents(
 ) (*ctypes.ResultBlockSearch, error) {
 	// skip if block indexing is disabled
 	if _, ok := env.BlockIndexer.(*blockidxnull.BlockerIndexer); ok {
-		return nil, errors.New("block indexing is disabled")
+		return nil, errors.New("block indexing (match events) is disabled")
 	}
 	if matchEvents {
 		query = query + " AND match.events = 1"
