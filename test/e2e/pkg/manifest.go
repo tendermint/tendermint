@@ -89,14 +89,19 @@ type ManifestNode struct {
 	Version string `toml:"version"`
 
 	// BuiltinProxyMode specifies the type of proxy we should use if the
-	// testnet's ABCIProtocol is set to "builtin". This can either be "sync",
-	// which uses [proxy.NewLocalClientCreator] to create ABCI client
-	// interfaces with a global mutex across all of them, or "unsync", which
-	// uses [proxy.NewUnsyncLocalClientCreator] to create ABCI client
-	// interfaces with a mutex per client.
+	// testnet's ABCIProtocol is set to "builtin", otherwise this has no
+	// effect. This can either be "sync", which uses
+	// [proxy.NewLocalClientCreator] to create ABCI client interfaces with a
+	// global mutex across all of them, or "unsync", which uses
+	// [proxy.NewUnsyncLocalClientCreator] to create ABCI client interfaces
+	// with a mutex per client.
 	//
 	// The "unsync" version effectively simulates the same concurrency model as
 	// the socket-based connection.
+	//
+	// This parameter is configured on a per-node basis in order to allow for a
+	// mix of application concurrency models in testnets when the testnet's
+	// ABCIProtocol is set to "builtin".
 	BuiltinProxyMode string `toml:"builtin_proxy_mode"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
