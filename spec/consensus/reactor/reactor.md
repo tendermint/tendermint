@@ -25,7 +25,7 @@ The Consensus reactor is, itself, divided into two layers, State and Communicati
 
 The **State** layer keeps the state and transition functions described in the [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.0493).
 
-The **Communication** layer handles messages received through the P2P layer, triggering updates of peer information and, when conditions are met, of the consensus state.
+The **Communication** layer (AKA, Gossip) handles messages received through the P2P layer, triggering updates of peer information and, when conditions are met, of the consensus state.
 The communication layer also reacts to events in the consensus state and, periodically, propagates information on the node's state to its neighbors. 
 It is in this layer that partial synchrony assumptions are combined with P2P primitives to provide Tendermint BFT's liveness guarantees.
 Exchanges between State and Communication use multiple forms, but we will call them all **Gossip-I** here.
@@ -66,60 +66,49 @@ Here we assume that you understand the Tendermint BFT algorithm, which has been 
 
 The Tendermint BFT algorithm assumes that a **Global Stabilization Time (GST)** exists, after which communication is reliable and timely:
 
-> **Note**  
-> Eventual $\Delta$-Timely Communication: There is a bound $\Delta$ and an instant GST (Global Stabilization Time) such that if a correct process $p$ sends message $m$ at time $t \geq \text{GST}$ to a correct process $q$, then $q$ will receive $m$ before $t + \Delta$.
+> **Eventual $\Delta$-Timely Communication**: There is a bound $\Delta$ and an instant GST (Global Stabilization Time) such that if a correct process $p$ sends message $m$ at time $t \geq \text{GST}$ to a correct process $q$, then $q$ will receive $m$ before $t + \Delta$.
 
-Tendermint BFT also assumes that that it is used to provide "Gossip Communication":
+Tendermint BFT also assumes that this property is used to provide **Gossip Communication**:
 
-> **Note**    
-> Gossip communication: (i)If a correct process $p$ sends some message $m$ at time $t$, all correct processes will receive $m$ before $\text{max} \{t,\text{GST}\} + \Delta$.
+> **Gossip communication**: (i)If a correct process $p$ sends some message $m$ at time $t$, all correct processes will receive $m$ before $\text{max} \{t,\text{GST}\} + \Delta$.
 Furthermore, (ii)if a correct process $p$ receives some message $m$ at time $t$, all correct processes will receive $m$ before $\text{max}\{t,\text{GST}\} + \Delta$.
 
-Because Gossip Communication requires even messages sent before GST to be reliably delivered between correct processes ($t$ may be smaller than GST in (i)) and because GST could take arbitrarily long to arrive, in practice, implementing this property would require an unbounded message buffer.
+Because Gossip Communication requires even messages sent before GST to be reliably delivered between correct processes ($t$ may happen before GST in (i)) and because GST could take arbitrarily long to arrive, in practice, implementing this property would require an unbounded message buffer.
 
 However, while Gossip Communication is a sufficient condition for Tendermint BFT to terminate, it is not strictly necessary that all messages from correct processes reach all other correct processes.
 What is required is for either the message to be delivered or that, eventually, some newer message, with information that supersedes that in the first message, to be timely delivered.
 In Tendermint BFT, this property is seen, for example, when nodes ignore proposal messages from prior rounds.
 
-It seems reasonable, therefore, to formalize the requirements of Tendermint in terms of a weaker, *best-effort* communication guarantee, and to combine it with GST later, to ensure eventual termination.
+> **Supersession**: We say that a message $lhs$ supersedes a message $rhs$ if after receiving $lhs$ a process would make at least as much progress as it would by receiving $rhs$ and we note is as follows: $\text{lhs} \overset{s}{>} \text{rhs}$.   
+> **TODO**: Better definition.
+
+It seems reasonable, therefore, to formalize the requirements of Tendermint in terms of a weaker, *best-effort* communication guarantees and to combine them with GST outside of the communication layer, to ensure eventual termination.
 
 > **Note**   
-> Best Effort communication: continuously forward any non-superseded messages to connected nodes.   
-> Best effort Gossip +  $\Diamond\Delta$-Timely Communication ~> $\Diamond$ Termination.
-
-> **Warning**    
-> If gossip is **best-effort**, so should be P2P.
-
-It is also assumed that, after GST, timeouts do not expire precociously.
-
-### Supersession
-We say that a message $lhs$ supersedes a message $rhs$ if after receiving $lhs$ a process would make at least as much progress as it would by receiving $rhs$ and we note is as follows: $\text{lhs} \overset{s}{>} \text{rhs}$
-
-> **TODO**    
-> Better define this
+> It is also assumed that, after GST, timeouts do not expire precociously.
 
 
 
 
 
+# Part 2: Specifications
 ## The Consensus State Layer - State
 
-### Provides o Applications and other Reactors
+### Provides to Applications and other Reactors
 
-This part is covered by the ABCI specification.
-
+Communication of the Consensus Reactor with layers above (applications) and on to the side (other reactors) is covered by the [ABCI](../../abci/) specification.
 
 ### Provides to the Communication Layer
 
 A message supersession operator:
 
-`SuperS(lhs,rhs)` is true if and only if $\text{lhs} \overset{s}{>} \text{rhs}$
-
+`SSS(lhs,rhs)` (`lhs` supersedes `rhs`) is true if and only if $\text{lhs} \overset{s}{>} \text{rhs}$
 
 ### Requires from the Communication Layer
 
-Messages received by a node change its State or are discarded. 
-If they they change the State, even if by just getting added to a set of received messages, they the original message need not be forwarded. Instead, a new message, with the same contents, is generated from the State of the node. Why does this matter? Because it let's us think in terms of messages being sent to neighbors only, not forwarded on the overlay.
+Messages received by a node either change the node's State or are discarded. 
+If they change the State, even if by just getting added to a set of received messages, then the original message need not be forwarded. 
+Instead, a new message, with the same contents, is generated from the State of the node. Why does this matter? Because it let's us think in terms of messages being sent to neighbors only, not forwarded on the overlay.
 
 > **[REQ-STATE-GOSSIP-NEIGHBOR_CAST]**   
 > Best Effort Neighbor-Cast: continuously resend any non-superseded messages to neighbors (connected nodes).
@@ -280,7 +269,11 @@ Non-refutability of messages - Is this a gossip or a consensus requirement?
 
 
 
+---
+# Scratch - Do not waste your time reading below this point!
 
+> **Warning**   
+> Anything below this point is just scratch nodes, waiting to be promoted to real contents or be cast into oblivion
 
 
 
@@ -324,7 +317,6 @@ Non-refutability of messages - Is this a gossip or a consensus requirement?
 
 
 
-# Scratch
 
 ### Provides to State
 
@@ -361,19 +353,3 @@ P2P + Eventual Connectivity ~> [Eventual Info Delivery]
     > Current implementation does not consider superseding, except if a decision is reached, in which case messages may not be dropped on the current node, but if the message arrives at the next node and it has decided, then the message is dropped, so it seems like it could be dropped locally as well without loss of correctness.
 
     > Current implementation may lose messages in `S` (if peers are removed and re-added (messages are dropped with the connection and not re-send once the connection is reestablished))
-
-
-
-
-
-
-
-
-- P2P is Best effort (connectedness/delivery)
-- GST is assumed
-    - Clarify GST. 
-        - Is it between all correct nodes? A certain number of correctness nodes?
-        - Eventually all connections are stable? Always eventually there will be a connection?
-- P2P + GST ~> Eventual connectivity/delivery
-- Eventual Connectivity ~> “Gossip” communication
-
