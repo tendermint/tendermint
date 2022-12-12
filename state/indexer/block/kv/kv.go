@@ -333,7 +333,7 @@ LOOP:
 
 		// Check whether in this iteration we have not found an overlapping height (tmpHeight == nil)
 		// or whether the events in which the attributed occurred do not match (first part of the condition)
-		if (tmpHeight != nil && !bytes.Equal(tmpHeights[k], v)) || tmpHeight == nil {
+		if tmpHeight == nil || !bytes.Equal(tmpHeight, v) {
 			delete(filteredHeights, k)
 
 			select {
@@ -515,7 +515,7 @@ func (idx *BlockerIndexer) match(
 	// match (tmpHeights).
 	for k, v := range filteredHeights {
 		tmpHeight := tmpHeights[k]
-		if (tmpHeight != nil && !bytes.Equal(tmpHeight, v)) || tmpHeight == nil {
+		if tmpHeight == nil || !bytes.Equal(tmpHeight, v) {
 			delete(filteredHeights, k)
 
 			select {

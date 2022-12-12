@@ -170,7 +170,7 @@ func BlockSearchMatchEvents(
 ) (*ctypes.ResultBlockSearch, error) {
 	// skip if block indexing is disabled
 	if _, ok := env.BlockIndexer.(*blockidxnull.BlockerIndexer); ok {
-		return nil, errors.New("block indexing is disabled")
+		return nil, errors.New("block indexing (match events) is disabled")
 	}
 
 	re := regexp.MustCompile(`^match.events[" "]?=[" "]?[0-1]$|match.events[" "]?=[" "]?[0-1] AND | AND match.events[" "]?=[" "]?[0-1]`)
