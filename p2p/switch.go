@@ -713,7 +713,7 @@ func (sw *Switch) addOutboundPeerWithConfig(
 	addr *NetAddress,
 	cfg *config.P2PConfig,
 ) error {
-	sw.Logger.Info("Dialing peer", "address", addr)
+	sw.Logger.Debug("Dialing peer", "address", addr)
 
 	// XXX(xla): Remove the leakage of test concerns in implementation.
 	if cfg.TestDialFail {
@@ -833,7 +833,7 @@ func (sw *Switch) addPeer(p Peer) error {
 		reactor.AddPeer(p)
 	}
 
-	sw.Logger.Info("Added peer", "peer", p)
+	sw.Logger.Debug("Added peer", "peer", p)
 
 	return nil
 }
