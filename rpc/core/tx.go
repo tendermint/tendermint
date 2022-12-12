@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -153,9 +154,11 @@ func TxSearchMatchEvents(
 	} else if len(query) > maxQueryLength {
 		return nil, errors.New("maximum query length exceeded")
 	}
+	re := regexp.MustCompile(`^match.events[" "]?=[" "]?[0-1]$|match.events[" "]?=[" "]?[0-1] AND | AND match.events[" "]?=[" "]?[0-1]`)
+	query = re.ReplaceAllString(query, "")
 
 	if matchEvents {
-		query = query + " AND match.events = 1"
+		query = "match.events = 1 AND " + query
 	}
 	return TxSearch(ctx, query, prove, pagePtr, perPagePtr, orderBy)
 
