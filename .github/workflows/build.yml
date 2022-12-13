@@ -80,3 +80,5 @@ jobs:
         run: test/app/test.sh
         shell: bash
         if: "env.GIT_DIFF != ''"
+      - name: "Go vulnerability check"
+        run: make vulncheck
