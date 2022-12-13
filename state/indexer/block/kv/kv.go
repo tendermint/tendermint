@@ -122,7 +122,16 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	}
 	// If there is an exact height query, return the result immediately
 	// (if it exists).
-	height, ok, heightIdx := lookForHeight(conditions)
+	var height int64
+	var ok bool
+	var heightIdx int
+	if matchEvents {
+		// If we are not matching events and block.height = 3 occurs more than once, the later value will
+		// overwrite the first one. For match.events it will create problems.
+		conditions, height, ok, heightIdx = dedupHeight(conditions)
+	} else {
+		height, ok, heightIdx = lookForHeight(conditions)
+	}
 
 	// If we have additional constraints and want to query per event
 	// attributes, we cannot simply return all blocks for a height.

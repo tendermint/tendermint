@@ -235,8 +235,12 @@ func TestBlockIndexerMulti(t *testing.T) {
 			q:       query.MustParse("match.events = 1 AND block.height = 1"),
 			results: []int64{1},
 		},
+		"query return all events from a height - exact (deduplicate height)": {
+			q:       query.MustParse("match.events = 1 AND block.height = 1 AND block.height = 2"),
+			results: []int64{1},
+		},
 		"query return all events from a height - range": {
-			q:       query.MustParse("match.events = 1 AND block.height < 2 AND block.height > 0"),
+			q:       query.MustParse("match.events = 1 AND block.height < 2 AND block.height > 0 AND block.height > 0"),
 			results: []int64{1},
 		},
 		"query matches fields from same event": {

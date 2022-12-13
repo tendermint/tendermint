@@ -54,3 +54,23 @@ func ParseEventSeqFromEventKey(key []byte) (int64, error) {
 
 	return eventSeq, nil
 }
+func dedupHeight(conditions []query.Condition) (dedupConditions []query.Condition, height int64, idx int) {
+	found := false
+	idx = -1
+	height = 0
+	for i, c := range conditions {
+		if c.CompositeKey == types.TxHeightKey && c.Op == query.OpEqual {
+			if found {
+				continue
+			} else {
+				dedupConditions = append(dedupConditions, c)
+				height = c.Operand.(int64)
+				found = true
+				idx = i
+			}
+		} else {
+			dedupConditions = append(dedupConditions, c)
+		}
+	}
+	return
+}

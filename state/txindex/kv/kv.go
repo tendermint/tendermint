@@ -277,7 +277,15 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	}
 
 	// if there is a height condition ("tx.height=3"), extract it
-	height, heightIdx := lookForHeight(conditions)
+	var height int64
+	var heightIdx int
+	if matchEvents {
+		// If we are not matching events and tx.height = 3 occurs more than once, the later value will
+		// overwrite the first one. For match.events it will create problems.
+		conditions, height, heightIdx = dedupHeight(conditions)
+	} else {
+		height, heightIdx = lookForHeight(conditions)
+	}
 	if matchEvents && (len(conditions) != 2) {
 		skipIndexes = append(skipIndexes, heightIdx)
 	}

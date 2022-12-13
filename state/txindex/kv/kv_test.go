@@ -160,6 +160,10 @@ func TestTxSearchEventMatch(t *testing.T) {
 			q:             "match.events = 1 AND tx.height = 1",
 			resultsLength: 1,
 		},
+		"Return all events from a height (deduplicate height)": {
+			q:             "match.events = 1 AND tx.height = 1 AND tx.height = 1",
+			resultsLength: 1,
+		},
 		"Match attributes with height range and event": {
 			q:             "match.events = 1 AND tx.height < 2 AND tx.height > 0 AND account.number = 1 AND account.owner CONTAINS 'Ana'",
 			resultsLength: 1,
