@@ -1064,6 +1064,14 @@ paths:
             type: string
             default: "asc"
             example: "asc"
+        - in: query
+          name: match_events
+          description: Match attributes in query within events, in addition to the height & txhash
+          required: false
+          schema:
+            type: boolean
+            default: false
+            example: true
       tags:
         - Info
       responses:
@@ -1119,6 +1127,14 @@ paths:
             type: string
             default: "desc"
             example: "asc"
+        - in: query
+          name: match_events
+          description: Match attributes in query within events, in addition to the height
+          required: false
+          schema:
+            type: boolean
+            default: false
+            example: true
       tags:
         - Info
       responses:
