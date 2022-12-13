@@ -247,7 +247,7 @@ func TestBlockIndexerMulti(t *testing.T) {
 			q:       query.MustParse("match.events = 1 AND end_event.foo = 100 AND end_event.bar = 400 AND block.height = 2"),
 			results: []int64{},
 		},
-		"deduplication test - match.events only at beggining": {
+		"deduplication test - match.events only at beginning": {
 			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400 AND block.height = 2 AND match.events = 1"),
 			results: []int64{2},
 		},

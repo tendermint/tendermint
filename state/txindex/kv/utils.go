@@ -18,15 +18,6 @@ func intInSlice(a int, list []int) bool {
 	return false
 }
 
-func lookForMatchEvent(conditions []query.Condition) (bool, int) {
-	for i, c := range conditions {
-		if c.CompositeKey == types.MatchEventKey {
-			return true, i
-		}
-	}
-	return false, -1
-}
-
 func dedupMatchEvents(conditions []query.Condition) ([]query.Condition, bool) {
 	var dedupConditions []query.Condition
 	matchEvents := false

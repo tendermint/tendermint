@@ -150,12 +150,3 @@ func dedupMatchEvents(conditions []query.Condition) ([]query.Condition, bool) {
 	}
 	return dedupConditions, matchEvents
 }
-
-func lookForMatchEvent(conditions []query.Condition) (bool, int) {
-	for i, c := range conditions {
-		if c.CompositeKey == types.MatchEventKey {
-			return true, i
-		}
-	}
-	return false, -1
-}
