@@ -174,6 +174,10 @@ func (params ConsensusParams) ValidateBasic() error {
 			params.Evidence.MaxBytes)
 	}
 
+	if params.ABCI.VoteExtensionsEnableHeight < 0 {
+		return fmt.Errorf("ABCI.VoteExtensionsEnableHeight cannot be negative. Got: %d", params.ABCI.VoteExtensionsEnableHeight)
+	}
+
 	if len(params.Validator.PubKeyTypes) == 0 {
 		return errors.New("len(Validator.PubKeyTypes) must be greater than 0")
 	}
@@ -187,6 +191,30 @@ func (params ConsensusParams) ValidateBasic() error {
 		}
 	}
 
+	return nil
+}
+
+func (params ConsensusParams) ValidateUpdate(updated *tmproto.ConsensusParams, h int64) error {
+	if updated.Abci == nil {
+		return nil
+	}
+	if params.ABCI.VoteExtensionsEnableHeight == updated.Abci.VoteExtensionsEnableHeight {
+		return nil
+	}
+	if params.ABCI.VoteExtensionsEnableHeight != 0 && updated.Abci.VoteExtensionsEnableHeight == 0 {
+		return errors.New("vote extensions cannot be disabled once enabled")
+	}
+	if updated.Abci.VoteExtensionsEnableHeight <= h {
+		return fmt.Errorf("VoteExtensionsEnableHeight cannot be updated to a past height, "+
+			"initial height: %d, current height %d",
+			params.ABCI.VoteExtensionsEnableHeight, h)
+	}
+	if params.ABCI.VoteExtensionsEnableHeight <= h {
+		return fmt.Errorf("VoteExtensionsEnableHeight cannot be modified once"+
+			"the initial height has occurred, "+
+			"initial height: %d, current height %d",
+			params.ABCI.VoteExtensionsEnableHeight, h)
+	}
 	return nil
 }
 
@@ -241,6 +269,9 @@ func (params ConsensusParams) Update(params2 *tmproto.ConsensusParams) Consensus
 	if params2.Version != nil {
 		res.Version.App = params2.Version.App
 	}
+	if params2.Abci != nil {
+		res.ABCI.VoteExtensionsEnableHeight = params2.Abci.GetVoteExtensionsEnableHeight()
+	}
 	return res
 }
 
@@ -261,11 +292,14 @@ func (params *ConsensusParams) ToProto() tmproto.ConsensusParams {
 		Version: &tmproto.VersionParams{
 			App: params.Version.App,
 		},
+		Abci: &tmproto.ABCIParams{
+			VoteExtensionsEnableHeight: params.ABCI.VoteExtensionsEnableHeight,
+		},
 	}
 }
 
 func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams {
-	return ConsensusParams{
+	c := ConsensusParams{
 		Block: BlockParams{
 			MaxBytes: pbParams.Block.MaxBytes,
 			MaxGas:   pbParams.Block.MaxGas,
@@ -282,4 +316,8 @@ func ConsensusParamsFromProto(pbParams tmproto.ConsensusParams) ConsensusParams 
 			App: pbParams.Version.App,
 		},
 	}
+	if pbParams.Abci != nil {
+		c.ABCI.VoteExtensionsEnableHeight = pbParams.Abci.GetVoteExtensionsEnableHeight()
+	}
+	return c
 }
