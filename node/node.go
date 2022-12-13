@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/numiadata/tools/pubsub"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
@@ -23,7 +24,6 @@ import (
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
-
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
@@ -298,6 +298,21 @@ func createAndStartIndexerService(
 		}
 		txIndexer = es.TxIndexer()
 		blockIndexer = es.BlockIndexer()
+	case "pubsub":
+		if config.TxIndex.PubsubProjectID == "" {
+			return nil, nil, nil, errors.New("no 'pubsub-project-id' is set for the 'pubsub' indexer")
+		}
+		if config.TxIndex.PubsubTopic == "" {
+			return nil, nil, nil, errors.New("no 'pubsub-topic' is set for the 'pubsub' indexer")
+		}
+
+		sink, err := pubsub.NewEventSink(config.TxIndex.PubsubProjectID, config.TxIndex.PubsubTopic, chainID)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("creating pubsub indexer: %w", err)
+		}
+
+		txIndexer = pubsub.NewTxIndexer(sink)
+		blockIndexer = pubsub.NewBlockIndexer(sink)
 
 	default:
 		txIndexer = &null.TxIndex{}

@@ -513,6 +513,14 @@ indexer = "{{ .TxIndex.Indexer }}"
 #   postgresql://<user>:<password>@<host>:<port>/<db>?<opts>
 psql-conn = "{{ .TxIndex.PsqlConn }}"
 
+# The Google Cloud Pubsub project ID. Note, operators must ensure the
+# GOOGLE_APPLICATION_CREDENTIALS environment variable is set to the location of
+# their creds file.
+pubsub-project-id = "{{ .TxIndex.PubsubProjectID }}"
+
+# The Google Cloud Pubsub topic. If the topic does not exist, it will be created.
+pubsub-topic = "{{ .TxIndex.PubsubTopic }}"
+
 #######################################################
 ###       Instrumentation Configuration Options     ###
 #######################################################
