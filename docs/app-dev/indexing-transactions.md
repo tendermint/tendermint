@@ -233,7 +233,7 @@ You can query for a paginated set of blocks by their events by calling the
 curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
 ```
 
-## `match.events` keyword 
+## `match_events` keyword 
 
 The query results in the height number(s) (or transaction hashes when querying transactions) which contain events whose attributes match the query conditions. 
 However, there are two options to query the indexers. To demonstrate the two modes, we reuse the two events
@@ -250,27 +250,13 @@ If we wish to retrieve only heights where the attributes occurred within the sam
 the query syntax is as follows:
 
 ```bash
-curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200 AND match.events = 1\""
+curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\"&match_events=true"
 ```
-`match.events` is false by default but note that if it is added to a query, the actual value assigned to it is ignored and the query will match conditions within same events.
+Currently the default behaviour is if `match_events` is set  to false.
 
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#/Info/block_search)
 for more information on query syntax and other options.
 
 **Backwards compatibility**
 
-Up until Tendermint 0.34.25, the event sequence was not stored in the kvstore and the `match.events` keyword is not recognized by older versions. For backwards compatibility and to use v0.34.25 with older Tendermint versions, we recommend trigger the same behaviour using RPC by extending the RPC query as follows:
-
-```bash
-curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\"&match_events=true"
-```
-
-or 
-
-```bash
-curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true&match_events=true"
-```
-
-for the transaction indexer. 
-
-Event attributes indexed with older versions will be quried as if it all occured within the same event on a particular height but all event attributes indexed with v0.34.24 will be returned only if the attributes occured within the same event.
+Up until Tendermint 0.34.25, the event sequence was not stored in the kvstore and the `match_events` keyword in the RPC query is not ignored by older versions. Thus, in a network running mixed  Tendermint versions, nodes running older versions will still return blocks (or transactions) whose attributes match within different events on the same height.
