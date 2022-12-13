@@ -222,7 +222,21 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 			return []*abci.TxResult{res}, nil
 		}
 	}
-	matchEvents, matchEventIdx := lookForMatchEvent(conditions)
+
+	var matchEvents bool
+	var matchEventIdx int
+
+	// If the match.events keyword is at the beginning of the query, we will only
+	// return heights where the conditions are true within the same event
+	// and set the matchEvents to true
+	conditions, matchEvents = dedupMatchEvents(conditions)
+
+	if matchEvents {
+		matchEventIdx = 0
+	} else {
+		matchEventIdx = -1
+	}
+
 	// conditions to skip because they're handled before "everything else"
 	skipIndexes := make([]int, 0)
 
@@ -589,13 +603,11 @@ func extractHeightFromKey(key []byte) (int64, error) {
 	return strconv.ParseInt(parts[2], 10, 64)
 }
 func extractValueFromKey(key []byte) string {
-	// numTags := strings.Count(string(key), tagKeySeparator)
 	parts := strings.SplitN(string(key), tagKeySeparator, -1)
 	return parts[1]
 }
 
 func extractEventSeqFromKey(key []byte) string {
-	// numTags := strings.Count(string(key), tagKeySeparator)
 	parts := strings.SplitN(string(key), tagKeySeparator, -1)
 
 	if len(parts) == 5 {

@@ -103,9 +103,19 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	// conditions to skip because they're handled before "everything else"
 	skipIndexes := make([]int, 0)
 
-	// Check whether we want to return heights where the conditions are true
-	// within the same event or it does not matter
-	matchEvents, matchEventIdx := lookForMatchEvent(conditions)
+	var matchEvents bool
+	var matchEventIdx int
+
+	// If the match.events keyword is at the beginning of the query, we will only
+	// return heights where the conditions are true within the same event
+	// and set the matchEvents to true
+	conditions, matchEvents = dedupMatchEvents(conditions)
+
+	if matchEvents {
+		matchEventIdx = 0
+	} else {
+		matchEventIdx = -1
+	}
 
 	if matchEventIdx != -1 {
 		skipIndexes = append(skipIndexes, matchEventIdx)

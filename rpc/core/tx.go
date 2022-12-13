@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -147,15 +146,6 @@ func TxSearchMatchEvents(
 	orderBy string,
 	matchEvents bool,
 ) (*ctypes.ResultTxSearch, error) {
-
-	// if index is disabled, return error
-	if _, ok := env.TxIndexer.(*null.TxIndex); ok {
-		return nil, errors.New("transaction indexing is disabled")
-	} else if len(query) > maxQueryLength {
-		return nil, errors.New("maximum query length exceeded")
-	}
-	re := regexp.MustCompile(`^match.events[" "]?=[" "]?[0-1]$|match.events[" "]?=[" "]?[0-1] AND | AND match.events[" "]?=[" "]?[0-1]`)
-	query = re.ReplaceAllString(query, "")
 
 	if matchEvents {
 		query = "match.events = 1 AND " + query

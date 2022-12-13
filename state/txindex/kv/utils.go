@@ -27,6 +27,24 @@ func lookForMatchEvent(conditions []query.Condition) (bool, int) {
 	return false, -1
 }
 
+func dedupMatchEvents(conditions []query.Condition) ([]query.Condition, bool) {
+	var dedupConditions []query.Condition
+	matchEvents := false
+	for i, c := range conditions {
+		if c.CompositeKey == types.MatchEventKey {
+			// Match events should be added only via RPC as the very first query condition
+			if i == 0 {
+				dedupConditions = append(dedupConditions, c)
+				matchEvents = true
+			}
+		} else {
+			dedupConditions = append(dedupConditions, c)
+		}
+
+	}
+	return dedupConditions, matchEvents
+}
+
 func ParseEventSeqFromEventKey(key []byte) (int64, error) {
 	var (
 		compositeKey, typ, eventValue string

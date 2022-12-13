@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"regexp"
 	"sort"
 
 	tmmath "github.com/tendermint/tendermint/libs/math"
@@ -168,14 +167,6 @@ func BlockSearchMatchEvents(
 	orderBy string,
 	matchEvents bool,
 ) (*ctypes.ResultBlockSearch, error) {
-	// skip if block indexing is disabled
-	if _, ok := env.BlockIndexer.(*blockidxnull.BlockerIndexer); ok {
-		return nil, errors.New("block indexing (match events) is disabled")
-	}
-
-	re := regexp.MustCompile(`^match.events[" "]?=[" "]?[0-1]$|match.events[" "]?=[" "]?[0-1] AND | AND match.events[" "]?=[" "]?[0-1]`)
-	query = re.ReplaceAllString(query, "")
-
 	if matchEvents {
 		query = "match.events = 1 AND " + query
 	}

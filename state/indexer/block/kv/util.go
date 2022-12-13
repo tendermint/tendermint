@@ -133,6 +133,24 @@ func lookForHeight(conditions []query.Condition) (int64, bool, int) {
 	return 0, false, -1
 }
 
+func dedupMatchEvents(conditions []query.Condition) ([]query.Condition, bool) {
+	var dedupConditions []query.Condition
+	matchEvents := false
+	for i, c := range conditions {
+		if c.CompositeKey == types.MatchEventKey {
+			// Match events should be added only via RPC as the very first query condition
+			if i == 0 {
+				dedupConditions = append(dedupConditions, c)
+				matchEvents = true
+			}
+		} else {
+			dedupConditions = append(dedupConditions, c)
+		}
+
+	}
+	return dedupConditions, matchEvents
+}
+
 func lookForMatchEvent(conditions []query.Condition) (bool, int) {
 	for i, c := range conditions {
 		if c.CompositeKey == types.MatchEventKey {
