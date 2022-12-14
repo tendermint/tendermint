@@ -28,10 +28,9 @@ const (
 )
 
 type (
-	Mode             string
-	Protocol         string
-	BuiltinProxyMode string
-	Perturbation     string
+	Mode         string
+	Protocol     string
+	Perturbation string
 )
 
 const (
