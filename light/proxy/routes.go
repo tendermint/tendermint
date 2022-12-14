@@ -160,7 +160,7 @@ func makeTxSearchFuncMatchEvents(c *lrpc.Client) rpcTxSearchFuncMatchEvents {
 		matchEvents bool,
 	) (*ctypes.ResultTxSearch, error) {
 		if matchEvents {
-			query = query + " AND match.events = 1"
+			query = "match.events = 1 AND " + query
 		}
 		return c.TxSearch(ctx.Context(), query, prove, page, perPage, orderBy)
 	}
@@ -185,7 +185,7 @@ func makeBlockSearchFuncMatchEvents(c *lrpc.Client) rpcBlockSearchFuncMatchEvent
 		matchEvents bool,
 	) (*ctypes.ResultBlockSearch, error) {
 		if matchEvents {
-			query = query + " AND match.events = 1"
+			query = "match.events = 1 AND " + query
 		}
 		return c.BlockSearch(ctx.Context(), query, page, perPage, orderBy)
 	}
