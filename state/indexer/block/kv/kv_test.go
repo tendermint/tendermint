@@ -156,13 +156,13 @@ func TestBlockIndexerMulti(t *testing.T) {
 					Type: "end_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("foo"),
-							Value: []byte("100"),
+							Key:   "foo",
+							Value: "100",
 							Index: true,
 						},
 						{
-							Key:   []byte("bar"),
-							Value: []byte("200"),
+							Key:   "bar",
+							Value: "200",
 							Index: true,
 						},
 					},
@@ -171,13 +171,13 @@ func TestBlockIndexerMulti(t *testing.T) {
 					Type: "end_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("foo"),
-							Value: []byte("300"),
+							Key:   "foo",
+							Value: "300",
 							Index: true,
 						},
 						{
-							Key:   []byte("bar"),
-							Value: []byte("400"),
+							Key:   "bar",
+							Value: "400",
 							Index: true,
 						},
 					},
@@ -197,13 +197,13 @@ func TestBlockIndexerMulti(t *testing.T) {
 					Type: "end_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("foo"),
-							Value: []byte("100"),
+							Key:   "foo",
+							Value: "100",
 							Index: true,
 						},
 						{
-							Key:   []byte("bar"),
-							Value: []byte("200"),
+							Key:   "bar",
+							Value: "200",
 							Index: true,
 						},
 					},
@@ -212,13 +212,13 @@ func TestBlockIndexerMulti(t *testing.T) {
 					Type: "end_event",
 					Attributes: []abci.EventAttribute{
 						{
-							Key:   []byte("foo"),
-							Value: []byte("300"),
+							Key:   "foo",
+							Value: "300",
 							Index: true,
 						},
 						{
-							Key:   []byte("bar"),
-							Value: []byte("400"),
+							Key:   "bar",
+							Value: "400",
 							Index: true,
 						},
 					},
