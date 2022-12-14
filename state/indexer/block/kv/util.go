@@ -134,9 +134,7 @@ func lookForHeight(conditions []query.Condition) (int64, bool, int) {
 }
 
 func dedupHeight(conditions []query.Condition) (dedupConditions []query.Condition, height int64, found bool, idx int) {
-	found = false
 	idx = -1
-	height = 0
 	for i, c := range conditions {
 		if c.CompositeKey == types.BlockHeightKey && c.Op == query.OpEqual {
 			if found {
