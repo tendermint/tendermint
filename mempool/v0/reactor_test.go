@@ -47,7 +47,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	// replace Connect2Switches (full mesh) with a func, which connects first
 	// reactor to others and nothing else, this test should also pass with >2 reactors.
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors, _ := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -69,7 +69,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 func TestReactorConcurrency(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors, _ := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -130,7 +130,7 @@ func TestReactorConcurrency(t *testing.T) {
 func TestReactorNoBroadcastToSender(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors, _ := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -153,7 +153,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	config := cfg.TestConfig()
 
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors, _ := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -195,7 +195,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors, _ := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -220,13 +220,11 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	_, switches := makeAndConnectReactors(config, N)
 
 	// stop reactors
-	for _, r := range reactors {
-		if err := r.Stop(); err != nil {
-			assert.NoError(t, err)
-		}
+	for _, s := range switches {
+		assert.NoError(t, s.Stop())
 	}
 
 	// check that we are not leaking any go-routines
@@ -274,7 +272,7 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 1
-	reactors := makeAndConnectReactors(config, N)
+	reactors, _ := makeAndConnectReactors(config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -310,7 +308,7 @@ func mempoolLogger() log.Logger {
 }
 
 // connect N mempool reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
+func makeAndConnectReactors(config *cfg.Config, n int) ([]*Reactor, []*p2p.Switch) {
 	reactors := make([]*Reactor, n)
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
@@ -323,12 +321,12 @@ func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+	switches := p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("MEMPOOL", reactors[i])
 		return s
 
 	}, p2p.Connect2Switches)
-	return reactors
+	return reactors, switches
 }
 
 func waitForTxsOnReactors(t *testing.T, txs types.Txs, reactors []*Reactor) {
