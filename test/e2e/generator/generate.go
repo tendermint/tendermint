@@ -73,6 +73,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
 		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
+		BuiltinProxyMode: nodeBuiltinProxyModes.Choose(r).(string),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
@@ -224,7 +225,6 @@ func generateNode(
 	node := e2e.ManifestNode{
 		Version:          nodeVersions.Choose(r).(string),
 		Mode:             string(mode),
-		BuiltinProxyMode: nodeBuiltinProxyModes.Choose(r).(string),
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),

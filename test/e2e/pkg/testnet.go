@@ -75,6 +75,7 @@ type Testnet struct {
 	LoadTxBatchSize      int
 	LoadTxConnections    int
 	ABCIProtocol         string
+	BuiltinProxyMode     BuiltinProxyMode
 	PrepareProposalDelay time.Duration
 	ProcessProposalDelay time.Duration
 	CheckTxDelay         time.Duration
@@ -86,7 +87,6 @@ type Node struct {
 	Version          string
 	Testnet          *Testnet
 	Mode             Mode
-	BuiltinProxyMode BuiltinProxyMode
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
 	IP               net.IP
@@ -97,6 +97,7 @@ type Node struct {
 	Mempool          string
 	Database         string
 	ABCIProtocol     Protocol
+	BuiltinProxyMode BuiltinProxyMode
 	PrivvalProtocol  Protocol
 	PersistInterval  uint64
 	SnapshotInterval uint64
@@ -138,6 +139,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		LoadTxBatchSize:      manifest.LoadTxBatchSize,
 		LoadTxConnections:    manifest.LoadTxConnections,
 		ABCIProtocol:         manifest.ABCIProtocol,
+		BuiltinProxyMode:     BuiltinProxyMode(manifest.BuiltinProxyMode),
 		PrepareProposalDelay: manifest.PrepareProposalDelay,
 		ProcessProposalDelay: manifest.ProcessProposalDelay,
 		CheckTxDelay:         manifest.CheckTxDelay,
@@ -150,6 +152,9 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 	}
 	if testnet.ABCIProtocol == "" {
 		testnet.ABCIProtocol = string(ProtocolBuiltin)
+	}
+	if testnet.BuiltinProxyMode == "" {
+		testnet.BuiltinProxyMode = BuiltinProxySync
 	}
 	if testnet.LoadTxConnections == 0 {
 		testnet.LoadTxConnections = defaultConnections
@@ -189,7 +194,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
-			BuiltinProxyMode: BuiltinProxyMode(nodeManifest.BuiltinProxyMode),
+			BuiltinProxyMode: testnet.BuiltinProxyMode,
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			BlockSync:        nodeManifest.BlockSync,

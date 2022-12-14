@@ -62,6 +62,17 @@ type Manifest struct {
 	// launch it instead of launching a separate Tendermint process.
 	ABCIProtocol string `toml:"abci_protocol"`
 
+	// BuiltinProxyMode specifies the type of proxy we should use if the
+	// testnet's ABCIProtocol is set to "builtin", otherwise this has no
+	// effect. This can either be "sync", which uses the standard client
+	// creator to create ABCI client interfaces with a global mutex across all
+	// of them, or "unsync", which uses an unsynchronized local client creator
+	// to create ABCI client interfaces with a mutex per client.
+	//
+	// The "unsync" version effectively simulates the same concurrency model as
+	// the socket-based connection.
+	BuiltinProxyMode string `toml:"builtin_proxy_mode"`
+
 	// Add artificial delays to each of the main ABCI calls to mimic computation time
 	// of the application
 	PrepareProposalDelay time.Duration `toml:"prepare_proposal_delay"`
@@ -87,22 +98,6 @@ type ManifestNode struct {
 	// there must be a docker image of the test app tagged with this version present
 	// on the machine where the test is being run.
 	Version string `toml:"version"`
-
-	// BuiltinProxyMode specifies the type of proxy we should use if the
-	// testnet's ABCIProtocol is set to "builtin", otherwise this has no
-	// effect. This can either be "sync", which uses
-	// [proxy.NewLocalClientCreator] to create ABCI client interfaces with a
-	// global mutex across all of them, or "unsync", which uses
-	// [proxy.NewUnsyncLocalClientCreator] to create ABCI client interfaces
-	// with a mutex per client.
-	//
-	// The "unsync" version effectively simulates the same concurrency model as
-	// the socket-based connection.
-	//
-	// This parameter is configured on a per-node basis in order to allow for a
-	// mix of application concurrency models in testnets when the testnet's
-	// ABCIProtocol is set to "builtin".
-	BuiltinProxyMode string `toml:"builtin_proxy_mode"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
 	Seeds []string `toml:"seeds"`
