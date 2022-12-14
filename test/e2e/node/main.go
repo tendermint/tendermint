@@ -62,7 +62,7 @@ func run(configFile string) error {
 		if err = startSigner(cfg); err != nil {
 			return err
 		}
-		if cfg.Protocol == "builtin" {
+		if cfg.Protocol == "builtin" || cfg.Protocol == "builtin_unsync" {
 			time.Sleep(1 * time.Second)
 		}
 	}
@@ -71,7 +71,7 @@ func run(configFile string) error {
 	switch cfg.Protocol {
 	case "socket", "grpc":
 		err = startApp(cfg)
-	case "builtin":
+	case "builtin", "builtin_unsync":
 		if cfg.Mode == string(e2e.ModeLight) {
 			err = startLightClient(cfg)
 		} else {
@@ -124,7 +124,7 @@ func startNode(cfg *Config) error {
 	}
 
 	var clientCreator proxy.ClientCreator
-	if cfg.BuiltinProxyMode == string(e2e.BuiltinProxyUnsync) {
+	if cfg.Protocol == string(e2e.ProtocolBuiltinUnsync) {
 		clientCreator = proxy.NewUnsyncLocalClientCreator(app)
 		nodeLogger.Info("Using unsynchronized local client creator")
 	} else {

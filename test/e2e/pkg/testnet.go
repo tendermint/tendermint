@@ -40,14 +40,12 @@ const (
 	ModeLight     Mode = "light"
 	ModeSeed      Mode = "seed"
 
-	ProtocolBuiltin Protocol = "builtin"
-	ProtocolFile    Protocol = "file"
-	ProtocolGRPC    Protocol = "grpc"
-	ProtocolTCP     Protocol = "tcp"
-	ProtocolUNIX    Protocol = "unix"
-
-	BuiltinProxySync   BuiltinProxyMode = "sync"
-	BuiltinProxyUnsync BuiltinProxyMode = "unsync"
+	ProtocolBuiltin       Protocol = "builtin"
+	ProtocolBuiltinUnsync Protocol = "builtin_unsync"
+	ProtocolFile          Protocol = "file"
+	ProtocolGRPC          Protocol = "grpc"
+	ProtocolTCP           Protocol = "tcp"
+	ProtocolUNIX          Protocol = "unix"
 
 	PerturbationDisconnect Perturbation = "disconnect"
 	PerturbationKill       Perturbation = "kill"
@@ -75,7 +73,6 @@ type Testnet struct {
 	LoadTxBatchSize      int
 	LoadTxConnections    int
 	ABCIProtocol         string
-	BuiltinProxyMode     BuiltinProxyMode
 	PrepareProposalDelay time.Duration
 	ProcessProposalDelay time.Duration
 	CheckTxDelay         time.Duration
@@ -97,7 +94,6 @@ type Node struct {
 	Mempool          string
 	Database         string
 	ABCIProtocol     Protocol
-	BuiltinProxyMode BuiltinProxyMode
 	PrivvalProtocol  Protocol
 	PersistInterval  uint64
 	SnapshotInterval uint64
@@ -139,7 +135,6 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		LoadTxBatchSize:      manifest.LoadTxBatchSize,
 		LoadTxConnections:    manifest.LoadTxConnections,
 		ABCIProtocol:         manifest.ABCIProtocol,
-		BuiltinProxyMode:     BuiltinProxyMode(manifest.BuiltinProxyMode),
 		PrepareProposalDelay: manifest.PrepareProposalDelay,
 		ProcessProposalDelay: manifest.ProcessProposalDelay,
 		CheckTxDelay:         manifest.CheckTxDelay,
@@ -152,9 +147,6 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 	}
 	if testnet.ABCIProtocol == "" {
 		testnet.ABCIProtocol = string(ProtocolBuiltin)
-	}
-	if testnet.BuiltinProxyMode == "" {
-		testnet.BuiltinProxyMode = BuiltinProxySync
 	}
 	if testnet.LoadTxConnections == 0 {
 		testnet.LoadTxConnections = defaultConnections
@@ -194,7 +186,6 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			Mode:             ModeValidator,
 			Database:         "goleveldb",
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
-			BuiltinProxyMode: testnet.BuiltinProxyMode,
 			PrivvalProtocol:  ProtocolFile,
 			StartAt:          nodeManifest.StartAt,
 			BlockSync:        nodeManifest.BlockSync,
@@ -356,11 +347,11 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid database setting %q", n.Database)
 	}
 	switch n.ABCIProtocol {
-	case ProtocolBuiltin, ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
+	case ProtocolBuiltin, ProtocolBuiltinUnsync, ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
 	default:
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
-	if n.Mode == ModeLight && n.ABCIProtocol != ProtocolBuiltin {
+	if n.Mode == ModeLight && n.ABCIProtocol != ProtocolBuiltin && n.ABCIProtocol != ProtocolBuiltinUnsync {
 		return errors.New("light client must use builtin protocol")
 	}
 	switch n.PrivvalProtocol {

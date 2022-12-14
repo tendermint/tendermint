@@ -16,7 +16,6 @@ type Config struct {
 	Protocol         string                      `toml:"protocol"`
 	Dir              string                      `toml:"dir"`
 	Mode             string                      `toml:"mode"`
-	BuiltinProxyMode string                      `toml:"builtin_proxy_mode"`
 	PersistInterval  uint64                      `toml:"persist_interval"`
 	SnapshotInterval uint64                      `toml:"snapshot_interval"`
 	RetainBlocks     uint64                      `toml:"retain_blocks"`
@@ -61,7 +60,7 @@ func (cfg Config) Validate() error {
 	switch {
 	case cfg.ChainID == "":
 		return errors.New("chain_id parameter is required")
-	case cfg.Listen == "" && cfg.Protocol != "builtin":
+	case cfg.Listen == "" && cfg.Protocol != "builtin" && cfg.Protocol != "builtin_unsync":
 		return errors.New("listen parameter is required")
 	default:
 		return nil

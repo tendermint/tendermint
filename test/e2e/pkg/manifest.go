@@ -57,21 +57,16 @@ type Manifest struct {
 	Evidence int `toml:"evidence"`
 
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
-	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
-	// builtin will build a complete Tendermint node into the application and
-	// launch it instead of launching a separate Tendermint process.
-	ABCIProtocol string `toml:"abci_protocol"`
-
-	// BuiltinProxyMode specifies the type of proxy we should use if the
-	// testnet's ABCIProtocol is set to "builtin", otherwise this has no
-	// effect. This can either be "sync", which uses the standard client
-	// creator to create ABCI client interfaces with a global mutex across all
-	// of them, or "unsync", which uses an unsynchronized local client creator
-	// to create ABCI client interfaces with a mutex per client.
+	// application: "unix", "tcp", "grpc", "builtin" or "builtin_unsync".
 	//
-	// The "unsync" version effectively simulates the same concurrency model as
-	// the socket-based connection.
-	BuiltinProxyMode string `toml:"builtin_proxy_mode"`
+	// Defaults to "builtin". "builtin" will build a complete Tendermint node
+	// into the application and launch it instead of launching a separate
+	// Tendermint process.
+	//
+	// "builtin_unsync" is basically the same as "builtin", except that it uses
+	// an "unsynchronized" local client creator, which attempts to replicate the
+	// same concurrency model locally as the socket client.
+	ABCIProtocol string `toml:"abci_protocol"`
 
 	// Add artificial delays to each of the main ABCI calls to mimic computation time
 	// of the application

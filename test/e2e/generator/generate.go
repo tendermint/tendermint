@@ -29,8 +29,7 @@ var (
 	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	ipv6          = uniformChoice{false, true}
 	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
-	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
-	nodeBuiltinProxyModes = uniformChoice{"sync", "unsync"}
+	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "builtin", "builtin_unsync"} // "grpc"
 	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
 	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
@@ -73,7 +72,6 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	manifest := e2e.Manifest{
 		IPv6:             ipv6.Choose(r).(bool),
 		ABCIProtocol:     nodeABCIProtocols.Choose(r).(string),
-		BuiltinProxyMode: nodeBuiltinProxyModes.Choose(r).(string),
 		InitialHeight:    int64(opt["initialHeight"].(int)),
 		InitialState:     opt["initialState"].(map[string]string),
 		Validators:       &map[string]int64{},
