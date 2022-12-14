@@ -51,6 +51,9 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	}
 }
 
+func (app *PersistentKVStoreApplication) SetGenBlockEvents() {
+	app.app.genBlockEvents = true
+}
 func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
@@ -142,7 +145,7 @@ func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock)
 		}
 	}
 
-	return types.ResponseBeginBlock{}
+	return app.app.BeginBlock(req)
 }
 
 // Update the validator set

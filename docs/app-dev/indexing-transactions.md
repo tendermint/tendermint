@@ -34,6 +34,9 @@ would be equal to the composite key of `jack.account.number`.
 By default, Tendermint will index all transactions by their respective hashes
 and height and blocks by their height.
 
+Tendermint allows for different events within the same height to have 
+equal attributes.
+
 ## Configuration
 
 Operators can configure indexing via the `[tx_index]` section. The `indexer`
@@ -66,6 +69,56 @@ underlying Tendermint database. Using the `kv` indexer type allows you to query
 for block and transaction events directly against Tendermint's RPC. However, the
 query syntax is limited and so this indexer type might be deprecated or removed
 entirely in the future.
+
+**Implementation and data layout**
+
+The kv indexer stores each attribute of an event individually, by creating a composite key 
+of the *event type*, *attribute key*, *attribute value*, *height* and *event sequence*. 
+
+For example the following events:
+ 
+```
+Type: "transfer",
+  Attributes: []abci.EventAttribute{
+   {Key: []byte("sender"), Value: []byte("Bob"), Index: true},
+   {Key: []byte("recipient"), Value: []byte("Alice"), Index: true},
+   {Key: []byte("balance"), Value: []byte("100"), Index: true},
+   {Key: []byte("note"), Value: []byte("nothing"), Index: true},
+   },
+ 
+```
+ 
+```
+Type: "transfer",
+  Attributes: []abci.EventAttribute{
+   {Key: []byte("sender"), Value: []byte("Tom"), Index: true},
+   {Key: []byte("recipient"), Value: []byte("Alice"), Index: true},
+   {Key: []byte("balance"), Value: []byte("200"), Index: true},
+   {Key: []byte("note"), Value: []byte("nothing"), Index: true},
+   },
+```
+
+will be represented as follows in the store: 
+
+```
+Key                                 value
+transferSenderBobEndBlock1           1
+transferRecepientAliceEndBlock11     1
+transferBalance100EndBlock11         1
+transferNodeNothingEndblock11        1
+---- event2 ------
+transferSenderTomEndBlock12          1
+transferRecepientAliceEndBlock12     1
+transferBalance200EndBlock12         1
+transferNodeNothingEndblock12        1
+ 
+```
+The key is thus formed of the event type, the attribute key and value, the event the attribute belongs to (`EndBlock` or `BeginBlock`),
+the height and the event number. The event number is a local variable kept by the indexer and incremented when a new event is processed. 
+
+It is an `int64` variable and has no other semantics besides being used to associate attributes belonging to the same events within a height. 
+This variable is not atomically incremented as event indexing is deterministic. **Should this ever change**, the event id generation
+will be broken. 
 
 #### PostgreSQL
 
@@ -145,6 +198,9 @@ You can query for a paginated set of transaction by their events by calling the
 ```bash
 curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true"
 ```
+If the conditions are related to transaction events and the user wants to make sure the
+conditions are true within the same events, the `match.event` keyword should be used, 
+as described [below](#querying_block_events)
 
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#/Info/tx_search)
 for more information on query syntax and other options.
@@ -168,7 +224,7 @@ a query to `/subscribe` RPC endpoint.
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#subscribe) for more information
 on query syntax and other options.
 
-## Querying Blocks Events
+## Querying Block Events
 
 You can query for a paginated set of blocks by their events by calling the
 `/block_search` RPC endpoint:
@@ -177,5 +233,30 @@ You can query for a paginated set of blocks by their events by calling the
 curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
 ```
 
+## `match_events` keyword 
+
+The query results in the height number(s) (or transaction hashes when querying transactions) which contain events whose attributes match the query conditions. 
+However, there are two options to query the indexers. To demonstrate the two modes, we reuse the two events
+where Bob and Tom send money to Alice and query the block indexer. We issue the following query:
+
+```bash
+curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\""
+```
+
+The result will return height 1 even though the attributes matching the conditions in the query 
+occurred in different events. 
+
+If we wish to retrieve only heights where the attributes occurred within the same event,
+the query syntax is as follows:
+
+```bash
+curl "localhost:26657/block_search?query=\"sender=Bob AND balance = 200\"&match_events=true"
+```
+Currently the default behaviour is if `match_events` is set  to false.
+
 Check out [API docs](https://docs.tendermint.com/v0.34/rpc/#/Info/block_search)
 for more information on query syntax and other options.
+
+**Backwards compatibility**
+
+Up until Tendermint 0.34.25, the event sequence was not stored in the kvstore and the `match_events` keyword in the RPC query is not ignored by older versions. Thus, in a network running mixed  Tendermint versions, nodes running older versions will still return blocks (or transactions) whose attributes match within different events on the same height.
