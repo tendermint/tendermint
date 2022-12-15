@@ -321,7 +321,15 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 
 	ctx := context.Background()
 
-	results, err := indexer.Search(ctx, query.MustParse("account.number >= 1"))
+	results, err := indexer.Search(ctx, query.MustParse("match.events = 1 AND account.number >= 1"))
+	assert.NoError(t, err)
+
+	assert.Len(t, results, 1)
+	for _, txr := range results {
+		assert.True(t, proto.Equal(txResult, txr))
+	}
+
+	results, err = indexer.Search(ctx, query.MustParse("match.events = 1 AND account.number > 1 AND tx.height < 2"))
 	assert.NoError(t, err)
 
 	assert.Len(t, results, 1)

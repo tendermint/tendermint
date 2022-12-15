@@ -246,8 +246,8 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	// extract ranges
 	// if both upper and lower bounds exist, it's better to get them in order not
 	// no iterate over kvs that are not within range.
-	ranges, rangeIndexes := indexer.LookForRanges(conditions)
-	var heightRanges indexer.QueryRange
+	ranges, rangeIndexes, heightRange := indexer.LookForRanges(conditions)
+
 	if len(ranges) > 0 {
 		skipIndexes = append(skipIndexes, rangeIndexes...)
 
@@ -258,11 +258,11 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 			// transactios in this height range. We remember the height range info
 			// and pass it on to match() to take into account when processing events.
 			if qr.Key == types.TxHeightKey && matchEvents {
-				heightRanges = qr
+
 				continue
 			}
 			if !hashesInitialized {
-				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, true, matchEvents)
+				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, true, matchEvents, heightRange)
 				hashesInitialized = true
 
 				// Ignore any remaining conditions if the first condition resulted
@@ -271,7 +271,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 					break
 				}
 			} else {
-				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, false, matchEvents)
+				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, false, matchEvents, heightRange)
 			}
 		}
 	}
@@ -297,7 +297,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		}
 
 		if !hashesInitialized {
-			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, true, matchEvents, height, heightRanges)
+			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, true, matchEvents, height, heightRange)
 			hashesInitialized = true
 
 			// Ignore any remaining conditions if the first condition resulted
@@ -306,18 +306,22 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 				break
 			}
 		} else {
-			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, false, matchEvents, height, heightRanges)
+			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, false, matchEvents, height, heightRange)
 		}
 	}
 
 	results := make([]*abci.TxResult, 0, len(filteredHashes))
+	resultMap := make(map[string]struct{})
 	for _, h := range filteredHashes {
 		res, err := txi.Get(h)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Tx{%X}: %w", h, err)
 		}
-		results = append(results, res)
-
+		hashString := string(h)
+		if _, ok := resultMap[hashString]; !ok {
+			resultMap[hashString] = struct{}{}
+			results = append(results, res)
+		}
 		// Potentially exit early.
 		select {
 		case <-ctx.Done():
@@ -370,7 +374,7 @@ func (txi *TxIndex) match(
 	firstRun bool,
 	matchEvents bool,
 	height int64,
-	heightRanges indexer.QueryRange,
+	heightRange indexer.QueryRange,
 ) map[string][]byte {
 	// A previous match was attempted but resulted in no matches, so we return
 	// no matches (assuming AND operand).
@@ -392,9 +396,9 @@ func (txi *TxIndex) match(
 
 			// If we have a height range in a query, we need only transactions
 			// for this height
-			if heightRanges.Key != "" {
+			if heightRange.Key != "" {
 				eventHeight, err := extractHeightFromKey(it.Key())
-				if err != nil || !checkBounds(heightRanges, eventHeight) {
+				if err != nil || !checkBounds(heightRange, eventHeight) {
 					continue
 				}
 			} else if height != 0 {
@@ -516,6 +520,7 @@ func (txi *TxIndex) matchRange(
 	filteredHashes map[string][]byte,
 	firstRun bool,
 	matchEvents bool,
+	heightRange indexer.QueryRange,
 ) map[string][]byte {
 	// A previous match was attempted but resulted in no matches, so we return
 	// no matches (assuming AND operand).
@@ -543,6 +548,12 @@ LOOP:
 				continue LOOP
 			}
 
+			if matchEvents && heightRange.Key != "" {
+				keyHeight, err := extractHeightFromKey(it.Key())
+				if err != nil || !checkBounds(heightRange, keyHeight) {
+					continue LOOP
+				}
+			}
 			if checkBounds(qr, v) {
 				txi.setTmpHashes(tmpHashes, it, matchEvents)
 			}
