@@ -2,8 +2,10 @@ package types
 
 import (
 	"fmt"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -73,40 +75,76 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bo
 	return voteSet.AddVote(vote)
 }
 
-func MakeVote(
-	height int64,
-	blockID BlockID,
-	valSet *ValidatorSet,
-	privVal PrivValidator,
+func MakeVoteNoError(
+	t *testing.T,
+	val PrivValidator,
 	chainID string,
-	now time.Time,
-) (*Vote, error) {
-	pubKey, err := privVal.GetPubKey()
-	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-	addr := pubKey.Address()
-	idx, _ := valSet.GetByAddress(addr)
-	vote := &Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   idx,
-		Height:           height,
-		Round:            0,
-		Timestamp:        now,
-		Type:             tmproto.PrecommitType,
-		BlockID:          blockID,
-	}
-	v := vote.ToProto()
+	valIndex int32,
+	height int64,
+	round int32,
+	step tmproto.SignedMsgType,
+	blockID BlockID,
+	time time.Time,
+) *Vote {
+	vote, err := MakeVote(val, chainID, valIndex, height, round, step, blockID, time)
+	require.NoError(t, err)
+	return vote
+}
 
-	if err := privVal.SignVote(chainID, v); err != nil {
+func MakeVote(
+	val PrivValidator,
+	chainID string,
+	valIndex int32,
+	height int64,
+	round int32,
+	step tmproto.SignedMsgType,
+	blockID BlockID,
+	time time.Time,
+) (*Vote, error) {
+	pubKey, err := val.GetPubKey()
+	if err != nil {
 		return nil, err
 	}
 
-	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
+	v := &Vote{
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   valIndex,
+		Height:           height,
+		Round:            round,
+		Type:             step,
+		BlockID:          blockID,
+		Timestamp:        time,
+	}
 
-	return vote, nil
+	vpb := v.ToProto()
+	if err := val.SignVote(chainID, vpb); err != nil {
+		return nil, err
+	}
+
+	v.Signature = vpb.Signature
+	if step == tmproto.PrecommitType {
+		v.ExtensionSignature = vpb.ExtensionSignature
+	}
+	return v, nil
 }
+
+// func MakeVote(
+// 	height int64,
+// 	blockID BlockID,
+// 	valSet *ValidatorSet,
+// 	privVal PrivValidator,
+// 	chainID string,
+// 	now time.Time,
+// ) (*Vote, error) {
+// 	pubKey, err := privVal.GetPubKey()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("can't get pubkey: %w", err)
+// 	}
+// 	addr := pubKey.Address()
+// 	idx, _ := valSet.GetByAddress(addr)
+
+// 	return MakeVote2(privVal, chainID, idx, height, 0, tmproto.PrecommitType, blockID, now)
+// }
 
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.

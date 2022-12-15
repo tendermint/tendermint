@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	mpmocks "github.com/tendermint/tendermint/mempool/mocks"
 	"github.com/tendermint/tendermint/p2p"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/store"
@@ -123,12 +124,20 @@ func newReactor(
 		blockID := types.BlockID{Hash: thisBlock.Hash(), PartSetHeader: thisParts.Header()}
 
 		// Simulate a commit for the current height
+		pubKey, err := privVals[0].GetPubKey()
+		if err != nil {
+			panic(err)
+		}
+		addr := pubKey.Address()
+		idx, _ := state.Validators.GetByAddress(addr)
 		vote, err := types.MakeVote(
-			thisBlock.Header.Height,
-			blockID,
-			state.Validators,
 			privVals[0],
 			thisBlock.Header.ChainID,
+			idx,
+			thisBlock.Header.Height,
+			0,
+			tmproto.PrecommitType,
+			blockID,
 			time.Now(),
 		)
 		if err != nil {

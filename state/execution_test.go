@@ -394,8 +394,7 @@ func TestProcessProposal(t *testing.T) {
 		pk, err := privVal.GetPubKey()
 		require.NoError(t, err)
 		idx, _ := state.Validators.GetByAddress(pk.Address())
-		vote, err := test.MakeVote(privVal, block0.Header.ChainID, idx, height-1, 0, 2, blockID, time.Now())
-		require.NoError(t, err)
+		vote := types.MakeVoteNoError(t, privVal, block0.Header.ChainID, idx, height-1, 0, 2, blockID, time.Now())
 		addr := pk.Address()
 		voteInfos = append(voteInfos,
 			abci.VoteInfo{
