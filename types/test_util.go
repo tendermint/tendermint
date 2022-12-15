@@ -37,14 +37,39 @@ func MakeExtCommit(blockID BlockID, height int64, round int32,
 	return voteSet.MakeExtendedCommit(), nil
 }
 
+// TODO separate and refactor with MakeVote
 func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+	if vote.Type != voteSet.signedMsgType {
+		return false, fmt.Errorf("vote and voteset are of different types; %d != %d", vote.Type, voteSet.signedMsgType)
+	}
 	v := vote.ToProto()
 	err = privVal.SignVote(voteSet.ChainID(), v)
 	if err != nil {
 		return false, err
 	}
 	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
+
+	isPrecommit := voteSet.signedMsgType == tmproto.PrecommitType
+	if !isPrecommit && voteSet.extensionsEnabled {
+		return false, fmt.Errorf("only Precommit vote sets may have extensions enabled; vote type: %d", voteSet.signedMsgType)
+	}
+
+	isNil := vote.BlockID.IsZero()
+	extSignature := (len(v.ExtensionSignature) > 0)
+	if extSignature == (!isPrecommit || isNil) {
+		return false, fmt.Errorf(
+			"extensions must be present IFF vote is a non-nil Precommit; present %t, vote type %d, is nil %t",
+			extSignature,
+			voteSet.signedMsgType,
+			isNil,
+		)
+	}
+
+	vote.ExtensionSignature = nil
+	if voteSet.extensionsEnabled {
+		vote.ExtensionSignature = v.ExtensionSignature
+	}
+
 	return voteSet.AddVote(vote)
 }
 
