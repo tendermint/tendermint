@@ -566,9 +566,7 @@ func (bpr *bpRequester) setBlock(block *types.Block, extCommit *types.ExtendedCo
 		return false
 	}
 	bpr.block = block
-	if extCommit != nil {
-		bpr.extCommit = extCommit
-	}
+	bpr.extCommit = extCommit
 	bpr.mtx.Unlock()
 
 	select {

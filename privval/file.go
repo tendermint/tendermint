@@ -304,6 +304,7 @@ func (pv *FilePV) String() string {
 // signVote checks if the vote is good to sign and sets the vote signature.
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
+// extension signatures are aways signed for non-nil precommits (even if the data is empty)
 func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
@@ -320,6 +321,7 @@ func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	// application may have created a different extension. We therefore always
 	// re-sign the vote extensions of precommits. For prevotes and nil
 	// precommits, the extension signature will always be empty.
+	// Even if the signed over data is empty, we still add the signature
 	var extSig []byte
 	if vote.Type == tmproto.PrecommitType && !types.ProtoBlockIDIsNil(&vote.BlockID) {
 		extSignBytes := types.VoteExtensionSignBytes(chainID, vote)

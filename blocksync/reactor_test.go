@@ -109,14 +109,12 @@ func newReactor(
 		panic(err)
 	}
 
-	var lastExtCommit *types.ExtendedCommit
-
 	// The commit we are building for the current height.
 	seenExtCommit := &types.ExtendedCommit{}
 
 	// let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
-		lastExtCommit = seenExtCommit.Clone()
+		lastExtCommit := seenExtCommit.Clone()
 
 		thisBlock := state.MakeBlock(blockHeight, nil, lastExtCommit.ToCommit(), nil, state.Validators.Proposer.Address)
 
