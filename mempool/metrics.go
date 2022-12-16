@@ -38,6 +38,16 @@ type Metrics struct {
 	//metrics:Number of evicted transactions.
 	EvictedTxs metrics.Counter
 
+	// PurgedDurationTxs defines the number of purged transactions due to
+	// mempool transaction TTL settings based on time duration.
+	//metrics:Number of purged transactions due to TTLDuration.
+	PurgedDurationTxs metrics.Counter
+
+	// PurgedNumBlocksTxs defines the number of purged transactions due to
+	// mempool transaction TTL settings based on number of blocks.
+	//metrics:Number of purged transactions due to TTLNumBlocks.
+	PurgedNumBlocksTxs metrics.Counter
+
 	// Number of times transactions are rechecked in the mempool.
 	RecheckTimes metrics.Counter
 }

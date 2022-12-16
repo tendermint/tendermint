@@ -742,11 +742,11 @@ func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 		if txmp.config.TTLNumBlocks > 0 && (blockHeight-w.height) > txmp.config.TTLNumBlocks {
 			txmp.removeTxByElement(cur)
 			txmp.cache.Remove(w.tx)
-			txmp.metrics.EvictedTxs.Add(1)
+			txmp.metrics.PurgedNumBlocksTxs.Add(1)
 		} else if txmp.config.TTLDuration > 0 && now.Sub(w.timestamp) > txmp.config.TTLDuration {
 			txmp.removeTxByElement(cur)
 			txmp.cache.Remove(w.tx)
-			txmp.metrics.EvictedTxs.Add(1)
+			txmp.metrics.PurgedDurationTxs.Add(1)
 		}
 		cur = next
 	}
