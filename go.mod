@@ -57,6 +57,15 @@ require (
 )
 
 require (
+	github.com/klauspost/cpuid v1.3.1 // indirect
+	github.com/klauspost/reedsolomon v1.9.9 // indirect
+	github.com/mmcloughlin/avo v0.0.0-20200803215136-443f81d77104 // indirect
+	github.com/templexxx/cpu v0.0.7 // indirect
+	github.com/templexxx/xorsimd v0.4.1 // indirect
+	github.com/tjfoc/gmsm v1.3.2 // indirect
+)
+
+require (
 	4d63.com/gochecknoglobals v0.1.0 // indirect
 	github.com/Abirdcfly/dupword v0.0.7 // indirect
 	github.com/Antonboom/errname v0.1.7 // indirect
@@ -243,6 +252,7 @@ require (
 	github.com/ultraware/funlen v0.0.3 // indirect
 	github.com/ultraware/whitespace v0.0.5 // indirect
 	github.com/uudashr/gocognit v1.0.6 // indirect
+	github.com/xtaci/kcp-go/v5 v5.6.1
 	github.com/yagipy/maintidx v1.0.0 // indirect
 	github.com/yeya24/promlinter v0.2.0 // indirect
 	gitlab.com/bosi/decorder v0.2.3 // indirect

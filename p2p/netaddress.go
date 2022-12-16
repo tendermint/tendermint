@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	kcp "github.com/xtaci/kcp-go/v5"
+
 	tmp2p "github.com/tendermint/tendermint/proto/tendermint/p2p"
 )
 
@@ -108,6 +110,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 
 	na := NewNetAddressIPPort(ip, uint16(port))
 	na.ID = id
+
 	return na, nil
 }
 
@@ -233,7 +236,7 @@ func (na *NetAddress) DialString() string {
 
 // Dial calls net.Dial on the address.
 func (na *NetAddress) Dial() (net.Conn, error) {
-	conn, err := net.Dial("tcp", na.DialString())
+	conn, err := kcp.Dial(na.DialString())
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +245,7 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 
 // DialTimeout calls net.DialTimeout on the address.
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
-	conn, err := net.DialTimeout("tcp", na.DialString(), timeout)
+	conn, err := kcp.DialTimeout(na.DialString(), timeout)
 	if err != nil {
 		return nil, err
 	}
