@@ -34,7 +34,6 @@ message CanonicalVote {
   CanonicalBlockID          block_id  = 4 [(gogoproto.customname) = "BlockID"];
   google.protobuf.Timestamp timestamp = 5 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
   string                    chain_id  = 6 [(gogoproto.customname) = "ChainID"];
-  VoteExtensionToSign       vote_extension = 7;
 }
 
 // CanonicalVoteExtension provides us a way to serialize a vote extension from

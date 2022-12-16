@@ -549,7 +549,7 @@ func updateState(
 		nextParams = state.ConsensusParams.Update(abciResponse.ConsensusParamUpdates)
 		err := nextParams.ValidateBasic()
 		if err != nil {
-			return state, fmt.Errorf("updating consensus params: %w", err)
+			return state, fmt.Errorf("validating new consensus params: %w", err)
 		}
 
 		err = state.ConsensusParams.ValidateUpdate(abciResponse.ConsensusParamUpdates, header.Height)
