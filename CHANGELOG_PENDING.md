@@ -25,6 +25,7 @@
   - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
     labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
   - [inspect] \#9655 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
+  - [metrics] \#9898 Add new (separate-from-eviction) mempool metrics for purged transactions (@brendanchou)
 
 ### FEATURES
 
