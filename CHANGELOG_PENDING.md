@@ -11,7 +11,9 @@
 - P2P Protocol
 
 - Go API
-    - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
+  - [p2p] \#9625 Remove unused p2p/trust package (@cmwaters)
+  - [rpc] \#9655 Remove global environment and replace with constructor. (@williambanfield,@tychoish)
+  - [node] \#9655 Move DBContext and DBProvider from the node package to the config package. (@williambanfield,@tychoish)
 
 - Blockchain Protocol
 
@@ -22,9 +24,13 @@
     - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
     - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
     labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
+  - [inspect] \#9655 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
 
 ### FEATURES
 
+- [proxy] \#9830 Introduce `NewUnsyncLocalClientCreator`, which allows local
+  ABCI clients to have the same concurrency model as remote clients (i.e. one
+  mutex per client "connection", for each of the four ABCI "connections").
 - [config] \#9680 Introduce `BootstrapPeers` to the config to allow nodes to list peers to be added to
   the addressbook upon start up (@cmwaters)
 
