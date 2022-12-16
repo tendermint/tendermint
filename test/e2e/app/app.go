@@ -88,7 +88,7 @@ func DefaultConfig(dir string) *Config {
 }
 
 // NewApplication creates the application.
-func NewApplication(cfg *Config) (abci.Application, error) {
+func NewApplication(cfg *Config) (*Application, error) {
 	state, err := NewState(cfg.Dir, cfg.PersistInterval)
 	if err != nil {
 		return nil, err
