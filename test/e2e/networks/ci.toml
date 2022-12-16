@@ -4,14 +4,8 @@
 ipv6 = true
 initial_height = 1000
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
-<<<<<<< HEAD
-=======
-prepare_proposal_delay = "100ms"
-process_proposal_delay = "100ms"
-check_tx_delay = "0ms"
 # The most common case (e.g. Cosmos SDK-based chains).
 abci_protocol = "builtin"
->>>>>>> 82ec855be (e2e: Remove extraneous abci_protocol params in CI test (#9896))
 
 [validators]
 validator01 = 100
