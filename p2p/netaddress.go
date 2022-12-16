@@ -43,10 +43,10 @@ func IDAddressString(id ID, protocolHostPort string) string {
 // panic. Panics if ID is invalid.
 // TODO: socks proxies?
 func NewNetAddress(id ID, addr net.Addr) *NetAddress {
-	tcpAddr, ok := addr.(*net.TCPAddr)
+	tcpAddr, ok := addr.(*net.UDPAddr)
 	if !ok {
 		if flag.Lookup("test.v") == nil { // normal run
-			panic(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
+			panic(fmt.Sprintf("Only UDPAddrs are supported. Got: %v", addr))
 		} else { // in testing
 			netAddr := NewNetAddressIPPort(net.IP("127.0.0.1"), 0)
 			netAddr.ID = id
@@ -110,7 +110,6 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 
 	na := NewNetAddressIPPort(ip, uint16(port))
 	na.ID = id
-
 	return na, nil
 }
 
@@ -245,7 +244,7 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 
 // DialTimeout calls net.DialTimeout on the address.
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
-	conn, err := kcp.DialTimeout(na.DialString(), timeout)
+	conn, err := kcp.Dial(na.DialString())
 	if err != nil {
 		return nil, err
 	}
