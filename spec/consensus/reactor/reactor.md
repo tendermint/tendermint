@@ -25,9 +25,9 @@ The Consensus reactor is, itself, divided into two layers, State and Communicati
 
 The **State** layer keeps the state and transition functions described in the [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.0493).
 
-The **Communication** layer (AKA, Gossip) handles messages received through the P2P layer, triggering updates of peer information and, when conditions are met, of the consensus state.
-The communication layer also reacts to events in the consensus state and, periodically, propagates information on the node's state to its neighbors. 
-It is in this layer that partial synchrony assumptions are combined with P2P primitives to provide Tendermint BFT's liveness guarantees.
+The **Communication** layer (AKA, Gossip), keeps state and transition functions related to the gossiping with other nodes.
+This layer reacts to messages received through the P2P layer by updating the layer internal state and, when conditions are met, calling into the State.
+It also handles the broadcasts made by State.
 Exchanges between State and Communication use multiple forms, but we will call them all **Gossip-I** here.
 
 
@@ -93,263 +93,268 @@ It seems reasonable, therefore, to formalize the requirements of Tendermint in t
 
 # Part 2: Specifications
 ## The Consensus State Layer - State
+The consensus layer is where the actions of the Tendermint BFT are implemented.
+Actions are executed once certain pre-conditions apply, such as timeout expirations or reception of information from particular subsets of the nodes in the system., neighbors or not.
 
-### Provides to Applications and other Reactors
+An action may require communicating with applications and other reactors, for example to gather data to compose a proposal or to deliver decisions, with the P2P layer to communicate with other nodes.
 
-Communication of the Consensus Reactor with layers above (applications) and on to the side (other reactors) is covered by the [ABCI](../../abci/) specification.
+### Northbound Interaction
+Communication of the Consensus Reactor with applications is covered by the [ABCI](../../abci/) specification.
 
-### Provides to the Communication Layer
+Communication with the Mempool to build an initial block proposal happens through function calls.
+This is an "optional" step, though, as the actual proposal is made by the application through the ABCI method `prepareProposal`.
+Hence we ignore other reactors here and refer to the northbound interaction as being only to Applications.
 
-A message supersession operator:
+#### Requires from Applications
+* Reasonable parameters to drive the execution of Consensus
+    * a validator sets with less than 1/3 of voting power belonging to byzantine nodes
+* Timely creation of proposals
+* Timely processing of decisions
+* ...
 
-`SSS(lhs,rhs)` (`lhs` supersedes `rhs`) is true if and only if $\text{lhs} \overset{s}{>} \text{rhs}$
+See [ABCI](../../abci/abci%2B%2B_app_requirements.md)
+
+#### Provides to Applications
+* Fairness proposing values from all validators
+* Eventual delivering decisions, as long as assumptions are met
+* ...
+
+See [ABCI](../../abci/abci%2B%2B_tmint_expected_behavior.md)
+
+
+### Southbound Interaction
+The State layer interacts southbound only with the Communication layer.
+
+#### Vocabulary
+
+```tla+
+P: set of all processes 
+
+Ne[p]: neighbor set of p
+BMsgs[p]: set of messages for which `broadcast` has been invoked at p
+DMsgs[p]: set of messages delivered by p
+Msgs[p]: set of messages that need to be sent to neighbors (subset BMsgs[p] U DMsgs[p])
+
+SuperS(lhs,rhs): the supersession operator 
+```
+
+> **TODO**   
+> Where to best place this?
 
 ### Requires from the Communication Layer
+The State layer uses the Communication layer to broadcast information to all nodes in the system and, therefore in terms of API, a single method to broadcast messages is required, `broadcast(msg)`. 
 
-Messages received by a node either change the node's State or are discarded. 
-If they change the State, even if by just getting added to a set of received messages, then the original message need not be forwarded. 
-Instead, a new message, with the same contents, is generated from the State of the node. Why does this matter? Because it let's us think in terms of messages being sent to neighbors only, not forwarded on the overlay.
+Although ideally the State layer shouldn't be concerned about the implementation details of `broadcast`, it would be unreasonable to do so as it could impose unattainable behavior to the Communication layer.
+Specifically, because the network is potentially not complete, message forwarding may be required to implement a broadcast and, as discussed previously, this would require potentially infinite message buffers on the "relayers".
+Hence, the State layer only requires a **best-effort** in forwarding messages, allowing the communication layer to quit forwarding messages that are no longer useful, or that have been **superseded**.
 
-> **[REQ-STATE-GOSSIP-NEIGHBOR_CAST]**   
-> Best Effort Neighbor-Cast: continuously resend any non-superseded messages to neighbors (connected nodes).
+> **Note**    
+> Since it would be impossible for all the nodes to know immediately when a message was superseded, we use non-superseded as a synonym to "not known by the node to have been superseded".
+
+**[REQ-STATE-GOSSIP-NEIGHBOR_CAST]**   
+Best Effort Neighbor-Cast: continuously resend any non-superseded messages to neighbors (connected nodes) until delivered is confirmed.
 
 It should be provable that    
-[REQ-STATE-GOSSIP-NEIGHBOR_CAST] +  $\Diamond\Delta$-Timely Communication ~> $\Diamond$ Termination.
+[REQ-STATE-GOSSIP-NEIGHBOR_CAST] +  $\Diamond\Delta$-Timely Communication ~> Termination.
 
 
+Most Tendermint BFT actions are triggered when a set of messages satisfying some criteria are received.
+The communication layer must therefore accumulate messages that might still satisfy some conditions and allow Tendermint to evaluate these conditions whenever new messages are received.
 
-## Communication, AKA Gossip
-
-
-```tla+
-SuperS(lhs,rhs): the supersession operator  
-Ne[p]: neighbor set of p
-Msgs[p]: the messages for which GossipCast has been invoked at p
-DMsgs[p]: set of messages GossipDelivered by p
-```
-
-### Provides to State (Gossip-I)
-
-[GOSSIP-CAST-NEIGHBORS]
-
-To gossip-cast, add message to the outbound messages set.
+**[REQ-STATE-GOSSIP-KEEP_NON_SUPERSEDED]**    
+For any message $m \in \text{DMsgs}[p]$ at time $t$, if there exists a time $t'' > t$ at which $m \notin \text{DMsgs}[p]$, then $\exists t', t < t'< t''$ at which there exists a message $m' \in \text{DMsgs}[p], m' \overset{s}{>} m$
 
 ```tla+
-GossipCast(p,m): Msgs[p]' = Msgs[p] \cup {m} 
+noLoss() ==  
+   []\E m \in DMsgs[p] => [] (m \in DMsgs[p] \/ \E m' \in DMsgs[p]: SSS(m',m))
 ```
 
-All outbound messages will be delivered to neighbors at the time the message was sent, or the neighbor disconnects, or a superseding messages makes sending the message useless.
+#### **Current implementation: Message accumulation**
+The Communication layer reacts to messages by adding them to sets of similar messages, within the Communication layer internal state,  and then evaluating if Tendermint conditions are met and triggering changes to State, or by itself reacting to implement the gossip communication.
 
-```tla+
-GossipCastDelivery(p,q,m) == 
-    q \in Ne[p] /\ m \in Msgs[p] ~> \/ m \in DMsgs[q]
-                                    \/ m \notin Msgs[p] /\ \E mn \in Msgs[p]: SuperS(mn,m)
-                                    \/ q \notin Ne[p]
+### Provides to the Communication Layer
+In order to identify when a message has been superseded, the State layer must provide the Communication layer with a supersession operator `SSS(lhs,rhs)`, which returns true \iff $\text{lhs} \overset{s}{>} \text{rhs}
+
+> **Current implementation: Supersession**   
+> Currently the knowledge of message supersession is embedded in the Communication layer, which decides which messages to retransmit based on the State layer's state and the Communication layer's state.
+> 
+> Even though there is no specific superseding operator, superseding happens by advancing steps, rounds and heights.
+>
+> @josef-wider
+> > In the past we looked a bit into communication closure w.r.t. consensus. Roughly, the lexicographical order over the tuples (height, round, step) defines a notion of logical time, and when I am in a certain height, round and step, I don't care about messages from "the past". Tendermint consensus is mostly communication-closed in that we don't care about messages from the past. An exception is line 28 in the arXiv paper where we accept prevote messages from previous rounds vr for the same height.
+> > 
+> > I guess a precise constructive definition of "supersession" can be done along these lines.
+> ```scala
+> //TODO: define Message
+> 
+> pure def SSS(lhs,rhs): (Message, Message) => bool =
+>     lhs > rhs                     //TODO: provide actual definition, considering the comment above.
+> } 
+> ```
+
+
+## Communication Layer (AKA Gossip)
+The communication layer provides the facilities for the State layer to communicate with other nodes by sending messages and by receiving callbacks when conditions specified in the algorithm are met.
+
+
+### Requires from the State layer (Gossip-I)
+Since the network is not fully connected, communication happens at a **local** level, in which information is delivered to the neighbors of a node, and a **global level**, in which information is forwarded on to neighbors of neighbors and so on.
+
+Since connections and disconnections may happen continuously and the total membership of the system is not knowable, reliably delivering messages in this scenario would require buffering messages indefinitely, in order to pass them on to any nodes that might be connected in the future.
+Since buffering must be limited, the Communication layer needs to know which messages have been superseded and can be dropped, and that the number of non-superseded messages at any point in time is bounded.
+
+
+**[REQ-GOSSIP-STATE-SUPERSESSION.1]**   
+`SuperS(lhs,rhs)` is provided.
+
+
+**[REQ-GOSSIP-STATE-SUPERSESSION.2]**    
+There exists a $c \in Int$ such that, at any point in time, the subset of messages in Msgs[p] that have not been superseded is smaller than $c$.
+
+$\exists c \in I, \forall t, \forall p \in P, Cardinality (\{m \in Msgs[p]: \not\exists m' \in Msgs[p]: m' \neq m \land SSS(m', m)\}) \leq c$ 
+
+>
+> ```tla+
+> \E c \in Int, \A t, \A p \in P, Cardinality ({m \in Msgs[p]: \not\E m' \in Msgs[p], m' \neq m, SSS(m', m)} < c)
+> ```
+
+[REQ-GOSSIP-STATE-SUPERSESSION.2] implies that the messages being broadcast by the process itself and those being forwarded must be limited.
+In Tendermint BFT this is achieved by virtue of only validators broadcasting messages and the set of validators being always limited.
+
+Although only validators broadcast messages, even non-validators (including sentry nodes) must deliver them, because: 
+* only the nodes themselves know if they are validators,
+* non-validators may also need to decide to implement the state machine replication, and,
+* the network is not fully connected and non-validators are used to forward information to the validators.
+
+Non-validators that could support applications on top may be able to inform the communication layer about superseded messages (for example, upon decisions).
+
+Non-validators that are deployed only to facilitate communication between peers (i.e., P2P only nodes, which implement the Communication layer but not the State layer) still need to be provided with a supersession operator in order to limit buffering.
+
+#### Current implementation: P2P only nodes**
+All nodes currently run Tendermint BFT, but desire to have lightweight, gossip only only, nodes has been expressed, e.g. in [ADR052](#references)
+
+### Provides to the State layer (Gossip-I)
+
+To broadcast as message $m$, process $p$ adds it to the set `BMsgs[p]` set.
+
+```scala
+action broadcast(p,m): (Process, Message) = 
+    Msgs[p]' = Msgs[p].union(Set(m))
 ```
 
 
 
+**[PROV-GOSSIP-STATE-NEIGHBOR_CAST.1]**   
+For any message $m$ added to BMsgs[p] at instant $t$, let NePt be the value of Ne[$p$]$ at time $t$; for each process $q \in \text{Ne}[p]$, $m$ will be delivered to $q$ at some point in time $t1 > t$, or there exists a point in time $t2 > t$ at which $q$ disconnects from $p$, or a message $m1$ is added to $BMsgs[p]$ at some instant $t3 > t$ and $SSS(m1,m)$.
 
-[GOSSIP-CAST-FORWARD]
+```scala
+always (
+    all {
+        m.in(BMsgs[p])
+        q.in(Ne[p])
+    } implies eventually (
+        any {
+            m.in(DMsgs[q]),
+            BMsgs[p].exists(m1 => SSS(m1,m)),
+            q.notin(Ne[p])
+        }
+    )
+)
+```
 
+**[PROV-GOSSIP-STATE-NEIGHBOR_CAST.2]**   
 For every message received, either the message itself is forwarded or a superseding message is broadcast.
 
-```tla+
-m \in DMsgs[p] ~> \/ m \in Msgs[p] 
-                  \/ \E mn \in Msgs[p]: SuperS(mn,m)
+```scala
+always(
+    (
+        DMsgs[p].contains(m)
+    ) implies eventually ( 
+        any {
+            Msgs[p].contains(m), 
+            Msgs[p].exists(mn => SSS(mn,m))
+        }
+    )
+)
 ```
 
+Observe that the requirements from the State allow the Communication layer to provide these guarantees as a best effort and while bounding the memory used.
 
-#### Current Implementations
-
-[GOSSIP-CAST-NEIGHBORS]
-
-- Go-routines
-    - Looping go-routines continuously check the Consensus state for conditions that trigger message sending.
-    - For each set of conditions met, messages are created and sent using the P2P-I (Send and TrySend).
-    - If the conditions didn't change from the previous iteration, the message created is the same as before, effectively implementing a message retransmission.
-    - If the conditions have changed, a new message is created, effectively superseding the message sent on the previous iteration.
-    - Superseded messages will never be sent through P2P-I again and therefore need not be maintained. (TODO: Argue that this is still valid refinement mapping).
-    - From the point of view of the Gossip layer, Send and TrySend are similar.
-
-- Pub-Sub
-    - Upon certain changes on the Consensus state (detected through internal pub-sub) broadcast messages
-        - These messages are not discarded, even if superseding messages are created, unless there is a reconnection.
-            - Buffer bounding here comes from superseding messages only being generated if the algorithm made some progress, which implies (maybe) some communication with neighbors and therefore that the message was actually sent on the TCP channel?Does not seem really true, since progress means messages coming in, but not necessarily going out. 
-            But if messages are not going out, a disconnection will happen and the buffer will be emptied.
-            - On node reconnection, only the latest (superseding) messages are retransmitted.
-
-Considering the two forms of communication above, Msgs is bounded.
-
-
-
-[GOSSIP-CAST-FORWARD]
-
-- `Receive` function - loop: receive and validate message; invoke PeerState methods to handle contents, updating the state of nodes, which generate superseding messages.
-
-> **Warning**   
-> Are there purely forwarded messages?
-
-
-### Requires from P2P (P2P-I)
-
-[CONCURRENT-CONNECTION]
-
-Ability to connect to multiple nodes concurrently
-
-> P2P provides 1-to-1 interface, while gossip must provide 1-to-many.
-
-[CHURN-DETECTION]
-
-Connection and Disconnection alert
-
-> Gossip needs to keep track of neighbors
-
-[UNAMBIGUOUS-SOURCE-IDENTIFICATION]
-
-Ability to discern sources of messages received
-
-> ~~Needed to identify duplications.~~   
-    - Duplication is handled by having messages in the consensus layer be idempotent   
-> Needed to address sender ins request response/situation
-
-
-[NON-REFUTABILITY]
-
-Non-refutability of messages - Is this a gossip or a consensus requirement?
-
-
-
-[UNICAST]
-- Ability address messages to a single neighbor
+> [PROV-GOSSIP-STATE-NEIGHBOR_CAST.1] + [PROV-GOSSIP-STATE-NEIGHBOR_CAST.2] + [REQ-GOSSIP-STATE-SUPERSESSION.2] = Best effort communication + Bounded memory usage.
 
 #### Current implementations
 
-[CONCURRENT-CONNECTION]
+`broadcast`   
+State does not directly broadcast messages; it changes its state and rely on the Communication layer to see the change in the state and propagate it to other nodes.
 
+[PROV-GOSSIP-STATE-NEIGHBOR_CAST.1]   
+For each of the neighbors of the node, looping go-routines continuously evaluate the conditions to send messages to other nodes.
+If a message must be sent, it is enqueued for transmission using TCP and will either be delivered to the destination or the connection will be dropped.
+New connections reset the state of Communication layer wrt the newly connected node (in case it is a reconnection) and any messages previously sent (but possibly not delivered) will be resent if the conditions needed apply. If the conditions no longer apply, it means that the message has been superseded and need no be retransmitted.
+
+[PROV-GOSSIP-STATE-NEIGHBOR_CAST.2]   
+Messages delivered either cause the State to be advanced, causing the message to be superseded, or are added to the Communication layer internal state to be checked for matching conditions in the future.
+From the internal state it will affect the generation of new messages, which may have exactly the same contents of the original one or not, either way superseding the original.
+
+### Requires from P2P (P2P-I)
+
+The P2P layer must expose functionality to allow 1-1 communication at the Communication layer, for example to implement request/response (e.g., "Have you decided?").
+
+**[REQ-GOSSIP-P2P-UNICAST]**   
+Ability address messages to a single neighbor
+
+**[REQ-GOSSIP-P2P-NEIGHBOR_ID]**    
+Ability to discern sources of messages received.
+
+Moreover, since the Communication layer must provide 1-to-many communication, the P2P layer must provide:
+
+**[REQ-GOSSIP-P2P-CONCURRENT_CONN]**    
+Support for connecting to multiple nodes concurrently.
+```scala
+assume _ = Proc.forall(p => size(Ne[p]) >= 0)
+```
+
+**[REQ-GOSSIP-P2P-CHURN-DETECTION]**    
+Support for tracking connections and disconnections from neighbors.
+
+
+**[REQ-GOSSIP-P2P-NON_REFUTABILITY]**     
+Needed for authentication.
+
+
+#### Current implementations
+
+[REQ-GOSSIP-P2P-UNICAST]   
+- `Send(Envelope)`/`TrySend(Envelope)`
+    - Enqueue and forget. 
+    - Disconnection and reconnection causes drop from queues.
+    - Enqueuing may block for a while in `Send`, but not on `TrySend`
+
+[REQ-GOSSIP-P2P-NEIGHBOR_ID]
+- Node cryptographic IDs.
+- IP Address
+
+[REQ-GOSSIP-P2P-CONCURRENT_CONN]    
 - Inherited from the network stack
 - Driven by PEX and config parameters
 
-[CHURN-DETECTION]
+[REQ-GOSSIP-P2P-CHURN-DETECTION]    
 - `AddPeer`
 - `RemovePeer`
 
-[UNAMBIGUOUS-SOURCE-IDENTIFICATION]
 
-- Node cryptographic IDs
+[REQ-GOSSIP-P2P-NON_REFUTABILITY]    
+- Cryptographic signing and authentication.
 
-[NON-REFUTABILITY]
-
-- Authentication/Signing
-
-[UNICAST]
-
-- `Send(Envelope)`/`TrySend(Envelope)`
-    - Enqueue and forget. 
-    - Disconnection and reconnection may cause drops. 
-    - Enqueuing may block for a while in `Send`, but not on `TrySend`
 
 
 
 #### Non-requirements
 - Non-duplication
-    - Gossip itself will duplicate messages
-    - Idempotency must be implemented by the application
-
-- Ability to send message to multiple neighbors
-    - Gossip itself can implement this, given other abilities
+    - Gossip itself can duplicate messages, so the State layer must be able to handle them, for example by ensuring idempotency.
 
 
 
 ## References
 - [The latest gossip on BFT consensus](https://arxiv.org/abs/1807.0493)
-
-
-
-
-
-
----
-# Scratch - Do not waste your time reading below this point!
-
-> **Warning**   
-> Anything below this point is just scratch nodes, waiting to be promoted to real contents or be cast into oblivion
-
-
-
-
-## TODO/Questions/Thoughts
-- Flow of information
-    - Option a - message set based (works everywhere, but harder to implement)
-        - The State layer updates its state
-        - The gossip layer adds messages to sets
-        - Messages in the sets are added to neighbor nodes' sets
-        - Messages in the sets are delivered to consensus
-        - Messages delivered and present in the neighbor sets are forgotten
-            - Duplication is detected at the gossip layer
-        - State/Gossip talk through a clear API
-    - Option b - state propagation based (works only if all nodes do all updates (validators), but easier to implement)
-        - The consensus layer updates its state
-        - The gossip layer compares local state and remote state estimate and propagates possibly relevant state updates
-            - Proposal Seen
-            - Prevoted
-            - Precommitted
-        - Messages don't need to be forwarded as loop on the neighbors will propagate their own state
-        - Messages are forgotten as soon as sent
-        - Messages are forgotten as soon as received
-        - Gossip reaches into the State guts to capture the state
-            - API to retrieve the state and reduce coupling?
-    - Solution (current?)
-        - mix state and message propagation?
-        - non-validators propagate messages
-            - State may include a set of messages to be propagated, turning b into a
-        - validators propagate state
-            - if all state is represented as set of messages, turns a into b
-        - if full nodes update all states, then use b instead
-        - What state is captured today?
-        - What messages are sent today?
-
-- Where should we "consume" GST?
-    - If in Gossip, then P2P is simpler and provides a best effort multicast/deliver and is up to Gossip to combine that with GST to provide eventual info delivery.
-    - If in P2P, then P2P is more complicated, provides eventual delivery, and Gossip is simpler and just uses it.
-    - Where is it (attempted) used in the current implementation?
-
-
-
-
-
-### Provides to State
-
-- BroadcastMessage(m)
-    - Adds m to a set `S` of messages to be broadcast.
-        > Current implementation uses a queue/queue to store messages, but this is a best effort in ordering the spread of messages since asynchronism and the existence of multiple paths in the network can invert the order. Hence, globally, the collections may be seen as sets.  
-
-        > Current implementation has a maximum size for the set and if more messages are enqueued to enter the set using go-routines.
-
-    - `\A m \in `: Send m to all neighbors.
-       > Neighbors known to have seen the message may be filtered.
-   - Any messages received are are added to the local set `S`.
-   
-- DeliverMessage(m)
-    - `\A m \in S`, DeliveredMessage(m) is invoked in the State layer.
-    - DeliveredMessage(m) is invoked exactly once.
-
-
-### Requires from P2P
-
-If GST is not an assumption of P2P, then it will provide
-
-- [Best Effort Info Delivery] `\A m1`, Send(m1) invoked implies that transmission of m1 will be attempted until Receive(m1) is invoked or `\E m2`, m2 supersedes, and Send(m2) is invoked.
-    > P2P cannot guarantee eventual delivery of messages since it would require potential infinite memory to store messages, while waiting for GST, to deliver to correct nodes in other partitions.
-
-
-
-GST ~> Eventual Connectivity
-
-P2P + Eventual Connectivity ~> [Eventual Info Delivery]
-
-- [Eventual Info Delivery] `\A m1`, Send(m1) invoked implies Receive(m1) is invoked or `\E m2`, m2 supersedes, and Receive(m2) is invoked.
-
-    > Current implementation does not consider superseding, except if a decision is reached, in which case messages may not be dropped on the current node, but if the message arrives at the next node and it has decided, then the message is dropped, so it seems like it could be dropped locally as well without loss of correctness.
-
-    > Current implementation may lose messages in `S` (if peers are removed and re-added (messages are dropped with the connection and not re-send once the connection is reestablished))
+- [ADR 052: Tendermint Mode](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
