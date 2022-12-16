@@ -8,6 +8,8 @@ import (
 
 	"golang.org/x/net/netutil"
 
+	kcp "github.com/xtaci/kcp-go/v5"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/protoio"
@@ -247,7 +249,8 @@ func (mt *MultiplexTransport) Close() error {
 
 // Listen implements transportLifecycle.
 func (mt *MultiplexTransport) Listen(addr NetAddress) error {
-	ln, err := net.Listen("tcp", addr.DialString())
+	ln, err := kcp.Listen(addr.DialString()) //start a kcp listener
+	//	ln, err := net.Listen("tcp", addr.DialString())
 	if err != nil {
 		return err
 	}
