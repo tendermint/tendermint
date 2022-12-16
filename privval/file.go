@@ -304,7 +304,7 @@ func (pv *FilePV) String() string {
 // signVote checks if the vote is good to sign and sets the vote signature.
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
-// extension signatures are aways signed for non-nil precommits (even if the data is empty)
+// Extension signatures are always signed for non-nil precommits (even if the data is empty).
 func (pv *FilePV) signVote(chainID string, vote *tmproto.Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 
