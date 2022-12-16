@@ -127,70 +127,88 @@ The State layer interacts southbound only with the Communication layer.
 
 #### Vocabulary
 
-```tla+
-P: set of all processes 
+```scala
+type Proc = Int
+const Step = Map("Proposal" -> 1,  "Prevote" -> 2, "Precommit" -> 3)
+type HRS = {height: Int, round: Int, step: Step.Domain}
+type StateMessage = {
+        hrs: HRS, 
+        payload: str,                                   //TODO: Define payloads?
+        src: Proc
+}
+                                                        //TODO: Where to include the Communication messages?
 
-Ne[p]: neighbor set of p
-BMsgs[p]: set of messages for which `broadcast` has been invoked at p
-DMsgs[p]: set of messages delivered by p
-Msgs[p]: set of messages that need to be sent to neighbors (subset BMsgs[p] U DMsgs[p])
+Ne: Proc -> Proc                                        //Neighbor sets
+BMsgs: Proc -> Set[StateMessage]                        //Messages broadcast by State
+DMsgs: Proc -> Set[StateMessage]                        //Messages delivered to State
+Msgs[p]: Proc -> Set[StateMessage]                      //Messages to be sent/forwarded (subset BMsgs[p] U DMsgs[p])
 
-SuperS(lhs,rhs): the supersession operator 
+SSS(lhs,rhs): (StateMessage, StateMessage) => bool      //The supersession operator 
 ```
 
 > **TODO**   
-> Where to best place this?
+> Where to best place this? As a single vocabulary for all layers or as separate vocabularies for each interface?
+> Consider that properties may be required for multiple vocabularies.
 
 ### Requires from the Communication Layer
 The State layer uses the Communication layer to broadcast information to all nodes in the system and, therefore in terms of API, a single method to broadcast messages is required, `broadcast(msg)`. 
 
 Although ideally the State layer shouldn't be concerned about the implementation details of `broadcast`, it would be unreasonable to do so as it could impose unattainable behavior to the Communication layer.
-Specifically, because the network is potentially not complete, message forwarding may be required to implement a broadcast and, as discussed previously, this would require potentially infinite message buffers on the "relayers".
-Hence, the State layer only requires a **best-effort** in forwarding messages, allowing the communication layer to quit forwarding messages that are no longer useful, or that have been **superseded**.
+Specifically, because the network is potentially not complete, message forwarding may be required to implement `broadcast` and, as discussed previously, this would require potentially infinite message buffers on the "relayers".
+Hence, the State layer can only require a **best-effort** in broadcasting messages, allowing the communication layer to quit forwarding messages that are no longer useful or, in other words, which have been **superseded**.
 
 > **Note**    
 > Since it would be impossible for all the nodes to know immediately when a message was superseded, we use non-superseded as a synonym to "not known by the node to have been superseded".
 
 **[REQ-STATE-GOSSIP-NEIGHBOR_CAST]**   
-Best Effort Neighbor-Cast: continuously resend any non-superseded messages to neighbors (connected nodes) until delivered is confirmed.
+Best Effort Neighbor-Cast: continuously resend any non-superseded messages to connected nodes until delivery is confirmed.
 
 It should be provable that    
 [REQ-STATE-GOSSIP-NEIGHBOR_CAST] +  $\Diamond\Delta$-Timely Communication ~> Termination.
 
 
-Most Tendermint BFT actions are triggered when a set of messages satisfying some criteria are received.
-The communication layer must therefore accumulate messages that might still satisfy some conditions and allow Tendermint to evaluate these conditions whenever new messages are received.
+Most Tendermint BFT actions are triggered when a set of messages received satisfy some criteria.
+The Communication layer must therefore accumulate the messages received that might still be used to satisfy some conditions and allow Tendermint to evaluate these conditions whenever new messages are received or timeouts expire.
 
 **[REQ-STATE-GOSSIP-KEEP_NON_SUPERSEDED]**    
-For any message $m \in \text{DMsgs}[p]$ at time $t$, if there exists a time $t'' > t$ at which $m \notin \text{DMsgs}[p]$, then $\exists t', t < t'< t''$ at which there exists a message $m' \in \text{DMsgs}[p], m' \overset{s}{>} m$
+For any message $m \in \text{DMsgs}[p]$ at time $t$, if there exists a time $t2 > t$ at which $m \notin \text{DMsgs}[p]$, then $\exists t1, t < t1< t2$ at which there exists a message $mm \in \text{DMsgs}[p], mn \overset{s}{>} m$
 
-```tla+
-noLoss() ==  
-   []\E m \in DMsgs[p] => [] (m \in DMsgs[p] \/ \E m' \in DMsgs[p]: SSS(m',m))
+```scala
+always (
+    all {
+        m.in(DMsgs[p])
+    } implies eventually (
+        any {
+            m.in(DMsgs[p]),
+            DMsgs[p].exists(m1 => SSS(m1,m)),
+        }
+    )
+)
 ```
 
 #### **Current implementation: Message accumulation**
 The Communication layer reacts to messages by adding them to sets of similar messages, within the Communication layer internal state,  and then evaluating if Tendermint conditions are met and triggering changes to State, or by itself reacting to implement the gossip communication.
+Starting a new height produces a message that supsersedes all previous messages.
 
 ### Provides to the Communication Layer
 In order to identify when a message has been superseded, the State layer must provide the Communication layer with a supersession operator `SSS(lhs,rhs)`, which returns true \iff $\text{lhs} \overset{s}{>} \text{rhs}
 
-> **Current implementation: Supersession**   
-> Currently the knowledge of message supersession is embedded in the Communication layer, which decides which messages to retransmit based on the State layer's state and the Communication layer's state.
-> 
-> Even though there is no specific superseding operator, superseding happens by advancing steps, rounds and heights.
->
+#### **Current implementation: Supersession**
+
+Currently the knowledge of message supersession is embedded in the Communication layer, which decides which messages to retransmit based on the State layer's state and the Communication layer's state.
+ 
+Even though there is no specific superseding operator, superseding happens by advancing steps, rounds and heights.
+
 > @josef-wider
-> > In the past we looked a bit into communication closure w.r.t. consensus. Roughly, the lexicographical order over the tuples (height, round, step) defines a notion of logical time, and when I am in a certain height, round and step, I don't care about messages from "the past". Tendermint consensus is mostly communication-closed in that we don't care about messages from the past. An exception is line 28 in the arXiv paper where we accept prevote messages from previous rounds vr for the same height.
-> > 
-> > I guess a precise constructive definition of "supersession" can be done along these lines.
-> ```scala
-> //TODO: define Message
+> In the past we looked a bit into communication closure w.r.t. consensus. Roughly, the lexicographical order over the tuples (height, round, step) defines a notion of logical time, and when I am in a certain height, round and step, I don't care about messages from "the past". Tendermint consensus is mostly communication-closed in that we don't care about messages from the past. An exception is line 28 in the arXiv paper where we accept prevote messages from previous rounds vr for the same height.
 > 
-> pure def SSS(lhs,rhs): (Message, Message) => bool =
->     lhs > rhs                     //TODO: provide actual definition, considering the comment above.
-> } 
-> ```
+> I guess a precise constructive definition of "supersession" can be done along these lines.
+
+```scala
+pure def SSS(lhs,rhs): (Message, Message) => bool =
+    //TODO: provide actual definition, considering the comment above
+} 
+```
 
 
 ## Communication Layer (AKA Gossip)
@@ -205,18 +223,24 @@ Since buffering must be limited, the Communication layer needs to know which mes
 
 
 **[REQ-GOSSIP-STATE-SUPERSESSION.1]**   
-`SuperS(lhs,rhs)` is provided.
+`SSS(lhs,rhs)` is provided.
 
 
 **[REQ-GOSSIP-STATE-SUPERSESSION.2]**    
-There exists a $c \in Int$ such that, at any point in time, the subset of messages in Msgs[p] that have not been superseded is smaller than $c$.
+There exists a constant $c \in Int$ such that, at any point in time, for any process $p$, the subset of messages in Msgs[p] that have not been superseded is smaller than $c$.
 
-$\exists c \in I, \forall t, \forall p \in P, Cardinality (\{m \in Msgs[p]: \not\exists m' \in Msgs[p]: m' \neq m \land SSS(m', m)\}) \leq c$ 
+> **Note**    
+> Supersession allows dropping messages but does not require it.
 
->
-> ```tla+
-> \E c \in Int, \A t, \A p \in P, Cardinality ({m \in Msgs[p]: \not\E m' \in Msgs[p], m' \neq m, SSS(m', m)} < c)
-> ```
+```scala
+def isSupersededIn(msg, msgs): (Message, Set[Message]) => bool =
+    msgs.filter(m => SSS(m,msg))
+
+def nonSupersededMsgs(p: Proc) => Set[Message] = 
+    Msgs[p].filter(m => isSupersededIn(m, Msgs[p]).not())
+
+Int.exists(c => Proc.forall(p => always size(nonSupersededMsgs(p)) < c))
+```
 
 [REQ-GOSSIP-STATE-SUPERSESSION.2] implies that the messages being broadcast by the process itself and those being forwarded must be limited.
 In Tendermint BFT this is achieved by virtue of only validators broadcasting messages and the set of validators being always limited.
