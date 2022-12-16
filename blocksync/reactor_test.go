@@ -42,10 +42,13 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
+	consPar := types.DefaultConsensusParams()
+	consPar.ABCI.VoteExtensionsEnableHeight = 1
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     test.DefaultTestChainID,
-		Validators:  validators,
+		GenesisTime:     tmtime.Now(),
+		ChainID:         test.DefaultTestChainID,
+		Validators:      validators,
+		ConsensusParams: consPar,
 	}, privValidators
 }
 
@@ -309,4 +312,67 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
+}
+
+func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
+	const (
+		maxBlockHeight = int64(65)
+		n              = 4
+	)
+
+	config = test.ResetTestRoot("blocksync_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(1, false, 30)
+
+	reactorPairs := make([]ReactorPair, n, n+1)
+	for i := 0; i < n; i++ {
+		reactorPairs[i] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
+		reactorPairs[i].reactor.switchToConsensusMs = 1
+	}
+	defer func() {
+		for _, r := range reactorPairs {
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+			err = r.app.Stop()
+			require.NoError(t, err)
+		}
+	}()
+
+	switches := p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("BLOCKSYNC", reactorPairs[i].reactor)
+		return s
+	}, p2p.Connect2Switches)
+
+	time.Sleep(25 * time.Millisecond)
+
+	lastReactor := newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
+	reactorPairs = append(reactorPairs, lastReactor)
+	lastReactorIdx := len(reactorPairs) - 1
+
+	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
+		s.AddReactor("BLOCKSYNC", reactorPairs[lastReactorIdx].reactor)
+		return s
+	}, p2p.Connect2Switches)...)
+
+	for i := 0; i < lastReactorIdx; i++ {
+		p2p.Connect2Switches(switches, i, lastReactorIdx)
+	}
+
+	for {
+		caughtUp := true
+		for i := 0; i < lastReactorIdx; i++ {
+			if !reactorPairs[i].reactor.pool.IsCaughtUp() {
+				caughtUp = false
+				break
+			}
+		}
+		if caughtUp {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	for _, r := range reactorPairs {
+		assert.GreaterOrEqual(t, maxBlockHeight, r.reactor.store.Height()-1)
+	}
 }

@@ -59,6 +59,8 @@ type Reactor struct {
 	requestsCh <-chan BlockRequest
 	errorsCh   <-chan peerError
 
+	switchToConsensusMs int
+
 	metrics *Metrics
 }
 
@@ -279,7 +281,10 @@ func (bcR *Reactor) poolRoutine(stateSynced bool) {
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	defer statusUpdateTicker.Stop()
 
-	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
+	if bcR.switchToConsensusMs == 0 {
+		bcR.switchToConsensusMs = switchToConsensusIntervalSeconds * 1000
+	}
+	switchToConsensusTicker := time.NewTicker(time.Duration(bcR.switchToConsensusMs) * time.Millisecond)
 	defer switchToConsensusTicker.Stop()
 
 	blocksSynced := uint64(0)
@@ -334,26 +339,32 @@ FOR_LOOP:
 			height, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
 			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "total", lenRequesters,
-				"outbound", outbound, "inbound", inbound)
+				"outbound", outbound, "inbound", inbound, "lastHeight", state.LastBlockHeight)
 
 			// The "if" statement below is a bit confusing, so here is a breakdown
 			// of its logic and purpose:
 			//
-			// If VoteExtensions are enabled we cannot switch to consensus without
-			// the vote extension data for the previous height, i.e. state.LastBlockHeight.
+			// If we are at genesis (no block in the chain), we don't need VoteExtensions
+			// because the first block's LastCommit is empty anyway.
 			//
-			// If extensions were required during state.LastBlockHeight and we have
-			// sync'd at least one block, then we are guaranteed to have extensions.
-			// BlockSync requires that the blocks it fetches have extensions if
-			// extensions were enabled during the height.
+			// If VoteExtensions were disabled for the previous height then we don't need
+			// VoteExtensions.
 			//
-			// If extensions were required during state.LastBlockHeight and we have
-			// not sync'd any blocks, then we can only transition to Consensus
-			// if we already had extensions for the initial height.
-			// If any of these conditions is not met, we continue the loop, looking
-			// for extensions.
-			if state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) &&
-				(blocksSynced == 0 && !initialCommitHasExtensions) {
+			// If we have sync'd at least one block, then we are guaranteed to have extensions
+			// if we need them by the logic inside loop FOR_LOOP: it requires that the blocks
+			// it fetches have extensions if extensions were enabled during the height.
+			//
+			// If we already had extensions for the initial height (e.g. we are recovering),
+			// then we are guaranteed to have extensions for the last block (if required) even
+			// if we did not blocksync any block.
+			//
+			// If none of these conditions is met, that means that we require VoteExtensions
+			// but we don't have them, so we cannot switch to consensus yet.
+			if state.LastBlockHeight > 0 &&
+				state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) &&
+				blocksSynced == 0 &&
+				!initialCommitHasExtensions {
+
 				bcR.Logger.Info(
 					"no extended commit yet",
 					"height", height,
@@ -396,14 +407,24 @@ FOR_LOOP:
 
 			// See if there are any blocks to sync.
 			first, second, extCommit := bcR.pool.PeekTwoBlocks()
+			if first == nil || second == nil {
+				// we need to have fetched two consecutive blocks in order to
+				// perform blocksync verification
+				continue FOR_LOOP
+			}
+			// Some sanity checks on heights
+			if state.LastBlockHeight > 0 && state.LastBlockHeight+1 != first.Height {
+				// Panicking because the block pool's height  MUST keep consistent with the state; the block pool is totally under our control
+				panic(fmt.Errorf("peeked first block has unexpected height; expected %d, got %d", state.LastBlockHeight+1, first.Height))
+			}
+			if first.Height+1 != second.Height {
+				// Panicking because this is an obvious bug in the block pool, which is totally under our control
+				panic(fmt.Errorf("heights of first and second block are not consecutive; expected %d, got %d", state.LastBlockHeight, first.Height))
+			}
 			if first != nil && extCommit == nil &&
 				state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 				// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
 				panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
-			} else if first == nil || second == nil {
-				// we need to have fetched two consecutive blocks in order to
-				// perform blocksync verification
-				continue FOR_LOOP
 			}
 
 			// Try again quickly next loop.
