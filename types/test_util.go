@@ -39,56 +39,50 @@ func MakeExtCommit(blockID BlockID, height int64, round int32,
 	return voteSet.MakeExtendedCommit(), nil
 }
 
-// TODO separate and refactor with MakeVote
-func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	if vote.Type != voteSet.signedMsgType {
-		return false, fmt.Errorf("vote and voteset are of different types; %d != %d", vote.Type, voteSet.signedMsgType)
-	}
+func signAndCheckVote(
+	vote *Vote,
+	privVal PrivValidator,
+	chainID string,
+	extensionsEnabled bool,
+) error {
 	v := vote.ToProto()
-	err = privVal.SignVote(voteSet.ChainID(), v)
-	if err != nil {
-		return false, err
+	if err := privVal.SignVote(chainID, v); err != nil {
+		return err
 	}
 	vote.Signature = v.Signature
 
-	isPrecommit := voteSet.signedMsgType == tmproto.PrecommitType
-	if !isPrecommit && voteSet.extensionsEnabled {
-		return false, fmt.Errorf("only Precommit vote sets may have extensions enabled; vote type: %d", voteSet.signedMsgType)
+	isPrecommit := vote.Type == tmproto.PrecommitType
+	if !isPrecommit && extensionsEnabled {
+		return fmt.Errorf("only Precommit votes may have extensions enabled; vote type: %d", vote.Type)
 	}
 
 	isNil := vote.BlockID.IsZero()
 	extSignature := (len(v.ExtensionSignature) > 0)
 	if extSignature == (!isPrecommit || isNil) {
-		return false, fmt.Errorf(
+		return fmt.Errorf(
 			"extensions must be present IFF vote is a non-nil Precommit; present %t, vote type %d, is nil %t",
 			extSignature,
-			voteSet.signedMsgType,
+			vote.Type,
 			isNil,
 		)
 	}
 
 	vote.ExtensionSignature = nil
-	if voteSet.extensionsEnabled {
+	if extensionsEnabled {
 		vote.ExtensionSignature = v.ExtensionSignature
 	}
 
-	return voteSet.AddVote(vote)
+	return nil
 }
 
-func MakeVoteNoError(
-	t *testing.T,
-	val PrivValidator,
-	chainID string,
-	valIndex int32,
-	height int64,
-	round int32,
-	step tmproto.SignedMsgType,
-	blockID BlockID,
-	time time.Time,
-) *Vote {
-	vote, err := MakeVote(val, chainID, valIndex, height, round, step, blockID, time)
-	require.NoError(t, err)
-	return vote
+func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
+	if vote.Type != voteSet.signedMsgType {
+		return false, fmt.Errorf("vote and voteset are of different types; %d != %d", vote.Type, voteSet.signedMsgType)
+	}
+	if err := signAndCheckVote(vote, privVal, voteSet.ChainID(), voteSet.extensionsEnabled); err != nil {
+		return false, err
+	}
+	return voteSet.AddVote(vote)
 }
 
 func MakeVote(
@@ -106,7 +100,7 @@ func MakeVote(
 		return nil, err
 	}
 
-	v := &Vote{
+	vote := &Vote{
 		ValidatorAddress: pubKey.Address(),
 		ValidatorIndex:   valIndex,
 		Height:           height,
@@ -116,35 +110,29 @@ func MakeVote(
 		Timestamp:        time,
 	}
 
-	vpb := v.ToProto()
-	if err := val.SignVote(chainID, vpb); err != nil {
+	extensionsEnabled := step == tmproto.PrecommitType
+	if err := signAndCheckVote(vote, val, chainID, extensionsEnabled); err != nil {
 		return nil, err
 	}
 
-	v.Signature = vpb.Signature
-	if step == tmproto.PrecommitType {
-		v.ExtensionSignature = vpb.ExtensionSignature
-	}
-	return v, nil
+	return vote, nil
 }
 
-// func MakeVote(
-// 	height int64,
-// 	blockID BlockID,
-// 	valSet *ValidatorSet,
-// 	privVal PrivValidator,
-// 	chainID string,
-// 	now time.Time,
-// ) (*Vote, error) {
-// 	pubKey, err := privVal.GetPubKey()
-// 	if err != nil {
-// 		return nil, fmt.Errorf("can't get pubkey: %w", err)
-// 	}
-// 	addr := pubKey.Address()
-// 	idx, _ := valSet.GetByAddress(addr)
-
-// 	return MakeVote2(privVal, chainID, idx, height, 0, tmproto.PrecommitType, blockID, now)
-// }
+func MakeVoteNoError(
+	t *testing.T,
+	val PrivValidator,
+	chainID string,
+	valIndex int32,
+	height int64,
+	round int32,
+	step tmproto.SignedMsgType,
+	blockID BlockID,
+	time time.Time,
+) *Vote {
+	vote, err := MakeVote(val, chainID, valIndex, height, round, step, blockID, time)
+	require.NoError(t, err)
+	return vote
+}
 
 // MakeBlock returns a new block with an empty header, except what can be
 // computed from itself.
