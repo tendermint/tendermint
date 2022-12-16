@@ -57,9 +57,15 @@ type Manifest struct {
 	Evidence int `toml:"evidence"`
 
 	// ABCIProtocol specifies the protocol used to communicate with the ABCI
-	// application: "unix", "tcp", "grpc", or "builtin". Defaults to builtin.
-	// builtin will build a complete Tendermint node into the application and
-	// launch it instead of launching a separate Tendermint process.
+	// application: "unix", "tcp", "grpc", "builtin" or "builtin_unsync".
+	//
+	// Defaults to "builtin". "builtin" will build a complete Tendermint node
+	// into the application and launch it instead of launching a separate
+	// Tendermint process.
+	//
+	// "builtin_unsync" is basically the same as "builtin", except that it uses
+	// an "unsynchronized" local client creator, which attempts to replicate the
+	// same concurrency model locally as the socket client.
 	ABCIProtocol string `toml:"abci_protocol"`
 
 	// Add artificial delays to each of the main ABCI calls to mimic computation time
@@ -87,15 +93,6 @@ type ManifestNode struct {
 	// there must be a docker image of the test app tagged with this version present
 	// on the machine where the test is being run.
 	Version string `toml:"version"`
-
-	// SyncApp specifies whether this node should use a synchronized application
-	// with an unsynchronized local client. By default this is `false`, meaning
-	// that the node will run an unsynchronized application with a synchronized
-	// local client.
-	//
-	// Only applies to validators and full nodes where their ABCI protocol is
-	// "builtin".
-	SyncApp bool `toml:"sync_app"`
 
 	// Seeds is the list of node names to use as P2P seed nodes. Defaults to none.
 	Seeds []string `toml:"seeds"`
