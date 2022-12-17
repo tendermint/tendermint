@@ -69,11 +69,13 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Size:         discard.NewGauge(),
-		TxSizeBytes:  discard.NewHistogram(),
-		FailedTxs:    discard.NewCounter(),
-		RejectedTxs:  discard.NewCounter(),
-		EvictedTxs:   discard.NewCounter(),
-		RecheckTimes: discard.NewCounter(),
+		Size:               discard.NewGauge(),
+		TxSizeBytes:        discard.NewHistogram(),
+		FailedTxs:          discard.NewCounter(),
+		RejectedTxs:        discard.NewCounter(),
+		EvictedTxs:         discard.NewCounter(),
+		PurgedDurationTxs:  discard.NewCounter(),
+		PurgedNumBlocksTxs: discard.NewCounter(),
+		RecheckTimes:       discard.NewCounter(),
 	}
 }
