@@ -464,9 +464,9 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		for i := 0; i < 20; i++ {
+		for i := 0; i < 10; i++ {
 			_ = checkTxs(t, txmp, 100, 0)
-			dur := rng.Intn(1000-500) + 500
+			dur := rng.Intn(1000-500) + 200
 			time.Sleep(time.Duration(dur) * time.Millisecond)
 		}
 
@@ -476,7 +476,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		ticker := time.NewTicker(time.Second)
+		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
 		defer wg.Done()
 
@@ -521,7 +521,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 
 func TestTxMempool_ExpiredTxs_Timestamp(t *testing.T) {
 	txmp := setup(t, 5000)
-	txmp.config.TTLDuration = 5 * time.Millisecond
+	txmp.config.TTLDuration = 50 * time.Millisecond
 
 	added1 := checkTxs(t, txmp, 10, 0)
 	require.Equal(t, len(added1), txmp.Size())
@@ -538,11 +538,11 @@ func TestTxMempool_ExpiredTxs_Timestamp(t *testing.T) {
 	//
 	// The exact intervals are not important except that the delta should be
 	// large relative to the cost of CheckTx (ms vs. ns is fine here).
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(30 * time.Millisecond)
 	added2 := checkTxs(t, txmp, 10, 1)
 
 	// Wait a while longer, so that the first batch will expire.
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(30 * time.Millisecond)
 
 	// Trigger an update so that pruning will occur.
 	txmp.Lock()
