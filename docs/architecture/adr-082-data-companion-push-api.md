@@ -1,7 +1,8 @@
-# ADR 082: Data Companion API
+# ADR 082: Data Companion Push API
 
 ## Changelog
 
+- 2022-12-18: Renamed proposal to "Data Companion Push API" (@thanethomson)
 - 2022-11-26: Clarify user stories and alternatives, allow for selective
   publishing of data via the companion API, buffer on disk instead of in memory
   (@thanethomson)
