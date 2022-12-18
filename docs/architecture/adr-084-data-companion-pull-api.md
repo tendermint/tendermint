@@ -94,9 +94,139 @@ gRPC interface ([\#9751]). As such, we have several options when it comes to
 implementing the data companion pull API:
 
 1. Extend the existing RPC API to simply provide the additional data
-   companion-specific endpoints.
+   companion-specific endpoints. In order to meet the
+   [requirements](#requirements), however, some of the endpoints will have to be
+   protected by default. This is simpler for clients to interact with though,
+   because they only need to interact with a single endpoint for all of their
+   needs.
 2. Implement a separate RPC API on a different port to the standard gRPC
-   interface.
+   interface. This allows for a clearer distinction between the standard and
+   data companion-specific gRPC interfaces, but complicates the server and
+   client interaction models.
+
+Due to the poorer operator experience in option 2, it would be preferable to
+implement option 1, but have certain endpoints be
+[access-controlled](#access-control) by default.
+
+With this in mind, the following gRPC API is proposed, where the Tendermint node
+will implement these services.
+
+```protobuf
+import "tendermint/abci/types.proto";
+import "tendermint/types/types.proto";
+import "tendermint/types/block.proto";
+
+// BlockService provides information about blocks.
+service BlockService {
+    // GetLatestBlockID returns a stream of the latest block IDs as they are
+    // committed by the network.
+    rpc GetLatestBlockID(GetLatestBlockIDRequest) returns (stream GetLatestBlockIDResponse) {}
+
+    // GetBlock attempts to retrieve the block at a particular height.
+    rpc GetBlock(GetBlockRequest) returns (GetBlockResponse) {}
+
+    // GetBlockResults attempts to retrieve the results of block execution for a
+    // particular height.
+    rpc GetBlockResults(GetBlockResultsRequest) returns (GetBlockResultsResponse) {}
+}
+
+// DataCompanionService provides privileged access to specialized pruning
+// functionality on the Tendermint node to help optimize node storage.
+service DataCompanionService {
+    // SetRetainHeight notifies the node of the minimum height whose data must
+    // be retained by the node. This data includes block data and block
+    // execution results.
+    //
+    // The lower of this retain height and that set by the application in its
+    // Commit response will be used by the node to determine which heights' data
+    // can be pruned.
+    rpc SetRetainHeight(SetRetainHeightRequest) returns (SetRetainHeightResponse) {}
+
+    // GetRetainHeight returns the retain height set by the companion and that
+    // set by the application. This can give the companion an indication as to
+    // which heights' data are currently available.
+    rpc GetRetainHeight(GetRetainHeightRequest) returns (GetRetainHeightResponse) {}
+}
+
+message GetLatestBlockIDRequest {}
+
+// GetLatestBlockIDResponse is a lightweight reference to the latest committed
+// block.
+message GetLatestBlockIDResponse {
+    // The height of the latest committed block.
+    int64 height = 1;
+    // The ID of the latest committed block.
+    tendermint.types.BlockID block_id = 2;
+}
+
+message GetBlockRequest {
+    // The height of the block to get.
+    int64 height = 1;
+}
+
+message GetBlockResponse {
+    // Block data for the requested height.
+    tendermint.types.Block block = 1;
+}
+
+message GetBlockResultsRequest {
+    // The height of the block results to get.
+    int64 height = 1;
+}
+
+message GetBlockResultsResponse {
+    // All events produced by the ABCI BeginBlock call for the block.
+    repeated tendermint.abci.Event begin_block_events = 1;
+
+    // All transaction results produced by block execution.
+    repeated tendermint.abci.ExecTxResult tx_results = 2;
+
+    // Validator updates during block execution.
+    repeated tendermint.abci.ValidatorUpdate validator_updates = 3;
+
+    // Consensus parameter updates during block execution.
+    tendermint.types.ConsensusParams consensus_param_updates = 4;
+
+    // All events produced by the ABCI EndBlock call.
+    // NB: This should be called finalize_block_events when ABCI 2.0 lands.
+    repeated tendermint.abci.Event end_block_events = 5;
+}
+
+message SetRetainHeightRequest {
+    int64 height = 1;
+}
+
+message SetRetainHeightResponse {}
+
+message GetRetainHeightRequest {}
+
+message GetRetainHeightResponse {
+    // The retain height as set by the data companion.
+    int64 data_companion_retain_height = 1;
+    // The retain height as set by the ABCI application.
+    int64 app_retain_height = 2;
+    // The height whose data is currently retained, which is influenced by the
+    // data companion and ABCI application retain heights, but the node may not
+    // yet have executed its pruning operation.
+    int64 actual_retain_height = 3;
+}
+```
+
+### Access Control
+
+As covered in the [gRPC API section](#grpc-api), it would be preferable to
+implement some form of access control for sensitive, data companion-specific
+APIs. At least **basic HTTP authentication** should be implemented for these
+endpoints, where credentials should be obtained (in order of precedence):
+
+1. From an `.htpasswd` file, using the same format as [Apache `.htpasswd`
+   files][htpasswd], whose location is set in the Tendermint configuration file.
+2. Randomly generated and written to the logs.
+
+### Configuration
+
+The following configuration file update is proposed to support the data
+companion API.
 
 ## Consequences
 
@@ -113,3 +243,4 @@ implementing the data companion pull API:
 
 [adr-082]: https://github.com/tendermint/tendermint/pull/9437
 [\#9751]: https://github.com/tendermint/tendermint/issues/9751
+[htpasswd]: https://httpd.apache.org/docs/current/programs/htpasswd.html
