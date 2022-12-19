@@ -28,6 +28,9 @@
 
 ### FEATURES
 
+- [proxy] \#9830 Introduce `NewUnsyncLocalClientCreator`, which allows local
+  ABCI clients to have the same concurrency model as remote clients (i.e. one
+  mutex per client "connection", for each of the four ABCI "connections").
 - [config] \#9680 Introduce `BootstrapPeers` to the config to allow nodes to list peers to be added to
   the addressbook upon start up (@cmwaters)
 
