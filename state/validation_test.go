@@ -114,6 +114,13 @@ func TestValidateBlockHeader(t *testing.T) {
 		require.NoError(t, err, "height %d", height)
 		lastCommit = lastExtCommit.ToCommit()
 	}
+
+	nextHeight := validationTestsStopHeight
+	block := makeBlock(state, nextHeight, lastCommit)
+	state.InitialHeight = nextHeight + 1
+	err := blockExec.ValidateBlock(state, block)
+	require.Error(t, err, "expected an error when state is ahead of block")
+	assert.Contains(t, err.Error(), "lower than initial height")
 }
 
 func TestValidateBlockCommit(t *testing.T) {
