@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net"
 	"strings"
+
+	_ "net/http/pprof" //nolint: gosec // securely exposed on separate, optional port
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
@@ -17,6 +19,7 @@ import (
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/statesync"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
@@ -30,13 +33,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/indexer"
-	blockidxkv "github.com/tendermint/tendermint/state/indexer/block/kv"
-	blockidxnull "github.com/tendermint/tendermint/state/indexer/block/null"
-	"github.com/tendermint/tendermint/state/indexer/sink/psql"
+	"github.com/tendermint/tendermint/state/indexer/block"
 	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/kv"
-	"github.com/tendermint/tendermint/state/txindex/null"
-	"github.com/tendermint/tendermint/statesync"
 	"github.com/tendermint/tendermint/store"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
@@ -44,23 +42,7 @@ import (
 	_ "github.com/lib/pq" // provide the psql db driver
 )
 
-// DBContext specifies config information for loading a new DB.
-type DBContext struct {
-	ID     string
-	Config *cfg.Config
-}
-
-// DBProvider takes a DBContext and returns an instantiated DB.
-type DBProvider func(*DBContext) (dbm.DB, error)
-
 const readHeaderTimeout = 10 * time.Second
-
-// DefaultDBProvider returns a database using the DBBackend and DBDir
-// specified in the ctx.Config.
-func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	dbType := dbm.BackendType(ctx.Config.DBBackend)
-	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir())
-}
 
 // GenesisDocProvider returns a GenesisDoc.
 // It allows the GenesisDoc to be pulled from sources other than the
@@ -92,7 +74,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
+		cfg.DefaultDBProvider,
 		DefaultMetricsProvider(config.Instrumentation),
 		logger,
 	)
@@ -124,15 +106,15 @@ type blockSyncReactor interface {
 
 //------------------------------------------------------------------------------
 
-func initDBs(config *cfg.Config, dbProvider DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
+func initDBs(config *cfg.Config, dbProvider cfg.DBProvider) (blockStore *store.BlockStore, stateDB dbm.DB, err error) {
 	var blockStoreDB dbm.DB
-	blockStoreDB, err = dbProvider(&DBContext{"blockstore", config})
+	blockStoreDB, err = dbProvider(&cfg.DBContext{ID: "blockstore", Config: config})
 	if err != nil {
 		return
 	}
 	blockStore = store.NewBlockStore(blockStoreDB)
 
-	stateDB, err = dbProvider(&DBContext{"state", config})
+	stateDB, err = dbProvider(&cfg.DBContext{ID: "state", Config: config})
 	if err != nil {
 		return
 	}
@@ -161,7 +143,7 @@ func createAndStartEventBus(logger log.Logger) (*types.EventBus, error) {
 func createAndStartIndexerService(
 	config *cfg.Config,
 	chainID string,
-	dbProvider DBProvider,
+	dbProvider cfg.DBProvider,
 	eventBus *types.EventBus,
 	logger log.Logger,
 ) (*txindex.IndexerService, txindex.TxIndexer, indexer.BlockIndexer, error) {
@@ -169,31 +151,9 @@ func createAndStartIndexerService(
 		txIndexer    txindex.TxIndexer
 		blockIndexer indexer.BlockIndexer
 	)
-
-	switch config.TxIndex.Indexer {
-	case "kv":
-		store, err := dbProvider(&DBContext{"tx_index", config})
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		txIndexer = kv.NewTxIndex(store)
-		blockIndexer = blockidxkv.New(dbm.NewPrefixDB(store, []byte("block_events")))
-
-	case "psql":
-		if config.TxIndex.PsqlConn == "" {
-			return nil, nil, nil, errors.New(`no psql-conn is set for the "psql" indexer`)
-		}
-		es, err := psql.NewEventSink(config.TxIndex.PsqlConn, chainID)
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("creating psql indexer: %w", err)
-		}
-		txIndexer = es.TxIndexer()
-		blockIndexer = es.BlockIndexer()
-
-	default:
-		txIndexer = &null.TxIndex{}
-		blockIndexer = &blockidxnull.BlockerIndexer{}
+	txIndexer, blockIndexer, err := block.IndexerFromConfig(config, dbProvider, chainID)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, eventBus, false)
@@ -266,6 +226,7 @@ func createMempoolAndMempoolReactor(
 	memplMetrics *mempl.Metrics,
 	logger log.Logger,
 ) (mempl.Mempool, p2p.Reactor) {
+	logger = logger.With("module", "mempool")
 	switch config.Mempool.Version {
 	case cfg.MempoolV1:
 		mp := mempoolv1.NewTxMempool(
@@ -285,6 +246,7 @@ func createMempoolAndMempoolReactor(
 		if config.Consensus.WaitForTxs() {
 			mp.EnableTxsAvailable()
 		}
+		reactor.SetLogger(logger)
 
 		return mp, reactor
 
@@ -307,6 +269,7 @@ func createMempoolAndMempoolReactor(
 		if config.Consensus.WaitForTxs() {
 			mp.EnableTxsAvailable()
 		}
+		reactor.SetLogger(logger)
 
 		return mp, reactor
 
@@ -315,10 +278,10 @@ func createMempoolAndMempoolReactor(
 	}
 }
 
-func createEvidenceReactor(config *cfg.Config, dbProvider DBProvider,
+func createEvidenceReactor(config *cfg.Config, dbProvider cfg.DBProvider,
 	stateStore sm.Store, blockStore *store.BlockStore, logger log.Logger,
 ) (*evidence.Reactor, *evidence.Pool, error) {
-	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
+	evidenceDB, err := dbProvider(&cfg.DBContext{ID: "evidence", Config: config})
 	if err != nil {
 		return nil, nil, err
 	}

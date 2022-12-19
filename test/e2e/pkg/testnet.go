@@ -22,6 +22,10 @@ import (
 const (
 	randomSeed     int64  = 2308084734268
 	proxyPortFirst uint32 = 5701
+
+	defaultBatchSize   = 2
+	defaultConnections = 1
+	defaultTxSizeBytes = 1024
 )
 
 type (
@@ -36,11 +40,12 @@ const (
 	ModeLight     Mode = "light"
 	ModeSeed      Mode = "seed"
 
-	ProtocolBuiltin Protocol = "builtin"
-	ProtocolFile    Protocol = "file"
-	ProtocolGRPC    Protocol = "grpc"
-	ProtocolTCP     Protocol = "tcp"
-	ProtocolUNIX    Protocol = "unix"
+	ProtocolBuiltin       Protocol = "builtin"
+	ProtocolBuiltinUnsync Protocol = "builtin_unsync"
+	ProtocolFile          Protocol = "file"
+	ProtocolGRPC          Protocol = "grpc"
+	ProtocolTCP           Protocol = "tcp"
+	ProtocolUNIX          Protocol = "unix"
 
 	PerturbationDisconnect Perturbation = "disconnect"
 	PerturbationKill       Perturbation = "kill"
@@ -64,6 +69,9 @@ type Testnet struct {
 	Nodes                []*Node
 	KeyType              string
 	Evidence             int
+	LoadTxSizeBytes      int
+	LoadTxBatchSize      int
+	LoadTxConnections    int
 	ABCIProtocol         string
 	PrepareProposalDelay time.Duration
 	ProcessProposalDelay time.Duration
@@ -73,9 +81,9 @@ type Testnet struct {
 // Node represents a Tendermint node in a testnet.
 type Node struct {
 	Name             string
+	Version          string
 	Testnet          *Testnet
 	Mode             Mode
-	SyncApp          bool // Should we use a synchronized app with an unsynchronized local client?
 	PrivvalKey       crypto.PrivKey
 	NodeKey          crypto.PrivKey
 	IP               net.IP
@@ -93,6 +101,9 @@ type Node struct {
 	Seeds            []*Node
 	PersistentPeers  []*Node
 	Perturbations    []Perturbation
+
+	// SendNoLoad determines if the e2e test should send load to this node.
+	SendNoLoad bool
 }
 
 // LoadTestnet loads a testnet from a manifest file, using the filename to
@@ -119,6 +130,9 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		ValidatorUpdates:     map[int64]map[*Node]int64{},
 		Nodes:                []*Node{},
 		Evidence:             manifest.Evidence,
+		LoadTxSizeBytes:      manifest.LoadTxSizeBytes,
+		LoadTxBatchSize:      manifest.LoadTxBatchSize,
+		LoadTxConnections:    manifest.LoadTxConnections,
 		ABCIProtocol:         manifest.ABCIProtocol,
 		PrepareProposalDelay: manifest.PrepareProposalDelay,
 		ProcessProposalDelay: manifest.ProcessProposalDelay,
@@ -132,6 +146,15 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 	}
 	if testnet.ABCIProtocol == "" {
 		testnet.ABCIProtocol = string(ProtocolBuiltin)
+	}
+	if testnet.LoadTxConnections == 0 {
+		testnet.LoadTxConnections = defaultConnections
+	}
+	if testnet.LoadTxBatchSize == 0 {
+		testnet.LoadTxBatchSize = defaultBatchSize
+	}
+	if testnet.LoadTxSizeBytes == 0 {
+		testnet.LoadTxSizeBytes = defaultTxSizeBytes
 	}
 
 	// Set up nodes, in alphabetical order (IPs and ports get same order).
@@ -147,15 +170,19 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 		if !ok {
 			return nil, fmt.Errorf("information for node '%s' missing from infrastucture data", name)
 		}
+		v := nodeManifest.Version
+		if v == "" {
+			v = "local-version"
+		}
 		node := &Node{
 			Name:             name,
+			Version:          v,
 			Testnet:          testnet,
 			PrivvalKey:       keyGen.Generate(manifest.KeyType),
 			NodeKey:          keyGen.Generate("ed25519"),
 			IP:               ind.IPAddress,
 			ProxyPort:        ind.Port,
 			Mode:             ModeValidator,
-			SyncApp:          nodeManifest.SyncApp,
 			Database:         "goleveldb",
 			ABCIProtocol:     Protocol(testnet.ABCIProtocol),
 			PrivvalProtocol:  ProtocolFile,
@@ -167,6 +194,7 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 			SnapshotInterval: nodeManifest.SnapshotInterval,
 			RetainBlocks:     nodeManifest.RetainBlocks,
 			Perturbations:    []Perturbation{},
+			SendNoLoad:       nodeManifest.SendNoLoad,
 		}
 		if node.StartAt == testnet.InitialHeight {
 			node.StartAt = 0 // normalize to 0 for initial nodes, since code expects this
@@ -318,11 +346,11 @@ func (n Node) Validate(testnet Testnet) error {
 		return fmt.Errorf("invalid database setting %q", n.Database)
 	}
 	switch n.ABCIProtocol {
-	case ProtocolBuiltin, ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
+	case ProtocolBuiltin, ProtocolBuiltinUnsync, ProtocolUNIX, ProtocolTCP, ProtocolGRPC:
 	default:
 		return fmt.Errorf("invalid ABCI protocol setting %q", n.ABCIProtocol)
 	}
-	if n.Mode == ModeLight && n.ABCIProtocol != ProtocolBuiltin {
+	if n.Mode == ModeLight && n.ABCIProtocol != ProtocolBuiltin && n.ABCIProtocol != ProtocolBuiltinUnsync {
 		return errors.New("light client must use builtin protocol")
 	}
 	switch n.PrivvalProtocol {

@@ -52,7 +52,7 @@ jobs:
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
           BRANCH: ${{ github.ref_name }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          COMMIT_URL: "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          COMMITS_URL: "${{ github.server_url }}/${{ github.repository }}/commits/${{ github.ref_name }}"
         with:
           payload: |
             {
@@ -61,7 +61,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":skull: Nightly E2E tests for `${{ env.BRANCH }}` failed. See the <${{ env.RUN_URL }}|run details> and the <${{ env.COMMIT_URL }}|commit> related to the failure."
+                    "text": ":skull: Nightly E2E tests for `${{ env.BRANCH }}` failed. See the <${{ env.RUN_URL }}|run details> and the <${{ env.COMMITS_URL }}|latest commits> possibly related to the failure."
                   }
                 }
               ]

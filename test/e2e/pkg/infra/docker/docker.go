@@ -28,7 +28,7 @@ func (p *Provider) Setup() error {
 	}
 	//nolint: gosec
 	// G306: Expect WriteFile permissions to be 0600 or less
-	err = os.WriteFile(filepath.Join(p.Testnet.Dir, "docker-compose.yml"), compose, 0644)
+	err = os.WriteFile(filepath.Join(p.Testnet.Dir, "docker-compose.yml"), compose, 0o644)
 	if err != nil {
 		return err
 	}
@@ -78,9 +78,12 @@ services:
     labels:
       e2e: true
     container_name: {{ .Name }}
-    image: tendermint/e2e-node
+    image: tendermint/e2e-node:{{ .Version }}
 {{- if eq .ABCIProtocol "builtin" }}
     entrypoint: /usr/bin/entrypoint-builtin
+{{- else }}{{ if eq .ABCIProtocol "builtin_unsync" }}
+    entrypoint: /usr/bin/entrypoint-builtin
+{{- end }}
 {{- end }}
     init: true
     ports:
