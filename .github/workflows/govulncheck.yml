@@ -1,0 +1,31 @@
+name: Check for Go vulnerabilities
+# Runs https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck to proactively
+# check for vulnerabilities in code packages if there were any changes made to
+# any Go code or dependencies.
+#
+# Run `make vulncheck` from the root of the repo to run this workflow locally.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - release/**
+
+jobs:
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: "1.18"
+      - uses: actions/checkout@v3
+      - uses: technote-space/get-diff-action@v6
+        with:
+          PATTERNS: |
+            **/*.go
+            go.mod
+            go.sum
+            Makefile
+      - name: govulncheck
+        run: make vulncheck
+        if: "env.GIT_DIFF != ''"
