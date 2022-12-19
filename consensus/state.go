@@ -2119,7 +2119,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 		}
 		// Verify VoteExtension if precommit and not nil
 		// https://github.com/tendermint/tendermint/issues/8487
-		if vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 &&
+		if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsZero() &&
 			!bytes.Equal(vote.ValidatorAddress, myAddr) { // Skip the VerifyVoteExtension call if the vote was issued by this validator.
 
 			// The core fields of the vote message were already validated in the
@@ -2309,7 +2309,7 @@ func (cs *State) signVote(
 	}
 
 	extEnabled := cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height)
-	if msgType == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 {
+	if msgType == tmproto.PrecommitType && !vote.BlockID.IsZero() {
 		// if the signedMessage type is for a non-nil precommit, add
 		// VoteExtension
 		if extEnabled {

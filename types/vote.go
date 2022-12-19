@@ -257,7 +257,7 @@ func (vote *Vote) VerifyVoteAndExtension(chainID string, pubKey crypto.PubKey) e
 // VerifyExtension checks whether the vote extension signature corresponds to the
 // given chain ID and public key.
 func (vote *Vote) VerifyExtension(chainID string, pubKey crypto.PubKey) error {
-	if vote.Type != tmproto.PrecommitType || len(vote.BlockID.Hash) == 0 {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsZero() {
 		return nil
 	}
 	v := vote.ToProto()
@@ -316,7 +316,7 @@ func (vote *Vote) ValidateBasic() error {
 	// We should only ever see vote extensions in non-nil precommits, otherwise
 	// this is a violation of the specification.
 	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) == 0) {
+	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsZero()) {
 		if len(vote.Extension) > 0 {
 			return errors.New("unexpected vote extension")
 		}
@@ -325,7 +325,7 @@ func (vote *Vote) ValidateBasic() error {
 		}
 	}
 
-	if vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 {
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsZero() {
 		// It's possible that this vote has vote extensions but
 		// they could also be disabled and thus not present thus
 		// we can't do all checks		if len(vote.ExtensionSignature) > MaxSignatureSize {
@@ -352,7 +352,7 @@ func (vote *Vote) EnsureExtension() error {
 	if vote.Type != tmproto.PrecommitType {
 		return nil
 	}
-	if len(vote.BlockID.Hash) == 0 {
+	if vote.BlockID.IsZero() {
 		return nil
 	}
 	if len(vote.ExtensionSignature) > 0 {
