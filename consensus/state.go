@@ -2308,10 +2308,11 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
+	extEnabled := cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height)
 	if msgType == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 {
 		// if the signedMessage type is for a non-nil precommit, add
 		// VoteExtension
-		if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+		if extEnabled {
 			ext, err := cs.blockExec.ExtendVote(vote)
 			if err != nil {
 				return nil, err
@@ -2319,11 +2320,11 @@ func (cs *State) signVote(
 			vote.Extension = ext
 		}
 	}
-	v := vote.ToProto()
-	err := cs.privValidator.SignVote(cs.state.ChainID, v)
-	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
-	vote.Timestamp = v.Timestamp
+
+	err, recoverable := types.SignAndCheckVote(vote, cs.privValidator, cs.state.ChainID, extEnabled && (msgType == tmproto.PrecommitType))
+	if err != nil && !recoverable {
+		panic(fmt.Sprintf("non-recoverable error when signing vote (%d/%d)", vote.Height, vote.Round))
+	}
 
 	return vote, err
 }
