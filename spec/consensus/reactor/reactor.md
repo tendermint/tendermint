@@ -79,7 +79,7 @@ However, while Gossip Communication is a sufficient condition for Tendermint BFT
 What is required is for either the message to be delivered or that, eventually, some newer message, with information that supersedes that in the first message, to be timely delivered.
 In Tendermint BFT, this property is seen, for example, when nodes ignore proposal messages from prior rounds.
 
-> **Supersession**: We say that a message $lhs$ supersedes a message $rhs$ if after receiving $lhs$ a process would make at least as much progress as it would by receiving $rhs$ and we note is as follows: $\text{lhs} \overset{s}{>} \text{rhs}$.   
+> **Supersession**: We say that a message $lhs$ supersedes a message $rhs$ if after receiving $lhs$ a process would make at least as much progress as it would by receiving $rhs$ and we note is as follows: $\text{lhs} \text{SSS} \text{rhs}$.   
 > **TODO**: Better definition.
 
 It seems reasonable, therefore, to formalize the requirements of Tendermint in terms of a weaker, *best-effort* communication guarantees and to combine them with GST outside of the communication layer, to ensure eventual termination.
@@ -171,7 +171,7 @@ Most Tendermint BFT actions are triggered when a set of messages received satisf
 The Communication layer must therefore accumulate the messages received that might still be used to satisfy some conditions and allow Tendermint to evaluate these conditions whenever new messages are received or timeouts expire.
 
 **[REQ-STATE-GOSSIP-KEEP_NON_SUPERSEDED]**    
-For any message $m \in \text{DMsgs}[p]$ at time $t$, if there exists a time $t2 > t$ at which $m \notin \text{DMsgs}[p]$, then $\exists t1, t < t1< t2$ at which there exists a message $mm \in \text{DMsgs}[p], mn \overset{s}{>} m$
+For any message $m \in \text{DMsgs}[p]$ at time $t$, if there exists a time $t2 > t$ at which $m \notin \text{DMsgs}[p]$, then $\exists t1, t < t1< t2$ at which there exists a message $m1 \in \text{DMsgs}[p], m1 \text{SSS} m$
 
 ```scala
 always (
@@ -180,7 +180,7 @@ always (
     } implies eventually (
         any {
             m.in(DMsgs[p]),
-            DMsgs[p].exists(m1 => SSS(m1,m)),
+            DMsgs[p].exists(m1 => m1.SSS(m)),
         }
     )
 )
@@ -191,7 +191,7 @@ The Communication layer reacts to messages by adding them to sets of similar mes
 Starting a new height produces a message that supsersedes all previous messages.
 
 ### Provides to the Communication Layer
-In order to identify when a message has been superseded, the State layer must provide the Communication layer with a supersession operator `SSS(lhs,rhs)`, which returns true \iff $\text{lhs} \overset{s}{>} \text{rhs}
+In order to identify when a message has been superseded, the State layer must provide the Communication layer with a supersession operator `SSS(lhs,rhs)`, which returns true \iff $\text{lhs}$ supersedes $\text{rhs}$
 
 #### **Current implementation: Supersession**
 
