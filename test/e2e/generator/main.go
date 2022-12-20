@@ -68,7 +68,11 @@ func (cli *CLI) generate(dir string, groups int, multiVersion string) error {
 		return err
 	}
 
-	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), multiVersion) //nolint:gosec
+	cfg := &generateConfig{
+		randSource:   rand.New(rand.NewSource(randomSeed)), //nolint:gosec
+		multiVersion: multiVersion,
+	}
+	manifests, err := Generate(cfg)
 	if err != nil {
 		return err
 	}
