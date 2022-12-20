@@ -79,7 +79,7 @@ However, while Gossip Communication is a sufficient condition for Tendermint BFT
 What is required is for either the message to be delivered or that, eventually, some newer message, with information that supersedes that in the first message, to be timely delivered.
 In Tendermint BFT, this property is seen, for example, when nodes ignore proposal messages from prior rounds.
 
-> **Supersession**: We say that a message $lhs$ supersedes a message $rhs$ if after receiving $lhs$ a process would make at least as much progress as it would by receiving $rhs$ and we note is as follows: $\text{lhs} \text{SSS} \text{rhs}$.   
+> **Supersession**: We say that a message $lhs$ supersedes a message $rhs$ if after receiving $lhs$ a process would make at least as much progress as it would by receiving $rhs$ and we note is as follows: $\text{lhs}.\text{SSS}(\text{rhs})$.   
 > **TODO**: Better definition.
 
 It seems reasonable, therefore, to formalize the requirements of Tendermint in terms of a weaker, *best-effort* communication guarantees and to combine them with GST outside of the communication layer, to ensure eventual termination.
@@ -171,27 +171,16 @@ Most Tendermint BFT actions are triggered when a set of messages received satisf
 The Communication layer must therefore accumulate the messages received that might still be used to satisfy some conditions and allow Tendermint to evaluate these conditions whenever new messages are received or timeouts expire.
 
 **[REQ-STATE-GOSSIP-KEEP_NON_SUPERSEDED]**    
-For any message $m \in \text{DMsgs}[p]$ at time $t$, if there exists a time $t2 > t$ at which $m \notin \text{DMsgs}[p]$, then $\exists t1, t < t1< t2$ at which there exists a message $m1 \in \text{DMsgs}[p], m1 \text{SSS} m$
+For any message $m \in \text{DMsgs}[p]$ at time $t$, if there exists a time $t2 > t$ at which $m \notin \text{DMsgs}[p]$, then $\exists t1, t < t1< t2$ at which there exists a message $m1 \in \text{DMsgs}[p], m1~\text{SSS}~m$
 
-```scala
-always (
-    all {
-        m.in(DMsgs[p])
-    } implies eventually (
-        any {
-            m.in(DMsgs[p]),
-            DMsgs[p].exists(m1 => m1.SSS(m)),
-        }
-    )
-)
-```
+https://github.com/tendermint/tendermint/blob/95e05b33b1ad95a88c6aac8eafc68421053bf0f2/spec/consensus/reactor/reactor.tnt#L28-L42
 
 #### **Current implementation: Message accumulation**
 The Communication layer reacts to messages by adding them to sets of similar messages, within the Communication layer internal state,  and then evaluating if Tendermint conditions are met and triggering changes to State, or by itself reacting to implement the gossip communication.
 Starting a new height produces a message that supsersedes all previous messages.
 
 ### Provides to the Communication Layer
-In order to identify when a message has been superseded, the State layer must provide the Communication layer with a supersession operator `SSS(lhs,rhs)`, which returns true \iff $\text{lhs}$ supersedes $\text{rhs}$
+In order to identify when a message has been superseded, the State layer must provide the Communication layer with a supersession operator `SSS(lhs,rhs)`, which returns true iff $\text{lhs}$ supersedes $\text{rhs}$
 
 #### **Current implementation: Supersession**
 
@@ -234,7 +223,7 @@ There exists a constant $c \in Int$ such that, at any point in time, for any pro
 
 ```scala
 def isSupersededIn(msg, msgs): (Message, Set[Message]) => bool =
-    msgs.filter(m => SSS(m,msg))
+    msgs.filter(m => m.SSS(msg))
 
 def nonSupersededMsgs(p: Proc) => Set[Message] = 
     Msgs[p].filter(m => isSupersededIn(m, Msgs[p]).not())
@@ -263,13 +252,13 @@ To broadcast as message $m$, process $p$ adds it to the set `BMsgs[p]` set.
 
 ```scala
 action broadcast(p,m): (Process, Message) = 
-    Msgs[p]' = Msgs[p].union(Set(m))
+    Msgs' = Msgs.set(p, Msgs[p].union(Set(m)))
 ```
 
 
 
 **[PROV-GOSSIP-STATE-NEIGHBOR_CAST.1]**   
-For any message $m$ added to BMsgs[p] at instant $t$, let NePt be the value of Ne[$p$]$ at time $t$; for each process $q \in \text{Ne}[p]$, $m$ will be delivered to $q$ at some point in time $t1 > t$, or there exists a point in time $t2 > t$ at which $q$ disconnects from $p$, or a message $m1$ is added to $BMsgs[p]$ at some instant $t3 > t$ and $SSS(m1,m)$.
+For any message $m$ added to BMsgs[p] at instant $t$, let NePt be the value of Ne[$p$] at time $t$; for each process $q \in \text{Ne}[p]$, $m$ will be delivered to $q$ at some point in time $t1 > t$, or there exists a point in time $t2 > t$ at which $q$ disconnects from $p$, or a message $m1$ is added to $\text{BMsgs}[p]$ at some instant $t3 > t$ and $\text{SSS}(m1,m)$.
 
 ```scala
 always (
@@ -324,11 +313,45 @@ From the internal state it will affect the generation of new messages, which may
 
 The P2P layer must expose functionality to allow 1-1 communication at the Communication layer, for example to implement request/response (e.g., "Have you decided?").
 
-**[REQ-GOSSIP-P2P-UNICAST]**   
-Ability address messages to a single neighbor
+**[REQ-GOSSIP-P2P-UNICAST.1]**   
+Ability address messages to a single neighbor.
+
+```scala
+unicast(p,q,m): (Proc,Proc,Message) =
+    all {
+        Ne[p].contains(q),
+        UMsgs' = UMsgs.set(p, UMsgs[p].union(Set((q,m)))
+    }
+```
+
+**[REQ-GOSSIP-P2P-UNICAST.2]**   
+Requirement for the unicast message to be delivered.
+
+> **TODO**
+> Is this a real requirement? If it is, is [PROV-GOSSIP-STATE-NEIGHBOR_CAST.1] a real requirement?
+> How different are these 2?
+
+```scala
+always (
+    all {
+        m.in(UMsgs[p])
+        q.in(Ne[p])
+    } implies eventually (
+        any {
+            m.in(DMsgs[q]),
+            UMsgs[p].exists((q,m1) => SSS(m1,m)),
+            q.notin(Ne[p])
+        }
+    )
+)
+```
 
 **[REQ-GOSSIP-P2P-NEIGHBOR_ID]**    
 Ability to discern sources of messages received.
+
+> **TODO**
+> How to specify that something WAS true?
+
 
 Moreover, since the Communication layer must provide 1-to-many communication, the P2P layer must provide:
 
