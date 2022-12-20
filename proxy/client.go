@@ -26,8 +26,12 @@ type localClientCreator struct {
 	app types.Application
 }
 
-// NewLocalClientCreator returns a ClientCreator for the given app,
-// which will be running locally.
+// NewLocalClientCreator returns a [ClientCreator] for the given app, which
+// will be running locally.
+//
+// Maintains a single mutex over all new clients created with NewABCIClient.
+// For a local client creator that uses a single mutex per new client, rather
+// use [NewUnsyncLocalClientCreator].
 func NewLocalClientCreator(app types.Application) ClientCreator {
 	return &localClientCreator{
 		mtx: new(tmsync.Mutex),
@@ -39,24 +43,26 @@ func (l *localClientCreator) NewABCIClient() (abcicli.Client, error) {
 	return abcicli.NewLocalClient(l.mtx, l.app), nil
 }
 
-//---------------------------------------------------------------
-// unsynchronized local proxy on an in-proc app (no mutex)
+//----------------------------------------------------
+// local proxy creates a new mutex for each client
 
 type unsyncLocalClientCreator struct {
 	app types.Application
 }
 
-// NewUnsyncLocalClientCreator returns a ClientCreator for the given app, which
-// will be running locally. Unlike NewLocalClientCreator, this leaves
-// synchronization up to the application.
+// NewUnsyncLocalClientCreator returns a [ClientCreator] for the given app.
+// Unlike [NewLocalClientCreator], each call to NewABCIClient returns an ABCI
+// client that maintains its own mutex over the application.
 func NewUnsyncLocalClientCreator(app types.Application) ClientCreator {
 	return &unsyncLocalClientCreator{
 		app: app,
 	}
 }
 
-func (l *unsyncLocalClientCreator) NewABCIClient() (abcicli.Client, error) {
-	return abcicli.NewUnsyncLocalClient(l.app), nil
+func (c *unsyncLocalClientCreator) NewABCIClient() (abcicli.Client, error) {
+	// Specifying nil for the mutex causes each instance to create its own
+	// mutex.
+	return abcicli.NewLocalClient(nil, c.app), nil
 }
 
 //---------------------------------------------------------------
@@ -88,23 +94,33 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 	return remoteApp, nil
 }
 
-// DefaultClientCreator returns a default ClientCreator, which will create a
-// local client if addr is one of: 'kvstore',
-// 'persistent_kvstore' or 'noop', otherwise - a remote client.
+// DefaultClientCreator returns a default [ClientCreator], which will create a
+// local client if addr is one of "kvstore", "persistent_kvstore", "e2e",
+// "noop".
+//
+// Otherwise a remote client will be created.
+//
+// Each of "kvstore", "persistent_kvstore" and "e2e" also currently have an
+// "_unsync" variant (i.e. "kvstore_unsync", etc.), which attempts to replicate
+// the same concurrency model as the remote client.
 func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
 	case "kvstore":
 		return NewLocalClientCreator(kvstore.NewApplication())
+	case "kvstore_unsync":
+		return NewUnsyncLocalClientCreator(kvstore.NewApplication())
 	case "persistent_kvstore":
 		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
+	case "persistent_kvstore_unsync":
+		return NewUnsyncLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
 	case "e2e":
 		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))
 		if err != nil {
 			panic(err)
 		}
 		return NewLocalClientCreator(app)
-	case "e2e_sync":
-		app, err := e2e.NewSyncApplication(e2e.DefaultConfig(dbDir))
+	case "e2e_unsync":
+		app, err := e2e.NewApplication(e2e.DefaultConfig(dbDir))
 		if err != nil {
 			panic(err)
 		}

@@ -29,7 +29,7 @@ var (
 	nodeDatabases = uniformChoice{"goleveldb", "cleveldb", "rocksdb", "boltdb", "badgerdb"}
 	ipv6          = uniformChoice{false, true}
 	// FIXME: grpc disabled due to https://github.com/tendermint/tendermint/issues/5439
-	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "builtin"} // "grpc"
+	nodeABCIProtocols     = uniformChoice{"unix", "tcp", "builtin", "builtin_unsync"} // "grpc"
 	nodePrivvalProtocols  = uniformChoice{"file", "unix", "tcp"}
 	nodeBlockSyncs        = uniformChoice{"v0"} // "v2"
 	nodeStateSyncs        = uniformChoice{false, true}
@@ -110,7 +110,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 	// First we generate seed nodes, starting at the initial height.
 	for i := 1; i <= numSeeds; i++ {
 		manifest.Nodes[fmt.Sprintf("seed%02d", i)] = generateNode(
-			r, e2e.ModeSeed, false, 0, manifest.InitialHeight, false)
+			r, e2e.ModeSeed, 0, manifest.InitialHeight, false)
 	}
 
 	// Next, we generate validators. We make sure a BFT quorum of validators start
@@ -125,12 +125,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			nextStartAt += 5
 		}
 		name := fmt.Sprintf("validator%02d", i)
-		syncApp := false
-		if manifest.ABCIProtocol == string(e2e.ProtocolBuiltin) {
-			syncApp = r.Intn(100) >= 50
-		}
 		manifest.Nodes[name] = generateNode(
-			r, e2e.ModeValidator, syncApp, startAt, manifest.InitialHeight, i <= 2)
+			r, e2e.ModeValidator, startAt, manifest.InitialHeight, i <= 2)
 
 		if startAt == 0 {
 			(*manifest.Validators)[name] = int64(30 + r.Intn(71))
@@ -158,12 +154,8 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 			startAt = nextStartAt
 			nextStartAt += 5
 		}
-		syncApp := false
-		if manifest.ABCIProtocol == string(e2e.ProtocolBuiltin) {
-			syncApp = r.Intn(100) >= 50
-		}
 		manifest.Nodes[fmt.Sprintf("full%02d", i)] = generateNode(
-			r, e2e.ModeFull, syncApp, startAt, manifest.InitialHeight, false)
+			r, e2e.ModeFull, startAt, manifest.InitialHeight, false)
 	}
 
 	// We now set up peer discovery for nodes. Seed nodes are fully meshed with
@@ -226,12 +218,11 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 // here, since we need to know the overall network topology and startup
 // sequencing.
 func generateNode(
-	r *rand.Rand, mode e2e.Mode, syncApp bool, startAt int64, initialHeight int64, forceArchive bool,
+	r *rand.Rand, mode e2e.Mode, startAt int64, initialHeight int64, forceArchive bool,
 ) *e2e.ManifestNode {
 	node := e2e.ManifestNode{
 		Version:          nodeVersions.Choose(r).(string),
 		Mode:             string(mode),
-		SyncApp:          syncApp,
 		StartAt:          startAt,
 		Database:         nodeDatabases.Choose(r).(string),
 		PrivvalProtocol:  nodePrivvalProtocols.Choose(r).(string),
