@@ -44,11 +44,11 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			multiversion, err := cmd.Flags().GetString("multi-version")
+			multiVersion, err := cmd.Flags().GetString("multi-version")
 			if err != nil {
 				return err
 			}
-			return cli.generate(dir, groups, multiversion)
+			return cli.generate(dir, groups, multiVersion)
 		},
 	}
 
@@ -62,13 +62,13 @@ func NewCLI() *CLI {
 }
 
 // generate generates manifests in a directory.
-func (cli *CLI) generate(dir string, groups int, multiversion string) error {
+func (cli *CLI) generate(dir string, groups int, multiVersion string) error {
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), multiversion) //nolint:gosec
+	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), multiVersion) //nolint:gosec
 	if err != nil {
 		return err
 	}
