@@ -567,7 +567,10 @@ func randVoteSet(
 	votingPower int64,
 ) (*VoteSet, *ValidatorSet, []PrivValidator) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
-	return NewExtendedVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	if signedMsgType == tmproto.PrecommitType {
+		return NewExtendedVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
+	}
+	return NewVoteSet("test_chain_id", height, round, signedMsgType, valSet), valSet, privValidators
 }
 
 // Convenience: Return new vote with different validator address/index

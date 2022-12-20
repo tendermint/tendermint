@@ -2,8 +2,10 @@ package types
 
 import (
 	"fmt"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/version"
@@ -37,50 +39,99 @@ func MakeExtCommit(blockID BlockID, height int64, round int32,
 	return voteSet.MakeExtendedCommit(), nil
 }
 
-func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+func signAndCheckVote(
+	vote *Vote,
+	privVal PrivValidator,
+	chainID string,
+	extensionsEnabled bool,
+) error {
 	v := vote.ToProto()
-	err = privVal.SignVote(voteSet.ChainID(), v)
-	if err != nil {
-		return false, err
+	if err := privVal.SignVote(chainID, v); err != nil {
+		return err
 	}
 	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
+
+	isPrecommit := vote.Type == tmproto.PrecommitType
+	if !isPrecommit && extensionsEnabled {
+		return fmt.Errorf("only Precommit votes may have extensions enabled; vote type: %d", vote.Type)
+	}
+
+	isNil := vote.BlockID.IsZero()
+	extSignature := (len(v.ExtensionSignature) > 0)
+	if extSignature == (!isPrecommit || isNil) {
+		return fmt.Errorf(
+			"extensions must be present IFF vote is a non-nil Precommit; present %t, vote type %d, is nil %t",
+			extSignature,
+			vote.Type,
+			isNil,
+		)
+	}
+
+	vote.ExtensionSignature = nil
+	if extensionsEnabled {
+		vote.ExtensionSignature = v.ExtensionSignature
+	}
+
+	return nil
+}
+
+func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
+	if vote.Type != voteSet.signedMsgType {
+		return false, fmt.Errorf("vote and voteset are of different types; %d != %d", vote.Type, voteSet.signedMsgType)
+	}
+	if err := signAndCheckVote(vote, privVal, voteSet.ChainID(), voteSet.extensionsEnabled); err != nil {
+		return false, err
+	}
 	return voteSet.AddVote(vote)
 }
 
 func MakeVote(
-	height int64,
-	blockID BlockID,
-	valSet *ValidatorSet,
-	privVal PrivValidator,
+	val PrivValidator,
 	chainID string,
-	now time.Time,
+	valIndex int32,
+	height int64,
+	round int32,
+	step tmproto.SignedMsgType,
+	blockID BlockID,
+	time time.Time,
 ) (*Vote, error) {
-	pubKey, err := privVal.GetPubKey()
+	pubKey, err := val.GetPubKey()
 	if err != nil {
-		return nil, fmt.Errorf("can't get pubkey: %w", err)
-	}
-	addr := pubKey.Address()
-	idx, _ := valSet.GetByAddress(addr)
-	vote := &Vote{
-		ValidatorAddress: addr,
-		ValidatorIndex:   idx,
-		Height:           height,
-		Round:            0,
-		Timestamp:        now,
-		Type:             tmproto.PrecommitType,
-		BlockID:          blockID,
-	}
-	v := vote.ToProto()
-
-	if err := privVal.SignVote(chainID, v); err != nil {
 		return nil, err
 	}
 
-	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
+	vote := &Vote{
+		ValidatorAddress: pubKey.Address(),
+		ValidatorIndex:   valIndex,
+		Height:           height,
+		Round:            round,
+		Type:             step,
+		BlockID:          blockID,
+		Timestamp:        time,
+	}
+
+	extensionsEnabled := step == tmproto.PrecommitType
+	if err := signAndCheckVote(vote, val, chainID, extensionsEnabled); err != nil {
+		return nil, err
+	}
 
 	return vote, nil
+}
+
+func MakeVoteNoError(
+	t *testing.T,
+	val PrivValidator,
+	chainID string,
+	valIndex int32,
+	height int64,
+	round int32,
+	step tmproto.SignedMsgType,
+	blockID BlockID,
+	time time.Time,
+) *Vote {
+	vote, err := MakeVote(val, chainID, valIndex, height, round, step, blockID, time)
+	require.NoError(t, err)
+	return vote
 }
 
 // MakeBlock returns a new block with an empty header, except what can be

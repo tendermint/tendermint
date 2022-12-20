@@ -93,7 +93,16 @@ func makeValidCommit(
 	votes := make([]*types.Vote, vals.Size())
 	for i := 0; i < vals.Size(); i++ {
 		_, val := vals.GetByIndex(int32(i))
-		vote, err := types.MakeVote(height, blockID, vals, privVals[val.Address.String()], chainID, time.Now())
+		vote, err := types.MakeVote(
+			privVals[val.Address.String()],
+			chainID,
+			int32(i),
+			height,
+			0,
+			tmproto.PrecommitType,
+			blockID,
+			time.Now(),
+		)
 		if err != nil {
 			return nil, nil, err
 		}

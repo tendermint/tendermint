@@ -160,7 +160,8 @@ func TestValidateBlockCommit(t *testing.T) {
 			*/
 			// should be height-1 instead of height
 			idx, _ := state.Validators.GetByAddress(proposerAddr)
-			wrongHeightVote, err := test.MakeVote(
+			wrongHeightVote := types.MakeVoteNoError(
+				t,
 				privVals[proposerAddr.String()],
 				chainID,
 				idx,
@@ -170,7 +171,6 @@ func TestValidateBlockCommit(t *testing.T) {
 				state.LastBlockID,
 				time.Now(),
 			)
-			require.NoError(t, err, "height %d", height)
 			wrongHeightCommit := &types.Commit{
 				Height:     wrongHeightVote.Height,
 				Round:      wrongHeightVote.Round,
@@ -178,7 +178,7 @@ func TestValidateBlockCommit(t *testing.T) {
 				Signatures: []types.CommitSig{wrongHeightVote.CommitSig()},
 			}
 			block := makeBlock(state, height, wrongHeightCommit)
-			err = blockExec.ValidateBlock(state, block)
+			err := blockExec.ValidateBlock(state, block)
 			_, isErrInvalidCommitHeight := err.(types.ErrInvalidCommitHeight)
 			require.True(t, isErrInvalidCommitHeight, "expected ErrInvalidCommitHeight at height %d but got: %v", height, err)
 
@@ -215,14 +215,18 @@ func TestValidateBlockCommit(t *testing.T) {
 		/*
 			wrongSigsCommit is fine except for the extra bad precommit
 		*/
-		goodVote, err := types.MakeVote(height,
-			blockID,
-			state.Validators,
+		idx, _ := state.Validators.GetByAddress(proposerAddr)
+		goodVote := types.MakeVoteNoError(
+			t,
 			privVals[proposerAddr.String()],
 			chainID,
+			idx,
+			height,
+			0,
+			tmproto.PrecommitType,
+			blockID,
 			time.Now(),
 		)
-		require.NoError(t, err, "height %d", height)
 
 		bpvPubKey, err := badPrivVal.GetPubKey()
 		require.NoError(t, err)

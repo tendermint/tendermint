@@ -210,11 +210,11 @@ func generateDuplicateVoteEvidence(
 	if err != nil {
 		return nil, err
 	}
-	voteA, err := test.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteA, err := types.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}
-	voteB, err := test.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
+	voteB, err := types.MakeVote(privVal, chainID, valIdx, height, 0, 2, makeRandomBlockID(), time)
 	if err != nil {
 		return nil, err
 	}

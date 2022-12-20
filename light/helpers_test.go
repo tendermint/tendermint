@@ -120,8 +120,14 @@ func makeVote(header *types.Header, valset *types.ValidatorSet,
 	if err != nil {
 		panic(err)
 	}
-
 	vote.Signature = sig
+
+	extSignBytes := types.VoteExtensionSignBytes(header.ChainID, v)
+	extSig, err := key.Sign(extSignBytes)
+	if err != nil {
+		panic(err)
+	}
+	vote.ExtensionSignature = extSig
 
 	return vote
 }

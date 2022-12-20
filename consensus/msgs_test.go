@@ -57,15 +57,17 @@ func TestMsgToProto(t *testing.T) {
 	}
 	pbProposal := proposal.ToProto()
 
-	pv := types.NewMockPV()
-	pk, err := pv.GetPubKey()
-	require.NoError(t, err)
-	val := types.NewValidator(pk, 100)
-
-	vote, err := types.MakeVote(
-		1, bi, &types.ValidatorSet{Proposer: val, Validators: []*types.Validator{val}},
-		pv, "chainID", time.Now())
-	require.NoError(t, err)
+	vote := types.MakeVoteNoError(
+		t,
+		types.NewMockPV(),
+		"chainID",
+		0,
+		1,
+		0,
+		tmproto.PrecommitType,
+		bi,
+		time.Now(),
+	)
 	pbVote := vote.ToProto()
 
 	testsCases := []struct {

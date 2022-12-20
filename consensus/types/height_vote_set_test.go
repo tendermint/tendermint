@@ -1,7 +1,6 @@
 package types
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -56,33 +55,29 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 }
 
-func makeVoteHR(t *testing.T, height int64, valIndex, round int32, privVals []types.PrivValidator) *types.Vote {
+func makeVoteHR(
+	t *testing.T,
+	height int64,
+	valIndex,
+	round int32,
+	privVals []types.PrivValidator,
+) *types.Vote {
 	privVal := privVals[valIndex]
-	pubKey, err := privVal.GetPubKey()
+	randBytes := tmrand.Bytes(tmhash.Size)
+
+	vote, err := types.MakeVote(
+		privVal,
+		test.DefaultTestChainID,
+		valIndex,
+		height,
+		round,
+		tmproto.PrecommitType,
+		types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}},
+		tmtime.Now(),
+	)
 	if err != nil {
 		panic(err)
 	}
-
-	randBytes := tmrand.Bytes(tmhash.Size)
-
-	vote := &types.Vote{
-		ValidatorAddress: pubKey.Address(),
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Timestamp:        tmtime.Now(),
-		Type:             tmproto.PrecommitType,
-		BlockID:          types.BlockID{Hash: randBytes, PartSetHeader: types.PartSetHeader{}},
-	}
-
-	v := vote.ToProto()
-	err = privVal.SignVote(test.DefaultTestChainID, v)
-	if err != nil {
-		panic(fmt.Sprintf("Error signing vote: %v", err))
-	}
-
-	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
 
 	return vote
 }

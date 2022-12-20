@@ -373,11 +373,12 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 
 	const chainID = "mychain"
 
-	vote1 := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime)
+	vote1 := types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime)
+
 	v1 := vote1.ToProto()
 	err := val.SignVote(chainID, v1)
 	require.NoError(t, err)
-	badVote := makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime)
+	badVote := types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime)
 	bv := badVote.ToProto()
 	err = val2.SignVote(chainID, bv)
 	require.NoError(t, err)
@@ -386,17 +387,17 @@ func TestVerifyDuplicateVoteEvidence(t *testing.T) {
 	badVote.Signature = bv.Signature
 
 	cases := []voteData{
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, defaultEvidenceTime), true}, // different block ids
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID3, defaultEvidenceTime), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID4, defaultEvidenceTime), true},
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime), false},     // wrong block id
-		{vote1, makeVote(t, val, "mychain2", 0, 10, 2, 1, blockID2, defaultEvidenceTime), false}, // wrong chain id
-		{vote1, makeVote(t, val, chainID, 0, 11, 2, 1, blockID2, defaultEvidenceTime), false},    // wrong height
-		{vote1, makeVote(t, val, chainID, 0, 10, 3, 1, blockID2, defaultEvidenceTime), false},    // wrong round
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 2, blockID2, defaultEvidenceTime), false},    // wrong step
-		{vote1, makeVote(t, val2, chainID, 0, 10, 2, 1, blockID2, defaultEvidenceTime), false},   // wrong validator
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 1, blockID2, defaultEvidenceTime), true}, // different block ids
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 1, blockID3, defaultEvidenceTime), true},
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 1, blockID4, defaultEvidenceTime), true},
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 1, blockID, defaultEvidenceTime), false},     // wrong block id
+		{vote1, types.MakeVoteNoError(t, val, "mychain2", 0, 10, 2, 1, blockID2, defaultEvidenceTime), false}, // wrong chain id
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 11, 2, 1, blockID2, defaultEvidenceTime), false},    // wrong height
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 10, 3, 1, blockID2, defaultEvidenceTime), false},    // wrong round
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 2, blockID2, defaultEvidenceTime), false},    // wrong step
+		{vote1, types.MakeVoteNoError(t, val2, chainID, 0, 10, 2, 1, blockID2, defaultEvidenceTime), false},   // wrong validator
 		// a different vote time doesn't matter
-		{vote1, makeVote(t, val, chainID, 0, 10, 2, 1, blockID2, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), true},
+		{vote1, types.MakeVoteNoError(t, val, chainID, 0, 10, 2, 1, blockID2, time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), true},
 		{vote1, badVote, false}, // signed by wrong key
 	}
 
@@ -536,30 +537,6 @@ func makeLunaticEvidence(
 // func makeAmnesiaEvidence() *types.LightClientAttackEvidence {
 
 // }
-
-func makeVote(
-	t *testing.T, val types.PrivValidator, chainID string, valIndex int32, height int64,
-	round int32, step int, blockID types.BlockID, time time.Time) *types.Vote {
-	pubKey, err := val.GetPubKey()
-	require.NoError(t, err)
-	v := &types.Vote{
-		ValidatorAddress: pubKey.Address(),
-		ValidatorIndex:   valIndex,
-		Height:           height,
-		Round:            round,
-		Type:             tmproto.SignedMsgType(step),
-		BlockID:          blockID,
-		Timestamp:        time,
-	}
-
-	vpb := v.ToProto()
-	err = val.SignVote(chainID, vpb)
-	if err != nil {
-		panic(err)
-	}
-	v.Signature = vpb.Signature
-	return v
-}
 
 func makeHeaderRandom(height int64) *types.Header {
 	return &types.Header{
