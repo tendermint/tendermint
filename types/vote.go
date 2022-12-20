@@ -403,27 +403,27 @@ func SignAndCheckVote(
 	privVal PrivValidator,
 	chainID string,
 	extensionsEnabled bool,
-) (error, bool) {
+) (bool, error) {
 	v := vote.ToProto()
 	if err := privVal.SignVote(chainID, v); err != nil {
-		return err, true // true = recoverable
+		return true, err // true = recoverable
 	}
 	vote.Signature = v.Signature
 
 	isPrecommit := vote.Type == tmproto.PrecommitType
 	if !isPrecommit && extensionsEnabled {
-		return fmt.Errorf("only Precommit votes may have extensions enabled; vote type: %d", vote.Type), false
+		return false, fmt.Errorf("only Precommit votes may have extensions enabled; vote type: %d", vote.Type)
 	}
 
 	isNil := vote.BlockID.IsZero()
 	extSignature := (len(v.ExtensionSignature) > 0)
 	if extSignature == (!isPrecommit || isNil) {
-		return fmt.Errorf(
+		return false, fmt.Errorf(
 			"extensions must be present IFF vote is a non-nil Precommit; present %t, vote type %d, is nil %t",
 			extSignature,
 			vote.Type,
 			isNil,
-		), false
+		)
 	}
 
 	vote.ExtensionSignature = nil
@@ -432,5 +432,5 @@ func SignAndCheckVote(
 	}
 	vote.Timestamp = v.Timestamp
 
-	return nil, true
+	return true, nil
 }

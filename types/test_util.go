@@ -43,7 +43,7 @@ func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (bool, err
 	if vote.Type != voteSet.signedMsgType {
 		return false, fmt.Errorf("vote and voteset are of different types; %d != %d", vote.Type, voteSet.signedMsgType)
 	}
-	if err, _ := SignAndCheckVote(vote, privVal, voteSet.ChainID(), voteSet.extensionsEnabled); err != nil {
+	if _, err := SignAndCheckVote(vote, privVal, voteSet.ChainID(), voteSet.extensionsEnabled); err != nil {
 		return false, err
 	}
 	return voteSet.AddVote(vote)
@@ -75,7 +75,7 @@ func MakeVote(
 	}
 
 	extensionsEnabled := step == tmproto.PrecommitType
-	if err, _ := SignAndCheckVote(vote, val, chainID, extensionsEnabled); err != nil {
+	if _, err := SignAndCheckVote(vote, val, chainID, extensionsEnabled); err != nil {
 		return nil, err
 	}
 
