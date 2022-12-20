@@ -59,7 +59,10 @@ type generateConfig struct {
 // Generate generates random testnets using the given RNG.
 func Generate(cfg *generateConfig) ([]e2e.Manifest, error) {
 	if cfg.multiVersion != "" {
-		nodeVersions[cfg.multiVersion] = 1
+		multiVersions := strings.Split(cfg.multiVersion, ",")
+		for _, v := range multiVersions {
+			nodeVersions[v] = 1
+		}
 	}
 	manifests := []e2e.Manifest{}
 	for _, opt := range combinations(testnetCombinations) {
