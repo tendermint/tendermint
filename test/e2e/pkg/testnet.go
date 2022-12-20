@@ -57,24 +57,26 @@ const (
 
 // Testnet represents a single testnet.
 type Testnet struct {
-	Name                 string
-	File                 string
-	Dir                  string
-	IP                   *net.IPNet
-	InitialHeight        int64
-	InitialState         map[string]string
-	Validators           map[*Node]int64
-	ValidatorUpdates     map[int64]map[*Node]int64
-	Nodes                []*Node
-	KeyType              string
-	Evidence             int
-	LoadTxSizeBytes      int
-	LoadTxBatchSize      int
-	LoadTxConnections    int
-	ABCIProtocol         string
-	PrepareProposalDelay time.Duration
-	ProcessProposalDelay time.Duration
-	CheckTxDelay         time.Duration
+	Name                   string
+	File                   string
+	Dir                    string
+	IP                     *net.IPNet
+	InitialHeight          int64
+	InitialState           map[string]string
+	Validators             map[*Node]int64
+	ValidatorUpdates       map[int64]map[*Node]int64
+	Nodes                  []*Node
+	KeyType                string
+	Evidence               int
+	LoadTxSizeBytes        int
+	LoadTxBatchSize        int
+	LoadTxConnections      int
+	ABCIProtocol           string
+	PrepareProposalDelay   time.Duration
+	ProcessProposalDelay   time.Duration
+	CheckTxDelay           time.Duration
+	MaxInboundConnections  int
+	MaxOutboundConnections int
 }
 
 // Node represents a Tendermint node in a testnet.
@@ -120,23 +122,25 @@ func LoadTestnet(manifest Manifest, fname string, ifd InfrastructureData) (*Test
 	}
 
 	testnet := &Testnet{
-		Name:                 filepath.Base(dir),
-		File:                 fname,
-		Dir:                  dir,
-		IP:                   ipNet,
-		InitialHeight:        1,
-		InitialState:         manifest.InitialState,
-		Validators:           map[*Node]int64{},
-		ValidatorUpdates:     map[int64]map[*Node]int64{},
-		Nodes:                []*Node{},
-		Evidence:             manifest.Evidence,
-		LoadTxSizeBytes:      manifest.LoadTxSizeBytes,
-		LoadTxBatchSize:      manifest.LoadTxBatchSize,
-		LoadTxConnections:    manifest.LoadTxConnections,
-		ABCIProtocol:         manifest.ABCIProtocol,
-		PrepareProposalDelay: manifest.PrepareProposalDelay,
-		ProcessProposalDelay: manifest.ProcessProposalDelay,
-		CheckTxDelay:         manifest.CheckTxDelay,
+		Name:                   filepath.Base(dir),
+		File:                   fname,
+		Dir:                    dir,
+		IP:                     ipNet,
+		InitialHeight:          1,
+		InitialState:           manifest.InitialState,
+		Validators:             map[*Node]int64{},
+		ValidatorUpdates:       map[int64]map[*Node]int64{},
+		Nodes:                  []*Node{},
+		Evidence:               manifest.Evidence,
+		LoadTxSizeBytes:        manifest.LoadTxSizeBytes,
+		LoadTxBatchSize:        manifest.LoadTxBatchSize,
+		LoadTxConnections:      manifest.LoadTxConnections,
+		ABCIProtocol:           manifest.ABCIProtocol,
+		PrepareProposalDelay:   manifest.PrepareProposalDelay,
+		ProcessProposalDelay:   manifest.ProcessProposalDelay,
+		CheckTxDelay:           manifest.CheckTxDelay,
+		MaxInboundConnections:  manifest.MaxInboundConnections,
+		MaxOutboundConnections: manifest.MaxOutboundConnections,
 	}
 	if len(manifest.KeyType) != 0 {
 		testnet.KeyType = manifest.KeyType
@@ -300,6 +304,21 @@ func (t Testnet) Validate() error {
 	}
 	if len(t.Nodes) == 0 {
 		return errors.New("network has no nodes")
+	}
+	if t.MaxInboundConnections < 0 {
+		return errors.New("MaxInboundConnections must not be negative")
+	}
+	if t.MaxOutboundConnections < 0 {
+		return errors.New("MaxOutboundConnections must not be negative")
+	}
+	if t.LoadTxBatchSize < 0 {
+		return errors.New("LoadTxBatchSize must not be negative")
+	}
+	if t.LoadTxSizeBytes < 0 {
+		return errors.New("LoadTxSizeBytes must not be negative")
+	}
+	if t.LoadTxConnections < 0 {
+		return errors.New("LoadTxConnections must not be negative")
 	}
 	for _, node := range t.Nodes {
 		if err := node.Validate(t); err != nil {

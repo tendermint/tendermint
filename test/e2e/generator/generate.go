@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/math"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
 )
 
@@ -14,7 +15,7 @@ var (
 	// testnetCombinations defines global testnet options, where we generate a
 	// separate testnet for each combination (Cartesian product) of options.
 	testnetCombinations = map[string][]interface{}{
-		"topology":      {"single", "quad", "large"},
+		"topology":      {"single", "quad", "large_connected", "large_partially_connected"},
 		"initialHeight": {0, 1000},
 		"initialState": {
 			map[string]string{},
@@ -97,7 +98,7 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numValidators = 1
 	case "quad":
 		numValidators = 4
-	case "large":
+	case "large_connected", "large-partially_connected":
 		// FIXME Networks are kept small since large ones use too much CPU.
 		numSeeds = r.Intn(2)
 		numLightClients = r.Intn(3)
@@ -105,6 +106,15 @@ func generateTestnet(r *rand.Rand, opt map[string]interface{}) (e2e.Manifest, er
 		numFulls = r.Intn(4)
 	default:
 		return manifest, fmt.Errorf("unknown topology %q", opt["topology"])
+	}
+
+	if opt["typologoy"].(string) == "large_partially_connected" {
+		// currently this is at max 11 and minimum 4
+		totalPossibleConnections := numSeeds + numValidators + numFulls - 1
+		// this value should be between 3 and 2
+		manifest.MaxOutboundConnections = math.MaxInt(totalPossibleConnections/3, 2)
+		// this value should be between 5 and 2
+		manifest.MaxInboundConnections = math.MaxInt(totalPossibleConnections/2, 2)
 	}
 
 	// First we generate seed nodes, starting at the initial height.

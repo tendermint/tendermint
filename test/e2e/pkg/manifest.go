@@ -78,6 +78,13 @@ type Manifest struct {
 	LoadTxSizeBytes   int `toml:"load_tx_size_bytes"`
 	LoadTxBatchSize   int `toml:"load_tx_batch_size"`
 	LoadTxConnections int `toml:"load_tx_connections"`
+
+	// MaxInboundConnections and MaxOutboundConnection are the maximum number
+	// of connections a node has. This can be used to throttle the degree of
+	// connectivity of the network. If not specified, the default is taken
+	// from config/config.go
+	MaxInboundConnections  int `toml:"max_inbound_connections"`
+	MaxOutboundConnections int `toml:"max_outbound_connections"`
 }
 
 // ManifestNode represents a node in a testnet manifest.
