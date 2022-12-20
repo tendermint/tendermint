@@ -358,9 +358,11 @@ func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
 		p2p.Connect2Switches(switches, i, lastReactorIdx)
 	}
 
+	startTime := time.Now()
 	for {
+		time.Sleep(20 * time.Millisecond)
 		caughtUp := true
-		for i := 0; i < lastReactorIdx; i++ {
+		for i := 0; i <= lastReactorIdx; i++ {
 			if !reactorPairs[i].reactor.pool.IsCaughtUp() {
 				caughtUp = false
 				break
@@ -369,7 +371,15 @@ func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
 		if caughtUp {
 			break
 		}
-		time.Sleep(20 * time.Millisecond)
+		if time.Since(startTime) > 20*time.Second {
+			msg := "timeout: reactors didn't catch up; "
+			for i := 0; i <= lastReactorIdx; i++ {
+				h, p, r := reactorPairs[i].reactor.pool.GetStatus()
+				c := reactorPairs[i].reactor.pool.IsCaughtUp()
+				msg += fmt.Sprintf("reactor#%d (h %d, p %d, r %d, c %t);", i, h, p, r, c)
+			}
+			require.Fail(t, msg)
+		}
 	}
 
 	for _, r := range reactorPairs {
