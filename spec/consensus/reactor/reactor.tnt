@@ -1,0 +1,43 @@
+module ConsensusReactor {
+
+    type Proc = int
+    type StateMessage =                                         //TODO: Define payloads?
+        | { tag: "proposal", height: int, round: int, payload: str, src: Proc}
+        | { tag: "prevote", height: int, round: int, payload: str, src: Proc}
+        | { tag: "precommit", height: int, round: int, payload: str, src: Proc}
+    
+    var Procs : Set[Proc]                                        //All processes in the system
+    var Ne : Procs -> Set[Procs]                                 //Neighbor sets
+    var BMsgs : Procs -> Set[StateMessage]                       //Messages broadcast by State
+    var UMsgs : Procs -> Set[StateMessage]                       //Messages unicast by State
+    var DMsgs : Procs -> Set[StateMessage]                       //Messages delivered to State
+    var Msgs : Procs -> Set[StateMessage]                        //Messages to be sent/forwarded (subset BMsgs[] U UMsgs[] U DMsgs[])
+
+
+
+
+
+
+
+    //The supersession operator 
+    def SSS(lhs,rhs): (StateMessage, StateMessage) => bool = {
+        true                                                    //TODO
+    }
+
+
+    //[REQ-STATE-GOSSIP-KEEP_NON_SUPERSEDED]
+    temporal placeholder1 = {
+        Procs.forall(p => 
+            DMsgs.get(p).forall(m =>
+                always (
+                    eventually (
+                        any {
+                            m.in(DMsgs.get(p)),
+                            DMsgs.get(p).exists(m1 => m1.SSS(m))
+                        }
+                    )
+                )
+            )
+        )
+    }
+}
