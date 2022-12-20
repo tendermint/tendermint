@@ -54,9 +54,9 @@ var (
 )
 
 // Generate generates random testnets using the given RNG.
-func Generate(r *rand.Rand, multiversion string) ([]e2e.Manifest, error) {
-	if multiversion != "" {
-		nodeVersions[multiversion] = 1
+func Generate(r *rand.Rand, multiVersion string) ([]e2e.Manifest, error) {
+	if multiVersion != "" {
+		nodeVersions[multiVersion] = 1
 	}
 	manifests := []e2e.Manifest{}
 	for _, opt := range combinations(testnetCombinations) {
