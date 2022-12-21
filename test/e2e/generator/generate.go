@@ -398,8 +398,9 @@ func findLatestReleaseTag(baseVer string, tags []string) (string, error) {
 			continue
 		}
 		curVer, err := semver.NewVersion(tag)
+		// Skip tags that are not valid semantic versions
 		if err != nil {
-			return "", fmt.Errorf("failed to parse tag \"%s\" as semantic version: %v", tag, err)
+			continue
 		}
 		// Skip pre-releases
 		if len(curVer.Prerelease()) != 0 {
