@@ -1,11 +1,11 @@
-# Runs randomly generated E2E testnets nightly on main
-# manually run e2e tests
-name: e2e-manual
+# Manually run the nightly E2E tests for a particular branch, but test with
+# multiple versions.
+name: e2e-manual-multiversion
 on:
   workflow_dispatch:
 
 jobs:
-  e2e-nightly-test:
+  e2e-manual-multiversion-test:
     # Run parallel jobs for the listed testnet groups (must match the
     # ./build/generator -g flag)
     strategy:
@@ -29,7 +29,9 @@ jobs:
       - name: Generate testnets
         working-directory: test/e2e
         # When changing -g, also change the matrix groups above
-        run: ./build/generator -g 5 -d networks/nightly/
+        # Generate multi-version tests with double the quantity of E2E nodes
+        # based on the current branch as compared to the latest version.
+        run: ./build/generator -g 5 -m "latest:1,local:2" -d networks/nightly/
 
       - name: Run ${{ matrix.p2p }} p2p testnets
         working-directory: test/e2e
