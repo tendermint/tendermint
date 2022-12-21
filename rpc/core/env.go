@@ -7,6 +7,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/internal/eventlog"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
@@ -84,6 +85,7 @@ type Environment struct {
 	TxIndexer    txindex.TxIndexer
 	BlockIndexer indexer.BlockIndexer
 	EventBus     *types.EventBus // thread safe
+	EventLog     *eventlog.Log
 	Mempool      mempl.Mempool
 
 	Logger log.Logger

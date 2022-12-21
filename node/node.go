@@ -15,9 +15,11 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/internal/eventlog"
 
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/libs/service"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -59,6 +61,7 @@ type Node struct {
 
 	// services
 	eventBus          *types.EventBus // pub/sub for services
+	eventLog          *eventlog.Log
 	stateStore        sm.Store
 	blockStore        *store.BlockStore // store the blockchain to disk
 	bcReactor         p2p.Reactor       // for block-syncing
@@ -133,8 +136,6 @@ func StateProvider(stateProvider statesync.StateProvider) Option {
 	}
 }
 
-//------------------------------------------------------------------------------
-
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
@@ -160,7 +161,7 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	csMetrics, p2pMetrics, memplMetrics, smMetrics, abciMetrics, bsMetrics, ssMetrics := metricsProvider(genDoc.ChainID)
+	csMetrics, eventLogMetrics, p2pMetrics, memplMetrics, smMetrics, abciMetrics, bsMetrics, ssMetrics := metricsProvider(genDoc.ChainID)
 
 	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp, err := createAndStartProxyAppConns(clientCreator, logger, abciMetrics)
@@ -175,6 +176,19 @@ func NewNode(config *cfg.Config,
 	eventBus, err := createAndStartEventBus(logger)
 	if err != nil {
 		return nil, err
+	}
+
+	var eventLog *eventlog.Log
+	if w := config.RPC.EventLogWindowSize; w > 0 {
+		var err error
+		eventLog, err = eventlog.New(eventlog.LogSettings{
+			WindowSize: w,
+			MaxItems:   config.RPC.EventLogMaxItems,
+			Metrics:    eventLogMetrics,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("initializing event log: %w", err)
+		}
 	}
 
 	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(config,
@@ -362,6 +376,7 @@ func NewNode(config *cfg.Config,
 		indexerService:   indexerService,
 		blockIndexer:     blockIndexer,
 		eventBus:         eventBus,
+		eventLog:         eventLog,
 	}
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
@@ -525,6 +540,7 @@ func (n *Node) ConfigureRPC() (*rpccore.Environment, error) {
 		BlockIndexer:     n.blockIndexer,
 		ConsensusReactor: n.consensusReactor,
 		EventBus:         n.eventBus,
+		EventLog:         n.eventLog,
 		Mempool:          n.mempool,
 
 		Logger: n.Logger.With("module", "rpc"),
@@ -561,25 +577,61 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		config.WriteTimeout = n.config.RPC.TimeoutBroadcastTxCommit + 1*time.Second
 	}
 
-	// we may expose the rpc over both a unix and tcp socket
+	// If the event log is enabled, subscribe to all events published to the
+	// event bus, and forward them to the event log.
+	if lg := n.eventLog; lg != nil {
+		// TODO(creachadair): This is kind of a hack, ideally we'd share the
+		// observer with the indexer, but it's tricky to plumb them together.
+		// For now, use a "normal" subscription with a big buffer allowance.
+		// The event log should always be able to keep up.
+		const subscriberID = "event-log-subscriber"
+		ctx := context.Background()
+		sub, err := n.eventBus.Subscribe(ctx, subscriberID, query.All, 1<<16) // essentially "no limit"
+		if err != nil {
+			return nil, fmt.Errorf("event log subscribe: %w", err)
+		}
+		go func() {
+			// N.B. Use background for unsubscribe, ctx is already terminated.
+			defer n.eventBus.UnsubscribeAll(ctx, subscriberID) //nolint:errcheck
+			for {
+				msg := <-sub.Out()
+				if err != nil {
+					n.Logger.Error("Subscription terminated", "err", err)
+					return
+				}
+				etype, ok := eventlog.FindType(query.ExpandEvents(msg.Events()))
+				if ok {
+					_ = lg.Add(etype, msg.Data())
+				}
+			}
+		}()
+
+		n.Logger.Info("Event log subscription enabled")
+	}
+
+	// We may expose the RPC over both TCP and a Unix-domain socket.
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wmLogger := rpcLogger.With("protocol", "websocket")
-		wm := rpcserver.NewWebsocketManager(routes,
-			rpcserver.OnDisconnect(func(remoteAddr string) {
-				err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
-				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
-					wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
-				}
-			}),
-			rpcserver.ReadLimit(config.MaxBodyBytes),
-			rpcserver.WriteChanCapacity(n.config.RPC.WebSocketWriteBufferSize),
-		)
-		wm.SetLogger(wmLogger)
-		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, routes, rpcLogger)
+		if n.config.RPC.ExperimentalDisableWebsocket {
+			rpcLogger.Info("Disabling websocket endpoints (experimental-disable-websocket=true)")
+		} else {
+			wmLogger := rpcLogger.With("protocol", "websocket")
+			wm := rpcserver.NewWebsocketManager(routes,
+				rpcserver.OnDisconnect(func(remoteAddr string) {
+					err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+					if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
+						wmLogger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+					}
+				}),
+				rpcserver.ReadLimit(config.MaxBodyBytes),
+				rpcserver.WriteChanCapacity(n.config.RPC.WebSocketWriteBufferSize),
+			)
+			wm.SetLogger(wmLogger)
+			mux.HandleFunc("/websocket", wm.WebsocketHandler)
+		}
 		listener, err := rpcserver.Listen(
 			listenAddr,
 			config.MaxOpenConnections,

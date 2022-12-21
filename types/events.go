@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -68,12 +69,22 @@ type EventDataNewBlock struct {
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
 }
 
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataNewBlock) ABCIEvents() []abci.Event {
+	return append(e.ResultBeginBlock.Events, e.ResultEndBlock.Events...)
+}
+
 type EventDataNewBlockHeader struct {
 	Header Header `json:"header"`
 
 	NumTxs           int64                   `json:"num_txs"` // Number of txs in a block
 	ResultBeginBlock abci.ResponseBeginBlock `json:"result_begin_block"`
 	ResultEndBlock   abci.ResponseEndBlock   `json:"result_end_block"`
+}
+
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataNewBlockHeader) ABCIEvents() []abci.Event {
+	return append(e.ResultBeginBlock.Events, e.ResultEndBlock.Events...)
 }
 
 type EventDataNewEvidence struct {
@@ -85,6 +96,15 @@ type EventDataNewEvidence struct {
 // All txs fire EventDataTx
 type EventDataTx struct {
 	abci.TxResult
+}
+
+// ABCIEvents implements the eventlog.ABCIEventer interface.
+func (e EventDataTx) ABCIEvents() []abci.Event {
+	base := []abci.Event{
+		eventWithAttr(TxHashKey, fmt.Sprintf("%X", Tx(e.Tx).Hash())),
+		eventWithAttr(TxHeightKey, fmt.Sprintf("%d", e.Height)),
+	}
+	return append(base, e.Result.Events...)
 }
 
 // NOTE: This goes into the replay WAL
@@ -180,4 +200,17 @@ type BlockEventPublisher interface {
 
 type TxEventPublisher interface {
 	PublishEventTx(EventDataTx) error
+}
+
+// eventWithAttr constructs a single abci.Event with a single attribute.
+// The type of the event and the name of the attribute are obtained by
+// splitting the event type on period (e.g., "foo.bar").
+func eventWithAttr(etype, value string) abci.Event {
+	parts := strings.SplitN(etype, ".", 2)
+	return abci.Event{
+		Type: parts[0],
+		Attributes: []abci.EventAttribute{{
+			Key: parts[1], Value: value,
+		}},
+	}
 }

@@ -7,6 +7,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Verify that the event data types satisfy their shared interface.
+// TODO: add EventDataBlockSyncStatus and EventDataStateSyncStatus
+// when backport #6700 and #6755.
+var (
+	_ TMEventData = EventDataCompleteProposal{}
+	_ TMEventData = EventDataNewBlock{}
+	_ TMEventData = EventDataNewBlockHeader{}
+	_ TMEventData = EventDataNewEvidence{}
+	_ TMEventData = EventDataNewRound{}
+	_ TMEventData = EventDataRoundState{}
+	_ TMEventData = EventDataTx{}
+	_ TMEventData = EventDataValidatorSetUpdates{}
+	_ TMEventData = EventDataVote{}
+	_ TMEventData = EventDataString("")
+)
+
 func TestQueryTxFor(t *testing.T) {
 	tx := Tx("foo")
 	assert.Equal(t,

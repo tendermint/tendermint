@@ -1,6 +1,8 @@
 package proxy
 
 import (
+	"time"
+
 	"github.com/tendermint/tendermint/libs/bytes"
 	lrpc "github.com/tendermint/tendermint/light/rpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -12,7 +14,9 @@ import (
 
 func RPCRoutes(c *lrpc.Client) map[string]*rpcserver.RPCFunc {
 	return map[string]*rpcserver.RPCFunc{
-		// Subscribe/unsubscribe are reserved for websocket events.
+		// Event subscription. Note that subscribe, unsubscribe, and
+		// unsubscribe_all are only available via the websocket endpoint.
+		"events":          rpcserver.NewRPCFunc(makeEventsSearchFunc(c), "filter,maxItems,before,after,waitTime"),
 		"subscribe":       rpcserver.NewWSRPCFunc(c.SubscribeWS, "query"),
 		"unsubscribe":     rpcserver.NewWSRPCFunc(c.UnsubscribeWS, "query"),
 		"unsubscribe_all": rpcserver.NewWSRPCFunc(c.UnsubscribeAllWS, ""),
@@ -298,5 +302,33 @@ type rpcBroadcastEvidenceFunc func(ctx *rpctypes.Context, ev types.Evidence) (*c
 func makeBroadcastEvidenceFunc(c *lrpc.Client) rpcBroadcastEvidenceFunc {
 	return func(ctx *rpctypes.Context, ev types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 		return c.BroadcastEvidence(ctx.Context(), ev)
+	}
+}
+
+type rpcEventsSearchFunc func(
+	ctx *rpctypes.Context,
+	filter string,
+	maxItems int,
+	before, after string,
+	waitTime time.Duration,
+) (*ctypes.ResultEvents, error)
+
+func makeEventsSearchFunc(c *lrpc.Client) rpcEventsSearchFunc {
+	return func(
+		ctx *rpctypes.Context,
+		filter string,
+		maxItems int,
+		before, after string,
+		waitTime time.Duration,
+	) (*ctypes.ResultEvents, error) {
+		return c.Events(ctx.Context(), &ctypes.RequestEvents{
+			Filter: &ctypes.EventFilter{
+				Query: filter,
+			},
+			MaxItems: maxItems,
+			WaitTime: waitTime,
+			Before:   before,
+			After:    after,
+		})
 	}
 }

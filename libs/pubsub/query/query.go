@@ -95,6 +95,13 @@ func (q *Query) Matches(events map[string][]string) (bool, error) {
 	return q.matchesEvents(ExpandEvents(events)), nil
 }
 
+func (q *Query) MatchesEvents(events []types.Event) (bool, error) {
+	if q == nil {
+		return true, nil
+	}
+	return q.matchesEvents(events), nil
+}
+
 // String matches part of the pubsub.Query interface.
 func (q *Query) String() string {
 	if q == nil {
