@@ -358,16 +358,16 @@ FOR_LOOP:
 			// then we are guaranteed to have extensions for the last block (if required) even
 			// if we did not blocksync any block.
 			//
-                       var needsExtension := true;
-                       if state.LastBlockHeight == 0 ||
-                                !state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) ||
-                                blocksSynced > 0 ||
-                                initialCommitHasExtensions {
-                                needsExtension = false
-                       }
+			missingExtension := true
+			if state.LastBlockHeight == 0 ||
+				!state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) ||
+				blocksSynced > 0 ||
+				initialCommitHasExtensions {
+				missingExtension = false
+			}
 
 			// If require extensions, but since we don't have them yet, then we cannot switch to consensus yet.
-			if needsExtension {
+			if missingExtension {
 				bcR.Logger.Info(
 					"no extended commit yet",
 					"height", height,
@@ -424,8 +424,7 @@ FOR_LOOP:
 				// Panicking because this is an obvious bug in the block pool, which is totally under our control
 				panic(fmt.Errorf("heights of first and second block are not consecutive; expected %d, got %d", state.LastBlockHeight, first.Height))
 			}
-			if first != nil && extCommit == nil &&
-				state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
+			if extCommit == nil && state.ConsensusParams.ABCI.VoteExtensionsEnabled(first.Height) {
 				// See https://github.com/tendermint/tendermint/pull/8433#discussion_r866790631
 				panic(fmt.Errorf("peeked first block without extended commit at height %d - possible node store corruption", first.Height))
 			}
