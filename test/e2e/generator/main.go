@@ -44,32 +44,35 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			multiversion, err := cmd.Flags().GetString("multi-version")
+			multiVersion, err := cmd.Flags().GetString("multi-version")
 			if err != nil {
 				return err
 			}
-			return cli.generate(dir, groups, multiversion)
+			return cli.generate(dir, groups, multiVersion)
 		},
 	}
 
 	cli.root.PersistentFlags().StringP("dir", "d", "", "Output directory for manifests")
 	_ = cli.root.MarkPersistentFlagRequired("dir")
-	cli.root.PersistentFlags().StringP("multi-version", "m", "", "Include multi-version testing."+
-		"If multi-version is not specified, then only the current Tendermint version will be used in generated testnets.")
+	cli.root.PersistentFlags().StringP("multi-version", "m", "", "Comma-separated list of versions of Tendermint to test in the generated testnets, "+
+		"or empty to only use this branch's version")
 	cli.root.PersistentFlags().IntP("groups", "g", 0, "Number of groups")
 
 	return cli
 }
 
 // generate generates manifests in a directory.
-func (cli *CLI) generate(dir string, groups int, multiversion string) error {
+func (cli *CLI) generate(dir string, groups int, multiVersion string) error {
 	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return err
 	}
 
-	//nolint:gosec // G404: Use of weak random number generator (math/rand instead of crypto/rand)
-	manifests, err := Generate(rand.New(rand.NewSource(randomSeed)), multiversion)
+	cfg := &generateConfig{
+		randSource:   rand.New(rand.NewSource(randomSeed)), //nolint:gosec
+		multiVersion: multiVersion,
+	}
+	manifests, err := Generate(cfg)
 	if err != nil {
 		return err
 	}
