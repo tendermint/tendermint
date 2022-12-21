@@ -417,8 +417,8 @@ func findLatestReleaseTag(baseVer string, tags []string) (string, error) {
 	if latestVer == nil {
 		return "", nil
 	}
-	// Ensure the version string has a "v" prefix, because all Tendermint
-	// Docker images have a "v" prefix.
+	// Ensure the version string has a "v" prefix, because all Tendermint E2E
+	// node Docker images' versions have a "v" prefix.
 	vs := latestVer.String()
 	if !strings.HasPrefix(vs, "v") {
 		return "v" + vs, nil
