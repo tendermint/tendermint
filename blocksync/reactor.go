@@ -358,13 +358,16 @@ FOR_LOOP:
 			// then we are guaranteed to have extensions for the last block (if required) even
 			// if we did not blocksync any block.
 			//
-			// If none of these conditions is met, that means that we require VoteExtensions
-			// but we don't have them, so we cannot switch to consensus yet.
-			if state.LastBlockHeight > 0 &&
-				state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) &&
-				blocksSynced == 0 &&
-				!initialCommitHasExtensions {
+                       var needsExtension := true;
+                       if state.LastBlockHeight == 0 ||
+                                !state.ConsensusParams.ABCI.VoteExtensionsEnabled(state.LastBlockHeight) ||
+                                blocksSynced > 0 ||
+                                initialCommitHasExtensions {
+                                needsExtension = false
+                       }
 
+			// If require extensions, but since we don't have them yet, then we cannot switch to consensus yet.
+			if needsExtension {
 				bcR.Logger.Info(
 					"no extended commit yet",
 					"height", height,
