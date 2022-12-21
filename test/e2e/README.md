@@ -48,8 +48,9 @@ generator. For example:
 ./build/generator -m "latest:1,HEAD:2" -d networks/generated/
 ```
 
-**NB**: The corresponding Docker images for the relevant versions must be
-available on the local machine, or via Docker Hub.
+**NB**: The corresponding Docker images for the relevant versions of the E2E
+node (the `tendermint/e2e-node` image) must be available on the local machine,
+or via [Docker Hub](https://hub.docker.com/r/tendermint/e2e-node).
 
 ## Test Stages
 
