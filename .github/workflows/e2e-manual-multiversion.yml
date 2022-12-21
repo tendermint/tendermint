@@ -31,7 +31,7 @@ jobs:
         # When changing -g, also change the matrix groups above
         # Generate multi-version tests with double the quantity of E2E nodes
         # based on the current branch as compared to the latest version.
-        run: ./build/generator -g 5 -m "latest:1,HEAD:2" -d networks/nightly/
+        run: ./build/generator -g 5 -m "latest:1,local:2" -d networks/nightly/
 
       - name: Run ${{ matrix.p2p }} p2p testnets
         working-directory: test/e2e
