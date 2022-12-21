@@ -393,6 +393,7 @@ func findLatestReleaseTag(baseVer string, tags []string) (string, error) {
 		if len(curVer.Prerelease()) != 0 {
 			continue
 		}
+		// Skip versions that don't match our constraints
 		if !verCon.Check(curVer) {
 			continue
 		}
