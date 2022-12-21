@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -64,21 +66,24 @@ type generateConfig struct {
 // Generate generates random testnets using the given RNG.
 func Generate(cfg *generateConfig) ([]e2e.Manifest, error) {
 	if cfg.multiVersion != "" {
-		multiVersions := strings.Split(cfg.multiVersion, ",")
-		latestVersion, err := gitRepoLatestReleaseVersion(cfg.outputDir)
+		var err error
+		nodeVersions, err = parseWeightedVersions(cfg.multiVersion)
 		if err != nil {
 			return nil, err
 		}
-		for _, v := range multiVersions {
-			v = strings.TrimSpace(v)
-			if v == "latest" {
-				v = latestVersion
-			}
-			nodeVersions[v] = 1
+		if _, ok := nodeVersions["HEAD"]; ok {
+			nodeVersions[""] = nodeVersions["HEAD"]
+			delete(nodeVersions, "HEAD")
 		}
-		nodeVersions[""] = uint(len(multiVersions) * 2)
+		if _, ok := nodeVersions["latest"]; ok {
+			latestVersion, err := gitRepoLatestReleaseVersion(cfg.outputDir)
+			if err != nil {
+				return nil, err
+			}
+			nodeVersions[latestVersion] = nodeVersions["latest"]
+			delete(nodeVersions, "latest")
+		}
 	}
-	fmt.Printf("nodeVersions = %v\n", nodeVersions)
 	manifests := []e2e.Manifest{}
 	for _, opt := range combinations(testnetCombinations) {
 		manifest, err := generateTestnet(cfg.randSource, opt)
@@ -292,6 +297,7 @@ func generateNode(
 func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.ManifestNode {
 	return &e2e.ManifestNode{
 		Mode:            string(e2e.ModeLight),
+		Version:         nodeVersions.Choose(r).(string),
 		StartAt:         startAt,
 		Database:        nodeDatabases.Choose(r).(string),
 		PersistInterval: ptrUint64(0),
@@ -301,6 +307,29 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 
 func ptrUint64(i uint64) *uint64 {
 	return &i
+}
+
+// Parses strings like "v0.34.21:1,v0.34.22:2" to represent two versions
+// ("v0.34.21" and "v0.34.22") with weights of 1 and 2 respectively.
+func parseWeightedVersions(s string) (weightedChoice, error) {
+	wc := make(weightedChoice)
+	wvs := strings.Split(strings.TrimSpace(s), ",")
+	for _, wv := range wvs {
+		parts := strings.Split(strings.TrimSpace(wv), ":")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("unexpected weight:version combination: %s", wv)
+		}
+		ver := strings.TrimSpace(parts[0])
+		wt, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+		if err != nil {
+			return nil, fmt.Errorf("unexpected weight \"%s\": %v", parts[1], err)
+		}
+		if wt < 1 {
+			return nil, errors.New("version weights must be >= 1")
+		}
+		wc[ver] = uint(wt)
+	}
+	return wc, nil
 }
 
 // Extracts the latest release version from the given Git repository. Uses the
