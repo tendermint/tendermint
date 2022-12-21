@@ -156,6 +156,10 @@ func TestTxSearchEventMatch(t *testing.T) {
 		q             string
 		resultsLength int
 	}{
+		"Return all events from a height with range": {
+			q:             "match.events = 1 AND tx.height > 0",
+			resultsLength: 1,
+		},
 		"Return all events from a height": {
 			q:             "match.events = 1 AND tx.height = 1",
 			resultsLength: 1,
@@ -189,7 +193,7 @@ func TestTxSearchEventMatch(t *testing.T) {
 			resultsLength: 1,
 		},
 		" Match range with match events": {
-			q:             "match.events = 1 AND account.number < 2 AND account.owner = 'Ivan'",
+			q:             "match.events = 1 AND account.number < 2 AND account.owner = 'Ivan' AND tx.height > 0",
 			resultsLength: 0,
 		},
 	}
@@ -322,6 +326,14 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	ctx := context.Background()
 
 	results, err := indexer.Search(ctx, query.MustParse("match.events = 1 AND account.number >= 1"))
+	assert.NoError(t, err)
+
+	assert.Len(t, results, 1)
+	for _, txr := range results {
+		assert.True(t, proto.Equal(txResult, txr))
+	}
+
+	results, err = indexer.Search(ctx, query.MustParse("match.events = 1 AND account.number >= 1 AND tx.height = 3 AND tx.height > 0"))
 	assert.NoError(t, err)
 
 	assert.Len(t, results, 1)

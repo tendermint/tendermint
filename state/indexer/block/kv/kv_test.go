@@ -177,7 +177,7 @@ func TestBlockIndexerMulti(t *testing.T) {
 						},
 						{
 							Key:   []byte("bar"),
-							Value: []byte("400"),
+							Value: []byte("500"),
 							Index: true,
 						},
 					},
@@ -261,11 +261,19 @@ func TestBlockIndexerMulti(t *testing.T) {
 		},
 		"query matches fields from multiple events allowed": {
 			q:       query.MustParse("end_event.foo = 100 AND end_event.bar = 400"),
-			results: []int64{1, 2},
+			results: []int64{2},
 		},
 		"query matches fields from all events whose attribute is within range": {
-			q:       query.MustParse("match.events = 1 AND end_event.foo < 300 AND block.height = 2"),
-			results: []int64{1, 2},
+			q:       query.MustParse("match.events = 1 AND block.height  = 2 AND end_event.foo < 300"),
+			results: []int64{2},
+		},
+		"query using CONTAINS matches fields from all events whose attribute is within range": {
+			q:       query.MustParse("match.events = 1 AND block.height  = 2 AND end_event.foo CONTAINS '30'"),
+			results: []int64{2},
+		},
+		"query with height range and height equality - should ignore equality": {
+			q:       query.MustParse("match.events = 1 AND block.height = 2 AND end_event.foo >= 100 AND block.height < 2"),
+			results: []int64{1},
 		},
 	}
 

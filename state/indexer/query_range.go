@@ -86,7 +86,7 @@ func LookForRanges(conditions []query.Condition) (ranges QueryRanges, indexes []
 			r, ok := ranges[c.CompositeKey]
 			if !ok {
 				r = QueryRange{Key: c.CompositeKey}
-				if c.CompositeKey == types.BlockHeightKey {
+				if c.CompositeKey == types.BlockHeightKey || c.CompositeKey == types.TxHeightKey {
 					heightRange = QueryRange{Key: c.CompositeKey}
 					heightKey = true
 				}
