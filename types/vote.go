@@ -316,7 +316,7 @@ func (vote *Vote) ValidateBasic() error {
 	// We should only ever see vote extensions in non-nil precommits, otherwise
 	// this is a violation of the specification.
 	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && vote.BlockID.IsZero()) {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsZero() {
 		if len(vote.Extension) > 0 {
 			return errors.New("unexpected vote extension")
 		}
@@ -328,7 +328,7 @@ func (vote *Vote) ValidateBasic() error {
 	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsZero() {
 		// It's possible that this vote has vote extensions but
 		// they could also be disabled and thus not present thus
-		// we can't do all checks		if len(vote.ExtensionSignature) > MaxSignatureSize {
+		// we can't do all checks
 		if len(vote.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
@@ -336,7 +336,7 @@ func (vote *Vote) ValidateBasic() error {
 		// NOTE: extended votes should have a signature regardless of
 		// of whether there is any data in the extension or not however
 		// we don't know if extensions are enabled so we can only
-		// enforce the signature when extension size is no nil
+		// enforce the signature when extension size is not nil
 		if len(vote.ExtensionSignature) == 0 && len(vote.Extension) != 0 {
 			return fmt.Errorf("vote extension signature absent on vote with extension")
 		}
