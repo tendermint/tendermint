@@ -344,6 +344,9 @@ func findLatestReleaseTag(baseVer string, tags []string) (string, error) {
 	}
 	var latestVer *semver.Version
 	for _, tag := range tags {
+		if !strings.HasPrefix(tag, "v") {
+			continue
+		}
 		curVer, err := semver.NewVersion(tag)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse tag \"%s\" as semantic version: %v", tag, err)

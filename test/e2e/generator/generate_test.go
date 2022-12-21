@@ -20,7 +20,7 @@ func TestVersionFinder(t *testing.T) {
 		},
 		{
 			baseVer:        "v0.38.0-dev",
-			tags:           []string{"v0.34.0", "v0.34.1", "v0.34.2", "v0.37.0-rc2"},
+			tags:           []string{"v0.34.0", "v0.34.1", "v0.34.2", "v0.37.0-rc2", "dev-v0.38.0"},
 			expectedLatest: "",
 		},
 		{
