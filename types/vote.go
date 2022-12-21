@@ -318,7 +318,10 @@ func (vote *Vote) ValidateBasic() error {
 	// https://github.com/tendermint/tendermint/issues/8487
 	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsZero() {
 		if len(vote.Extension) > 0 {
-			return errors.New("unexpected vote extension")
+			return fmt.Errorf(
+				"unexpected vote extension; vote type %d, isNil %t",
+				vote.Type, vote.BlockID.IsZero(),
+			)
 		}
 		if len(vote.ExtensionSignature) > 0 {
 			return errors.New("unexpected vote extension signature")
