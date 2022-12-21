@@ -315,20 +315,15 @@ func TestBadBlockStopsPeer(t *testing.T) {
 }
 
 func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
-	const (
-		maxBlockHeight = int64(65)
-		n              = 4
-	)
+	const maxBlockHeight = int64(45)
 
 	config = test.ResetTestRoot("blocksync_reactor_test")
 	defer os.RemoveAll(config.RootDir)
 	genDoc, privVals := randGenesisDoc(1, false, 30)
 
-	reactorPairs := make([]ReactorPair, n, n+1)
-	for i := 0; i < n; i++ {
-		reactorPairs[i] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
-		reactorPairs[i].reactor.switchToConsensusMs = 1
-	}
+	reactorPairs := make([]ReactorPair, 1, 2)
+	reactorPairs[0] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[0].reactor.switchToConsensusMs = 50
 	defer func() {
 		for _, r := range reactorPairs {
 			err := r.reactor.Stop()
@@ -338,32 +333,27 @@ func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
 		}
 	}()
 
-	switches := p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKSYNC", reactorPairs[i].reactor)
-		return s
-	}, p2p.Connect2Switches)
+	reactorPairs = append(reactorPairs, newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight))
 
-	time.Sleep(25 * time.Millisecond)
-
-	lastReactor := newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight)
-	reactorPairs = append(reactorPairs, lastReactor)
-	lastReactorIdx := len(reactorPairs) - 1
-
-	switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
-		s.AddReactor("BLOCKSYNC", reactorPairs[lastReactorIdx].reactor)
-		return s
-	}, p2p.Connect2Switches)...)
-
-	for i := 0; i < lastReactorIdx; i++ {
-		p2p.Connect2Switches(switches, i, lastReactorIdx)
+	var switches []*p2p.Switch
+	for _, r := range reactorPairs {
+		switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
+			s.AddReactor("BLOCKSYNC", r.reactor)
+			return s
+		}, p2p.Connect2Switches)...)
 	}
+
+	time.Sleep(60 * time.Millisecond)
+
+	// Connect both switches
+	p2p.Connect2Switches(switches, 0, 1)
 
 	startTime := time.Now()
 	for {
 		time.Sleep(20 * time.Millisecond)
 		caughtUp := true
-		for i := 0; i <= lastReactorIdx; i++ {
-			if !reactorPairs[i].reactor.pool.IsCaughtUp() {
+		for _, r := range reactorPairs {
+			if !r.reactor.pool.IsCaughtUp() {
 				caughtUp = false
 				break
 			}
@@ -371,18 +361,18 @@ func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
 		if caughtUp {
 			break
 		}
-		if time.Since(startTime) > 20*time.Second {
-			msg := "timeout: reactors didn't catch up; "
-			for i := 0; i <= lastReactorIdx; i++ {
-				h, p, r := reactorPairs[i].reactor.pool.GetStatus()
-				c := reactorPairs[i].reactor.pool.IsCaughtUp()
-				msg += fmt.Sprintf("reactor#%d (h %d, p %d, r %d, c %t);", i, h, p, r, c)
+		if time.Since(startTime) > 90*time.Second {
+			msg := "timeout: reactors didn't catch up;"
+			for i, r := range reactorPairs {
+				h, p, lr := r.reactor.pool.GetStatus()
+				c := r.reactor.pool.IsCaughtUp()
+				msg += fmt.Sprintf(" reactor#%d (h %d, p %d, lr %d, c %t);", i, h, p, lr, c)
 			}
 			require.Fail(t, msg)
 		}
 	}
 
 	for _, r := range reactorPairs {
-		assert.GreaterOrEqual(t, maxBlockHeight, r.reactor.store.Height()-1)
+		assert.GreaterOrEqual(t, r.reactor.store.Height(), maxBlockHeight-2)
 	}
 }
