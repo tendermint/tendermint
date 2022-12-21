@@ -84,6 +84,14 @@ func Generate(cfg *generateConfig) ([]e2e.Manifest, error) {
 			delete(nodeVersions, "latest")
 		}
 	}
+	fmt.Println("Generating testnet with weighted versions:")
+	for ver, wt := range nodeVersions {
+		if ver == "" {
+			fmt.Printf("- HEAD: %d\n", wt)
+		} else {
+			fmt.Printf("- %s: %d\n", ver, wt)
+		}
+	}
 	manifests := []e2e.Manifest{}
 	for _, opt := range combinations(testnetCombinations) {
 		manifest, err := generateTestnet(cfg.randSource, opt)
