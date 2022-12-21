@@ -71,9 +71,9 @@ func Generate(cfg *generateConfig) ([]e2e.Manifest, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := nodeVersions["HEAD"]; ok {
-			nodeVersions[""] = nodeVersions["HEAD"]
-			delete(nodeVersions, "HEAD")
+		if _, ok := nodeVersions["local"]; ok {
+			nodeVersions[""] = nodeVersions["local"]
+			delete(nodeVersions, "local")
 		}
 		if _, ok := nodeVersions["latest"]; ok {
 			latestVersion, err := gitRepoLatestReleaseVersion(cfg.outputDir)
@@ -87,7 +87,7 @@ func Generate(cfg *generateConfig) ([]e2e.Manifest, error) {
 	fmt.Println("Generating testnet with weighted versions:")
 	for ver, wt := range nodeVersions {
 		if ver == "" {
-			fmt.Printf("- HEAD: %d\n", wt)
+			fmt.Printf("- local: %d\n", wt)
 		} else {
 			fmt.Printf("- %s: %d\n", ver, wt)
 		}
