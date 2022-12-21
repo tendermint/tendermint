@@ -369,7 +369,7 @@ func gitRepoLatestReleaseVersion(gitRepoDir string) (string, error) {
 func findLatestReleaseTag(baseVer string, tags []string) (string, error) {
 	baseSemVer, err := semver.NewVersion(strings.Split(baseVer, "-")[0])
 	if err != nil {
-		return "", fmt.Errorf("failed to parse base version \"%s\": %v", baseVer, err)
+		return "", fmt.Errorf("failed to parse base version \"%s\": %w", baseVer, err)
 	}
 	compVer := fmt.Sprintf("%d.%d", baseSemVer.Major(), baseSemVer.Minor())
 	// Build our version comparison string
