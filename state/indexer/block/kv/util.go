@@ -142,6 +142,10 @@ func lookForHeight(conditions []query.Condition) (int64, bool, int) {
 	return 0, false, -1
 }
 
+// Remove all occurrences of height equality queries except one. While we are traversing the conditions, check whether the only condition in
+// addition to match events is the height equality or height range query. At the same time, if we do have a height range condition
+// ignore the height equality condition. If a height equality exists, place the condition index in the query and the desired height
+// into the heightInfo struct
 func dedupHeight(conditions []query.Condition) (dedupConditions []query.Condition, heightInfo HeightInfo, found bool) {
 	heightInfo.heightEqIdx = -1
 	heightRangeExists := false

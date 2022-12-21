@@ -77,7 +77,8 @@ func (qr QueryRange) UpperBoundValue() interface{} {
 }
 
 // LookForRanges returns a mapping of QueryRanges and the matching indexes in
-// the provided query conditions.
+// the provided query conditions. If we are matching attributes within events
+// we need to remember the height range from the condition
 func LookForRanges(conditions []query.Condition) (ranges QueryRanges, indexes []int, heightRange QueryRange) {
 	ranges = make(QueryRanges)
 	for i, c := range conditions {
