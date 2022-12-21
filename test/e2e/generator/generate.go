@@ -343,7 +343,7 @@ func parseWeightedVersions(s string) (weightedChoice, error) {
 		ver := strings.TrimSpace(parts[0])
 		wt, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 		if err != nil {
-			return nil, fmt.Errorf("unexpected weight \"%s\": %v", parts[1], err)
+			return nil, fmt.Errorf("unexpected weight \"%s\": %w", parts[1], err)
 		}
 		if wt < 1 {
 			return nil, errors.New("version weights must be >= 1")

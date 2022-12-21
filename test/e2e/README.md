@@ -45,7 +45,7 @@ generator. For example:
 
 # Using "latest" will cause the generator to auto-detect the latest
 # non-pre-release version tag in the current Git repository that is closest to
-# the Tendermint version in this repository (as specified in
+# the Tendermint version in the current local code (as specified in
 # ../../version/version.go).
 #
 # In the example below, if the local version.TMCoreSemVer value is "v0.34.24",
