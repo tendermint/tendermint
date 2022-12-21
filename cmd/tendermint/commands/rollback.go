@@ -14,6 +14,12 @@ import (
 	"github.com/tendermint/tendermint/store"
 )
 
+var removeBlock = false
+
+func init() {
+	RollbackStateCmd.Flags().BoolVar(&removeBlock, "hard", false, "remove last block as well as state")
+}
+
 var RollbackStateCmd = &cobra.Command{
 	Use:   "rollback",
 	Short: "rollback tendermint state by one height",
@@ -21,17 +27,23 @@ var RollbackStateCmd = &cobra.Command{
 A state rollback is performed to recover from an incorrect application state transition,
 when Tendermint has persisted an incorrect app hash and is thus unable to make
 progress. Rollback overwrites a state at height n with the state at height n - 1.
-The application should also roll back to height n - 1. No blocks are removed, so upon
-restarting Tendermint the transactions in block n will be re-executed against the
-application.
+The application should also roll back to height n - 1. If the --hard flag is not used, 
+no blocks will be removed so upon restarting Tendermint the transactions in block n will be 
+re-executed against the application. Using --hard will also remove block n. This can
+be done multiple times.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		height, hash, err := RollbackState(config)
+		height, hash, err := RollbackState(config, removeBlock)
 		if err != nil {
 			return fmt.Errorf("failed to rollback state: %w", err)
 		}
 
-		fmt.Printf("Rolled back state to height %d and hash %v", height, hash)
+		if removeBlock {
+			fmt.Printf("Rolled back both state and block to height %d and hash %X\n", height, hash)
+		} else {
+			fmt.Printf("Rolled back state to height %d and hash %X\n", height, hash)
+		}
+
 		return nil
 	},
 }
@@ -39,7 +51,7 @@ application.
 // RollbackState takes the state at the current height n and overwrites it with the state
 // at height n - 1. Note state here refers to tendermint state not application state.
 // Returns the latest state height and app hash alongside an error if there was one.
-func RollbackState(config *cfg.Config) (int64, []byte, error) {
+func RollbackState(config *cfg.Config, removeBlock bool) (int64, []byte, error) {
 	// use the parsed config to load the block and state store
 	blockStore, stateStore, err := loadStateAndBlockStore(config)
 	if err != nil {
@@ -51,7 +63,7 @@ func RollbackState(config *cfg.Config) (int64, []byte, error) {
 	}()
 
 	// rollback the last state
-	return state.Rollback(blockStore, stateStore)
+	return state.Rollback(blockStore, stateStore, removeBlock)
 }
 
 func loadStateAndBlockStore(config *cfg.Config) (*store.BlockStore, state.Store, error) {
