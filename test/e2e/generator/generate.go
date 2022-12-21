@@ -7,7 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/version"
 )
 
 var (
@@ -53,6 +57,7 @@ var (
 
 type generateConfig struct {
 	randSource   *rand.Rand
+	outputDir    string
 	multiVersion string
 }
 
@@ -60,10 +65,20 @@ type generateConfig struct {
 func Generate(cfg *generateConfig) ([]e2e.Manifest, error) {
 	if cfg.multiVersion != "" {
 		multiVersions := strings.Split(cfg.multiVersion, ",")
+		latestVersion, err := gitRepoLatestReleaseVersion(cfg.outputDir)
+		if err != nil {
+			return nil, err
+		}
 		for _, v := range multiVersions {
+			v = strings.TrimSpace(v)
+			if v == "latest" {
+				v = latestVersion
+			}
 			nodeVersions[v] = 1
 		}
+		nodeVersions[""] = uint(len(multiVersions) * 2)
 	}
+	fmt.Printf("nodeVersions = %v\n", nodeVersions)
 	manifests := []e2e.Manifest{}
 	for _, opt := range combinations(testnetCombinations) {
 		manifest, err := generateTestnet(cfg.randSource, opt)
@@ -286,4 +301,74 @@ func generateLightNode(r *rand.Rand, startAt int64, providers []string) *e2e.Man
 
 func ptrUint64(i uint64) *uint64 {
 	return &i
+}
+
+// Extracts the latest release version from the given Git repository. Uses the
+// current version of Tendermint Core to establish the "major" version
+// currently in use.
+func gitRepoLatestReleaseVersion(gitRepoDir string) (string, error) {
+	opts := &git.PlainOpenOptions{
+		DetectDotGit: true,
+	}
+	r, err := git.PlainOpenWithOptions(gitRepoDir, opts)
+	if err != nil {
+		return "", err
+	}
+	tags := make([]string, 0)
+	tagObjs, err := r.TagObjects()
+	if err != nil {
+		return "", err
+	}
+	err = tagObjs.ForEach(func(tagObj *object.Tag) error {
+		tags = append(tags, tagObj.Name)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return findLatestReleaseTag(version.TMCoreSemVer, tags)
+}
+
+func findLatestReleaseTag(baseVer string, tags []string) (string, error) {
+	baseSemVer, err := semver.NewVersion(strings.Split(baseVer, "-")[0])
+	if err != nil {
+		return "", fmt.Errorf("failed to parse base version \"%s\": %v", baseVer, err)
+	}
+	compVer := fmt.Sprintf("%d.%d", baseSemVer.Major(), baseSemVer.Minor())
+	// Build our version comparison string
+	// See https://github.com/Masterminds/semver#caret-range-comparisons-major for details
+	compStr := "^ " + compVer
+	verCon, err := semver.NewConstraint(compStr)
+	if err != nil {
+		return "", err
+	}
+	var latestVer *semver.Version
+	for _, tag := range tags {
+		curVer, err := semver.NewVersion(tag)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse tag \"%s\" as semantic version: %v", tag, err)
+		}
+		// Skip pre-releases
+		if len(curVer.Prerelease()) != 0 {
+			continue
+		}
+		if !verCon.Check(curVer) {
+			continue
+		}
+		if latestVer == nil || curVer.GreaterThan(latestVer) {
+			latestVer = curVer
+		}
+	}
+	// No relevant latest version (will cause the generator to only use the tip
+	// of the current branch)
+	if latestVer == nil {
+		return "", nil
+	}
+	// Ensure the version string has a "v" prefix, because all Tendermint
+	// Docker images have a "v" prefix.
+	vs := latestVer.String()
+	if !strings.HasPrefix(vs, "v") {
+		return "v" + vs, nil
+	}
+	return vs, nil
 }
