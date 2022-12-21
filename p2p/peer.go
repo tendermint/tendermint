@@ -87,7 +87,7 @@ func SendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 // Deprecated: Will be removed in v0.37.
 func TrySendEnvelopeShim(p Peer, e Envelope, lg log.Logger) bool {
 	if es, ok := p.(EnvelopeSender); ok {
-		return es.SendEnvelope(e)
+		return es.TrySendEnvelope(e)
 	}
 	msg := e.Message
 	if w, ok := msg.(Wrapper); ok {
