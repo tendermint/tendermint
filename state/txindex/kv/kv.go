@@ -236,8 +236,6 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	if matchEvents {
 		matchEventIdx = 0
 		skipIndexes = append(skipIndexes, matchEventIdx)
-	} else {
-		matchEventIdx = -1
 	}
 
 	// if there is a height condition ("tx.height=3"), extract it

@@ -113,11 +113,6 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	if matchEvents {
 		matchEventIdx = 0
-	} else {
-		matchEventIdx = -1
-	}
-
-	if matchEventIdx != -1 {
 		skipIndexes = append(skipIndexes, matchEventIdx)
 	}
 

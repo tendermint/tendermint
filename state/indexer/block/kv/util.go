@@ -142,7 +142,7 @@ func lookForHeight(conditions []query.Condition) (int64, bool, int) {
 	return 0, false, -1
 }
 
-func dedupHeight(conditions []query.Condition) (dedupConditions []query.Condition, heightInfo HeightInfo, found bool) { //} height int64, found bool, idx int) {
+func dedupHeight(conditions []query.Condition) (dedupConditions []query.Condition, heightInfo HeightInfo, found bool) {
 	heightInfo.heightEqIdx = -1
 	heightRangeExists := false
 	var heightCondition []query.Condition
@@ -183,7 +183,7 @@ func dedupHeight(conditions []query.Condition) (dedupConditions []query.Conditio
 		heightInfo.heightEqIdx = 0
 		heightInfo.onlyHeightEq = false
 	}
-	return
+	return dedupConditions, heightInfo, found
 }
 
 func dedupMatchEvents(conditions []query.Condition) ([]query.Condition, bool) {
