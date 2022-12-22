@@ -409,18 +409,21 @@ func SignAndCheckVote(
 ) (bool, error) {
 	v := vote.ToProto()
 	if err := privVal.SignVote(chainID, v); err != nil {
+		// Failing to sign a vote has always been a recoverable error, this function keeps it that way
 		return true, err // true = recoverable
 	}
 	vote.Signature = v.Signature
 
 	isPrecommit := vote.Type == tmproto.PrecommitType
 	if !isPrecommit && extensionsEnabled {
+		// Non-recoverable because the caller passed parameters that don't make sense
 		return false, fmt.Errorf("only Precommit votes may have extensions enabled; vote type: %d", vote.Type)
 	}
 
 	isNil := vote.BlockID.IsZero()
 	extSignature := (len(v.ExtensionSignature) > 0)
 	if extSignature == (!isPrecommit || isNil) {
+		// Non-recoverable because the vote is malformed
 		return false, fmt.Errorf(
 			"extensions must be present IFF vote is a non-nil Precommit; present %t, vote type %d, is nil %t",
 			extSignature,
