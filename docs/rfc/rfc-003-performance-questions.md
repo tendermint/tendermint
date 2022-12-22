@@ -68,13 +68,13 @@ a series of metrics to the P2P layer to better understand the inefficiencies it 
 
 The following metrics can help us understand the sources of latency in the Tendermint P2P stack:
 
-* Number of messages sent and received per second
-* Time of a message spent on the P2P layer send and receive queues
+- Number of messages sent and received per second
+- Time of a message spent on the P2P layer send and receive queues
 
 The following metrics exist and should be leveraged in addition to those added:
 
-* Number of peers node's connected to
-* Number of bytes per channel sent and received from each peer
+- Number of peers node's connected to
+- Number of bytes per channel sent and received from each peer
 
 ### Sync
 
@@ -88,6 +88,7 @@ over a network so that we understand how much overhead Tendermint actually adds.
 
 The operation is likely to be _incredibly_ dependent on the environment in which
 the node is being run. The factors that will influence syncing include:
+
 1. Number of peers that a syncing node may fetch from.
 2. Speed of the disk that a validator is writing to.
 3. Speed of the network connection between the different peers that node is
@@ -103,9 +104,9 @@ how much overhead Tendermint incurs.
 We should additionally add metrics to the blocksync operation to more clearly pinpoint
 slow operations. The following metrics should be added to the block syncing operation:
 
-* Time to fetch and validate each block
-* Time to execute a block
-* Blocks sync'd per unit time
+- Time to fetch and validate each block
+- Time to execute a block
+- Blocks sync'd per unit time
 
 ### Application
 
@@ -146,7 +147,7 @@ usecase of Tendermint and do not necessarily need to be addressed at this time.
 
 ### RPC
 
-#### Claim: The Query API is slow.
+#### Claim: The Query API is slow
 
 The query API locks a mutex across the ABCI connections. This causes consensus to
 slow during queries, as ABCI is no longer able to make progress. This is known
@@ -192,11 +193,11 @@ it takes for popular chains with many validators to gather all votes within a st
 
 Metrics that would improve visibility into this include:
 
-* Amount of time for a node to gather votes in a step.
-* Amount of time for a node to gather all block parts.
-* Number of votes each node sends to gossip (i.e. not its own votes, but votes it is
+- Amount of time for a node to gather votes in a step.
+- Amount of time for a node to gather all block parts.
+- Number of votes each node sends to gossip (i.e. not its own votes, but votes it is
 transmitting for a peer).
-* Total number of votes each node sends to receives (A node may receive duplicate votes
+- Total number of votes each node sends to receives (A node may receive duplicate votes
 so understanding how frequently this occurs will be valuable in evaluating the performance
 of the gossip system).
 
@@ -261,17 +262,17 @@ event system. This has implications for the consensus system, which [publishes e
 To better understand the performance of the event system, we should add metrics to track the timing of
 event sends. The following metrics would be a good start for tracking this performance:
 
-* Time in event send, labeled by Event Type
-* Time in event receive, labeled by subscriber
-* Event throughput, measured in events per unit time.
+- Time in event send, labeled by Event Type
+- Time in event receive, labeled by subscriber
+- Event throughput, measured in events per unit time.
 
 ### References
+
 [modular-hashing]: https://github.com/tendermint/tendermint/pull/6773
 [issue-2186]: https://github.com/tendermint/tendermint/issues/2186
 [issue-2187]: https://github.com/tendermint/tendermint/issues/2187
 [rfc-002]: https://github.com/tendermint/tendermint/pull/6913
 [adr-57]: https://github.com/tendermint/tendermint/blob/main/docs/architecture/adr-057-RPC.md
-[issue-1319]: https://github.com/tendermint/tendermint/issues/1319
 [abci-commit-description]: https://github.com/tendermint/tendermint/blob/main/spec/abci/abci++_methods.md#commit
 [abci-local-client-code]: https://github.com/tendermint/tendermint/blob/511bd3eb7f037855a793a27ff4c53c12f085b570/abci/client/local_client.go#L84
 [hub-signature]: https://github.com/cosmos/gaia/blob/0ecb6ed8a244d835807f1ced49217d54a9ca2070/docs/resources/genesis.md#consensus-parameters

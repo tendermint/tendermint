@@ -39,7 +39,7 @@ When writing a p2p service, there are two primary responsibilities:
 The first responsibility is handled by the Switch:
 
 - Responsible for routing connections between peers
-- Notably _only handles TCP connections_; RPC/HTTP is separate
+- Notably *only handles TCP connections*; RPC/HTTP is separate
 - Is a dependency for every reactor; all reactors expose a function `setSwitch`
 - Holds onto channels (channels on the TCP connection--NOT Go channels) and uses them to route
 - Is a global object, with a global namespace for messages
@@ -56,7 +56,7 @@ The second responsibility is handled by a combination of the PEX and the Address
 Here are some relevant facts about TCP:
 
 1. All TCP connections have a "frame window size" which represents the packet size to the "confidence;" i.e., if you are sending packets along a new connection, you must start out with small packets. As the packets are received successfully, you can start to send larger and larger packets. (This curve is illustrated below.) This means that TCP connections are slow to spin up.
-2. The syn/ack process also means that there's a high overhead for small, frequent messages 
+2. The syn/ack process also means that there's a high overhead for small, frequent messages
 3. Sockets are represented by file descriptors.
 
 ![tcp](../imgs/tcp-window.png)
@@ -114,7 +114,7 @@ Furthermore, all reactors expose:
 
 The `receive` method can be called many times by the mconnection. It has the same signature across all reactors.
 
-The `addReactor` call does a for loop over all the channels on the reactor and creates a map of channel IDs->reactors. The switch holds onto this map, and passes it to the _transport_, a thin wrapper around TCP connections.
+The `addReactor` call does a for loop over all the channels on the reactor and creates a map of channel IDs->reactors. The switch holds onto this map, and passes it to the *transport*, a thin wrapper around TCP connections.
 
 The following is an exhaustive (?) list of reactors:
 

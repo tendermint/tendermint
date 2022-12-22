@@ -23,12 +23,12 @@ what will happen during a block height _h_ in these frequent, benign conditions:
 * `VerifyVoteExtension` will be called exactly _n-1_ times at each validator process, where _n_ is
   the number of validators, and will always return _accept_ in its `Response*`; 
   -->
-*  `BeginBlock` will be called exactly once at all processes, conveying the same prepared
+* `BeginBlock` will be called exactly once at all processes, conveying the same prepared
   block header that all calls to `PrepareProposal` and `ProcessProposal` had previously reported for
   height _h_; and
-* `DeliverTx` will be called exactly once for each transaction within the block. 
-* `EndBlock` will be called exactly once after `DeliverTx` has been executed for all transactions and marks 
-  the end of processing for the block. 
+* `DeliverTx` will be called exactly once for each transaction within the block.
+* `EndBlock` will be called exactly once after `DeliverTx` has been executed for all transactions and marks
+  the end of processing for the block.
 * `Commit` will finally be called exactly once at all processes at the end of height _h_.
 
 However, the Application logic must be ready to cope with any possible run of Tendermint for a given
@@ -162,21 +162,23 @@ Let us now examine the grammar line by line, providing further details.
 >```
 
 * For every round, if the local process is the proposer of the current round, Tendermint starts by
-  calling `PrepareProposal`, followed by `ProcessProposal`. 
+  calling `PrepareProposal`, followed by `ProcessProposal`.
   <!-- 
+
   Then, optionally, the Application is
   asked to extend its vote for that round. Calls to `VerifyVoteExtension` can come at any time: the
   local process may be slightly late in the current round, or votes may come from a future round
   of this height. 
-  --> 
+  -->
 
 >```abnf
 >proposer            = prepare-proposal process-proposal 
 >```
 
 * Also for every round, if the local process is _not_ the proposer of the current round, Tendermint
-  will call `ProcessProposal` at most once. 
+  will call `ProcessProposal` at most once.
   <!--
+
   At most one call to `ExtendVote` may occur only after
   `ProcessProposal` is called. A number of calls to `VerifyVoteExtension` can occur in any order
   with respect to `ProcessProposal` and `ExtendVote` throughout the round. The reasons are the same
@@ -212,7 +214,7 @@ to the existing implementation, but will keep the same guarantees already provid
 Here is how ABCI++ methods should be implemented.
 
 First of all, all the methods that did not change from ABCI to ABCI++, namely `Echo`, `Flush`, `Info`, `InitChain`,
-`BeginBlock`, `DerliverTx`, `EndBlock`, `Commit`, `Query`, `CheckTx`, `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`, 
+`BeginBlock`, `DerliverTx`, `EndBlock`, `Commit`, `Query`, `CheckTx`, `ListSnapshots`, `LoadSnapshotChunk`, `OfferSnapshot`,
 and `ApplySnapshotChunk`, do not need to undergo any changes in their implementation.
 
 As for the new methods:

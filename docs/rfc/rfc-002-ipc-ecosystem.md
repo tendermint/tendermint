@@ -332,11 +332,11 @@ some advantages over gRPC for our domain. Specifically:
 - We can still get the benefits of generated data types using protocol buffers, even
   without using gRPC:
 
-  - Protobuf defines a standard JSON encoding for all message types so
+    - Protobuf defines a standard JSON encoding for all message types so
     languages with protobuf support do not need to worry about type mapping
     oddities.
 
-  - Using JSON means that even languages _without_ good protobuf support can
+    - Using JSON means that even languages _without_ good protobuf support can
     implement the protocol with a bit more work, and I expect this situation to
     be rare.
 

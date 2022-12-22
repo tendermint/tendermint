@@ -203,6 +203,7 @@ number of addresses stored in the address book, but it should not be lower than
 --- nor greater than `250` (`maxGetSelection`).
 
 > The random selection is produced by:
+>
 > - Retrieving all entries of the `addrLookup` map, which by definition are
 >   returned in random order.
 > - Randomly shuffling the retrieved list, using the Fisher-Yates algorithm
@@ -241,7 +242,7 @@ random order.
 
 ## Dial Attempts
 
-The `MarkAttempt` method records a failed attempt to connect to an address. 
+The `MarkAttempt` method records a failed attempt to connect to an address.
 
 It is invoked by the Peer Manager when it fails dialing a peer, but the failure
 is not in the authentication step (`ErrSwitchAuthenticationFailure` error).

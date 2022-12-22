@@ -23,7 +23,7 @@ using Tendermint.
 
 The first apps we will work with are written in Go. To install them, you
 need to [install Go](https://golang.org/doc/install), put
-`$GOPATH/bin` in your `$PATH` and enable go modules. If you use `bash`, 
+`$GOPATH/bin` in your `$PATH` and enable go modules. If you use `bash`,
 follow these instructions:
 
 ```bash

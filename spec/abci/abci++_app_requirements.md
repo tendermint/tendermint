@@ -128,10 +128,11 @@ As a general rule, `VerifyVoteExtension` SHOULD always accept the vote extension
 
 -->
 * Requirement 9 [*all*, no-side-effects]: *p*'s calls to `RequestPrepareProposal`,
-  `RequestProcessProposal`, 
+  `RequestProcessProposal`,
   <!--
+
   `RequestExtendVote`, and `RequestVerifyVoteExtension` 
-  --> 
+  -->
   at height *h* do
   not modify *s<sub>p,h-1</sub>*.
 
@@ -366,7 +367,7 @@ For more information, see Section [State Sync](#state-sync).
 ### Transaction Results
 
 For each transaction within a block, the Application is expected to return a result within
-[`ResponseDeliverTx`](./abci%2B%2B_methods.md#delivertx). 
+[`ResponseDeliverTx`](./abci%2B%2B_methods.md#delivertx).
 <!--
 The list of transactions executed must respect the same order as the list of transactions delivered via
 subsequent calls to [`RequestDeliverTx`](./abci%2B%2B_methods.md#delivertx). 
@@ -444,7 +445,7 @@ proposal.
 
 #### Specifics of `ResponseDeliverTx`
 
-The `BeginBlock-DeliverTx-EndBlock` sequence is the workhorse of the blockchain. 
+The `BeginBlock-DeliverTx-EndBlock` sequence is the workhorse of the blockchain.
 A sequence of `DeliverTx` calls delivers the decided block,
 one transaction at a time, to the Application.
 The block delivered (and thus the transaction order) is the same at all correct nodes as guaranteed
@@ -593,7 +594,7 @@ Must have `MaxBytes > 0`.
 
 ##### ValidatorParams.PubKeyTypes
 
-The parameter restricts the type of keys validators can use. The parameter uses ABCI pubkey naming, not Amino names. 
+The parameter restricts the type of keys validators can use. The parameter uses ABCI pubkey naming, not Amino names.
 
 ##### VersionParams.App
 

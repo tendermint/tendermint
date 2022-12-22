@@ -18,11 +18,11 @@
 - Blockchain Protocol
 
 - Data Storage
-  - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
+    - [state] \#6541 Move pruneBlocks from consensus/state to state/execution. (@JayT106)
 
 - Tooling
-  - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
-  - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
+    - [tools/tm-signer-harness] \#6498 Set OS home dir to instead of the hardcoded PATH. (@JayT106)
+    - [metrics] \#9682 move state-syncing and block-syncing metrics to their respective packages (@cmwaters)
     labels have moved from block_syncing -> blocksync_syncing and state_syncing -> statesync_syncing
   - [inspect] \#9655 Add a new `inspect` command for introspecting the state and block store of a crashed tendermint node. (@williambanfield)
 
@@ -56,24 +56,24 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### BREAKING CHANGES
 
 - CLI/RPC/Config
-  - [config] \#9259 Rename the fastsync section and the fast_sync key blocksync and block_sync respectively
+    - [config] \#9259 Rename the fastsync section and the fast_sync key blocksync and block_sync respectively
 
 - Apps
-  - [abci/counter] \#6684 Delete counter example app
-  - [abci] \#5783 Make length delimiter encoding consistent (`uint64`) between ABCI and P2P wire-level protocols
-  - [abci] \#9145 Removes unused Response/Request `SetOption` from ABCI (@samricotta)
-  - [abci/params] \#9287 Deduplicate `ConsensusParams` and `BlockParams` so only `types` proto definitions are used (@cmwaters)
-    - Remove `TimeIotaMs` and use a hard-coded 1 millisecond value to ensure monotonically increasing block times.
-    - Rename `AppVersion` to `App` so as to not stutter.
-  - [types] \#9287 Reduce the use of protobuf types in core logic. (@cmwaters)
-    - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams` have become native types.
+    - [abci/counter] \#6684 Delete counter example app
+    - [abci] \#5783 Make length delimiter encoding consistent (`uint64`) between ABCI and P2P wire-level protocols
+    - [abci] \#9145 Removes unused Response/Request `SetOption` from ABCI (@samricotta)
+    - [abci/params] \#9287 Deduplicate `ConsensusParams` and `BlockParams` so only `types` proto definitions are used (@cmwaters)
+        - Remove `TimeIotaMs` and use a hard-coded 1 millisecond value to ensure monotonically increasing block times.
+        - Rename `AppVersion` to `App` so as to not stutter.
+    - [types] \#9287 Reduce the use of protobuf types in core logic. (@cmwaters)
+        - `ConsensusParams`, `BlockParams`, `ValidatorParams`, `EvidenceParams`, `VersionParams` have become native types.
       They still utilize protobuf when being sent over the wire or written to disk.
-    - Moved `ValidateConsensusParams` inside (now native type) `ConsensusParams`, and renamed it to `ValidateBasic`.
-  - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
-  - [abci] \#8216 Renamed `EvidenceType` to `MisbehaviorType` and `Evidence` to `Misbehavior` as a more accurate label of their contents. (@williambanfield, @sergio-mena)
-  - [abci] \#9122 Renamed `LastCommitInfo` to `CommitInfo` in preparation for vote extensions. (@cmwaters)
-  - [abci] \#8656, \#8901 Added cli commands for `PrepareProposal` and `ProcessProposal`. (@jmalicevic, @hvanz)
-  - [abci] \#6403 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
+        - Moved `ValidateConsensusParams` inside (now native type) `ConsensusParams`, and renamed it to `ValidateBasic`.
+    - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
+    - [abci] \#8216 Renamed `EvidenceType` to `MisbehaviorType` and `Evidence` to `Misbehavior` as a more accurate label of their contents. (@williambanfield, @sergio-mena)
+    - [abci] \#9122 Renamed `LastCommitInfo` to `CommitInfo` in preparation for vote extensions. (@cmwaters)
+    - [abci] \#8656, \#8901 Added cli commands for `PrepareProposal` and `ProcessProposal`. (@jmalicevic, @hvanz)
+    - [abci] \#6403 Change the `key` and `value` fields from `[]byte` to `string` in the `EventAttribute` type. (@alexanderbez)
 
 - P2P Protocol
 
@@ -89,6 +89,7 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
 
 ### IMPROVEMENTS
+
 - [crypto] \#9250 Update to use btcec v2 and the latest btcutil. (@wcsiu)
 
 - [cli] \#9171 add `--hard` flag to rollback command (and a boolean to the `RollbackState` method). This will rollback

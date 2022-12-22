@@ -197,7 +197,6 @@ For this fixed group membership, we have analyzed the attacks using the TLA+ spe
 
 [[detection]] The specification of the light client attack detection mechanism.
 
-[[tendermint-accountability]]: TLA+ specification to check the types of attacks
 
 [tendermint-accountability]:
 https://github.com/tendermint/spec/blob/master/rust-spec/tendermint-accountability/README.md

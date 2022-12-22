@@ -93,7 +93,7 @@ trustworthy than outbound peers.
 The `RemovePeer` method, from the `Reactor` interface,
 removes a peer from the PEX protocol.
 
-The peer's ID is removed from the tables tracking PEX requests 
+The peer's ID is removed from the tables tracking PEX requests
 [sent](./pex-protocol.md#misbehavior) but not yet replied
 and PEX requests [received](./pex-protocol.md#misbehavior-1).
 
@@ -105,7 +105,7 @@ handles a message received by the PEX protocol.
 A node receives two type of messages as part of the PEX protocol:
 
 - `PexRequest`: a request for addresses received from a peer, handled as
-  described [here](./pex-protocol.md#providing-addresses) 
+  described [here](./pex-protocol.md#providing-addresses)
 - `PexAddrs`: a list of addresses received from a peer, as a reponse to a PEX
-  request sent by the node, as described [here](./pex-protocol.md#responses) 
+  request sent by the node, as described [here](./pex-protocol.md#responses)
 

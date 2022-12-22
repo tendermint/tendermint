@@ -85,7 +85,7 @@ applications using it. In particular:
   the server that are not clearly documented anywhere, and it is very easy for
   small changes in both the client and the server to lead to tricky deadlocks,
   panics, race conditions, and slowdowns. As a recent example of this, see
-  https://github.com/tendermint/tendermint/pull/8581.
+  <https://github.com/tendermint/tendermint/pull/8581>.
 
 These limitations are fixable, but one important question is whether it is
 worthwhile to fix them.  We can add request and method identifiers, for
@@ -190,28 +190,28 @@ design.
 
 - **Standardize on gRPC**
 
-   - ✅ Addresses existing performance and operational issues.
-   - ✅ Replaces custom code with a well-maintained widely-used library.
-   - ✅ Aligns with Cosmos SDK, which already uses gRPC extensively.
-   - ✅ Aligns with priv validator interface, for which the socket protocol is already deprecated for gRPC.
-   - ❓ Applications will be hard to implement in a language without gRPC support.
-   - ⛔ All users of the socket protocol have to migrate to gRPC, and we believe most current out-of-process applications use the socket protocol.
+    - ✅ Addresses existing performance and operational issues.
+    - ✅ Replaces custom code with a well-maintained widely-used library.
+    - ✅ Aligns with Cosmos SDK, which already uses gRPC extensively.
+    - ✅ Aligns with priv validator interface, for which the socket protocol is already deprecated for gRPC.
+    - ❓ Applications will be hard to implement in a language without gRPC support.
+    - ⛔ All users of the socket protocol have to migrate to gRPC, and we believe most current out-of-process applications use the socket protocol.
 
 - **Standardize on socket protocol**
 
-   - ✅ Less immediate impact for existing users (but see below).
-   - ✅ Simplifies ABCI API surface by removing gRPC.
-   - ❓ Users of the socket protocol will have a (smaller) migration.
-   - ❓ Potentially easier to implement for languages that do not have support.
-   - ⛔ Need to do all the work to fix the socket protocol (which will require existing users to update anyway later).
-   - ⛔ Ongoing maintenance burden for per-language server implementations.
+    - ✅ Less immediate impact for existing users (but see below).
+    - ✅ Simplifies ABCI API surface by removing gRPC.
+    - ❓ Users of the socket protocol will have a (smaller) migration.
+    - ❓ Potentially easier to implement for languages that do not have support.
+    - ⛔ Need to do all the work to fix the socket protocol (which will require existing users to update anyway later).
+    - ⛔ Ongoing maintenance burden for per-language server implementations.
 
 - **Keep both options**
 
-   - ✅ Less immediate impact for existing users (but see below).
-   - ❓ Users of the socket protocol will have a (smaller) migration.
-   - ⛔ Still need to do all the work to fix the socket protocol (which will require existing users to update anyway later).
-   - ⛔ Requires ongoing maintenance and support of both gRPC and socket protocol integrations.
+    - ✅ Less immediate impact for existing users (but see below).
+    - ❓ Users of the socket protocol will have a (smaller) migration.
+    - ⛔ Still need to do all the work to fix the socket protocol (which will require existing users to update anyway later).
+    - ⛔ Requires ongoing maintenance and support of both gRPC and socket protocol integrations.
 
 
 ## References

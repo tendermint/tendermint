@@ -148,7 +148,7 @@ Currently supported versions include:
 - [Tendermint Core Blog](https://medium.com/tendermint/tagged/tendermint-core)
 - [Cosmos Blog](https://blog.cosmos.network/tendermint/home)
 
-## Join us!
+## Join us
 
 Tendermint Core is maintained by [Interchain GmbH](https://interchain.io).
 If you'd like to work full-time on Tendermint Core,

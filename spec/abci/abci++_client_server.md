@@ -29,7 +29,7 @@ As of v0.36 requests are synchronous. For each of ABCI++'s four connections (see
 [Connections](./abci%2B%2B_app_requirements.md)), when Tendermint issues a request to the
 Application, it will wait for the response before continuing execution. As a side effect,
 requests and responses are ordered for each connection, but not necessarily across connections.
---> 
+-->
 ## Server Implementations
 
 To use ABCI in your programming language of choice, there must be an ABCI

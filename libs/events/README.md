@@ -24,7 +24,7 @@ Pub-Sub in go with event caching
 
 ### Package files
 
-[event_cache.go](./event_cache.go) [events.go](./events.go) 
+[event_cache.go](./event_cache.go) [events.go](./events.go)
 
 
 ## Type [EventCache](./event_cache.go?s=116:179#L5)

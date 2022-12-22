@@ -207,7 +207,7 @@ Execution:
 
 *Remark.* In this case, the more than 1/3 of faulty validators do not need to commit an equivocation (F1) as they only vote once per round in the execution.
 
-Detecting faulty validators in the case of such an attack can be done by the fork accountability mechanism described in: 
+Detecting faulty validators in the case of such an attack can be done by the fork accountability mechanism described in:
 <!-- markdown-link-check-disable-next-line -->
 <https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing>.
 

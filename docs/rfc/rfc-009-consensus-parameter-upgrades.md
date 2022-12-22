@@ -66,7 +66,7 @@ have been updated until a height at which the parameters existed.
 #### Only Update HashedParams on Hash-Breaking Releases
 
 An alternate solution to never hashing defaults is to not update the hashed
-parameters on non-hash-breaking releases. This means that when new consensus 
+parameters on non-hash-breaking releases. This means that when new consensus
 parameters are added to Tendermint, there may be a release that makes use of the
 parameters but does not verify that they are the same across all validators by
 referencing them in the hash. This seems reasonably safe given the fact that
@@ -107,7 +107,7 @@ default values of the new parameters for a single height.
 
 As documented in the upcoming [ADR-74][adr-74], popular chains often simply use the default
 values. Additionally, great care is being taken to ensure that logic governed by upcoming
-consensus parameters is not liveness-breaking. This means that, at worst-case, 
+consensus parameters is not liveness-breaking. This means that, at worst-case,
 chains will experience a single slow height while waiting for the new values to
 by applied.
 

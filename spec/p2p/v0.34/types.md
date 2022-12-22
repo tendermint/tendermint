@@ -48,7 +48,7 @@ but currently is not produced outside tests.
 `ErrTransportClosed` is produced by the [transport](#transportgo)
 and handled by the [switch](#switchgo).
 
-`ErrNetAddressNoID`, `ErrNetAddressInvalid`, and `ErrNetAddressLookup` 
+`ErrNetAddressNoID`, `ErrNetAddressInvalid`, and `ErrNetAddressLookup`
 are parsing a string to create an instance of `NetAddress`.
 It can be returned in the setup of the [switch](#switchgo)
 and of the [PEX reactor](#pex_reactorgo),
@@ -92,7 +92,7 @@ It is implemented by `DefaultNodeInfo` type.
 
 The [switch](#switchgo) stores the local `NodeInfo`.
 
-The `NodeInfo` of connected peers is produced by the 
+The `NodeInfo` of connected peers is produced by the
 [transport](#transportgo) during the handshake, and stored in [`Peer`](#peergo) instances.
 
 ### `peer.go`
@@ -236,4 +236,4 @@ Not imported by any other Tendermint source file.
 
 This package implementation was taken from "taipei-torrent".
 
-It is used by the `probe-upnp` command of the Tendermint binary. 
+It is used by the `probe-upnp` command of the Tendermint binary.

@@ -44,13 +44,13 @@ Proto allows fields to be encoded in any order and even be repeated.
 
 3. Presence or absence of default values.
 
-Types in proto have defined default values similar to Go's zero values. 
+Types in proto have defined default values similar to Go's zero values.
 Writing or omitting a default value are both legal ways of encoding a wire message.
 
-4. Serialization of 'unknown' fields. 
+4. Serialization of 'unknown' fields.
 
-Unknown fields can be present when a message is created by a binary with a newer 
-version of the proto that contains fields that the deserializer in a different 
+Unknown fields can be present when a message is created by a binary with a newer
+version of the proto that contains fields that the deserializer in a different
 binary does not yet know about. Deserializers in binaries that do not know about the field
 will maintain the bytes of the unknown field but not place them into the deserialized structure.
 
@@ -60,26 +60,26 @@ We have a few options to consider when producing this stable representation.
 
 #### Use only compliant serializers and constrain field usage
 
-According to [Cosmos-SDK ADR-27][cosmos-sdk-adr-27], when message types obey a simple 
+According to [Cosmos-SDK ADR-27][cosmos-sdk-adr-27], when message types obey a simple
 set of rules, gogoproto produces a consistent byte representation of serialized messages.
 This seems promising, although more research is needed to guarantee gogoproto always
-produces a consistent set of bytes on serialized messages. This would solve the problem 
+produces a consistent set of bytes on serialized messages. This would solve the problem
 within Tendermint as written in Go, but would require ensuring that there are similar
 serializers written in other languages that produce the same output as gogoproto.
 
-#### Reorder serialized bytes to ensure determinism.
+#### Reorder serialized bytes to ensure determinism
 
 The serialized form of a proto message can be transformed into a canonical representation
 by applying simple rules to the serialized bytes. Re-ordering the serialized bytes
 would allow Tendermint to produce a canonical byte representation without having to
 simultaneously maintain a custom proto marshaller.
 
-This could be implemented as a function in many languages that performed the following 
+This could be implemented as a function in many languages that performed the following
 producing bytes to sign or hashing:
 
 1. Does not add any of the data from unknown fields into the type to hash.
 
-Tendermint should not run into a case where it needs to verify the integrity of 
+Tendermint should not run into a case where it needs to verify the integrity of
 data with unknown fields for the following reasons:
 
 The purpose of checking hash equality within Tendermint is to ensure that
@@ -91,7 +91,7 @@ despite not understanding what their internal structure is. It's not clear what 
 mean to verify that a block contains data that a process does not know about.
 
 The same reasoning applies for signature verification within Tendermint. Processes
-verify that a digital signature signed over a set of bytes by locally reconstructing the 
+verify that a digital signature signed over a set of bytes by locally reconstructing the
 data structure that the digital signature signed using the process's local data.
 
 2. Reordered all message fields to be in tag-sorted order.
@@ -133,8 +133,6 @@ properly.
 ### References
 
 [proto-spec-encoding]: https://developers.google.com/protocol-buffers/docs/encoding
-[spec-issue]: https://github.com/tendermint/tendermint/issues/5005
 [cosmos-sdk-adr-27]: https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-027-deterministic-protobuf-serialization.md
-[cer-proto-3]: https://github.com/regen-network/canonical-proto3
 [wire-pb]: https://github.com/creachadair/wirepb
 

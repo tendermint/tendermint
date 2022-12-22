@@ -42,6 +42,7 @@ Once the decision has been made to run and operate a service,
 one of the next strategic questions is that of deploying said service.
 The author strongly holds the opinion that, when possible,
 a continuous delivery model offers the most compelling set of advantages:
+
 - The code on a particular branch (likely `main` or `master`) is exactly what is,
   or what will very soon be, running in production
 - There are no manual steps involved in deploying -- other than merging your pull request,
@@ -50,6 +51,7 @@ a continuous delivery model offers the most compelling set of advantages:
 
 In summary, if the tendermint authors build, maintain, and continuously deliver an application
 intended to serve as a long-lived testnet, they will be able to state with confidence:
+
 - We operate the software in a production-like environment and we have observed it to be
   stable and performant to our requirements
 - We have discovered issues in production before any external parties have consumed our software,

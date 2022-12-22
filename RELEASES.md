@@ -50,6 +50,7 @@ the 0.38.x line.
    in order to do this).
 
 3. Create and push the backport branch:
+
    ```sh
    git checkout -b v0.38.x
    git push origin v0.38.x
@@ -81,6 +82,7 @@ the 0.38.x line.
    * `docs.tendermint.com/main` -> `docs.tendermint.com/v0.38`
 
    Once you have updated all of the relevant documentation:
+
    ```sh
    # Create and push the PR.
    git checkout -b update-docs-v038x
@@ -113,7 +115,7 @@ create an alpha or beta version, or release candidate (RC) for our friends and
 partners to test out. We use git tags to create pre-releases, and we build them
 off of backport branches, for example:
 
-- `v0.38.0-alpha.1` - The first alpha release of `v0.38.0`. Subsequent alpha
+* `v0.38.0-alpha.1` - The first alpha release of `v0.38.0`. Subsequent alpha
   releases will be numbered `v0.38.0-alpha.2`, `v0.38.0-alpha.3`, etc.
 
   Alpha releases are to be considered the _most_ unstable of pre-releases, and
@@ -121,14 +123,14 @@ off of backport branches, for example:
   adopters to start integrating and testing new functionality before we're done
   with QA.
 
-- `v0.38.0-beta.1` - The first beta release of `v0.38.0`. Subsequent beta
+* `v0.38.0-beta.1` - The first beta release of `v0.38.0`. Subsequent beta
   releases will be numbered `v0.38.0-beta.2`, `v0.38.0-beta.3`, etc.
 
   Beta releases can be considered more stable than alpha releases in that we
   will have QA'd them better than alpha releases, but there still may be
   minor breaking API changes if users have strong demands for such changes.
 
-- `v0.38.0-rc1` - The first release candidate (RC) of `v0.38.0`. Subsequent RCs
+* `v0.38.0-rc1` - The first release candidate (RC) of `v0.38.0`. Subsequent RCs
   will be numbered `v0.38.0-rc2`, `v0.38.0-rc3`, etc.
 
   RCs are considered more stable than beta releases in that we will have
@@ -146,18 +148,18 @@ backport branch (see above). Otherwise:
 1. Start from the backport branch (e.g. `v0.38.x`).
 2. Run the integration tests and the E2E nightlies
    (which can be triggered from the GitHub UI;
-   e.g., https://github.com/tendermint/tendermint/actions/workflows/e2e-nightly-37x.yml).
+   e.g., <https://github.com/tendermint/tendermint/actions/workflows/e2e-nightly-37x.yml>).
 3. Prepare the pre-release documentation:
-   - Ensure that all relevant changes are in the `CHANGELOG_PENDING.md` file.
+   * Ensure that all relevant changes are in the `CHANGELOG_PENDING.md` file.
      This file's contents must only be included in the `CHANGELOG.md` when we
      cut final releases.
-   - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
+   * Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
 4. Prepare the versioning:
-   - Bump TMVersionDefault version in  `version.go`
-   - Bump P2P and block protocol versions in  `version.go`, if necessary.
+   * Bump TMVersionDefault version in  `version.go`
+   * Bump P2P and block protocol versions in  `version.go`, if necessary.
      Check the changelog for breaking changes in these components.
-   - Bump ABCI protocol version in `version.go`, if necessary
+   * Bump ABCI protocol version in `version.go`, if necessary
 5. Open a PR with these changes against the backport branch.
 6. Once these changes have landed on the backport branch, be sure to pull them back down locally.
 7. Once you have the changes locally, create the new tag, specifying a name and a tag "message":
@@ -179,33 +181,33 @@ Before performing these steps, be sure the
 1. Start on the backport branch (e.g. `v0.38.x`)
 2. Run integration tests (`make test_integrations`) and the e2e nightlies.
 3. Prepare the release:
-   - "Squash" changes from the changelog entries for the pre-releases into a
+   * "Squash" changes from the changelog entries for the pre-releases into a
      single entry, and add all changes included in `CHANGELOG_PENDING.md`.
      (Squashing includes both combining all entries, as well as removing or
      simplifying any intra-pre-release changes. It may also help to alphabetize
      the entries by package name.)
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
+   * Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for
      all PRs
-   - Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
+   * Ensure that `UPGRADING.md` is up-to-date and includes notes on any breaking changes
       or other upgrading flows.
-   - Bump TMVersionDefault version in  `version.go`
-   - Bump P2P and block protocol versions in  `version.go`, if necessary
-   - Bump ABCI protocol version in `version.go`, if necessary
+   * Bump TMVersionDefault version in  `version.go`
+   * Bump P2P and block protocol versions in  `version.go`, if necessary
+   * Bump ABCI protocol version in `version.go`, if necessary
 4. Open a PR with these changes against the backport branch.
 5. Once these changes are on the backport branch, push a tag with prepared release details.
    This will trigger the actual release `v0.38.0`.
-   - `git tag -a v0.38.0 -m 'Release v0.38.0'`
-   - `git push origin v0.38.0`
+   * `git tag -a v0.38.0 -m 'Release v0.38.0'`
+   * `git push origin v0.38.0`
 6. Make sure that `main` is updated with the latest `CHANGELOG.md`, `CHANGELOG_PENDING.md`, and `UPGRADING.md`.
 7. Add the release to the documentation site generator config (see
    [DOCS\_README.md](./docs/DOCS_README.md) for more details). In summary:
-   - Start on branch `main`.
-   - Add a new line at the bottom of [`docs/versions`](./docs/versions) to
+   * Start on branch `main`.
+   * Add a new line at the bottom of [`docs/versions`](./docs/versions) to
      ensure the newest release is the default for the landing page.
-   - Add a new entry to `themeConfig.versions` in
+   * Add a new entry to `themeConfig.versions` in
      [`docs/.vuepress/config.js`](./docs/.vuepress/config.js) to include the
 	 release in the dropdown versions menu.
-   - Commit these changes to `main` and backport them into the backport
+   * Commit these changes to `main` and backport them into the backport
      branch for this release.
 
 ## Patch release
@@ -222,21 +224,21 @@ To create a patch release:
 1. Checkout the long-lived backport branch: `git checkout v0.38.x`
 2. Run integration tests (`make test_integrations`) and the nightlies.
 3. Check out a new branch and prepare the release:
-   - Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
-   - Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
-   - Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
-   - Reset the `CHANGELOG_PENDING.md`
-   - Bump the TMDefaultVersion in `version.go`
-   - Bump the ABCI version number, if necessary.
+   * Copy `CHANGELOG_PENDING.md` to top of `CHANGELOG.md`
+   * Run `python ./scripts/linkify_changelog.py CHANGELOG.md` to add links for all issues
+   * Run `bash ./scripts/authors.sh` to get a list of authors since the latest release, and add the GitHub aliases of external contributors to the top of the CHANGELOG. To lookup an alias from an email, try `bash ./scripts/authors.sh <email>`
+   * Reset the `CHANGELOG_PENDING.md`
+   * Bump the TMDefaultVersion in `version.go`
+   * Bump the ABCI version number, if necessary.
      (Note that ABCI follows semver, and that ABCI versions are the only versions
      which can change during patch releases, and only field additions are valid patch changes.)
 4. Open a PR with these changes that will land them back on `v0.38.x`
 5. Once this change has landed on the backport branch, make sure to pull it locally, then push a tag.
-   - `git tag -a v0.38.1 -m 'Release v0.38.1'`
-   - `git push origin v0.38.1`
+   * `git tag -a v0.38.1 -m 'Release v0.38.1'`
+   * `git push origin v0.38.1`
 6. Create a pull request back to main with the CHANGELOG & version changes from the latest release.
-   - Remove all `R:patch` labels from the pull requests that were included in the release.
-   - Do not merge the backport branch into main.
+   * Remove all `R:patch` labels from the pull requests that were included in the release.
+   * Do not merge the backport branch into main.
 
 ## Minor Release Checklist
 

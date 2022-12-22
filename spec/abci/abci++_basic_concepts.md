@@ -6,21 +6,21 @@ title: Overview and basic concepts
 ## Outline
 
 - [Overview and basic concepts](#overview-and-basic-concepts)
-  - [ABCI++ vs. ABCI](#abci-vs-abci)
-  - [Method overview](#method-overview)
-    - [Consensus/block execution methods](#consensusblock-execution-methods)
-    - [Mempool methods](#mempool-methods)
-    - [Info methods](#info-methods)
-    - [State-sync methods](#state-sync-methods)
-    - [Other methods](#other-methods)
-  - [Tendermint proposal timeout](#tendermint-proposal-timeout)
-  - [Deterministic State-Machine Replication](#deterministic-state-machine-replication)
-  - [Events](#events)
-  - [Evidence](#evidence)
-  - [Errors](#errors)
-    - [`CheckTx`](#checktx)
-    - [`DeliverTx`](#delivertx)
-    - [`Query`](#query)
+    - [ABCI++ vs. ABCI](#abci-vs-abci)
+    - [Method overview](#method-overview)
+        - [Consensus/block execution methods](#consensusblock-execution-methods)
+        - [Mempool methods](#mempool-methods)
+        - [Info methods](#info-methods)
+        - [State-sync methods](#state-sync-methods)
+        - [Other methods](#other-methods)
+    - [Tendermint proposal timeout](#tendermint-proposal-timeout)
+    - [Deterministic State-Machine Replication](#deterministic-state-machine-replication)
+    - [Events](#events)
+    - [Evidence](#evidence)
+    - [Errors](#errors)
+        - [`CheckTx`](#checktx)
+        - [`DeliverTx`](#delivertx)
+        - [`Query`](#query)
 
 # Overview and basic concepts
 
@@ -42,15 +42,15 @@ connection attempts.
 
 ABCI++ addresses these limitations by allowing the application to intervene at two key places of
 consensus execution: (a) at the moment a new proposal is to be created and (b) at the moment a
-proposal is to be validated. The new interface allows block proposers to perform application-dependent 
-work in a block through the `PrepareProposal` method (a); and validators to perform application-dependent work 
+proposal is to be validated. The new interface allows block proposers to perform application-dependent
+work in a block through the `PrepareProposal` method (a); and validators to perform application-dependent work
 and checks in a proposed block through the `ProcessProposal` method (b).
 
 <!-- Furthermore, ABCI++ coalesces {`BeginBlock`, [`DeliverTx`], `EndBlock`} into `FinalizeBlock`, as a
 simplified, efficient way to deliver a decided block to the Application. -->
 
-We plan to extend this to allow applications to intervene at the moment a (precommit) vote is sent/received. 
-The applications could then require their validators to do more than just validating blocks through the `ExtendVote` 
+We plan to extend this to allow applications to intervene at the moment a (precommit) vote is sent/received.
+The applications could then require their validators to do more than just validating blocks through the `ExtendVote`
 and `VerifyVoteExtension` methods.
 
 ## Method overview
@@ -64,7 +64,7 @@ Methods can be classified into four categories: *consensus*, *mempool*, *info*, 
 
 The first time a new blockchain is started, Tendermint calls `InitChain`. From then on, methods `BeginBlock`,
  `DeliverTx` and `EndBlock` are executed upon the decision of each block, resulting in an updated Application
-state. One `DeliverTx` is called for each transaction in the block. The result is an updated application state. 
+state. One `DeliverTx` is called for each transaction in the block. The result is an updated application state.
 Cryptographic commitments to the results of `DeliverTx`, and an application-provided hash in `Commit` are included in the header of the next block. During the execution of an instance of consensus, which decides the block for a given
 height, and before method `BeginBlock` is called, methods `PrepareProposal` and `ProcessProposal`,
  may be called several times. See
@@ -82,7 +82,7 @@ call sequences of these methods.
   been locked at Tendermint level. Tendermint gathers outstanding transactions from the
   mempool, generates a block header, and uses them to create a block to propose. Then, it calls
   `RequestPrepareProposal` with the newly created proposal, called *raw proposal*. The Application
-  can make changes to the raw proposal, such as modifying the set of transactions or the order 
+  can make changes to the raw proposal, such as modifying the set of transactions or the order
   in which they appear, and returns the
   (potentially) modified proposal, called *prepared proposal* in the `ResponsePrepareProposal`
   call. The logic modifying the raw proposal can be non-deterministic.
@@ -98,14 +98,14 @@ call sequences of these methods.
   the proposal is invalid (e.g., an invalid transaction); the Application can
   ignore the invalid part of the prepared proposal at block execution time.
 
-- [**BeginBlock:**](./abci++_methods.md#beginblock) Is called exactly once after a block has been decided 
+- [**BeginBlock:**](./abci++_methods.md#beginblock) Is called exactly once after a block has been decided
   and executes once before all `DeliverTx` method calls.
 
-- [**DeliverTx**](./abci++_methods.md#delivertx) Upon completion of `BeginBlock`, 
+- [**DeliverTx**](./abci++_methods.md#delivertx) Upon completion of `BeginBlock`,
 `DeliverTx` is called once
   for each of the transactions within the block. The application defines further checks to confirm their
-  validity - for example a key-value store might verify that the key does not already exist. Note that 
-  even if a transaction does not pass the check in `DeliverTx`, it will still be part of the block as the 
+  validity - for example a key-value store might verify that the key does not already exist. Note that
+  even if a transaction does not pass the check in `DeliverTx`, it will still be part of the block as the
   block has already been voted on (unlike with `CheckTx` which would dismiss such a transaction). The responses
   returned by `DeliverTx` are included in the header of the next block.
 
@@ -232,7 +232,7 @@ to accommodate the long block execution time and non-proposer nodes might time
 out and prevote `nil`. The proposal, in this case, will probably be rejected and a new round will be necessary.
 
 
-Operators will need to adjust the default value of *TimeoutPropose* in Tendermint's configuration file, 
+Operators will need to adjust the default value of *TimeoutPropose* in Tendermint's configuration file,
 in order to suit the needs of the particular application being deployed.
 
 ## Deterministic State-Machine Replication
@@ -298,7 +298,7 @@ on them. All other fields in the `Response*` must be strictly deterministic.
 
 [&uparrow; Back to Outline](#outline)
 
-Methods `BeginBlock, DeliverTx` and `EndBlock ` include an `events` field in their
+Methods `BeginBlock, DeliverTx` and `EndBlock` include an `events` field in their
 `Response*`.
 Applications may respond to this ABCI++ method with an event list for each executed
 transaction, and a general event list for the block itself.
@@ -309,7 +309,7 @@ and instead exist to power subscriptions and queries of Tendermint state.
 An `Event` contains a `type` and a list of `EventAttributes`, which are key-value
 string pairs denoting metadata about what happened during the method's (or transaction's)
 execution. `Event` values can be used to index transactions and blocks according to what
-happened during their execution. 
+happened during their execution.
 
 Each event has a `type` which is meant to categorize the event for a particular
 `Response*` or `Tx`. A `Response*` or `Tx` may contain multiple events with duplicate
@@ -423,7 +423,7 @@ these codes reports errors related to the transaction it is attached to.
 However, `FinalizeBlock` does not return errors at the top level, so the
 same considerations on critical issues made for `Echo`, `Info`, and
 `InitChain` also apply here. 
---> 
+-->
 
 The handling of non-zero response codes by Tendermint is described below.
 
@@ -433,10 +433,10 @@ When Tendermint receives a `ResponseCheckTx` with a non-zero `Code`, the associa
 transaction will not be added to Tendermint's mempool or it will be removed if
 it is already included.
 
-### `DeliverTx` 
+### `DeliverTx`
 
-The `DeliverTx` ABCI method delivers transactions from Tendermint to the application. 
-When Tendermint receives a `ResponseDeliverTx` with a non-zero `Code`, the response code is logged. 
+The `DeliverTx` ABCI method delivers transactions from Tendermint to the application.
+When Tendermint receives a `ResponseDeliverTx` with a non-zero `Code`, the response code is logged.
 The transaction was already included in a block, so the `Code` does not influence Tendermint consensus.
 
 <!-- 

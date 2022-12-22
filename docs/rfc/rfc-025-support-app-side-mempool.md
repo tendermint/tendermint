@@ -12,7 +12,7 @@ of the Tendermint mempool becomes much less clear. This RFC discusses possible
 changes that should be considered to Tendermint to better support applications
 that intend to use `PrepareProposal` to implement much more powerful transaction
 ordering and filtering functionality than Tendermint can provide. It proposes
-scoping down the responsibilities of Tendermint to suit this new use case. 
+scoping down the responsibilities of Tendermint to suit this new use case.
 
 ## Background
 
@@ -293,7 +293,6 @@ future designs are made in this area:
 
 ## References
 
-[mempool-cache]:https://github.com/tendermint/tendermint/blob/c8302c5fcb7f1ffafdefc5014a26047df1d27c99/mempool/v1/mempool.go#L41
 [cache-when-clear]:https://github.com/tendermint/tendermint/issues/7723
 [update-remove-from-cache]:https://github.com/tendermint/tendermint/pull/233
 [update-keep-in-cache]:https://github.com/tendermint/tendermint/issues/2855
