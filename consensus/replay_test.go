@@ -313,6 +313,9 @@ var modes = []uint{0, 1, 2, 3}
 
 // This is actually not a test, it's for storing validator change tx data for testHandshakeReplay
 func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*cfg.Config, []*types.Block, []*types.ExtendedCommit, sm.State) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	nPeers := 7
 	nVals := 4
 	css, genDoc, config, cleanup := randConsensusNetWithPeers(
@@ -358,7 +361,7 @@ func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*
 	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx1, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
-	propBlock, err := css[0].createProposalBlock(context.TODO() /**/) // changeProposer(t, cs1, vs2)
+	propBlock, err := css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err := propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
@@ -390,7 +393,7 @@ func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*
 	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	err = assertMempool(css[0].txNotifier).CheckTx(updateValidatorTx1, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
-	propBlock, err = css[0].createProposalBlock(context.TODO() /**/) // changeProposer(t, cs1, vs2)
+	propBlock, err = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err = propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
@@ -429,7 +432,7 @@ func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*
 	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 	err = assertMempool(css[0].txNotifier).CheckTx(newValidatorTx3, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
-	propBlock, err = css[0].createProposalBlock(context.TODO() /**/) // changeProposer(t, cs1, vs2)
+	propBlock, err = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err = propBlock.MakePartSet(partSize)
 	require.NoError(t, err)
@@ -506,7 +509,7 @@ func setupChainWithChangingValidators(t *testing.T, name string, nBlocks int) (*
 	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 	err = assertMempool(css[0].txNotifier).CheckTx(removeValidatorTx3, nil, mempool.TxInfo{})
 	assert.NoError(t, err)
-	propBlock, err = css[0].createProposalBlock(context.TODO() /**/) // changeProposer(t, cs1, vs2)
+	propBlock, err = css[0].createProposalBlock(ctx) // changeProposer(t, cs1, vs2)
 	require.NoError(t, err)
 	propBlockParts, err = propBlock.MakePartSet(partSize)
 	require.NoError(t, err)

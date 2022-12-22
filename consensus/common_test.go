@@ -213,13 +213,14 @@ func startTestRound(cs *State, height int64, round int32) {
 // Create proposal block from cs1 but sign it with vs.
 func decideProposal(
 	t *testing.T,
+	ctx context.Context,
 	cs1 *State,
 	vs *validatorStub,
 	height int64,
 	round int32,
 ) (proposal *types.Proposal, block *types.Block) {
 	cs1.mtx.Lock()
-	block, err := cs1.createProposalBlock(context.TODO() /**/)
+	block, err := cs1.createProposalBlock(ctx)
 	require.NoError(t, err)
 	blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)

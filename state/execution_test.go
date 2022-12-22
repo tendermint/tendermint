@@ -696,6 +696,8 @@ func TestFinalizeBlockValidatorUpdatesResultingInEmptySet(t *testing.T) {
 
 func TestEmptyPrepareProposal(t *testing.T) {
 	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	app := &abci.BaseApplication{}
 	cc := proxy.NewLocalClientCreator(app)
@@ -733,7 +735,7 @@ func TestEmptyPrepareProposal(t *testing.T) {
 	pa, _ := state.Validators.GetByIndex(0)
 	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	_, err = blockExec.CreateProposalBlock(context.TODO() /**/, height, state, commit, pa)
+	_, err = blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 }
 
@@ -741,6 +743,8 @@ func TestEmptyPrepareProposal(t *testing.T) {
 // the prepare proposal response are included in the block.
 func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
@@ -776,7 +780,7 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 	pa, _ := state.Validators.GetByIndex(0)
 	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(context.TODO() /**/, height, state, commit, pa)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 
 	for i, tx := range block.Data.Txs {
@@ -790,6 +794,8 @@ func TestPrepareProposalTxsAllIncluded(t *testing.T) {
 // in the order matching the order they are returned from PrepareProposal.
 func TestPrepareProposalReorderTxs(t *testing.T) {
 	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
@@ -829,7 +835,7 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 	pa, _ := state.Validators.GetByIndex(0)
 	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(context.TODO() /**/, height, state, commit, pa)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.NoError(t, err)
 	for i, tx := range block.Data.Txs {
 		require.Equal(t, txs[i], tx)
@@ -843,6 +849,8 @@ func TestPrepareProposalReorderTxs(t *testing.T) {
 // an error if the ResponsePrepareProposal returned from the application is invalid.
 func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	state, stateDB, privVals := makeState(1, height)
 	// limit max block size
@@ -884,7 +892,7 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 	pa, _ := state.Validators.GetByIndex(0)
 	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(context.TODO() /**/, height, state, commit, pa)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "transaction data size exceeds maximum")
 
@@ -895,6 +903,8 @@ func TestPrepareProposalErrorOnTooManyTxs(t *testing.T) {
 // upon calling PrepareProposal on it.
 func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	const height = 2
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	state, stateDB, privVals := makeState(1, height)
 	stateStore := sm.NewStore(stateDB, sm.StoreOptions{
@@ -933,7 +943,7 @@ func TestPrepareProposalErrorOnPrepareProposalError(t *testing.T) {
 	pa, _ := state.Validators.GetByIndex(0)
 	commit, _, err := makeValidCommit(height, types.BlockID{}, state.Validators, privVals)
 	require.NoError(t, err)
-	block, err := blockExec.CreateProposalBlock(context.TODO() /**/, height, state, commit, pa)
+	block, err := blockExec.CreateProposalBlock(ctx, height, state, commit, pa)
 	require.Nil(t, block)
 	require.ErrorContains(t, err, "an injected error")
 
@@ -980,6 +990,9 @@ func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			app := abcimocks.NewApplication(t)
 			if !testCase.expectPanic {
 				app.On("PrepareProposal", mock.Anything, mock.Anything).Return(&abci.ResponsePrepareProposal{}, nil)
@@ -1026,10 +1039,10 @@ func TestCreateProposalAbsentVoteExtensions(t *testing.T) {
 			stripSignatures(lastCommit)
 			if testCase.expectPanic {
 				require.Panics(t, func() {
-					blockExec.CreateProposalBlock(context.TODO() /**/, testCase.height, state, lastCommit, pa) //nolint:errcheck
+					blockExec.CreateProposalBlock(ctx, testCase.height, state, lastCommit, pa) //nolint:errcheck
 				})
 			} else {
-				_, err = blockExec.CreateProposalBlock(context.TODO() /**/, testCase.height, state, lastCommit, pa)
+				_, err = blockExec.CreateProposalBlock(ctx, testCase.height, state, lastCommit, pa)
 				require.NoError(t, err)
 			}
 		})

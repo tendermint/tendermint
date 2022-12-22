@@ -356,6 +356,9 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			cs, vs := randState(1)
 			validator := vs[0]
 			validator.Height = testCase.storedHeight
@@ -364,7 +367,7 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 			cs.state.LastValidators = cs.state.Validators.Copy()
 			cs.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.initialRequiredHeight
 
-			propBlock, err := cs.createProposalBlock(context.TODO() /**/)
+			propBlock, err := cs.createProposalBlock(ctx)
 			require.NoError(t, err)
 
 			// Consensus is preparing to do the next height after the stored height.

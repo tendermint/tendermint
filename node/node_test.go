@@ -248,6 +248,9 @@ func testFreeAddr(t *testing.T) string {
 // create a proposal block using real and full
 // mempool and evidence pool and validate it.
 func TestCreateProposalBlock(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := test.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewInMemoryApplication())
@@ -335,7 +338,7 @@ func TestCreateProposalBlock(t *testing.T) {
 
 	extCommit := &types.ExtendedCommit{Height: height - 1}
 	block, err := blockExec.CreateProposalBlock(
-		context.TODO(), /**/
+		ctx,
 		height,
 		state,
 		extCommit,
@@ -361,6 +364,9 @@ func TestCreateProposalBlock(t *testing.T) {
 }
 
 func TestMaxProposalBlockSize(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	config := test.ResetTestRoot("node_create_proposal")
 	defer os.RemoveAll(config.RootDir)
 	cc := proxy.NewLocalClientCreator(kvstore.NewInMemoryApplication())
@@ -422,7 +428,7 @@ func TestMaxProposalBlockSize(t *testing.T) {
 
 	extCommit := &types.ExtendedCommit{Height: height - 1}
 	block, err := blockExec.CreateProposalBlock(
-		context.TODO(), /**/
+		ctx,
 		height,
 		state,
 		extCommit,

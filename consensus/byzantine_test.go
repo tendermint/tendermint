@@ -39,6 +39,9 @@ import (
 
 // Byzantine node sends two different prevotes (nil and blockID) to the same validator
 func TestByzantinePrevoteEquivocation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	const nValidators = 4
 	const byzantineNode = 0
 	const prevoteHeight = int64(2)
@@ -223,7 +226,7 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 		proposerAddr := lazyProposer.privValidatorPubKey.Address()
 
 		block, err := lazyProposer.blockExec.CreateProposalBlock(
-			context.TODO() /**/, lazyProposer.Height, lazyProposer.state, extCommit, proposerAddr)
+			ctx, lazyProposer.Height, lazyProposer.state, extCommit, proposerAddr)
 		require.NoError(t, err)
 		blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 		require.NoError(t, err)
@@ -312,6 +315,10 @@ func TestByzantinePrevoteEquivocation(t *testing.T) {
 func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 	N := 4
 	logger := consensusLogger().With("test", "byzantine")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	app := newKVStore
 	css, cleanup := randConsensusNet(t, N, "consensus_byzantine_test", newMockTickerFunc(false), app)
 	defer cleanup()
@@ -347,7 +354,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 			css[i].privValidator.(types.MockPV).DisableChecks()
 			css[i].decideProposal = func(j int32) func(int64, int32) {
 				return func(height int64, round int32) {
-					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
+					byzantineDecideProposalFunc(t, ctx, height, round, css[j], switches[j])
 				}
 			}(int32(i))
 			// We are setting the prevote function to do nothing because the prevoting
@@ -466,12 +473,12 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, ctx context.Context, height int64, round int32, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
 	// Create a new proposal block from state/txs from the mempool.
-	block1, err := cs.createProposalBlock(context.TODO() /**/)
+	block1, err := cs.createProposalBlock(ctx)
 	require.NoError(t, err)
 	blockParts1, err := block1.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
@@ -488,7 +495,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int32, cs *St
 	deliverTxsRange(t, cs, 0, 1)
 
 	// Create a new proposal block from state/txs from the mempool.
-	block2, err := cs.createProposalBlock(context.TODO() /**/)
+	block2, err := cs.createProposalBlock(ctx)
 	require.NoError(t, err)
 	blockParts2, err := block2.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)
