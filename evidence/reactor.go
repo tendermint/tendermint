@@ -10,6 +10,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -126,7 +127,7 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		}
 
 		ev := next.Value.(types.Evidence)
-		evis := evR.prepareEvidenceMessage(peer, ev)
+		evis := prepareEvidenceMessage(peer, ev, evR.evpool.State(), evR.Logger)
 		if len(evis) > 0 {
 			evR.Logger.Debug("Gossiping evidence to peer", "ev", ev, "peer", peer)
 			evp, err := evidenceListToProto(evis)
@@ -163,11 +164,12 @@ func (evR *Reactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 
 // Returns the message to send to the peer, or nil if the evidence is invalid for the peer.
 // If message is nil, we should sleep and try again.
-func (evR Reactor) prepareEvidenceMessage(
+func prepareEvidenceMessage(
 	peer p2p.Peer,
 	ev types.Evidence,
+	poolState state.State,
+	logger log.Logger,
 ) (evis []types.Evidence) {
-
 	// make sure the peer is up to date
 	evHeight := ev.Height()
 	peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
@@ -184,7 +186,7 @@ func (evR Reactor) prepareEvidenceMessage(
 	// peerHeight - maxAge < evidenceHeight < peerHeight
 	var (
 		peerHeight   = peerState.GetHeight()
-		params       = evR.evpool.State().ConsensusParams.Evidence
+		params       = poolState.ConsensusParams.Evidence
 		ageNumBlocks = peerHeight - evHeight
 	)
 
@@ -194,11 +196,11 @@ func (evR Reactor) prepareEvidenceMessage(
 
 		// NOTE: if evidence is too old for an honest peer, then we're behind and
 		// either it already got committed or it never will!
-		evR.Logger.Info("Not sending peer old evidence",
+		logger.Info("Not sending peer old evidence",
 			"peerHeight", peerHeight,
 			"evHeight", evHeight,
 			"maxAgeNumBlocks", params.MaxAgeNumBlocks,
-			"lastBlockTime", evR.evpool.State().LastBlockTime,
+			"lastBlockTime", poolState.LastBlockTime,
 			"maxAgeDuration", params.MaxAgeDuration,
 			"peer", peer,
 		)

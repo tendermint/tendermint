@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	// replace Connect2Switches (full mesh) with a func, which connects first
 	// reactor to others and nothing else, this test should also pass with >2 reactors.
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -94,7 +95,7 @@ func TestMempoolVectors(t *testing.T) {
 	}
 }
 
-func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
+func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor {
 	reactors := make([]*Reactor, n)
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
@@ -107,11 +108,26 @@ func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+	_, mts := p2p.MakeConnectedSwitchesWithMultiplexTransports(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("MEMPOOL", reactors[i])
 		return s
 
 	}, p2p.Connect2Switches)
+
+	// stop every switch and MultiplexTransport at the end of the test
+	t.Cleanup(func() {
+		for _, mt := range mts {
+			_ = mt.Close()
+		}
+
+		for _, reactor := range reactors {
+			_ = reactor.Switch.Stop()
+		}
+
+		// check that we are not leaking any go-routines
+		// i.e. broadcastTxRoutine finishes when peer is stopped
+		leaktest.CheckTimeout(t, 10*time.Second)()
+	})
 	return reactors
 }
 

@@ -48,7 +48,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 	// replace Connect2Switches (full mesh) with a func, which connects first
 	// reactor to others and nothing else, this test should also pass with >2 reactors.
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -70,7 +70,7 @@ func TestReactorBroadcastTxsMessage(t *testing.T) {
 func TestReactorConcurrency(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -131,7 +131,7 @@ func TestReactorConcurrency(t *testing.T) {
 func TestReactorNoBroadcastToSender(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -154,7 +154,7 @@ func TestReactor_MaxTxBytes(t *testing.T) {
 	config := cfg.TestConfig()
 
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -192,7 +192,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -204,10 +204,6 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 	// stop peer
 	sw := reactors[1].Switch
 	sw.StopPeerForError(sw.Peers().List()[0], errors.New("some reason"))
-
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when peer is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
@@ -217,7 +213,7 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 
 	// stop reactors
 	for _, r := range reactors {
@@ -225,10 +221,6 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 			assert.NoError(t, err)
 		}
 	}
-
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when reactor is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
 }
 
 func TestMempoolIDsBasic(t *testing.T) {
@@ -271,7 +263,7 @@ func TestMempoolIDsPanicsIfNodeRequestsOvermaxActiveIDs(t *testing.T) {
 func TestDontExhaustMaxActiveIDs(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 1
-	reactors := makeAndConnectReactors(config, N)
+	reactors := makeAndConnectReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			if err := r.Stop(); err != nil {
@@ -307,7 +299,7 @@ func mempoolLogger() log.Logger {
 }
 
 // connect N mempool reactors through N switches
-func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
+func makeAndConnectReactors(t *testing.T, config *cfg.Config, n int) []*Reactor {
 	reactors := make([]*Reactor, n)
 	logger := mempoolLogger()
 	for i := 0; i < n; i++ {
@@ -320,11 +312,26 @@ func makeAndConnectReactors(config *cfg.Config, n int) []*Reactor {
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
+	_, mts := p2p.MakeConnectedSwitchesWithMultiplexTransports(config.P2P, n, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("MEMPOOL", reactors[i])
 		return s
 
 	}, p2p.Connect2Switches)
+
+	// stop every switch and MultiplexTransport at the end of the test
+	t.Cleanup(func() {
+		for _, mt := range mts {
+			_ = mt.Close()
+		}
+
+		for _, reactor := range reactors {
+			_ = reactor.Switch.Stop()
+		}
+
+		// check that we are not leaking any go-routines
+		// i.e. broadcastTxRoutine finishes when peer is stopped
+		leaktest.CheckTimeout(t, 10*time.Second)()
+	})
 	return reactors
 }
 

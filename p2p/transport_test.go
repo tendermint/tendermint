@@ -86,6 +86,8 @@ func TestTransportMultiplexConnFilter(t *testing.T) {
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
 	}
+
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
@@ -135,6 +137,8 @@ func TestTransportMultiplexConnFilterTimeout(t *testing.T) {
 	if _, ok := err.(ErrFilterTimeout); !ok {
 		t.Errorf("expected ErrFilterTimeout, got %v", err)
 	}
+
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
@@ -166,7 +170,7 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 	// Connect more peers than max
 	for i := 0; i <= maxIncomingConns; i++ {
 		errc := make(chan error)
-		go testDialer(*laddr, errc)
+		go testDialer(t, *laddr, errc)
 
 		err = <-errc
 		if i < maxIncomingConns {
@@ -184,6 +188,8 @@ func TestTransportMultiplexMaxIncomingConnections(t *testing.T) {
 			t.Errorf("expected i/o timeout error, got %v", err)
 		}
 	}
+
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexAcceptMultiple(t *testing.T) {
@@ -198,7 +204,7 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 
 	// Setup dialers.
 	for i := 0; i < nDialers; i++ {
-		go testDialer(*laddr, errc)
+		go testDialer(t, *laddr, errc)
 	}
 
 	// Catch connection errors.
@@ -240,7 +246,7 @@ func TestTransportMultiplexAcceptMultiple(t *testing.T) {
 	}
 }
 
-func testDialer(dialAddr NetAddress, errc chan error) {
+func testDialer(t *testing.T, dialAddr NetAddress, errc chan error) {
 	var (
 		pv     = ed25519.GenPrivKey()
 		dialer = newMultiplexTransport(
@@ -259,6 +265,7 @@ func testDialer(dialAddr NetAddress, errc chan error) {
 
 	// Signal that the connection was established.
 	errc <- nil
+	t.Cleanup(func() { dialer.Close() })
 }
 
 func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
@@ -327,6 +334,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 				},
 			)
 		)
+		defer dialer.Close()
 		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 		_, err := dialer.Dial(*addr, peerConfig{})
@@ -352,6 +360,7 @@ func TestTransportMultiplexAcceptNonBlocking(t *testing.T) {
 	if have, want := p.NodeInfo(), fastNodeInfo; !reflect.DeepEqual(have, want) {
 		t.Errorf("have %v, want %v", have, want)
 	}
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
@@ -369,6 +378,7 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 				},
 			)
 		)
+		defer dialer.Close()
 
 		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
@@ -393,6 +403,7 @@ func TestTransportMultiplexValidateNodeInfo(t *testing.T) {
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
 	}
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
@@ -409,6 +420,7 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 				PrivKey: ed25519.GenPrivKey(),
 			},
 		)
+		defer dialer.Close()
 		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 		_, err := dialer.Dial(*addr, peerConfig{})
@@ -432,6 +444,7 @@ func TestTransportMultiplexRejectMissmatchID(t *testing.T) {
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
 	}
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
@@ -461,6 +474,7 @@ func TestTransportMultiplexDialRejectWrongID(t *testing.T) {
 			t.Errorf("expected ErrRejected, got %v", err)
 		}
 	}
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexRejectIncompatible(t *testing.T) {
@@ -478,6 +492,7 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 				},
 			)
 		)
+		defer dialer.Close()
 		addr := NewNetAddress(mt.nodeKey.ID(), mt.listener.Addr())
 
 		_, err := dialer.Dial(*addr, peerConfig{})
@@ -497,6 +512,7 @@ func TestTransportMultiplexRejectIncompatible(t *testing.T) {
 	} else {
 		t.Errorf("expected ErrRejected, got %v", err)
 	}
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportMultiplexRejectSelf(t *testing.T) {
@@ -536,6 +552,7 @@ func TestTransportMultiplexRejectSelf(t *testing.T) {
 	} else {
 		t.Errorf("expected ErrRejected, got %v", nil)
 	}
+	t.Cleanup(func() { mt.Close() })
 }
 
 func TestTransportConnDuplicateIPFilter(t *testing.T) {
@@ -634,6 +651,7 @@ func TestTransportAddChannel(t *testing.T) {
 	if !mt.nodeInfo.(DefaultNodeInfo).HasChannel(testChannel) {
 		t.Errorf("missing added channel %v. Got %v", testChannel, mt.nodeInfo.(DefaultNodeInfo).Channels)
 	}
+	t.Cleanup(func() { mt.Close() })
 }
 
 // create listener
