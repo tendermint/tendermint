@@ -18,7 +18,8 @@ import (
 
 func testMux() *http.ServeMux {
 	funcMap := map[string]*RPCFunc{
-		"c": NewRPCFunc(func(ctx *types.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+		"c":     NewRPCFunc(func(ctx *types.Context, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+		"block": NewRPCFunc(func(ctx *types.Context, h int) (string, error) { return "block", nil }, "height", Cacheable("height")),
 	}
 	mux := http.NewServeMux()
 	buf := new(bytes.Buffer)
@@ -226,4 +227,53 @@ func TestUnknownRPCPath(t *testing.T) {
 	// Always expecting back a 404 error
 	require.Equal(t, http.StatusNotFound, res.StatusCode, "should always return 404")
 	res.Body.Close()
+}
+
+func TestRPCResponseCache(t *testing.T) {
+	mux := testMux()
+	body := strings.NewReader(`{"jsonrpc": "2.0","method":"block","id": 0, "params": ["1"]}`)
+	req, _ := http.NewRequest("Get", "http://localhost/", body)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	res := rec.Result()
+
+	// Always expecting back a JSONRPCResponse
+	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
+	require.Equal(t, "public, max-age=86400", res.Header.Get("Cache-control"))
+
+	_, err := io.ReadAll(res.Body)
+	res.Body.Close()
+	require.Nil(t, err, "reading from the body should not give back an error")
+
+	// send a request with default height.
+	body = strings.NewReader(`{"jsonrpc": "2.0","method":"block","id": 0, "params": ["0"]}`)
+	req, _ = http.NewRequest("Get", "http://localhost/", body)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	res = rec.Result()
+
+	// Always expecting back a JSONRPCResponse
+	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
+	require.Equal(t, "", res.Header.Get("Cache-control"))
+
+	_, err = io.ReadAll(res.Body)
+
+	res.Body.Close()
+	require.Nil(t, err, "reading from the body should not give back an error")
+
+	// send a request with default height, but as empty set of parameters.
+	body = strings.NewReader(`{"jsonrpc": "2.0","method":"block","id": 0, "params": []}`)
+	req, _ = http.NewRequest("Get", "http://localhost/", body)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	res = rec.Result()
+
+	// Always expecting back a JSONRPCResponse
+	require.True(t, statusOK(res.StatusCode), "should always return 2XX")
+	require.Equal(t, "", res.Header.Get("Cache-control"))
+
+	_, err = io.ReadAll(res.Body)
+
+	res.Body.Close()
+	require.Nil(t, err, "reading from the body should not give back an error")
 }
