@@ -312,11 +312,11 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 		panic(fmt.Errorf("encode timed wall message failure: %w", err))
 	}
 
-	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
 	if length > maxMsgSizeBytes {
 		return fmt.Errorf("msg is too big: %d bytes, max: %d bytes", length, maxMsgSizeBytes)
 	}
+	crc := crc32.Checksum(data, crc32c)
 	totalLength := 8 + int(length)
 
 	msg := make([]byte, totalLength)
