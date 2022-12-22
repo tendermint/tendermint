@@ -104,7 +104,7 @@ func WriteRPCResponseHTTPError(
 		panic("tried to write http error response without RPC error")
 	}
 
-	jsonBytes, err := json.MarshalIndent(res, "", "  ")
+	jsonBytes, err := json.Marshal(res)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
@@ -124,7 +124,7 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res ...types.RPCResponse) error
 		v = res
 	}
 
-	jsonBytes, err := json.MarshalIndent(v, "", "  ")
+	jsonBytes, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("json marshal: %w", err)
 	}
