@@ -261,7 +261,7 @@ func (vote *Vote) VerifyVoteAndExtension(chainID string, pubKey crypto.PubKey) e
 // VerifyExtension checks whether the vote extension signature corresponds to the
 // given chain ID and public key.
 func (vote *Vote) VerifyExtension(chainID string, pubKey crypto.PubKey) error {
-	if vote.Type != tmproto.PrecommitType || len(vote.BlockID.Hash) == 0 {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsZero() {
 		return nil
 	}
 	v := vote.ToProto()
@@ -280,8 +280,8 @@ func (vote *Vote) ValidateBasic() error {
 		return errors.New("invalid Type")
 	}
 
-	if vote.Height < 0 {
-		return errors.New("negative Height")
+	if vote.Height <= 0 {
+		return errors.New("negative or zero Height")
 	}
 
 	if vote.Round < 0 {
@@ -320,19 +320,30 @@ func (vote *Vote) ValidateBasic() error {
 	// We should only ever see vote extensions in non-nil precommits, otherwise
 	// this is a violation of the specification.
 	// https://github.com/tendermint/tendermint/issues/8487
-	if vote.Type != tmproto.PrecommitType || (vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) == 0) {
+	if vote.Type != tmproto.PrecommitType || vote.BlockID.IsZero() {
 		if len(vote.Extension) > 0 {
-			return errors.New("unexpected vote extension")
+			return fmt.Errorf(
+				"unexpected vote extension; vote type %d, isNil %t",
+				vote.Type, vote.BlockID.IsZero(),
+			)
 		}
 		if len(vote.ExtensionSignature) > 0 {
 			return errors.New("unexpected vote extension signature")
 		}
 	}
 
-	if vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 {
+	if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsZero() {
+		// It's possible that this vote has vote extensions but
+		// they could also be disabled and thus not present thus
+		// we can't do all checks
 		if len(vote.ExtensionSignature) > MaxSignatureSize {
 			return fmt.Errorf("vote extension signature is too big (max: %d)", MaxSignatureSize)
 		}
+
+		// NOTE: extended votes should have a signature regardless of
+		// of whether there is any data in the extension or not however
+		// we don't know if extensions are enabled so we can only
+		// enforce the signature when extension size is not nil
 		if len(vote.ExtensionSignature) == 0 && len(vote.Extension) != 0 {
 			return fmt.Errorf("vote extension signature absent on vote with extension")
 		}
@@ -348,7 +359,7 @@ func (vote *Vote) EnsureExtension() error {
 	if vote.Type != tmproto.PrecommitType {
 		return nil
 	}
-	if len(vote.BlockID.Hash) == 0 {
+	if vote.BlockID.IsZero() {
 		return nil
 	}
 	if len(vote.ExtensionSignature) > 0 {
@@ -392,4 +403,44 @@ func VotesToProto(votes []*Vote) []*tmproto.Vote {
 		}
 	}
 	return res
+}
+
+func SignAndCheckVote(
+	vote *Vote,
+	privVal PrivValidator,
+	chainID string,
+	extensionsEnabled bool,
+) (bool, error) {
+	v := vote.ToProto()
+	if err := privVal.SignVote(chainID, v); err != nil {
+		// Failing to sign a vote has always been a recoverable error, this function keeps it that way
+		return true, err // true = recoverable
+	}
+	vote.Signature = v.Signature
+
+	isPrecommit := vote.Type == tmproto.PrecommitType
+	if !isPrecommit && extensionsEnabled {
+		// Non-recoverable because the caller passed parameters that don't make sense
+		return false, fmt.Errorf("only Precommit votes may have extensions enabled; vote type: %d", vote.Type)
+	}
+
+	isNil := vote.BlockID.IsZero()
+	extSignature := (len(v.ExtensionSignature) > 0)
+	if extSignature == (!isPrecommit || isNil) {
+		// Non-recoverable because the vote is malformed
+		return false, fmt.Errorf(
+			"extensions must be present IFF vote is a non-nil Precommit; present %t, vote type %d, is nil %t",
+			extSignature,
+			vote.Type,
+			isNil,
+		)
+	}
+
+	vote.ExtensionSignature = nil
+	if extensionsEnabled {
+		vote.ExtensionSignature = v.ExtensionSignature
+	}
+	vote.Timestamp = v.Timestamp
+
+	return true, nil
 }

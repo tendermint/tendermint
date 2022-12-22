@@ -2119,7 +2119,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 		}
 		// Verify VoteExtension if precommit and not nil
 		// https://github.com/tendermint/tendermint/issues/8487
-		if vote.Type == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 &&
+		if vote.Type == tmproto.PrecommitType && !vote.BlockID.IsZero() &&
 			!bytes.Equal(vote.ValidatorAddress, myAddr) { // Skip the VerifyVoteExtension call if the vote was issued by this validator.
 
 			// The core fields of the vote message were already validated in the
@@ -2308,10 +2308,11 @@ func (cs *State) signVote(
 		BlockID:          types.BlockID{Hash: hash, PartSetHeader: header},
 	}
 
-	if msgType == tmproto.PrecommitType && len(vote.BlockID.Hash) != 0 {
+	extEnabled := cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height)
+	if msgType == tmproto.PrecommitType && !vote.BlockID.IsZero() {
 		// if the signedMessage type is for a non-nil precommit, add
 		// VoteExtension
-		if cs.state.ConsensusParams.ABCI.VoteExtensionsEnabled(cs.Height) {
+		if extEnabled {
 			ext, err := cs.blockExec.ExtendVote(vote)
 			if err != nil {
 				return nil, err
@@ -2319,11 +2320,11 @@ func (cs *State) signVote(
 			vote.Extension = ext
 		}
 	}
-	v := vote.ToProto()
-	err := cs.privValidator.SignVote(cs.state.ChainID, v)
-	vote.Signature = v.Signature
-	vote.ExtensionSignature = v.ExtensionSignature
-	vote.Timestamp = v.Timestamp
+
+	recoverable, err := types.SignAndCheckVote(vote, cs.privValidator, cs.state.ChainID, extEnabled && (msgType == tmproto.PrecommitType))
+	if err != nil && !recoverable {
+		panic(fmt.Sprintf("non-recoverable error when signing vote (%d/%d)", vote.Height, vote.Round))
+	}
 
 	return vote, err
 }
