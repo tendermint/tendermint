@@ -209,8 +209,10 @@ func dedupMatchEvents(conditions []query.Condition) ([]query.Condition, bool) {
 }
 
 func checkHeightConditions(heightInfo HeightInfo, keyHeight int64) bool {
-	if heightInfo.heightRange.Key != "" && !checkBounds(heightInfo.heightRange, keyHeight) {
-		return false
+	if heightInfo.heightRange.Key != "" {
+		if !checkBounds(heightInfo.heightRange, keyHeight) {
+			return false
+		}
 	} else {
 		if heightInfo.height != 0 && keyHeight != heightInfo.height {
 			return false
