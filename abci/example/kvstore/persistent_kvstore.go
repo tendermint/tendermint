@@ -54,6 +54,9 @@ func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication
 	}
 }
 
+func (app *PersistentKVStoreApplication) SetGenBlockEvents() {
+	app.app.genBlockEvents = true
+}
 func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }

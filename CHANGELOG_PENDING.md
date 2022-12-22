@@ -39,9 +39,11 @@ Friendly reminder, we have a [bug bounty program](https://hackerone.com/tendermi
 ### FEATURES
 
 - [abci] \#9301 New ABCI methods `PrepareProposal` and `ProcessProposal` which give the app control over transactions proposed and allows for verification of proposed blocks.
+- [rpc] \#9759 Added `match_event` query parameter to indicate to Tendermint that the query should match event attributes within events, not only within a height.(@jmalicevic)
 
 ### IMPROVEMENTS
 
+- [state/kvindexer] \#9759 Added `match.event` keyword to support condition evalution based on the event attributes belong to. (@jmalicevic)
 - [crypto] \#9250 Update to use btcec v2 and the latest btcutil. (@wcsiu)
 - [proto] \#9356 Migrate from `gogo/protobuf` to `cosmos/gogoproto` (@julienrbrt)
 - [rpc] \#9276 Added `header` and `header_by_hash` queries to the RPC client (@samricotta)

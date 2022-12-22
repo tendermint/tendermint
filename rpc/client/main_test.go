@@ -19,6 +19,8 @@ func TestMain(m *testing.M) {
 	}
 
 	app := kvstore.NewPersistentKVStoreApplication(dir)
+	// If testing block event generation
+	// app.SetGenBlockEvents() needs to be called here
 	node = rpctest.StartTendermint(app)
 
 	code := m.Run()
