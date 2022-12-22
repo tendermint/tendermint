@@ -354,7 +354,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 			css[i].privValidator.(types.MockPV).DisableChecks()
 			css[i].decideProposal = func(j int32) func(int64, int32) {
 				return func(height int64, round int32) {
-					byzantineDecideProposalFunc(t, ctx, height, round, css[j], switches[j])
+					byzantineDecideProposalFunc(ctx, t, height, round, css[j], switches[j])
 				}
 			}(int32(i))
 			// We are setting the prevote function to do nothing because the prevoting
@@ -473,7 +473,7 @@ func TestByzantineConflictingProposalsWithPartition(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, ctx context.Context, height int64, round int32, cs *State, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(ctx context.Context, t *testing.T, height int64, round int32, cs *State, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
