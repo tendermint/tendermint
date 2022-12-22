@@ -208,8 +208,10 @@ func NewNode(config *cfg.Config,
 	// Create the handshaker, which calls RequestInfo, sets the AppVersion on the state,
 	// and replays any blocks as necessary to sync tendermint with the app.
 	consensusLogger := logger.With("module", "consensus")
-	if !stateSync {
-		if err := doHandshake(stateStore, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
+
+	// RPC recovery is required if blockStore Height is 0
+	if blockStore.Height() == 0 || !stateSync {
+		if err := doHandshake(config.StateSync, stateStore, state, blockStore, genDoc, eventBus, proxyApp, consensusLogger); err != nil {
 			return nil, err
 		}
 
@@ -424,8 +426,9 @@ func (n *Node) OnStart() error {
 		return fmt.Errorf("could not dial peers from persistent_peers field: %w", err)
 	}
 
-	// Run state sync
+	// Statesync reqeusting all data from P2P
 	if n.stateSync {
+		// If state and blockStore.Height are both at the same height, skip the P2P Statesync and immediately enter consensus
 		bcR, ok := n.bcReactor.(blockSyncReactor)
 		if !ok {
 			return fmt.Errorf("this blocksync reactor does not support switching from state sync")
@@ -434,6 +437,31 @@ func (n *Node) OnStart() error {
 			n.config.StateSync, n.config.BlockSyncMode, n.stateStore, n.blockStore, n.stateSyncGenesis)
 		if err != nil {
 			return fmt.Errorf("failed to start state sync: %w", err)
+		}
+	}
+
+	// Finish Local stateSync by fetching latest heights from RPC
+	if n.stateSyncGenesis.LastBlockHeight > 0 && n.blockStore.Height() == 0 {
+		// if appState.Height > 0, but if blockStore has just been RPC restored, then we must force swtich to consensus
+		n.Logger.Info("Detected recent RPC blockStore restore")
+
+		state, err := n.stateStore.Load()
+		if err != nil {
+			return fmt.Errorf("cannot load state: %w", err)
+		}
+		err = n.stateStore.Bootstrap(state)
+		if err != nil {
+			n.Logger.Error("Failed to bootstrap node with new state", "err", err)
+			return err
+		}
+		n.consensusReactor.Metrics.StateSyncing.Set(0)
+		n.consensusReactor.Metrics.BlockSyncing.Set(1)
+
+		bcR, _ := n.bcReactor.(blockSyncReactor)
+		err = bcR.SwitchToBlockSync(state)
+		if err != nil {
+			// If already fastsync, we expect an error
+			n.Logger.Info("Failed to switch to fast sync", "err", err)
 		}
 	}
 
