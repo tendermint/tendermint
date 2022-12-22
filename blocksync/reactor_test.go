@@ -42,10 +42,13 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
+	consPar := types.DefaultConsensusParams()
+	consPar.ABCI.VoteExtensionsEnableHeight = 1
 	return &types.GenesisDoc{
-		GenesisTime: tmtime.Now(),
-		ChainID:     test.DefaultTestChainID,
-		Validators:  validators,
+		GenesisTime:     tmtime.Now(),
+		ChainID:         test.DefaultTestChainID,
+		Validators:      validators,
+		ConsensusParams: consPar,
 	}, privValidators
 }
 
@@ -309,4 +312,67 @@ func TestBadBlockStopsPeer(t *testing.T) {
 	}
 
 	assert.True(t, lastReactorPair.reactor.Switch.Peers().Size() < len(reactorPairs)-1)
+}
+
+func TestCheckSwitchToConsensusLastHeightZero(t *testing.T) {
+	const maxBlockHeight = int64(45)
+
+	config = test.ResetTestRoot("blocksync_reactor_test")
+	defer os.RemoveAll(config.RootDir)
+	genDoc, privVals := randGenesisDoc(1, false, 30)
+
+	reactorPairs := make([]ReactorPair, 1, 2)
+	reactorPairs[0] = newReactor(t, log.TestingLogger(), genDoc, privVals, 0)
+	reactorPairs[0].reactor.switchToConsensusMs = 50
+	defer func() {
+		for _, r := range reactorPairs {
+			err := r.reactor.Stop()
+			require.NoError(t, err)
+			err = r.app.Stop()
+			require.NoError(t, err)
+		}
+	}()
+
+	reactorPairs = append(reactorPairs, newReactor(t, log.TestingLogger(), genDoc, privVals, maxBlockHeight))
+
+	var switches []*p2p.Switch
+	for _, r := range reactorPairs {
+		switches = append(switches, p2p.MakeConnectedSwitches(config.P2P, 1, func(i int, s *p2p.Switch) *p2p.Switch {
+			s.AddReactor("BLOCKSYNC", r.reactor)
+			return s
+		}, p2p.Connect2Switches)...)
+	}
+
+	time.Sleep(60 * time.Millisecond)
+
+	// Connect both switches
+	p2p.Connect2Switches(switches, 0, 1)
+
+	startTime := time.Now()
+	for {
+		time.Sleep(20 * time.Millisecond)
+		caughtUp := true
+		for _, r := range reactorPairs {
+			if !r.reactor.pool.IsCaughtUp() {
+				caughtUp = false
+				break
+			}
+		}
+		if caughtUp {
+			break
+		}
+		if time.Since(startTime) > 90*time.Second {
+			msg := "timeout: reactors didn't catch up;"
+			for i, r := range reactorPairs {
+				h, p, lr := r.reactor.pool.GetStatus()
+				c := r.reactor.pool.IsCaughtUp()
+				msg += fmt.Sprintf(" reactor#%d (h %d, p %d, lr %d, c %t);", i, h, p, lr, c)
+			}
+			require.Fail(t, msg)
+		}
+	}
+
+	for _, r := range reactorPairs {
+		assert.GreaterOrEqual(t, r.reactor.store.Height(), maxBlockHeight-2)
+	}
 }

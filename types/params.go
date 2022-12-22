@@ -73,6 +73,9 @@ type ABCIParams struct {
 // VoteExtensionsEnabled returns true if vote extensions are enabled at height h
 // and false otherwise.
 func (a ABCIParams) VoteExtensionsEnabled(h int64) bool {
+	if h < 1 {
+		panic(fmt.Errorf("cannot check if vote extensions enabled for height %d (< 1)", h))
+	}
 	if a.VoteExtensionsEnableHeight == 0 {
 		return false
 	}
