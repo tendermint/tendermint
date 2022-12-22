@@ -239,20 +239,18 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	}
 
 	// if there is a height condition ("tx.height=3"), extract it
-	var height int64
-	var heightIdx int
+	// var height int64
+	// var heightIdx int
 	var heightInfo HeightInfo
 	if matchEvents {
 		// If we are not matching events and tx.height = 3 occurs more than once, the later value will
 		// overwrite the first one. For match.events it will create problems.
 		conditions, heightInfo = dedupHeight(conditions)
-		height = heightInfo.height
-		heightIdx = heightInfo.heightEqIdx
 	} else {
-		height, heightIdx = lookForHeight(conditions)
+		heightInfo.height, heightInfo.heightEqIdx = lookForHeight(conditions)
 	}
 	if matchEvents && !heightInfo.onlyHeightEq {
-		skipIndexes = append(skipIndexes, heightIdx)
+		skipIndexes = append(skipIndexes, heightInfo.heightEqIdx)
 	}
 	// extract ranges
 	// if both upper and lower bounds exist, it's better to get them in order not
@@ -300,7 +298,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		}
 
 		if !hashesInitialized {
-			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, true, matchEvents, heightInfo)
+			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, heightInfo.height), filteredHashes, true, matchEvents, heightInfo)
 			hashesInitialized = true
 
 			// Ignore any remaining conditions if the first condition resulted
@@ -309,7 +307,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 				break
 			}
 		} else {
-			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, false, matchEvents, heightInfo)
+			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, heightInfo.height), filteredHashes, false, matchEvents, heightInfo)
 		}
 	}
 

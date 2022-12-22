@@ -118,19 +118,19 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// If there is an exact height query, return the result immediately
 	// (if it exists).
-	var height int64
+	// var height int64
 	var ok bool
-	var heightIdx int
+	// var heightIdx int
 	var heightInfo HeightInfo
 	if matchEvents {
 		// If we are not matching events and block.height = 3 occurs more than once, the later value will
 		// overwrite the first one. For match.events it will create problems. If we have a height range, we
 		// should ignore height equality.
 		conditions, heightInfo, ok = dedupHeight(conditions)
-		height = heightInfo.height
-		heightIdx = heightInfo.heightEqIdx
+		// height = heightInfo.height
+		// heightIdx = heightInfo.heightEqIdx
 	} else {
-		height, ok, heightIdx = lookForHeight(conditions)
+		heightInfo.height, ok, heightInfo.heightEqIdx = lookForHeight(conditions)
 	}
 
 	// Extract ranges. If both upper and lower bounds exist, it's better to get
@@ -149,13 +149,13 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 	// in the query (the second part of the ||), we don't need to query
 	// per event conditions and return all events within the height range.
 	if ok && (!matchEvents || (matchEvents && heightInfo.onlyHeightEq)) {
-		ok, err := idx.Has(height)
+		ok, err := idx.Has(heightInfo.height)
 		if err != nil {
 			return nil, err
 		}
 
 		if ok {
-			return []int64{height}, nil
+			return []int64{heightInfo.height}, nil
 		}
 
 		return results, nil
@@ -163,8 +163,8 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
-	if matchEvents && heightIdx != -1 {
-		skipIndexes = append(skipIndexes, heightIdx)
+	if matchEvents && heightInfo.heightEqIdx != -1 {
+		skipIndexes = append(skipIndexes, heightInfo.heightEqIdx)
 	}
 
 	if len(ranges) > 0 {

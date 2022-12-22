@@ -183,8 +183,8 @@ func dedupHeight(conditions []query.Condition) (dedupConditions []query.Conditio
 		// If we found a range make sure we set the hegiht idx to -1 as the height equality
 		// will be removed
 		heightInfo.heightEqIdx = -1
+		heightInfo.height = 0
 		found = false
-		heightInfo.heightEqIdx = 0
 		heightInfo.onlyHeightEq = false
 	}
 	return dedupConditions, heightInfo, found
@@ -209,15 +209,11 @@ func dedupMatchEvents(conditions []query.Condition) ([]query.Condition, bool) {
 }
 
 func checkHeightConditions(heightInfo HeightInfo, keyHeight int64) bool {
-	if heightInfo.heightRange.Key != "" {
-		if !checkBounds(heightInfo.heightRange, keyHeight) {
-			return false
-		}
+	if heightInfo.heightRange.Key != "" && !checkBounds(heightInfo.heightRange, keyHeight) {
+		return false
 	} else {
-		if heightInfo.height != 0 {
-			if keyHeight != heightInfo.height {
-				return false
-			}
+		if heightInfo.height != 0 && keyHeight != heightInfo.height {
+			return false
 		}
 	}
 	return true
