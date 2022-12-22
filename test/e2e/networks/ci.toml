@@ -4,6 +4,8 @@
 ipv6 = true
 initial_height = 1000
 initial_state = { initial01 = "a", initial02 = "b", initial03 = "c" }
+# The most common case (e.g. Cosmos SDK-based chains).
+abci_protocol = "builtin"
 
 [validators]
 validator01 = 100
@@ -42,7 +44,6 @@ misbehaviors = { 1018 = "double-prevote" }
 [node.validator02]
 seeds = ["seed02"]
 database = "boltdb"
-abci_protocol = "tcp"
 privval_protocol = "tcp"
 persist_interval = 0
 perturb = ["restart"]
@@ -50,8 +51,6 @@ perturb = ["restart"]
 [node.validator03]
 seeds = ["seed01"]
 database = "badgerdb"
-# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
-#abci_protocol = "grpc"
 privval_protocol = "unix"
 persist_interval = 3
 retain_blocks = 3
@@ -60,7 +59,6 @@ perturb = ["kill"]
 [node.validator04]
 persistent_peers = ["validator01"]
 database = "rocksdb"
-abci_protocol = "builtin"
 perturb = ["pause"]
 
 [node.validator05]
@@ -69,8 +67,6 @@ seeds = ["seed02"]
 database = "cleveldb"
 fast_sync = "v0"
 mempool_version = "v1"
-# FIXME: should be grpc, disabled due to https://github.com/tendermint/tendermint/issues/5439
-#abci_protocol = "grpc"
 privval_protocol = "tcp"
 perturb = ["kill", "pause", "disconnect", "restart"]
 
