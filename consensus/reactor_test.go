@@ -364,7 +364,7 @@ func TestSwitchToConsensusVoteExtensions(t *testing.T) {
 			cs.state.LastValidators = cs.state.Validators.Copy()
 			cs.state.ConsensusParams.ABCI.VoteExtensionsEnableHeight = testCase.initialRequiredHeight
 
-			propBlock, err := cs.createProposalBlock()
+			propBlock, err := cs.createProposalBlock(context.TODO() /**/)
 			require.NoError(t, err)
 
 			// Consensus is preparing to do the next height after the stored height.

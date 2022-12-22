@@ -219,7 +219,7 @@ func decideProposal(
 	round int32,
 ) (proposal *types.Proposal, block *types.Block) {
 	cs1.mtx.Lock()
-	block, err := cs1.createProposalBlock(ctx)
+	block, err := cs1.createProposalBlock(context.TODO() /**/)
 	require.NoError(t, err)
 	blockParts, err := block.MakePartSet(types.BlockPartSizeBytes)
 	require.NoError(t, err)

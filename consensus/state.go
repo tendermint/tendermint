@@ -1176,7 +1176,7 @@ func (cs *State) defaultDecideProposal(height int64, round int32) {
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		var err error
-		block, err = cs.createProposalBlock(ctx)
+		block, err = cs.createProposalBlock(context.TODO())
 		if err != nil {
 			cs.Logger.Error("unable to create proposal block", "error", err)
 			return
@@ -2132,7 +2132,7 @@ func (cs *State) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error
 				return false, err
 			}
 
-			if err = cs.blockExec.VerifyVoteExtension(ctx, vote); err != nil {
+			if err = cs.blockExec.VerifyVoteExtension(context.TODO(), vote); err != nil {
 				return false, err
 			}
 		}
@@ -2314,7 +2314,7 @@ func (cs *State) signVote(
 		// if the signedMessage type is for a non-nil precommit, add
 		// VoteExtension
 		if extEnabled {
-			ext, err := cs.blockExec.ExtendVote(ctx, vote)
+			ext, err := cs.blockExec.ExtendVote(context.TODO(), vote)
 			if err != nil {
 				return nil, err
 			}
