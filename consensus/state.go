@@ -48,6 +48,12 @@ type msgInfo struct {
 	PeerID p2p.ID  `json:"peer_key"`
 }
 
+// indicate to the reactor that a peer should be removed
+type badPeerInfo struct {
+	Error  error  `json:"error"`
+	PeerID p2p.ID `json:"peer_key"`
+}
+
 // internally generated messages which may update the state
 type timeoutInfo struct {
 	Duration time.Duration         `json:"duration"`
@@ -109,9 +115,10 @@ type State struct {
 	internalMsgQueue chan msgInfo
 	timeoutTicker    TimeoutTicker
 
-	// information about about added votes and block parts are written on this channel
+	// information about added votes and block parts, and bad peers, are written on this channel
 	// so statistics can be computed by reactor
-	statsMsgQueue chan msgInfo
+	// Takes a `msgInfo` or a `badPeerInfo`
+	peerInfoQueue chan interface{}
 
 	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
@@ -163,7 +170,7 @@ func NewState(
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
-		statsMsgQueue:    make(chan msgInfo, msgQueueSize),
+		peerInfoQueue:    make(chan interface{}, msgQueueSize),
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
@@ -768,7 +775,26 @@ func (cs *State) receiveRoutine(maxSteps int) {
 
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
-			cs.handleMsg(mi)
+			err := cs.handleMsg(mi)
+			if err != nil {
+				// if error is due to misbehaviour, disconect from peer
+				// TODO: is there a cleaner way to do these checks?
+				if errors.Is(err, ErrInvalidProposalSignature) ||
+					errors.Is(err, types.ErrVoteInvalidSignature) ||
+					errors.Is(err, types.ErrVoteInvalidValidatorAddress) ||
+					errors.Is(err, types.ErrVoteInvalidValidatorIndex) {
+
+					// tell reactor to disconnect from peer
+					cs.peerInfoQueue <- badPeerInfo{
+						Error:  err,
+						PeerID: mi.PeerID,
+					}
+				} else {
+					// other errors don't necessarily mean the peer is bad,
+					// so there is nothing to do
+					// see https://github.com/tendermint/tendermint/issues/2871
+				}
+			}
 
 		case mi = <-cs.internalMsgQueue:
 			err := cs.wal.WriteSync(mi) // NOTE: fsync
@@ -788,7 +814,10 @@ func (cs *State) receiveRoutine(maxSteps int) {
 			}
 
 			// handles proposals, block parts, votes
-			cs.handleMsg(mi)
+			if err := cs.handleMsg(mi); err != nil {
+				// TODO: why are we erroring on our own messages?
+				// should we panic ?
+			}
 
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
 			if err := cs.wal.Write(ti); err != nil {
@@ -807,13 +836,9 @@ func (cs *State) receiveRoutine(maxSteps int) {
 }
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
-func (cs *State) handleMsg(mi msgInfo) {
+func (cs *State) handleMsg(mi msgInfo) (err error) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	var (
-		added bool
-		err   error
-	)
 
 	msg, peerID := mi.Msg, mi.PeerID
 
@@ -825,6 +850,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
+		var added bool
 		added, err = cs.addProposalBlockPart(msg, peerID)
 
 		// We unlock here to yield to any routines that need to read the the RoundState.
@@ -845,7 +871,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 			cs.handleCompleteProposal(msg.Height)
 		}
 		if added {
-			cs.statsMsgQueue <- mi
+			cs.peerInfoQueue <- mi
 		}
 
 		if err != nil && msg.Round != cs.Round {
@@ -859,11 +885,12 @@ func (cs *State) handleMsg(mi msgInfo) {
 		}
 
 	case *VoteMessage:
+		var added bool
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		added, err = cs.tryAddVote(msg.Vote, peerID)
 		if added {
-			cs.statsMsgQueue <- mi
+			cs.peerInfoQueue <- mi
 		}
 
 		// if err == ErrAddingVote {
@@ -883,7 +910,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 
 	default:
 		cs.Logger.Error("unknown msg type", "type", fmt.Sprintf("%T", msg))
-		return
+		return nil
 	}
 
 	if err != nil {
@@ -896,6 +923,7 @@ func (cs *State) handleMsg(mi msgInfo) {
 			"err", err,
 		)
 	}
+	return err
 }
 
 func (cs *State) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
@@ -1861,9 +1889,9 @@ func (cs *State) defaultSetProposal(proposal *types.Proposal) error {
 	return nil
 }
 
-// NOTE: block is not necessarily valid.
-// Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
-// once we have the full block.
+// Once we have the full block, this will asynchronously trigger either enterPrevote (before we timeout of propose) or tryFinalizeCommit,
+// NOTE: block is not necessarily valid. Invalid block means a bad proposer, which
+// we can't punish at the peer layer (could be punished by consensus)
 func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
 	height, round, part := msg.Height, msg.Round, msg.Part
 
@@ -1891,6 +1919,7 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
+		// TODO: can we punish for these or is there a reason they might accidentaly happen?
 		if errors.Is(err, types.ErrPartSetInvalidProof) || errors.Is(err, types.ErrPartSetUnexpectedIndex) {
 			cs.metrics.BlockGossipPartsReceived.With("matches_current", "false").Add(1)
 		}
@@ -2010,7 +2039,8 @@ func (cs *State) tryAddVote(vote *types.Vote, peerID p2p.ID) (bool, error) {
 			// 3) tmkms use with multiple validators connecting to a single tmkms instance
 			// 		(https://github.com/tendermint/tendermint/issues/3839).
 			cs.Logger.Info("failed attempting to add vote", "err", err)
-			return added, ErrAddingVote
+			//return added, ErrAddingVote
+			return added, err
 		}
 	}
 
