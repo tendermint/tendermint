@@ -18,6 +18,8 @@ echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 ```
 
+At this point you may need to restart any open Terminal sessions for the environment variables to take effect; or ```source ~/.bash_profile```.
+
 ### Get Source Code
 
 ```sh
