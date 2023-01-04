@@ -216,7 +216,8 @@ message ResponseCheckTx {
 
   // mempool_error is set by Tendermint.
   // ABCI applictions creating a ResponseCheckTX should not set mempool_error.
-  string mempool_error = 11;
+  string mempool_error = 11;  
+  bool is_oracle_tx = 12 [(gogoproto.jsontag) = "is_oracle_tx,omitempty"]; // mempool logic
 }
 
 message ResponseDeliverTx {
