@@ -10,7 +10,6 @@ require (
 	github.com/btcsuite/btcd v0.22.1
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce
 	github.com/bufbuild/buf v1.9.0
-	github.com/cosmos/gogoproto v1.4.2
 	github.com/creachadair/taskgroup v0.3.2
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-kit/kit v0.12.0
@@ -46,7 +45,7 @@ require (
 	google.golang.org/grpc v1.50.1
 )
 
-require github.com/vektra/mockery/v2 v2.14.0
+require github.com/vektra/mockery/v2 v2.16.0
 
 require (
 	github.com/gogo/protobuf v1.3.2
@@ -86,6 +85,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/charithe/durationcheck v0.0.9 // indirect
 	github.com/chavacava/garif v0.0.0-20220630083739-93517212f375 // indirect
+	github.com/chigopher/pathlib v0.12.0 // indirect
 	github.com/containerd/containerd v1.6.8 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
