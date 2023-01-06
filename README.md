@@ -1,3 +1,11 @@
+This repository will really stubbornly retry HTTP posts against a Tendermint node. We do this to deal with flakiness in
+several sidecars we run while we look into upstreaming proper retriability. 
+
+Currently supported Tendermint versions:
+- tags/v0.34.21
+
+===
+
 # Tendermint
 
 _UPDATE: TendermintCore will be archived, see issue https://github.com/tendermint/tendermint/issues/9972_<br/>
