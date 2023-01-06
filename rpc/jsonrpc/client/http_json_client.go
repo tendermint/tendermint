@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -188,36 +189,88 @@ func (c *Client) Call(
 ) (interface{}, error) {
 	id := c.nextRequestID()
 
-	request, err := types.MapToRequest(id, method, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode params: %w", err)
+	// Tracking variables for errors and the response.
+  var err error = nil
+	var httpResponse *http.Response = nil
+	
+	// Really, REALLY, stubbornly loop until the node gives us *something*.
+	for {
+		request, err := types.MapToRequest(id, method, params)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode params: %w", err)
+		}
+
+		requestBytes, err := json.Marshal(request)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request: %w", err)
+		}
+
+		// The caller gave us a context, and that was really nice of them, but it probably has a deadline on it. 
+		// We're going to assume we know better, so use the background context which will just never expire.
+		bgContext := context.Background()
+		requestBuf := bytes.NewBuffer(requestBytes)
+		httpRequest, err := http.NewRequestWithContext(bgContext, http.MethodPost, c.address, requestBuf)
+		if err != nil {
+			return nil, fmt.Errorf("request failed: %w", err)
+		}
+
+		httpRequest.Header.Set("Content-Type", "application/json")
+
+		if c.username != "" || c.password != "" {
+			httpRequest.SetBasicAuth(c.username, c.password)
+		}
+
+		// Capture the request start time.
+		requestStart := time.Now()
+    
+		// Make the request. Recall that this client has a 10s timeout on it because we do not care how long it takes to get
+		// an answer as long as we don't throw an error and restart the process. 
+		httpResponse, err = c.client.Do(httpRequest)
+        
+		// Capture the request end time
+		requestEnd := time.Now()
+
+		// If we got a response, HURRAH! Break out of the loop.
+		if err == nil {
+			break
+		}
+
+		// Otherwise you better believe we're going to try again. Print out some debugging info so we can find more late.
+		fmt.Println("FYI the sidecar failed to POST to the Tendermint node.")
+
+		// Print request start / end
+		fmt.Printf("Request start time: %s", requestStart)
+		fmt.Printf("Request end time:   %s", requestEnd)
+
+		// Lets log everything we can about the error so that we can make a PR to the client libraries to have them handle
+		// errors rather than dying.
+		fmt.Printf("%#v\n", err) // Everything about the raw error
+
+		// Could be an OpError from the network library.
+		if oerr, ok := err.(*net.OpError); ok {
+			fmt.Println("Received an OpError")
+			fmt.Printf("%w \n", oerr.Err) // Wrapped error
+			fmt.Printf("%#v\n", oerr.Err) // Everything about the wrapped error
+		}
+
+		// Could be a url Error
+		if uerr, ok := err.(*url.Error); ok {
+			fmt.Println("Received a URL Error")
+			fmt.Printf("OP: %s \n", uerr.Op) // Operation causing error
+			fmt.Printf("U: %s \n", uerr.URL) // URL causing error
+			fmt.Printf("Err: %w \n", uerr.Err) // wrapped error
+			fmt.Printf("%#v\n", uerr.Err) // Everything about the wrapped error
+		}
 	}
 
-	requestBytes, err := json.Marshal(request)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	requestBuf := bytes.NewBuffer(requestBytes)
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.address, requestBuf)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-
-	httpRequest.Header.Set("Content-Type", "application/json")
-
-	if c.username != "" || c.password != "" {
-		httpRequest.SetBasicAuth(c.username, c.password)
-	}
-
-	httpResponse, err := c.client.Do(httpRequest)
+	// Resume our normal logic. 
 	if err != nil {
 		return nil, fmt.Errorf("post failed: %w", err)
 	}
 
 	defer httpResponse.Body.Close()
 
-	responseBytes, err := io.ReadAll(httpResponse.Body)
+	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -265,7 +318,7 @@ func (c *Client) sendBatch(ctx context.Context, requests []*jsonRPCBufferedReque
 
 	defer httpResponse.Body.Close()
 
-	responseBytes, err := io.ReadAll(httpResponse.Body)
+	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
@@ -393,8 +446,10 @@ func DefaultHTTPClient(remoteAddr string) (*http.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	
 	client := &http.Client{
+		// If a node can't answer in 10sec, what is the point.
+		Timeout: 10 * time.Second,
 		Transport: &http.Transport{
 			// Set to true to prevent GZIP-bomb DoS attacks
 			DisableCompression: true,
