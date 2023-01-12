@@ -39,7 +39,7 @@ tendermint testnet --help
 
 The `genesis.json` file in `$TMHOME/config/` defines the initial
 TendermintCore state upon genesis of the blockchain ([see
-definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.go)).
+definition](https://github.com/tendermint/tendermint/blob/v0.34.x/types/genesis.go)).
 
 #### Fields
 
@@ -49,7 +49,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
   chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
 - `initial_height`: Height at which Tendermint should begin at. If a blockchain is conducting a network upgrade, 
     starting from the stopped height brings uniqueness to previous heights. 
-- `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
+- `consensus_params` [spec](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/core/data_structures.md#consensusparams)
     - `block`
         - `max_bytes`: Max block size, in bytes.
         - `max_gas`: Max gas per block.
@@ -183,7 +183,7 @@ endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
 
-> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
+> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/v0.34/rpc/)
 
 ### Formatting
 

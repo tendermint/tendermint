@@ -3,7 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -29,7 +29,7 @@ func Fuzz(data []byte) int {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	res := rec.Result()
-	blob, err := ioutil.ReadAll(res.Body)
+	blob, err := io.ReadAll(res.Body)
 	if err != nil {
 		panic(err)
 	}

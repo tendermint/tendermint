@@ -2,8 +2,9 @@ package v1
 
 import (
 	"fmt"
-	"reflect"
 	"time"
+
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/tendermint/tendermint/behaviour"
 	bc "github.com/tendermint/tendermint/blockchain"
@@ -172,21 +173,20 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			SendQueueCapacity:   2000,
 			RecvBufferCapacity:  50 * 4096,
 			RecvMessageCapacity: bc.MaxMsgSize,
+			MessageType:         &bcproto.Message{},
 		},
 	}
 }
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{
-		Base:   bcR.store.Base(),
-		Height: bcR.store.Height(),
-	})
-	if err != nil {
-		bcR.Logger.Error("could not convert msg to protobuf", "err", err)
-		return
-	}
-	peer.Send(BlockchainChannel, msgBytes)
+	p2p.SendEnvelopeShim(peer, p2p.Envelope{ //nolint: staticcheck
+		ChannelID: BlockchainChannel,
+		Message: &bcproto.StatusResponse{
+			Base:   bcR.store.Base(),
+			Height: bcR.store.Height(),
+		},
+	}, bcR.Logger)
 	// it's OK if send fails. will try later in poolRoutine
 
 	// peer is added to the pool once we receive the first
@@ -206,35 +206,28 @@ func (bcR *BlockchainReactor) sendBlockToPeer(msg *bcproto.BlockRequest,
 			bcR.Logger.Error("Could not send block message to peer", "err", err)
 			return false
 		}
-		msgBytes, err := bc.EncodeMsg(&bcproto.BlockResponse{Block: pbbi})
-		if err != nil {
-			bcR.Logger.Error("unable to marshal msg", "err", err)
-			return false
-		}
-		return src.TrySend(BlockchainChannel, msgBytes)
+		return p2p.TrySendEnvelopeShim(src, p2p.Envelope{ //nolint: staticcheck
+			ChannelID: BlockchainChannel,
+			Message:   &bcproto.BlockResponse{Block: pbbi},
+		}, bcR.Logger)
 	}
 
 	bcR.Logger.Info("peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	msgBytes, err := bc.EncodeMsg(&bcproto.NoBlockResponse{Height: msg.Height})
-	if err != nil {
-		bcR.Logger.Error("unable to marshal msg", "err", err)
-		return false
-	}
-	return src.TrySend(BlockchainChannel, msgBytes)
+	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{ //nolint: staticcheck
+		ChannelID: BlockchainChannel,
+		Message:   &bcproto.NoBlockResponse{Height: msg.Height},
+	}, bcR.Logger)
 }
 
 func (bcR *BlockchainReactor) sendStatusResponseToPeer(msg *bcproto.StatusRequest, src p2p.Peer) (queued bool) {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusResponse{
-		Base:   bcR.store.Base(),
-		Height: bcR.store.Height(),
-	})
-	if err != nil {
-		bcR.Logger.Error("unable to marshal msg", "err", err)
-		return false
-	}
-
-	return src.TrySend(BlockchainChannel, msgBytes)
+	return p2p.TrySendEnvelopeShim(src, p2p.Envelope{ //nolint: staticcheck
+		ChannelID: BlockchainChannel,
+		Message: &bcproto.StatusResponse{
+			Base:   bcR.store.Base(),
+			Height: bcR.store.Height(),
+		},
+	}, bcR.Logger)
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
@@ -250,34 +243,27 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
-func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := bc.DecodeMsg(msgBytes)
-	if err != nil {
-		bcR.Logger.Error("error decoding message", "src", src, "chId", chID, "err", err)
-		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
+func (bcR *BlockchainReactor) ReceiveEnvelope(e p2p.Envelope) {
+	if err := bc.ValidateMsg(e.Message); err != nil {
+		bcR.Logger.Error("peer sent us invalid msg", "peer", e.Src, "msg", e.Message, "err", err)
+		_ = bcR.swReporter.Report(behaviour.BadMessage(e.Src.ID(), err.Error()))
 		return
 	}
 
-	if err = bc.ValidateMsg(msg); err != nil {
-		bcR.Logger.Error("peer sent us invalid msg", "peer", src, "msg", msg, "err", err)
-		_ = bcR.swReporter.Report(behaviour.BadMessage(src.ID(), err.Error()))
-		return
-	}
+	bcR.Logger.Debug("Receive", "src", e.Src, "chID", e.ChannelID, "msg", e.Message)
 
-	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
-
-	switch msg := msg.(type) {
+	switch msg := e.Message.(type) {
 	case *bcproto.BlockRequest:
-		if queued := bcR.sendBlockToPeer(msg, src); !queued {
+		if queued := bcR.sendBlockToPeer(msg, e.Src); !queued {
 			// Unfortunately not queued since the queue is full.
-			bcR.Logger.Error("Could not send block message to peer", "src", src, "height", msg.Height)
+			bcR.Logger.Error("Could not send block message to peer", "src", e.Src, "height", msg.Height)
 		}
 
 	case *bcproto.StatusRequest:
 		// Send peer our state.
-		if queued := bcR.sendStatusResponseToPeer(msg, src); !queued {
+		if queued := bcR.sendStatusResponseToPeer(msg, e.Src); !queued {
 			// Unfortunately not queued since the queue is full.
-			bcR.Logger.Error("Could not send status message to peer", "src", src)
+			bcR.Logger.Error("Could not send status message to peer", "src", e.Src)
 		}
 
 	case *bcproto.BlockResponse:
@@ -289,23 +275,23 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		msgForFSM := bcReactorMessage{
 			event: blockResponseEv,
 			data: bReactorEventData{
-				peerID: src.ID(),
+				peerID: e.Src.ID(),
 				height: bi.Height,
 				block:  bi,
-				length: len(msgBytes),
+				length: msg.Size(),
 			},
 		}
-		bcR.Logger.Info("Received", "src", src, "height", bi.Height)
+		bcR.Logger.Info("Received", "src", e.Src, "height", bi.Height)
 		bcR.messagesForFSMCh <- msgForFSM
 	case *bcproto.NoBlockResponse:
 		msgForFSM := bcReactorMessage{
 			event: noBlockResponseEv,
 			data: bReactorEventData{
-				peerID: src.ID(),
+				peerID: e.Src.ID(),
 				height: msg.Height,
 			},
 		}
-		bcR.Logger.Debug("Peer does not have requested block", "peer", src, "height", msg.Height)
+		bcR.Logger.Debug("Peer does not have requested block", "peer", e.Src, "height", msg.Height)
 		bcR.messagesForFSMCh <- msgForFSM
 
 	case *bcproto.StatusResponse:
@@ -313,16 +299,33 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		msgForFSM := bcReactorMessage{
 			event: statusResponseEv,
 			data: bReactorEventData{
-				peerID: src.ID(),
+				peerID: e.Src.ID(),
 				height: msg.Height,
-				length: len(msgBytes),
+				length: msg.Size(),
 			},
 		}
 		bcR.messagesForFSMCh <- msgForFSM
 
 	default:
-		bcR.Logger.Error(fmt.Sprintf("unknown message type %v", reflect.TypeOf(msg)))
+		bcR.Logger.Error(fmt.Sprintf("unknown message type %T", msg))
 	}
+}
+
+func (bcR *BlockchainReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	msg := &bcproto.Message{}
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
+	uw, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+	bcR.ReceiveEnvelope(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+		Message:   uw,
+	})
 }
 
 // processBlocksRoutine processes blocks until signlaed to stop over the stopProcessing channel
@@ -492,11 +495,10 @@ func (bcR *BlockchainReactor) processBlock() error {
 // Implements bcRNotifier
 // sendStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) sendStatusRequest() {
-	msgBytes, err := bc.EncodeMsg(&bcproto.StatusRequest{})
-	if err != nil {
-		panic(err)
-	}
-	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
+	bcR.Switch.BroadcastEnvelope(p2p.Envelope{
+		ChannelID: BlockchainChannel,
+		Message:   &bcproto.StatusRequest{},
+	})
 }
 
 // Implements bcRNotifier
@@ -507,11 +509,10 @@ func (bcR *BlockchainReactor) sendBlockRequest(peerID p2p.ID, height int64) erro
 		return errNilPeerForBlockRequest
 	}
 
-	msgBytes, err := bc.EncodeMsg(&bcproto.BlockRequest{Height: height})
-	if err != nil {
-		return err
-	}
-	queued := peer.TrySend(BlockchainChannel, msgBytes)
+	queued := p2p.TrySendEnvelopeShim(peer, p2p.Envelope{ //nolint: staticcheck
+		ChannelID: BlockchainChannel,
+		Message:   &bcproto.BlockRequest{Height: height},
+	}, bcR.Logger)
 	if !queued {
 		return errSendQueueFull
 	}

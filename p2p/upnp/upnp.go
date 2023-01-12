@@ -10,7 +10,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -299,7 +299,6 @@ type statusInfo struct {
 }
 
 func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
-
 	message := "<u:GetExternalIPAddress xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"</u:GetExternalIPAddress>"
 
@@ -312,7 +311,7 @@ func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
 		return
 	}
 	var envelope Envelope
-	data, err := ioutil.ReadAll(response.Body)
+	data, err := io.ReadAll(response.Body)
 	if err != nil {
 		return
 	}
@@ -350,7 +349,8 @@ func (n *upnpNAT) AddPortMapping(
 	externalPort,
 	internalPort int,
 	description string,
-	timeout int) (mappedExternalPort int, err error) {
+	timeout int,
+) (mappedExternalPort int, err error) {
 	// A single concatenation would break ARM compilation.
 	message := "<u:AddPortMapping xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"<NewRemoteHost></NewRemoteHost><NewExternalPort>" + strconv.Itoa(externalPort)
@@ -374,7 +374,7 @@ func (n *upnpNAT) AddPortMapping(
 	// TODO: check response to see if the port was forwarded
 	// log.Println(message, response)
 	// JAE:
-	// body, err := ioutil.ReadAll(response.Body)
+	// body, err := io.ReadAll(response.Body)
 	// fmt.Println(string(body), err)
 	mappedExternalPort = externalPort
 	_ = response
@@ -382,7 +382,6 @@ func (n *upnpNAT) AddPortMapping(
 }
 
 func (n *upnpNAT) DeletePortMapping(protocol string, externalPort, internalPort int) (err error) {
-
 	message := "<u:DeletePortMapping xmlns:u=\"urn:" + n.urnDomain + ":service:WANIPConnection:1\">\r\n" +
 		"<NewRemoteHost></NewRemoteHost><NewExternalPort>" + strconv.Itoa(externalPort) +
 		"</NewExternalPort><NewProtocol>" + protocol + "</NewProtocol>" +

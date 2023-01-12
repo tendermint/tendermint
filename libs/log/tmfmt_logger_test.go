@@ -3,7 +3,7 @@ package log_test
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
+	"io"
 	"math"
 	"regexp"
 	"testing"
@@ -62,16 +62,16 @@ func TestTMFmtLogger(t *testing.T) {
 }
 
 func BenchmarkTMFmtLoggerSimple(b *testing.B) {
-	benchmarkRunnerKitlog(b, log.NewTMFmtLogger(ioutil.Discard), baseMessage)
+	benchmarkRunnerKitlog(b, log.NewTMFmtLogger(io.Discard), baseMessage)
 }
 
 func BenchmarkTMFmtLoggerContextual(b *testing.B) {
-	benchmarkRunnerKitlog(b, log.NewTMFmtLogger(ioutil.Discard), withMessage)
+	benchmarkRunnerKitlog(b, log.NewTMFmtLogger(io.Discard), withMessage)
 }
 
 func TestTMFmtLoggerConcurrency(t *testing.T) {
 	t.Parallel()
-	testConcurrency(t, log.NewTMFmtLogger(ioutil.Discard), 10000)
+	testConcurrency(t, log.NewTMFmtLogger(io.Discard), 10000)
 }
 
 func benchmarkRunnerKitlog(b *testing.B, logger kitlog.Logger, f func(kitlog.Logger)) {
@@ -83,7 +83,7 @@ func benchmarkRunnerKitlog(b *testing.B, logger kitlog.Logger, f func(kitlog.Log
 	}
 }
 
-// nolint: errcheck // ignore errors
+//nolint:errcheck // ignore errors
 var (
 	baseMessage = func(logger kitlog.Logger) { logger.Log("foo_key", "foo_value") }
 	withMessage = func(logger kitlog.Logger) { kitlog.With(logger, "a", "b").Log("d", "f") }

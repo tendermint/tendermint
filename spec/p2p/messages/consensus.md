@@ -30,7 +30,7 @@ next block in the blockchain should be.
 
 Vote is sent to vote for some block (or to inform others that a process does not vote in the
 current round). Vote is defined in the
-[Blockchain](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md#blockidd)
+[Blockchain](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/core/data_structures.md#blockidd)
 section and contains validator's
 information (validator address and index), height and round for which the vote is sent, vote type,
 blockID if process vote for some block (`nil` otherwise) and a timestamp when the vote is sent. The

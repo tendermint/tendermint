@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,8 +27,11 @@ func TestSetupEnv(t *testing.T) {
 		{nil, map[string]string{"DEMO_FOOBAR": "good"}, "good"},
 		{nil, map[string]string{"DEMOFOOBAR": "silly"}, "silly"},
 		// and that cli overrides env...
-		{[]string{"--foobar", "important"},
-			map[string]string{"DEMO_FOOBAR": "ignored"}, "important"},
+		{
+			[]string{"--foobar", "important"},
+			map[string]string{"DEMO_FOOBAR": "ignored"},
+			"important",
+		},
 	}
 
 	for idx, tc := range cases {
@@ -55,7 +58,7 @@ func TestSetupEnv(t *testing.T) {
 }
 
 func tempDir() string {
-	cdir, err := ioutil.TempDir("", "test-cli")
+	cdir, err := os.MkdirTemp("", "test-cli")
 	if err != nil {
 		panic(err)
 	}
