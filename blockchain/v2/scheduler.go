@@ -366,7 +366,7 @@ func (sc *scheduler) setStateAtHeight(height int64, state blockState) {
 }
 
 // CONTRACT: peer exists and in Ready state.
-func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now time.Time) error {
+func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int, now time.Time) error {
 	peer := sc.peers[peerID]
 
 	if state := sc.getStateAtHeight(height); state != blockStatePending || sc.pendingBlocks[height] != peerID {
@@ -379,7 +379,7 @@ func (sc *scheduler) markReceived(peerID p2p.ID, height int64, size int64, now t
 			height, pendingTime, now)
 	}
 
-	peer.lastRate = size / now.Sub(pendingTime).Nanoseconds()
+	peer.lastRate = int64(size) / now.Sub(pendingTime).Nanoseconds()
 
 	sc.setStateAtHeight(height, blockStateReceived)
 	delete(sc.pendingBlocks, height)
@@ -532,7 +532,7 @@ func (sc *scheduler) handleBlockResponse(event bcBlockResponse) (Event, error) {
 		return noOp, nil
 	}
 
-	err = sc.markReceived(event.peerID, event.block.Height, event.size, event.time)
+	err = sc.markReceived(event.peerID, event.block.Height, event.block.Size(), event.time)
 	if err != nil {
 		sc.removePeer(event.peerID)
 		return scPeerError{peerID: event.peerID, reason: err}, nil

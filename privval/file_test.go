@@ -3,7 +3,6 @@ package privval
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -23,9 +22,9 @@ import (
 func TestGenLoadValidator(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -41,9 +40,9 @@ func TestGenLoadValidator(t *testing.T) {
 }
 
 func TestResetValidator(t *testing.T) {
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -72,9 +71,9 @@ func TestResetValidator(t *testing.T) {
 func TestLoadOrGenValidator(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	tempKeyFilePath := tempKeyFile.Name()
@@ -159,9 +158,9 @@ func TestUnmarshalValidatorKey(t *testing.T) {
 func TestSignVote(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -169,10 +168,14 @@ func TestSignVote(t *testing.T) {
 	randbytes := tmrand.Bytes(tmhash.Size)
 	randbytes2 := tmrand.Bytes(tmhash.Size)
 
-	block1 := types.BlockID{Hash: randbytes,
-		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
-	block2 := types.BlockID{Hash: randbytes2,
-		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
+	block1 := types.BlockID{
+		Hash:          randbytes,
+		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes},
+	}
+	block2 := types.BlockID{
+		Hash:          randbytes2,
+		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2},
+	}
 
 	height, round := int64(10), int32(1)
 	voteType := tmproto.PrevoteType
@@ -212,9 +215,9 @@ func TestSignVote(t *testing.T) {
 func TestSignProposal(t *testing.T) {
 	assert := assert.New(t)
 
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -222,10 +225,14 @@ func TestSignProposal(t *testing.T) {
 	randbytes := tmrand.Bytes(tmhash.Size)
 	randbytes2 := tmrand.Bytes(tmhash.Size)
 
-	block1 := types.BlockID{Hash: randbytes,
-		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes}}
-	block2 := types.BlockID{Hash: randbytes2,
-		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2}}
+	block1 := types.BlockID{
+		Hash:          randbytes,
+		PartSetHeader: types.PartSetHeader{Total: 5, Hash: randbytes},
+	}
+	block2 := types.BlockID{
+		Hash:          randbytes2,
+		PartSetHeader: types.PartSetHeader{Total: 10, Hash: randbytes2},
+	}
 	height, round := int64(10), int32(1)
 
 	// sign a proposal for first time
@@ -260,9 +267,9 @@ func TestSignProposal(t *testing.T) {
 }
 
 func TestDifferByTimestamp(t *testing.T) {
-	tempKeyFile, err := ioutil.TempFile("", "priv_validator_key_")
+	tempKeyFile, err := os.CreateTemp("", "priv_validator_key_")
 	require.Nil(t, err)
-	tempStateFile, err := ioutil.TempFile("", "priv_validator_state_")
+	tempStateFile, err := os.CreateTemp("", "priv_validator_state_")
 	require.Nil(t, err)
 
 	privVal := GenFilePV(tempKeyFile.Name(), tempStateFile.Name())
@@ -321,7 +328,8 @@ func TestDifferByTimestamp(t *testing.T) {
 }
 
 func newVote(addr types.Address, idx int32, height int64, round int32,
-	typ tmproto.SignedMsgType, blockID types.BlockID) *types.Vote {
+	typ tmproto.SignedMsgType, blockID types.BlockID,
+) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,

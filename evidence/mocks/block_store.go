@@ -4,6 +4,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
+
 	types "github.com/tendermint/tendermint/types"
 )
 

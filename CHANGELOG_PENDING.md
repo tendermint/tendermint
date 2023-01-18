@@ -1,6 +1,6 @@
 # Unreleased Changes
 
-## v0.34.22
+## v0.34.24
 
 ### BREAKING CHANGES
 
@@ -19,4 +19,3 @@
 ### IMPROVEMENTS
 
 ### BUG FIXES
-

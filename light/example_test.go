@@ -3,7 +3,6 @@ package light_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	stdlog "log"
 	"os"
 	"testing"
@@ -25,7 +24,7 @@ func ExampleClient_Update() {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
-	dbDir, err := ioutil.TempDir("", "light-client-example")
+	dbDir, err := os.MkdirTemp("", "light-client-example")
 	if err != nil {
 		stdlog.Fatal(err)
 	}
@@ -93,7 +92,7 @@ func ExampleClient_VerifyLightBlockAtHeight() {
 	// give Tendermint time to generate some blocks
 	time.Sleep(5 * time.Second)
 
-	dbDir, err := ioutil.TempDir("", "light-client-example")
+	dbDir, err := os.MkdirTemp("", "light-client-example")
 	if err != nil {
 		stdlog.Fatal(err)
 	}

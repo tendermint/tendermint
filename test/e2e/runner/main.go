@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 	e2e "github.com/tendermint/tendermint/test/e2e/pkg"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra"
+	"github.com/tendermint/tendermint/test/e2e/pkg/infra/docker"
 )
 
 var (
@@ -25,6 +28,7 @@ type CLI struct {
 	root     *cobra.Command
 	testnet  *e2e.Testnet
 	preserve bool
+	infp     infra.Provider
 }
 
 // NewCLI sets up the CLI.
@@ -40,19 +44,57 @@ func NewCLI() *CLI {
 			if err != nil {
 				return err
 			}
-			testnet, err := e2e.LoadTestnet(file)
+			m, err := e2e.LoadManifest(file)
 			if err != nil {
 				return err
 			}
 
+			inft, err := cmd.Flags().GetString("infrastructure-type")
+			if err != nil {
+				return err
+			}
+
+			var ifd e2e.InfrastructureData
+			switch inft {
+			case "docker":
+				var err error
+				ifd, err = e2e.NewDockerInfrastructureData(m)
+				if err != nil {
+					return err
+				}
+			case "digital-ocean":
+				p, err := cmd.Flags().GetString("infrastructure-data")
+				if err != nil {
+					return err
+				}
+				if p == "" {
+					return errors.New("'--infrastructure-data' must be set when using the 'digital-ocean' infrastructure-type")
+				}
+				ifd, err = e2e.InfrastructureDataFromFile(p)
+				if err != nil {
+					return fmt.Errorf("parsing infrastructure data: %s", err)
+				}
+			default:
+				return fmt.Errorf("unknown infrastructure type '%s'", inft)
+			}
+
+			testnet, err := e2e.LoadTestnet(m, file, ifd)
+			if err != nil {
+				return fmt.Errorf("loading testnet: %s", err)
+			}
+
 			cli.testnet = testnet
+			cli.infp = &infra.NoopProvider{}
+			if inft == "docker" {
+				cli.infp = &docker.Provider{Testnet: testnet}
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
-			if err := Setup(cli.testnet); err != nil {
+			if err := Setup(cli.testnet, cli.infp); err != nil {
 				return err
 			}
 
@@ -114,6 +156,10 @@ func NewCLI() *CLI {
 	cli.root.PersistentFlags().StringP("file", "f", "", "Testnet TOML manifest")
 	_ = cli.root.MarkPersistentFlagRequired("file")
 
+	cli.root.PersistentFlags().StringP("infrastructure-type", "", "docker", "Backing infrastructure used to run the testnet. Either 'digital-ocean' or 'docker'")
+
+	cli.root.PersistentFlags().StringP("infrastructure-data", "", "", "path to the json file containing the infrastructure data. Only used if the 'infrastructure-type' is set to a value other than 'docker'")
+
 	cli.root.Flags().BoolVarP(&cli.preserve, "preserve", "p", false,
 		"Preserves the running of the test net after tests are completed")
 
@@ -121,7 +167,7 @@ func NewCLI() *CLI {
 		Use:   "setup",
 		Short: "Generates the testnet directory and configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return Setup(cli.testnet)
+			return Setup(cli.testnet, cli.infp)
 		},
 	})
 
@@ -131,7 +177,7 @@ func NewCLI() *CLI {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := os.Stat(cli.testnet.Dir)
 			if os.IsNotExist(err) {
-				err = Setup(cli.testnet)
+				err = Setup(cli.testnet, cli.infp)
 			}
 			if err != nil {
 				return err
@@ -231,7 +277,7 @@ Does not run any perbutations.
 			if err := Cleanup(cli.testnet); err != nil {
 				return err
 			}
-			if err := Setup(cli.testnet); err != nil {
+			if err := Setup(cli.testnet, cli.infp); err != nil {
 				return err
 			}
 

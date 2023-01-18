@@ -22,6 +22,7 @@ docs/.vuepress/dist
 *.log
 abci-cli
 docs/node_modules/
+docs/.vuepress/public/rpc
 index.html.md
 
 scripts/wal2json/wal2json
@@ -46,6 +47,8 @@ terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
 profile\.out
+test/app/grpc_client
+test/loadtime/build
 test/e2e/build
 test/e2e/networks/*/
 test/logs
@@ -62,3 +65,5 @@ test/fuzz/**/*.zip
 *.pdf
 *.gz
 *.dvi
+# Python virtual environments
+.venv

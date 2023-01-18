@@ -9,6 +9,7 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/go-kit/log/term"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -207,7 +208,10 @@ func TestReactorBroadcastEvidenceMemoryLeak(t *testing.T) {
 	// i.e. broadcastEvidenceRoutine finishes when peer is stopped
 	defer leaktest.CheckTimeout(t, 10*time.Second)()
 
-	p.On("Send", evidence.EvidenceChannel, mock.AnythingOfType("[]uint8")).Return(false)
+	p.On("SendEnvelope", mock.MatchedBy(func(i interface{}) bool {
+		e, ok := i.(p2p.Envelope)
+		return ok && e.ChannelID == evidence.EvidenceChannel
+	})).Return(false)
 	quitChan := make(<-chan struct{})
 	p.On("Quit").Return(quitChan)
 	ps := peerState{2}
@@ -365,6 +369,33 @@ func exampleVote(t byte) *types.Vote {
 		ValidatorAddress: crypto.AddressHash([]byte("validator_address")),
 		ValidatorIndex:   56789,
 	}
+}
+func TestLegacyReactorReceiveBasic(t *testing.T) {
+	config := cfg.TestConfig()
+	N := 1
+
+	stateDBs := make([]sm.Store, N)
+	val := types.NewMockPV()
+	stateDBs[0] = initializeValidatorState(val, 1)
+
+	reactors, _ := makeAndConnectReactorsAndPools(config, stateDBs)
+
+	var (
+		reactor = reactors[0]
+		peer    = &p2pmocks.Peer{}
+	)
+	quitChan := make(<-chan struct{})
+	peer.On("Quit").Return(quitChan)
+
+	reactor.InitPeer(peer)
+	reactor.AddPeer(peer)
+	e := &tmproto.EvidenceList{}
+	msg, err := proto.Marshal(e)
+	assert.NoError(t, err)
+
+	assert.NotPanics(t, func() {
+		reactor.Receive(evidence.EvidenceChannel, peer, msg)
+	})
 }
 
 //nolint:lll //ignore line length for tests

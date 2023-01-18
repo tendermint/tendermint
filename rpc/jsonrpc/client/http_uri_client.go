@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -52,8 +52,8 @@ func NewURI(remote string) (*URIClient, error) {
 
 // Call issues a POST form HTTP request.
 func (c *URIClient) Call(ctx context.Context, method string,
-	params map[string]interface{}, result interface{}) (interface{}, error) {
-
+	params map[string]interface{}, result interface{},
+) (interface{}, error) {
 	values, err := argsToURLValues(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode params: %w", err)
@@ -76,7 +76,7 @@ func (c *URIClient) Call(ctx context.Context, method string,
 	}
 	defer resp.Body.Close()
 
-	responseBytes, err := ioutil.ReadAll(resp.Body)
+	responseBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
 	}

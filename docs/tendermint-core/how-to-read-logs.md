@@ -67,7 +67,7 @@ Next follows a standard block creation cycle, where we enter a new
 round, propose a block, receive more than 2/3 of prevotes, then
 precommits and finally have a chance to commit a block. For details,
 please refer to [Byzantine Consensus
-Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
+Algorithm](https://github.com/tendermint/tendermint/blob/v0.34.x/spec/consensus/consensus.md).
 
 ```sh
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus

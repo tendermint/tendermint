@@ -138,7 +138,7 @@ response.
 
 The server may be generic for a particular language, and we provide a
 [reference implementation in
-Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
+Golang](https://github.com/tendermint/tendermint/tree/v0.34.x/abci/server). See the
 [list of other ABCI implementations](https://github.com/tendermint/awesome#ecosystem) for servers in
 other languages.
 
@@ -325,7 +325,7 @@ But the ultimate flexibility comes from being able to write the
 application easily in any language.
 
 We have implemented the counter in a number of languages [see the
-example directory](https://github.com/tendermint/tendermint/tree/master/abci/example).
+example directory](https://github.com/tendermint/tendermint/tree/v0.34.x/abci/example).
 
 To run the Node.js version, fist download & install [the Javascript ABCI server](https://github.com/tendermint/js-abci):
 

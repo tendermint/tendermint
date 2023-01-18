@@ -5,6 +5,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmsync "github.com/tendermint/tendermint/libs/sync"
@@ -66,12 +68,14 @@ func (r *Reactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            5,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: snapshotMsgSize,
+			MessageType:         &ssproto.Message{},
 		},
 		{
 			ID:                  ChunkChannel,
 			Priority:            3,
 			SendQueueCapacity:   10,
 			RecvMessageCapacity: chunkMsgSize,
+			MessageType:         &ssproto.Message{},
 		},
 	}
 }
@@ -100,27 +104,21 @@ func (r *Reactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 }
 
 // Receive implements p2p.Reactor.
-func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+func (r *Reactor) ReceiveEnvelope(e p2p.Envelope) {
 	if !r.IsRunning() {
 		return
 	}
 
-	msg, err := decodeMsg(msgBytes)
+	err := validateMsg(e.Message)
 	if err != nil {
-		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "err", err)
-		r.Switch.StopPeerForError(src, err)
-		return
-	}
-	err = validateMsg(msg)
-	if err != nil {
-		r.Logger.Error("Invalid message", "peer", src, "msg", msg, "err", err)
-		r.Switch.StopPeerForError(src, err)
+		r.Logger.Error("Invalid message", "peer", e.Src, "msg", e.Message, "err", err)
+		r.Switch.StopPeerForError(e.Src, err)
 		return
 	}
 
-	switch chID {
+	switch e.ChannelID {
 	case SnapshotChannel:
-		switch msg := msg.(type) {
+		switch msg := e.Message.(type) {
 		case *ssproto.SnapshotsRequest:
 			snapshots, err := r.recentSnapshots(recentSnapshots)
 			if err != nil {
@@ -129,14 +127,17 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			}
 			for _, snapshot := range snapshots {
 				r.Logger.Debug("Advertising snapshot", "height", snapshot.Height,
-					"format", snapshot.Format, "peer", src.ID())
-				src.Send(chID, mustEncodeMsg(&ssproto.SnapshotsResponse{
-					Height:   snapshot.Height,
-					Format:   snapshot.Format,
-					Chunks:   snapshot.Chunks,
-					Hash:     snapshot.Hash,
-					Metadata: snapshot.Metadata,
-				}))
+					"format", snapshot.Format, "peer", e.Src.ID())
+				p2p.SendEnvelopeShim(e.Src, p2p.Envelope{ //nolint: staticcheck
+					ChannelID: e.ChannelID,
+					Message: &ssproto.SnapshotsResponse{
+						Height:   snapshot.Height,
+						Format:   snapshot.Format,
+						Chunks:   snapshot.Chunks,
+						Hash:     snapshot.Hash,
+						Metadata: snapshot.Metadata,
+					},
+				}, r.Logger)
 			}
 
 		case *ssproto.SnapshotsResponse:
@@ -146,8 +147,8 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				r.Logger.Debug("Received unexpected snapshot, no state sync in progress")
 				return
 			}
-			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", src.ID())
-			_, err := r.syncer.AddSnapshot(src, &snapshot{
+			r.Logger.Debug("Received snapshot", "height", msg.Height, "format", msg.Format, "peer", e.Src.ID())
+			_, err := r.syncer.AddSnapshot(e.Src, &snapshot{
 				Height:   msg.Height,
 				Format:   msg.Format,
 				Chunks:   msg.Chunks,
@@ -157,7 +158,7 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			// TODO: We may want to consider punishing the peer for certain errors
 			if err != nil {
 				r.Logger.Error("Failed to add snapshot", "height", msg.Height, "format", msg.Format,
-					"peer", src.ID(), "err", err)
+					"peer", e.Src.ID(), "err", err)
 				return
 			}
 
@@ -166,10 +167,10 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	case ChunkChannel:
-		switch msg := msg.(type) {
+		switch msg := e.Message.(type) {
 		case *ssproto.ChunkRequest:
 			r.Logger.Debug("Received chunk request", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Index, "peer", src.ID())
+				"chunk", msg.Index, "peer", e.Src.ID())
 			resp, err := r.conn.LoadSnapshotChunkSync(abci.RequestLoadSnapshotChunk{
 				Height: msg.Height,
 				Format: msg.Format,
@@ -181,30 +182,33 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 				return
 			}
 			r.Logger.Debug("Sending chunk", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Index, "peer", src.ID())
-			src.Send(ChunkChannel, mustEncodeMsg(&ssproto.ChunkResponse{
-				Height:  msg.Height,
-				Format:  msg.Format,
-				Index:   msg.Index,
-				Chunk:   resp.Chunk,
-				Missing: resp.Chunk == nil,
-			}))
+				"chunk", msg.Index, "peer", e.Src.ID())
+			p2p.SendEnvelopeShim(e.Src, p2p.Envelope{ //nolint: staticcheck
+				ChannelID: ChunkChannel,
+				Message: &ssproto.ChunkResponse{
+					Height:  msg.Height,
+					Format:  msg.Format,
+					Index:   msg.Index,
+					Chunk:   resp.Chunk,
+					Missing: resp.Chunk == nil,
+				},
+			}, r.Logger)
 
 		case *ssproto.ChunkResponse:
 			r.mtx.RLock()
 			defer r.mtx.RUnlock()
 			if r.syncer == nil {
-				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", src.ID())
+				r.Logger.Debug("Received unexpected chunk, no state sync in progress", "peer", e.Src.ID())
 				return
 			}
 			r.Logger.Debug("Received chunk, adding to sync", "height", msg.Height, "format", msg.Format,
-				"chunk", msg.Index, "peer", src.ID())
+				"chunk", msg.Index, "peer", e.Src.ID())
 			_, err := r.syncer.AddChunk(&chunk{
 				Height: msg.Height,
 				Format: msg.Format,
 				Index:  msg.Index,
 				Chunk:  msg.Chunk,
-				Sender: src.ID(),
+				Sender: e.Src.ID(),
 			})
 			if err != nil {
 				r.Logger.Error("Failed to add chunk", "height", msg.Height, "format", msg.Format,
@@ -217,8 +221,26 @@ func (r *Reactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 		}
 
 	default:
-		r.Logger.Error("Received message on invalid channel %x", chID)
+		r.Logger.Error("Received message on invalid channel %x", e.ChannelID)
 	}
+}
+
+func (r *Reactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
+	msg := &ssproto.Message{}
+	err := proto.Unmarshal(msgBytes, msg)
+	if err != nil {
+		panic(err)
+	}
+	um, err := msg.Unwrap()
+	if err != nil {
+		panic(err)
+	}
+
+	r.ReceiveEnvelope(p2p.Envelope{
+		ChannelID: chID,
+		Src:       peer,
+		Message:   um,
+	})
 }
 
 // recentSnapshots fetches the n most recent snapshots from the app
@@ -269,7 +291,11 @@ func (r *Reactor) Sync(stateProvider StateProvider, discoveryTime time.Duration)
 	hook := func() {
 		r.Logger.Debug("Requesting snapshots from known peers")
 		// Request snapshots from all currently connected peers
-		r.Switch.Broadcast(SnapshotChannel, mustEncodeMsg(&ssproto.SnapshotsRequest{}))
+
+		r.Switch.BroadcastEnvelope(p2p.Envelope{
+			ChannelID: SnapshotChannel,
+			Message:   &ssproto.SnapshotsRequest{},
+		})
 	}
 
 	hook()
