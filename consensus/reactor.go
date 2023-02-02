@@ -693,6 +693,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 		pp, err := part.ToProto()
 		if err != nil {
 			logger.Error("Could not convert part to proto", "index", index, "error", err)
+			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 			return
 		}
 		if p2p.SendEnvelopeShim(peer, p2p.Envelope{ //nolint: staticcheck
@@ -706,6 +707,7 @@ func (conR *Reactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundSt
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
 			logger.Debug("Sending block part for catchup failed")
+			time.Sleep(conR.conS.config.PeerGossipSleepDuration)
 		}
 		return
 	}
