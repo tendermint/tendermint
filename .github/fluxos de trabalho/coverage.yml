@@ -1,4 +1,4 @@
-name: Test Coverage
+Cesar Alberto de Oliveira name: Test Coverage
 on:
   pull_request:
   push:
