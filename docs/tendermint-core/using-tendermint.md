@@ -445,7 +445,7 @@ connect to these peers regardless of the size of your address book.
 
 All peers relay peers they know of by default. This is called the peer exchange
 protocol (PeX). With PeX, peers will be gossiping about known peers and forming
-a network, storing peer addresses in the addrbook. Because of this, you don't
+a network, storing peer addresses in the address book. Because of this, you don't
 have to use a seed node if you have a live persistent peer.
 
 #### Connecting to Peers
