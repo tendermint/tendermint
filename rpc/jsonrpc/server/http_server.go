@@ -3,6 +3,8 @@ package server
 
 import (
 	"bufio"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,6 +90,38 @@ func ServeTLS(
 	err := s.ServeTLS(listener, certFile, keyFile)
 
 	logger.Error("RPC HTTPS server stopped", "err", err)
+	return err
+}
+func ServeMutualTLS(
+	listener net.Listener,
+	handler http.Handler,
+	certFile, keyFile string,
+	clientCACertFile string,
+	logger log.Logger,
+	config *Config,
+) error {
+	logger.Info("serve mutual tls", "msg", log.NewLazySprintf("Starting RPC mutual HTTPS server on %s (cert: %q, key: %q, client CA: %q)",
+		listener.Addr(), certFile, keyFile, clientCACertFile))
+	caCert, err := os.ReadFile(clientCACertFile)
+	if err != nil {
+		return err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	s := &http.Server{
+		Handler:           RecoverAndLogHandler(maxBytesHandler{h: handler, n: config.MaxBodyBytes}, logger),
+		ReadTimeout:       config.ReadTimeout,
+		ReadHeaderTimeout: config.ReadTimeout,
+		WriteTimeout:      config.WriteTimeout,
+		MaxHeaderBytes:    config.MaxHeaderBytes,
+		TLSConfig: &tls.Config{
+			ClientCAs:  caCertPool,
+			ClientAuth: tls.RequireAndVerifyClientCert,
+		},
+	}
+	err = s.ServeTLS(listener, certFile, keyFile)
+
+	logger.Error("RPC mutual HTTPS server stopped", "err", err)
 	return err
 }
 

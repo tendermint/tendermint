@@ -1156,18 +1156,34 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 			rootHandler = corsMiddleware.Handler(mux)
 		}
 		if n.config.RPC.IsTLSEnabled() {
-			go func() {
-				if err := rpcserver.ServeTLS(
-					listener,
-					rootHandler,
-					n.config.RPC.CertFile(),
-					n.config.RPC.KeyFile(),
-					rpcLogger,
-					config,
-				); err != nil {
-					n.Logger.Error("Error serving server with TLS", "err", err)
-				}
-			}()
+			if n.config.RPC.IsMutualTLSEnabled() {
+				go func() {
+					if err := rpcserver.ServeMutualTLS(
+						listener,
+						rootHandler,
+						n.config.RPC.CertFile(),
+						n.config.RPC.KeyFile(),
+						n.config.RPC.ClientCACertFile(),
+						rpcLogger,
+						config,
+					); err != nil {
+						n.Logger.Error("Error serving server with TLS", "err", err)
+					}
+				}()
+			} else {
+				go func() {
+					if err := rpcserver.ServeTLS(
+						listener,
+						rootHandler,
+						n.config.RPC.CertFile(),
+						n.config.RPC.KeyFile(),
+						rpcLogger,
+						config,
+					); err != nil {
+						n.Logger.Error("Error serving server with TLS", "err", err)
+					}
+				}()
+			}
 		} else {
 			go func() {
 				if err := rpcserver.Serve(

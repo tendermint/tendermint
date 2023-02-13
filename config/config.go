@@ -406,6 +406,11 @@ type RPCConfig struct {
 	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls_key_file"`
 
+	// The path to a file containing CA certificate who issues client's certificates for mutual TLS (mTLS).
+	// Might be either absolute path or path related to tendermint's config directory.
+	// Note: in case of empty value - mutual TLS is disabled.
+	TLSClientCACertFile string `mapstructure:"tls_client_cacert_file"`
+
 	// pprof listen address (https://golang.org/pkg/net/http/pprof)
 	PprofListenAddress string `mapstructure:"pprof_laddr"`
 }
@@ -505,9 +510,19 @@ func (cfg RPCConfig) CertFile() string {
 	}
 	return rootify(filepath.Join(defaultConfigDir, path), cfg.RootDir)
 }
+func (cfg RPCConfig) ClientCACertFile() string {
+	path := cfg.TLSClientCACertFile
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return rootify(filepath.Join(defaultConfigDir, path), cfg.RootDir)
+}
 
 func (cfg RPCConfig) IsTLSEnabled() bool {
 	return cfg.TLSCertFile != "" && cfg.TLSKeyFile != ""
+}
+func (cfg RPCConfig) IsMutualTLSEnabled() bool {
+	return cfg.TLSClientCACertFile != ""
 }
 
 //-----------------------------------------------------------------------------

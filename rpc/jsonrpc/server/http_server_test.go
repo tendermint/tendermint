@@ -2,12 +2,16 @@ package server
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"golang.org/x/net/http2"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -92,12 +96,18 @@ func TestServeTLS(t *testing.T) {
 		require.NoError(t, err)
 	case <-time.After(100 * time.Millisecond):
 	}
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	caCert, err := os.ReadFile("test.crt")
+	require.NoError(t, err)
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	tr := &http2.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caCertPool,
+		},
 	}
 	c := &http.Client{Transport: tr}
-	res, err := c.Get("https://" + ln.Addr().String())
+	ports := strings.Split(ln.Addr().String(), ":")
+	res, err := c.Get("https://localhost:" + ports[len(ports)-1])
 	require.NoError(t, err)
 	defer res.Body.Close()
 	assert.Equal(t, http.StatusOK, res.StatusCode)
@@ -105,6 +115,85 @@ func TestServeTLS(t *testing.T) {
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 	assert.Equal(t, []byte("some body"), body)
+}
+
+func TestServeMutualTLS(t *testing.T) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "some body")
+	})
+
+	chErr := make(chan error, 1)
+	go func() {
+		chErr <- ServeMutualTLS(ln, mux, "test.crt", "test.key", "ca-cert.crt", log.TestingLogger(), DefaultConfig())
+	}()
+
+	select {
+	case err := <-chErr:
+		require.NoError(t, err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	caCert, err := os.ReadFile("test.crt")
+	require.NoError(t, err)
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	clientCert, err := tls.LoadX509KeyPair("client.crt", "client.key")
+	require.NoError(t, err)
+	tr := &http2.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:      caCertPool,
+			Certificates: []tls.Certificate{clientCert},
+		},
+	}
+	c := &http.Client{Transport: tr}
+	ports := strings.Split(ln.Addr().String(), ":")
+	res, err := c.Get("https://localhost:" + ports[len(ports)-1])
+	require.NoError(t, err)
+	defer res.Body.Close()
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("some body"), body)
+}
+
+func TestServeMutualTLSRejectedNoClientCert(t *testing.T) {
+	ln, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
+	defer ln.Close()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "some body")
+	})
+
+	chErr := make(chan error, 1)
+	go func() {
+		chErr <- ServeMutualTLS(ln, mux, "test.crt", "test.key", "ca-cert.crt", log.TestingLogger(), DefaultConfig())
+	}()
+
+	select {
+	case err := <-chErr:
+		require.NoError(t, err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	caCert, err := os.ReadFile("test.crt")
+	require.NoError(t, err)
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	tr := &http2.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caCertPool,
+		},
+	}
+	c := &http.Client{Transport: tr}
+	ports := strings.Split(ln.Addr().String(), ":")
+	_, err = c.Get("https://localhost:" + ports[len(ports)-1])
+	require.Error(t, err, "tls: bad certificate")
 }
 
 func TestWriteRPCResponseHTTP(t *testing.T) {
