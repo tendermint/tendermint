@@ -1,6 +1,6 @@
 # Tendermint
 
-_UPDATE: TendermintCore will be archived, see issue https://github.com/tendermint/tendermint/issues/9972_<br/>
+_UPDATE: TendermintCore featureset is frozen for LTS, see issue https://github.com/tendermint/tendermint/issues/9972_<br/>
 _This is the latest stable release used by cosmoshub-4, version 0.34.24_<br/>
 _The previous main branch (v0.38.xx) can now be found under "main_backup"_<br/>
 
