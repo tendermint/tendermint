@@ -1651,6 +1651,7 @@ func (cs *State) finalizeCommit(height int64) {
 		retainHeight int64
 	)
 
+	isProofBlock := cs.config.WaitForTxs() && len(block.Txs) == 0 && cs.needProofBlock(height)
 	stateCopy, retainHeight, err = cs.blockExec.ApplyBlock(
 		stateCopy,
 		types.BlockID{
@@ -1658,6 +1659,8 @@ func (cs *State) finalizeCommit(height int64) {
 			PartSetHeader: blockParts.Header(),
 		},
 		block,
+		// marks this block as a proof-only block, modules should avoid write ops
+		isProofBlock,
 	)
 	if err != nil {
 		logger.Error("failed to apply block", "err", err)

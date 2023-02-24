@@ -79,6 +79,7 @@ message RequestBeginBlock {
   tendermint.types.Header header               = 2 [(gogoproto.nullable) = false];
   LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
+  bool                   is_proof_block             = 5;
 }
 
 enum CheckTxType {

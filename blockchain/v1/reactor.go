@@ -484,7 +484,7 @@ func (bcR *BlockchainReactor) processBlock() error {
 
 	bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first)
+	bcR.state, _, err = bcR.blockExec.ApplyBlock(bcR.state, firstID, first, false)
 	if err != nil {
 		panic(fmt.Sprintf("failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
 	}
