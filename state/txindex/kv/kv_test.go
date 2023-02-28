@@ -65,6 +65,318 @@ func TestTxIndex(t *testing.T) {
 	assert.True(t, proto.Equal(txResult2, loadedTxResult2))
 }
 
+func TestTxIndexDuplicatePreviouslySuccessful(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB())
+
+	var mockTx = types.Tx("MOCK_TX_HASH")
+
+	tx := mockTx
+	txResult := &abci.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "should be saved", Events: nil,
+		},
+	}
+	hash := tx.Hash()
+
+	batch := txindex.NewBatch(1)
+	if err := batch.Add(txResult); err != nil {
+		t.Error(err)
+	}
+	err := indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult, err := indexer.Get(hash)
+	require.NoError(t, err)
+	assert.True(t, proto.Equal(txResult, loadedTxResult))
+
+	tx2 := mockTx
+	txResult2 := &abci.TxResult{
+		Height: 2,
+		Index:  0,
+		Tx:     tx2,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK ^ 1, Log: "should not be saved", Events: nil,
+		},
+	}
+	hash2 := tx2.Hash()
+
+	batch = txindex.NewBatch(1)
+	if err := batch.Add(txResult2); err != nil {
+		t.Error(err)
+	}
+	err = indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult2, err := indexer.Get(hash2)
+	require.NoError(t, err)
+
+	fmt.Println(loadedTxResult2.Result.Log)
+	assert.True(t, loadedTxResult2.Result.Log == "should be saved")
+}
+
+func TestTxIndexDuplicatePreviouslyUnsuccessful(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB())
+
+	var mockTx = types.Tx("MOCK_TX_HASH")
+
+	tx := mockTx
+	txResult := &abci.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK ^ 1, Log: "foo", Events: nil,
+		},
+	}
+	hash := tx.Hash()
+
+	batch := txindex.NewBatch(1)
+	if err := batch.Add(txResult); err != nil {
+		t.Error(err)
+	}
+	err := indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult, err := indexer.Get(hash)
+	require.NoError(t, err)
+	assert.True(t, proto.Equal(txResult, loadedTxResult))
+
+	tx2 := mockTx
+	txResult2 := &abci.TxResult{
+		Height: 2,
+		Index:  0,
+		Tx:     tx2,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "bar", Events: nil,
+		},
+	}
+	hash2 := tx2.Hash()
+
+	batch = txindex.NewBatch(1)
+	if err := batch.Add(txResult2); err != nil {
+		t.Error(err)
+	}
+	err = indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult2, err := indexer.Get(hash2)
+	require.NoError(t, err)
+	assert.True(t, loadedTxResult2.Result.Log == "bar")
+}
+
+func TestTxIndexDuplicateBothUnsuccessful(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB())
+
+	var mockTx = types.Tx("MOCK_TX_HASH")
+
+	tx := mockTx
+	txResult := &abci.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK ^ 1, Log: "foo", Events: nil,
+		},
+	}
+	hash := tx.Hash()
+
+	batch := txindex.NewBatch(1)
+	if err := batch.Add(txResult); err != nil {
+		t.Error(err)
+	}
+	err := indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult, err := indexer.Get(hash)
+	require.NoError(t, err)
+	assert.True(t, proto.Equal(txResult, loadedTxResult))
+
+	tx2 := mockTx
+	txResult2 := &abci.TxResult{
+		Height: 2,
+		Index:  0,
+		Tx:     tx2,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK ^ 1, Log: "bar", Events: nil,
+		},
+	}
+	hash2 := tx2.Hash()
+
+	batch = txindex.NewBatch(1)
+	if err := batch.Add(txResult2); err != nil {
+		t.Error(err)
+	}
+	err = indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult2, err := indexer.Get(hash2)
+	require.NoError(t, err)
+	assert.True(t, loadedTxResult2.Result.Log == "bar")
+}
+
+// This case cannot happen technically, but exists just to check the code sanity
+func TestTxIndexDuplicateBothSuccessful(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB())
+
+	var mockTx = types.Tx("MOCK_TX_HASH")
+
+	tx := mockTx
+	txResult := &abci.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "foo", Events: nil,
+		},
+	}
+	hash := tx.Hash()
+
+	batch := txindex.NewBatch(1)
+	if err := batch.Add(txResult); err != nil {
+		t.Error(err)
+	}
+	err := indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult, err := indexer.Get(hash)
+	require.NoError(t, err)
+	assert.True(t, proto.Equal(txResult, loadedTxResult))
+
+	tx2 := mockTx
+	txResult2 := &abci.TxResult{
+		Height: 2,
+		Index:  0,
+		Tx:     tx2,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK, Log: "bar", Events: nil,
+		},
+	}
+	hash2 := tx2.Hash()
+
+	batch = txindex.NewBatch(1)
+	if err := batch.Add(txResult2); err != nil {
+		t.Error(err)
+	}
+	err = indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	loadedTxResult2, err := indexer.Get(hash2)
+	require.NoError(t, err)
+	assert.True(t, loadedTxResult2.Result.Log == "bar")
+}
+
+func TestTxIndexDuplicateWithinSameBlockSuccessfulThenFailed(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB())
+
+	var mockTx = types.Tx("MockTx")
+	var codes = [2]uint32{abci.CodeTypeOK, abci.CodeTypeOK ^ 1}
+	//var mockTxResults = make([]*abci.TxResult, 2)
+	var batch = txindex.NewBatch(2)
+
+	for i := 0; i < 2; i++ {
+		mockTxResult := &abci.TxResult{
+			Height: 1,
+			Index:  uint32(i),
+			Tx:     mockTx,
+			Result: abci.ResponseDeliverTx{
+				Data: []byte{0},
+				Code: codes[i], Log: fmt.Sprintf("Log#%d", i), Events: nil,
+			},
+		}
+
+		if err := batch.Add(mockTxResult); err != nil {
+			t.Error(err)
+		}
+	}
+
+	// run indexer
+	err := indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	// gotta be the first one
+	loadedTxResult, err := indexer.Get(mockTx.Hash())
+	require.NoError(t, err)
+	assert.True(t, loadedTxResult.Index == 0)
+}
+
+func TestTxIndexDuplicateWithinSameBlockFailedThenSuccessful(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB())
+
+	var mockTx = types.Tx("MockTx")
+	var codes = [2]uint32{abci.CodeTypeOK ^ 1, abci.CodeTypeOK}
+	var batch = txindex.NewBatch(2)
+
+	for i := 0; i < 2; i++ {
+		mockTxResult := &abci.TxResult{
+			Height: 1,
+			Index:  uint32(i),
+			Tx:     mockTx,
+			Result: abci.ResponseDeliverTx{
+				Data: []byte{0},
+				Code: codes[i], Log: fmt.Sprintf("Log#%d", i), Events: nil,
+			},
+		}
+
+		if err := batch.Add(mockTxResult); err != nil {
+			t.Error(err)
+		}
+	}
+
+	// run indexer
+	err := indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	// gotta be the latter one
+	loadedTxResult, err := indexer.Get(mockTx.Hash())
+	require.NoError(t, err)
+	assert.True(t, loadedTxResult.Index == 1)
+}
+
+// NOK, OK, NOK, NOK
+func TestTxIndexDuplicateWithinSameBlock0100(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB())
+
+	var mockTx = types.Tx("MockTx")
+	var codes = [4]uint32{abci.CodeTypeOK ^ 1, abci.CodeTypeOK, abci.CodeTypeOK ^ 1, abci.CodeTypeOK ^ 1}
+	var batch = txindex.NewBatch(4)
+
+	for i := 0; i < 4; i++ {
+		mockTxResult := &abci.TxResult{
+			Height: 1,
+			Index:  uint32(i),
+			Tx:     mockTx,
+			Result: abci.ResponseDeliverTx{
+				Data: []byte{0},
+				Code: codes[i], Log: "Log", Events: nil,
+			},
+		}
+
+		if err := batch.Add(mockTxResult); err != nil {
+			t.Error(err)
+		}
+	}
+
+	// run indexer
+	err := indexer.AddBatch(batch)
+	require.NoError(t, err)
+
+	// gotta be the latter one
+	loadedTxResult, err := indexer.Get(mockTx.Hash())
+	require.NoError(t, err)
+	assert.True(t, loadedTxResult.Index == 1)
+}
+
 func TestTxSearch(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
