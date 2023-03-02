@@ -5,8 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -125,6 +128,9 @@ func (s *syncer) AddSnapshot(peer p2p.Peer, snapshot *snapshot) (bool, error) {
 // AddPeer adds a peer to the pool. For now we just keep it simple and send a single request
 // to discover snapshots, later we may want to do retries and stuff.
 func (s *syncer) AddPeer(peer p2p.Peer) {
+	if !requestSnapshots {
+		return
+	}
 	s.logger.Debug("Requesting snapshots from peer", "peer", peer.ID())
 	e := p2p.Envelope{
 		ChannelID: SnapshotChannel,
@@ -513,4 +519,108 @@ func (s *syncer) verifyApp(snapshot *snapshot, appVersion uint64) error {
 
 	s.logger.Info("Verified ABCI app", "height", snapshot.Height, "appHash", snapshot.trustedAppHash)
 	return nil
+}
+
+func (s *syncer) SyncFromLocalSnapshot(dir string) (sm.State, *types.Commit, error) {
+	snapshotData, err := ioutil.ReadFile(filepath.Join(dir, "snapshot"))
+	if err != nil {
+		return sm.State{}, nil, err
+	}
+
+	abciSnapshot := abci.Snapshot{}
+	if err := proto.Unmarshal(snapshotData, &abciSnapshot); err != nil {
+		return sm.State{}, nil, err
+	}
+
+	sn := &snapshot{
+		Height:   abciSnapshot.Height,
+		Format:   abciSnapshot.Format,
+		Hash:     abciSnapshot.Hash,
+		Metadata: abciSnapshot.Metadata,
+		Chunks:   abciSnapshot.Chunks,
+	}
+
+	hctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
+	appHash, err := s.stateProvider.AppHash(hctx, sn.Height)
+	if err != nil {
+		s.logger.Info("failed to fetch and verify app hash", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
+	}
+	sn.trustedAppHash = appHash
+
+	// Offer snapshot to ABCI app.
+	err = s.offerSnapshot(sn)
+	if err != nil {
+		return sm.State{}, nil, err
+	}
+
+	chunks, err := newChunkQueue(sn, s.tempDir)
+	if err != nil {
+		return sm.State{}, nil, err
+	}
+	s.chunks = chunks
+
+	for i := uint32(0); i < sn.Chunks; i++ {
+		chunkData, err := ioutil.ReadFile(fmt.Sprintf("%s/%d.chunk", dir, i))
+		if err != nil {
+			return sm.State{}, nil, err
+		}
+
+		c := &chunk{
+			Format: sn.Format,
+			Height: sn.Height,
+			Index:  i,
+			Chunk:  chunkData,
+		}
+
+		if _, err := s.AddChunk(c); err != nil {
+			return sm.State{}, nil, err
+		}
+	}
+
+	pctx, pcancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer pcancel()
+
+	// Optimistically build new state, so we don't discover any light client failures at the end.
+	state, err := s.stateProvider.State(pctx, sn.Height)
+	if err != nil {
+		s.logger.Info("failed to fetch and verify tendermint state", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
+	}
+	commit, err := s.stateProvider.Commit(pctx, sn.Height)
+	if err != nil {
+		s.logger.Info("failed to fetch and verify commit", "err", err)
+		if err == light.ErrNoWitnesses {
+			return sm.State{}, nil, err
+		}
+		return sm.State{}, nil, errRejectSnapshot
+	}
+
+	// Restore snapshot
+	err = s.applyChunks(chunks)
+	if err != nil {
+		return sm.State{}, nil, err
+	}
+
+	if err := s.verifyApp(sn, state.Version.Consensus.App); err != nil {
+		return sm.State{}, nil, err
+	}
+
+	// Verify app and app version
+	if err := s.verifyApp(sn, state.Version.Consensus.App); err != nil {
+		return sm.State{}, nil, err
+	}
+
+	// Done! 🎉
+	s.logger.Info("Snapshot restored", "height", sn.Height, "format", sn.Format, "hash", sn.Hash)
+
+	return state, commit, nil
 }
