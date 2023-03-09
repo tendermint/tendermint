@@ -1,13 +1,16 @@
 package merkle
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	goanimo "github.com/tendermint/go-amino"
 
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
@@ -197,4 +200,27 @@ func TestVoteProtobuf(t *testing.T) {
 			require.Error(t, err)
 		}
 	}
+}
+
+// TestVsa2022_100 verifies https://blog.verichains.io/p/vsa-2022-100-tendermint-forging-membership-proof
+func TestVsa2022_100(t *testing.T) {
+	// a fake key-value pair and its hash
+	key := []byte{0x13}
+	value := []byte{0x37}
+	vhash := tmhash.Sum(value)
+	bz := new(bytes.Buffer)
+	_ = goanimo.EncodeByteSlice(bz, key)
+	_ = goanimo.EncodeByteSlice(bz, vhash)
+	kvhash := tmhash.Sum(append([]byte{0}, bz.Bytes()...))
+
+	// the malicious `op`
+	op := NewValueOp(
+		key,
+		&Proof{LeafHash: kvhash},
+	)
+
+	// the nil root
+	var root []byte
+
+	assert.NotNil(t, ProofOperators{op}.Verify(root, "/"+string(key), [][]byte{value}))
 }
