@@ -320,7 +320,7 @@ func (t *tokens32) Add(rule pegRule, begin, end, depth uint32, index int) {
 }
 
 func (t *tokens32) Tokens() <-chan token32 {
-	s := make(chan token32, 16)
+	s := make(chan token32, len(t.tree))
 	go func() {
 		for _, v := range t.tree {
 			s <- v.getToken32()
