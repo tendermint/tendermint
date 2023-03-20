@@ -13,7 +13,7 @@ replication engine. When run within the same process, Tendermint will call the A
 application methods directly as Go method calls.
 
 When Tendermint and the ABCI application are run as separate processes, Tendermint
-opens maintains a connection over either a native socket protocol or
+opens and maintains a connection over either a native socket protocol or
 gRPC.
 
 More details on managing state across connections can be found in the
