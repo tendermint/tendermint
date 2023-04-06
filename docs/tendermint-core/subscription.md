@@ -200,7 +200,7 @@ service using a [websocket][ws]. From the command line you can use a tool such
 as [wscat][wscat], for example:
 
 ```sh
-wscat ws://127.0.0.1:26657/websocket
+wscat -c ws://127.0.0.1:26657/websocket
 ```
 
 [ws]: https://en.wikipedia.org/wiki/WebSocket
