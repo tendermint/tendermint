@@ -204,10 +204,11 @@ See [#56](https://github.com/tendermint/abci/issues/56) for original discussion.
 
 Note that some methods (`Query, CheckTx, DeliverTx`) return
 explicitly non-deterministic data in the form of `Info` and `Log` fields. The `Log` is
-intended for the literal output from the application's logger, while the
-`Info` is any additional info that should be returned. These are the only fields
-that are not included in block header computations, so we don't need agreement
-on them. All other fields in the `Response*` must be strictly deterministic.
+intended for the literal output from the application's logger, while the `Info` is 
+any additional info that should be returned. In `DeliverTx` response, those fields 
+alongside with `Events, Codespace` are not included in block header computations, 
+so we don't need agreement on them. 
+All other fields in the `Response*` must be strictly deterministic.
 
 ## Block Execution
 
