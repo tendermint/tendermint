@@ -122,6 +122,10 @@ updates, to the most recent minor release and the second-most recent minor
 release. Consequently, we strongly recommend keeping Tendermint up-to-date.
 Upgrading instructions can be found in [UPGRADING.md](./UPGRADING.md).
 
+### Firehose
+
+Firehose documentation can be found in [FIREHOSE.md](./FIREHOSE.md)
+
 ## Resources
 
 ### Libraries
