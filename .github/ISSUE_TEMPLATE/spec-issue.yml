@@ -1,0 +1,30 @@
+name: Specification Issue
+description: Report ambiguities, confusion, or copy-editing suggestions in the specs.
+title: "[spec]: "
+labels: ["C:spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this specification issue report!
+  - type: text-area
+    id: files
+    attributes:
+      label: File(s)/lines
+      description: If the issue is in a specific file or set of files, and if it's at specific line numbers, please list those here.
+    validations:
+      required: false
+  - type: text-area
+    id: problem
+    attributes:
+      label: The Problem
+      description: Describe what technical flaws may be present, what unanswered questions you have, why the text is confusing, why the wording is awkward, identify typos, etc… 
+    validations:
+      required: true
+  - type: text-area
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: Do you have a suggested technical change, wording change, or proposed answer to your question?
+    validations:
+      required: false
