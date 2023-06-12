@@ -72,11 +72,22 @@ Messages are serialized using Protobuf3 and length-prefixed with a [signed Varin
 If GRPC is not available in your language, or you require higher
 performance, or otherwise enjoy programming, you may implement your own
 ABCI server using the Tendermint Socket Protocol. The first step is still to auto-generate the relevant data
-types and codec in your language using `protoc`. In addition to being proto3 encoded, messages coming over
+types and codec in your language using `protoc`.
+
+An ABCI server must also be able to support multiple connections, as
+Tendermint uses four connections.
+
+#### Length-Prefix Encoding
+
+In addition to being proto3 encoded, messages coming over
 the socket are length-prefixed to facilitate use as a streaming protocol. proto3 doesn't have an
-official length-prefix standard, so we use our own. The first byte in
+official length-prefix standard, so we use our own:
+
+The first byte in
 the prefix represents the length of the Big Endian encoded length. The
 remaining bytes in the prefix are the Big Endian encoded length.
+
+`<len-of-len byte><big-endian message len bytes><message bytes>`
 
 For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
 bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
@@ -84,9 +95,6 @@ encoded ABCI message is 65535 bytes long, the length-prefixed message
 would be like 0x02FFFF....
 
 As noted above, this prefixing does not apply for GRPC.
-
-An ABCI server must also be able to support multiple connections, as
-Tendermint uses four connections.
 
 ### Async vs Sync
 
