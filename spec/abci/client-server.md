@@ -83,9 +83,6 @@ bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
 encoded ABCI message is 65535 bytes long, the length-prefixed message
 would be like 0x02FFFF....
 
-The benefit of using this `varint` encoding over the old version (where integers were encoded as `<len of len><big endian len>` is that
-it is the standard way to encode integers in Protobuf. It is also generally shorter.
-
 As noted above, this prefixing does not apply for GRPC.
 
 An ABCI server must also be able to support multiple connections, as
