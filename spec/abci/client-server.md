@@ -87,7 +87,8 @@ The first byte in
 the prefix represents the length of the Big Endian encoded length. The
 remaining bytes in the prefix are the Big Endian encoded length.
 
-`<len-of-len byte><big-endian message len bytes><message bytes>`
+`<len-of-len byte, B><big-endian message length, L><message bytes>`
+`|----- 1 byte -----||------- B bytes ------------||-- L bytes --|`
 
 For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
 bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
