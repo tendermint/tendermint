@@ -7,6 +7,7 @@ type level byte
 const (
 	levelDebug level = 1 << iota
 	levelInfo
+	levelWarn
 	levelError
 )
 
@@ -46,6 +47,14 @@ func (l *filter) Info(msg string, keyvals ...interface{}) {
 	l.next.Info(msg, keyvals...)
 }
 
+func (l *filter) Warn(msg string, keyvals ...interface{}) {
+	levelAllowed := l.allowed&levelDebug != 0
+	if !levelAllowed {
+		return
+	}
+	l.next.Warn(msg, keyvals...)
+}
+
 func (l *filter) Debug(msg string, keyvals ...interface{}) {
 	levelAllowed := l.allowed&levelDebug != 0
 	if !levelAllowed {
@@ -69,14 +78,15 @@ func (l *filter) Error(msg string, keyvals ...interface{}) {
 // Allow*With methods, it is used as the logger's level.
 //
 // Examples:
-//     logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"))
-//		 logger.With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto"
 //
-//     logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
-//		 logger.With("module", "crypto", "user", "Sam").Info("Hello") # returns nil
+//	    logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"))
+//			 logger.With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto"
 //
-//     logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
-//		 logger.With("user", "Sam").With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto user=Sam"
+//	    logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
+//			 logger.With("module", "crypto", "user", "Sam").Info("Hello") # returns nil
+//
+//	    logger = log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("module", "crypto"), log.AllowNoneWith("user", "Sam"))
+//			 logger.With("user", "Sam").With("module", "crypto").Info("Hello") # produces "I... Hello module=crypto user=Sam"
 func (l *filter) With(keyvals ...interface{}) Logger {
 	keyInAllowedKeyvals := false
 

@@ -58,6 +58,15 @@ func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	}
 }
 
+// Warn logs a message at level Warn.
+func (l *tmLogger) Warn(msg string, keyvals ...interface{}) {
+	lWithLevel := kitlevel.Warn(l.srcLogger)
+	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+		errLogger := kitlevel.Error(l.srcLogger)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err)
+	}
+}
+
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)

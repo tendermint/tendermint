@@ -26,6 +26,7 @@ First, we will need an interface for all of our libraries (`tmlibs`, Tendermint,
 type Logger interface {
     Debug(msg string, keyvals ...interface{}) error
     Info(msg string, keyvals ...interface{}) error
+    Warn(msg string, keyvals ...interface{}) error
     Error(msg string, keyvals ...interface{}) error
 
 	  With(keyvals ...interface{}) Logger
@@ -39,6 +40,7 @@ have some in `tmlibs/common`.
 
 - `Debug` - extended output for devs
 - `Info` - all that is useful for a user
+- `Warn` - misconfiguration/ potential errors
 - `Error` - errors
 
 `Notice` should become `Info`, `Warn` either `Error` or `Debug` depending on the message, `Crit` -> `Error`.
