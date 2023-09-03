@@ -42,7 +42,7 @@ It goes as follows:
 - send the ephemeral public key to the peer
 - wait to receive the peer's ephemeral public key
 - create a new Merlin Transcript with the string "TENDERMINT_SECRET_CONNECTION_TRANSCRIPT_HASH"
-- Sort the ephemeral keys and add the high labeled "EPHEMERAL_UPPER_PUBLIC_KEY" and the low keys labeled "EPHEMERAL_LOWER_PUBLIC_KEY" to the Merlin transcript.
+- Sort the ephemeral keys and add the low key labeled "EPHEMERAL_LOWER_PUBLIC_KEY" and the high key labeled "EPHEMERAL_UPPER_PUBLIC_KEY" to the Merlin transcript.
 - compute the Diffie-Hellman shared secret using the peers ephemeral public key and our ephemeral private key
 - add the DH secret to the transcript labeled DH_SECRET.
 - generate two keys to use for encryption (sending and receiving) and a challenge for authentication as follows:
