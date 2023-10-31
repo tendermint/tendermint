@@ -352,9 +352,9 @@ This is a fix, but it's breaking.
 
 ABCI responses which previously had a `Tags` field now have an `Events` field
 instead. The original `Tags` field was simply a list of key-value pairs, where
-each key effectively represented some attribute of an event occuring in the
+each key effectively represented some attribute of an event occurring in the
 blockchain, like `sender`, `receiver`, or `amount`. However, it was difficult to
-represent the occurence of multiple events (for instance, multiple transfers) in a single list.
+represent the occurrence of multiple events (for instance, multiple transfers) in a single list.
 The new `Events` field contains a list of `Event`, where each `Event` is itself a list
 of key-value pairs, allowing for more natural expression of multiple events in
 eg. a single DeliverTx or EndBlock. Note each `Event` also includes a `Type`, which is meant to categorize the
@@ -554,7 +554,7 @@ When running v0.28.0 for the first time, it will back up any pre-existing
 Upgrading should happen automatically without problem.
 
 To upgrade manually, use the provided `privValUpgrade.go` script, with exact paths for the old
-`priv_validator.json` and the locations for the two new files. It's recomended
+`priv_validator.json` and the locations for the two new files. It's recommended
 to use the default paths, of `config/priv_validator_key.json` and
 `data/priv_validator_state.json`, respectively:
 
@@ -759,7 +759,7 @@ effect at height `H+2`. Note this means that the change will be seen by the ABCI
 app in the `RequestBeginBlock.LastCommitInfo` at block `H+3`. Apps were already
 required to maintain a map from validator addresses to pubkeys since v0.23 (when
 pubkeys were removed from RequestBeginBlock), but now they may need to track
-multiple validator sets at once to accomodate this delay.
+multiple validator sets at once to accommodate this delay.
 
 ### Block Size
 

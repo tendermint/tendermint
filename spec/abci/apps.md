@@ -466,9 +466,9 @@ implementation of
 
 On startup, Tendermint calls the `Info` method on the Info Connection to get the latest
 committed state of the app. The app MUST return information consistent with the
-last block it succesfully completed Commit for.
+last block it successfully completed Commit for.
 
-If the app succesfully committed block H, then `last_block_height = H` and `last_block_app_hash = <hash returned by Commit for block H>`. If the app
+If the app successfully committed block H, then `last_block_height = H` and `last_block_app_hash = <hash returned by Commit for block H>`. If the app
 failed during the Commit of block H, then `last_block_height = H-1` and
 `last_block_app_hash = <hash returned by Commit for block H-1, which is the hash in the header of block H>`.
 
@@ -479,7 +479,7 @@ the app.
 storeBlockHeight = height of the last block Tendermint saw a commit for
 stateBlockHeight = height of the last block for which Tendermint completed all
     block processing and saved all ABCI results to disk
-appBlockHeight = height of the last block for which ABCI app succesfully
+appBlockHeight = height of the last block for which ABCI app successfully
     completed Commit
 
 ```

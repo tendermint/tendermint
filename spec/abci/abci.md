@@ -72,7 +72,7 @@ it is already included.
 ### DeliverTx
 
 The `DeliverTx` ABCI method delivers transactions from Tendermint to the application.
-When Tendermint recieves a `ResponseDeliverTx` with a non-zero `Code`, the response code is logged.
+When Tendermint receives a `ResponseDeliverTx` with a non-zero `Code`, the response code is logged.
 The transaction was already included in a block, so the `Code` does not influence
 Tendermint consensus.
 
@@ -562,7 +562,7 @@ the blockchain's `AppHash` which is verified via [light client verification](../
 
     | Name  | Type  | Description                                                                                                                                           | Field Number |
     |-------|-------|-------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
-    | chunk | bytes | The binary chunk contents, in an arbitray format. Chunk messages cannot be larger than 16 MB _including metadata_, so 10 MB is a good starting point. | 1            |
+    | chunk | bytes | The binary chunk contents, in an arbitrary format. Chunk messages cannot be larger than 16 MB _including metadata_, so 10 MB is a good starting point. | 1            |
 
 * **Usage**:
     * Used during state sync to retrieve snapshot chunks from peers.
