@@ -338,7 +338,7 @@ applications, setting it to true is not a problem.
 - `consensus.peer_gossip_sleep_duration`
 
 You can try to reduce the time your node sleeps before checking if
-theres something to send its peers.
+there's something to send its peers.
 
 - `consensus.timeout_commit`
 
