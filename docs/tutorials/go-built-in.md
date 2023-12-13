@@ -549,7 +549,7 @@ if err != nil {
 }
 ```
 
-As for the logger, we use the build-in library, which provides a nice
+As for the logger, we use the built-in library, which provides a nice
 abstraction over [go-kit's
 logger](https://github.com/go-kit/kit/tree/master/log).
 
