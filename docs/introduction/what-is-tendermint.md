@@ -144,7 +144,7 @@ Another problem with monolithic design is that it limits you to the
 language of the blockchain stack (or vice versa). In the case of
 Ethereum which supports a Turing-complete bytecode virtual-machine, it
 limits you to languages that compile down to that bytecode; today, those
-are Serpent and Solidity.
+are Vyper and Solidity.
 
 In contrast, our approach is to decouple the consensus engine and P2P
 layers from the details of the application state of the particular
