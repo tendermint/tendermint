@@ -36,7 +36,7 @@ more information on query syntax and other options.
 
 You can also use tags, given you had included them into DeliverTx
 response, to query transaction results. See [Indexing
-transactions](./indexing-transactions.md) for details.
+transactions](../app-dev/indexing-transactions.md) for details.
 
 ## ValidatorSetUpdates
 
