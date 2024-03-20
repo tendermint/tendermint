@@ -241,9 +241,9 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transfered to the
+When Tendermint Core has decided on the block, it's transferred to the
 application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transfered asynchronously, but the
+`EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
 responses are expected to come in order.
 
 ```go
