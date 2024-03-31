@@ -10,7 +10,7 @@ include abstract_tendermint
 # Here we prove the classic safety property: assuming that every two quorums
 # have a well-behaved node in common, no two well-behaved nodes ever disagree.
 
-# The proof is done in two steps: first we prove the the abstract specification
+# The proof is done in two steps: first we prove the abstract specification
 # satisfies the property, and then we show by refinement that this property
 # also holds in the concrete specification.
 

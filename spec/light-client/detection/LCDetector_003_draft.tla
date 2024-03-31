@@ -11,7 +11,7 @@
  *
  *  - the light client has its own local clock that can drift from the reference clock
  *    within the envelope [refClock - CLOCK_DRIFT, refClock + CLOCK_DRIFT].
- *    The local clock may increase as well as decrease in the the envelope
+ *    The local clock may increase as well as decrease in the envelope
  *    (similar to clock synchronization).
  *
  *  - the ratio of the faulty validators is set as the parameter.

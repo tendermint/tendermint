@@ -686,7 +686,7 @@ func (cs *State) OnStop() {
 	// WAL is stopped in receiveRoutine.
 }
 
-// Wait waits for the the main routine to return.
+// Wait waits for the main routine to return.
 // NOTE: be sure to Stop() the event switch and drain
 // any event channels or this may deadlock
 func (cs *State) Wait() {

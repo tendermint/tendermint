@@ -2504,7 +2504,7 @@ $$\@ignoretrue}
     \@IEEEappendtoksA{&}%
     \advance\@IEEEeqncolcnt by 1\relax% update the col count
     \repeat
-    % this number of &'s will take us the the isolation column
+    % this number of &'s will take us the isolation column
     \fi
     % execute the &'s
     \the\@IEEEtrantmptoksA%

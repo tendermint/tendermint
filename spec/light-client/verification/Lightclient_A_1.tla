@@ -133,7 +133,7 @@ LCInit ==
         /\ fetchedLightBlocks = [h \in {TRUSTED_HEIGHT} |-> trustedLightBlock]
         \* initially, lightBlockStatus is a function of one element, i.e., TRUSTED_HEIGHT
         /\ lightBlockStatus = [h \in {TRUSTED_HEIGHT} |-> "StateVerified"]
-        \* the latest verified block the the trusted block
+        \* the latest verified block the trusted block
         /\ latestVerified = trustedLightBlock
 
 \* block should contain a copy of the block from the reference chain, with a matching commit

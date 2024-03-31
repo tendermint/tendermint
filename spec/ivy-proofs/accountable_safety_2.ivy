@@ -6,7 +6,7 @@ include abstract_tendermint
 # Here we prove the second accountability property: no well-behaved node is
 # ever observed to violate the accountability properties.
 
-# The proof is done in two steps: first we prove the the abstract specification
+# The proof is done in two steps: first we prove the abstract specification
 # satisfies the property, and then we show by refinement that this property
 # also holds in the concrete specification.
 

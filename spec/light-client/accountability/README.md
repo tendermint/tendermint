@@ -229,7 +229,7 @@ Execution
 
 Consequences:
 
-* The validators in F1 will be detectable by the the fork accountability mechanisms.
+* The validators in F1 will be detectable by the fork accountability mechanisms.
 * The validators in F2 cannot be detected using this mechanism.
 Only in case they signed something which conflicts with the application this can be used against them. Otherwise they do not do anything incorrect.
 * This case is not covered by the report <https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit?usp=sharing> as it only assumes at most 2/3 of faulty validators.
