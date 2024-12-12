@@ -18,7 +18,7 @@ func NetInfo(ctx *rpctypes.Context) (*ctypes.ResultNetInfo, error) {
 	for _, peer := range peersList {
 		nodeInfo, ok := peer.NodeInfo().(p2p.DefaultNodeInfo)
 		if !ok {
-			return nil, fmt.Errorf("peer.NodeInfo() is not DefaultNodeInfo")
+			return nil, errors.New("peer.NodeInfo() is not DefaultNodeInfo")
 		}
 		peers = append(peers, ctypes.Peer{
 			NodeInfo:         nodeInfo,
