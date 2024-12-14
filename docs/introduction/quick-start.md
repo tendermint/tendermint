@@ -62,7 +62,7 @@ Start Tendermint with a simple in-process application:
 tendermint node --proxy_app=kvstore
 ```
 
-> Note: `kvstore` is a non persistent app, if you would like to run an application with persistence run `--proxy_app=persistent_kvstore`
+> Note: `kvstore` is a non-persistent app, if you would like to run an application with persistence run `--proxy_app=persistent_kvstore`
 
 and blocks will start to stream in:
 
