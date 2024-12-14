@@ -283,7 +283,7 @@ Minor releases are done differently from major releases: They are built off of l
 
 1. start from the existing release branch you want to backport changes to (e.g. v0.30)
    Branch to a release/vX.X.X branch locally (e.g. release/v0.30.7)
-2. Cherry pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
+2. Cherry-pick the commit(s) that contain the changes you want to backport (usually these commits are from squash-merged PRs which were already reviewed)
 3. Follow steps 2 and 3 from [Major Release](#major-release)
 4. Push changes to release/vX.X.X branch
 5. Open a PR against the existing vX.X branch
