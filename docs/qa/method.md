@@ -24,7 +24,7 @@ _200 Node Test_, and _Rotating Nodes Test_.
 * An account at Digital Ocean (DO), with a high droplet limit (>202)
 * The machine to orchestrate the tests should have the following installed:
     * A clone of the [testnet repository][testnet-repo]
-        * This repository contains all the scripts mentioned in the reminder of this section
+        * This repository contains all the scripts mentioned in the remainder of this section
     * [Digital Ocean CLI][doctl]
     * [Terraform CLI][Terraform]
     * [Ansible CLI][Ansible]
@@ -167,7 +167,7 @@ The Core team should improve it at every iteration to increase the amount of aut
 1. Stop the prometheus server if it is running as a service (e.g. a `systemd` unit).
 2. Unzip the prometheus database retrieved from the testnet, and move it to replace the
    local prometheus database.
-3. Start the prometheus server and make sure no error logs appear at start up.
+3. Start the prometheus server and make sure no error logs appear at startup.
 4. Introduce the metrics you want to gather or plot.
 
 ## Rotating Node Testnet
