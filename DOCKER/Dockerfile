@@ -25,7 +25,7 @@ ENV TMHOME /tendermint
 # could execute bash commands.
 RUN apk update && \
     apk upgrade && \
-    apk --no-cache add curl jq bash && \
+    apk --no-cache add bash curl jq && \
     addgroup tmuser && \
     adduser -S -G tmuser tmuser -h "$TMHOME"
 
