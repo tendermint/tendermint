@@ -47,7 +47,7 @@ more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production, we're happy to help.
 You can contact us [over email](mailto:hello@interchain.io) or [join the
-chat](https://discord.gg/cosmosnetwork).
+chat](https://discord.gg/interchain).
 
 More on how releases are conducted can be found [here](./RELEASES.md).
 
@@ -168,7 +168,7 @@ for-profit entity that also maintains [tendermint.com](https://tendermint.com).
 [go-badge]: https://img.shields.io/badge/go-1.18-blue.svg
 [go-url]: https://github.com/moovweb/gvm
 [discord-badge]: https://img.shields.io/discord/669268347736686612.svg
-[discord-url]: https://discord.gg/cosmosnetwork
+[discord-url]: https://discord.gg/interchain
 [license-badge]: https://img.shields.io/github/license/tendermint/tendermint.svg
 [license-url]: https://github.com/tendermint/tendermint/blob/main/LICENSE
 [sg-badge]: https://sourcegraph.com/github.com/tendermint/tendermint/-/badge.svg
