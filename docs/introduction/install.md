@@ -39,7 +39,7 @@ make build
 
 to put the binary in `./build`.
 
-_DISCLAIMER_ The binary of Tendermint is build/installed without the DWARF
+_DISCLAIMER_ The binary of Tendermint is built/installed without the DWARF
 symbol table. If you would like to build/install Tendermint with the DWARF
 symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make
 file.
