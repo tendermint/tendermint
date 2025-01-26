@@ -16,9 +16,9 @@ to elections, to infrastructure orchestration, and beyond.
 The ability to tolerate machines failing in arbitrary ways, including
 becoming malicious, is known as Byzantine fault tolerance (BFT). The
 theory of BFT is decades old, but software implementations have only
-became popular recently, due largely to the success of "blockchain
+become popular recently, due largely to the success of "blockchain
 technology" like Bitcoin and Ethereum. Blockchain technology is just a
-reformalization of BFT in a more modern setting, with emphasis on
+reformalization of BFT in a more modern setting, with an emphasis on
 peer-to-peer networking and cryptographic authentication. The name
 derives from the way transactions are batched in blocks, where each
 block contains a cryptographic hash of the previous one, forming a
@@ -88,7 +88,7 @@ Since then, Tendermint has evolved to be a general purpose blockchain
 consensus engine that can host arbitrary application states. That means
 it can be used as a plug-and-play replacement for the consensus engines
 of other blockchain software. So one can take the current Ethereum code
-base, whether in Rust, or Go, or Haskell, and run it as a ABCI
+base, whether in Rust, or Go, or Haskell, and run it as an ABCI
 application using Tendermint consensus. Indeed, [we did that with
 Ethereum](https://github.com/cosmos/ethermint). And we plan to do
 the same for Bitcoin, ZCash, and various other deterministic
@@ -107,7 +107,7 @@ implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf).
 from a team at IBM that is [augmented to handle potentially
 non-deterministic
 chaincode](https://www.zurich.ibm.com/~cca/papers/sieve.pdf) It is
-possible to implement this docker-based behaviour as a ABCI app in
+possible to implement this docker-based behaviour as an ABCI app in
 Tendermint, though extending Tendermint to handle non-determinism
 remains for future work.
 
