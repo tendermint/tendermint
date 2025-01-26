@@ -180,11 +180,11 @@ integer, starting at 0.
 
 If `serial=off`, there are no restrictions on transactions.
 
-In a live blockchain, transactions collect in memory before they are
+In a live blockchain, transactions are collected in memory before they are
 committed into blocks. To avoid wasting resources on invalid
 transactions, ABCI provides the `CheckTx` message, which application
 developers can use to accept or reject transactions, before they are
-stored in memory or gossipped to other peers.
+stored in memory or gossiped to other peers.
 
 In this instance of the counter app, with `serial=on`, `CheckTx` only
 allows transactions whose integer is greater than the last committed
