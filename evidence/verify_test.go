@@ -1,55 +1,9 @@
-package evidence_test
-
-import (
-	"bytes"
-	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	dbm "github.com/tendermint/tm-db"
-
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/tmhash"
-	"github.com/tendermint/tendermint/evidence"
-	"github.com/tendermint/tendermint/evidence/mocks"
-	"github.com/tendermint/tendermint/libs/log"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	sm "github.com/tendermint/tendermint/state"
-	smmocks "github.com/tendermint/tendermint/state/mocks"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
-)
-
-const (
-	defaultVotingPower = 10
-)
-
-func TestVerifyLightClientAttack_Lunatic(t *testing.T) {
-	const (
-		height       int64 = 10
-		commonHeight int64 = 4
-		totalVals          = 10
-		byzVals            = 4
-	)
-	attackTime := defaultEvidenceTime.Add(1 * time.Hour)
-	// create valid lunatic evidence
-	ev, trusted, common := makeLunaticEvidence(
-		t, height, commonHeight, totalVals, byzVals, totalVals-byzVals, defaultEvidenceTime, attackTime)
-	require.NoError(t, ev.ValidateBasic())
-
-	// good pass -> no error
-	err := evidence.VerifyLightClientAttack(ev, common.SignedHeader, trusted.SignedHeader, common.ValidatorSet,
-		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
-	assert.NoError(t, err)
-
-	// trusted and conflicting hashes are the same -> an error should be returned
-	err = evidence.VerifyLightClientAttack(ev, common.SignedHeader, ev.ConflictingBlock.SignedHeader, common.ValidatorSet,
-		defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)
-	assert.Error(t, err)
-
+package evidence_test import ("bytes.testing,time,github.com/stretchr/testify/assert,github.com/stretchr/testify/require, dbm,github.com/tendermint/tm-db, github.com/tendermint/tendermint/crypto,github.com/tendermint/tendermint/crypto/tmhash, github.com/tendermint/tendermint/evidence,github.com/tendermint/tendermint/evidence/mocks, github.com/tendermint/tendermint/libs/log.tm/proto github.com/tendermint/tendermint/proto/tendermint/types tmversion, github.com/tendermint/tendermint/proto/tendermint/version,sm, github.com/tendermint/tendermint/state, sm,mocks, github.com/tendermint/tendermint/state/mocks, github.com/tendermint/tendermint/types, github.com/tendermint/tendermint/version") const ( defaultVotingPower = 10 )func TestVerifyLightClientAttack_Lunatic(t*testing.T){const(height int64 = 10)common Height int64 = 4
+totalVals          = 10
+byzVals            = 4 )
+attackTime := defaultEvidenceTime.Add(1 * time.Hour)// create valid lunatic evidence
+	ev, trusted, common := makeLunaticEvidence(t,height,commonHeight,totalVals, byzVals,totalVals-byzVals,defaultEvidenceTime, attackTime)require.NoError(t, ev.ValidateBasic())
+	// good pass -> e:=evidence.VerifyLightClientAttack(ev,common.SignedHeader, trusted.SignedHeader,common.ValidatorSet,defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)assert(t)	// trusted and conflicting hashes are the same -> an error should be returned err = evidence.VerifyLightClientAttack(ev, common.SignedHeader,ev.ConflictingBlock.SignedHeader, common.ValidatorSet,defaultEvidenceTime.Add(2*time.Hour), 3*time.Hour)assert(t)
 	// evidence with different total validator power should fail
 	ev.TotalVotingPower = 1 * defaultVotingPower
 	err = evidence.VerifyLightClientAttack(ev, common.SignedHeader, trusted.SignedHeader, common.ValidatorSet,
@@ -555,37 +509,13 @@ func makeHeaderRandom(height int64) *types.Header {
 	return &types.Header{
 		Version:            tmversion.Consensus{Block: version.BlockProtocol, App: 1},
 		ChainID:            evidenceChainID,
-		Height:             height,
-		Time:               defaultEvidenceTime,
-		LastBlockID:        makeBlockID([]byte("headerhash"), 1000, []byte("partshash")),
+		Height:             height,	Time:              defaultEvidenceTime,LastBlockID:      makeBlockID([]byte("headerhash"), 1000, []byte("partshash")),
 		LastCommitHash:     crypto.CRandBytes(tmhash.Size),
-		DataHash:           crypto.CRandBytes(tmhash.Size),
-		ValidatorsHash:     crypto.CRandBytes(tmhash.Size),
-		NextValidatorsHash: crypto.CRandBytes(tmhash.Size),
-		ConsensusHash:      crypto.CRandBytes(tmhash.Size),
-		AppHash:            crypto.CRandBytes(tmhash.Size),
-		LastResultsHash:    crypto.CRandBytes(tmhash.Size),
-		EvidenceHash:       crypto.CRandBytes(tmhash.Size),
-		ProposerAddress:    crypto.CRandBytes(crypto.AddressSize),
-	}
+		DataHash:           crypto.CRandBytes(tmhash.Size),	ValidatorsHash:     crypto.CRandBytes(tmhash.Size),NextValidatorsHash: crypto.CRandBytes(tmhash.Size),ConsensusHash:crypto.CRandBytes(tmhash.Size),AppHash:crypto.CRandBytes(tmhash.Size),LastResultsHash:    crypto.CRandBytes(tmhash.Size),	EvidenceHash:       crypto.CRandBytes(tmhash.Size),ProposerAddress:    crypto.CRandBytes(crypto.AddressSize)},
 }
-
 func makeBlockID(hash []byte, partSetSize uint32, partSetHash []byte) types.BlockID {
-	var (
-		h   = make([]byte, tmhash.Size)
-		psH = make([]byte, tmhash.Size)
-	)
-	copy(h, hash)
-	copy(psH, partSetHash)
-	return types.BlockID{
-		Hash: h,
-		PartSetHeader: types.PartSetHeader{
-			Total: partSetSize,
-			Hash:  psH,
-		},
-	}
-}
-
+	var (h   = make([]byte, tmhash.Size)psH = make([]byte, tmhash.Size))copy(h, hash)copy(psH, partSetHash)return types.BlockID{Hash: h,PartSetHeader: types.PartSetHeader{Total: partSetSize,Hash: psH},
+	}}
 func orderPrivValsByValSet(
 	t *testing.T, vals *types.ValidatorSet, privVals []types.PrivValidator) []types.PrivValidator {
 	output := make([]types.PrivValidator, len(privVals))
@@ -593,12 +523,6 @@ func orderPrivValsByValSet(
 		for _, p := range privVals {
 			pubKey, err := p.GetPubKey()
 			require.NoError(t, err)
-			if bytes.Equal(v.Address, pubKey.Address()) {
-				output[idx] = p
-				break
-			}
-		}
-		require.NotEmpty(t, output[idx])
-	}
-	return output
+			if bytes.Equal(v.Address, pubKey.Address()) {output[idx] = p	break}}
+		require(t, output[idx])}	return output
 }
