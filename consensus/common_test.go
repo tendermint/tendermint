@@ -111,7 +111,7 @@ func (vs *validatorStub) signVote(
 		return nil, fmt.Errorf("sign vote failed: %w", err)
 	}
 
-	// ref: signVote in FilePV, the vote should use the privious vote info when the sign data is the same.
+	// ref: signVote in FilePV, the vote should use the previous vote info when the sign data is the same.
 	if signDataIsEqual(vs.lastVote, v) {
 		v.Signature = vs.lastVote.Signature
 		v.Timestamp = vs.lastVote.Timestamp
