@@ -98,7 +98,17 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		if err != nil {
 			return nil, ErrNetAddressLookup{host, err}
 		}
-		ip = ips[0]
+		// Prefer IPv4 addresses
+		for _, addr := range ips {
+			if addr.To4() != nil {
+				ip = addr
+				break
+			}
+		}
+		// If no IPv4 found, use the first available address
+		if ip == nil && len(ips) > 0 {
+			ip = ips[0]
+		}
 	}
 
 	port, err := strconv.ParseUint(portStr, 10, 16)
