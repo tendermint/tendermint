@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid"
 	"github.com/informalsystems/tm-load-test/pkg/loadtest"
 
 	"github.com/tendermint/tendermint/test/loadtime/payload"
@@ -31,7 +31,7 @@ type TxGenerator struct {
 }
 
 func main() {
-	u := [16]byte(uuid.New()) // generate run ID on startup
+	u := [16]byte(uuid.Must(uuid.NewV4())) // generate run ID on startup
 	if err := loadtest.RegisterClientFactory("loadtime-client", &ClientFactory{ID: u[:]}); err != nil {
 		panic(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid"
 
 	"github.com/tendermint/tendermint/test/loadtime/payload"
 )
@@ -26,7 +26,7 @@ func TestRoundTrip(t *testing.T) {
 		testConns = 512
 		testRate  = 4
 	)
-	testID := [16]byte(uuid.New())
+	testID := [16]byte(uuid.Must(uuid.NewV4()))
 	b, err := payload.NewBytes(&payload.Payload{
 		Size:        payloadSizeTarget,
 		Connections: testConns,

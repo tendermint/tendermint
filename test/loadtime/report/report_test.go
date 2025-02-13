@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/gofrs/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/tendermint/tendermint/test/loadtime/payload"
@@ -31,7 +31,7 @@ func (m *mockBlockStore) LoadBlock(i int64) *types.Block {
 
 func TestGenerateReport(t *testing.T) {
 	t1 := time.Now()
-	u := [16]byte(uuid.New())
+	u := [16]byte(uuid.Must(uuid.NewV4()))
 	b1, err := payload.NewBytes(&payload.Payload{
 		Id:   u[:],
 		Time: timestamppb.New(t1.Add(-10 * time.Second)),
