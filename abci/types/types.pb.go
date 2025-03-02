@@ -10,6 +10,7 @@ import (
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
 	github_com_gogo_protobuf_types "github.com/gogo/protobuf/types"
+		golang_proto "github.com/golang/protobuf/proto"
 	crypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	types1 "github.com/tendermint/tendermint/proto/tendermint/types"
 	grpc "google.golang.org/grpc"
@@ -23,6 +24,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = golang_proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 var _ = time.Kitchen
@@ -85,6 +87,30 @@ func (x EvidenceType) String() string {
 func (EvidenceType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_252557cfdd89a31a, []int{1}
 }
+
+// Side-tx result type
+type SideTxResultType int32
+
+var SideTxResultType_name = map[int32]string{
+	0: "Skip",
+	1: "Yes",
+	2: "No",
+}
+
+var SideTxResultType_value = map[string]int32{
+	"Skip": 0,
+	"Yes":  1,
+	"No":   2,
+}
+
+func (x SideTxResultType) String() string {
+	return proto.EnumName(SideTxResultType_name, int32(x))
+}
+
+func (SideTxResultType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_252557cfdd89a31a, []int{1}
+}
+
 
 type ResponseOfferSnapshot_Result int32
 
@@ -178,6 +204,9 @@ type Request struct {
 	//	*Request_LoadSnapshotChunk
 	//	*Request_ApplySnapshotChunk
 	Value isRequest_Value `protobuf_oneof:"value"`
+	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
+	XXX_unrecognized     []byte          `json:"-"`
+	XXX_sizecache        int32           `json:"-"`
 }
 
 func (m *Request) Reset()         { *m = Request{} }
@@ -252,6 +281,12 @@ type Request_EndBlock struct {
 type Request_Commit struct {
 	Commit *RequestCommit `protobuf:"bytes,11,opt,name=commit,proto3,oneof" json:"commit,omitempty"`
 }
+type Request_BeginSideBlock struct {
+	BeginSideBlock *RequestBeginSideBlock `protobuf:"bytes,21,opt,name=begin_side_block,json=beginSideBlock,proto3,oneof" json:"begin_side_block,omitempty"`
+}
+type Request_DeliverSideTx struct {
+	DeliverSideTx *RequestDeliverSideTx `protobuf:"bytes,22,opt,name=deliver_side_tx,json=deliverSideTx,proto3,oneof" json:"deliver_side_tx,omitempty"`
+}
 type Request_ListSnapshots struct {
 	ListSnapshots *RequestListSnapshots `protobuf:"bytes,12,opt,name=list_snapshots,json=listSnapshots,proto3,oneof" json:"list_snapshots,omitempty"`
 }
@@ -276,6 +311,8 @@ func (*Request_CheckTx) isRequest_Value()            {}
 func (*Request_DeliverTx) isRequest_Value()          {}
 func (*Request_EndBlock) isRequest_Value()           {}
 func (*Request_Commit) isRequest_Value()             {}
+func (*Request_BeginSideBlock) isRequest_Value() 		 {}
+func (*Request_DeliverSideTx) isRequest_Value()      {}
 func (*Request_ListSnapshots) isRequest_Value()      {}
 func (*Request_OfferSnapshot) isRequest_Value()      {}
 func (*Request_LoadSnapshotChunk) isRequest_Value()  {}
@@ -365,6 +402,20 @@ func (m *Request) GetCommit() *RequestCommit {
 	return nil
 }
 
+func (m *Request) GetBeginSideBlock() *RequestBeginSideBlock {
+	if x, ok := m.GetValue().(*Request_BeginSideBlock); ok {
+		return x.BeginSideBlock
+	}
+	return nil
+}
+
+func (m *Request) GetDeliverSideTx() *RequestDeliverSideTx {
+	if x, ok := m.GetValue().(*Request_DeliverSideTx); ok {
+		return x.DeliverSideTx
+	}
+	return nil
+}
+
 func (m *Request) GetListSnapshots() *RequestListSnapshots {
 	if x, ok := m.GetValue().(*Request_ListSnapshots); ok {
 		return x.ListSnapshots
@@ -407,6 +458,8 @@ func (*Request) XXX_OneofWrappers() []interface{} {
 		(*Request_DeliverTx)(nil),
 		(*Request_EndBlock)(nil),
 		(*Request_Commit)(nil),
+		(*Request_BeginSideBlock)(nil),
+		(*Request_DeliverSideTx)(nil),
 		(*Request_ListSnapshots)(nil),
 		(*Request_OfferSnapshot)(nil),
 		(*Request_LoadSnapshotChunk)(nil),
@@ -459,6 +512,9 @@ func (m *RequestEcho) GetMessage() string {
 }
 
 type RequestFlush struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *RequestFlush) Reset()         { *m = RequestFlush{} }
@@ -498,6 +554,9 @@ type RequestInfo struct {
 	Version      string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
 	BlockVersion uint64 `protobuf:"varint,2,opt,name=block_version,json=blockVersion,proto3" json:"block_version,omitempty"`
 	P2PVersion   uint64 `protobuf:"varint,3,opt,name=p2p_version,json=p2pVersion,proto3" json:"p2p_version,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *RequestInfo) Reset()         { *m = RequestInfo{} }
@@ -558,6 +617,9 @@ func (m *RequestInfo) GetP2PVersion() uint64 {
 type RequestSetOption struct {
 	Key   string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *RequestSetOption) Reset()         { *m = RequestSetOption{} }
@@ -696,6 +758,9 @@ type RequestQuery struct {
 	Path   string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	Height int64  `protobuf:"varint,3,opt,name=height,proto3" json:"height,omitempty"`
 	Prove  bool   `protobuf:"varint,4,opt,name=prove,proto3" json:"prove,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *RequestQuery) Reset()         { *m = RequestQuery{} }
@@ -764,6 +829,9 @@ type RequestBeginBlock struct {
 	Header              types1.Header  `protobuf:"bytes,2,opt,name=header,proto3" json:"header"`
 	LastCommitInfo      LastCommitInfo `protobuf:"bytes,3,opt,name=last_commit_info,json=lastCommitInfo,proto3" json:"last_commit_info"`
 	ByzantineValidators []Evidence     `protobuf:"bytes,4,rep,name=byzantine_validators,json=byzantineValidators,proto3" json:"byzantine_validators"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
 }
 
 func (m *RequestBeginBlock) Reset()         { *m = RequestBeginBlock{} }
@@ -830,6 +898,9 @@ func (m *RequestBeginBlock) GetByzantineValidators() []Evidence {
 type RequestCheckTx struct {
 	Tx   []byte      `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
 	Type CheckTxType `protobuf:"varint,2,opt,name=type,proto3,enum=tendermint.abci.CheckTxType" json:"type,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
+	XXX_unrecognized     []byte      `json:"-"`
+	XXX_sizecache        int32       `json:"-"`
 }
 
 func (m *RequestCheckTx) Reset()         { *m = RequestCheckTx{} }
@@ -881,6 +952,9 @@ func (m *RequestCheckTx) GetType() CheckTxType {
 
 type RequestDeliverTx struct {
 	Tx []byte `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *RequestDeliverTx) Reset()         { *m = RequestDeliverTx{} }
@@ -925,6 +999,9 @@ func (m *RequestDeliverTx) GetTx() []byte {
 
 type RequestEndBlock struct {
 	Height int64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *RequestEndBlock) Reset()         { *m = RequestEndBlock{} }
@@ -968,6 +1045,9 @@ func (m *RequestEndBlock) GetHeight() int64 {
 }
 
 type RequestCommit struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *RequestCommit) Reset()         { *m = RequestCommit{} }
@@ -1002,6 +1082,118 @@ func (m *RequestCommit) XXX_DiscardUnknown() {
 }
 
 var xxx_messageInfo_RequestCommit proto.InternalMessageInfo
+
+
+type RequestBeginSideBlock struct {
+	Hash                 []byte         `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
+	Header               Header         `protobuf:"bytes,2,opt,name=header,proto3" json:"header"`
+	SideTxResults        []SideTxResult `protobuf:"bytes,3,rep,name=side_tx_results,json=sideTxResults,proto3" json:"side_tx_results"`
+	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
+	XXX_unrecognized     []byte         `json:"-"`
+	XXX_sizecache        int32          `json:"-"`
+}
+
+func (m *RequestBeginSideBlock) Reset()         { *m = RequestBeginSideBlock{} }
+func (m *RequestBeginSideBlock) String() string { return proto.CompactTextString(m) }
+func (*RequestBeginSideBlock) ProtoMessage()    {}
+func (*RequestBeginSideBlock) Descriptor() ([]byte, []int) {
+	return fileDescriptor_252557cfdd89a31a, []int{12}
+}
+func (m *RequestBeginSideBlock) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RequestBeginSideBlock) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RequestBeginSideBlock.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RequestBeginSideBlock) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestBeginSideBlock.Merge(m, src)
+}
+func (m *RequestBeginSideBlock) XXX_Size() int {
+	return m.Size()
+}
+func (m *RequestBeginSideBlock) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestBeginSideBlock.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RequestBeginSideBlock proto.InternalMessageInfo
+
+func (m *RequestBeginSideBlock) GetHash() []byte {
+	if m != nil {
+		return m.Hash
+	}
+	return nil
+}
+
+func (m *RequestBeginSideBlock) GetHeader() Header {
+	if m != nil {
+		return m.Header
+	}
+	return Header{}
+}
+
+func (m *RequestBeginSideBlock) GetSideTxResults() []SideTxResult {
+	if m != nil {
+		return m.SideTxResults
+	}
+	return nil
+}
+
+
+type RequestDeliverSideTx struct {
+	Tx                   []byte   `protobuf:"bytes,1,opt,name=tx,proto3" json:"tx,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RequestDeliverSideTx) Reset()         { *m = RequestDeliverSideTx{} }
+func (m *RequestDeliverSideTx) String() string { return proto.CompactTextString(m) }
+func (*RequestDeliverSideTx) ProtoMessage()    {}
+func (*RequestDeliverSideTx) Descriptor() ([]byte, []int) {
+	return fileDescriptor_252557cfdd89a31a, []int{13}
+}
+func (m *RequestDeliverSideTx) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RequestDeliverSideTx) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RequestDeliverSideTx.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RequestDeliverSideTx) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestDeliverSideTx.Merge(m, src)
+}
+func (m *RequestDeliverSideTx) XXX_Size() int {
+	return m.Size()
+}
+func (m *RequestDeliverSideTx) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestDeliverSideTx.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RequestDeliverSideTx proto.InternalMessageInfo
+
+func (m *RequestDeliverSideTx) GetTx() []byte {
+	if m != nil {
+		return m.Tx
+	}
+	return nil
+}
 
 // lists available snapshots
 type RequestListSnapshots struct {
@@ -1234,6 +1426,9 @@ type Response struct {
 	//	*Response_LoadSnapshotChunk
 	//	*Response_ApplySnapshotChunk
 	Value isResponse_Value `protobuf_oneof:"value"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
 }
 
 func (m *Response) Reset()         { *m = Response{} }
@@ -1271,6 +1466,7 @@ var xxx_messageInfo_Response proto.InternalMessageInfo
 
 type isResponse_Value interface {
 	isResponse_Value()
+	Equal(interface{}) bool
 	MarshalTo([]byte) (int, error)
 	Size() int
 }

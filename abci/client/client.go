@@ -56,6 +56,11 @@ type Client interface {
 	OfferSnapshotSync(types.RequestOfferSnapshot) (*types.ResponseOfferSnapshot, error)
 	LoadSnapshotChunkSync(types.RequestLoadSnapshotChunk) (*types.ResponseLoadSnapshotChunk, error)
 	ApplySnapshotChunkSync(types.RequestApplySnapshotChunk) (*types.ResponseApplySnapshotChunk, error)
+
+	BeginSideBlockAsync(types.RequestBeginSideBlock) *ReqRes
+	BeginSideBlockSync(types.RequestBeginSideBlock) (*types.ResponseBeginSideBlock, error)
+	DeliverSideTxAsync(types.RequestDeliverSideTx) *ReqRes
+	DeliverSideTxSync(types.RequestDeliverSideTx) (*types.ResponseDeliverSideTx, error)
 }
 
 //----------------------------------------
