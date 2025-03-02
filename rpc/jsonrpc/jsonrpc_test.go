@@ -266,7 +266,7 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
-		return "", err
+		return "", msg.Error
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
@@ -377,7 +377,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
-		t.Fatal(err)
+		t.Fatal(msg.Error)
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
@@ -405,7 +405,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 
 	msg := <-cl.ResponsesCh
 	if msg.Error != nil {
-		t.Fatalf("%+v", err)
+		t.Fatalf("%+v", msg.Error)
 	}
 	result := new(ResultEcho)
 	err = json.Unmarshal(msg.Result, result)
