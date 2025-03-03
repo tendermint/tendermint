@@ -4791,6 +4791,107 @@ func (this *Request_DeliverSideTx) Equal(that interface{}) bool {
 	}
 	return true
 }
+
+// Request 타입 Equal 메서드 구현
+func (this *Request_ListSnapshots) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Request_ListSnapshots)
+	if !ok {
+		that2, ok := that.(Request_ListSnapshots)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.ListSnapshots.Equal(that1.ListSnapshots) {
+		return false
+	}
+	return true
+}
+
+func (this *Request_OfferSnapshot) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Request_OfferSnapshot)
+	if !ok {
+		that2, ok := that.(Request_OfferSnapshot)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.OfferSnapshot.Equal(that1.OfferSnapshot) {
+		return false
+	}
+	return true
+}
+
+func (this *Request_LoadSnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Request_LoadSnapshotChunk)
+	if !ok {
+		that2, ok := that.(Request_LoadSnapshotChunk)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.LoadSnapshotChunk.Equal(that1.LoadSnapshotChunk) {
+		return false
+	}
+	return true
+}
+
+func (this *Request_ApplySnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Request_ApplySnapshotChunk)
+	if !ok {
+		that2, ok := that.(Request_ApplySnapshotChunk)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.ApplySnapshotChunk.Equal(that1.ApplySnapshotChunk) {
+		return false
+	}
+	return true
+}
 func (this *RequestEcho) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
@@ -5199,6 +5300,100 @@ func (this *RequestDeliverSideTx) Equal(that interface{}) bool {
 	}
 	return true
 }
+
+
+// 필요한 Equal 메서드 구현
+func (m *RequestListSnapshots) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*RequestListSnapshots)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if !bytes.Equal(m.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
+	return true
+}
+
+func (m *RequestOfferSnapshot) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*RequestOfferSnapshot)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if !m.Snapshot.Equal(that1.Snapshot) {
+		return false
+	}
+	if !bytes.Equal(m.AppHash, that1.AppHash) {
+		return false
+	}
+	return true
+}
+
+func (m *RequestLoadSnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*RequestLoadSnapshotChunk)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if m.Height != that1.Height {
+		return false
+	}
+	if m.Format != that1.Format {
+		return false
+	}
+	if m.Chunk != that1.Chunk {
+		return false
+	}
+	return true
+}
+
+func (m *RequestApplySnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*RequestApplySnapshotChunk)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if m.Index != that1.Index {
+		return false
+	}
+	if !bytes.Equal(m.Chunk, that1.Chunk) {
+		return false
+	}
+	if m.Sender != that1.Sender {
+		return false
+	}
+	return true
+}
+
 func (this *Response) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
@@ -5753,6 +5948,160 @@ func (this *ResponseInitChain) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (m *ResponseListSnapshots) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*ResponseListSnapshots)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if len(m.Snapshots) != len(that1.Snapshots) {
+		return false
+	}
+	for i := range m.Snapshots {
+		if !m.Snapshots[i].Equal(that1.Snapshots[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (m *ResponseOfferSnapshot) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*ResponseOfferSnapshot)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if m.Result != that1.Result {
+		return false
+	}
+	return true
+}
+
+func (m *ResponseLoadSnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*ResponseLoadSnapshotChunk)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if !bytes.Equal(m.Chunk, that1.Chunk) {
+		return false
+	}
+	return true
+}
+
+func (m *ResponseApplySnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*ResponseApplySnapshotChunk)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if m.Result != that1.Result {
+		return false
+	}
+	if len(m.RefetchChunks) != len(that1.RefetchChunks) {
+		return false
+	}
+	for i := range m.RefetchChunks {
+		if m.RefetchChunks[i] != that1.RefetchChunks[i] {
+			return false
+		}
+	}
+	if len(m.RejectSenders) != len(that1.RejectSenders) {
+		return false
+	}
+	for i := range m.RejectSenders {
+		if m.RejectSenders[i] != that1.RejectSenders[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (m *Snapshot) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*Snapshot)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if m.Height != that1.Height {
+		return false
+	}
+	if m.Format != that1.Format {
+		return false
+	}
+	if m.Chunks != that1.Chunks {
+		return false
+	}
+	if !bytes.Equal(m.Hash, that1.Hash) {
+		return false
+	}
+	if !bytes.Equal(m.Metadata, that1.Metadata) {
+		return false
+	}
+	return true
+}
+
+// EventAttribute에 Equal 메서드 추가
+func (m *EventAttribute) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+	that1, ok := that.(*EventAttribute)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+	if !bytes.Equal(m.Key, that1.Key) {
+		return false
+	}
+	if !bytes.Equal(m.Value, that1.Value) {
+		return false
+	}
+	if m.Index != that1.Index {
+		return false
+	}
+	return true
+}
+
 func (this *ResponseQuery) Equal(that interface{}) bool {
 	if that == nil {
 		return this == nil
@@ -6589,6 +6938,106 @@ func (this *Evidence) Equal(that interface{}) bool {
 		return false
 	}
 	if !bytes.Equal(this.XXX_unrecognized, that1.XXX_unrecognized) {
+		return false
+	}
+	return true
+}
+// Response 타입 Equal 메서드 구현
+func (this *Response_ListSnapshots) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Response_ListSnapshots)
+	if !ok {
+		that2, ok := that.(Response_ListSnapshots)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.ListSnapshots.Equal(that1.ListSnapshots) {
+		return false
+	}
+	return true
+}
+
+func (this *Response_OfferSnapshot) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Response_OfferSnapshot)
+	if !ok {
+		that2, ok := that.(Response_OfferSnapshot)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.OfferSnapshot.Equal(that1.OfferSnapshot) {
+		return false
+	}
+	return true
+}
+
+func (this *Response_LoadSnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Response_LoadSnapshotChunk)
+	if !ok {
+		that2, ok := that.(Response_LoadSnapshotChunk)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.LoadSnapshotChunk.Equal(that1.LoadSnapshotChunk) {
+		return false
+	}
+	return true
+}
+
+func (this *Response_ApplySnapshotChunk) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Response_ApplySnapshotChunk)
+	if !ok {
+		that2, ok := that.(Response_ApplySnapshotChunk)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.ApplySnapshotChunk.Equal(that1.ApplySnapshotChunk) {
 		return false
 	}
 	return true
@@ -12112,6 +12561,54 @@ func (m *Snapshot) Size() (n int) {
 	l = len(m.Metadata)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+// SideTxSig와 SideTxResult에 Size 메서드 추가
+func (m *SideTxSig) Size() int {
+	if m == nil {
+		return 0
+	}
+	var n int
+	var l int
+	_ = l
+	if m.Result != 0 {
+		n += 1 + sovTypes(uint64(m.Result))
+	}
+	l = len(m.Sig)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Address)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *SideTxResult) Size() int {
+	if m == nil {
+		return 0
+	}
+	var n int
+	var l int
+	_ = l
+	l = len(m.TxHash)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	if len(m.Sigs) > 0 {
+		for _, e := range m.Sigs {
+			l = e.Size()
+			n += 1 + l + sovTypes(uint64(l))
+		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
 	}
 	return n
 }
