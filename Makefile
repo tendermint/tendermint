@@ -224,7 +224,7 @@ build-docs:
 	@cd docs && \
 	while read -r branch path_prefix; do \
 		( git checkout $${branch} && npm ci --quiet && \
-			VUEPRESS_BASE="/$${path_prefix}/" npm run build --quiet ) ; \
+			VUEPRESS_BASE="/$${path_prefix}/" NODE_OPTIONS="--openssl-legacy-provider" npm run build --quiet ) ; \
 		mkdir -p ~/output/$${path_prefix} ; \
 		cp -r .vuepress/dist/* ~/output/$${path_prefix}/ ; \
 		cp ~/output/$${path_prefix}/index.html ~/output ; \

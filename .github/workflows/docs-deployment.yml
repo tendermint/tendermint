@@ -28,7 +28,7 @@ jobs:
       - name: Install generator dependencies
         run: |
           apk add --no-cache make bash git npm
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           # We need to fetch full history so the backport branches for previous
           # versions will be available for the build.
@@ -37,7 +37,7 @@ jobs:
         run: |
           git config --global --add safe.directory "$PWD"
           make build-docs
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: build-output
           path: ~/output/
@@ -49,8 +49,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           name: build-output
           path: ~/output
