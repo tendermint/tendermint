@@ -92,7 +92,7 @@ module.exports = {
         }
       ],
       smallprint:
-        'The development of Tendermint Core is led primarily by [Interchain GmbH](https://interchain.berlin/). Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit. The Tendermint trademark is owned by Tendermint Inc, the for-profit entity that also maintains this website.',
+        'The development of Tendermint Core was led primarily by All in Bits, Inc. The Tendermint trademark is owned by New Tendermint, LLC.'
       links: [
         {
           title: 'Documentation',

@@ -46,20 +46,15 @@ since we are making breaking changes to the protocol and the APIs. See below for
 more details about [versioning](#versioning).
 
 In any case, if you intend to run Tendermint in production, we're happy to help.
-You can contact us [over email](mailto:hello@interchain.io) or [join the
-chat](https://discord.gg/cosmosnetwork).
+You can contact us [over email](mailto:hello@newtendermint.org) or [join the
+chat](https://discord.gg/gnoland).
 
 More on how releases are conducted can be found [here](./RELEASES.md).
 
 ## Security
 
-To report a security vulnerability, see our [bug bounty
-program](https://hackerone.com/cosmos). For examples of the kinds of bugs we're
-looking for, see [our security policy](SECURITY.md).
-
-We also maintain a dedicated mailing list for security updates. We will only
-ever use this mailing list to notify you of vulnerabilities and fixes in
-Tendermint Core. You can subscribe [here](http://eepurl.com/gZ5hQD).
+To report a security vulnerability, please [email us](mailto:security@newtendermint.org).
+For examples of the kinds of bugs we're looking for, see [our security policy](SECURITY.md).
 
 ## Minimum requirements
 
@@ -149,14 +144,10 @@ Upgrading instructions can be found in [UPGRADING.md](./UPGRADING.md).
 
 ## Join us!
 
-Tendermint Core is maintained by [Interchain GmbH](https://interchain.berlin).
-If you'd like to work full-time on Tendermint Core,
-[we're hiring](https://interchain-gmbh.breezy.hr/)!
-
-Funding for Tendermint Core development comes primarily from the
-[Interchain Foundation](https://interchain.io), a Swiss non-profit. The
-Tendermint trademark is owned by [Tendermint Inc.](https://tendermint.com), the
-for-profit entity that also maintains [tendermint.com](https://tendermint.com).
+The development of Tendermint Core was led primarily by All in Bits, Inc. The
+Tendermint trademark is owned by New Tendermint, LLC.  If you'd like to work
+full-time on Tendermint2 or [gno.land](https://gno.land), [we're
+hiring](mailto:hiring@newtendermint.org)!
 
 [bft]: https://en.wikipedia.org/wiki/Byzantine_fault_tolerance
 [smr]: https://en.wikipedia.org/wiki/State_machine_replication
