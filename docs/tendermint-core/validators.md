@@ -4,4 +4,4 @@ order: false
 
 # Validators
 
-This file has moved to the [node section](../nodes/validators.md).
+_This file has moved to the [node section](../nodes/validators.md)._
