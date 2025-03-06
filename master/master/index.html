@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+</head>
+<body>
+  
+  <script> 
+  var el = document.getElementById("countdown");
+  var isIE = navigator.appName.indexOf("Explorer") > -1;
+  var routerBase = window.routerBase || "/master/";
+  var isInternalDirect = true;
+  var redirectUrl = "/v0.35/";
+  var countdown = el 
+  ? (isIE ? el.innerText : el.textContent)
+  : 0;
+  
+  function redirect() { 
+    if (countdown <= 0) { 
+      if (isInternalDirect) {
+         redirectUrl = routerBase + redirectUrl.replace(/^\//, '')
+      }
+      location.href = redirectUrl
+
+    } else {
+      if (isIE) { 
+        el.innerText = countdown--; 
+      } else { 
+        el.textContent = countdown--; 
+      } 
+    } 
+  } 
+
+  redirect();
+  setInterval(redirect, 1000); 
+  </script>
+</body>
+</html>
