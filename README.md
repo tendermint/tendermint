@@ -141,3 +141,4 @@ Tendermint trademark is owned by New Tendermint, LLC.  If you'd like to work
 full-time on Tendermint2 or [gno.land](https://gno.land), [we're
 hiring](mailto:hiring@newtendermint.org)!
 
+
