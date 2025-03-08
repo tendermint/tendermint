@@ -35,9 +35,7 @@ func TestNewChunkQueue_TempDir(t *testing.T) {
 		Hash:     []byte{7},
 		Metadata: nil,
 	}
-	dir, err := os.MkdirTemp("", "newchunkqueue")
-	require.NoError(t, err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	queue, err := newChunkQueue(snapshot, dir)
 	require.NoError(t, err)
 
