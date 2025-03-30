@@ -6,13 +6,9 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    - exportloopref
     - goconst
-    - gofmt
-    - goimports
     - revive
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - misspell
@@ -22,7 +18,6 @@ linters:
     - staticcheck
     # - structcheck // to be fixed by golangci-lint
     - stylecheck
-    - typecheck
     - unconvert
     - unused
 
