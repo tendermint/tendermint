@@ -16,11 +16,11 @@ jobs:
   check-mocks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.18'
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: "Check generated mocks"
         run: |
@@ -42,11 +42,11 @@ jobs:
   check-proto:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.18'
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1  # we need a .git directory to run git diff
 
