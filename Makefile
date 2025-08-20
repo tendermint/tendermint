@@ -116,7 +116,7 @@ proto-check-breaking: check-proto-deps
 	@echo "Checking for breaking changes in Protobuf files against local branch"
 	@echo "Note: This is only useful if your changes have not yet been committed."
 	@echo "      Otherwise read up on buf's \"breaking\" command usage:"
-	@echo "      https://docs.buf.build/breaking/usage"
+	@echo "      https://buf.build/docs/breaking/usage"
 	@go run github.com/bufbuild/buf/cmd/buf breaking --against ".git"
 .PHONY: proto-check-breaking
 
