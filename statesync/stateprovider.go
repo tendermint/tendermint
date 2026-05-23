@@ -170,7 +170,7 @@ func (s *lightClientStateProvider) State(ctx context.Context, height uint64) (sm
 	state.NextValidators = nextLightBlock.ValidatorSet
 	state.LastHeightValidatorsChanged = nextLightBlock.Height
 
-	// We'll also need to fetch consensus params via RPC, using light client verification.
+	// We'll also need to fetch consensus params via an RPC, using light client verification.
 	primaryURL, ok := s.providers[s.lc.Primary()]
 	if !ok || primaryURL == "" {
 		return sm.State{}, fmt.Errorf("could not find address for primary light client provider")

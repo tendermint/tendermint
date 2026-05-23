@@ -392,7 +392,7 @@ FOR_LOOP:
 
 			bcR.pool.PopRequest()
 
-			// TODO: batch saves so we dont persist to disk every block
+			// TODO: batch saves so we don't persist to disk every block
 			bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
 			// TODO: same thing for app - but we would need a way to

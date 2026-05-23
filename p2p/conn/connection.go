@@ -277,7 +277,7 @@ func (c *MConnection) FlushStop() {
 	// this block is unique to FlushStop
 	{
 		// wait until the sendRoutine exits
-		// so we dont race on calling sendSomePacketMsgs
+		// so we don't race on calling sendSomePacketMsgs
 		<-c.doneSendRoutine
 
 		// Send and flush all pending msgs.

@@ -572,7 +572,7 @@ OUTER_LOOP:
 		if (0 < prs.Height) && (prs.Height < rs.Height) && (prs.Height >= conR.conS.blockStore.Base()) {
 			heightLogger := logger.With("height", prs.Height)
 
-			// if we never received the commit message from the peer, the block parts wont be initialized
+			// if we never received the commit message from the peer, the block parts won't be initialized
 			if prs.ProposalBlockParts == nil {
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {

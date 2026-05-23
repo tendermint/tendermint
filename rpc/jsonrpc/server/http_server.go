@@ -19,7 +19,7 @@ import (
 	types "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
-// Config is a RPC server configuration.
+// Config is an RPC server configuration.
 type Config struct {
 	// see netutil.LimitListener
 	MaxOpenConnections int

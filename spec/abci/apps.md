@@ -523,7 +523,7 @@ If `appBlockHeight == stateBlockHeight`,
 This happens if we crashed before the app finished Commit
 
 If `appBlockHeight == storeBlockHeight`
-    update the state using the saved ABCI responses but dont run the block against the real app.
+    update the state using the saved ABCI responses but don't run the block against the real app.
 This happens if we crashed after the app finished Commit but before Tendermint saved the state.
 
 ## State Sync

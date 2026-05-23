@@ -211,7 +211,7 @@ func makeApplyBlock(
 // order doesn't matter
 func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	if len(vals1) != len(vals2) {
-		t.Fatalf("vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
+		t.Fatalf("vals don't match in len. got %d, expected %d", len(vals2), len(vals1))
 	}
 	sort.Sort(types.ValidatorUpdates(vals1))
 	sort.Sort(types.ValidatorUpdates(vals2))
@@ -219,7 +219,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 		v2 := vals2[i]
 		if !v1.PubKey.Equal(v2.PubKey) ||
 			v1.Power != v2.Power {
-			t.Fatalf("vals dont match at index %d. got %X/%d , expected %X/%d", i, v2.PubKey, v2.Power, v1.PubKey, v1.Power)
+			t.Fatalf("vals don't match at index %d. got %X/%d , expected %X/%d", i, v2.PubKey, v2.Power, v1.PubKey, v1.Power)
 		}
 	}
 }

@@ -25,7 +25,7 @@ const (
 
 	// over-estimate of max NetAddress size
 	// hexID (40) + IP (16) + Port (2) + Name (100) ...
-	// NOTE: dont use massive DNS name ..
+	// NOTE: don't use massive DNS name ..
 	maxAddressSize = 256
 
 	// NOTE: amplificaiton factor!
@@ -210,7 +210,7 @@ func (r *Reactor) AddPeer(p Peer) {
 		// Make it explicit that addr and src are the same for an inbound peer.
 		src := addr
 
-		// add to book. dont RequestAddrs right away because
+		// add to book. don't RequestAddrs right away because
 		// we don't trust inbound as much - let ensurePeersRoutine handle it.
 		err = r.book.AddAddress(addr, src)
 		r.logErrAddrBook(err)
