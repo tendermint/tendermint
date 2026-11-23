@@ -20,3 +20,5 @@
 
 ### BUG FIXES
 
+- [libs/pubsub] \#XXXX Fix event subscription queries with ordered comparison operators silently dropping the sign of negative event values, so `transfer.amount > 7` matched `-8stake`
+
