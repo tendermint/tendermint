@@ -18,7 +18,11 @@ import (
 )
 
 var (
-	numRegex = regexp.MustCompile(`([0-9\.]+)`)
+	// numRegex extracts the leading numeric part of an event attribute value,
+	// which may carry a non-numeric suffix (e.g. "8.045stake"). A leading sign
+	// is part of the number: dropping it turns -8 into 8 and silently inverts
+	// the result of any ordered comparison.
+	numRegex = regexp.MustCompile(`-?([0-9\.]+)`)
 )
 
 // Query holds the query string and the query parser.

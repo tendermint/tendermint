@@ -43,6 +43,13 @@ func TestMatches(t *testing.T) {
 			false,
 		},
 		{"peaches.kg < 4", map[string][]string{"peaches.kg": {"5"}}, false, false, false},
+		// Negative event values must be compared with their sign intact. A
+		// leading minus sign is part of the number, not a prefix to discard.
+		{"transfer.amount > 7", map[string][]string{"transfer.amount": {"-8stake"}}, false, false, false},
+		{"transfer.amount < 0", map[string][]string{"transfer.amount": {"-5stake"}}, false, true, false},
+		{"transfer.amount >= 0", map[string][]string{"transfer.amount": {"-5stake"}}, false, false, false},
+		{"body.weight > 1.5", map[string][]string{"body.weight": {"-2.5"}}, false, false, false},
+		{"body.weight < 0", map[string][]string{"body.weight": {"-2.5"}}, false, true, false},
 		{
 			"tx.date > DATE 2017-01-01",
 			map[string][]string{"tx.date": {time.Now().Format(query.DateLayout)}},
